@@ -1,14 +1,13 @@
 # Current Phase
 
-**Phase 10 — Competitor Airlines: COMPLETE** (2026-08-25)
+**Phase 11 — Events and Living World: COMPLETE** (2026-08-25)
 
-Delivered: AIProfile archetypes (lowCost/premium/regional/conservative/
-expansionist), CompetitorAISystem (staggered weekly decision slots;
-survive -> employ -> tune -> grow priority; all actions through shared
-command validators), WorldSetup competitor cast bootstrap, AITuning
-content. Save v8. See docs/AI.md.
+Delivered: systemic WorldEvent framework (fuel shocks, forecast-led storms,
+severe-storm airport closures, tourism booms, service-neglect strikes) with
+rate limits, cooldown ledger, and effects applied inside the owning systems
+(fuel walk target, dispatch disruption, boarding gates, leisure demand).
+Save v9. See docs/EVENTS.md.
 
-**Build:** clean. **Tests:** 161/161 incl. 3-year world health, price-war
-response, determinism.
+**Build:** clean. **Tests:** 169/169.
 
-**Next phase: Phase 11 — Events and Living World** (task AE-012).
+**Next phase: Phase 12 — Progression** (task AE-013).

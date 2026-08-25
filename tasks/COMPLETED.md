@@ -155,3 +155,13 @@ priority-driven decisions, market entry/exit/pricing/fleet behavior, world
 population helper; docs/AI.md. AIs can fail through the shared solvency
 path and release their market position.
 **Tests:** 161 passing (9 new).
+
+---
+
+## AE-012
+**Title:** Phase 11 — Events and Living World
+**Completed:** 2026-08-25
+**Outcome:** Systemic event layer per docs/EVENTS.md; strike loop closes
+the service-neglect feedback circle; forecast leads make storms fair;
+closures escalate from severe storms; effects hit player and AI alike.
+**Tests:** 169 passing (8 new).

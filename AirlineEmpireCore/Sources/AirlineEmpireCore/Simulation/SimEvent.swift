@@ -52,6 +52,11 @@ public enum SimEventKind: Equatable, Codable, Sendable {
     case statementClosed(airline: AirlineID, year: Int, month: Int, netProfit: Money)
     case airlineEnteredAdministration(id: AirlineID)
     case airlineCollapsed(id: AirlineID)
+
+    // Living world (Phase 11)
+    case worldEventForecast(kind: WorldEventKind, beginsAt: SimTime)
+    case worldEventStarted(id: Int64, kind: WorldEventKind)
+    case worldEventEnded(id: Int64, kind: WorldEventKind)
 }
 
 /// Fixed-capacity ring of recent events plus a lifetime counter.

@@ -11,14 +11,17 @@ public struct WorldSystem: SimulationSystem {
     public func update(state: inout GameState, context: SimContext) {
         let tuning = context.catalog.tuning.world
 
-        // Fuel: mean-reverting geometric walk around the content base price.
+        // Fuel: mean-reverting geometric walk around the content base price,
+        // scaled by any active fuel shock (docs/EVENTS.md).
         let base = context.catalog.tuning.ops.baseFuelPricePerTon.asDouble
+            * state.world.fuelShockFactor(at: context.current)
         let price = state.world.fuelPricePerTon.asDouble
         let noise = (state.rng.unitDouble("world.fuel") - 0.5) * 2 // [-1, 1)
         let drift = tuning.fuelMeanReversion * (log(base) - log(price))
         let next = price * exp(drift + tuning.fuelDailyVolatility * noise)
-        let clamped = min(base * tuning.fuelMaxFactor,
-                          max(base * tuning.fuelMinFactor, next))
+        let hardBase = context.catalog.tuning.ops.baseFuelPricePerTon.asDouble
+        let clamped = min(hardBase * tuning.fuelMaxFactor,
+                          max(hardBase * tuning.fuelMinFactor, next))
         state.world.fuelPricePerTon = Money(rounding: clamped)
 
         // Economy: regime-switching drift. The target flips between boom

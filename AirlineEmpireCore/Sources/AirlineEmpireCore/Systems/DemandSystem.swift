@@ -37,8 +37,16 @@ public struct DemandSystem: SimulationSystem {
             let b = first.destination
 
             for (from, to) in [(a, b), (b, a)] {
+                let boost: Double
+                if let destination = catalog.airport(to) {
+                    boost = state.world.tourismBoost(for: destination.region,
+                                                     at: state.clock.now)
+                } else {
+                    boost = 0
+                }
                 let pool = Self.demandPool(from: from, to: to, date: date,
                                            economicIndex: state.world.economicIndex,
+                                           tourismBoost: boost,
                                            catalog: catalog)
                 allocate(pool: pool, from: from, to: to, routeIDs: routeIDs,
                          state: &state, catalog: catalog)
@@ -118,8 +126,9 @@ public struct DemandSystem: SimulationSystem {
     }
 
     /// The day's directional demand pool, by segment.
+    /// `tourismBoost` is the destination-region event boost (0 = none).
     static func demandPool(from: AirportCode, to: AirportCode, date: GameDate,
-                           economicIndex: Double,
+                           economicIndex: Double, tourismBoost: Double = 0,
                            catalog: ContentCatalog) -> SegmentDemand {
         guard let origin = catalog.airport(from), let destination = catalog.airport(to)
         else { return SegmentDemand(business: 0, leisure: 0) }
@@ -142,7 +151,7 @@ public struct DemandSystem: SimulationSystem {
             .leisureMultiplier(month: date.month) ?? 1.0
         let leisure = base * tuning.leisureWeight
             * origin.demographics.leisureIndex * destination.demographics.tourismIndex
-            * season
+            * season * (1 + tourismBoost)
             * tuning.weekdayLeisureFactor[date.weekday.rawValue]
             * pow(economicIndex, tuning.economyLeisureExponent)
 

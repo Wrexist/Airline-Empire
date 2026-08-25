@@ -12,6 +12,12 @@ public struct WorldState: Equatable, Codable, Sendable {
     public var economicIndex: Double
     /// The level the economy is currently drifting toward (regime).
     public var economicCycleTarget: Double
+    /// Live world events (forecast + active), bounded by rate limits.
+    public var activeEvents: [WorldEvent]
+    public var nextEventID: Int64
+    /// Deterministic trigger cooldowns, keyed by label ("major",
+    /// "strike.<id>"), value = dayIndex of last occurrence.
+    public var eventCooldowns: [String: Int64]
 
     public init(airportRuntimes: [AirportCode: AirportRuntime] = [:],
                 fuelPricePerTon: Money = Money(cents: 65_000),
@@ -21,6 +27,9 @@ public struct WorldState: Equatable, Codable, Sendable {
         self.fuelPricePerTon = fuelPricePerTon
         self.economicIndex = economicIndex
         self.economicCycleTarget = economicCycleTarget
+        self.activeEvents = []
+        self.nextEventID = 1
+        self.eventCooldowns = [:]
     }
 
     // MARK: Slots

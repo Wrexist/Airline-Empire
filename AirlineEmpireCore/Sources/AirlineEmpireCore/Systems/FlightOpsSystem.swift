@@ -26,9 +26,13 @@ public struct FlightOpsSystem: SimulationSystem {
                     continue
                 }
                 // Boarding starts when it's time AND the airframe is free
-                // and airworthy — a late inbound naturally cascades here.
+                // and airworthy AND the world permits it (closed airports
+                // and struck airlines board nothing; expiry cancels).
                 let boardingStart = flight.departureTime + .minutes(-ops.boardingMinutes)
-                if now >= boardingStart, aircraft.isReadyToFly,
+                let worldBlocks = state.world.isAirportClosed(flight.from, at: now)
+                    || state.world.isAirportClosed(flight.to, at: now)
+                    || state.world.strikeActive(for: aircraft.owner, at: now)
+                if now >= boardingStart, aircraft.isReadyToFly, !worldBlocks,
                    aircraft.location == flight.from {
                     flight.phase = .boarding
                     aircraft.activeFlight = flightID
@@ -54,7 +58,17 @@ public struct FlightOpsSystem: SimulationSystem {
                     let spec = context.catalog.aircraftType(aircraft.typeCode)!
                     let reliability = aircraft.currentReliability(
                         type: spec, tuning: context.catalog.tuning.fleet)
-                    if state.rng.chance("flightOps.dispatch", probability: 1 - reliability) {
+                    var disruptionProbability = 1 - reliability
+                    // Active storms over either endpoint raise disruption.
+                    for endpoint in [flight.from, flight.to] {
+                        if let airport = context.catalog.airport(endpoint),
+                           let storm = state.world.activeStorm(in: airport.region, at: now) {
+                            disruptionProbability += context.catalog.tuning.events
+                                .stormDisruptionBoost * storm
+                        }
+                    }
+                    disruptionProbability = min(0.95, disruptionProbability)
+                    if state.rng.chance("flightOps.dispatch", probability: disruptionProbability) {
                         if state.rng.chance("flightOps.cancel",
                                             probability: ops.cancellationShareOfDisruptions) {
                             cancel(flightID, flight: flight, aircraft: &aircraft,

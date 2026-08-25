@@ -90,6 +90,7 @@ public struct FleetBillingSystem: SimulationSystem {
 public enum GamePipeline {
     public static func standard() -> [any SimulationSystem] {
         [
+            WorldEventSystem(),         // #1a: event lifecycle before world prices
             WorldSystem(),              // #1 in the documented pipeline
             StatementRollupSystem(),    // closes the previous month BEFORE new billings
             DemandSystem(),             // #2

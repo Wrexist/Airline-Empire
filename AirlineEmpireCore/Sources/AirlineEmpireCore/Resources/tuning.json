@@ -49,6 +49,32 @@
    1.2
   ]
  },
+ "events": {
+  "closureSeverityThreshold": 0.85,
+  "fuelShockDailyChance": 0.0025,
+  "fuelShockDurationDaysMax": 90,
+  "fuelShockDurationDaysMin": 30,
+  "fuelShockSeverityMax": 0.9,
+  "fuelShockSeverityMin": 0.3,
+  "majorEventCooldownDays": 45,
+  "maxActiveRegionalEvents": 2,
+  "stormBaseDailyChance": 0.004,
+  "stormDisruptionBoost": 0.3,
+  "stormDurationDaysMax": 3,
+  "stormDurationDaysMin": 1,
+  "stormForecastLeadDays": 1,
+  "stormSeverityMax": 1.0,
+  "stormSeverityMin": 0.3,
+  "strikeCooldownDays": 180,
+  "strikeDailyChance": 0.02,
+  "strikeDurationDaysMax": 4,
+  "strikeDurationDaysMin": 2,
+  "strikeServiceThreshold": 0.35,
+  "tourismBoomBoost": 0.35,
+  "tourismBoomDailyChance": 0.002,
+  "tourismBoomDurationDaysMax": 120,
+  "tourismBoomDurationDaysMin": 60
+ },
  "finance": {
   "administrationGraceDays": 7,
   "administrationHaircut": 0.3,
