@@ -226,3 +226,13 @@ these attacks target). UI-surface QA remains with the macOS queue.
 **Outcome:** Budget met with 2.7x margin at late-game scale; linear
 scaling verified; JSON codec retained by measurement; no premature
 optimization. Bench harness committed (swift run -c release ae-bench).
+
+---
+
+## AE-021
+**Title:** Phase 22 — Product Review (current-scope audit)
+**Completed:** 2026-08-25
+**Outcome:** Honest audit with ranked issues and the macOS queue;
+difficulty scenarios shipped (content + session API + app wiring + tests);
+D-010 scope decisions recorded with doc amendments.
+**Tests:** 212 passing.

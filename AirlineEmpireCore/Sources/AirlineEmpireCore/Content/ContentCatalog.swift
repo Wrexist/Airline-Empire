@@ -8,12 +8,14 @@ public final class ContentCatalog: Sendable {
     public let airports: [AirportCode: AirportSpec]
     public let seasonality: [SeasonalityCode: SeasonalityProfile]
     public let aircraftTypes: [AircraftTypeCode: AircraftTypeSpec]
+    public let scenarios: [ScenarioCode: ScenarioSpec]
     public let tuning: Tuning
 
     /// Codes in stable sorted order — the iteration order for any
     /// deterministic sweep.
     public let orderedAirportCodes: [AirportCode]
     public let orderedAircraftTypeCodes: [AircraftTypeCode]
+    public let orderedScenarioCodes: [ScenarioCode]
 
     /// Empty catalog for kernel-only tests and tooling.
     public static let empty = try! ContentCatalog(
@@ -23,11 +25,25 @@ public final class ContentCatalog: Sendable {
     public init(version: String, airports: [AirportSpec],
                 seasonality: [SeasonalityProfile],
                 aircraftTypes: [AircraftTypeSpec] = [],
+                scenarios: [ScenarioSpec] = [],
                 tuning: Tuning) throws {
         var airportMap: [AirportCode: AirportSpec] = [:]
         var seasonMap: [SeasonalityCode: SeasonalityProfile] = [:]
         var typeMap: [AircraftTypeCode: AircraftTypeSpec] = [:]
+        var scenarioMap: [ScenarioCode: ScenarioSpec] = [:]
         var problems: [String] = []
+
+        for scenario in scenarios {
+            if scenarioMap[scenario.code] != nil {
+                problems.append("Duplicate scenario: \(scenario.code)")
+            }
+            if scenario.playerStartingCash <= .zero
+                || scenario.competitorStartingCash <= .zero
+                || scenario.competitorCount < 0 || scenario.competitorCount > 8 {
+                problems.append("Scenario \(scenario.code) has invalid parameters")
+            }
+            scenarioMap[scenario.code] = scenario
+        }
 
         for type in aircraftTypes {
             if typeMap[type.code] != nil {
@@ -105,9 +121,15 @@ public final class ContentCatalog: Sendable {
         self.airports = airportMap
         self.seasonality = seasonMap
         self.aircraftTypes = typeMap
+        self.scenarios = scenarioMap
         self.tuning = tuning
         self.orderedAirportCodes = airportMap.keys.sorted()
         self.orderedAircraftTypeCodes = typeMap.keys.sorted()
+        self.orderedScenarioCodes = scenarioMap.keys.sorted()
+    }
+
+    public func scenario(_ code: ScenarioCode) -> ScenarioSpec? {
+        scenarios[code]
     }
 
     public func aircraftType(_ code: AircraftTypeCode) -> AircraftTypeSpec? {
@@ -522,6 +544,10 @@ extension ContentCatalog {
         let types: [AircraftTypeSpec]
     }
 
+    struct ScenariosFile: Codable {
+        let scenarios: [ScenarioSpec]
+    }
+
     /// Loads and validates the shipped content. Fails loudly on any defect
     /// (docs/ARCHITECTURE.md §6): broken content is a build/test failure,
     /// never a runtime surprise.
@@ -530,11 +556,13 @@ extension ContentCatalog {
         let airportsFile = try decoder.decode(AirportsFile.self, from: resourceData("airports"))
         let seasonalityFile = try decoder.decode(SeasonalityFile.self, from: resourceData("seasonality"))
         let aircraftFile = try decoder.decode(AircraftFile.self, from: resourceData("aircraft"))
+        let scenariosFile = try decoder.decode(ScenariosFile.self, from: resourceData("scenarios"))
         let tuning = try decoder.decode(Tuning.self, from: resourceData("tuning"))
         return try ContentCatalog(version: airportsFile.version,
                                   airports: airportsFile.airports,
                                   seasonality: seasonalityFile.profiles,
                                   aircraftTypes: aircraftFile.types,
+                                  scenarios: scenariosFile.scenarios,
                                   tuning: tuning)
     }
 

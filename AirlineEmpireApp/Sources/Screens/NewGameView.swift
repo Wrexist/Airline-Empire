@@ -7,6 +7,7 @@ struct NewGameView: View {
     @Environment(GameController.self) private var controller
     @State private var airlineName = ""
     @State private var selectedStart = CuratedStart.all[0]
+    @State private var scenario: ScenarioCode = "entrepreneur"
     @State private var seedText = ""
 
     var body: some View {
@@ -38,6 +39,32 @@ struct NewGameView: View {
                         .foregroundStyle(.primary)
                     }
                 }
+                Section("Difficulty") {
+                    if let catalog = try? ContentCatalog.loadBundled() {
+                        ForEach(catalog.orderedScenarioCodes, id: \.self) { code in
+                            if let spec = catalog.scenarios[code] {
+                                Button {
+                                    scenario = code
+                                } label: {
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(spec.name).font(.body.weight(.medium))
+                                            Text(spec.blurb)
+                                                .font(.caption)
+                                                .foregroundStyle(AETheme.mutedText)
+                                        }
+                                        Spacer()
+                                        if scenario == code {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .foregroundStyle(AETheme.accent)
+                                        }
+                                    }
+                                }
+                                .foregroundStyle(.primary)
+                            }
+                        }
+                    }
+                }
                 Section("World seed (optional)") {
                     TextField("Random", text: $seedText)
                         .keyboardType(.numberPad)
@@ -51,7 +78,7 @@ struct NewGameView: View {
                             ?? UInt64.random(in: 1...UInt64.max / 2)
                         controller.startNewGame(
                             airlineName: airlineName.isEmpty ? "Skyline Air" : airlineName,
-                            home: selectedStart.home, seed: seed)
+                            home: selectedStart.home, seed: seed, scenario: scenario)
                     }
                     .font(.headline)
                 }

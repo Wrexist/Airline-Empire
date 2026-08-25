@@ -117,3 +117,26 @@ end-to-end (build+link+Swift Testing) on Ubuntu 24.04 in-session.
 iOS app targets still require macOS (B-002 stands, by nature). Owner may
 still allowlist swift.org for the official tarball; the script would then be
 pointed there — cosmetic change.
+
+---
+
+## D-010 — v1.0 scope trims recorded at product review
+**Date:** 2026-08-25 · **Status:** ACCEPTED · **Phase:** 22
+**Context:** Current-scope audit (docs/PRODUCT_REVIEW.md) found three
+design-doc promises not implemented and judged against building them now.
+**Decision:**
+1. **Hub connections** (GAME_DESIGN §4.14 spill demand): descoped from
+   v1.0 to the first content update. Rationale: the mid-game hub beat
+   deserves validated UI to land on; the demand-engine seam (a spill term
+   in the pool split) is reserved and the aggregates rule keeps it cheap.
+2. **Command-replay tooling** (SIMULATION_ARCHITECTURE §2 command log):
+   determinism is guaranteed and continuously verified by dual-run hashes
+   and save/continue equality; a replay log is QA tooling, built when QA
+   needs it. Doc amended by this entry.
+3. **LocalAnalytics service** (ARCHITECTURE §8): superseded by statement
+   series + route monthly economics, which already feed every planned
+   chart. Doc amended by this entry.
+**Consequences:** v1.0 ships point-to-point networks; PRODUCT_REVIEW.md
+carries these as tracked items, not silent gaps. Scenario/difficulty
+presets — the other High finding — were implemented in this phase instead
+of deferred (content-driven Founder/Entrepreneur/Magnate).

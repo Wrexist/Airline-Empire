@@ -212,3 +212,52 @@ struct ProgressionTests {
         #expect(try resumed.state.stateHash() == straight.state.stateHash())
     }
 }
+
+@Suite("Scenarios")
+struct ScenarioTests {
+    @Test func bundledScenariosLoadAndDiffer() throws {
+        let catalog = try ContentCatalog.loadBundled()
+        #expect(catalog.scenarios.count == 3)
+        let founder = try #require(catalog.scenario("founder"))
+        let magnate = try #require(catalog.scenario("magnate"))
+        #expect(founder.playerStartingCash > magnate.playerStartingCash)
+        #expect(founder.competitorCount < magnate.competitorCount)
+        #expect(founder.competitorStartingCash < magnate.competitorStartingCash)
+    }
+
+    @Test func beginScenarioSetsUpTheWorld() async throws {
+        let catalog = try ContentCatalog.loadBundled()
+        let spec = try #require(catalog.scenario("magnate"))
+        let session = GameSession(
+            state: ScenarioBootstrap.newGame(scenario: "magnate", worldSeed: 7,
+                                             startYear: spec.startYear),
+            systems: GamePipeline.standard(), catalog: catalog)
+        let result = await session.beginScenario(spec, airlineName: "Hard Mode",
+                                                 home: "STV")
+        #expect(result == .applied)
+        let snapshot = await session.snapshot
+        let player = try #require(snapshot.playerAirline)
+        #expect(snapshot.ledger.balance(of: player.id) == spec.playerStartingCash)
+        let competitors = snapshot.airlines.values.filter { $0.kind == .ai }
+        #expect(competitors.count == spec.competitorCount)
+        // Rich rivals per the scenario (starter aircraft already bought,
+        // so balances sit below the initial capital).
+        for rival in competitors {
+            #expect(snapshot.ledger.recent.contains {
+                $0.airline == rival.id && $0.category == .initialCapital
+                    && $0.amount == spec.competitorStartingCash
+            } || snapshot.ledger.balance(of: rival.id) <= spec.competitorStartingCash)
+        }
+    }
+
+    @Test func invalidScenarioContentRejected() {
+        let bad = ScenarioSpec(code: "bad", name: "Bad", blurb: "", startYear: 2030,
+                               playerStartingCash: .zero, competitorCount: 99,
+                               competitorStartingCash: Money.dollars(1))
+        #expect(throws: ContentError.self) {
+            _ = try ContentCatalog(version: "t", airports: [],
+                                   seasonality: [], scenarios: [bad],
+                                   tuning: .standard)
+        }
+    }
+}

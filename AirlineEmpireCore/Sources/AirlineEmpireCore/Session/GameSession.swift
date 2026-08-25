@@ -62,12 +62,31 @@ public actor GameSession {
 
     /// Founds the standard competitor cast around the player's world
     /// (new-game bootstrap; no-op without a player airline).
-    public func populateStandardWorld(competitors: Int) {
+    public func populateStandardWorld(competitors: Int,
+                                      competitorCash: Money = Money.dollars(120_000_000)) {
         guard let player = engine.state.airlines.values.first(where: { $0.kind == .player })
         else { return }
         WorldSetup.createCompetitors(engine: engine, count: competitors,
-                                     playerHome: player.homeAirport)
+                                     playerHome: player.homeAirport,
+                                     startingCash: competitorCash)
         publish()
+    }
+
+    /// Complete scenario-driven new-game setup: founds the player airline
+    /// with the scenario's capital and populates the competitor cast.
+    /// Returns the founding result so the UI can surface a rejection.
+    @discardableResult
+    public func beginScenario(_ spec: ScenarioSpec, airlineName: String,
+                              home: AirportCode) -> CommandResult {
+        let result = engine.applyNow(FoundAirlineCommand(
+            airlineName: airlineName, kind: .player, homeAirport: home,
+            startingCash: spec.playerStartingCash))
+        if result == .applied {
+            populateStandardWorld(competitors: spec.competitorCount,
+                                  competitorCash: spec.competitorStartingCash)
+        }
+        publish()
+        return result
     }
 
     // MARK: Persistence

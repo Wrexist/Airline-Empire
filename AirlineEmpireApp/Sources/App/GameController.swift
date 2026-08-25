@@ -24,20 +24,23 @@ final class GameController {
 
     // MARK: Lifecycle
 
-    func startNewGame(airlineName: String, home: AirportCode, seed: UInt64) {
+    func startNewGame(airlineName: String, home: AirportCode, seed: UInt64,
+                      scenario: ScenarioCode = "entrepreneur") {
         do {
             let catalog = try ContentCatalog.loadBundled()
-            let state = ScenarioBootstrap.newGame(scenario: "standard",
-                                                  worldSeed: seed, startYear: 2030)
+            guard let spec = catalog.scenario(scenario) else {
+                assertionFailure("Unknown scenario \(scenario)")
+                return
+            }
+            let state = ScenarioBootstrap.newGame(scenario: scenario,
+                                                  worldSeed: seed,
+                                                  startYear: spec.startYear)
             let session = GameSession(state: state, systems: GamePipeline.standard(),
                                       catalog: catalog)
             self.catalog = catalog
             self.session = session
             Task {
-                _ = await session.submit(FoundAirlineCommand(
-                    airlineName: airlineName, kind: .player, homeAirport: home,
-                    startingCash: Money.dollars(60_000_000)))
-                await self.foundCompetitors()
+                await session.beginScenario(spec, airlineName: airlineName, home: home)
                 await self.attachPersistence()
                 await self.subscribe()
                 await self.refresh()
@@ -86,16 +89,6 @@ final class GameController {
         let manager = makeSaveManager()
         saveManager = manager
         await session.attachSaveManager(manager)
-    }
-
-    private func foundCompetitors() async {
-        // Competitors are founded through the same engine commands; done via
-        // the session's paused-immediate path at world start.
-        // WorldSetup drives the engine directly, so route through a one-shot
-        // state rebuild is unnecessary: competitors join on first load only.
-        // (Session-level competitor bootstrap API is a Core seam: WorldSetup
-        // operates on SimulationEngine; GameSession exposes it.)
-        await session?.populateStandardWorld(competitors: 5)
     }
 
     func saveOnBackground() {

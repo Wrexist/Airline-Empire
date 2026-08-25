@@ -1,12 +1,15 @@
 # Current Phase
 
-**Phase 20 — Performance: HEADLESS SCOPE COMPLETE** (2026-08-25)
+**Phase 22 — Product Review (current scope): COMPLETE** (2026-08-25)
 
-Release-mode benchmark (ae-bench): 200-route/200-aircraft world runs a
-game-year in 3.66 s (budget < 10 s), linear scaling, saves 607 KiB with
-60 ms encode. Debug-build slowness attributed to the intentional per-tick
-integrity sweep (compiled out of release). No optimizations warranted by
-evidence. docs/PERFORMANCE.md.
+docs/PRODUCT_REVIEW.md: dimension scores, ranked issues, consolidated
+macOS release-blocking queue. Actionable High item fixed in-phase:
+content-driven difficulty scenarios (Founder/Entrepreneur/Magnate) with
+GameSession.beginScenario and app wiring. Scope trims recorded as D-010
+(hub connections -> first content update; replay tooling and
+LocalAnalytics superseded, docs amended).
 
-**Next here: Phase 22 current-scope product audit.** Phases 16, 17, 21,
-UI-QA, UI-perf, and 23 are consolidated in the macOS queue.
+**Tests:** 212/212.
+
+**Next: Phase 24 — Post-Launch Expansion Architecture** (last headless
+phase; 16/17/19b/20b/21/23 remain in the macOS queue).
