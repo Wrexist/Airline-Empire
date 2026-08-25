@@ -1,14 +1,14 @@
 # Current Phase
 
-**Phase 12 — Progression, Research and Long-Term Goals: COMPLETE**
-(2026-08-25)
+**Phase 13 — Save System and Offline Persistence: COMPLETE** (2026-08-25)
 
-Eras with competence gates + player aircraft-class locks; capability
-programs as rule changes (turnarounds, fuel hedging, ops center, ground
-experience); milestones/achievements auto-detection; boom-rush missions
-from world events; game-over flow. Save v10. See docs/PROGRESSION.md
-Phase 12 section.
+FileSaveStore (atomic writes, backup rotation, slots, meta), SaveManager
+(honest generation reporting on recovery), MigrationChain with real v9->v10
+migration wired into the codec, GameSession autosave + manual saves.
+See docs/PERSISTENCE_ARCHITECTURE.md §8.
 
-**Build:** clean. **Tests:** 177/177.
+**Build:** clean. **Tests:** 186/186.
 
-**Next phase: Phase 13 — Save System and Offline Persistence** (AE-014).
+**Next phase: Phase 14 — Main UI Architecture** (AE-016). NOTE: SwiftUI
+compilation requires macOS (B-002); the Linux session authors sources and
+Core-side read models, validation deferred to a macOS session.

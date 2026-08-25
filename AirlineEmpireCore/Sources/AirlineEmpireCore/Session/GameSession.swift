@@ -14,6 +14,13 @@ public actor GameSession {
     /// yet amounting to a whole tick at the current speed.
     private var pendingGameMinutes: Double = 0
 
+    private var saveManager: SaveManager?
+    private var autosaveSlot = "auto"
+    private var autosaveEveryGameDays: Int64 = 7
+    private var lastAutosaveDay: Int64 = 0
+    /// Most recent autosave failure, if any (surfaced by the UI).
+    public private(set) var lastSaveError: String?
+
     private var snapshotContinuations: [Int: AsyncStream<GameState>.Continuation] = [:]
     private var eventContinuations: [Int: AsyncStream<SimEvent>.Continuation] = [:]
     private var nextSubscriptionID = 0
@@ -50,6 +57,39 @@ public actor GameSession {
             continuation.onTermination = { [weak self] _ in
                 Task { await self?.removeEventContinuation(id) }
             }
+        }
+    }
+
+    // MARK: Persistence
+
+    /// Attaches persistence: explicit saves plus periodic autosaves during
+    /// fast-forward (docs/PERSISTENCE_ARCHITECTURE.md §4).
+    public func attachSaveManager(_ manager: SaveManager, autosaveSlot: String = "auto",
+                                  autosaveEveryGameDays: Int64 = 7) {
+        self.saveManager = manager
+        self.autosaveSlot = autosaveSlot
+        self.autosaveEveryGameDays = max(1, autosaveEveryGameDays)
+        self.lastAutosaveDay = engine.state.clock.now.dayIndex
+    }
+
+    /// Saves the current snapshot to a slot (also used on backgrounding).
+    public func saveNow(slot: String) throws {
+        guard let saveManager else { throw SaveError.corruptPayload("No save manager attached") }
+        try saveManager.save(engine.state, slot: slot)
+    }
+
+    private func autosaveIfDue() {
+        guard let saveManager else { return }
+        let day = engine.state.clock.now.dayIndex
+        guard day - lastAutosaveDay >= autosaveEveryGameDays else { return }
+        do {
+            try saveManager.save(engine.state, slot: autosaveSlot)
+            lastAutosaveDay = day
+            lastSaveError = nil
+        } catch {
+            // Never crash gameplay over IO; surface and retry next window.
+            lastAutosaveDay = day
+            lastSaveError = "\(error)"
         }
     }
 
@@ -90,6 +130,7 @@ public actor GameSession {
             let step = min(chunk, remaining)
             engine.advance(ticks: step)
             remaining -= step
+            autosaveIfDue()
             publish()
         }
     }

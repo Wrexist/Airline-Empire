@@ -46,8 +46,13 @@ public enum SaveError: Error, Equatable, Sendable {
 
 /// JSON codec with deterministic output (sorted keys) — same bytes for the
 /// same state, which the state-hash determinism tests rely on.
+/// Older formats are lifted through the migration chain before decoding.
 public struct JSONSaveCodec: Sendable {
-    public init() {}
+    public let migrations: MigrationChain
+
+    public init(migrations: MigrationChain = .standard) {
+        self.migrations = migrations
+    }
 
     public func encode(_ state: GameState, contentVersion: String = "0") throws -> Data {
         let payloadEncoder = JSONEncoder()
@@ -74,13 +79,27 @@ public struct JSONSaveCodec: Sendable {
         guard envelope.checksum == StableHash.fnv1a(envelope.payload) else {
             throw SaveError.checksumMismatch
         }
-        guard envelope.formatVersion == SaveFormat.currentVersion else {
-            // The migration chain (Phase 13) hooks in here; until a second
-            // version exists, older versions are honestly unsupported.
-            throw SaveError.unsupportedVersion(envelope.formatVersion)
+        var payload = envelope.payload
+        if envelope.formatVersion != SaveFormat.currentVersion {
+            guard envelope.formatVersion < SaveFormat.currentVersion else {
+                // Future formats (a newer app wrote this) refuse honestly.
+                throw SaveError.unsupportedVersion(envelope.formatVersion)
+            }
+            do {
+                guard var tree = try JSONSerialization.jsonObject(with: payload)
+                    as? [String: Any] else {
+                    throw SaveError.corruptPayload("Payload is not an object")
+                }
+                tree = try migrations.migrate(payload: tree, from: envelope.formatVersion)
+                payload = try JSONSerialization.data(withJSONObject: tree)
+            } catch let error as SaveError {
+                throw error
+            } catch {
+                throw SaveError.corruptPayload("Migration failed: \(error)")
+            }
         }
         do {
-            return try JSONDecoder().decode(GameState.self, from: envelope.payload)
+            return try JSONDecoder().decode(GameState.self, from: payload)
         } catch {
             throw SaveError.corruptPayload("State undecodable: \(error)")
         }

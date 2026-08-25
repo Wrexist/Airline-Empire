@@ -175,3 +175,14 @@ closures escalate from severe storms; effects hit player and AI alike.
 section; every unlock changes rules, not numbers; missions are systemic
 offers; game over wired to solvency collapse.
 **Tests:** 177 passing (8 new).
+
+---
+
+## AE-014
+**Title:** Phase 13 — Save System and Offline Persistence
+**Completed:** 2026-08-25
+**Outcome:** Crash-safe persistence per docs/PERSISTENCE_ARCHITECTURE.md
+§8: atomic store with rotation and recovery, migration infrastructure with
+a real shipping migration, session autosave. The player cannot lose
+meaningful progress to normal termination.
+**Tests:** 186 passing (9 new).

@@ -97,3 +97,35 @@ recorded in local analytics for Phase 19/22 review.
 No iCloud sync at v1 (offline-first; sync is a Phase 24 candidate with real
 conflict design, not a checkbox). No backend. No encryption (saves are the
 player's own data; obfuscation adds support cost, not value).
+
+---
+
+## 8. As-built (Phase 13)
+
+- **`FileSaveStore`**: per-slot directories (`slot-<name>/`) with
+  `current.aesave` + two rolled backups + cosmetic `meta.json`. Write
+  protocol exactly as §3: tmp write → fsync → rotate via POSIX `rename`
+  (atomic on APFS/ext4) → promote → meta last. Stray tmp files from
+  crashed writes are harmless (tested).
+- **`SaveManager`**: encode/save with derived `SlotMeta` (airline, game
+  date, net worth, tick, era — no wall clock anywhere); load walks
+  current → backup-1 → backup-2 and reports the loaded `generation` so the
+  UI can be honest about recovery (§6). All-corrupt slots fail loudly.
+- **Migrations**: `MigrationChain` of `SaveMigration` steps over the
+  decoded JSON tree, wired into `JSONSaveCodec.decode`; contiguity
+  determines `minimumSupportedVersion` automatically; future versions
+  (newer app) refuse. Shipping chain: **v9→v10** (adds the fresh
+  progression slice) — a real migration with a fixture-based test that
+  migrates, verifies, and *runs* the migrated world. Formats below v9 are
+  pre-release and refuse honestly. Fixture note: v9 fixtures are
+  synthesized in-test (no public release shipped v9 bytes); from the first
+  TestFlight on, committed binary fixtures accompany each released version.
+- **Autosave**: `GameSession.attachSaveManager` + `saveNow(slot:)`;
+  autosaves fire during `advance` every N game-days (default 7), never
+  crash gameplay on IO errors (`lastSaveError` surfaces them), and lag at
+  most one window (tested). Scene-phase saving is the app shell calling
+  `saveNow` on backgrounding (Phase 14).
+- 9 new tests (186 total): on-disk round trip + meta, backup rotation,
+  corrupted-current → backup recovery → all-corrupt failure, stray tmp,
+  10× disk save/load cycling equality, v9 migration lifecycle, pre-chain
+  refusal, chain contiguity, session autosave + manual save equality.
