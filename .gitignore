@@ -1,0 +1,25 @@
+# Swift / SwiftPM
+.build/
+.swiftpm/
+Package.resolved.lock
+
+# Xcode
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.moved-aside
+timeline.xctimeline
+playground.xcworkspace
+
+# macOS
+.DS_Store
+
+# Testing / coverage
+*.profraw
+*.profdata
+default.profraw
+
+# Editors
+.vscode/
+.idea/
