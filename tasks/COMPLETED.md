@@ -236,3 +236,12 @@ optimization. Bench harness committed (swift run -c release ae-bench).
 difficulty scenarios shipped (content + session API + app wiring + tests);
 D-010 scope decisions recorded with doc amendments.
 **Tests:** 212 passing.
+
+---
+
+## AE-022
+**Title:** Phase 24 — Post-Launch Expansion Architecture
+**Completed:** 2026-08-25
+**Outcome:** Three-year roadmap (docs/EXPANSION_ROADMAP.md) ordered by
+value-per-risk, every item mapped to a shipped seam; POST_LAUNCH tracker
+created. No speculative bloat added to v1.

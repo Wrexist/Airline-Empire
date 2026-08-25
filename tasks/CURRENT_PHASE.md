@@ -1,15 +1,12 @@
 # Current Phase
 
-**Phase 22 — Product Review (current scope): COMPLETE** (2026-08-25)
+**Phase 24 — Post-Launch Expansion Architecture: COMPLETE** (2026-08-25)
 
-docs/PRODUCT_REVIEW.md: dimension scores, ranked issues, consolidated
-macOS release-blocking queue. Actionable High item fixed in-phase:
-content-driven difficulty scenarios (Founder/Entrepreneur/Magnate) with
-GameSession.beginScenario and app wiring. Scope trims recorded as D-010
-(hub connections -> first content update; replay tooling and
-LocalAnalytics superseded, docs amended).
+ALL PHASES EXECUTABLE IN THIS (Linux) ENVIRONMENT ARE DONE:
+0-13 complete · 14/15 authored (validation pending) · 18 complete ·
+19/20 headless scopes complete · 22 current-scope audit complete ·
+24 complete. Tests: 212/212. Save format v10.
 
-**Tests:** 212/212.
-
-**Next: Phase 24 — Post-Launch Expansion Architecture** (last headless
-phase; 16/17/19b/20b/21/23 remain in the macOS queue).
+**THE ONE REMAINING WORK ITEM IS AE-023 — the macOS queue** (TODO.md):
+compile/validate the authored app, then phases 16, 17, 19b, 20b, 21,
+final 22, and 23 in order. Blocked on macOS/Xcode (B-002).
