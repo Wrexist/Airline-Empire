@@ -82,3 +82,64 @@ Loans/interest/credit, monthly statements & rollups (bounded), overhead &
 staff payroll, fuel-price dynamics, economic cycle driver, bankruptcy /
 administration, and route-level P&L read models (the "why did this route
 make money" breakdown).
+
+---
+
+## Phase 8 as built: finance & world economics
+
+### World dynamics (`WorldSystem`, daily)
+- **Fuel** (`fuelPricePerTon`, ¤650 base): mean-reverting geometric walk
+  (θ=0.02, σ=0.012/day), clamped ×0.6–×2.2. Stored per tonne — per-kg cents
+  quantized the walk to nothing (found by test, refactored).
+- **Economy** (`economicIndex`): regime-switching drift — the cycle target
+  flips boom(1.15)/downturn(0.85) with ~0.11%/day probability (mean regime
+  ≈ 2.5 game-years), index drifts toward it with small noise. Readable,
+  multi-year, seeded.
+
+### Credit (`CreditMath`, `TakeLoan`/`RepayLoan`)
+- Offered rate = 5% base + (2% + 10% × debtRatio²) spread; debt ratio =
+  debt / (positive cash + owned fleet book value); refusal beyond 85%.
+- Fixed annuity payments; monthly interest (P&L) and principal (capital)
+  posted separately; rounding residues settle with the final payment.
+  Early full payoff supported. Max 5 concurrent loans, terms 6–120 months.
+
+### Airline economics (`EconomySystem`, monthly)
+- Payroll: ¤40k/aircraft + ¤15k/route; overhead: ¤150k base. Posted as
+  `salaries` / `overhead`.
+
+### Statements (`StatementRollupSystem`, month boundary)
+- The ledger accumulates signed cents per category at post time (never
+  depends on the bounded transaction ring); the rollup drains it into a
+  `MonthlyStatement`, keeps 24 months + lifetime totals per airline, and
+  emits `statementClosed`. **Ordering rule:** the rollup runs before the
+  month's new billings in the pipeline, so month-start charges (leases,
+  payroll, loan service) belong to the month they open.
+- Every category carries a compile-checked P&L classification
+  (operatingRevenue / operatingExpense / financing / capital) — money can
+  never silently mis-bucket.
+- **Route P&L:** each route accumulates direct figures (revenue, fuel,
+  fees, crew, passengers) for the current month; the rollup closes them
+  into `economicsLastMonth` → `directOperatingProfit`, the number the route
+  card explains. Fleet ownership and company overhead stay airline-level by
+  design.
+
+### Solvency (`SolvencySystem`, daily)
+- Balance below −¤2M for 7 consecutive days → **administration**: unassigned
+  owned aircraft fire-sell (70% of sale value) until solvent; creditors
+  write off 30% of each loan (payments re-annuitized). One survival per
+  airline.
+- A second failure — or a hole the fire sale cannot fill — **collapses** the
+  airline: routes close (slots freed, flights cancelled), fleet liquidates,
+  loans die, status = `.collapsed`, event emitted. Applies to player and AI
+  alike; Phase 10 layers AI-specific cleanup, Phase 12 the player game-over
+  flow.
+
+### Test coverage (14 new; 144 total)
+Fuel band + variability over 2 years; economy visits boom and bust over 8
+years; annuity math (incl. zero-rate); loan lifecycle to full amortization
+with interest in a sane band; leverage raises rates then refuses; early
+payoff; February statement fully populated and every cent classified;
+24-month statement bound; route P&L breakdown ties out to fare×pax and is
+positive on the anchor; doomed-airline administration and second-failure
+collapse with full cleanup + world integrity after; healthy airline never
+administers; finance-heavy save/restore determinism.

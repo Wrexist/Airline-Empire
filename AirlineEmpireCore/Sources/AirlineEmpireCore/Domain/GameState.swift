@@ -16,6 +16,7 @@ public struct GameState: Equatable, Codable, Sendable {
     public var ledger: Ledger
     public var routes: [RouteID: Route]
     public var flights: [FlightID: Flight]
+    public var finance: FinanceState
 
     public init(meta: GameMeta, clock: ClockState, rng: RNGState,
                 schedule: ScheduleQueue = ScheduleQueue(),
@@ -25,7 +26,8 @@ public struct GameState: Equatable, Codable, Sendable {
                 aircraft: [AircraftID: Aircraft] = [:],
                 ledger: Ledger = Ledger(),
                 routes: [RouteID: Route] = [:],
-                flights: [FlightID: Flight] = [:]) {
+                flights: [FlightID: Flight] = [:],
+                finance: FinanceState = FinanceState()) {
         self.meta = meta
         self.clock = clock
         self.rng = rng
@@ -37,6 +39,7 @@ public struct GameState: Equatable, Codable, Sendable {
         self.ledger = ledger
         self.routes = routes
         self.flights = flights
+        self.finance = finance
     }
 
     /// Deterministic iteration orders (docs/SIMULATION_ARCHITECTURE.md §2).

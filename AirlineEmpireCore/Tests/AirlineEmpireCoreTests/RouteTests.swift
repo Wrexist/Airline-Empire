@@ -196,10 +196,15 @@ struct FlightOpsTests {
         engine.advance(ticks: Fixtures.ticksPerDay * 2)
         let spec = catalog.aircraftType("MR180")!
         let distance = engine.state.routes[route]!.distanceKm
-        let expected = Money(rounding: spec.fuelBurnKgPerKm * Double(distance)
-            * engine.state.world.fuelPricePerKg.asDouble)
-        let fuelTx = engine.state.ledger.recent.first { $0.category == .fuel }
-        #expect(fuelTx?.amount == -expected)
+        // The world fuel price walks daily, so compare against the current
+        // price with a small tolerance (the charge used the arrival-day
+        // price at most two days earlier).
+        let expected = spec.fuelBurnKgPerKm * Double(distance) / 1000
+            * engine.state.world.fuelPricePerTon.asDouble
+        let fuelTx = try #require(engine.state.ledger.recent.first { $0.category == .fuel })
+        let charged = -fuelTx.amount.asDouble
+        #expect(abs(charged - expected) / expected < 0.05,
+                "charged \(charged) vs expected \(expected)")
     }
 
     @Test func aircraftInFlightIsExclusive() throws {

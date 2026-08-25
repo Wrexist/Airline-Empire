@@ -7,6 +7,13 @@ public struct Airline: Equatable, Codable, Sendable {
     public let kind: AirlineKind
     public let homeAirport: AirportCode
     public let foundedAt: SimTime
+    public var loans: [Loan]
+    public var status: AirlineStatus
+    /// Administrations survived; the second collapse is final
+    /// (docs/GAME_DESIGN.md §5).
+    public var administrationCount: Int
+    /// Consecutive days below the overdraft floor (solvency tracking).
+    public var daysInsolvent: Int
 
     public init(id: AirlineID, name: String, kind: AirlineKind,
                 homeAirport: AirportCode, foundedAt: SimTime) {
@@ -15,7 +22,17 @@ public struct Airline: Equatable, Codable, Sendable {
         self.kind = kind
         self.homeAirport = homeAirport
         self.foundedAt = foundedAt
+        self.loans = []
+        self.status = .active
+        self.administrationCount = 0
+        self.daysInsolvent = 0
     }
+}
+
+public enum AirlineStatus: Equatable, Codable, Sendable {
+    case active
+    /// Terminal state: the airline failed for good.
+    case collapsed
 }
 
 public enum AirlineKind: String, Equatable, Codable, Sendable {

@@ -38,6 +38,29 @@
    1.2
   ]
  },
+ "finance": {
+  "administrationGraceDays": 7,
+  "administrationHaircut": 0.3,
+  "baseLoanRateBasisPoints": 500,
+  "fireSalePriceFactor": 0.7,
+  "maxConcurrentLoans": 5,
+  "maxDebtRatio": 0.85,
+  "maxLoanTermMonths": 120,
+  "minLoanCents": 100000000,
+  "overdraftFloorCents": -200000000,
+  "overheadBaseMonthly": {
+   "cents": 15000000
+  },
+  "payrollPerAircraftMonthly": {
+   "cents": 4000000
+  },
+  "payrollPerRouteMonthly": {
+   "cents": 1500000
+  },
+  "spreadBaseBasisPoints": 200,
+  "spreadLeverageBasisPoints": 1000,
+  "statementHistoryMonths": 24
+ },
  "fleet": {
   "annualDepreciationRate": 0.08,
   "dailyConditionDecay": 0.0006,
@@ -60,8 +83,8 @@
  },
  "minRouteDistanceKm": 80,
  "ops": {
-  "baseFuelPricePerKg": {
-   "cents": 65
+  "baseFuelPricePerTon": {
+   "cents": 65000
   },
   "boardingMinutes": 30,
   "cancellationShareOfDisruptions": 0.2,
@@ -78,5 +101,16 @@
   "operatingDayStartMinute": 360,
   "scheduledFlightExpiryMinutes": 240,
   "wearPerFlightHour": 0.00035
+ },
+ "world": {
+  "economyDailyVolatility": 0.0015,
+  "economyHighTarget": 1.15,
+  "economyLowTarget": 0.85,
+  "economyRegimeSwitchDailyChance": 0.0011,
+  "economyReversion": 0.003,
+  "fuelDailyVolatility": 0.012,
+  "fuelMaxFactor": 2.2,
+  "fuelMeanReversion": 0.02,
+  "fuelMinFactor": 0.6
  }
 }

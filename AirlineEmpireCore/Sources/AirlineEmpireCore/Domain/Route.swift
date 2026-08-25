@@ -23,6 +23,10 @@ public struct Route: Equatable, Codable, Sendable {
     public var demandInboundToday: Int
     public var remainingOutboundToday: Int
     public var remainingInboundToday: Int
+    /// Direct operating P&L attribution (docs/ECONOMY.md): current month
+    /// accumulates live; previous month is the closed, comparable figure.
+    public var economicsThisMonth: RouteMonthEconomics
+    public var economicsLastMonth: RouteMonthEconomics
 
     public init(id: RouteID, airline: AirlineID, origin: AirportCode,
                 destination: AirportCode, distanceKm: Int, dailyRoundTrips: Int,
@@ -41,6 +45,8 @@ public struct Route: Equatable, Codable, Sendable {
         self.demandInboundToday = 0
         self.remainingOutboundToday = 0
         self.remainingInboundToday = 0
+        self.economicsThisMonth = RouteMonthEconomics()
+        self.economicsLastMonth = RouteMonthEconomics()
     }
 
     /// Daily airport movements this route consumes at EACH endpoint
@@ -97,5 +103,32 @@ public struct RouteStats: Equatable, Codable, Sendable {
         flightsCompleted == 0 ? 1.0
             : Double(flightsCompleted - min(flightsDelayed, flightsCompleted))
                 / Double(flightsCompleted)
+    }
+}
+
+
+/// One month of a route's direct operating figures, in cents.
+/// "Direct" = revenue minus fuel, airport fees, and crew — costs that
+/// attach to specific flights. Fleet ownership and company overhead are
+/// airline-level (statements), by design.
+public struct RouteMonthEconomics: Equatable, Codable, Sendable {
+    public var revenueCents: Int64
+    public var fuelCents: Int64
+    public var feesCents: Int64
+    public var crewCents: Int64
+    public var passengers: Int64
+
+    public init(revenueCents: Int64 = 0, fuelCents: Int64 = 0, feesCents: Int64 = 0,
+                crewCents: Int64 = 0, passengers: Int64 = 0) {
+        self.revenueCents = revenueCents
+        self.fuelCents = fuelCents
+        self.feesCents = feesCents
+        self.crewCents = crewCents
+        self.passengers = passengers
+    }
+
+    /// Direct operating profit (costs are stored positive).
+    public var directOperatingProfit: Money {
+        Money(cents: revenueCents - fuelCents - feesCents - crewCents)
     }
 }

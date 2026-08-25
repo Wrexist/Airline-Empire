@@ -121,10 +121,13 @@ struct AcquisitionTests {
         let afterSigning = engine.state.ledger.balance(of: airline)
         #expect(afterSigning == Money.dollars(300_000_000) - spec.leaseMonthly)
 
-        // Cross Feb 1 (31 days): exactly one monthly billing.
+        // Cross Feb 1 (31 days): exactly one monthly lease billing, plus
+        // the month's payroll (1 aircraft) and company overhead (Phase 8).
         engine.advance(ticks: Fixtures.ticksPerDay * 32)
         let afterMonth = engine.state.ledger.balance(of: airline)
-        #expect(afterMonth == afterSigning - spec.leaseMonthly)
+        let finance = engine.catalog.tuning.finance
+        #expect(afterMonth == afterSigning - spec.leaseMonthly
+                - finance.payrollPerAircraftMonthly - finance.overheadBaseMonthly)
         let aircraft = try #require(engine.state.aircraft.values.first)
         guard case .leased(_, let remaining) = aircraft.ownership else {
             Issue.record("Expected lease"); return

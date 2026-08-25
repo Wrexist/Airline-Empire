@@ -124,3 +124,13 @@ revenue chain live and profitable at the anchor calibration; 12 new economy
 tests including conservation, determinism with full pipeline, and curve
 shape assertions.
 **Tests:** 130 passing.
+
+---
+
+## AE-009
+**Title:** Phase 8 — Finance and Airline Economics
+**Completed:** 2026-08-25
+**Outcome:** Complete business layer per docs/ECONOMY.md Phase 8 section:
+world price dynamics, credit with leverage pricing, payroll/overhead,
+bounded explainable statements, route direct P&L, administration/collapse.
+**Tests:** 144 passing (14 new).

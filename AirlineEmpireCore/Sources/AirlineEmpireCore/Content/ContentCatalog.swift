@@ -193,17 +193,113 @@ public struct Tuning: Equatable, Codable, Sendable {
     public let fleet: FleetTuning
     public let ops: OpsTuning
     public let demand: DemandTuning
+    public let finance: FinanceTuning
+    public let world: WorldTuning
 
     public init(minRouteDistanceKm: Int, fleet: FleetTuning = .standard,
-                ops: OpsTuning = .standard, demand: DemandTuning = .standard) {
+                ops: OpsTuning = .standard, demand: DemandTuning = .standard,
+                finance: FinanceTuning = .standard, world: WorldTuning = .standard) {
         self.minRouteDistanceKm = minRouteDistanceKm
         self.fleet = fleet
         self.ops = ops
         self.demand = demand
+        self.finance = finance
+        self.world = world
     }
 
     /// Code-side defaults matching shipping content; content files override.
     public static let standard = Tuning(minRouteDistanceKm: 80)
+}
+
+/// Finance constants (docs/ECONOMY.md).
+public struct FinanceTuning: Equatable, Codable, Sendable {
+    public let baseLoanRateBasisPoints: Int
+    public let spreadBaseBasisPoints: Int
+    /// Multiplied by debtRatio^2.
+    public let spreadLeverageBasisPoints: Int
+    public let maxDebtRatio: Double
+    public let minLoanCents: Int64
+    public let maxLoanTermMonths: Int
+    public let maxConcurrentLoans: Int
+    public let overheadBaseMonthly: Money
+    public let payrollPerAircraftMonthly: Money
+    public let payrollPerRouteMonthly: Money
+    public let overdraftFloorCents: Int64
+    public let administrationGraceDays: Int
+    public let fireSalePriceFactor: Double
+    public let administrationHaircut: Double
+    public let statementHistoryMonths: Int
+
+    public init(baseLoanRateBasisPoints: Int, spreadBaseBasisPoints: Int,
+                spreadLeverageBasisPoints: Int, maxDebtRatio: Double,
+                minLoanCents: Int64, maxLoanTermMonths: Int, maxConcurrentLoans: Int,
+                overheadBaseMonthly: Money, payrollPerAircraftMonthly: Money,
+                payrollPerRouteMonthly: Money, overdraftFloorCents: Int64,
+                administrationGraceDays: Int, fireSalePriceFactor: Double,
+                administrationHaircut: Double, statementHistoryMonths: Int) {
+        self.baseLoanRateBasisPoints = baseLoanRateBasisPoints
+        self.spreadBaseBasisPoints = spreadBaseBasisPoints
+        self.spreadLeverageBasisPoints = spreadLeverageBasisPoints
+        self.maxDebtRatio = maxDebtRatio
+        self.minLoanCents = minLoanCents
+        self.maxLoanTermMonths = maxLoanTermMonths
+        self.maxConcurrentLoans = maxConcurrentLoans
+        self.overheadBaseMonthly = overheadBaseMonthly
+        self.payrollPerAircraftMonthly = payrollPerAircraftMonthly
+        self.payrollPerRouteMonthly = payrollPerRouteMonthly
+        self.overdraftFloorCents = overdraftFloorCents
+        self.administrationGraceDays = administrationGraceDays
+        self.fireSalePriceFactor = fireSalePriceFactor
+        self.administrationHaircut = administrationHaircut
+        self.statementHistoryMonths = statementHistoryMonths
+    }
+
+    public static let standard = FinanceTuning(
+        baseLoanRateBasisPoints: 500, spreadBaseBasisPoints: 200,
+        spreadLeverageBasisPoints: 1000, maxDebtRatio: 0.85,
+        minLoanCents: 1_000_000_00, maxLoanTermMonths: 120, maxConcurrentLoans: 5,
+        overheadBaseMonthly: Money.dollars(150_000),
+        payrollPerAircraftMonthly: Money.dollars(40_000),
+        payrollPerRouteMonthly: Money.dollars(15_000),
+        overdraftFloorCents: -2_000_000_00, administrationGraceDays: 7,
+        fireSalePriceFactor: 0.7, administrationHaircut: 0.3,
+        statementHistoryMonths: 24)
+}
+
+/// World-dynamics constants (docs/ECONOMY.md).
+public struct WorldTuning: Equatable, Codable, Sendable {
+    public let fuelMeanReversion: Double
+    public let fuelDailyVolatility: Double
+    public let fuelMinFactor: Double
+    public let fuelMaxFactor: Double
+    public let economyReversion: Double
+    public let economyDailyVolatility: Double
+    public let economyRegimeSwitchDailyChance: Double
+    public let economyHighTarget: Double
+    public let economyLowTarget: Double
+
+    public init(fuelMeanReversion: Double, fuelDailyVolatility: Double,
+                fuelMinFactor: Double, fuelMaxFactor: Double,
+                economyReversion: Double, economyDailyVolatility: Double,
+                economyRegimeSwitchDailyChance: Double,
+                economyHighTarget: Double, economyLowTarget: Double) {
+        self.fuelMeanReversion = fuelMeanReversion
+        self.fuelDailyVolatility = fuelDailyVolatility
+        self.fuelMinFactor = fuelMinFactor
+        self.fuelMaxFactor = fuelMaxFactor
+        self.economyReversion = economyReversion
+        self.economyDailyVolatility = economyDailyVolatility
+        self.economyRegimeSwitchDailyChance = economyRegimeSwitchDailyChance
+        self.economyHighTarget = economyHighTarget
+        self.economyLowTarget = economyLowTarget
+    }
+
+    public static let standard = WorldTuning(
+        fuelMeanReversion: 0.02, fuelDailyVolatility: 0.012,
+        fuelMinFactor: 0.6, fuelMaxFactor: 2.2,
+        economyReversion: 0.003, economyDailyVolatility: 0.0015,
+        economyRegimeSwitchDailyChance: 0.0011,
+        economyHighTarget: 1.15, economyLowTarget: 0.85)
 }
 
 /// Demand-engine constants (docs/ECONOMY.md documents each and the
@@ -296,7 +392,7 @@ public struct OpsTuning: Equatable, Codable, Sendable {
     public let cancellationShareOfDisruptions: Double
     public let crewCostPerBlockHourCockpit: Money
     public let crewCostPerBlockHourCabin: Money
-    public let baseFuelPricePerKg: Money
+    public let baseFuelPricePerTon: Money
     /// Condition lost per flight hour (on top of daily decay).
     public let wearPerFlightHour: Double
     /// A scheduled flight that could not board (aircraft grounded/busy) is
@@ -309,7 +405,7 @@ public struct OpsTuning: Equatable, Codable, Sendable {
                 delayMinutesMin: Int, delayMinutesMax: Int,
                 cancellationShareOfDisruptions: Double,
                 crewCostPerBlockHourCockpit: Money, crewCostPerBlockHourCabin: Money,
-                baseFuelPricePerKg: Money, wearPerFlightHour: Double,
+                baseFuelPricePerTon: Money, wearPerFlightHour: Double,
                 scheduledFlightExpiryMinutes: Int64) {
         self.operatingDayStartMinute = operatingDayStartMinute
         self.operatingDayMinutes = operatingDayMinutes
@@ -320,7 +416,7 @@ public struct OpsTuning: Equatable, Codable, Sendable {
         self.cancellationShareOfDisruptions = cancellationShareOfDisruptions
         self.crewCostPerBlockHourCockpit = crewCostPerBlockHourCockpit
         self.crewCostPerBlockHourCabin = crewCostPerBlockHourCabin
-        self.baseFuelPricePerKg = baseFuelPricePerKg
+        self.baseFuelPricePerTon = baseFuelPricePerTon
         self.wearPerFlightHour = wearPerFlightHour
         self.scheduledFlightExpiryMinutes = scheduledFlightExpiryMinutes
     }
@@ -332,7 +428,7 @@ public struct OpsTuning: Equatable, Codable, Sendable {
         cancellationShareOfDisruptions: 0.2,
         crewCostPerBlockHourCockpit: Money.dollars(180),
         crewCostPerBlockHourCabin: Money.dollars(45),
-        baseFuelPricePerKg: Money(cents: 65), wearPerFlightHour: 0.00035,
+        baseFuelPricePerTon: Money(cents: 65_000), wearPerFlightHour: 0.00035,
         scheduledFlightExpiryMinutes: 240)
 }
 

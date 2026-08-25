@@ -75,12 +75,15 @@ public struct FlightOpsSystem: SimulationSystem {
                     } else {
                         flight.phase = .enRoute(actualDeparture: now)
                         if flight.kind == .revenue, flight.passengers > 0,
-                           let route = state.routes[flight.route] {
+                           var route = state.routes[flight.route] {
                             let revenue = route.ticketPrice * Int64(flight.passengers)
                             state.ledger.post(
                                 airline: aircraft.owner, category: .ticketRevenue,
                                 amount: revenue, at: now,
                                 memo: "\(flight.passengers) pax \(flight.from)-\(flight.to)")
+                            route.economicsThisMonth.revenueCents += revenue.cents
+                            route.economicsThisMonth.passengers += Int64(flight.passengers)
+                            state.routes[flight.route] = route
                         }
                         context.emit(.flightDeparted(id: flightID, route: flight.route))
                     }
@@ -142,8 +145,8 @@ public struct FlightOpsSystem: SimulationSystem {
 
         // Operating costs, posted by category so route P&L stays explainable.
         let owner = aircraft.owner
-        let fuelKg = spec.fuelBurnKgPerKm * Double(flight.distanceKm)
-        let fuelCost = Money(rounding: fuelKg * state.world.fuelPricePerKg.asDouble)
+        let fuelTons = spec.fuelBurnKgPerKm * Double(flight.distanceKm) / 1000
+        let fuelCost = Money(rounding: fuelTons * state.world.fuelPricePerTon.asDouble)
         state.ledger.post(airline: owner, category: .fuel, amount: -fuelCost,
                           at: context.current, memo: "Fuel \(flight.from)-\(flight.to)")
 
@@ -161,6 +164,13 @@ public struct FlightOpsSystem: SimulationSystem {
                + Double(spec.crewCabin) * ops.crewCostPerBlockHourCabin.asDouble))
         state.ledger.post(airline: owner, category: .crewCosts, amount: -crewCost,
                           at: context.current, memo: "Crew \(flight.from)-\(flight.to)")
+
+        if var route = state.routes[flight.route] {
+            route.economicsThisMonth.fuelCents += fuelCost.cents
+            route.economicsThisMonth.feesCents += fees.cents
+            route.economicsThisMonth.crewCents += crewCost.cents
+            state.routes[flight.route] = route
+        }
 
         let until = context.current + .minutes(Int64(spec.turnaroundMinutes))
         flight.phase = .turnaround(until: until)

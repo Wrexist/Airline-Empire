@@ -4,19 +4,23 @@
 /// proportional to the world the player actually touches.
 public struct WorldState: Equatable, Codable, Sendable {
     public var airportRuntimes: [AirportCode: AirportRuntime]
-    /// Jet fuel spot price. Initialized from tuning; market dynamics move it
-    /// from Phase 8/11.
-    public var fuelPricePerKg: Money
+    /// Jet fuel spot price per metric tonne (cent resolution matters for
+    /// the daily walk; per-kg cents were too coarse to move).
+    public var fuelPricePerTon: Money
     /// Macro-economy index (1.0 = neutral). Business demand reacts more
-    /// strongly than leisure; the cycle driver arrives in Phase 8/11.
+    /// strongly than leisure. Driven by WorldSystem's regime cycle.
     public var economicIndex: Double
+    /// The level the economy is currently drifting toward (regime).
+    public var economicCycleTarget: Double
 
     public init(airportRuntimes: [AirportCode: AirportRuntime] = [:],
-                fuelPricePerKg: Money = Money(cents: 65),
-                economicIndex: Double = 1.0) {
+                fuelPricePerTon: Money = Money(cents: 65_000),
+                economicIndex: Double = 1.0,
+                economicCycleTarget: Double = 1.0) {
         self.airportRuntimes = airportRuntimes
-        self.fuelPricePerKg = fuelPricePerKg
+        self.fuelPricePerTon = fuelPricePerTon
         self.economicIndex = economicIndex
+        self.economicCycleTarget = economicCycleTarget
     }
 
     // MARK: Slots
