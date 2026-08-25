@@ -1,14 +1,16 @@
 # Current Phase
 
-**Phase 18 — Balance and Simulation Stress Testing: COMPLETE** (2026-08-25)
+**Phase 19 — Adversarial QA: HEADLESS SCOPE COMPLETE** (2026-08-25)
 
-Headless strategy battery in CI: archetype parity across seeds, contested
-vs uncontested margins, passivity outcomes, leverage bounds, anti-flipping,
-10-year world stability with concentration checks. Findings F-001..F-003
-recorded in docs/BALANCING.md (no tuning changes warranted; one watch item
-for post-macOS playtesting).
+8 attack suites, all green first run: duplicate/conflicting command
+batches, 50x open-close churn with slot conservation, buy/sell storms mid
+operations, session speed thrash vs straight-run hash equality, giant
+network (25 routes / ~30 aircraft, 1 game-year in ~13s, >500k pax),
+60-case deterministic corrupt-save fuzz (honest refusal or byte-identical
+state, never a crash), 200x frequency thrash with exact slot ledger,
+collapse during heavy operations with total cleanup.
 
-**Tests:** 201/201 (~4 min full suite incl. battery).
+**Tests:** 209/209. UI-surface QA queued for macOS.
 
-**Next executable phase here: Phase 19 — adversarial QA (headless scope)**
-(AE-019).
+**Next executable phase here: Phase 20 — performance (headless scope)**
+(AE-020).

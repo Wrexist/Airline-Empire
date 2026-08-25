@@ -51,7 +51,7 @@ Neither agent may blindly trust previous work.
 | 16 | UX Polish and Game Feel | Opus | NOT STARTED (macOS required) |
 | 17 | Visual Art Direction | Fable+Opus | NOT STARTED (macOS required) |
 | 18 | Balance and Simulation Stress Testing | Fable | **COMPLETE** (2026-08-25) |
-| 19 | Full QA and Bug Elimination | Opus | NOT STARTED |
+| 19 | Full QA and Bug Elimination | Opus | **HEADLESS SCOPE COMPLETE** (2026-08-25; UI-surface QA queued for macOS) |
 | 20 | Performance Optimization | Opus | NOT STARTED (macOS required) |
 | 21 | Accessibility and Device Compatibility | Opus | NOT STARTED (macOS required) |
 | 22 | Final Product Review | Fable | NOT STARTED |

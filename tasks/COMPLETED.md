@@ -207,3 +207,13 @@ uncompiled counts as complete.
 F-002 (leverage behaves), F-003 (archetype parity). No tuning changes
 warranted by evidence.
 **Tests:** 201 passing (6 new battery tests).
+
+---
+
+## AE-019 (headless scope)
+**Title:** Phase 19 — Adversarial QA (Core)
+**Completed:** 2026-08-25
+**Outcome:** 8 adversarial suites green on first run; no core defects
+surfaced (earlier phases' test-driven fixes already hardened the layers
+these attacks target). UI-surface QA remains with the macOS queue.
+**Tests:** 209 passing.
