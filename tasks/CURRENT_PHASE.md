@@ -1,16 +1,12 @@
 # Current Phase
 
-**Phase 19 — Adversarial QA: HEADLESS SCOPE COMPLETE** (2026-08-25)
+**Phase 20 — Performance: HEADLESS SCOPE COMPLETE** (2026-08-25)
 
-8 attack suites, all green first run: duplicate/conflicting command
-batches, 50x open-close churn with slot conservation, buy/sell storms mid
-operations, session speed thrash vs straight-run hash equality, giant
-network (25 routes / ~30 aircraft, 1 game-year in ~13s, >500k pax),
-60-case deterministic corrupt-save fuzz (honest refusal or byte-identical
-state, never a crash), 200x frequency thrash with exact slot ledger,
-collapse during heavy operations with total cleanup.
+Release-mode benchmark (ae-bench): 200-route/200-aircraft world runs a
+game-year in 3.66 s (budget < 10 s), linear scaling, saves 607 KiB with
+60 ms encode. Debug-build slowness attributed to the intentional per-tick
+integrity sweep (compiled out of release). No optimizations warranted by
+evidence. docs/PERFORMANCE.md.
 
-**Tests:** 209/209. UI-surface QA queued for macOS.
-
-**Next executable phase here: Phase 20 — performance (headless scope)**
-(AE-020).
+**Next here: Phase 22 current-scope product audit.** Phases 16, 17, 21,
+UI-QA, UI-perf, and 23 are consolidated in the macOS queue.

@@ -217,3 +217,12 @@ warranted by evidence.
 surfaced (earlier phases' test-driven fixes already hardened the layers
 these attacks target). UI-surface QA remains with the macOS queue.
 **Tests:** 209 passing.
+
+---
+
+## AE-020 (headless scope)
+**Title:** Phase 20 — Performance (simulation + persistence)
+**Completed:** 2026-08-25
+**Outcome:** Budget met with 2.7x margin at late-game scale; linear
+scaling verified; JSON codec retained by measurement; no premature
+optimization. Bench harness committed (swift run -c release ae-bench).

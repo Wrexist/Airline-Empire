@@ -52,7 +52,7 @@ Neither agent may blindly trust previous work.
 | 17 | Visual Art Direction | Fable+Opus | NOT STARTED (macOS required) |
 | 18 | Balance and Simulation Stress Testing | Fable | **COMPLETE** (2026-08-25) |
 | 19 | Full QA and Bug Elimination | Opus | **HEADLESS SCOPE COMPLETE** (2026-08-25; UI-surface QA queued for macOS) |
-| 20 | Performance Optimization | Opus | NOT STARTED (macOS required) |
+| 20 | Performance Optimization | Opus | **HEADLESS SCOPE COMPLETE** (2026-08-25; budget met, UI profiling queued for macOS) |
 | 21 | Accessibility and Device Compatibility | Opus | NOT STARTED (macOS required) |
 | 22 | Final Product Review | Fable | NOT STARTED |
 | 23 | Release Candidate | Opus | NOT STARTED (macOS required) |
