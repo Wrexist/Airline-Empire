@@ -19,7 +19,7 @@ implementation phases on macOS with Xcode. Details: `/docs/PROJECT_AUDIT.md` §4
 - `swift --version` succeeds in a fresh session, OR implementation sessions
   run on macOS with Xcode available.
 **Tests:** n/a (environment task).
-**Status:** OPEN — BLOCKS Phase 3.
+**Status:** RESOLVED 2026-08-25 (in-session) — Swift 6.0.3 installed via GitHub mirror; see D-009 and `scripts/setup-linux-toolchain.sh`. Moved to COMPLETED.md.
 
 ---
 
@@ -41,7 +41,7 @@ thousands of entities offline. Review as if maintaining for five years.
 - Architectural risks identified; `/tasks/MASTER_PLAN.md` updated
 - No large gameplay systems implemented
 **Tests:** n/a (design phase).
-**Status:** OPEN — next up.
+**Status:** COMPLETE 2026-08-25 — moved to COMPLETED.md.
 
 ---
 
@@ -70,7 +70,7 @@ placeholders, deterministic, testable without SwiftUI, full unit tests
 passing, docs updated.
 **Tests:** time progression, deterministic randomness, state transitions,
 event ordering, scheduling, pause/resume, speed, edge cases.
-**Status:** BLOCKED by AE-001.
+**Status:** OPEN — unblocked (AE-001 resolved); starts after AE-003.
 
 ---
 

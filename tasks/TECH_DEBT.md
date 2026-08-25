@@ -6,7 +6,7 @@ a resolution path.
 ---
 
 ## TD-001 — Agent environment cannot build or test Swift
-**Severity:** Critical (blocks Phase 3+ Definition of Done)
+**Severity:** ~~Critical~~ RESOLVED 2026-08-25 — Swift 6.0.3 installed via GitHub mirror (D-009); `swift test` verified. Residual: iOS app target still needs macOS (B-002, structural).
 **Introduced:** Pre-existing environment condition, recorded Phase 0
 (2026-08-25).
 **Description:** The remote Linux agent environment has no Swift toolchain and

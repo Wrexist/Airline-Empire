@@ -1,16 +1,16 @@
 # Current Phase
 
-**Phase 0 — Repository Audit and Baseline: COMPLETE** (2026-08-25)
+**Phase 1 — Master Architecture: COMPLETE** (2026-08-25)
 
-Deliverables: `/docs/PROJECT_AUDIT.md`, `/docs/ARCHITECTURE.md` (baseline
-stub), `/tasks/MASTER_PLAN.md`, `/tasks/TODO.md`, `/tasks/TECH_DEBT.md`,
-`/tasks/DECISIONS.md`, `/tasks/COMPLETED.md`, `/tasks/BUGS.md`.
+Deliverables: full `docs/ARCHITECTURE.md`, `docs/DOMAIN_MODEL.md`,
+`docs/SIMULATION_ARCHITECTURE.md`, `docs/PERSISTENCE_ARCHITECTURE.md`,
+`docs/UI_ARCHITECTURE.md`, `docs/TECHNICAL_STANDARDS.md`; decisions
+D-002 (ratified), D-005…D-009; `scripts/setup-linux-toolchain.sh`.
 
-**Next phase: Phase 1 — Master Architecture** (task AE-002).
-Run Master Prompt 1 in a new session. Phase 1 is a documentation phase and is
-not blocked.
+**Blocker B-001 RESOLVED:** Swift 6.0.3 toolchain installed and verified
+in the Linux agent environment (build + link + Swift Testing all pass) via
+the GitHub release mirror — see D-009. Phase 3 is no longer blocked.
+B-002 (iOS app target needs macOS) stands by nature and gates phases 14+
+validation only.
 
-**Standing blocker:** B-001 — no Swift toolchain in the remote agent
-environment (network policy denies download.swift.org). Must be resolved by
-the project owner before Phase 3. See `/docs/PROJECT_AUDIT.md` §4 and task
-AE-001.
+**Next phase: Phase 2 — Game Design Bible** (task AE-003).

@@ -33,9 +33,9 @@ Neither agent may blindly trust previous work.
 | Phase | Title | Lead | Status |
 |-------|-------|------|--------|
 | 0 | Repository Audit and Baseline | Fable | **COMPLETE** (2026-08-25) |
-| 1 | Master Architecture | Fable | NOT STARTED — next |
+| 1 | Master Architecture | Fable | **COMPLETE** (2026-08-25) |
 | 2 | Game Design Bible | Fable | NOT STARTED |
-| 3 | Data Model and Simulation Kernel | Opus | BLOCKED by B-001 (toolchain) |
+| 3 | Data Model and Simulation Kernel | Opus | NOT STARTED (unblocked — B-001 resolved, D-009) |
 | 4 | World and Airport System | Opus | NOT STARTED |
 | 5 | Aircraft and Fleet System | Opus | NOT STARTED |
 | 6 | Routes and Flight Operations | Opus | NOT STARTED |
@@ -58,10 +58,9 @@ Neither agent may blindly trust previous work.
 | 23 | Release Candidate | Opus | NOT STARTED (macOS required) |
 | 24 | Post-Launch Expansion Architecture | Fable | NOT STARTED |
 
-**Gate before Phase 3:** blocker B-001 (no Swift toolchain in the agent
-environment — see `/docs/PROJECT_AUDIT.md` §4) must be resolved so the
-Definition of Done (tests pass, build succeeds) is actually enforceable.
-Phases 1–2 are documentation phases and proceed regardless.
+**Gate before Phase 3:** RESOLVED 2026-08-25. Swift 6.0.3 runs in the agent
+environment via `scripts/setup-linux-toolchain.sh` (decision D-009); build
+and tests verified working.
 
 "macOS required" marks phases whose primary validation surface (SwiftUI iOS
 app, simulator, Instruments, signing) needs macOS/Xcode; their Core-package
