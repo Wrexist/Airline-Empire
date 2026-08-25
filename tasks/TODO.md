@@ -55,7 +55,7 @@ their interactions, per Master Prompt 2.
   `/docs/GAME_BALANCE.md`, `/docs/PLAYER_JOURNEY.md` created
 - Every system has a purpose; complexity without decisions removed
 **Tests:** n/a (design phase).
-**Status:** OPEN.
+**Status:** COMPLETE 2026-08-25 — moved to COMPLETED.md.
 
 ---
 
@@ -70,7 +70,7 @@ placeholders, deterministic, testable without SwiftUI, full unit tests
 passing, docs updated.
 **Tests:** time progression, deterministic randomness, state transitions,
 event ordering, scheduling, pause/resume, speed, edge cases.
-**Status:** OPEN — unblocked (AE-001 resolved); starts after AE-003.
+**Status:** OPEN — next up (AE-003 complete).
 
 ---
 

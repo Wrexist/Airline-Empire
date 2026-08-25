@@ -45,3 +45,20 @@ façade, snapshot flow, map contract, a11y baseline),
 `docs/TECHNICAL_STANDARDS.md` (layout, code rules, banned APIs, testing
 standards, workflow). Decisions D-002 ratified; D-005…D-009 recorded.
 **Tests:** n/a (design phase); testing obligations defined for Phase 3.
+
+---
+
+## AE-003
+**Title:** Phase 2 — Game Design Bible
+**Completed:** 2026-08-25
+**Outcome:** Authored the design bible: GAME_DESIGN.md (fantasy, 5 pillars,
+specs for all 17 major systems, difficulty/failure/recovery, replayability,
+explicit v1 non-goals, tone), CORE_LOOP.md (speeds and session contract,
+decision surfaces, feedback contract, friction budget), PROGRESSION.md
+(era arc with competence-based gates, capability programs as rule-changes,
+pacing targets), GAME_BALANCE.md (reference economy, canonical Metroburg-
+Costport P&L test anchor, curve shapes, evidence-based tuning methodology,
+known-exploit watchlist), PLAYER_JOURNEY.md (first-five-minutes script
+through late game, designed failure journeys, ethical retention).
+**Tests:** n/a (design phase); GAME_BALANCE §4 defines the automated economy
+test Phase 8 must ship.
