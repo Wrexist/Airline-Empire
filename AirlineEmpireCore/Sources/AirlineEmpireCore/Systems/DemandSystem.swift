@@ -107,8 +107,9 @@ public struct DemandSystem: SimulationSystem {
         let comfort = tuning.comfortBase + tuning.comfortWeight * spec.comfortBaseline
         let operations = tuning.operationsBase + tuning.operationsWeight
             * (route.stats.completionRate * 0.5 + route.stats.punctuality * 0.5)
-        // Reputation multiplier attaches in Phase 9 (1.0 until then).
-        return schedule * comfort * operations
+        let reputation = state.airlines[route.airline]?.reputation
+            .demandMultiplier(tuning: catalog.tuning.reputation) ?? 1.0
+        return schedule * comfort * operations * reputation
     }
 
     /// Distance-anchored reference fare the market prices against.

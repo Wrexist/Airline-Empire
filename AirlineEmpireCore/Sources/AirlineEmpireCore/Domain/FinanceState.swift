@@ -101,7 +101,7 @@ extension TransactionCategory {
         case .ticketRevenue:
             .operatingRevenue
         case .fuel, .airportFees, .crewCosts, .maintenance, .leasePayment,
-             .leasePenalty, .salaries, .overhead:
+             .leasePenalty, .salaries, .overhead, .passengerService:
             .operatingExpense
         case .loanInterest:
             .financing

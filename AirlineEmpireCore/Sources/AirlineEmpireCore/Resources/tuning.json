@@ -102,6 +102,26 @@
   "scheduledFlightExpiryMinutes": 240,
   "wearPerFlightHour": 0.00035
  },
+ "reputation": {
+  "administrationScar": 0.85,
+  "driftRate": 0.05,
+  "initialComponent": 0.6,
+  "multiplierBase": 0.8,
+  "multiplierSpan": 0.45,
+  "serviceCostPerPaxBasic": {
+   "cents": 400
+  },
+  "serviceCostPerPaxPremium": {
+   "cents": 1800
+  },
+  "serviceCostPerPaxStandard": {
+   "cents": 900
+  },
+  "serviceTargetBasic": 0.35,
+  "serviceTargetPremium": 0.85,
+  "serviceTargetStandard": 0.6,
+  "valueDriftRate": 0.02
+ },
  "world": {
   "economyDailyVolatility": 0.0015,
   "economyHighTarget": 1.15,

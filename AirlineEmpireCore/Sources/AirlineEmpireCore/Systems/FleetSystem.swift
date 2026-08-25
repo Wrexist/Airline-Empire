@@ -98,6 +98,7 @@ public enum GamePipeline {
             FleetSystem(),              // #7 (maintenance/aging/deliveries)
             FleetBillingSystem(),       // #8 (fleet money)
             EconomySystem(),            // #8 (payroll/overhead/loan service)
+            ReputationSystem(),         // #9
             SolvencySystem(),           // administration / collapse watch
         ]
     }

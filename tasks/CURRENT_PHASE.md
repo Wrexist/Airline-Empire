@@ -1,15 +1,13 @@
 # Current Phase
 
-**Phase 8 — Finance and Airline Economics: COMPLETE** (2026-08-25)
+**Phase 9 — Reputation, Service and Airline Quality: COMPLETE** (2026-08-25)
 
-Delivered: WorldSystem (fuel walk per tonne, regime-switching economy
-cycle); CreditMath + Take/RepayLoan (leverage-priced annuities, refusal
-ceiling); EconomySystem (payroll/overhead); StatementRollupSystem (bounded
-24-month statements from a post-time accumulator, compile-checked P&L
-classification, route direct-P&L closing); SolvencySystem (administration
-fire-sale + haircut, second-failure collapse with full cleanup). Save v6.
+Delivered: five-component EWMA reputation with demand multiplier
+(0.8-1.25), service tiers with per-pax costs, value-perception positioning
+loop, administration scar, DailyOps measurement plumbing. Save v7.
+Bug found & fixed via tests: fare-position EWMA was clamped to 1.0 by the
+generic drift helper. See docs/REPUTATION.md.
 
-**Build:** clean. **Tests:** 144/144. Notable fix: fuel price moved to
-per-tonne after tests showed per-kg cents froze the walk.
+**Build:** clean. **Tests:** 152/152.
 
-**Next phase: Phase 9 — Reputation, Service and Airline Quality** (AE-010).
+**Next phase: Phase 10 — Competitor Airlines** (task AE-011).

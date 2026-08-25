@@ -87,6 +87,7 @@ public enum TransactionCategory: String, Codable, Sendable, CaseIterable {
     case airportFees
     case crewCosts
     case ticketRevenue
+    case passengerService
     case salaries
     case overhead
     case loanProceeds

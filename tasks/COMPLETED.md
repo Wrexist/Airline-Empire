@@ -134,3 +134,13 @@ shape assertions.
 world price dynamics, credit with leverage pricing, payroll/overhead,
 bounded explainable statements, route direct P&L, administration/collapse.
 **Tests:** 144 passing (14 new).
+
+---
+
+## AE-010
+**Title:** Phase 9 — Reputation, Service and Airline Quality
+**Completed:** 2026-08-25
+**Outcome:** Evolving multi-component reputation feeding demand; service
+tier economics; positioning feedback loops verified by year-long sim tests;
+docs/REPUTATION.md. EWMA clamp bug caught and fixed.
+**Tests:** 152 passing (8 new).

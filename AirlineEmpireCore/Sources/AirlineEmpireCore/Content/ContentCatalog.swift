@@ -195,16 +195,19 @@ public struct Tuning: Equatable, Codable, Sendable {
     public let demand: DemandTuning
     public let finance: FinanceTuning
     public let world: WorldTuning
+    public let reputation: ReputationTuning
 
     public init(minRouteDistanceKm: Int, fleet: FleetTuning = .standard,
                 ops: OpsTuning = .standard, demand: DemandTuning = .standard,
-                finance: FinanceTuning = .standard, world: WorldTuning = .standard) {
+                finance: FinanceTuning = .standard, world: WorldTuning = .standard,
+                reputation: ReputationTuning = .standard) {
         self.minRouteDistanceKm = minRouteDistanceKm
         self.fleet = fleet
         self.ops = ops
         self.demand = demand
         self.finance = finance
         self.world = world
+        self.reputation = reputation
     }
 
     /// Code-side defaults matching shipping content; content files override.

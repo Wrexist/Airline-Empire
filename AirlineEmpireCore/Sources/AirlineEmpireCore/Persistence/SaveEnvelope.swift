@@ -12,10 +12,11 @@ public enum SaveFormat {
     /// `routes`/`flights` + Aircraft.activeFlight + world fuel price (Phase 6);
     /// v5 added route demand/load fields + world economicIndex (Phase 7);
     /// v6 added loans/status, finance statements, route economics, world
-    /// cycle fields (Phase 8).
+    /// cycle fields (Phase 8); v7 added reputation/serviceTier/opsToday
+    /// (Phase 9).
     /// Pre-release policy (docs/PERSISTENCE_ARCHITECTURE.md §5): superseded
     /// pre-release versions are refused, not migrated, until first TestFlight.
-    public static let currentVersion = 6
+    public static let currentVersion = 7
 }
 
 public struct SaveEnvelope: Codable, Sendable {

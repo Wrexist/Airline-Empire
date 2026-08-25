@@ -296,6 +296,29 @@ public struct ReturnLeasedAircraftCommand: Command, Equatable {
     }
 }
 
+public struct SetServiceTierCommand: Command, Equatable {
+    public static let name = "setServiceTier"
+
+    public let airline: AirlineID
+    public let tier: ServiceTier
+
+    public init(airline: AirlineID, tier: ServiceTier) {
+        self.airline = airline
+        self.tier = tier
+    }
+
+    public func validate(state: GameState, catalog: ContentCatalog) -> CommandRejection? {
+        guard let a = state.airlines[airline], a.status == .active else {
+            return CommandRejection(code: "airline.unknown", message: "Unknown airline")
+        }
+        return nil
+    }
+
+    public func apply(state: inout GameState, context: SimContext) {
+        state.airlines[airline]!.serviceTier = tier
+    }
+}
+
 extension String {
     func trimmed() -> String {
         var result = Substring(self)

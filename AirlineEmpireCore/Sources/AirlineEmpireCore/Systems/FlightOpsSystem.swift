@@ -110,6 +110,11 @@ public struct FlightOpsSystem: SimulationSystem {
                             route.stats.totalDelayMinutes += flight.delayMinutes
                         }
                         state.routes[flight.route] = route
+                        if var airline = state.airlines[aircraft.owner] {
+                            airline.opsToday.completed += 1
+                            if flight.wasDelayed { airline.opsToday.delayed += 1 }
+                            state.airlines[aircraft.owner] = airline
+                        }
                     }
                     continue
                 }
@@ -127,6 +132,10 @@ public struct FlightOpsSystem: SimulationSystem {
         if flight.kind == .revenue, var route = state.routes[flight.route] {
             route.stats.flightsCancelled += 1
             state.routes[flight.route] = route
+        }
+        if flight.kind == .revenue, var airline = state.airlines[aircraft.owner] {
+            airline.opsToday.cancelled += 1
+            state.airlines[aircraft.owner] = airline
         }
         context.emit(.flightCancelled(id: flightID, route: flight.route))
     }
@@ -164,6 +173,16 @@ public struct FlightOpsSystem: SimulationSystem {
                + Double(spec.crewCabin) * ops.crewCostPerBlockHourCabin.asDouble))
         state.ledger.post(airline: owner, category: .crewCosts, amount: -crewCost,
                           at: context.current, memo: "Crew \(flight.from)-\(flight.to)")
+
+        // Onboard service cost per passenger by the airline's tier.
+        if flight.kind == .revenue, flight.passengers > 0,
+           let airline = state.airlines[owner] {
+            let perPax = catalog.tuning.reputation.serviceCostPerPax(airline.serviceTier)
+            let serviceCost = perPax * Int64(flight.passengers)
+            state.ledger.post(airline: owner, category: .passengerService,
+                              amount: -serviceCost, at: context.current,
+                              memo: "Service \(flight.from)-\(flight.to)")
+        }
 
         if var route = state.routes[flight.route] {
             route.economicsThisMonth.fuelCents += fuelCost.cents

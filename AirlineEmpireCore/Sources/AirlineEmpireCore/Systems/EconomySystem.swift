@@ -120,6 +120,8 @@ public struct SolvencySystem: SimulationSystem {
             state.aircraft[aircraft.id] = nil
         }
 
+        airline.reputation.applyScar(
+            factor: context.catalog.tuning.reputation.administrationScar)
         airline.loans = airline.loans.map { loan in
             var restructured = loan
             let forgiven = Money(rounding: loan.principalRemaining.asDouble

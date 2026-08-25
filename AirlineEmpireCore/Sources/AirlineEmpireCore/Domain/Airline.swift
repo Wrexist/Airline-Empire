@@ -14,6 +14,10 @@ public struct Airline: Equatable, Codable, Sendable {
     public var administrationCount: Int
     /// Consecutive days below the overdraft floor (solvency tracking).
     public var daysInsolvent: Int
+    public var reputation: Reputation
+    public var serviceTier: ServiceTier
+    /// Same-day ops counters, reset daily by ReputationSystem.
+    public var opsToday: DailyOps
 
     public init(id: AirlineID, name: String, kind: AirlineKind,
                 homeAirport: AirportCode, foundedAt: SimTime) {
@@ -26,6 +30,9 @@ public struct Airline: Equatable, Codable, Sendable {
         self.status = .active
         self.administrationCount = 0
         self.daysInsolvent = 0
+        self.reputation = Reputation()
+        self.serviceTier = .standard
+        self.opsToday = DailyOps()
     }
 }
 
