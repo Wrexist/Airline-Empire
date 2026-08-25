@@ -93,6 +93,7 @@ public enum GamePipeline {
             WorldSystem(),              // #1 in the documented pipeline
             StatementRollupSystem(),    // closes the previous month BEFORE new billings
             DemandSystem(),             // #2
+            CompetitorAISystem(),       // #3
             FlightSchedulingSystem(),   // #4
             FlightOpsSystem(),          // #5 (+ passenger allocation at boarding, #6)
             FleetSystem(),              // #7 (maintenance/aging/deliveries)

@@ -16,6 +16,8 @@ public struct Airline: Equatable, Codable, Sendable {
     public var daysInsolvent: Int
     public var reputation: Reputation
     public var serviceTier: ServiceTier
+    /// Present on AI airlines only; the player has no profile.
+    public var aiProfile: AIProfile?
     /// Same-day ops counters, reset daily by ReputationSystem.
     public var opsToday: DailyOps
 
@@ -32,6 +34,7 @@ public struct Airline: Equatable, Codable, Sendable {
         self.daysInsolvent = 0
         self.reputation = Reputation()
         self.serviceTier = .standard
+        self.aiProfile = nil
         self.opsToday = DailyOps()
     }
 }

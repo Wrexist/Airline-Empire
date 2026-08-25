@@ -8,13 +8,17 @@ public struct FoundAirlineCommand: Command, Equatable {
     public let kind: AirlineKind
     public let homeAirport: AirportCode
     public let startingCash: Money
+    /// Personality for AI airlines; must be nil for the player.
+    public let aiProfile: AIProfile?
 
     public init(airlineName: String, kind: AirlineKind,
-                homeAirport: AirportCode, startingCash: Money) {
+                homeAirport: AirportCode, startingCash: Money,
+                aiProfile: AIProfile? = nil) {
         self.airlineName = airlineName
         self.kind = kind
         self.homeAirport = homeAirport
         self.startingCash = startingCash
+        self.aiProfile = aiProfile
     }
 
     public func validate(state: GameState, catalog: ContentCatalog) -> CommandRejection? {
@@ -39,13 +43,22 @@ public struct FoundAirlineCommand: Command, Equatable {
             return CommandRejection(code: "airline.playerExists",
                                     message: "This world already has a player airline")
         }
+        if kind == .player && aiProfile != nil {
+            return CommandRejection(code: "airline.playerWithProfile",
+                                    message: "The player airline cannot carry an AI profile")
+        }
         return nil
     }
 
     public func apply(state: inout GameState, context: SimContext) {
         let id = state.meta.idAllocator.allocateAirlineID()
-        state.airlines[id] = Airline(id: id, name: airlineName.trimmed(), kind: kind,
-                                     homeAirport: homeAirport, foundedAt: context.current)
+        var airline = Airline(id: id, name: airlineName.trimmed(), kind: kind,
+                              homeAirport: homeAirport, foundedAt: context.current)
+        if kind == .ai, let profile = aiProfile {
+            airline.aiProfile = profile
+            airline.serviceTier = profile.serviceTier
+        }
+        state.airlines[id] = airline
         state.ledger.post(airline: id, category: .initialCapital,
                           amount: startingCash, at: context.current)
         context.emit(.airlineFounded(id: id, name: airlineName.trimmed()))

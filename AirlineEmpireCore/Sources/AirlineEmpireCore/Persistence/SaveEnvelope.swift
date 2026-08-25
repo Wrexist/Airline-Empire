@@ -16,7 +16,7 @@ public enum SaveFormat {
     /// (Phase 9).
     /// Pre-release policy (docs/PERSISTENCE_ARCHITECTURE.md §5): superseded
     /// pre-release versions are refused, not migrated, until first TestFlight.
-    public static let currentVersion = 7
+    public static let currentVersion = 8
 }
 
 public struct SaveEnvelope: Codable, Sendable {

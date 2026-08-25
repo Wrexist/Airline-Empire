@@ -1,13 +1,14 @@
 # Current Phase
 
-**Phase 9 — Reputation, Service and Airline Quality: COMPLETE** (2026-08-25)
+**Phase 10 — Competitor Airlines: COMPLETE** (2026-08-25)
 
-Delivered: five-component EWMA reputation with demand multiplier
-(0.8-1.25), service tiers with per-pax costs, value-perception positioning
-loop, administration scar, DailyOps measurement plumbing. Save v7.
-Bug found & fixed via tests: fare-position EWMA was clamped to 1.0 by the
-generic drift helper. See docs/REPUTATION.md.
+Delivered: AIProfile archetypes (lowCost/premium/regional/conservative/
+expansionist), CompetitorAISystem (staggered weekly decision slots;
+survive -> employ -> tune -> grow priority; all actions through shared
+command validators), WorldSetup competitor cast bootstrap, AITuning
+content. Save v8. See docs/AI.md.
 
-**Build:** clean. **Tests:** 152/152.
+**Build:** clean. **Tests:** 161/161 incl. 3-year world health, price-war
+response, determinism.
 
-**Next phase: Phase 10 — Competitor Airlines** (task AE-011).
+**Next phase: Phase 11 — Events and Living World** (task AE-012).

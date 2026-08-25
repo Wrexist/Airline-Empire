@@ -144,3 +144,14 @@ bounded explainable statements, route direct P&L, administration/collapse.
 tier economics; positioning feedback loops verified by year-long sim tests;
 docs/REPUTATION.md. EWMA clamp bug caught and fixed.
 **Tests:** 152 passing (8 new).
+
+---
+
+## AE-011
+**Title:** Phase 10 — Competitor Airlines
+**Completed:** 2026-08-25
+**Outcome:** Same-rules AI with five archetype personalities, deterministic
+priority-driven decisions, market entry/exit/pricing/fleet behavior, world
+population helper; docs/AI.md. AIs can fail through the shared solvency
+path and release their market position.
+**Tests:** 161 passing (9 new).

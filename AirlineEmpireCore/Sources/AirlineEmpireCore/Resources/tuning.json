@@ -1,4 +1,15 @@
 {
+ "ai": {
+  "candidateMarketLimit": 16,
+  "decisionIntervalDays": 7,
+  "expandLoadFactor": 0.82,
+  "initialRoundTrips": 2,
+  "maxFleetPerAirline": 40,
+  "minViableDailyDemand": 140,
+  "retrenchRunwayMonths": 1.5,
+  "shrinkLoadFactor": 0.35,
+  "undercutResponseThreshold": 0.12
+ },
  "demand": {
   "attenuationPower": 1.2,
   "attenuationScaleKm": 3000,
