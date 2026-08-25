@@ -198,12 +198,14 @@ public struct Tuning: Equatable, Codable, Sendable {
     public let reputation: ReputationTuning
     public let ai: AITuning
     public let events: EventTuning
+    public let progression: ProgressionTuning
 
     public init(minRouteDistanceKm: Int, fleet: FleetTuning = .standard,
                 ops: OpsTuning = .standard, demand: DemandTuning = .standard,
                 finance: FinanceTuning = .standard, world: WorldTuning = .standard,
                 reputation: ReputationTuning = .standard, ai: AITuning = .standard,
-                events: EventTuning = .standard) {
+                events: EventTuning = .standard,
+                progression: ProgressionTuning = .standard) {
         self.minRouteDistanceKm = minRouteDistanceKm
         self.fleet = fleet
         self.ops = ops
@@ -213,6 +215,7 @@ public struct Tuning: Equatable, Codable, Sendable {
         self.reputation = reputation
         self.ai = ai
         self.events = events
+        self.progression = progression
     }
 
     /// Code-side defaults matching shipping content; content files override.

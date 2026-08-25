@@ -139,6 +139,27 @@
   "scheduledFlightExpiryMinutes": 240,
   "wearPerFlightHour": 0.00035
  },
+ "progression": {
+  "boomRushRewardPerPax": {
+   "cents": 4000
+  },
+  "boomRushTargetFactor": 0.6,
+  "capabilityCost": {
+   "cents": 1200000000
+  },
+  "capabilityDurationDays": 90,
+  "empireDestinations": 20,
+  "empireFleet": 20,
+  "internationalFleet": 8,
+  "maxActivePrograms": 2,
+  "nationalDestinations": 8,
+  "nationalReputationFloor": 0.55,
+  "regionalProfitableRoutes": 3,
+  "valueLegendDays": 90,
+  "valueLegendThreshold": 0.8,
+  "weatherProofCompletionRate": 0.97,
+  "weatherProofFlights": 500
+ },
  "reputation": {
   "administrationScar": 0.85,
   "driftRate": 0.05,

@@ -165,3 +165,13 @@ path and release their market position.
 the service-neglect feedback circle; forecast leads make storms fair;
 closures escalate from severe storms; effects hit player and AI alike.
 **Tests:** 169 passing (8 new).
+
+---
+
+## AE-013
+**Title:** Phase 12 — Progression, Research and Long-Term Goals
+**Completed:** 2026-08-25
+**Outcome:** Full progression layer per docs/PROGRESSION.md Phase 12
+section; every unlock changes rules, not numbers; missions are systemic
+offers; game over wired to solvency collapse.
+**Tests:** 177 passing (8 new).

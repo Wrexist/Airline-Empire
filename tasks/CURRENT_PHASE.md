@@ -1,13 +1,14 @@
 # Current Phase
 
-**Phase 11 — Events and Living World: COMPLETE** (2026-08-25)
+**Phase 12 — Progression, Research and Long-Term Goals: COMPLETE**
+(2026-08-25)
 
-Delivered: systemic WorldEvent framework (fuel shocks, forecast-led storms,
-severe-storm airport closures, tourism booms, service-neglect strikes) with
-rate limits, cooldown ledger, and effects applied inside the owning systems
-(fuel walk target, dispatch disruption, boarding gates, leisure demand).
-Save v9. See docs/EVENTS.md.
+Eras with competence gates + player aircraft-class locks; capability
+programs as rule changes (turnarounds, fuel hedging, ops center, ground
+experience); milestones/achievements auto-detection; boom-rush missions
+from world events; game-over flow. Save v10. See docs/PROGRESSION.md
+Phase 12 section.
 
-**Build:** clean. **Tests:** 169/169.
+**Build:** clean. **Tests:** 177/177.
 
-**Next phase: Phase 12 — Progression** (task AE-013).
+**Next phase: Phase 13 — Save System and Offline Persistence** (AE-014).

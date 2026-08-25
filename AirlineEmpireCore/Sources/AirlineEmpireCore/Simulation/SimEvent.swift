@@ -57,6 +57,16 @@ public enum SimEventKind: Equatable, Codable, Sendable {
     case worldEventForecast(kind: WorldEventKind, beginsAt: SimTime)
     case worldEventStarted(id: Int64, kind: WorldEventKind)
     case worldEventEnded(id: Int64, kind: WorldEventKind)
+
+    // Progression (Phase 12)
+    case eraAdvanced(era: Era)
+    case milestoneReached(code: String)
+    case achievementUnlocked(code: String)
+    case capabilityCompleted(code: CapabilityCode)
+    case missionOffered(id: Int64, kind: MissionKind, deadline: SimTime, reward: Money)
+    case missionCompleted(id: Int64, reward: Money)
+    case missionExpired(id: Int64)
+    case gameOver
 }
 
 /// Fixed-capacity ring of recent events plus a lifetime counter.

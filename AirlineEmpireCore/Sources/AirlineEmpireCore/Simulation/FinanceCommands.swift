@@ -55,6 +55,9 @@ public struct TakeLoanCommand: Command, Equatable {
         state.airlines[airline] = borrower
         state.ledger.post(airline: airline, category: .loanProceeds, amount: amount,
                           at: context.current, memo: "Loan drawdown")
+        if state.isPlayer(airline) {
+            state.progression.counters.loansTaken += 1
+        }
         context.emit(.loanTaken(airline: airline, amount: amount, rateBasisPoints: rate))
     }
 }

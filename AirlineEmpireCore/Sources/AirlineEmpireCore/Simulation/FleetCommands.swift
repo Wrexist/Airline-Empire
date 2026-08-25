@@ -84,6 +84,11 @@ public struct BuyNewAircraftCommand: Command, Equatable {
             return CommandRejection(code: "fleet.unknownType",
                                     message: "Unknown aircraft type \(type)")
         }
+        if state.isPlayer(buyer),
+           !state.progression.era.allowedCategories.contains(spec.category) {
+            return CommandRejection(code: "progression.lockedCategory",
+                                    message: "\(spec.category.rawValue) aircraft unlock in a later era")
+        }
         if state.ledger.balance(of: buyer) < spec.listPrice {
             return CommandRejection(code: "fleet.insufficientFunds",
                                     message: "Need \(spec.listPrice.cents / 100) for this aircraft")
@@ -128,6 +133,11 @@ public struct BuyUsedAircraftCommand: Command, Equatable {
         guard let spec = catalog.aircraftType(type) else {
             return CommandRejection(code: "fleet.unknownType",
                                     message: "Unknown aircraft type \(type)")
+        }
+        if state.isPlayer(buyer),
+           !state.progression.era.allowedCategories.contains(spec.category) {
+            return CommandRejection(code: "progression.lockedCategory",
+                                    message: "\(spec.category.rawValue) aircraft unlock in a later era")
         }
         let tuning = catalog.tuning.fleet
         if !(1...tuning.maxUsedPurchaseAgeYears).contains(ageYears) {
@@ -185,6 +195,11 @@ public struct LeaseAircraftCommand: Command, Equatable {
         guard let spec = catalog.aircraftType(type) else {
             return CommandRejection(code: "fleet.unknownType",
                                     message: "Unknown aircraft type \(type)")
+        }
+        if state.isPlayer(lessee),
+           !state.progression.era.allowedCategories.contains(spec.category) {
+            return CommandRejection(code: "progression.lockedCategory",
+                                    message: "\(spec.category.rawValue) aircraft unlock in a later era")
         }
         let tuning = catalog.tuning.fleet
         if !(tuning.minLeaseTermMonths...tuning.maxLeaseTermMonths).contains(termMonths) {

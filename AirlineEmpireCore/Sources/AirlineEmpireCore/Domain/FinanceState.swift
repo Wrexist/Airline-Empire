@@ -98,7 +98,7 @@ public enum CategoryClassification: Sendable {
 extension TransactionCategory {
     public var classification: CategoryClassification {
         switch self {
-        case .ticketRevenue:
+        case .ticketRevenue, .missionReward:
             .operatingRevenue
         case .fuel, .airportFees, .crewCosts, .maintenance, .leasePayment,
              .leasePenalty, .salaries, .overhead, .passengerService:

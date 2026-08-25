@@ -74,3 +74,38 @@ Sequencing them against strategy *is* the mid-game decision layer.
 No unlock that is strictly "bigger number, same decision"; no gate on
 content the tutorialized loop already taught; no progression currency
 disconnected from the airline's real economy; no daily-login mechanics.
+
+---
+
+## Phase 12 as built
+
+- **Eras** (`Era`, in `ProgressionState`): startup → regional → national →
+  international → empire, advanced daily by `ProgressionSystem` on
+  competence gates (profitable routes + first owned airframe; trailing-12
+  net profit + destinations + reputation floor; two world regions + fleet
+  size; scale). Era gates player aircraft classes at acquisition
+  (`progression.lockedCategory`); AI carriers are established and exempt.
+- **Capability programs** (`StartCapabilityProgramCommand`, National+, max
+  2 concurrent, ¤12M / 90 days each): efficientTurnarounds (−15% turnaround),
+  fuelHedging (fuel billed at min(spot, 1.05×base)), networkOpsCenter
+  (disruption ×0.8), groundExperience (service target +0.08). Each is a
+  rule change applied inside the owning system. revenueManagement (fare
+  buckets) deliberately deferred — a +x% stat bump would violate the
+  no-number-towers rule; real fare buckets are future work (TODO).
+- **Milestones** (auto-detected, event-emitting): firstFlight,
+  firstOwnedAircraft, firstProfitableMonth, firstMillionMonth,
+  passengers100k/1m, destinations10, fleet10, firstIntercontinental.
+  Counters (passengers, flights, loans) accumulate in `ProgressionState`
+  from FlightOps/TakeLoan for the player.
+- **Achievements**: valueLegend (90-day value-perception streak), purist
+  (international era, one manufacturer, ≥5 aircraft), debtFree (national
+  with zero loans ever), weatherProof (500+ flights at ≥97% completion).
+- **Missions**: systemic offers from tourism booms (`boomRush`): carry a
+  target passenger count on boom-region routes before the boom ends;
+  reward posts as `missionReward` (classified operating revenue); one offer
+  per source event (cooldown ledger); ignoring is free.
+- **Game over**: player collapse (Phase 8 solvency) sets
+  `progression.gameOver` + `gameOver` event — the UI's score-screen hook.
+- Save v10. Tests: era gates and locks, capability gating/effects (hedging
+  measurably caps fuel bills), milestones, boom mission full lifecycle,
+  player game over, save determinism (177 total).

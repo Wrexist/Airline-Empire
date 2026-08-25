@@ -129,7 +129,14 @@ struct RouteManagementTests {
     }
 
     @Test func runwayLimitBlocksAssignment() throws {
-        let (_, engine, airline, _) = try RouteFixtures.withAircraft()
+        let (_, base, airline, _) = try RouteFixtures.withAircraft()
+        // Widebodies are era-locked since Phase 12; this test is about
+        // runways, so fast-forward the era (test surgery).
+        var advanced = base.state
+        advanced.progression.era = .international
+        let engine = SimulationEngine(state: advanced,
+                                      systems: GamePipeline.standard(),
+                                      catalog: base.catalog)
         // Widebody to Tromsø (small runway).
         _ = engine.applyNow(BuyUsedAircraftCommand(buyer: airline, type: "MR300", ageYears: 5))
         let widebody = engine.state.aircraft.values.first {

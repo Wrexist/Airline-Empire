@@ -29,10 +29,14 @@ public struct ReputationSystem: SimulationSystem {
             }
             airline.opsToday = DailyOps()
 
-            // Service drifts toward the tier the airline pays for.
+            // Service drifts toward the tier the airline pays for
+            // (+ ground-experience capability bump for the player).
+            var serviceTarget = tuning.serviceTarget(airline.serviceTier)
+            if airline.kind == .player, state.playerHasCapability(.groundExperience) {
+                serviceTarget = min(1, serviceTarget + 0.08)
+            }
             Reputation.drift(&airline.reputation.service,
-                             toward: tuning.serviceTarget(airline.serviceTier),
-                             rate: tuning.driftRate)
+                             toward: serviceTarget, rate: tuning.driftRate)
 
             // Comfort: seat-weighted fleet hardware quality.
             let fleet = state.fleet(of: airlineID)

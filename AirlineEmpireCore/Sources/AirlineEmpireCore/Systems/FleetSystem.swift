@@ -102,6 +102,7 @@ public enum GamePipeline {
             EconomySystem(),            // #8 (payroll/overhead/loan service)
             ReputationSystem(),         // #9
             SolvencySystem(),           // administration / collapse watch
+            ProgressionSystem(),        // #10 (after solvency so game over is seen)
         ]
     }
 }

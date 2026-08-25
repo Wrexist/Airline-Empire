@@ -59,6 +59,10 @@ public struct FlightOpsSystem: SimulationSystem {
                     let reliability = aircraft.currentReliability(
                         type: spec, tuning: context.catalog.tuning.fleet)
                     var disruptionProbability = 1 - reliability
+                    if state.isPlayer(aircraft.owner),
+                       state.playerHasCapability(.networkOpsCenter) {
+                        disruptionProbability *= 0.8
+                    }
                     // Active storms over either endpoint raise disruption.
                     for endpoint in [flight.from, flight.to] {
                         if let airport = context.catalog.airport(endpoint),
@@ -127,7 +131,13 @@ public struct FlightOpsSystem: SimulationSystem {
                         if var airline = state.airlines[aircraft.owner] {
                             airline.opsToday.completed += 1
                             if flight.wasDelayed { airline.opsToday.delayed += 1 }
+                            let isPlayer = airline.kind == .player
                             state.airlines[aircraft.owner] = airline
+                            if isPlayer {
+                                state.progression.counters.flightsCompleted += 1
+                                state.progression.counters.passengersCarried
+                                    += Int64(flight.passengers)
+                            }
                         }
                     }
                     continue
@@ -169,7 +179,13 @@ public struct FlightOpsSystem: SimulationSystem {
         // Operating costs, posted by category so route P&L stays explainable.
         let owner = aircraft.owner
         let fuelTons = spec.fuelBurnKgPerKm * Double(flight.distanceKm) / 1000
-        let fuelCost = Money(rounding: fuelTons * state.world.fuelPricePerTon.asDouble)
+        var effectiveFuelPrice = state.world.fuelPricePerTon.asDouble
+        if state.isPlayer(owner), state.playerHasCapability(.fuelHedging) {
+            // Hedged: pay at most 105% of the base price.
+            let cap = catalog.tuning.ops.baseFuelPricePerTon.asDouble * 1.05
+            effectiveFuelPrice = min(effectiveFuelPrice, cap)
+        }
+        let fuelCost = Money(rounding: fuelTons * effectiveFuelPrice)
         state.ledger.post(airline: owner, category: .fuel, amount: -fuelCost,
                           at: context.current, memo: "Fuel \(flight.from)-\(flight.to)")
 
@@ -205,7 +221,11 @@ public struct FlightOpsSystem: SimulationSystem {
             state.routes[flight.route] = route
         }
 
-        let until = context.current + .minutes(Int64(spec.turnaroundMinutes))
+        var turnaroundMinutes = Int64(spec.turnaroundMinutes)
+        if state.isPlayer(owner), state.playerHasCapability(.efficientTurnarounds) {
+            turnaroundMinutes = Int64((Double(turnaroundMinutes) * 0.85).rounded())
+        }
+        let until = context.current + .minutes(turnaroundMinutes)
         flight.phase = .turnaround(until: until)
         context.emit(.flightArrived(id: flightID, route: flight.route,
                                     delayMinutes: flight.delayMinutes))
