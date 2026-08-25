@@ -70,10 +70,27 @@ placeholders, deterministic, testable without SwiftUI, full unit tests
 passing, docs updated.
 **Tests:** time progression, deterministic randomness, state transitions,
 event ordering, scheduling, pause/resume, speed, edge cases.
-**Status:** OPEN — next up (AE-003 complete).
+**Status:** COMPLETE 2026-08-25 — moved to COMPLETED.md.
 
 ---
 
 Later phases (4–24) are tracked at roadmap level in `/tasks/MASTER_PLAN.md`
 and get AE-numbered task breakdowns when their phase opens — pre-writing
 detailed tasks for unarchitected systems would be speculation.
+
+---
+
+## AE-005
+**Title:** Phase 4 — World and Airport System
+**Purpose:** Data-driven airports (specs + runtime slice), world data layer,
+distance/eligibility/slot logic, content loading + validation, per Master
+Prompt 4.
+**Dependencies:** AE-004 (kernel) — complete.
+**Acceptance criteria:** data-driven airport specs with all designed
+attributes; ContentCatalog loading with referential validation; distance
+(great-circle) and route-eligibility calculations; slot allocation logic;
+regional classification; tests for distance/capacity/slots/invalid
+routes/lookup; docs/AIRPORTS.md; offline-only.
+**Tests:** geographic math, capacity/slot invariants, invalid data rejection,
+lookup, eligibility edge cases.
+**Status:** OPEN — next up.

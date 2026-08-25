@@ -110,3 +110,45 @@ same value. **[RULE]** The UI holds snapshots only — never the live state.
 - Save-safe: serialize → restore → continue ⇒ identical to uninterrupted run
   (the single most important test in the project — **[RULE]** runs in CI on
   every change from Phase 3 onward).
+
+---
+
+## 7. As-built (Phase 3)
+
+Implemented in `AirlineEmpireCore` (Sources: `Foundation/`, `Domain/`,
+`Simulation/`, `Session/`, `Persistence/`). Deviations/refinements from the
+design above, all behavior-preserving:
+
+- **Tick order as implemented:** clock advance → command drain → calendar
+  boundary events (`dayStarted`/`weekStarted`/`monthStarted`/`seasonChanged`)
+  → scheduled-wake pops → systems in registered order → event collection +
+  debug integrity sweep. Calendar events precede systems so daily systems run
+  with "their" day already logged.
+- **Tick size lives in `GameMeta`** (not a code constant): it is part of the
+  save contract per D-007, so existing saves keep their tick if the standard
+  ever changes.
+- **Paused commands:** `GameSession.submit` applies immediately via
+  `SimulationEngine.applyNow` (zero-length boundary) while paused; running
+  submissions enqueue for the next tick boundary. Both paths validated.
+- **`GameSession.pump(elapsedSeconds:)`** converts real time → ticks with a
+  fractional accumulator; the session holds no timers (the app shell drives
+  it), which keeps all speed/pause behavior unit-testable. Pausing drops the
+  pending fraction deliberately.
+- **Kernel command:** `ScheduleWakeCommand` (player reminder wake) is the
+  canonical command-pipeline exercise; gameplay commands arrive with their
+  systems.
+- **RNG fix (found by tests):** `StableHash.combine` originally seeded FNV
+  with the seed value itself, which collapsed all small seeds to identical
+  substreams (seed ^ own-low-byte → 0). Now always starts from the FNV
+  offset basis; pinned by `stableHashIsStable` and `differentSeedsDiffer`.
+
+Test coverage (57 tests, all passing on Linux/Swift 6.0.3): calendar/date
+derivation and boundaries, cadence firing, floored division, money rounding
+(dyadic tie cases), RNG determinism/substream independence/serialization
+resume/distribution sanity, schedule queue ordering/ties/codable-resume,
+engine pipeline order, cadence dispatch counts over a year, calendar events,
+chunk invariance, dual-run determinism, system-addition non-perturbation,
+command boundary semantics/rejections, bounded event log, full save
+round-trip, save-mid-run-continue-identical, checksum/magic/version/garbage
+rejection, deterministic encoding, 10× save-load cycling, and GameSession
+speed/pause/pump/submit/stream behavior.

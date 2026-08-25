@@ -35,7 +35,7 @@ Neither agent may blindly trust previous work.
 | 0 | Repository Audit and Baseline | Fable | **COMPLETE** (2026-08-25) |
 | 1 | Master Architecture | Fable | **COMPLETE** (2026-08-25) |
 | 2 | Game Design Bible | Fable | **COMPLETE** (2026-08-25) |
-| 3 | Data Model and Simulation Kernel | Opus | NOT STARTED (unblocked — B-001 resolved, D-009) |
+| 3 | Data Model and Simulation Kernel | Opus | **COMPLETE** (2026-08-25) |
 | 4 | World and Airport System | Opus | NOT STARTED |
 | 5 | Aircraft and Fleet System | Opus | NOT STARTED |
 | 6 | Routes and Flight Operations | Opus | NOT STARTED |

@@ -62,3 +62,17 @@ known-exploit watchlist), PLAYER_JOURNEY.md (first-five-minutes script
 through late game, designed failure journeys, ethical retention).
 **Tests:** n/a (design phase); GAME_BALANCE §4 defines the automated economy
 test Phase 8 must ship.
+
+---
+
+## AE-004
+**Title:** Phase 3 — Data Model and Simulation Kernel
+**Completed:** 2026-08-25
+**Outcome:** AirlineEmpireCore package: deterministic simulation kernel per
+docs/SIMULATION_ARCHITECTURE.md (see its §7 as-built appendix). 19 source
+files across Foundation/Domain/Simulation/Session/Persistence; 57 tests
+passing on Linux Swift 6.0.3; zero-warning build. Notable: save/restore-
+continuation equality test green; RNG substream-collapse bug caught by the
+new tests and fixed in StableHash.combine.
+**Tests:** 57 (time/calendar, money, RNG, schedule queue, engine,
+command coding, persistence, session).
