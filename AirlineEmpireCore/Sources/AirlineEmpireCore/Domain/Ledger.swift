@@ -67,6 +67,9 @@ public enum TransactionCategory: String, Codable, Sendable, CaseIterable {
     case leasePayment
     case leasePenalty
     case maintenance
-    // Phase 6+: ticketRevenue, fuel, airportFees, crewCosts
+    case fuel
+    case airportFees
+    case crewCosts
+    // Phase 7+: ticketRevenue
     // Phase 8+: loanPrincipal, loanInterest, salaries, marketing, overhead
 }

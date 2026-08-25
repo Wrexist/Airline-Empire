@@ -14,6 +14,8 @@ public struct GameState: Equatable, Codable, Sendable {
     public var airlines: [AirlineID: Airline]
     public var aircraft: [AircraftID: Aircraft]
     public var ledger: Ledger
+    public var routes: [RouteID: Route]
+    public var flights: [FlightID: Flight]
 
     public init(meta: GameMeta, clock: ClockState, rng: RNGState,
                 schedule: ScheduleQueue = ScheduleQueue(),
@@ -21,7 +23,9 @@ public struct GameState: Equatable, Codable, Sendable {
                 world: WorldState = WorldState(),
                 airlines: [AirlineID: Airline] = [:],
                 aircraft: [AircraftID: Aircraft] = [:],
-                ledger: Ledger = Ledger()) {
+                ledger: Ledger = Ledger(),
+                routes: [RouteID: Route] = [:],
+                flights: [FlightID: Flight] = [:]) {
         self.meta = meta
         self.clock = clock
         self.rng = rng
@@ -31,11 +35,19 @@ public struct GameState: Equatable, Codable, Sendable {
         self.airlines = airlines
         self.aircraft = aircraft
         self.ledger = ledger
+        self.routes = routes
+        self.flights = flights
     }
 
     /// Deterministic iteration orders (docs/SIMULATION_ARCHITECTURE.md §2).
     public var orderedAirlineIDs: [AirlineID] { airlines.keys.sorted() }
     public var orderedAircraftIDs: [AircraftID] { aircraft.keys.sorted() }
+    public var orderedRouteIDs: [RouteID] { routes.keys.sorted() }
+    public var orderedFlightIDs: [FlightID] { flights.keys.sorted() }
+
+    public func routes(of airline: AirlineID) -> [Route] {
+        orderedRouteIDs.compactMap { routes[$0] }.filter { $0.airline == airline }
+    }
 
     public func fleet(of airline: AirlineID) -> [Aircraft] {
         orderedAircraftIDs.compactMap { aircraft[$0] }.filter { $0.owner == airline }
@@ -71,6 +83,30 @@ public struct GameState: Equatable, Codable, Sendable {
             }
             if case .owned(let book) = ac.ownership, book.isNegative {
                 violations.append("Aircraft \(id.raw) has negative book value")
+            }
+            if let routeID = ac.assignedRoute, routes[routeID] == nil {
+                violations.append("Aircraft \(id.raw) assigned to missing route \(routeID.raw)")
+            }
+            if let flightID = ac.activeFlight, flights[flightID] == nil {
+                violations.append("Aircraft \(id.raw) references missing flight \(flightID.raw)")
+            }
+        }
+        for id in orderedRouteIDs {
+            let route = routes[id]!
+            if airlines[route.airline] == nil {
+                violations.append("Route \(id.raw) owned by missing airline")
+            }
+            for aircraftID in route.assignedAircraft where aircraft[aircraftID] == nil {
+                violations.append("Route \(id.raw) lists missing aircraft \(aircraftID.raw)")
+            }
+        }
+        for id in orderedFlightIDs {
+            let flight = flights[id]!
+            if routes[flight.route] == nil && flight.kind == .revenue {
+                violations.append("Flight \(id.raw) on missing route")
+            }
+            if aircraft[flight.aircraft] == nil {
+                violations.append("Flight \(id.raw) uses missing aircraft")
             }
         }
         return violations

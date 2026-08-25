@@ -4,9 +4,14 @@
 /// proportional to the world the player actually touches.
 public struct WorldState: Equatable, Codable, Sendable {
     public var airportRuntimes: [AirportCode: AirportRuntime]
+    /// Jet fuel spot price. Initialized from tuning; market dynamics move it
+    /// from Phase 8/11.
+    public var fuelPricePerKg: Money
 
-    public init(airportRuntimes: [AirportCode: AirportRuntime] = [:]) {
+    public init(airportRuntimes: [AirportCode: AirportRuntime] = [:],
+                fuelPricePerKg: Money = Money(cents: 65)) {
         self.airportRuntimes = airportRuntimes
+        self.fuelPricePerKg = fuelPricePerKg
     }
 
     // MARK: Slots

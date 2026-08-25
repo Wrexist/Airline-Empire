@@ -19,5 +19,25 @@
   "usedMarketConditionLossPerYear": 0.02,
   "usedPriceConditionFloor": 0.7
  },
- "minRouteDistanceKm": 80
+ "minRouteDistanceKm": 80,
+ "ops": {
+  "baseFuelPricePerKg": {
+   "cents": 65
+  },
+  "boardingMinutes": 30,
+  "cancellationShareOfDisruptions": 0.2,
+  "crewCostPerBlockHourCabin": {
+   "cents": 4500
+  },
+  "crewCostPerBlockHourCockpit": {
+   "cents": 18000
+  },
+  "delayMinutesMax": 240,
+  "delayMinutesMin": 45,
+  "flightOverheadMinutes": 20,
+  "operatingDayMinutes": 1080,
+  "operatingDayStartMinute": 360,
+  "scheduledFlightExpiryMinutes": 240,
+  "wearPerFlightHour": 0.00035
+ }
 }

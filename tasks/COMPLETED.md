@@ -100,3 +100,16 @@ types, real lifecycle entities, ledger-traceable money from the first
 transaction, anti-flipping economics, deterministic used market, maintenance
 that bills instead of blocking. Save v3.
 **Tests:** 100 passing (18 new fleet suites).
+
+---
+
+## AE-007
+**Title:** Phase 6 — Routes and Flight Operations
+**Completed:** 2026-08-25
+**Outcome:** Full route + flight operations layer per docs/ROUTES.md.
+Simulation-driven lifecycle, slot-constrained route network, delay cascades,
+disruption rates from aircraft reliability, per-flight cost posting.
+Stale-flight leak found by tests and fixed via expiry-as-cancellation.
+**Tests:** 118 passing (18 new: route management, slots scarcity, flight
+ops incl. exclusivity per tick, ferries, maintenance grounding, disruption
+rates, mid-flight save/restore, full-pipeline dual-run determinism).

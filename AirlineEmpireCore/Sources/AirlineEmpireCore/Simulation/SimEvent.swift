@@ -35,6 +35,16 @@ public enum SimEventKind: Equatable, Codable, Sendable {
     case leaseReturned(id: AircraftID, penalty: Money)
     case maintenanceStarted(id: AircraftID, until: SimTime, cost: Money)
     case maintenanceCompleted(id: AircraftID)
+
+    // Routes & flights (Phase 6)
+    case routeOpened(id: RouteID, origin: AirportCode, destination: AirportCode)
+    case routeClosed(id: RouteID)
+    case aircraftAssigned(aircraft: AircraftID, route: RouteID)
+    case aircraftUnassigned(aircraft: AircraftID, route: RouteID)
+    case flightDeparted(id: FlightID, route: RouteID)
+    case flightDelayed(id: FlightID, route: RouteID, delayMinutes: Int64)
+    case flightCancelled(id: FlightID, route: RouteID)
+    case flightArrived(id: FlightID, route: RouteID, delayMinutes: Int64)
 }
 
 /// Fixed-capacity ring of recent events plus a lifetime counter.

@@ -11,8 +11,11 @@ public struct Aircraft: Equatable, Codable, Sendable {
     public var status: AircraftStatus
     /// Current (or delivery-target) airport.
     public var location: AirportCode
-    /// Route the aircraft serves; nil = unassigned (Phase 6 assigns).
+    /// Route the aircraft serves; nil = unassigned.
     public var assignedRoute: RouteID?
+    /// The live flight currently using this aircraft (boarding through
+    /// turnaround); nil = free on the ground at `location`.
+    public var activeFlight: FlightID?
     /// Age in days, including age at acquisition for used airframes.
     public var ageDays: Int
     /// Physical state 0…1; decays with time and flying, restored by checks.
@@ -38,9 +41,14 @@ public struct Aircraft: Equatable, Codable, Sendable {
 
     public var ageYears: Double { Double(ageDays) / Double(GameCalendar.daysPerYear) }
 
-    /// Available to be assigned to routes / scheduled to fly.
+    /// Airworthy (not ordered, not in the shop).
     public var isOperational: Bool {
         if case .active = status { true } else { false }
+    }
+
+    /// Free to start a new flight right now.
+    public var isReadyToFly: Bool {
+        isOperational && activeFlight == nil
     }
 
     /// Dispatch reliability now: baseline eroded by wear and age, floored so

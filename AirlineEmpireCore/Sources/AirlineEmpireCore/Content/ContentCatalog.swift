@@ -191,14 +191,73 @@ public struct Tuning: Equatable, Codable, Sendable {
     /// Routes shorter than this are ground-transport territory.
     public let minRouteDistanceKm: Int
     public let fleet: FleetTuning
+    public let ops: OpsTuning
 
-    public init(minRouteDistanceKm: Int, fleet: FleetTuning = .standard) {
+    public init(minRouteDistanceKm: Int, fleet: FleetTuning = .standard,
+                ops: OpsTuning = .standard) {
         self.minRouteDistanceKm = minRouteDistanceKm
         self.fleet = fleet
+        self.ops = ops
     }
 
     /// Code-side defaults matching shipping content; content files override.
     public static let standard = Tuning(minRouteDistanceKm: 80)
+}
+
+/// Flight-operations constants (docs/ROUTES.md documents each).
+public struct OpsTuning: Equatable, Codable, Sendable {
+    /// Minute-of-day the operating day starts (first departures).
+    public let operatingDayStartMinute: Int64
+    /// Length of the scheduling window per day.
+    public let operatingDayMinutes: Int64
+    public let boardingMinutes: Int64
+    /// Climb/descent/taxi overhead added to cruise time.
+    public let flightOverheadMinutes: Int64
+    /// Delay drawn uniformly from this range on a dispatch disruption.
+    public let delayMinutesMin: Int
+    public let delayMinutesMax: Int
+    /// Of dispatch disruptions, this share cancels outright (rest delay).
+    public let cancellationShareOfDisruptions: Double
+    public let crewCostPerBlockHourCockpit: Money
+    public let crewCostPerBlockHourCabin: Money
+    public let baseFuelPricePerKg: Money
+    /// Condition lost per flight hour (on top of daily decay).
+    public let wearPerFlightHour: Double
+    /// A scheduled flight that could not board (aircraft grounded/busy) is
+    /// cancelled this long after its planned departure — no stale-flight
+    /// pileups, no burst-flying when an aircraft returns to service.
+    public let scheduledFlightExpiryMinutes: Int64
+
+    public init(operatingDayStartMinute: Int64, operatingDayMinutes: Int64,
+                boardingMinutes: Int64, flightOverheadMinutes: Int64,
+                delayMinutesMin: Int, delayMinutesMax: Int,
+                cancellationShareOfDisruptions: Double,
+                crewCostPerBlockHourCockpit: Money, crewCostPerBlockHourCabin: Money,
+                baseFuelPricePerKg: Money, wearPerFlightHour: Double,
+                scheduledFlightExpiryMinutes: Int64) {
+        self.operatingDayStartMinute = operatingDayStartMinute
+        self.operatingDayMinutes = operatingDayMinutes
+        self.boardingMinutes = boardingMinutes
+        self.flightOverheadMinutes = flightOverheadMinutes
+        self.delayMinutesMin = delayMinutesMin
+        self.delayMinutesMax = delayMinutesMax
+        self.cancellationShareOfDisruptions = cancellationShareOfDisruptions
+        self.crewCostPerBlockHourCockpit = crewCostPerBlockHourCockpit
+        self.crewCostPerBlockHourCabin = crewCostPerBlockHourCabin
+        self.baseFuelPricePerKg = baseFuelPricePerKg
+        self.wearPerFlightHour = wearPerFlightHour
+        self.scheduledFlightExpiryMinutes = scheduledFlightExpiryMinutes
+    }
+
+    public static let standard = OpsTuning(
+        operatingDayStartMinute: 6 * 60, operatingDayMinutes: 18 * 60,
+        boardingMinutes: 30, flightOverheadMinutes: 20,
+        delayMinutesMin: 45, delayMinutesMax: 240,
+        cancellationShareOfDisruptions: 0.2,
+        crewCostPerBlockHourCockpit: Money.dollars(180),
+        crewCostPerBlockHourCabin: Money.dollars(45),
+        baseFuelPricePerKg: Money(cents: 65), wearPerFlightHour: 0.00035,
+        scheduledFlightExpiryMinutes: 240)
 }
 
 /// Fleet economy constants (docs/AIRCRAFT.md documents each).

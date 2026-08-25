@@ -127,4 +127,20 @@ system; travel time from distance/speed; operating cost hooks (fuel, fees,
 crew) posted per flight; disruption states from reliability/weather;
 conflict detection; multi-aircraft concurrency without corruption; tests;
 docs/ROUTES.md.
+**Status:** COMPLETE 2026-08-25 — moved to COMPLETED.md.
+
+---
+
+## AE-008
+**Title:** Phase 7 — Passenger Demand and Pricing
+**Purpose:** The demand engine per Master Prompt 7: market demand pools from
+demographics × seasonality × economy, logit share allocation across
+competing offers (price, schedule quality, reputation hooks, comfort,
+punctuality), price elasticity by segment, passengers allocated to
+departures, ticket revenue posted.
+**Dependencies:** AE-007 (flights) — complete.
+**Acceptance criteria:** DemandSystem + PassengerAllocation into flights;
+price→demand→load→revenue chain measurable; low/optimal/high price
+simulations as tests; demand conservation (no passenger counted twice);
+docs/ECONOMY.md started; economy tests with tolerances.
 **Status:** OPEN — next up.
