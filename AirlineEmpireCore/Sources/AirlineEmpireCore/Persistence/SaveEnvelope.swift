@@ -7,7 +7,10 @@ import Foundation
 public enum SaveFormat {
     public static let magic = "AESAVE"
     /// Bumps on ANY change to the encoded shape of `GameState` (D-004).
-    public static let currentVersion = 1
+    /// History: v1 kernel-only (Phase 3); v2 added `world` slice (Phase 4).
+    /// Pre-release policy (docs/PERSISTENCE_ARCHITECTURE.md §5): superseded
+    /// pre-release versions are refused, not migrated, until first TestFlight.
+    public static let currentVersion = 2
 }
 
 public struct SaveEnvelope: Codable, Sendable {

@@ -1,0 +1,2405 @@
+{
+ "airports": [
+  {
+   "city": "Stockholm",
+   "code": "STV",
+   "coordinate": {
+    "latitude": 59.65,
+    "longitude": 17.92
+   },
+   "country": "Sweden",
+   "demographics": {
+    "businessIndex": 0.72,
+    "cargoIndex": 0.45,
+    "leisureIndex": 0.78,
+    "populationThousands": 2400000,
+    "tourismIndex": 0.55
+   },
+   "movementFee": {
+    "cents": 140000
+   },
+   "name": "Stockholm Sj\u00f6vik",
+   "passengerFee": {
+    "cents": 1800
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "nordic",
+   "slotCapacityPerDay": 520,
+   "terminalCapacityPerDay": 90000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "high"
+  },
+  {
+   "city": "Oslo",
+   "code": "OSF",
+   "coordinate": {
+    "latitude": 60.19,
+    "longitude": 11.1
+   },
+   "country": "Norway",
+   "demographics": {
+    "businessIndex": 0.66,
+    "cargoIndex": 0.4,
+    "leisureIndex": 0.76,
+    "populationThousands": 1600000,
+    "tourismIndex": 0.5
+   },
+   "movementFee": {
+    "cents": 135000
+   },
+   "name": "Oslo Fjellhavn",
+   "passengerFee": {
+    "cents": 1700
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "nordic",
+   "slotCapacityPerDay": 420,
+   "terminalCapacityPerDay": 70000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "high"
+  },
+  {
+   "city": "Copenhagen",
+   "code": "CPN",
+   "coordinate": {
+    "latitude": 55.62,
+    "longitude": 12.65
+   },
+   "country": "Denmark",
+   "demographics": {
+    "businessIndex": 0.74,
+    "cargoIndex": 0.5,
+    "leisureIndex": 0.8,
+    "populationThousands": 2100000,
+    "tourismIndex": 0.6
+   },
+   "movementFee": {
+    "cents": 150000
+   },
+   "name": "Copenhagen Strandby",
+   "passengerFee": {
+    "cents": 1900
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 560,
+   "terminalCapacityPerDay": 95000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Helsinki",
+   "code": "HLS",
+   "coordinate": {
+    "latitude": 60.32,
+    "longitude": 24.96
+   },
+   "country": "Finland",
+   "demographics": {
+    "businessIndex": 0.62,
+    "cargoIndex": 0.42,
+    "leisureIndex": 0.74,
+    "populationThousands": 1500000,
+    "tourismIndex": 0.45
+   },
+   "movementFee": {
+    "cents": 130000
+   },
+   "name": "Helsinki Salmisaari",
+   "passengerFee": {
+    "cents": 1600
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "nordic",
+   "slotCapacityPerDay": 380,
+   "terminalCapacityPerDay": 60000,
+   "utcOffsetMinutes": 120,
+   "weatherRisk": "high"
+  },
+  {
+   "city": "London",
+   "code": "LNW",
+   "coordinate": {
+    "latitude": 51.47,
+    "longitude": -0.45
+   },
+   "country": "United Kingdom",
+   "demographics": {
+    "businessIndex": 0.98,
+    "cargoIndex": 0.85,
+    "leisureIndex": 0.82,
+    "populationThousands": 14800000,
+    "tourismIndex": 0.9
+   },
+   "movementFee": {
+    "cents": 260000
+   },
+   "name": "London Kingsmoor",
+   "passengerFee": {
+    "cents": 2700
+   },
+   "region": "europe",
+   "runwayClass": "veryLarge",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 1380,
+   "terminalCapacityPerDay": 240000,
+   "utcOffsetMinutes": 0,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Paris",
+   "code": "PRV",
+   "coordinate": {
+    "latitude": 49.01,
+    "longitude": 2.55
+   },
+   "country": "France",
+   "demographics": {
+    "businessIndex": 0.92,
+    "cargoIndex": 0.8,
+    "leisureIndex": 0.8,
+    "populationThousands": 12500000,
+    "tourismIndex": 0.95
+   },
+   "movementFee": {
+    "cents": 250000
+   },
+   "name": "Paris Vallonne",
+   "passengerFee": {
+    "cents": 2600
+   },
+   "region": "europe",
+   "runwayClass": "veryLarge",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 1240,
+   "terminalCapacityPerDay": 220000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "low"
+  },
+  {
+   "city": "Amsterdam",
+   "code": "AMD",
+   "coordinate": {
+    "latitude": 52.31,
+    "longitude": 4.76
+   },
+   "country": "Netherlands",
+   "demographics": {
+    "businessIndex": 0.88,
+    "cargoIndex": 0.9,
+    "leisureIndex": 0.82,
+    "populationThousands": 2900000,
+    "tourismIndex": 0.78
+   },
+   "movementFee": {
+    "cents": 240000
+   },
+   "name": "Amsterdam Dijkzicht",
+   "passengerFee": {
+    "cents": 2500
+   },
+   "region": "europe",
+   "runwayClass": "veryLarge",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 1100,
+   "terminalCapacityPerDay": 190000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Frankfurt",
+   "code": "FRB",
+   "coordinate": {
+    "latitude": 50.03,
+    "longitude": 8.56
+   },
+   "country": "Germany",
+   "demographics": {
+    "businessIndex": 0.94,
+    "cargoIndex": 0.95,
+    "leisureIndex": 0.72,
+    "populationThousands": 2700000,
+    "tourismIndex": 0.55
+   },
+   "movementFee": {
+    "cents": 245000
+   },
+   "name": "Frankfurt Bergwald",
+   "passengerFee": {
+    "cents": 2400
+   },
+   "region": "europe",
+   "runwayClass": "veryLarge",
+   "seasonality": "businessFlat",
+   "slotCapacityPerDay": 1150,
+   "terminalCapacityPerDay": 200000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Munich",
+   "code": "MNH",
+   "coordinate": {
+    "latitude": 48.35,
+    "longitude": 11.79
+   },
+   "country": "Germany",
+   "demographics": {
+    "businessIndex": 0.86,
+    "cargoIndex": 0.6,
+    "leisureIndex": 0.76,
+    "populationThousands": 3000000,
+    "tourismIndex": 0.65
+   },
+   "movementFee": {
+    "cents": 220000
+   },
+   "name": "Munich Hochfeld",
+   "passengerFee": {
+    "cents": 2300
+   },
+   "region": "europe",
+   "runwayClass": "veryLarge",
+   "seasonality": "alpine",
+   "slotCapacityPerDay": 840,
+   "terminalCapacityPerDay": 150000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Berlin",
+   "code": "BRL",
+   "coordinate": {
+    "latitude": 52.36,
+    "longitude": 13.5
+   },
+   "country": "Germany",
+   "demographics": {
+    "businessIndex": 0.72,
+    "cargoIndex": 0.45,
+    "leisureIndex": 0.8,
+    "populationThousands": 3700000,
+    "tourismIndex": 0.75
+   },
+   "movementFee": {
+    "cents": 170000
+   },
+   "name": "Berlin Havelsee",
+   "passengerFee": {
+    "cents": 2000
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 620,
+   "terminalCapacityPerDay": 110000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Zurich",
+   "code": "ZRA",
+   "coordinate": {
+    "latitude": 47.46,
+    "longitude": 8.55
+   },
+   "country": "Switzerland",
+   "demographics": {
+    "businessIndex": 0.9,
+    "cargoIndex": 0.55,
+    "leisureIndex": 0.74,
+    "populationThousands": 1500000,
+    "tourismIndex": 0.6
+   },
+   "movementFee": {
+    "cents": 230000
+   },
+   "name": "Zurich Albiskopf",
+   "passengerFee": {
+    "cents": 2600
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "alpine",
+   "slotCapacityPerDay": 640,
+   "terminalCapacityPerDay": 105000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Vienna",
+   "code": "VND",
+   "coordinate": {
+    "latitude": 48.11,
+    "longitude": 16.57
+   },
+   "country": "Austria",
+   "demographics": {
+    "businessIndex": 0.76,
+    "cargoIndex": 0.5,
+    "leisureIndex": 0.76,
+    "populationThousands": 2000000,
+    "tourismIndex": 0.72
+   },
+   "movementFee": {
+    "cents": 180000
+   },
+   "name": "Vienna Donaupark",
+   "passengerFee": {
+    "cents": 2000
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 580,
+   "terminalCapacityPerDay": 100000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "low"
+  },
+  {
+   "city": "Madrid",
+   "code": "MDL",
+   "coordinate": {
+    "latitude": 40.47,
+    "longitude": -3.56
+   },
+   "country": "Spain",
+   "demographics": {
+    "businessIndex": 0.78,
+    "cargoIndex": 0.55,
+    "leisureIndex": 0.78,
+    "populationThousands": 6700000,
+    "tourismIndex": 0.75
+   },
+   "movementFee": {
+    "cents": 190000
+   },
+   "name": "Madrid Loranca",
+   "passengerFee": {
+    "cents": 1900
+   },
+   "region": "europe",
+   "runwayClass": "veryLarge",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 900,
+   "terminalCapacityPerDay": 160000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "low"
+  },
+  {
+   "city": "Barcelona",
+   "code": "BCM",
+   "coordinate": {
+    "latitude": 41.3,
+    "longitude": 2.08
+   },
+   "country": "Spain",
+   "demographics": {
+    "businessIndex": 0.7,
+    "cargoIndex": 0.5,
+    "leisureIndex": 0.8,
+    "populationThousands": 5600000,
+    "tourismIndex": 0.9
+   },
+   "movementFee": {
+    "cents": 180000
+   },
+   "name": "Barcelona Marisol",
+   "passengerFee": {
+    "cents": 1800
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "summerSun",
+   "slotCapacityPerDay": 760,
+   "terminalCapacityPerDay": 140000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "low"
+  },
+  {
+   "city": "Lisbon",
+   "code": "LSB",
+   "coordinate": {
+    "latitude": 38.77,
+    "longitude": -9.13
+   },
+   "country": "Portugal",
+   "demographics": {
+    "businessIndex": 0.62,
+    "cargoIndex": 0.4,
+    "leisureIndex": 0.76,
+    "populationThousands": 2900000,
+    "tourismIndex": 0.82
+   },
+   "movementFee": {
+    "cents": 150000
+   },
+   "name": "Lisbon Alfarim",
+   "passengerFee": {
+    "cents": 1600
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "summerSun",
+   "slotCapacityPerDay": 520,
+   "terminalCapacityPerDay": 90000,
+   "utcOffsetMinutes": 0,
+   "weatherRisk": "low"
+  },
+  {
+   "city": "Rome",
+   "code": "RMC",
+   "coordinate": {
+    "latitude": 41.8,
+    "longitude": 12.25
+   },
+   "country": "Italy",
+   "demographics": {
+    "businessIndex": 0.72,
+    "cargoIndex": 0.45,
+    "leisureIndex": 0.74,
+    "populationThousands": 4300000,
+    "tourismIndex": 0.95
+   },
+   "movementFee": {
+    "cents": 190000
+   },
+   "name": "Rome Collina",
+   "passengerFee": {
+    "cents": 1900
+   },
+   "region": "europe",
+   "runwayClass": "veryLarge",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 820,
+   "terminalCapacityPerDay": 150000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "low"
+  },
+  {
+   "city": "Milan",
+   "code": "MLV",
+   "coordinate": {
+    "latitude": 45.63,
+    "longitude": 8.72
+   },
+   "country": "Italy",
+   "demographics": {
+    "businessIndex": 0.86,
+    "cargoIndex": 0.65,
+    "leisureIndex": 0.72,
+    "populationThousands": 3200000,
+    "tourismIndex": 0.62
+   },
+   "movementFee": {
+    "cents": 195000
+   },
+   "name": "Milan Verdana",
+   "passengerFee": {
+    "cents": 2100
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "businessFlat",
+   "slotCapacityPerDay": 700,
+   "terminalCapacityPerDay": 120000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Athens",
+   "code": "ATK",
+   "coordinate": {
+    "latitude": 37.94,
+    "longitude": 23.94
+   },
+   "country": "Greece",
+   "demographics": {
+    "businessIndex": 0.58,
+    "cargoIndex": 0.35,
+    "leisureIndex": 0.74,
+    "populationThousands": 3800000,
+    "tourismIndex": 0.88
+   },
+   "movementFee": {
+    "cents": 150000
+   },
+   "name": "Athens Kastraki",
+   "passengerFee": {
+    "cents": 1500
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "summerSun",
+   "slotCapacityPerDay": 540,
+   "terminalCapacityPerDay": 95000,
+   "utcOffsetMinutes": 120,
+   "weatherRisk": "low"
+  },
+  {
+   "city": "Dublin",
+   "code": "DBK",
+   "coordinate": {
+    "latitude": 53.43,
+    "longitude": -6.25
+   },
+   "country": "Ireland",
+   "demographics": {
+    "businessIndex": 0.72,
+    "cargoIndex": 0.4,
+    "leisureIndex": 0.8,
+    "populationThousands": 1400000,
+    "tourismIndex": 0.66
+   },
+   "movementFee": {
+    "cents": 145000
+   },
+   "name": "Dublin Kilbarrack",
+   "passengerFee": {
+    "cents": 1600
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 480,
+   "terminalCapacityPerDay": 85000,
+   "utcOffsetMinutes": 0,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Warsaw",
+   "code": "WSW",
+   "coordinate": {
+    "latitude": 52.17,
+    "longitude": 20.97
+   },
+   "country": "Poland",
+   "demographics": {
+    "businessIndex": 0.64,
+    "cargoIndex": 0.45,
+    "leisureIndex": 0.72,
+    "populationThousands": 1800000,
+    "tourismIndex": 0.52
+   },
+   "movementFee": {
+    "cents": 130000
+   },
+   "name": "Warsaw Wislany",
+   "passengerFee": {
+    "cents": 1400
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 460,
+   "terminalCapacityPerDay": 80000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Prague",
+   "code": "PRG",
+   "coordinate": {
+    "latitude": 50.1,
+    "longitude": 14.26
+   },
+   "country": "Czechia",
+   "demographics": {
+    "businessIndex": 0.6,
+    "cargoIndex": 0.35,
+    "leisureIndex": 0.74,
+    "populationThousands": 1300000,
+    "tourismIndex": 0.8
+   },
+   "movementFee": {
+    "cents": 135000
+   },
+   "name": "Prague Zlatohrad",
+   "passengerFee": {
+    "cents": 1400
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 420,
+   "terminalCapacityPerDay": 75000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Istanbul",
+   "code": "IST",
+   "coordinate": {
+    "latitude": 41.26,
+    "longitude": 28.74
+   },
+   "country": "T\u00fcrkiye",
+   "demographics": {
+    "businessIndex": 0.76,
+    "cargoIndex": 0.75,
+    "leisureIndex": 0.72,
+    "populationThousands": 15500000,
+    "tourismIndex": 0.85
+   },
+   "movementFee": {
+    "cents": 170000
+   },
+   "name": "Istanbul Marmaray",
+   "passengerFee": {
+    "cents": 1500
+   },
+   "region": "europe",
+   "runwayClass": "veryLarge",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 1200,
+   "terminalCapacityPerDay": 210000,
+   "utcOffsetMinutes": 180,
+   "weatherRisk": "low"
+  },
+  {
+   "city": "Nice",
+   "code": "NCA",
+   "coordinate": {
+    "latitude": 43.66,
+    "longitude": 7.22
+   },
+   "country": "France",
+   "demographics": {
+    "businessIndex": 0.5,
+    "cargoIndex": 0.2,
+    "leisureIndex": 0.76,
+    "populationThousands": 1000000,
+    "tourismIndex": 0.85
+   },
+   "movementFee": {
+    "cents": 160000
+   },
+   "name": "Nice Calanque",
+   "passengerFee": {
+    "cents": 1700
+   },
+   "region": "europe",
+   "runwayClass": "medium",
+   "seasonality": "summerSun",
+   "slotCapacityPerDay": 300,
+   "terminalCapacityPerDay": 50000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "low"
+  },
+  {
+   "city": "Palma",
+   "code": "PMR",
+   "coordinate": {
+    "latitude": 39.55,
+    "longitude": 2.74
+   },
+   "country": "Spain",
+   "demographics": {
+    "businessIndex": 0.3,
+    "cargoIndex": 0.15,
+    "leisureIndex": 0.7,
+    "populationThousands": 550000,
+    "tourismIndex": 0.95
+   },
+   "movementFee": {
+    "cents": 130000
+   },
+   "name": "Palma Rocamar",
+   "passengerFee": {
+    "cents": 1300
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "summerSun",
+   "slotCapacityPerDay": 420,
+   "terminalCapacityPerDay": 90000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "low"
+  },
+  {
+   "city": "Troms\u00f8",
+   "code": "KRK",
+   "coordinate": {
+    "latitude": 69.68,
+    "longitude": 18.92
+   },
+   "country": "Norway",
+   "demographics": {
+    "businessIndex": 0.2,
+    "cargoIndex": 0.1,
+    "leisureIndex": 0.6,
+    "populationThousands": 80000,
+    "tourismIndex": 0.62
+   },
+   "movementFee": {
+    "cents": 90000
+   },
+   "name": "Kirkenes Vintervik",
+   "passengerFee": {
+    "cents": 1000
+   },
+   "region": "europe",
+   "runwayClass": "small",
+   "seasonality": "skiNorth",
+   "slotCapacityPerDay": 90,
+   "terminalCapacityPerDay": 12000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "severe"
+  },
+  {
+   "city": "Reykjav\u00edk",
+   "code": "RKV",
+   "coordinate": {
+    "latitude": 63.99,
+    "longitude": -22.62
+   },
+   "country": "Iceland",
+   "demographics": {
+    "businessIndex": 0.4,
+    "cargoIndex": 0.2,
+    "leisureIndex": 0.72,
+    "populationThousands": 230000,
+    "tourismIndex": 0.85
+   },
+   "movementFee": {
+    "cents": 120000
+   },
+   "name": "Reykjav\u00edk Eldfell",
+   "passengerFee": {
+    "cents": 1400
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "nordic",
+   "slotCapacityPerDay": 220,
+   "terminalCapacityPerDay": 40000,
+   "utcOffsetMinutes": 0,
+   "weatherRisk": "high"
+  },
+  {
+   "city": "New York",
+   "code": "NYH",
+   "coordinate": {
+    "latitude": 40.64,
+    "longitude": -73.78
+   },
+   "country": "United States",
+   "demographics": {
+    "businessIndex": 0.98,
+    "cargoIndex": 0.9,
+    "leisureIndex": 0.82,
+    "populationThousands": 19800000,
+    "tourismIndex": 0.92
+   },
+   "movementFee": {
+    "cents": 280000
+   },
+   "name": "New York Harborgate",
+   "passengerFee": {
+    "cents": 2800
+   },
+   "region": "northAmerica",
+   "runwayClass": "veryLarge",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 1350,
+   "terminalCapacityPerDay": 230000,
+   "utcOffsetMinutes": -300,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Chicago",
+   "code": "CHW",
+   "coordinate": {
+    "latitude": 41.98,
+    "longitude": -87.9
+   },
+   "country": "United States",
+   "demographics": {
+    "businessIndex": 0.9,
+    "cargoIndex": 0.85,
+    "leisureIndex": 0.76,
+    "populationThousands": 9500000,
+    "tourismIndex": 0.65
+   },
+   "movementFee": {
+    "cents": 240000
+   },
+   "name": "Chicago Windermere",
+   "passengerFee": {
+    "cents": 2400
+   },
+   "region": "northAmerica",
+   "runwayClass": "veryLarge",
+   "seasonality": "businessFlat",
+   "slotCapacityPerDay": 1500,
+   "terminalCapacityPerDay": 240000,
+   "utcOffsetMinutes": -360,
+   "weatherRisk": "high"
+  },
+  {
+   "city": "Los Angeles",
+   "code": "LAP",
+   "coordinate": {
+    "latitude": 33.94,
+    "longitude": -118.41
+   },
+   "country": "United States",
+   "demographics": {
+    "businessIndex": 0.88,
+    "cargoIndex": 0.8,
+    "leisureIndex": 0.8,
+    "populationThousands": 13200000,
+    "tourismIndex": 0.88
+   },
+   "movementFee": {
+    "cents": 250000
+   },
+   "name": "Los Angeles Pacifica",
+   "passengerFee": {
+    "cents": 2500
+   },
+   "region": "northAmerica",
+   "runwayClass": "veryLarge",
+   "seasonality": "summerSun",
+   "slotCapacityPerDay": 1300,
+   "terminalCapacityPerDay": 220000,
+   "utcOffsetMinutes": -480,
+   "weatherRisk": "low"
+  },
+  {
+   "city": "San Francisco",
+   "code": "SFB",
+   "coordinate": {
+    "latitude": 37.62,
+    "longitude": -122.38
+   },
+   "country": "United States",
+   "demographics": {
+    "businessIndex": 0.94,
+    "cargoIndex": 0.6,
+    "leisureIndex": 0.78,
+    "populationThousands": 4700000,
+    "tourismIndex": 0.78
+   },
+   "movementFee": {
+    "cents": 260000
+   },
+   "name": "San Francisco Baywatch",
+   "passengerFee": {
+    "cents": 2700
+   },
+   "region": "northAmerica",
+   "runwayClass": "veryLarge",
+   "seasonality": "businessFlat",
+   "slotCapacityPerDay": 900,
+   "terminalCapacityPerDay": 160000,
+   "utcOffsetMinutes": -480,
+   "weatherRisk": "high"
+  },
+  {
+   "city": "Miami",
+   "code": "MIC",
+   "coordinate": {
+    "latitude": 25.79,
+    "longitude": -80.29
+   },
+   "country": "United States",
+   "demographics": {
+    "businessIndex": 0.72,
+    "cargoIndex": 0.7,
+    "leisureIndex": 0.78,
+    "populationThousands": 6100000,
+    "tourismIndex": 0.92
+   },
+   "movementFee": {
+    "cents": 220000
+   },
+   "name": "Miami Coralline",
+   "passengerFee": {
+    "cents": 2200
+   },
+   "region": "northAmerica",
+   "runwayClass": "veryLarge",
+   "seasonality": "tropical",
+   "slotCapacityPerDay": 980,
+   "terminalCapacityPerDay": 170000,
+   "utcOffsetMinutes": -300,
+   "weatherRisk": "severe"
+  },
+  {
+   "city": "Dallas",
+   "code": "DTX",
+   "coordinate": {
+    "latitude": 32.9,
+    "longitude": -97.04
+   },
+   "country": "United States",
+   "demographics": {
+    "businessIndex": 0.86,
+    "cargoIndex": 0.75,
+    "leisureIndex": 0.72,
+    "populationThousands": 7600000,
+    "tourismIndex": 0.55
+   },
+   "movementFee": {
+    "cents": 210000
+   },
+   "name": "Dallas Prairiegate",
+   "passengerFee": {
+    "cents": 2100
+   },
+   "region": "northAmerica",
+   "runwayClass": "veryLarge",
+   "seasonality": "businessFlat",
+   "slotCapacityPerDay": 1400,
+   "terminalCapacityPerDay": 220000,
+   "utcOffsetMinutes": -360,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Atlanta",
+   "code": "ATG",
+   "coordinate": {
+    "latitude": 33.64,
+    "longitude": -84.43
+   },
+   "country": "United States",
+   "demographics": {
+    "businessIndex": 0.84,
+    "cargoIndex": 0.8,
+    "leisureIndex": 0.74,
+    "populationThousands": 6100000,
+    "tourismIndex": 0.6
+   },
+   "movementFee": {
+    "cents": 220000
+   },
+   "name": "Atlanta Peachgrove",
+   "passengerFee": {
+    "cents": 2200
+   },
+   "region": "northAmerica",
+   "runwayClass": "veryLarge",
+   "seasonality": "businessFlat",
+   "slotCapacityPerDay": 1550,
+   "terminalCapacityPerDay": 250000,
+   "utcOffsetMinutes": -300,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Seattle",
+   "code": "SEP",
+   "coordinate": {
+    "latitude": 47.45,
+    "longitude": -122.31
+   },
+   "country": "United States",
+   "demographics": {
+    "businessIndex": 0.82,
+    "cargoIndex": 0.65,
+    "leisureIndex": 0.76,
+    "populationThousands": 4000000,
+    "tourismIndex": 0.66
+   },
+   "movementFee": {
+    "cents": 210000
+   },
+   "name": "Seattle Pinecrest",
+   "passengerFee": {
+    "cents": 2100
+   },
+   "region": "northAmerica",
+   "runwayClass": "veryLarge",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 760,
+   "terminalCapacityPerDay": 130000,
+   "utcOffsetMinutes": -480,
+   "weatherRisk": "high"
+  },
+  {
+   "city": "Denver",
+   "code": "DNV",
+   "coordinate": {
+    "latitude": 39.86,
+    "longitude": -104.67
+   },
+   "country": "United States",
+   "demographics": {
+    "businessIndex": 0.74,
+    "cargoIndex": 0.55,
+    "leisureIndex": 0.74,
+    "populationThousands": 3000000,
+    "tourismIndex": 0.7
+   },
+   "movementFee": {
+    "cents": 200000
+   },
+   "name": "Denver Silverpeak",
+   "passengerFee": {
+    "cents": 2000
+   },
+   "region": "northAmerica",
+   "runwayClass": "veryLarge",
+   "seasonality": "alpine",
+   "slotCapacityPerDay": 1100,
+   "terminalCapacityPerDay": 180000,
+   "utcOffsetMinutes": -420,
+   "weatherRisk": "high"
+  },
+  {
+   "city": "Boston",
+   "code": "BSH",
+   "coordinate": {
+    "latitude": 42.36,
+    "longitude": -71.01
+   },
+   "country": "United States",
+   "demographics": {
+    "businessIndex": 0.88,
+    "cargoIndex": 0.45,
+    "leisureIndex": 0.76,
+    "populationThousands": 4900000,
+    "tourismIndex": 0.68
+   },
+   "movementFee": {
+    "cents": 230000
+   },
+   "name": "Boston Shorewind",
+   "passengerFee": {
+    "cents": 2300
+   },
+   "region": "northAmerica",
+   "runwayClass": "large",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 700,
+   "terminalCapacityPerDay": 120000,
+   "utcOffsetMinutes": -300,
+   "weatherRisk": "high"
+  },
+  {
+   "city": "Toronto",
+   "code": "TRW",
+   "coordinate": {
+    "latitude": 43.68,
+    "longitude": -79.63
+   },
+   "country": "Canada",
+   "demographics": {
+    "businessIndex": 0.84,
+    "cargoIndex": 0.65,
+    "leisureIndex": 0.78,
+    "populationThousands": 6200000,
+    "tourismIndex": 0.66
+   },
+   "movementFee": {
+    "cents": 230000
+   },
+   "name": "Toronto Waterway",
+   "passengerFee": {
+    "cents": 2300
+   },
+   "region": "northAmerica",
+   "runwayClass": "veryLarge",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 880,
+   "terminalCapacityPerDay": 150000,
+   "utcOffsetMinutes": -300,
+   "weatherRisk": "high"
+  },
+  {
+   "city": "Vancouver",
+   "code": "VCG",
+   "coordinate": {
+    "latitude": 49.19,
+    "longitude": -123.18
+   },
+   "country": "Canada",
+   "demographics": {
+    "businessIndex": 0.72,
+    "cargoIndex": 0.55,
+    "leisureIndex": 0.78,
+    "populationThousands": 2600000,
+    "tourismIndex": 0.8
+   },
+   "movementFee": {
+    "cents": 210000
+   },
+   "name": "Vancouver Cedargate",
+   "passengerFee": {
+    "cents": 2100
+   },
+   "region": "northAmerica",
+   "runwayClass": "veryLarge",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 620,
+   "terminalCapacityPerDay": 110000,
+   "utcOffsetMinutes": -480,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Montreal",
+   "code": "MTL",
+   "coordinate": {
+    "latitude": 45.47,
+    "longitude": -73.74
+   },
+   "country": "Canada",
+   "demographics": {
+    "businessIndex": 0.7,
+    "cargoIndex": 0.45,
+    "leisureIndex": 0.76,
+    "populationThousands": 4300000,
+    "tourismIndex": 0.68
+   },
+   "movementFee": {
+    "cents": 190000
+   },
+   "name": "Montreal Rivemont",
+   "passengerFee": {
+    "cents": 1900
+   },
+   "region": "northAmerica",
+   "runwayClass": "large",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 520,
+   "terminalCapacityPerDay": 95000,
+   "utcOffsetMinutes": -300,
+   "weatherRisk": "high"
+  },
+  {
+   "city": "Mexico City",
+   "code": "MXT",
+   "coordinate": {
+    "latitude": 19.44,
+    "longitude": -99.07
+   },
+   "country": "Mexico",
+   "demographics": {
+    "businessIndex": 0.68,
+    "cargoIndex": 0.6,
+    "leisureIndex": 0.66,
+    "populationThousands": 21800000,
+    "tourismIndex": 0.72
+   },
+   "movementFee": {
+    "cents": 140000
+   },
+   "name": "Mexico City Tepeyac",
+   "passengerFee": {
+    "cents": 1200
+   },
+   "region": "northAmerica",
+   "runwayClass": "veryLarge",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 900,
+   "terminalCapacityPerDay": 160000,
+   "utcOffsetMinutes": -360,
+   "weatherRisk": "low"
+  },
+  {
+   "city": "Canc\u00fan",
+   "code": "CUN",
+   "coordinate": {
+    "latitude": 21.04,
+    "longitude": -86.88
+   },
+   "country": "Mexico",
+   "demographics": {
+    "businessIndex": 0.24,
+    "cargoIndex": 0.15,
+    "leisureIndex": 0.62,
+    "populationThousands": 900000,
+    "tourismIndex": 0.98
+   },
+   "movementFee": {
+    "cents": 120000
+   },
+   "name": "Canc\u00fan Playazul",
+   "passengerFee": {
+    "cents": 1100
+   },
+   "region": "northAmerica",
+   "runwayClass": "large",
+   "seasonality": "tropical",
+   "slotCapacityPerDay": 480,
+   "terminalCapacityPerDay": 100000,
+   "utcOffsetMinutes": -300,
+   "weatherRisk": "severe"
+  },
+  {
+   "city": "S\u00e3o Paulo",
+   "code": "SPG",
+   "coordinate": {
+    "latitude": -23.43,
+    "longitude": -46.47
+   },
+   "country": "Brazil",
+   "demographics": {
+    "businessIndex": 0.8,
+    "cargoIndex": 0.7,
+    "leisureIndex": 0.66,
+    "populationThousands": 22400000,
+    "tourismIndex": 0.62
+   },
+   "movementFee": {
+    "cents": 150000
+   },
+   "name": "S\u00e3o Paulo Guaraviva",
+   "passengerFee": {
+    "cents": 1300
+   },
+   "region": "southAmerica",
+   "runwayClass": "veryLarge",
+   "seasonality": "southernSun",
+   "slotCapacityPerDay": 860,
+   "terminalCapacityPerDay": 150000,
+   "utcOffsetMinutes": -180,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Rio de Janeiro",
+   "code": "RJC",
+   "coordinate": {
+    "latitude": -22.81,
+    "longitude": -43.25
+   },
+   "country": "Brazil",
+   "demographics": {
+    "businessIndex": 0.58,
+    "cargoIndex": 0.45,
+    "leisureIndex": 0.68,
+    "populationThousands": 13600000,
+    "tourismIndex": 0.95
+   },
+   "movementFee": {
+    "cents": 140000
+   },
+   "name": "Rio de Janeiro Corcovel",
+   "passengerFee": {
+    "cents": 1200
+   },
+   "region": "southAmerica",
+   "runwayClass": "large",
+   "seasonality": "southernSun",
+   "slotCapacityPerDay": 620,
+   "terminalCapacityPerDay": 110000,
+   "utcOffsetMinutes": -180,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Buenos Aires",
+   "code": "BAP",
+   "coordinate": {
+    "latitude": -34.82,
+    "longitude": -58.54
+   },
+   "country": "Argentina",
+   "demographics": {
+    "businessIndex": 0.62,
+    "cargoIndex": 0.45,
+    "leisureIndex": 0.7,
+    "populationThousands": 15400000,
+    "tourismIndex": 0.75
+   },
+   "movementFee": {
+    "cents": 135000
+   },
+   "name": "Buenos Aires Pampero",
+   "passengerFee": {
+    "cents": 1200
+   },
+   "region": "southAmerica",
+   "runwayClass": "veryLarge",
+   "seasonality": "southernSun",
+   "slotCapacityPerDay": 640,
+   "terminalCapacityPerDay": 110000,
+   "utcOffsetMinutes": -180,
+   "weatherRisk": "low"
+  },
+  {
+   "city": "Santiago",
+   "code": "SCL",
+   "coordinate": {
+    "latitude": -33.39,
+    "longitude": -70.79
+   },
+   "country": "Chile",
+   "demographics": {
+    "businessIndex": 0.64,
+    "cargoIndex": 0.45,
+    "leisureIndex": 0.68,
+    "populationThousands": 6900000,
+    "tourismIndex": 0.66
+   },
+   "movementFee": {
+    "cents": 130000
+   },
+   "name": "Santiago Cordillera",
+   "passengerFee": {
+    "cents": 1200
+   },
+   "region": "southAmerica",
+   "runwayClass": "large",
+   "seasonality": "southernSki",
+   "slotCapacityPerDay": 520,
+   "terminalCapacityPerDay": 95000,
+   "utcOffsetMinutes": -240,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Bogot\u00e1",
+   "code": "BGT",
+   "coordinate": {
+    "latitude": 4.7,
+    "longitude": -74.15
+   },
+   "country": "Colombia",
+   "demographics": {
+    "businessIndex": 0.6,
+    "cargoIndex": 0.5,
+    "leisureIndex": 0.62,
+    "populationThousands": 11000000,
+    "tourismIndex": 0.58
+   },
+   "movementFee": {
+    "cents": 125000
+   },
+   "name": "Bogot\u00e1 Altiplano",
+   "passengerFee": {
+    "cents": 1100
+   },
+   "region": "southAmerica",
+   "runwayClass": "large",
+   "seasonality": "tropical",
+   "slotCapacityPerDay": 560,
+   "terminalCapacityPerDay": 100000,
+   "utcOffsetMinutes": -300,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Lima",
+   "code": "LMP",
+   "coordinate": {
+    "latitude": -12.02,
+    "longitude": -77.11
+   },
+   "country": "Peru",
+   "demographics": {
+    "businessIndex": 0.54,
+    "cargoIndex": 0.4,
+    "leisureIndex": 0.6,
+    "populationThousands": 10700000,
+    "tourismIndex": 0.72
+   },
+   "movementFee": {
+    "cents": 120000
+   },
+   "name": "Lima Pacifidor",
+   "passengerFee": {
+    "cents": 1100
+   },
+   "region": "southAmerica",
+   "runwayClass": "large",
+   "seasonality": "tropical",
+   "slotCapacityPerDay": 480,
+   "terminalCapacityPerDay": 90000,
+   "utcOffsetMinutes": -300,
+   "weatherRisk": "low"
+  },
+  {
+   "city": "Dubai",
+   "code": "DXG",
+   "coordinate": {
+    "latitude": 25.25,
+    "longitude": 55.36
+   },
+   "country": "United Arab Emirates",
+   "demographics": {
+    "businessIndex": 0.9,
+    "cargoIndex": 0.95,
+    "leisureIndex": 0.74,
+    "populationThousands": 3600000,
+    "tourismIndex": 0.9
+   },
+   "movementFee": {
+    "cents": 200000
+   },
+   "name": "Dubai Goldengate",
+   "passengerFee": {
+    "cents": 2000
+   },
+   "region": "middleEast",
+   "runwayClass": "veryLarge",
+   "seasonality": "desertWinter",
+   "slotCapacityPerDay": 1250,
+   "terminalCapacityPerDay": 230000,
+   "utcOffsetMinutes": 240,
+   "weatherRisk": "low"
+  },
+  {
+   "city": "Doha",
+   "code": "DOP",
+   "coordinate": {
+    "latitude": 25.27,
+    "longitude": 51.61
+   },
+   "country": "Qatar",
+   "demographics": {
+    "businessIndex": 0.82,
+    "cargoIndex": 0.85,
+    "leisureIndex": 0.68,
+    "populationThousands": 2400000,
+    "tourismIndex": 0.62
+   },
+   "movementFee": {
+    "cents": 190000
+   },
+   "name": "Doha Pearlport",
+   "passengerFee": {
+    "cents": 1900
+   },
+   "region": "middleEast",
+   "runwayClass": "veryLarge",
+   "seasonality": "desertWinter",
+   "slotCapacityPerDay": 820,
+   "terminalCapacityPerDay": 150000,
+   "utcOffsetMinutes": 180,
+   "weatherRisk": "low"
+  },
+  {
+   "city": "Riyadh",
+   "code": "RYD",
+   "coordinate": {
+    "latitude": 24.96,
+    "longitude": 46.7
+   },
+   "country": "Saudi Arabia",
+   "demographics": {
+    "businessIndex": 0.78,
+    "cargoIndex": 0.6,
+    "leisureIndex": 0.62,
+    "populationThousands": 7700000,
+    "tourismIndex": 0.42
+   },
+   "movementFee": {
+    "cents": 160000
+   },
+   "name": "Riyadh Najdgate",
+   "passengerFee": {
+    "cents": 1500
+   },
+   "region": "middleEast",
+   "runwayClass": "veryLarge",
+   "seasonality": "desertWinter",
+   "slotCapacityPerDay": 700,
+   "terminalCapacityPerDay": 120000,
+   "utcOffsetMinutes": 180,
+   "weatherRisk": "low"
+  },
+  {
+   "city": "Tel Aviv",
+   "code": "TLR",
+   "coordinate": {
+    "latitude": 32.01,
+    "longitude": 34.89
+   },
+   "country": "Israel",
+   "demographics": {
+    "businessIndex": 0.78,
+    "cargoIndex": 0.45,
+    "leisureIndex": 0.74,
+    "populationThousands": 4300000,
+    "tourismIndex": 0.72
+   },
+   "movementFee": {
+    "cents": 170000
+   },
+   "name": "Tel Aviv Roshaviv",
+   "passengerFee": {
+    "cents": 1700
+   },
+   "region": "middleEast",
+   "runwayClass": "large",
+   "seasonality": "summerSun",
+   "slotCapacityPerDay": 480,
+   "terminalCapacityPerDay": 90000,
+   "utcOffsetMinutes": 120,
+   "weatherRisk": "low"
+  },
+  {
+   "city": "Cairo",
+   "code": "CAN",
+   "coordinate": {
+    "latitude": 30.12,
+    "longitude": 31.41
+   },
+   "country": "Egypt",
+   "demographics": {
+    "businessIndex": 0.58,
+    "cargoIndex": 0.5,
+    "leisureIndex": 0.56,
+    "populationThousands": 21300000,
+    "tourismIndex": 0.85
+   },
+   "movementFee": {
+    "cents": 120000
+   },
+   "name": "Cairo Nilecrest",
+   "passengerFee": {
+    "cents": 1000
+   },
+   "region": "africa",
+   "runwayClass": "veryLarge",
+   "seasonality": "desertWinter",
+   "slotCapacityPerDay": 620,
+   "terminalCapacityPerDay": 110000,
+   "utcOffsetMinutes": 120,
+   "weatherRisk": "low"
+  },
+  {
+   "city": "Johannesburg",
+   "code": "JBG",
+   "coordinate": {
+    "latitude": -26.14,
+    "longitude": 28.25
+   },
+   "country": "South Africa",
+   "demographics": {
+    "businessIndex": 0.68,
+    "cargoIndex": 0.6,
+    "leisureIndex": 0.6,
+    "populationThousands": 10100000,
+    "tourismIndex": 0.6
+   },
+   "movementFee": {
+    "cents": 130000
+   },
+   "name": "Johannesburg Goldreef",
+   "passengerFee": {
+    "cents": 1200
+   },
+   "region": "africa",
+   "runwayClass": "veryLarge",
+   "seasonality": "southernSun",
+   "slotCapacityPerDay": 560,
+   "terminalCapacityPerDay": 100000,
+   "utcOffsetMinutes": 120,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Cape Town",
+   "code": "CPT",
+   "coordinate": {
+    "latitude": -33.97,
+    "longitude": 18.6
+   },
+   "country": "South Africa",
+   "demographics": {
+    "businessIndex": 0.52,
+    "cargoIndex": 0.35,
+    "leisureIndex": 0.64,
+    "populationThousands": 4800000,
+    "tourismIndex": 0.92
+   },
+   "movementFee": {
+    "cents": 125000
+   },
+   "name": "Cape Town Tafelberg",
+   "passengerFee": {
+    "cents": 1200
+   },
+   "region": "africa",
+   "runwayClass": "large",
+   "seasonality": "southernSun",
+   "slotCapacityPerDay": 420,
+   "terminalCapacityPerDay": 80000,
+   "utcOffsetMinutes": 120,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Nairobi",
+   "code": "NBK",
+   "coordinate": {
+    "latitude": -1.32,
+    "longitude": 36.93
+   },
+   "country": "Kenya",
+   "demographics": {
+    "businessIndex": 0.54,
+    "cargoIndex": 0.5,
+    "leisureIndex": 0.54,
+    "populationThousands": 5100000,
+    "tourismIndex": 0.72
+   },
+   "movementFee": {
+    "cents": 115000
+   },
+   "name": "Nairobi Kilimani",
+   "passengerFee": {
+    "cents": 1000
+   },
+   "region": "africa",
+   "runwayClass": "large",
+   "seasonality": "tropical",
+   "slotCapacityPerDay": 380,
+   "terminalCapacityPerDay": 70000,
+   "utcOffsetMinutes": 180,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Lagos",
+   "code": "LGS",
+   "coordinate": {
+    "latitude": 6.58,
+    "longitude": 3.32
+   },
+   "country": "Nigeria",
+   "demographics": {
+    "businessIndex": 0.6,
+    "cargoIndex": 0.55,
+    "leisureIndex": 0.52,
+    "populationThousands": 15400000,
+    "tourismIndex": 0.42
+   },
+   "movementFee": {
+    "cents": 110000
+   },
+   "name": "Lagos Sandgrove",
+   "passengerFee": {
+    "cents": 1000
+   },
+   "region": "africa",
+   "runwayClass": "large",
+   "seasonality": "tropical",
+   "slotCapacityPerDay": 460,
+   "terminalCapacityPerDay": 85000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Casablanca",
+   "code": "CSB",
+   "coordinate": {
+    "latitude": 33.37,
+    "longitude": -7.59
+   },
+   "country": "Morocco",
+   "demographics": {
+    "businessIndex": 0.52,
+    "cargoIndex": 0.4,
+    "leisureIndex": 0.6,
+    "populationThousands": 3800000,
+    "tourismIndex": 0.7
+   },
+   "movementFee": {
+    "cents": 115000
+   },
+   "name": "Casablanca Atlantide",
+   "passengerFee": {
+    "cents": 1000
+   },
+   "region": "africa",
+   "runwayClass": "large",
+   "seasonality": "summerSun",
+   "slotCapacityPerDay": 380,
+   "terminalCapacityPerDay": 70000,
+   "utcOffsetMinutes": 0,
+   "weatherRisk": "low"
+  },
+  {
+   "city": "Addis Ababa",
+   "code": "ADD",
+   "coordinate": {
+    "latitude": 8.98,
+    "longitude": 38.8
+   },
+   "country": "Ethiopia",
+   "demographics": {
+    "businessIndex": 0.5,
+    "cargoIndex": 0.6,
+    "leisureIndex": 0.48,
+    "populationThousands": 5200000,
+    "tourismIndex": 0.48
+   },
+   "movementFee": {
+    "cents": 105000
+   },
+   "name": "Addis Ababa Entoto",
+   "passengerFee": {
+    "cents": 900
+   },
+   "region": "africa",
+   "runwayClass": "large",
+   "seasonality": "tropical",
+   "slotCapacityPerDay": 420,
+   "terminalCapacityPerDay": 75000,
+   "utcOffsetMinutes": 180,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Delhi",
+   "code": "DLR",
+   "coordinate": {
+    "latitude": 28.57,
+    "longitude": 77.11
+   },
+   "country": "India",
+   "demographics": {
+    "businessIndex": 0.74,
+    "cargoIndex": 0.75,
+    "leisureIndex": 0.58,
+    "populationThousands": 31200000,
+    "tourismIndex": 0.72
+   },
+   "movementFee": {
+    "cents": 130000
+   },
+   "name": "Delhi Rajpath",
+   "passengerFee": {
+    "cents": 1000
+   },
+   "region": "southAsia",
+   "runwayClass": "veryLarge",
+   "seasonality": "monsoon",
+   "slotCapacityPerDay": 1050,
+   "terminalCapacityPerDay": 190000,
+   "utcOffsetMinutes": 330,
+   "weatherRisk": "high"
+  },
+  {
+   "city": "Mumbai",
+   "code": "BMB",
+   "coordinate": {
+    "latitude": 19.09,
+    "longitude": 72.87
+   },
+   "country": "India",
+   "demographics": {
+    "businessIndex": 0.78,
+    "cargoIndex": 0.75,
+    "leisureIndex": 0.56,
+    "populationThousands": 20700000,
+    "tourismIndex": 0.65
+   },
+   "movementFee": {
+    "cents": 135000
+   },
+   "name": "Mumbai Sagarmala",
+   "passengerFee": {
+    "cents": 1100
+   },
+   "region": "southAsia",
+   "runwayClass": "veryLarge",
+   "seasonality": "monsoon",
+   "slotCapacityPerDay": 900,
+   "terminalCapacityPerDay": 160000,
+   "utcOffsetMinutes": 330,
+   "weatherRisk": "high"
+  },
+  {
+   "city": "Bengaluru",
+   "code": "BLR",
+   "coordinate": {
+    "latitude": 13.2,
+    "longitude": 77.71
+   },
+   "country": "India",
+   "demographics": {
+    "businessIndex": 0.76,
+    "cargoIndex": 0.6,
+    "leisureIndex": 0.58,
+    "populationThousands": 13200000,
+    "tourismIndex": 0.52
+   },
+   "movementFee": {
+    "cents": 125000
+   },
+   "name": "Bengaluru Silvangarden",
+   "passengerFee": {
+    "cents": 1000
+   },
+   "region": "southAsia",
+   "runwayClass": "large",
+   "seasonality": "tropical",
+   "slotCapacityPerDay": 620,
+   "terminalCapacityPerDay": 110000,
+   "utcOffsetMinutes": 330,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Colombo",
+   "code": "CLB",
+   "coordinate": {
+    "latitude": 7.18,
+    "longitude": 79.88
+   },
+   "country": "Sri Lanka",
+   "demographics": {
+    "businessIndex": 0.4,
+    "cargoIndex": 0.3,
+    "leisureIndex": 0.52,
+    "populationThousands": 2400000,
+    "tourismIndex": 0.85
+   },
+   "movementFee": {
+    "cents": 100000
+   },
+   "name": "Colombo Lagoonside",
+   "passengerFee": {
+    "cents": 900
+   },
+   "region": "southAsia",
+   "runwayClass": "large",
+   "seasonality": "monsoon",
+   "slotCapacityPerDay": 300,
+   "terminalCapacityPerDay": 55000,
+   "utcOffsetMinutes": 330,
+   "weatherRisk": "high"
+  },
+  {
+   "city": "Tokyo",
+   "code": "TKH",
+   "coordinate": {
+    "latitude": 35.55,
+    "longitude": 139.78
+   },
+   "country": "Japan",
+   "demographics": {
+    "businessIndex": 0.94,
+    "cargoIndex": 0.85,
+    "leisureIndex": 0.78,
+    "populationThousands": 37300000,
+    "tourismIndex": 0.88
+   },
+   "movementFee": {
+    "cents": 250000
+   },
+   "name": "Tokyo Hanedagawa",
+   "passengerFee": {
+    "cents": 2400
+   },
+   "region": "eastAsia",
+   "runwayClass": "veryLarge",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 1300,
+   "terminalCapacityPerDay": 230000,
+   "utcOffsetMinutes": 540,
+   "weatherRisk": "high"
+  },
+  {
+   "city": "Osaka",
+   "code": "OSK",
+   "coordinate": {
+    "latitude": 34.43,
+    "longitude": 135.24
+   },
+   "country": "Japan",
+   "demographics": {
+    "businessIndex": 0.82,
+    "cargoIndex": 0.7,
+    "leisureIndex": 0.74,
+    "populationThousands": 19100000,
+    "tourismIndex": 0.75
+   },
+   "movementFee": {
+    "cents": 230000
+   },
+   "name": "Osaka Kansaiko",
+   "passengerFee": {
+    "cents": 2200
+   },
+   "region": "eastAsia",
+   "runwayClass": "veryLarge",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 760,
+   "terminalCapacityPerDay": 140000,
+   "utcOffsetMinutes": 540,
+   "weatherRisk": "high"
+  },
+  {
+   "city": "Seoul",
+   "code": "SEI",
+   "coordinate": {
+    "latitude": 37.46,
+    "longitude": 126.44
+   },
+   "country": "South Korea",
+   "demographics": {
+    "businessIndex": 0.88,
+    "cargoIndex": 0.85,
+    "leisureIndex": 0.76,
+    "populationThousands": 25500000,
+    "tourismIndex": 0.72
+   },
+   "movementFee": {
+    "cents": 230000
+   },
+   "name": "Seoul Inchedo",
+   "passengerFee": {
+    "cents": 2200
+   },
+   "region": "eastAsia",
+   "runwayClass": "veryLarge",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 980,
+   "terminalCapacityPerDay": 180000,
+   "utcOffsetMinutes": 540,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Beijing",
+   "code": "BJC",
+   "coordinate": {
+    "latitude": 40.08,
+    "longitude": 116.58
+   },
+   "country": "China",
+   "demographics": {
+    "businessIndex": 0.88,
+    "cargoIndex": 0.85,
+    "leisureIndex": 0.68,
+    "populationThousands": 20900000,
+    "tourismIndex": 0.8
+   },
+   "movementFee": {
+    "cents": 200000
+   },
+   "name": "Beijing Capitaline",
+   "passengerFee": {
+    "cents": 1800
+   },
+   "region": "eastAsia",
+   "runwayClass": "veryLarge",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 1250,
+   "terminalCapacityPerDay": 220000,
+   "utcOffsetMinutes": 480,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Shanghai",
+   "code": "SHP",
+   "coordinate": {
+    "latitude": 31.14,
+    "longitude": 121.81
+   },
+   "country": "China",
+   "demographics": {
+    "businessIndex": 0.92,
+    "cargoIndex": 0.95,
+    "leisureIndex": 0.7,
+    "populationThousands": 28500000,
+    "tourismIndex": 0.75
+   },
+   "movementFee": {
+    "cents": 210000
+   },
+   "name": "Shanghai Pudongxi",
+   "passengerFee": {
+    "cents": 1900
+   },
+   "region": "eastAsia",
+   "runwayClass": "veryLarge",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 1250,
+   "terminalCapacityPerDay": 220000,
+   "utcOffsetMinutes": 480,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Hong Kong",
+   "code": "HKV",
+   "coordinate": {
+    "latitude": 22.31,
+    "longitude": 113.91
+   },
+   "country": "China",
+   "demographics": {
+    "businessIndex": 0.92,
+    "cargoIndex": 0.95,
+    "leisureIndex": 0.76,
+    "populationThousands": 7500000,
+    "tourismIndex": 0.82
+   },
+   "movementFee": {
+    "cents": 240000
+   },
+   "name": "Hong Kong Victoriabay",
+   "passengerFee": {
+    "cents": 2300
+   },
+   "region": "eastAsia",
+   "runwayClass": "veryLarge",
+   "seasonality": "tropical",
+   "slotCapacityPerDay": 900,
+   "terminalCapacityPerDay": 170000,
+   "utcOffsetMinutes": 480,
+   "weatherRisk": "severe"
+  },
+  {
+   "city": "Taipei",
+   "code": "TPF",
+   "coordinate": {
+    "latitude": 25.08,
+    "longitude": 121.23
+   },
+   "country": "Taiwan",
+   "demographics": {
+    "businessIndex": 0.84,
+    "cargoIndex": 0.85,
+    "leisureIndex": 0.72,
+    "populationThousands": 7000000,
+    "tourismIndex": 0.66
+   },
+   "movementFee": {
+    "cents": 210000
+   },
+   "name": "Taipei Formosagate",
+   "passengerFee": {
+    "cents": 2000
+   },
+   "region": "eastAsia",
+   "runwayClass": "veryLarge",
+   "seasonality": "tropical",
+   "slotCapacityPerDay": 700,
+   "terminalCapacityPerDay": 130000,
+   "utcOffsetMinutes": 480,
+   "weatherRisk": "severe"
+  },
+  {
+   "city": "Singapore",
+   "code": "SGM",
+   "coordinate": {
+    "latitude": 1.36,
+    "longitude": 103.99
+   },
+   "country": "Singapore",
+   "demographics": {
+    "businessIndex": 0.94,
+    "cargoIndex": 0.95,
+    "leisureIndex": 0.78,
+    "populationThousands": 5900000,
+    "tourismIndex": 0.88
+   },
+   "movementFee": {
+    "cents": 250000
+   },
+   "name": "Singapore Merlionport",
+   "passengerFee": {
+    "cents": 2400
+   },
+   "region": "southeastAsia",
+   "runwayClass": "veryLarge",
+   "seasonality": "tropical",
+   "slotCapacityPerDay": 1050,
+   "terminalCapacityPerDay": 190000,
+   "utcOffsetMinutes": 480,
+   "weatherRisk": "low"
+  },
+  {
+   "city": "Bangkok",
+   "code": "BKS",
+   "coordinate": {
+    "latitude": 13.69,
+    "longitude": 100.75
+   },
+   "country": "Thailand",
+   "demographics": {
+    "businessIndex": 0.66,
+    "cargoIndex": 0.65,
+    "leisureIndex": 0.66,
+    "populationThousands": 10700000,
+    "tourismIndex": 0.95
+   },
+   "movementFee": {
+    "cents": 150000
+   },
+   "name": "Bangkok Siamsong",
+   "passengerFee": {
+    "cents": 1300
+   },
+   "region": "southeastAsia",
+   "runwayClass": "veryLarge",
+   "seasonality": "monsoon",
+   "slotCapacityPerDay": 950,
+   "terminalCapacityPerDay": 170000,
+   "utcOffsetMinutes": 420,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Kuala Lumpur",
+   "code": "KLS",
+   "coordinate": {
+    "latitude": 2.75,
+    "longitude": 101.71
+   },
+   "country": "Malaysia",
+   "demographics": {
+    "businessIndex": 0.68,
+    "cargoIndex": 0.65,
+    "leisureIndex": 0.64,
+    "populationThousands": 8300000,
+    "tourismIndex": 0.75
+   },
+   "movementFee": {
+    "cents": 140000
+   },
+   "name": "Kuala Lumpur Selatan",
+   "passengerFee": {
+    "cents": 1200
+   },
+   "region": "southeastAsia",
+   "runwayClass": "veryLarge",
+   "seasonality": "tropical",
+   "slotCapacityPerDay": 760,
+   "terminalCapacityPerDay": 140000,
+   "utcOffsetMinutes": 480,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Jakarta",
+   "code": "JKG",
+   "coordinate": {
+    "latitude": -6.13,
+    "longitude": 106.66
+   },
+   "country": "Indonesia",
+   "demographics": {
+    "businessIndex": 0.66,
+    "cargoIndex": 0.65,
+    "leisureIndex": 0.58,
+    "populationThousands": 34500000,
+    "tourismIndex": 0.6
+   },
+   "movementFee": {
+    "cents": 130000
+   },
+   "name": "Jakarta Garudapura",
+   "passengerFee": {
+    "cents": 1100
+   },
+   "region": "southeastAsia",
+   "runwayClass": "veryLarge",
+   "seasonality": "monsoon",
+   "slotCapacityPerDay": 860,
+   "terminalCapacityPerDay": 150000,
+   "utcOffsetMinutes": 420,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Manila",
+   "code": "MNB",
+   "coordinate": {
+    "latitude": 14.51,
+    "longitude": 121.02
+   },
+   "country": "Philippines",
+   "demographics": {
+    "businessIndex": 0.6,
+    "cargoIndex": 0.55,
+    "leisureIndex": 0.58,
+    "populationThousands": 24300000,
+    "tourismIndex": 0.66
+   },
+   "movementFee": {
+    "cents": 125000
+   },
+   "name": "Manila Baywalk",
+   "passengerFee": {
+    "cents": 1100
+   },
+   "region": "southeastAsia",
+   "runwayClass": "large",
+   "seasonality": "monsoon",
+   "slotCapacityPerDay": 640,
+   "terminalCapacityPerDay": 110000,
+   "utcOffsetMinutes": 480,
+   "weatherRisk": "severe"
+  },
+  {
+   "city": "Ho Chi Minh City",
+   "code": "HCS",
+   "coordinate": {
+    "latitude": 10.82,
+    "longitude": 106.65
+   },
+   "country": "Vietnam",
+   "demographics": {
+    "businessIndex": 0.62,
+    "cargoIndex": 0.55,
+    "leisureIndex": 0.58,
+    "populationThousands": 9300000,
+    "tourismIndex": 0.72
+   },
+   "movementFee": {
+    "cents": 120000
+   },
+   "name": "Ho Chi Minh Saigonport",
+   "passengerFee": {
+    "cents": 1000
+   },
+   "region": "southeastAsia",
+   "runwayClass": "large",
+   "seasonality": "monsoon",
+   "slotCapacityPerDay": 620,
+   "terminalCapacityPerDay": 110000,
+   "utcOffsetMinutes": 420,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Denpasar",
+   "code": "DPB",
+   "coordinate": {
+    "latitude": -8.75,
+    "longitude": 115.17
+   },
+   "country": "Indonesia",
+   "demographics": {
+    "businessIndex": 0.26,
+    "cargoIndex": 0.2,
+    "leisureIndex": 0.56,
+    "populationThousands": 730000,
+    "tourismIndex": 0.98
+   },
+   "movementFee": {
+    "cents": 115000
+   },
+   "name": "Denpasar Balindra",
+   "passengerFee": {
+    "cents": 1000
+   },
+   "region": "southeastAsia",
+   "runwayClass": "large",
+   "seasonality": "tropical",
+   "slotCapacityPerDay": 420,
+   "terminalCapacityPerDay": 85000,
+   "utcOffsetMinutes": 480,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Sydney",
+   "code": "SYH",
+   "coordinate": {
+    "latitude": -33.95,
+    "longitude": 151.18
+   },
+   "country": "Australia",
+   "demographics": {
+    "businessIndex": 0.84,
+    "cargoIndex": 0.6,
+    "leisureIndex": 0.78,
+    "populationThousands": 5300000,
+    "tourismIndex": 0.85
+   },
+   "movementFee": {
+    "cents": 230000
+   },
+   "name": "Sydney Harborview",
+   "passengerFee": {
+    "cents": 2300
+   },
+   "region": "oceania",
+   "runwayClass": "veryLarge",
+   "seasonality": "southernSun",
+   "slotCapacityPerDay": 860,
+   "terminalCapacityPerDay": 150000,
+   "utcOffsetMinutes": 600,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Melbourne",
+   "code": "MLB",
+   "coordinate": {
+    "latitude": -37.67,
+    "longitude": 144.84
+   },
+   "country": "Australia",
+   "demographics": {
+    "businessIndex": 0.8,
+    "cargoIndex": 0.55,
+    "leisureIndex": 0.76,
+    "populationThousands": 5100000,
+    "tourismIndex": 0.72
+   },
+   "movementFee": {
+    "cents": 220000
+   },
+   "name": "Melbourne Yarraside",
+   "passengerFee": {
+    "cents": 2200
+   },
+   "region": "oceania",
+   "runwayClass": "veryLarge",
+   "seasonality": "southernSun",
+   "slotCapacityPerDay": 760,
+   "terminalCapacityPerDay": 130000,
+   "utcOffsetMinutes": 600,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Auckland",
+   "code": "AKW",
+   "coordinate": {
+    "latitude": -37.01,
+    "longitude": 174.79
+   },
+   "country": "New Zealand",
+   "demographics": {
+    "businessIndex": 0.62,
+    "cargoIndex": 0.45,
+    "leisureIndex": 0.74,
+    "populationThousands": 1700000,
+    "tourismIndex": 0.82
+   },
+   "movementFee": {
+    "cents": 190000
+   },
+   "name": "Auckland Waiheke",
+   "passengerFee": {
+    "cents": 1900
+   },
+   "region": "oceania",
+   "runwayClass": "large",
+   "seasonality": "southernSun",
+   "slotCapacityPerDay": 460,
+   "terminalCapacityPerDay": 85000,
+   "utcOffsetMinutes": 720,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Nadi",
+   "code": "NAN",
+   "coordinate": {
+    "latitude": -17.75,
+    "longitude": 177.44
+   },
+   "country": "Fiji",
+   "demographics": {
+    "businessIndex": 0.16,
+    "cargoIndex": 0.1,
+    "leisureIndex": 0.5,
+    "populationThousands": 90000,
+    "tourismIndex": 0.95
+   },
+   "movementFee": {
+    "cents": 100000
+   },
+   "name": "Nadi Coralhaven",
+   "passengerFee": {
+    "cents": 900
+   },
+   "region": "oceania",
+   "runwayClass": "medium",
+   "seasonality": "tropical",
+   "slotCapacityPerDay": 160,
+   "terminalCapacityPerDay": 30000,
+   "utcOffsetMinutes": 720,
+   "weatherRisk": "severe"
+  }
+ ],
+ "version": "world-1"
+}

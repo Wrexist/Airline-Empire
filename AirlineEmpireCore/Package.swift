@@ -9,7 +9,10 @@ let package = Package(
     ],
     targets: [
         // Swift 6 language mode: strict concurrency is on by default.
-        .target(name: "AirlineEmpireCore"),
+        .target(
+            name: "AirlineEmpireCore",
+            resources: [.process("Resources")]
+        ),
         .testTarget(
             name: "AirlineEmpireCoreTests",
             dependencies: ["AirlineEmpireCore"]

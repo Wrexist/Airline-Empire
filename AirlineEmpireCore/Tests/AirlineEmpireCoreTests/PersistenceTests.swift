@@ -62,7 +62,7 @@ struct PersistenceTests {
         let codec = JSONSaveCodec()
         let data = try codec.encode(Fixtures.newState())
         let string = String(data: data, encoding: .utf8)!
-            .replacingOccurrences(of: "\"formatVersion\":1", with: "\"formatVersion\":999")
+            .replacingOccurrences(of: "\"formatVersion\":\(SaveFormat.currentVersion)", with: "\"formatVersion\":999")
         // Checksum still matches (payload untouched) so the version check is
         // what must fire.
         #expect(throws: SaveError.unsupportedVersion(999)) {

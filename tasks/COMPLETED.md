@@ -76,3 +76,16 @@ continuation equality test green; RNG substream-collapse bug caught by the
 new tests and fixed in StableHash.combine.
 **Tests:** 57 (time/calendar, money, RNG, schedule queue, engine,
 command coding, persistence, session).
+
+---
+
+## AE-005
+**Title:** Phase 4 — World and Airport System
+**Completed:** 2026-08-25
+**Outcome:** Data-driven world layer per docs/AIRPORTS.md: content types +
+validating ContentCatalog, 80-airport dataset (9 regions, fictionalized
+names over real geography), seasonality profiles with neutrality contract,
+haversine distances (whole-km deterministic), route eligibility with full
+reason lists, slot allocation ledger, deterministic dict encoding, save v2.
+**Tests:** 82 passing (25 new: geo, catalog validation, eligibility, slots,
+deterministic world-state saves).

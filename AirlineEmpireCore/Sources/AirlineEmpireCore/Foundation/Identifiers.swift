@@ -84,3 +84,48 @@ public struct IDAllocator: Hashable, Codable, Sendable {
     public mutating func allocateRouteID() -> RouteID { allocate(kind: "route") }
     public mutating func allocateFlightID() -> FlightID { allocate(kind: "flight") }
 }
+
+// Dictionary keys: with CodingKeyRepresentable, [EntityID: V] and
+// [ContentCode: V] encode as JSON objects (string-keyed), which — combined
+// with .sortedKeys — keeps every state encoding byte-deterministic.
+// Without this, Codable encodes such dictionaries as flat arrays in
+// dictionary iteration order, which is process-random and would break the
+// stateHash determinism oracle.
+extension EntityID: CodingKeyRepresentable {
+    public var codingKey: any CodingKey { IndexKey(intValue: Int(raw)) }
+
+    public init?<T: CodingKey>(codingKey: T) {
+        // JSON object keys decode as strings even for numeric keys.
+        if let value = codingKey.intValue {
+            self.init(raw: Int64(value))
+        } else if let value = Int64(codingKey.stringValue) {
+            self.init(raw: value)
+        } else {
+            return nil
+        }
+    }
+}
+
+extension ContentCode: CodingKeyRepresentable {
+    public var codingKey: any CodingKey { IndexKey(stringValue: raw) }
+
+    public init?<T: CodingKey>(codingKey: T) {
+        self.init(codingKey.stringValue)
+    }
+}
+
+/// Minimal CodingKey carrier for the conformances above.
+struct IndexKey: CodingKey {
+    var stringValue: String
+    var intValue: Int?
+
+    init(stringValue: String) {
+        self.stringValue = stringValue
+        self.intValue = nil
+    }
+
+    init(intValue: Int) {
+        self.stringValue = String(intValue)
+        self.intValue = intValue
+    }
+}

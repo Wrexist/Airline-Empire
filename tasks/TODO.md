@@ -93,4 +93,21 @@ regional classification; tests for distance/capacity/slots/invalid
 routes/lookup; docs/AIRPORTS.md; offline-only.
 **Tests:** geographic math, capacity/slot invariants, invalid data rejection,
 lookup, eligibility edge cases.
+**Status:** COMPLETE 2026-08-25 — moved to COMPLETED.md.
+
+---
+
+## AE-006
+**Title:** Phase 5 — Aircraft and Fleet System
+**Purpose:** Data-driven aircraft types + fleet lifecycle (buy/lease/sell,
+assignment, availability, age, condition, maintenance state, reliability,
+utilization, operating cost, lifecycle states) per Master Prompt 5.
+**Dependencies:** AE-005 (world) — complete.
+**Acceptance criteria:** AircraftTypeSpec content with all designed
+attributes; Airline + Aircraft runtime entities; purchase/lease/sell
+commands through the command pipeline with ledger-ready cost hooks;
+aging/depreciation/reliability model; integration with kernel; tests incl.
+expensive edge cases; docs/AIRCRAFT.md.
+**Tests:** acquisition validation, lifecycle transitions, depreciation
+curve, availability rules, save round-trip with fleet.
 **Status:** OPEN — next up.

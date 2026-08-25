@@ -10,15 +10,18 @@ public struct GameState: Equatable, Codable, Sendable {
     public var rng: RNGState
     public var schedule: ScheduleQueue
     public var eventLog: BoundedEventLog
+    public var world: WorldState
 
     public init(meta: GameMeta, clock: ClockState, rng: RNGState,
                 schedule: ScheduleQueue = ScheduleQueue(),
-                eventLog: BoundedEventLog = BoundedEventLog(capacity: BoundedEventLog.defaultCapacity)) {
+                eventLog: BoundedEventLog = BoundedEventLog(capacity: BoundedEventLog.defaultCapacity),
+                world: WorldState = WorldState()) {
         self.meta = meta
         self.clock = clock
         self.rng = rng
         self.schedule = schedule
         self.eventLog = eventLog
+        self.world = world
     }
 
     /// The game date at the current simulation time.
@@ -37,6 +40,7 @@ public struct GameState: Equatable, Codable, Sendable {
         if !schedule.isWellOrdered {
             violations.append("Schedule queue ordering broken")
         }
+        violations.append(contentsOf: world.integrityViolations())
         return violations
     }
 }
