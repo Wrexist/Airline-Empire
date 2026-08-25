@@ -186,3 +186,13 @@ offers; game over wired to solvency collapse.
 a real shipping migration, session autosave. The player cannot lose
 meaningful progress to normal termination.
 **Tests:** 186 passing (9 new).
+
+---
+
+## AE-016/AE-017 (partial — authored)
+**Title:** Phases 14-15 — UI + Map (Core portions complete)
+**Date:** 2026-08-25
+**Outcome:** Read models + map math shipped and tested in Core (the
+testable 40%% of these phases); complete app target authored with honest
+pending-validation status. Not marked done: rule 19 (and B-002) - nothing
+uncompiled counts as complete.

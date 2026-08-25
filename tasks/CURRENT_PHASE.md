@@ -1,14 +1,15 @@
 # Current Phase
 
-**Phase 13 — Save System and Offline Persistence: COMPLETE** (2026-08-25)
+**Phases 14-15 — UI Architecture & World Map: AUTHORED** (2026-08-25)
 
-FileSaveStore (atomic writes, backup rotation, slots, meta), SaveManager
-(honest generation reporting on recovery), MigrationChain with real v9->v10
-migration wired into the codec, GameSession autosave + manual saves.
-See docs/PERSISTENCE_ARCHITECTURE.md §8.
+Core-side presentation layer complete and tested (read models, map model
+with great-circle math and flight interpolation, session world bootstrap).
+Full SwiftUI app target authored (12 sources + XcodeGen manifest) but NOT
+compiled - SwiftUI requires macOS (B-002). AE-016/AE-017 stay open for the
+macOS validation pass; AirlineEmpireApp/README.md has the exact steps.
 
-**Build:** clean. **Tests:** 186/186.
+**Tests:** 195/195 (Core).
 
-**Next phase: Phase 14 — Main UI Architecture** (AE-016). NOTE: SwiftUI
-compilation requires macOS (B-002); the Linux session authors sources and
-Core-side read models, validation deferred to a macOS session.
+**Next executable phase here: Phase 18 - Balance & Stress Testing**
+(headless). Phases 16-17 (UX polish, art direction) require the running
+app and queue behind the macOS validation with 14-15.

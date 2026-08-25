@@ -1,0 +1,22 @@
+# XcodeGen manifest — generate the Xcode project on macOS with:
+#   brew install xcodegen && xcodegen generate
+name: AirlineEmpire
+options:
+  bundleIdPrefix: com.airlineempire
+  deploymentTarget:
+    iOS: "17.0"
+packages:
+  AirlineEmpireCore:
+    path: ../AirlineEmpireCore
+targets:
+  AirlineEmpire:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    dependencies:
+      - package: AirlineEmpireCore
+    settings:
+      base:
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        TARGETED_DEVICE_FAMILY: "1,2"

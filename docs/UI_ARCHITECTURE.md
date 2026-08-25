@@ -90,3 +90,38 @@ Clarity over decoration; every number tappable to its explanation (ledger
 category, demand breakdown); every action answers *what happened, why, what
 changed, what next* (Phase 16 checklist); empty states teach; the map is the
 emotional centerpiece — "I built this network".
+
+---
+
+## 7. As-built status (Phases 14–15, authored on Linux)
+
+**Core side (test-verified, 195 tests):**
+- Read models (`ReadModels.swift`): `DashboardModel`, `RouteCardModel`
+  (with the exact P&L breakdown the detail screen shows),
+  `FleetCardModel`, `FinanceModel` — every number a screen presents is
+  computed and tested in Core.
+- Map model (`MapModel.swift`): equirectangular `MapPoint` space,
+  great-circle arcs (LON–NYC arcs north, verified), initial-course
+  headings, per-snapshot `mapModel(catalog:)` with LOD prominence,
+  player-network marking, closure flags, and airborne-flight positions
+  interpolated by flight-time fraction (presentation-only).
+- `GameSession.populateStandardWorld(competitors:)` bootstraps the
+  competitor cast for the app's new-game flow.
+
+**App side (`AirlineEmpireApp/`, authored, NOT compiled — B-002):**
+XcodeGen manifest + 12 SwiftUI sources: composition root with scene-phase
+autosave and a 4 Hz pump task; design tokens + component library (cards,
+stat tiles, badges, money text, monthly bars, empty states, speed control);
+screens: new game (curated starts, seed sharing, continue slots),
+dashboard (digest header, stat grid, curated ops feed), routes (list →
+detail with fare/frequency controls and the why-money breakdown → ≤4-tap
+open-route sheet), fleet (status/swipe actions, era-aware aircraft market),
+finance (statement rows, loan desk quoting the simulation's exact rate),
+world (events, competitors, progression incl. capability starts, service &
+reputation, save), map (zoomable Canvas rendering MapModel with LOD,
+selection callouts, rotated live aircraft), game-over screen.
+
+**Open item (AE-016/AE-017):** first macOS session generates the project
+(`xcodegen`), compiles, fixes view-layer syntax issues, and validates the
+new-game → route → fast-forward flow on simulator. Until then these phases
+are *authored*, not done.

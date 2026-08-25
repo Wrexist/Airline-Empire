@@ -46,8 +46,8 @@ Neither agent may blindly trust previous work.
 | 11 | Events and Living World | Opus | **COMPLETE** (2026-08-25) |
 | 12 | Progression, Research and Long-Term Goals | Opus | **COMPLETE** (2026-08-25) |
 | 13 | Save System and Offline Persistence | Opus | **COMPLETE** (2026-08-25) |
-| 14 | Main UI Architecture | Opus | NOT STARTED (macOS required) |
-| 15 | Interactive World Map | Opus | NOT STARTED (macOS required) |
+| 14 | Main UI Architecture | Opus | **AUTHORED** (2026-08-25; macOS build validation pending) |
+| 15 | Interactive World Map | Opus | **AUTHORED** (2026-08-25; core math tested; macOS validation pending) |
 | 16 | UX Polish and Game Feel | Opus | NOT STARTED (macOS required) |
 | 17 | Visual Art Direction | Fable+Opus | NOT STARTED (macOS required) |
 | 18 | Balance and Simulation Stress Testing | Fable | NOT STARTED |

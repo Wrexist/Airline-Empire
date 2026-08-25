@@ -60,6 +60,16 @@ public actor GameSession {
         }
     }
 
+    /// Founds the standard competitor cast around the player's world
+    /// (new-game bootstrap; no-op without a player airline).
+    public func populateStandardWorld(competitors: Int) {
+        guard let player = engine.state.airlines.values.first(where: { $0.kind == .player })
+        else { return }
+        WorldSetup.createCompetitors(engine: engine, count: competitors,
+                                     playerHome: player.homeAirport)
+        publish()
+    }
+
     // MARK: Persistence
 
     /// Attaches persistence: explicit saves plus periodic autosaves during
