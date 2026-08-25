@@ -17,6 +17,12 @@ public struct Route: Equatable, Codable, Sendable {
     /// Sorted aircraft IDs serving this route.
     public var assignedAircraft: [AircraftID]
     public var stats: RouteStats
+    /// Today's bookable demand per direction (set daily by DemandSystem;
+    /// consumed at boarding). Outbound = origin -> destination.
+    public var demandOutboundToday: Int
+    public var demandInboundToday: Int
+    public var remainingOutboundToday: Int
+    public var remainingInboundToday: Int
 
     public init(id: RouteID, airline: AirlineID, origin: AirportCode,
                 destination: AirportCode, distanceKm: Int, dailyRoundTrips: Int,
@@ -31,6 +37,10 @@ public struct Route: Equatable, Codable, Sendable {
         self.ticketPrice = ticketPrice
         self.assignedAircraft = assignedAircraft
         self.stats = stats
+        self.demandOutboundToday = 0
+        self.demandInboundToday = 0
+        self.remainingOutboundToday = 0
+        self.remainingInboundToday = 0
     }
 
     /// Daily airport movements this route consumes at EACH endpoint
@@ -56,13 +66,23 @@ public struct RouteStats: Equatable, Codable, Sendable {
     public var flightsCancelled: Int64
     public var flightsDelayed: Int64
     public var totalDelayMinutes: Int64
+    public var passengersCarried: Int64
+    public var seatsFlown: Int64
 
     public init(flightsCompleted: Int64 = 0, flightsCancelled: Int64 = 0,
-                flightsDelayed: Int64 = 0, totalDelayMinutes: Int64 = 0) {
+                flightsDelayed: Int64 = 0, totalDelayMinutes: Int64 = 0,
+                passengersCarried: Int64 = 0, seatsFlown: Int64 = 0) {
         self.flightsCompleted = flightsCompleted
         self.flightsCancelled = flightsCancelled
         self.flightsDelayed = flightsDelayed
         self.totalDelayMinutes = totalDelayMinutes
+        self.passengersCarried = passengersCarried
+        self.seatsFlown = seatsFlown
+    }
+
+    /// Lifetime load factor; 0 with no flying yet.
+    public var loadFactor: Double {
+        seatsFlown == 0 ? 0 : Double(passengersCarried) / Double(seatsFlown)
     }
 
     public var totalFlights: Int64 { flightsCompleted + flightsCancelled }

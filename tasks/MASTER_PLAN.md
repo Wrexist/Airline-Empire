@@ -39,7 +39,7 @@ Neither agent may blindly trust previous work.
 | 4 | World and Airport System | Opus | **COMPLETE** (2026-08-25) |
 | 5 | Aircraft and Fleet System | Opus | **COMPLETE** (2026-08-25) |
 | 6 | Routes and Flight Operations | Opus | **COMPLETE** (2026-08-25) |
-| 7 | Passenger Demand and Pricing | Opus | NOT STARTED |
+| 7 | Passenger Demand and Pricing | Opus | **COMPLETE** (2026-08-25) |
 | 8 | Finance and Airline Economics | Opus | NOT STARTED |
 | 9 | Reputation, Service and Airline Quality | Opus | NOT STARTED |
 | 10 | Competitor Airlines | Opus | NOT STARTED |

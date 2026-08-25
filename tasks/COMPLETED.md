@@ -113,3 +113,14 @@ Stale-flight leak found by tests and fixed via expiry-as-cancellation.
 **Tests:** 118 passing (18 new: route management, slots scarcity, flight
 ops incl. exclusivity per tick, ferries, maintenance grounding, disruption
 rates, mid-flight save/restore, full-pipeline dual-run determinism).
+
+---
+
+## AE-008
+**Title:** Phase 7 — Passenger Demand and Pricing
+**Completed:** 2026-08-25
+**Outcome:** Demand engine per docs/ECONOMY.md. Price->demand->load->
+revenue chain live and profitable at the anchor calibration; 12 new economy
+tests including conservation, determinism with full pipeline, and curve
+shape assertions.
+**Tests:** 130 passing.

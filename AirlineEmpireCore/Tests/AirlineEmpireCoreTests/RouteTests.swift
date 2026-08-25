@@ -177,15 +177,18 @@ struct FlightOpsTests {
     }
 
     @Test func operatingCostsArePosted() throws {
-        let (_, engine, airline, _, _) = try Self.operating()
-        let before = engine.state.ledger.balance(of: airline)
+        let (_, engine, _, _, _) = try Self.operating()
         engine.advance(ticks: Fixtures.ticksPerDay * 2)
         let categories = Set(engine.state.ledger.recent.map(\.category))
         #expect(categories.contains(.fuel))
         #expect(categories.contains(.airportFees))
         #expect(categories.contains(.crewCosts))
-        // Flying with zero passengers burns money.
-        #expect(engine.state.ledger.balance(of: airline) < before)
+        // Every cost posting is negative (revenue, since Phase 7, offsets
+        // them — profitability is asserted in the demand suite).
+        for tx in engine.state.ledger.recent
+            where [.fuel, .airportFees, .crewCosts].contains(tx.category) {
+            #expect(tx.amount < .zero)
+        }
     }
 
     @Test func fuelCostMatchesFormula() throws {

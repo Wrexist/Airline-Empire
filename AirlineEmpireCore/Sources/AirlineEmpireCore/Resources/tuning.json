@@ -1,4 +1,43 @@
 {
+ "demand": {
+  "attenuationPower": 1.2,
+  "attenuationScaleKm": 3000,
+  "businessWeight": 0.35,
+  "comfortBase": 0.85,
+  "comfortWeight": 0.3,
+  "economyBusinessExponent": 1.5,
+  "economyLeisureExponent": 0.8,
+  "fareBase": 35,
+  "farePerKm": 0.085,
+  "gravityConstant": 0.55,
+  "leisureWeight": 0.65,
+  "operationsBase": 0.7,
+  "operationsWeight": 0.3,
+  "outsideOptionWeight": 1.0,
+  "priceSensitivityBusiness": 1.2,
+  "priceSensitivityLeisure": 2.2,
+  "scheduleQualityExponent": 0.35,
+  "scheduleQualityReferenceTrips": 4.0,
+  "scheduleQualityTripCap": 6,
+  "weekdayBusinessFactor": [
+   1.2,
+   1.2,
+   1.2,
+   1.2,
+   1.1,
+   0.5,
+   0.7
+  ],
+  "weekdayLeisureFactor": [
+   0.9,
+   0.9,
+   0.9,
+   0.9,
+   1.15,
+   1.25,
+   1.2
+  ]
+ },
  "fleet": {
   "annualDepreciationRate": 0.08,
   "dailyConditionDecay": 0.0006,

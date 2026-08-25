@@ -9,10 +9,11 @@ public enum SaveFormat {
     /// Bumps on ANY change to the encoded shape of `GameState` (D-004).
     /// History: v1 kernel-only (Phase 3); v2 added `world` (Phase 4);
     /// v3 added `airlines`/`aircraft`/`ledger` (Phase 5); v4 added
-    /// `routes`/`flights` + Aircraft.activeFlight + world fuel price (Phase 6).
+    /// `routes`/`flights` + Aircraft.activeFlight + world fuel price (Phase 6);
+    /// v5 added route demand/load fields + world economicIndex (Phase 7).
     /// Pre-release policy (docs/PERSISTENCE_ARCHITECTURE.md §5): superseded
     /// pre-release versions are refused, not migrated, until first TestFlight.
-    public static let currentVersion = 4
+    public static let currentVersion = 5
 }
 
 public struct SaveEnvelope: Codable, Sendable {

@@ -90,8 +90,9 @@ public struct FleetBillingSystem: SimulationSystem {
 public enum GamePipeline {
     public static func standard() -> [any SimulationSystem] {
         [
-            FlightSchedulingSystem(),   // #4 in the documented pipeline
-            FlightOpsSystem(),          // #5
+            DemandSystem(),             // #2 in the documented pipeline
+            FlightSchedulingSystem(),   // #4
+            FlightOpsSystem(),          // #5 (+ passenger allocation at boarding, #6)
             FleetSystem(),              // #7 (maintenance/aging/deliveries)
             FleetBillingSystem(),       // #8 (fleet money)
         ]

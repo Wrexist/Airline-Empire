@@ -32,6 +32,21 @@ public struct FlightOpsSystem: SimulationSystem {
                    aircraft.location == flight.from {
                     flight.phase = .boarding
                     aircraft.activeFlight = flightID
+                    if flight.kind == .revenue, var route = state.routes[flight.route] {
+                        // Sell from today's remaining directional demand.
+                        let spec = context.catalog.aircraftType(aircraft.typeCode)!
+                        let outbound = flight.from == route.origin
+                        let remaining = outbound ? route.remainingOutboundToday
+                                                 : route.remainingInboundToday
+                        let sold = min(spec.seats, max(0, remaining))
+                        flight.passengers = sold
+                        if outbound {
+                            route.remainingOutboundToday = remaining - sold
+                        } else {
+                            route.remainingInboundToday = remaining - sold
+                        }
+                        state.routes[flight.route] = route
+                    }
                 }
 
             case .boarding:
@@ -59,6 +74,14 @@ public struct FlightOpsSystem: SimulationSystem {
                         }
                     } else {
                         flight.phase = .enRoute(actualDeparture: now)
+                        if flight.kind == .revenue, flight.passengers > 0,
+                           let route = state.routes[flight.route] {
+                            let revenue = route.ticketPrice * Int64(flight.passengers)
+                            state.ledger.post(
+                                airline: aircraft.owner, category: .ticketRevenue,
+                                amount: revenue, at: now,
+                                memo: "\(flight.passengers) pax \(flight.from)-\(flight.to)")
+                        }
                         context.emit(.flightDeparted(id: flightID, route: flight.route))
                     }
                 }
@@ -76,6 +99,9 @@ public struct FlightOpsSystem: SimulationSystem {
                     state.aircraft[flight.aircraft] = aircraft
                     if flight.kind == .revenue, var route = state.routes[flight.route] {
                         route.stats.flightsCompleted += 1
+                        route.stats.passengersCarried += Int64(flight.passengers)
+                        let spec = context.catalog.aircraftType(aircraft.typeCode)!
+                        route.stats.seatsFlown += Int64(spec.seats)
                         if flight.wasDelayed {
                             route.stats.flightsDelayed += 1
                             route.stats.totalDelayMinutes += flight.delayMinutes

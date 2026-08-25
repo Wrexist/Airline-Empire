@@ -7,11 +7,16 @@ public struct WorldState: Equatable, Codable, Sendable {
     /// Jet fuel spot price. Initialized from tuning; market dynamics move it
     /// from Phase 8/11.
     public var fuelPricePerKg: Money
+    /// Macro-economy index (1.0 = neutral). Business demand reacts more
+    /// strongly than leisure; the cycle driver arrives in Phase 8/11.
+    public var economicIndex: Double
 
     public init(airportRuntimes: [AirportCode: AirportRuntime] = [:],
-                fuelPricePerKg: Money = Money(cents: 65)) {
+                fuelPricePerKg: Money = Money(cents: 65),
+                economicIndex: Double = 1.0) {
         self.airportRuntimes = airportRuntimes
         self.fuelPricePerKg = fuelPricePerKg
+        self.economicIndex = economicIndex
     }
 
     // MARK: Slots

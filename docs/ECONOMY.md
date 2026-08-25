@@ -1,0 +1,84 @@
+# Airline Empire — Economy (Phase 7: demand & pricing; Phase 8 extends)
+
+## Demand model (as built, `DemandSystem`, daily)
+
+For every **served market** (unordered airport pair with ≥1 route) and each
+direction, the day's demand pool splits into business and leisure:
+
+```
+mass        = sqrt(popOrigin × popDestination)                [thousands]
+attenuation = 1 / (1 + (distance/3000 km)^1.2)
+base        = 0.55 × mass × attenuation
+
+business = base × 0.35 × bizOrigin × bizDest × weekdayBiz[dow] × economy^1.5
+leisure  = base × 0.65 × leisOrigin × tourDest × season(dest, month)
+                × weekdayLeis[dow] × economy^0.8
+```
+
+- Weekday shape: business peaks Mon–Thu (1.2) and craters Saturday (0.5);
+  leisure peaks Fri–Sun. Both average ≈ 1 over a week.
+- Seasonality uses the **destination's** profile (yearly-mean-neutral by
+  content contract).
+- `economy` is `WorldState.economicIndex` (1.0 until the cycle driver lands
+  in Phase 8/11); business swings harder than leisure by design.
+
+## Offer competition (share allocation)
+
+Each route serving the market is an offer. Per segment:
+
+```
+refFare  = 35 + 0.085 × distanceKm            (¤; ≈129 at 1,100 km — anchor)
+A_seg    = exp(sensitivity_seg × (1 − price/refFare)) × quality
+quality  = schedule × comfort × operations    (× reputation, Phase 9)
+schedule = (min(trips, 6) / 4)^0.35           (hard diminishing returns)
+comfort  = 0.85 + 0.30 × type.comfortBaseline
+operations = 0.70 + 0.30 × (completionRate + punctuality)/2
+served_i = pool_seg × A_i / (1 + Σ A_j)       ("1" = don't-travel option)
+```
+
+Sensitivities: business 1.2, leisure 2.2 (exponential/logit form —
+**deliberately not a power law**: with constant-elasticity curves and
+business elasticity < 1, monopoly revenue grows unboundedly with price; the
+exponential form gives a finite optimum slightly above reference fare —
+mild monopoly premium, sharp collapse beyond, competition erodes it. This
+was caught during Phase 7 design and is pinned by
+`revenueHasAnInteriorOptimum`).
+
+The outside option makes total served demand price- and quality-elastic
+(stimulation at low fares, shrinkage at high) while conserving passengers:
+`demandIsConserved` asserts carried ≤ granted, always.
+
+## Booking & revenue flow
+
+Demand lands on each route as directional daily grants
+(`demandOutbound/InboundToday` → `remaining…`). At **boarding**, a revenue
+flight sells `min(seats, remaining)`; at **departure**, `pax × fare` posts
+as `ticketRevenue`; a cancellation forfeits the flight's sold demand (no
+rebooking — cancellations cost real revenue). Arrival adds per-passenger
+airport fees and updates `passengersCarried`/`seatsFlown` → route load
+factor.
+
+## Calibration (verified by automated economy tests)
+
+Anchor market (GAME_BALANCE §4): two 4M-metro cities 1,100 km apart, one
+2-year MR180 at 2 round trips/day, fare ¤129 → 350–620 pax/day, load
+55–92%, and **positive operating profit** (revenue − fuel − fees − crew −
+maintenance). Curve tests: load monotonically falls with fare; revenue
+optimum is interior; frequency gains are sublinear; equal offers split a
+market ~50/50; a 95-vs-150 undercutter carries >1.3× the premium carrier;
+July leisure demand to a summer-sun destination >2× January; economy index
+moves business more than leisure.
+
+## Determinism notes
+
+Demand math uses `exp`/`pow` (libm); all persisted results quantize to
+whole passengers (rounded down), making cross-platform last-ulp differences
+gameplay-irrelevant. Full-pipeline dual-run hash equality is tested with
+demand active.
+
+## Phase 8 will add
+
+Loans/interest/credit, monthly statements & rollups (bounded), overhead &
+staff payroll, fuel-price dynamics, economic cycle driver, bankruptcy /
+administration, and route-level P&L read models (the "why did this route
+make money" breakdown).

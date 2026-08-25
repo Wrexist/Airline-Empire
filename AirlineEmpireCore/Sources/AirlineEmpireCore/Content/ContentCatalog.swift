@@ -192,16 +192,92 @@ public struct Tuning: Equatable, Codable, Sendable {
     public let minRouteDistanceKm: Int
     public let fleet: FleetTuning
     public let ops: OpsTuning
+    public let demand: DemandTuning
 
     public init(minRouteDistanceKm: Int, fleet: FleetTuning = .standard,
-                ops: OpsTuning = .standard) {
+                ops: OpsTuning = .standard, demand: DemandTuning = .standard) {
         self.minRouteDistanceKm = minRouteDistanceKm
         self.fleet = fleet
         self.ops = ops
+        self.demand = demand
     }
 
     /// Code-side defaults matching shipping content; content files override.
     public static let standard = Tuning(minRouteDistanceKm: 80)
+}
+
+/// Demand-engine constants (docs/ECONOMY.md documents each and the
+/// calibration behind them).
+public struct DemandTuning: Equatable, Codable, Sendable {
+    public let gravityConstant: Double
+    public let attenuationScaleKm: Double
+    public let attenuationPower: Double
+    public let businessWeight: Double
+    public let leisureWeight: Double
+    /// Exponential price-utility slopes around the reference fare.
+    public let priceSensitivityBusiness: Double
+    public let priceSensitivityLeisure: Double
+    /// Reference fare = fareBase + farePerKm x distance.
+    public let fareBase: Double
+    public let farePerKm: Double
+    /// Weight of "don't travel" in the share denominator.
+    public let outsideOptionWeight: Double
+    public let scheduleQualityTripCap: Int
+    public let scheduleQualityReferenceTrips: Double
+    public let scheduleQualityExponent: Double
+    public let comfortBase: Double
+    public let comfortWeight: Double
+    public let operationsBase: Double
+    public let operationsWeight: Double
+    /// Monday-first weekday factors (7 entries, mean ~1).
+    public let weekdayBusinessFactor: [Double]
+    public let weekdayLeisureFactor: [Double]
+    public let economyBusinessExponent: Double
+    public let economyLeisureExponent: Double
+
+    public init(gravityConstant: Double, attenuationScaleKm: Double,
+                attenuationPower: Double, businessWeight: Double, leisureWeight: Double,
+                priceSensitivityBusiness: Double, priceSensitivityLeisure: Double,
+                fareBase: Double, farePerKm: Double, outsideOptionWeight: Double,
+                scheduleQualityTripCap: Int, scheduleQualityReferenceTrips: Double,
+                scheduleQualityExponent: Double, comfortBase: Double, comfortWeight: Double,
+                operationsBase: Double, operationsWeight: Double,
+                weekdayBusinessFactor: [Double], weekdayLeisureFactor: [Double],
+                economyBusinessExponent: Double, economyLeisureExponent: Double) {
+        self.gravityConstant = gravityConstant
+        self.attenuationScaleKm = attenuationScaleKm
+        self.attenuationPower = attenuationPower
+        self.businessWeight = businessWeight
+        self.leisureWeight = leisureWeight
+        self.priceSensitivityBusiness = priceSensitivityBusiness
+        self.priceSensitivityLeisure = priceSensitivityLeisure
+        self.fareBase = fareBase
+        self.farePerKm = farePerKm
+        self.outsideOptionWeight = outsideOptionWeight
+        self.scheduleQualityTripCap = scheduleQualityTripCap
+        self.scheduleQualityReferenceTrips = scheduleQualityReferenceTrips
+        self.scheduleQualityExponent = scheduleQualityExponent
+        self.comfortBase = comfortBase
+        self.comfortWeight = comfortWeight
+        self.operationsBase = operationsBase
+        self.operationsWeight = operationsWeight
+        self.weekdayBusinessFactor = weekdayBusinessFactor
+        self.weekdayLeisureFactor = weekdayLeisureFactor
+        self.economyBusinessExponent = economyBusinessExponent
+        self.economyLeisureExponent = economyLeisureExponent
+    }
+
+    public static let standard = DemandTuning(
+        gravityConstant: 0.55, attenuationScaleKm: 3000, attenuationPower: 1.2,
+        businessWeight: 0.35, leisureWeight: 0.65,
+        priceSensitivityBusiness: 1.2, priceSensitivityLeisure: 2.2,
+        fareBase: 35, farePerKm: 0.085, outsideOptionWeight: 1.0,
+        scheduleQualityTripCap: 6, scheduleQualityReferenceTrips: 4.0,
+        scheduleQualityExponent: 0.35, comfortBase: 0.85, comfortWeight: 0.3,
+        operationsBase: 0.7, operationsWeight: 0.3,
+        weekdayBusinessFactor: [1.2, 1.2, 1.2, 1.2, 1.1, 0.5, 0.7],
+        weekdayLeisureFactor: [0.9, 0.9, 0.9, 0.9, 1.15, 1.25, 1.2],
+        economyBusinessExponent: 1.5, economyLeisureExponent: 0.8)
 }
 
 /// Flight-operations constants (docs/ROUTES.md documents each).

@@ -143,4 +143,20 @@ departures, ticket revenue posted.
 price→demand→load→revenue chain measurable; low/optimal/high price
 simulations as tests; demand conservation (no passenger counted twice);
 docs/ECONOMY.md started; economy tests with tolerances.
+**Status:** COMPLETE 2026-08-25 — moved to COMPLETED.md.
+
+---
+
+## AE-009
+**Title:** Phase 8 — Finance and Airline Economics
+**Purpose:** Complete business layer per Master Prompt 8: loans/interest/
+credit rating, monthly financial statements (bounded rollups), overhead &
+staff payroll, fuel price dynamics + economic cycle driver, bankruptcy/
+administration path, explainable route-level P&L read models.
+**Dependencies:** AE-008 (demand) — complete.
+**Acceptance criteria:** every money flow categorized and traceable;
+monthly statement rollups keep ledger bounded; loans with rates scaled by
+leverage; administration triggers and consequences; WorldSystem moving fuel
+price and economy index deterministically; route P&L breakdown API; economy
+correctness tests.
 **Status:** OPEN — next up.
