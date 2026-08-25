@@ -50,7 +50,7 @@ Neither agent may blindly trust previous work.
 | 15 | Interactive World Map | Opus | **AUTHORED** (2026-08-25; core math tested; macOS validation pending) |
 | 16 | UX Polish and Game Feel | Opus | NOT STARTED (macOS required) |
 | 17 | Visual Art Direction | Fable+Opus | NOT STARTED (macOS required) |
-| 18 | Balance and Simulation Stress Testing | Fable | NOT STARTED |
+| 18 | Balance and Simulation Stress Testing | Fable | **COMPLETE** (2026-08-25) |
 | 19 | Full QA and Bug Elimination | Opus | NOT STARTED |
 | 20 | Performance Optimization | Opus | NOT STARTED (macOS required) |
 | 21 | Accessibility and Device Compatibility | Opus | NOT STARTED (macOS required) |

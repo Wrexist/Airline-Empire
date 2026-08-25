@@ -196,3 +196,14 @@ meaningful progress to normal termination.
 testable 40%% of these phases); complete app target authored with honest
 pending-validation status. Not marked done: rule 19 (and B-002) - nothing
 uncompiled counts as complete.
+
+---
+
+## AE-018
+**Title:** Phase 18 — Balance and Simulation Stress Testing
+**Completed:** 2026-08-25
+**Outcome:** Strategy battery per docs/BALANCING.md; findings F-001
+(uncontested scarcity rents — watch item, entry is the counterweight),
+F-002 (leverage behaves), F-003 (archetype parity). No tuning changes
+warranted by evidence.
+**Tests:** 201 passing (6 new battery tests).
