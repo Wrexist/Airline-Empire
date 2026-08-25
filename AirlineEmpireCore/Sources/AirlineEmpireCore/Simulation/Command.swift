@@ -7,7 +7,7 @@ public protocol Command: Codable, Sendable {
     static var name: String { get }
 
     /// Returns nil when the command may apply to this state.
-    func validate(state: GameState) -> CommandRejection?
+    func validate(state: GameState, catalog: ContentCatalog) -> CommandRejection?
 
     /// Applies the command. Called only after `validate` returned nil in the
     /// same tick; must uphold all invariants.

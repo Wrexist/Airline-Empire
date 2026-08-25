@@ -37,7 +37,7 @@ Neither agent may blindly trust previous work.
 | 2 | Game Design Bible | Fable | **COMPLETE** (2026-08-25) |
 | 3 | Data Model and Simulation Kernel | Opus | **COMPLETE** (2026-08-25) |
 | 4 | World and Airport System | Opus | **COMPLETE** (2026-08-25) |
-| 5 | Aircraft and Fleet System | Opus | NOT STARTED |
+| 5 | Aircraft and Fleet System | Opus | **COMPLETE** (2026-08-25) |
 | 6 | Routes and Flight Operations | Opus | NOT STARTED |
 | 7 | Passenger Demand and Pricing | Opus | NOT STARTED |
 | 8 | Finance and Airline Economics | Opus | NOT STARTED |

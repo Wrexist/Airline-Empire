@@ -11,17 +11,34 @@ public struct GameState: Equatable, Codable, Sendable {
     public var schedule: ScheduleQueue
     public var eventLog: BoundedEventLog
     public var world: WorldState
+    public var airlines: [AirlineID: Airline]
+    public var aircraft: [AircraftID: Aircraft]
+    public var ledger: Ledger
 
     public init(meta: GameMeta, clock: ClockState, rng: RNGState,
                 schedule: ScheduleQueue = ScheduleQueue(),
                 eventLog: BoundedEventLog = BoundedEventLog(capacity: BoundedEventLog.defaultCapacity),
-                world: WorldState = WorldState()) {
+                world: WorldState = WorldState(),
+                airlines: [AirlineID: Airline] = [:],
+                aircraft: [AircraftID: Aircraft] = [:],
+                ledger: Ledger = Ledger()) {
         self.meta = meta
         self.clock = clock
         self.rng = rng
         self.schedule = schedule
         self.eventLog = eventLog
         self.world = world
+        self.airlines = airlines
+        self.aircraft = aircraft
+        self.ledger = ledger
+    }
+
+    /// Deterministic iteration orders (docs/SIMULATION_ARCHITECTURE.md §2).
+    public var orderedAirlineIDs: [AirlineID] { airlines.keys.sorted() }
+    public var orderedAircraftIDs: [AircraftID] { aircraft.keys.sorted() }
+
+    public func fleet(of airline: AirlineID) -> [Aircraft] {
+        orderedAircraftIDs.compactMap { aircraft[$0] }.filter { $0.owner == airline }
     }
 
     /// The game date at the current simulation time.
@@ -41,6 +58,21 @@ public struct GameState: Equatable, Codable, Sendable {
             violations.append("Schedule queue ordering broken")
         }
         violations.append(contentsOf: world.integrityViolations())
+        for id in orderedAircraftIDs {
+            let ac = aircraft[id]!
+            if airlines[ac.owner] == nil {
+                violations.append("Aircraft \(id.raw) owned by missing airline \(ac.owner.raw)")
+            }
+            if !(0.0...1.0).contains(ac.condition) {
+                violations.append("Aircraft \(id.raw) condition out of range: \(ac.condition)")
+            }
+            if ac.ageDays < 0 || ac.totalFlightHours < 0 {
+                violations.append("Aircraft \(id.raw) has negative age or hours")
+            }
+            if case .owned(let book) = ac.ownership, book.isNegative {
+                violations.append("Aircraft \(id.raw) has negative book value")
+            }
+        }
         return violations
     }
 }

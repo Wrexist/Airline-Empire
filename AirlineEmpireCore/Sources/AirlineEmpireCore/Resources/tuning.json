@@ -1,3 +1,23 @@
 {
+ "fleet": {
+  "annualDepreciationRate": 0.08,
+  "dailyConditionDecay": 0.0006,
+  "earlyLeaseReturnPenaltyMonths": 2,
+  "maintenanceAgeCostGrowthPerYear": 0.045,
+  "maintenanceCheckDays": 3,
+  "maintenanceCheckHoursEquivalent": 60,
+  "maintenanceConditionThreshold": 0.75,
+  "maxLeaseTermMonths": 144,
+  "maxUsedPurchaseAgeYears": 22,
+  "minLeaseTermMonths": 6,
+  "reliabilityAgePenaltyPerYear": 0.003,
+  "reliabilityConditionWeight": 0.1,
+  "reliabilityFloor": 0.85,
+  "residualValueFraction": 0.25,
+  "saleFriction": 0.1,
+  "usedMarketConditionFloor": 0.55,
+  "usedMarketConditionLossPerYear": 0.02,
+  "usedPriceConditionFloor": 0.7
+ },
  "minRouteDistanceKm": 80
 }

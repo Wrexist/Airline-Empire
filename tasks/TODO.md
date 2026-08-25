@@ -110,4 +110,21 @@ aging/depreciation/reliability model; integration with kernel; tests incl.
 expensive edge cases; docs/AIRCRAFT.md.
 **Tests:** acquisition validation, lifecycle transitions, depreciation
 curve, availability rules, save round-trip with fleet.
+**Status:** COMPLETE 2026-08-25 — moved to COMPLETED.md.
+
+---
+
+## AE-007
+**Title:** Phase 6 — Routes and Flight Operations
+**Purpose:** Routes (create/modify/close, schedules, aircraft assignment,
+slot consumption) and the real flight lifecycle driven by the simulation
+(scheduled→boarding→departing→enRoute→arriving→turnaround→ready, with
+disruptions), per Master Prompt 6.
+**Dependencies:** AE-006 (fleet) — complete.
+**Acceptance criteria:** Route + Flight entities; open/modify/close/assign
+commands consuming slots; schedule materialization; per-tick flight phase
+system; travel time from distance/speed; operating cost hooks (fuel, fees,
+crew) posted per flight; disruption states from reliability/weather;
+conflict detection; multi-aircraft concurrency without corruption; tests;
+docs/ROUTES.md.
 **Status:** OPEN — next up.

@@ -18,14 +18,18 @@ public struct SimContext: Sendable {
     public let previous: SimTime
     public let current: SimTime
     public let tick: SimDuration
+    /// Static game content (never part of GameState).
+    public let catalog: ContentCatalog
     /// Event sink for this update. Events are appended to the state's log
     /// (and streamed to the UI) after the system returns.
     public let events: EventCollector
 
-    public init(previous: SimTime, current: SimTime, tick: SimDuration, events: EventCollector) {
+    public init(previous: SimTime, current: SimTime, tick: SimDuration,
+                catalog: ContentCatalog, events: EventCollector) {
         self.previous = previous
         self.current = current
         self.tick = tick
+        self.catalog = catalog
         self.events = events
     }
 

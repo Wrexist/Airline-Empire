@@ -19,8 +19,9 @@ public actor GameSession {
     private var nextSubscriptionID = 0
     private var deliveredEventCount: Int64
 
-    public init(state: GameState, systems: [any SimulationSystem], speed: SimSpeed = .paused) {
-        self.engine = SimulationEngine(state: state, systems: systems)
+    public init(state: GameState, systems: [any SimulationSystem],
+                catalog: ContentCatalog = .empty, speed: SimSpeed = .paused) {
+        self.engine = SimulationEngine(state: state, systems: systems, catalog: catalog)
         self.speed = speed
         self.deliveredEventCount = state.eventLog.totalCount
     }

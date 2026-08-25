@@ -89,3 +89,14 @@ haversine distances (whole-km deterministic), route eligibility with full
 reason lists, slot allocation ledger, deterministic dict encoding, save v2.
 **Tests:** 82 passing (25 new: geo, catalog validation, eligibility, slots,
 deterministic world-state saves).
+
+---
+
+## AE-006
+**Title:** Phase 5 — Aircraft and Fleet System
+**Completed:** 2026-08-25
+**Outcome:** Full fleet foundation per docs/AIRCRAFT.md: content-driven
+types, real lifecycle entities, ledger-traceable money from the first
+transaction, anti-flipping economics, deterministic used market, maintenance
+that bills instead of blocking. Save v3.
+**Tests:** 100 passing (18 new fleet suites).

@@ -1,16 +1,14 @@
 # Current Phase
 
-**Phase 4 — World and Airport System: COMPLETE** (2026-08-25)
+**Phase 5 — Aircraft and Fleet System: COMPLETE** (2026-08-25)
 
-Delivered: AirportSpec/Demographics/RunwayClass/WorldRegion/WeatherRisk/
-SeasonalityProfile content types; ContentCatalog with construction-time
-validation and lookup/eligibility APIs; 80-airport world dataset across 9
-regions + 11 seasonality profiles + tuning.json; Geo (haversine, whole-km
-quantization); WorldState slot ledger with typed errors; deterministic
-entity-keyed dictionary encoding (CodingKeyRepresentable); save format v2.
+Delivered: AircraftTypeSpec content (14 types, 6 categories, validated);
+Airline/Aircraft/Ledger domain entities; 6 fleet commands (found airline,
+buy new/used, lease, sell, return) with full validation; FleetSystem (daily
+aging/wear/delivery/maintenance) + FleetBillingSystem (monthly lease +
+depreciation); FleetEconomics pure pricing curves; catalog threaded through
+command validation and SimContext; save format v3.
 
-**Build:** clean. **Tests:** 82/82 passing. One content defect (alpine
-profile demand inflation) caught by the profile-neutrality test and fixed
-in content. See docs/AIRPORTS.md.
+**Build:** clean. **Tests:** 100/100 passing. See docs/AIRCRAFT.md.
 
-**Next phase: Phase 5 — Aircraft and Fleet System** (task AE-006).
+**Next phase: Phase 6 — Routes and Flight Operations** (task AE-007).

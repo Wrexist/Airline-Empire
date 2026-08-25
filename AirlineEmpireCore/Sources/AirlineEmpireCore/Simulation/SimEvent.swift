@@ -26,6 +26,15 @@ public enum SimEventKind: Equatable, Codable, Sendable {
     /// A command was applied successfully. Carried for feed/replay
     /// diagnostics; the command's own effects emit their domain events.
     case commandApplied(name: String)
+
+    // Fleet (Phase 5)
+    case airlineFounded(id: AirlineID, name: String)
+    case aircraftOrdered(id: AircraftID, type: AircraftTypeCode, deliveryAt: SimTime)
+    case aircraftDelivered(id: AircraftID)
+    case aircraftSold(id: AircraftID, proceeds: Money)
+    case leaseReturned(id: AircraftID, penalty: Money)
+    case maintenanceStarted(id: AircraftID, until: SimTime, cost: Money)
+    case maintenanceCompleted(id: AircraftID)
 }
 
 /// Fixed-capacity ring of recent events plus a lifetime counter.

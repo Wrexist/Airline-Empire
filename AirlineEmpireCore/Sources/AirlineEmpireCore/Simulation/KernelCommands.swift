@@ -13,7 +13,7 @@ public struct ScheduleWakeCommand: Command, Equatable {
         self.at = at
     }
 
-    public func validate(state: GameState) -> CommandRejection? {
+    public func validate(state: GameState, catalog: ContentCatalog) -> CommandRejection? {
         if label.isEmpty {
             return CommandRejection(code: "wake.emptyLabel", message: "A reminder needs a label")
         }
