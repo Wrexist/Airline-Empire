@@ -5,6 +5,8 @@ import AirlineEmpireCore
 /// glance, the ops feed, and the time controls.
 struct DashboardView: View {
     @Environment(GameController.self) private var controller
+    @State private var guidedRoute: FirstRouteSuggestion?
+    @State private var showingGuidedSheet = false
 
     var body: some View {
         NavigationStack {
@@ -13,6 +15,14 @@ struct DashboardView: View {
                     if let snapshot = controller.snapshot,
                        let dashboard = snapshot.dashboardModel() {
                         header(snapshot: snapshot, dashboard: dashboard)
+                        if let catalog = controller.catalog,
+                           let onboarding = snapshot.onboardingModel(catalog: catalog),
+                           !onboarding.isComplete {
+                            OnboardingCard(model: onboarding) { suggestion in
+                                guidedRoute = suggestion
+                                showingGuidedSheet = true
+                            }
+                        }
                         statGrid(dashboard)
                         eventsFeed
                     } else {
@@ -24,6 +34,13 @@ struct DashboardView: View {
             .navigationTitle(controller.snapshot?.dashboardModel()?.airlineName ?? "…")
             .toolbar {
                 ToolbarItem(placement: .principal) { SpeedControl() }
+            }
+            .sheet(isPresented: $showingGuidedSheet) {
+                if let guidedRoute {
+                    OpenRouteSheet(suggestion: guidedRoute)
+                } else {
+                    OpenRouteSheet()
+                }
             }
         }
     }
@@ -82,6 +99,99 @@ struct DashboardView: View {
                     }
                 }
             }
+        }
+    }
+}
+
+/// The guided first-route beat (docs/PLAYER_JOURNEY.md §1): a checklist of
+/// real actions, with demand-hinted route candidates when it's time to open
+/// one. Teaching is doing — the card disappears once the arc completes.
+struct OnboardingCard: View {
+    let model: OnboardingModel
+    let openSuggestion: (FirstRouteSuggestion) -> Void
+
+    var body: some View {
+        AECard {
+            VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                Text("Get your airline flying").font(.headline)
+                ForEach(OnboardingModel.Step.allCases, id: \.self) { step in
+                    stepRow(step)
+                }
+                if model.nextStep == .openRoute, !model.suggestions.isEmpty {
+                    Text("Strong first markets from your home airport:")
+                        .font(.caption)
+                        .foregroundStyle(AETheme.mutedText)
+                    ForEach(model.suggestions, id: \.destination) { suggestion in
+                        Button {
+                            openSuggestion(suggestion)
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("\(suggestion.origin.raw) → \(suggestion.destination.raw) · \(suggestion.destinationCity)")
+                                        .font(.subheadline.weight(.medium))
+                                    Text("≈\(suggestion.expectedDailyDemand) travellers/day · \(suggestion.distanceKm) km · fares near \(Format.money(suggestion.referenceFare))")
+                                        .font(.caption)
+                                        .foregroundStyle(AETheme.mutedText)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundStyle(AETheme.mutedText)
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(AETheme.accent)
+                    }
+                }
+            }
+        }
+    }
+
+    private func stepRow(_ step: OnboardingModel.Step) -> some View {
+        let done = model.isDone(step)
+        let isNext = model.nextStep == step
+        return HStack(spacing: AETheme.spacingS) {
+            Image(systemName: done ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(done ? AETheme.positive
+                                 : isNext ? AETheme.accent : AETheme.mutedText)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title(step))
+                    .font(.subheadline.weight(isNext ? .semibold : .regular))
+                    .foregroundStyle(done ? AETheme.mutedText : .primary)
+                if isNext {
+                    Text(hint(step))
+                        .font(.caption)
+                        .foregroundStyle(AETheme.mutedText)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title(step)), \(done ? "done" : isNext ? "next step" : "not started")")
+    }
+
+    private func title(_ step: OnboardingModel.Step) -> String {
+        switch step {
+        case .acquireAircraft: "Get an aircraft"
+        case .openRoute: "Open your first route"
+        case .assignAircraft: "Put the aircraft on the route"
+        case .watchFirstFlight: "Un-pause and watch it fly"
+        case .earnFirstRevenue: "Earn your first ticket revenue"
+        }
+    }
+
+    private func hint(_ step: OnboardingModel.Step) -> String {
+        switch step {
+        case .acquireAircraft:
+            "Fleet tab → Acquire. Leasing keeps cash free early on."
+        case .openRoute:
+            "Pick one of the suggested markets below, or browse the map."
+        case .assignAircraft:
+            "Open the route in the Routes tab and tap Assign an aircraft."
+        case .watchFirstFlight:
+            "Set speed to 1× — boarding, taxi, and the map crossing are real."
+        case .earnFirstRevenue:
+            "Revenue posts as flights land. Watch the feed below."
         }
     }
 }

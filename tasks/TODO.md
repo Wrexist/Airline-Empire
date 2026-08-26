@@ -29,8 +29,14 @@ known compile blockers.
   case arities, catalog accessors, hardcoded content codes). Findings
   fixed: BUG-001 (Core visibility compile blocker), deprecated alert API,
   force-unwraps in RouteDetailView, per-render content/disk IO in
-  NewGameView. Known remainder: TD-002 (event-stream task lingers when a
-  second game starts in one app run).
+  NewGameView.
+- 2026-08-26 continuation: BUG-002 fixed (no aircraft-assignment UI
+  existed — core loop was uncloseable); TD-002 fixed (event-stream task
+  cancellation); onboarding beat built to the Linux limit — Core
+  `OnboardingModel` + 4 tests, Dashboard card + prefilled route sheet
+  authored (PRODUCT_REVIEW Critical #2 now pending only runtime
+  validation). Phase L's remaining scope: validate the beat live and
+  add the evening-digest surface.
 **Acceptance criteria:**
 - App compiles with zero new warnings; runs in the iPhone and iPad
   simulators; new game → first route → fast-forward → save → relaunch →

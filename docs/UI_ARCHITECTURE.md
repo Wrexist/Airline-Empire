@@ -121,7 +121,16 @@ world (events, competitors, progression incl. capability starts, service &
 reputation, save), map (zoomable Canvas rendering MapModel with LOD,
 selection callouts, rotated live aircraft), game-over screen.
 
-**Open item (AE-016/AE-017):** first macOS session generates the project
+**Added 2026-08-26 (AE-023 Linux scope):** onboarding read model
+(`OnboardingModel.swift`) — the PLAYER_JOURNEY §1 guided first-route beat
+as a pure derived checklist (no persisted flags, zero save impact) with
+demand-ranked, eligibility-checked first-route suggestions; tested in
+Core. App side: Dashboard onboarding card (auto-hides when complete),
+suggestion-prefilled OpenRouteSheet, and the RouteDetail "Aircraft"
+assign/unassign section (BUG-002 fix — the loop was previously
+uncloseable from the UI).
+
+**Open item (AE-023):** first macOS session generates the project
 (`xcodegen`), compiles, fixes view-layer syntax issues, and validates the
 new-game → route → fast-forward flow on simulator. Until then these phases
 are *authored*, not done.

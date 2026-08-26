@@ -27,9 +27,11 @@ AE-023 static integration audit (2026-08-26).
 `AsyncStream` consumer task; it idles until the old stream terminates.
 One idle task per restart, no unbounded growth per session.
 **Resolution path:** Hold the subscription `Task` in GameController and
-cancel it before creating a new session (also finish streams on session
-replacement). Do under macOS validation (AE-023 Phase D) where the fix
-can actually be exercised.
+cancel it before creating a new session.
+**RESOLVED 2026-08-26:** GameController now stores `eventTask`, cancels
+it on re-subscribe, and clears `recentEvents` so a new game never shows
+the previous game's feed. Static fix (parse-checked); exercised for real
+in the macOS pass like the rest of the app target.
 
 ---
 

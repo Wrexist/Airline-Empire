@@ -18,7 +18,7 @@ dimensions are assessed on authored code + Core read models and flagged.
 | UX / UI | **Authored, unvalidated** | Complete screen set consuming tested read models; zero compile/run validation (B-002) — nothing here counts until the macOS pass |
 | Visual quality | **Deferred** | v1 tokens only; Phase 17 art direction not started |
 | Accessibility | **Baseline only** | Labels/44pt/semantic colors authored; audit requires devices |
-| Onboarding | **Missing** | Curated starts exist; the guided first-route beat (PLAYER_JOURNEY §1) is not built |
+| Onboarding | **Core built + UI authored** (2026-08-26) | Guided first-route beat: `OnboardingModel` read model (checklist + demand-ranked route suggestions) tested in Core; Dashboard card + prefilled route sheet authored. Runtime validation pending macOS |
 | Replayability | **Good** | Seeded worlds, archetype casts, era variety; scenario presets missing (fixed this phase — see below) |
 
 ## Ranked issues
@@ -29,7 +29,11 @@ dimensions are assessed on authored code + Core read models and flagged.
 2. **No onboarding**: a new player lands on an empty dashboard with no
    guided first route. The first-five-minutes contract (PLAYER_JOURNEY §1)
    is the difference between a game and a simulator core. → macOS queue,
-   design exists.
+   design exists. **Update 2026-08-26:** built to the limit of Linux —
+   Core `OnboardingModel` (derived checklist, no persisted flags, zero
+   save impact; demand-ranked first-route suggestions) with 4 tests;
+   Dashboard onboarding card + suggestion-prefilled OpenRouteSheet
+   authored. Remains on this list only for its macOS runtime validation.
 
 ### High
 3. **Hub connections not implemented.** GAME_DESIGN §4.14 and the demand

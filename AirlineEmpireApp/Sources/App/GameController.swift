@@ -19,6 +19,7 @@ final class GameController {
     private var session: GameSession?
     private var saveManager: SaveManager?
     private var pumpTask: Task<Void, Never>?
+    private var eventTask: Task<Void, Never>?
 
     var hasGame: Bool { session != nil }
 
@@ -158,8 +159,12 @@ final class GameController {
 
     private func subscribe() async {
         guard let session else { return }
+        // Replacing the session replaces the stream; cancelling the old
+        // consumer finishes its iteration (tasks/TECH_DEBT.md TD-002).
+        eventTask?.cancel()
+        recentEvents = []
         let events = await session.events()
-        Task { [weak self] in
+        eventTask = Task { [weak self] in
             for await event in events {
                 guard let self else { return }
                 self.recentEvents.append(event)

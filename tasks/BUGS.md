@@ -23,6 +23,24 @@ calculate". Core build + demand/read-model tests re-run green.
 
 ---
 
+## BUG-002 — No way to assign an aircraft to a route in the authored UI
+**Severity:** P1 (core loop unplayable) · **Phase found:** AE-023
+continuation session, 2026-08-26.
+**Repro:** Open a route, go looking for "assign aircraft": FleetView's
+swipe actions offer only Unassign/Sell/Return; RouteDetailView had no
+aircraft section; no screen submitted `AssignAircraftToRouteCommand`.
+Flights can never be scheduled, so nothing ever flies.
+**Root cause:** Phase 14 authored the fleet/route screens against read
+models but the assignment interaction fell between the two screens; with
+zero runtime validation (B-002) nobody ever walked the loop.
+**Fix layer:** App — RouteDetailView gains an "Aircraft" card: assigned
+list with Unassign, plus an Assign menu of idle active aircraft
+(submits the existing, test-covered Core command). Status remains
+AUTHORED until the macOS pass.
+**Status:** FIXED (authored) 2026-08-26.
+
+---
+
 *(Historical note: bugs found and fixed test-first inside a phase are
 recorded in that phase's COMPLETED.md entry, not here — this register is
 for bugs that escape a phase.)*
