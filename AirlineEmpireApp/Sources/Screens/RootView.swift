@@ -33,27 +33,18 @@ struct GameTabs: View {
             OperationsView()
                 .tabItem { Label("World", systemImage: "bolt") }
         }
-        .alert(item: rejectionBinding) { rejection in
-            Alert(title: Text("Not possible"),
-                  message: Text(rejection.message),
-                  dismissButton: .default(Text("OK")) { controller.clearRejection() })
+        .alert("Not possible", isPresented: rejectionPresented,
+               presenting: controller.lastRejection) { _ in
+            Button("OK", role: .cancel) { controller.clearRejection() }
+        } message: { rejection in
+            Text(rejection.message)
         }
     }
 
-    private var rejectionBinding: Binding<IdentifiedRejection?> {
+    private var rejectionPresented: Binding<Bool> {
         Binding(
-            get: { controller.lastRejection.map(IdentifiedRejection.init) },
-            set: { _ in controller.clearRejection() })
-    }
-}
-
-struct IdentifiedRejection: Identifiable {
-    let rejection: CommandRejection
-    var id: String { rejection.code }
-    var message: String { rejection.message }
-
-    init(_ rejection: CommandRejection) {
-        self.rejection = rejection
+            get: { controller.lastRejection != nil },
+            set: { presented in if !presented { controller.clearRejection() } })
     }
 }
 

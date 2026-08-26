@@ -121,7 +121,9 @@ public struct DemandSystem: SimulationSystem {
     }
 
     /// Distance-anchored reference fare the market prices against.
-    static func referenceFare(distanceKm: Int, tuning: DemandTuning) -> Double {
+    /// Public: the route-opening UI shows it so players price against the
+    /// same anchor the simulation uses (docs/UI_ARCHITECTURE.md §2).
+    public static func referenceFare(distanceKm: Int, tuning: DemandTuning) -> Double {
         tuning.fareBase + tuning.farePerKm * Double(distanceKm)
     }
 

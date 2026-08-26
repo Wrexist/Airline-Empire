@@ -18,5 +18,20 @@ blocker B-001 in `/docs/PROJECT_AUDIT.md` §4.
 
 ---
 
-*(No code exists yet, so no code-level debt. New entries are added the moment
-debt is knowingly incurred, not discovered later.)*
+## TD-002 — Event-stream subscription task lingers across game restarts
+**Severity:** P3 (bounded leak, rare path).
+**Introduced:** Phase 14 (GameController.subscribe), recorded during the
+AE-023 static integration audit (2026-08-26).
+**Description:** Starting a second game within one app run replaces the
+`GameSession` but never terminates the previous session's event
+`AsyncStream` consumer task; it idles until the old stream terminates.
+One idle task per restart, no unbounded growth per session.
+**Resolution path:** Hold the subscription `Task` in GameController and
+cancel it before creating a new session (also finish streams on session
+replacement). Do under macOS validation (AE-023 Phase D) where the fix
+can actually be exercised.
+
+---
+
+*(New entries are added the moment debt is knowingly incurred, not
+discovered later.)*

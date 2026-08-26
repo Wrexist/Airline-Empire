@@ -17,6 +17,8 @@ targets:
       - package: AirlineEmpireCore
     settings:
       base:
+        # INFOPLIST_KEY_* below require the Xcode-generated Info.plist.
+        GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         TARGETED_DEVICE_FAMILY: "1,2"

@@ -153,11 +153,13 @@ struct RouteDetailView: View {
                 HStack(spacing: AETheme.spacingS) {
                     ForEach([-10, -5, 5, 10], id: \.self) { percent in
                         Button("\(percent > 0 ? "+" : "")\(percent)%") {
+                            guard let player = controller.snapshot?.playerAirline?.id
+                            else { return }
                             let newFare = Money(rounding: card.ticketPrice.asDouble
                                 * (1 + Double(percent) / 100))
                             controller.submit(SetRoutePriceCommand(
-                                airline: controller.snapshot!.playerAirline!.id,
-                                route: routeID, ticketPrice: newFare))
+                                airline: player, route: routeID,
+                                ticketPrice: newFare))
                         }
                         .buttonStyle(.bordered)
                     }
