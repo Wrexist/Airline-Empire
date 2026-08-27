@@ -149,6 +149,18 @@ uncloseable from the UI).
   journeys through the command surface. These are the Linux stand-in for
   simulator walkthroughs and are how BUG-003/004/005 were caught.
 
+**Added 2026-08-26 (evening digest):** `Session/DailyDigest.swift` —
+`GameState.dailyDigest(for:day:)` summarizes a game day (money by
+category, net cash change, flights flown/cancelled, the day's news) purely
+from the ledger's timestamped ring and the event log. No per-day
+accumulation, nothing new persisted, save format unchanged. Because the
+ring is bounded, the model carries `isComplete` and the UI states plainly
+when a day is partial rather than showing a wrong total. The Dashboard
+renders it as a "Yesterday" card with an expandable breakdown; it is
+snapshot-derived, so fast-forward updates it instead of queueing modals.
+`TransactionCategory` labels live in one place (`DigestCard.label(for:)`)
+and are reused by the Finance statement rows.
+
 **Open item (AE-023):** first macOS session generates the project
 (`xcodegen`), compiles, fixes view-layer syntax issues, and validates the
 new-game → route → fast-forward flow on simulator. Until then these phases

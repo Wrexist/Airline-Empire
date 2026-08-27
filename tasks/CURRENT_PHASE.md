@@ -39,6 +39,13 @@ onboarding beat built (Core `OnboardingModel` + Dashboard card).
 - Offline-first re-audited: zero network references in Core or App.
 - `docs/APPLE_VALIDATION.md` written — the full Xcode handoff.
 
+**2026-08-26 (evening digest).** `DailyDigestModel` closes PRODUCT_REVIEW
+#9 and PLAYER_JOURNEY §1 step 4: yesterday's money by category, flights,
+and news, derived from the ledger ring and event log — no new persisted
+state, save format still v10, and honest (`isComplete`) when a very large
+network out-posts the ring. Dashboard renders a "Yesterday" card with a
+Why? breakdown; category labels unified app-wide. 6 tests.
+
 **2026-08-26 (late-game + audit close).** `LateGameTests` (5): a decade of
 play keeps every bounded collection bounded and the save within a small
 multiple of year one; the world stays alive without runaway wealth; fleets

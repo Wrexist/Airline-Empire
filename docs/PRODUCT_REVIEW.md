@@ -65,8 +65,14 @@ dimensions are assessed on authored code + Core read models and flagged.
 7. `LocalAnalytics` service (ARCHITECTURE §8) superseded by statement
    series + route economics, which feed the charts. → D-010 amends.
 8. Mission variety: one kind (boomRush). Seam is clean (`MissionKind`).
-9. Weekly/evening digest aggregation (CORE_LOOP §3) is UI work; events
-   and statements provide the data. → macOS queue.
+9. ~~Weekly/evening digest aggregation (CORE_LOOP §3)~~ → **Built
+   2026-08-26.** `DailyDigestModel` derives yesterday's money by category,
+   flights flown/cancelled, and the day's news from the ledger's
+   timestamped ring and the event log — no new persisted state, save
+   format still v10. It reports `isComplete: false` rather than
+   under-counting when a very large network out-posts the ring. Dashboard
+   renders it as a "Yesterday" card with a **Why?** breakdown. 6 tests.
+   Runtime validation pending macOS like the rest of the UI.
 10. iPad sidebar layout not authored (TabView only). → macOS queue.
 
 ### Low

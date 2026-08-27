@@ -77,10 +77,11 @@ it.
 11. While running at 4×, submit an impossible command (buy an aircraft you
     cannot afford) → an alert must appear (BUG-005: this used to fail
     silently).
-12. Settings → Save now → **Save and quit to menu** → Continue → load the
+12. Dashboard shows a **"Yesterday"** digest card once a day has closed; tap **Why?** for the category breakdown.
+13. Settings → Save now → **Save and quit to menu** → Continue → load the
     save → the game resumes with the same date, cash, and network.
-13. Background the app (⌘⇧H) and return → autosave fired, pumping resumed.
-14. Play until collapse (or force it) → Game Over screen → **"Start a new
+14. Background the app (⌘⇧H) and return → autosave fired, pumping resumed.
+15. Play until collapse (or force it) → Game Over screen → **"Start a new
     airline"** returns to the menu (BUG-003: this used to be a dead end).
 
 ## 5. Known Apple-specific validation gaps
@@ -137,7 +138,7 @@ Most recent Linux run (2026-08-26, Swift 6.0.3, debug tests / release bench):
 
 | Metric | Result |
 |---|---|
-| Core test suite | **245 tests, all passing** (~6 min; the per-tick integrity assert dominates and is compiled out in release) |
+| Core test suite | **251 tests, all passing** (~6 min; the per-tick integrity assert dominates and is compiled out in release) |
 | Release build | clean, no warnings |
 | 2 airlines × 5 routes, 1 game-year | 0.37 s |
 | 4 airlines × 15 routes, 1 game-year | 1.39 s |

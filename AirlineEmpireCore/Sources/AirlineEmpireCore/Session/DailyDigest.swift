@@ -1,0 +1,110 @@
+/// The evening digest (docs/CORE_LOOP.md §3, docs/PLAYER_JOURNEY.md §1
+/// step 4): "a small profit or loss with its *why*" — the beat that closes
+/// the decide → watch → understand loop at the end of each game day.
+///
+/// Derived entirely from the ledger's timestamped transaction ring and the
+/// event log. No per-day state is accumulated and nothing new is persisted,
+/// so the save format is untouched (v10) — a digest is a *view* of what
+/// already happened, never a second copy of it.
+///
+/// The ring is bounded (`Ledger.defaultRecentCapacity`), so a very large
+/// network can post more transactions in one day than it retains. That case
+/// is detected and reported through `isComplete` rather than quietly
+/// under-counting: a digest that lies about money is worse than one that
+/// admits it is partial.
+
+public struct DailyDigestModel: Equatable, Sendable {
+    public let date: GameDate
+    public let dayIndex: Int64
+
+    /// Signed money moved today, by category (positive credits the airline).
+    public let byCategory: [TransactionCategory: Money]
+    public let revenue: Money
+    /// Negative: what the day cost to operate and run.
+    public let expenses: Money
+    /// Revenue + expenses; the number the player reads first.
+    public let netCashChange: Money
+
+    public let flightsCompleted: Int
+    public let flightsCancelled: Int
+    /// Events from today worth a line in the digest, oldest first.
+    public let notableEvents: [SimEvent]
+
+    /// False when the transaction ring may have dropped part of today, so
+    /// the figures are a floor rather than the whole day.
+    public let isComplete: Bool
+
+    /// Whether anything happened worth showing the player.
+    public var hasContent: Bool {
+        !byCategory.isEmpty || flightsCompleted > 0 || flightsCancelled > 0
+            || !notableEvents.isEmpty
+    }
+}
+
+extension GameState {
+    /// The digest for a given game day (defaults to the day in progress).
+    /// Pass `clock.now.dayIndex - 1` at a day boundary for "yesterday",
+    /// which is what an evening digest actually summarizes.
+    public func dailyDigest(for airline: AirlineID,
+                            day: Int64? = nil) -> DailyDigestModel? {
+        guard airlines[airline] != nil else { return nil }
+        let dayIndex = day ?? clock.now.dayIndex
+        let dayStart = SimTime(rawMinutes: dayIndex * GameCalendar.minutesPerDay)
+        let dayEnd = SimTime(rawMinutes: (dayIndex + 1) * GameCalendar.minutesPerDay)
+
+        var byCategory: [TransactionCategory: Money] = [:]
+        var revenueCents: Int64 = 0
+        var expenseCents: Int64 = 0
+        for transaction in ledger.recent
+        where transaction.airline == airline
+            && transaction.at >= dayStart && transaction.at < dayEnd {
+            let existing = byCategory[transaction.category] ?? .zero
+            byCategory[transaction.category] = existing + transaction.amount
+            if transaction.amount.cents >= 0 {
+                revenueCents += transaction.amount.cents
+            } else {
+                expenseCents += transaction.amount.cents
+            }
+        }
+
+        // The ring only loses the oldest entries. If it is full and its
+        // oldest surviving transaction already falls inside this day, then
+        // earlier ones from the same day were evicted.
+        let ringFull = ledger.recent.count >= ledger.recentCapacity
+        let oldestRetained = ledger.recent.first?.at
+        let isComplete = !ringFull || (oldestRetained.map { $0 < dayStart } ?? true)
+
+        var completed = 0
+        var cancelled = 0
+        var notable: [SimEvent] = []
+        for event in eventLog.recent
+        where event.at >= dayStart && event.at < dayEnd {
+            switch event.kind {
+            case .flightArrived:
+                if subjectAirline(of: event) == airline { completed += 1 }
+            case .flightCancelled:
+                if subjectAirline(of: event) == airline { cancelled += 1 }
+            // Individual departures and arrivals are the day's texture, not
+            // its story; the story is what changed.
+            case .flightDeparted, .flightDelayed, .dayStarted, .weekStarted,
+                 .monthStarted, .wakeFired, .commandApplied, .aircraftAssigned,
+                 .aircraftUnassigned:
+                continue
+            default:
+                if isFeedEvent(event, for: airline) { notable.append(event) }
+            }
+        }
+
+        return DailyDigestModel(
+            date: GameCalendar.date(at: dayStart, startYear: meta.startYear),
+            dayIndex: dayIndex,
+            byCategory: byCategory,
+            revenue: Money(cents: revenueCents),
+            expenses: Money(cents: expenseCents),
+            netCashChange: Money(cents: revenueCents + expenseCents),
+            flightsCompleted: completed,
+            flightsCancelled: cancelled,
+            notableEvents: notable,
+            isComplete: isComplete)
+    }
+}

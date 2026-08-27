@@ -23,6 +23,15 @@ struct DashboardView: View {
                                 showingGuidedSheet = true
                             }
                         }
+                        // The evening digest (docs/CORE_LOOP.md §3): yesterday
+                        // closed, with its reasons. Rendered from the snapshot
+                        // so fast-forward updates it instead of queueing modals.
+                        if let player = snapshot.playerAirline?.id,
+                           let digest = snapshot.dailyDigest(
+                               for: player, day: snapshot.clock.now.dayIndex - 1),
+                           digest.hasContent {
+                            DigestCard(digest: digest)
+                        }
                         statGrid(dashboard)
                         eventsFeed
                     } else {
@@ -100,6 +109,97 @@ struct DashboardView: View {
                     }
                 }
             }
+        }
+    }
+}
+
+/// The evening digest (docs/CORE_LOOP.md §3, docs/PLAYER_JOURNEY.md §1
+/// step 4): yesterday's profit or loss *with its why* — the beat that
+/// closes decide → watch → understand. Every number comes from
+/// `DailyDigestModel`; this view only formats.
+struct DigestCard: View {
+    let digest: DailyDigestModel
+    @State private var expanded = false
+
+    var body: some View {
+        AECard {
+            VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Yesterday").font(.headline)
+                        Text(Format.date(digest.date))
+                            .font(.caption)
+                            .foregroundStyle(AETheme.mutedText)
+                    }
+                    Spacer()
+                    MoneyText(money: digest.netCashChange)
+                        .font(.title3.weight(.semibold))
+                }
+                HStack(spacing: AETheme.spacingS) {
+                    AEBadge(text: "\(digest.flightsCompleted) flown",
+                            color: AETheme.positive, icon: "airplane")
+                    if digest.flightsCancelled > 0 {
+                        AEBadge(text: "\(digest.flightsCancelled) cancelled",
+                                color: AETheme.negative,
+                                icon: "exclamationmark.triangle")
+                    }
+                    Button(expanded ? "Hide detail" : "Why?") {
+                        withAnimation(.snappy) { expanded.toggle() }
+                    }
+                    .font(.caption.weight(.medium))
+                    .buttonStyle(.bordered)
+                }
+                if expanded {
+                    ForEach(sortedCategories, id: \.0) { category, amount in
+                        HStack {
+                            Text(Self.label(for: category)).font(.subheadline)
+                            Spacer()
+                            MoneyText(money: amount).font(.subheadline)
+                        }
+                    }
+                    if !digest.isComplete {
+                        // Never present a partial day as a whole one.
+                        Text("Your network posts more transactions than one day of history holds — these figures cover part of the day. The monthly statement is exact.")
+                            .font(.caption)
+                            .foregroundStyle(AETheme.caution)
+                    }
+                }
+                ForEach(Array(digest.notableEvents.prefix(3).enumerated()),
+                        id: \.offset) { _, event in
+                    EventRow(event: event)
+                }
+            }
+        }
+    }
+
+    private var sortedCategories: [(TransactionCategory, Money)] {
+        digest.byCategory
+            .map { ($0.key, $0.value) }
+            .sorted { $0.1.cents != $1.1.cents ? $0.1.cents > $1.1.cents
+                                               : $0.0.rawValue < $1.0.rawValue }
+    }
+
+    /// Shared with FinanceView's statement rows so one category never has
+    /// two names in the same app.
+    static func label(for category: TransactionCategory) -> String {
+        switch category {
+        case .ticketRevenue: "Ticket revenue"
+        case .missionReward: "Mission rewards"
+        case .fuel: "Fuel"
+        case .airportFees: "Airport fees"
+        case .crewCosts: "Crew"
+        case .maintenance: "Maintenance"
+        case .leasePayment: "Leases"
+        case .leasePenalty: "Lease penalties"
+        case .passengerService: "Onboard service"
+        case .salaries: "Payroll"
+        case .overhead: "Overhead"
+        case .loanInterest: "Loan interest"
+        case .loanPrincipal: "Loan principal"
+        case .loanProceeds: "Loan drawdowns"
+        case .initialCapital: "Capital"
+        case .aircraftPurchase: "Aircraft purchases"
+        case .aircraftSale: "Aircraft sales"
         }
     }
 }
