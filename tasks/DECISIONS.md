@@ -140,3 +140,48 @@ design-doc promises not implemented and judged against building them now.
 carries these as tracked items, not silent gaps. Scenario/difficulty
 presets — the other High finding — were implemented in this phase instead
 of deferred (content-driven Founder/Entrepreneur/Magnate).
+
+---
+
+## D-011 — Event audience and rejection delivery belong in Core
+**Date:** 2026-08-26 · **Status:** ACCEPTED · **Phase:** AE-023 (Linux)
+**Context:** Two P1 defects (BUG-004, BUG-005) both stem from information
+that exists inside Core never reaching the player. Core is protected by
+default, so each change is justified against the eight-point test:
+
+1. **Problem reproduced.** BUG-004: `statementClosed` is emitted for every
+   airline, so the player's feed carried rivals' books; and
+   `airlineEnteredAdministration` rendered nothing. BUG-005: a command
+   queued while running is rejected into `engine.lastCommandResults`,
+   which the next `advance` chunk clears — the rejection is destroyed
+   before any caller can see it.
+2. **Why Core, not App.** Event payloads carry entity IDs, not owners
+   (`aircraftDelivered(id:)`), so deciding whose business an event is
+   requires resolving ownership against state — domain knowledge the view
+   layer must not compute (ARCHITECTURE §3). And `GameSession` is the only
+   façade across the actor boundary (D-008); the App cannot observe
+   per-chunk engine results without reaching past it, which the
+   architecture forbids. Both fixes are *outbound delivery* of facts Core
+   already computes.
+3. **Invariants affected: none.** Commands, systems, tick order, state
+   mutation and event emission are untouched. The additions are one pure
+   `GameState` extension (reads only) and two publish-time hooks.
+4. **Tests.** `EventFeedTests` — 6 new tests covering ownership
+   resolution, rival privacy, public-fate visibility, kernel-chatter
+   suppression, live filtered subscription, and rejection delivery.
+5. **Determinism.** No RNG, no state writes, no ordering change;
+   `stateHash` is unaffected. Dual-run and save/continue tests still pass.
+6. **Save compatibility.** No persisted state added; format stays **v10**.
+   No migration.
+7. **Performance.** Classification runs per delivered event only when a
+   subscriber exists; rejection publishing iterates a per-chunk array that
+   is empty in the normal case. Bench unchanged (3.05 s at 200×200).
+
+**Decision:** Add `GameState.subjectAirline(of:)` / `isFeedEvent(_:for:)`
+(`Session/EventFeed.swift`), `GameSession.events(playerFeedOnly:)`, and
+`GameSession.rejections()`. `events()` keeps its existing semantics by
+default so no caller or test changes meaning.
+**Consequences:** The App can present an honest feed and report queued
+failures without duplicating domain logic. Future event kinds must be
+classified in `subjectAirline(of:)` — the switch is exhaustive, so the
+compiler enforces it.

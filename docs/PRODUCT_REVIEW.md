@@ -26,6 +26,14 @@ dimensions are assessed on authored code + Core read models and flagged.
 ### Critical (release-blocking)
 1. **The app has never been compiled or run** (B-002). Everything UI is
    unvalidated. → First macOS session: compile, fix, run the core flow.
+   **Update 2026-08-26:** the Linux-side risk reduction is now done — all
+   sources parse, every Core API call is verified, screen data contracts
+   and full player journeys are covered by Core tests, and three P1
+   journey defects invisible to unit tests were found and fixed (BUG-003
+   game-over dead end, BUG-004 rival financials in the player feed,
+   BUG-005 silent command rejection). The Xcode handoff is
+   `docs/APPLE_VALIDATION.md`. The claim remains **not Apple-runtime
+   validated** — that cannot change without a Mac.
 2. **No onboarding**: a new player lands on an empty dashboard with no
    guided first route. The first-five-minutes contract (PLAYER_JOURNEY §1)
    is the difference between a game and a simulator core. → macOS queue,

@@ -46,6 +46,44 @@ band on all seeds; ≥60% survival. lowCost/expansionist lean on leases and
 carry thinner margins; premium runs richest per passenger — the intended
 texture. No change.
 
+### F-004 (2026-08-26): the runway ladder is nearly inert
+
+**Evidence.** Airport runway classes across the 80-airport dataset:
+`veryLarge` 42, `large` 35, `medium` 2, `small` 1. Aircraft requirements
+are turboprop→`small`, regionalJet→`medium`, narrowbody and
+largeNarrowbody→`large`, widebody and largeWidebody→`veryLarge`. Since
+eligibility is `airport.runwayClass >= aircraft.requirement`, reachability
+is: turboprops 80/80, regional jets 79/80, narrowbodies 77/80, widebodies
+42/80.
+
+**Reading.** Only the widebody gate does real work. The design fantasy that
+small fields *require* small aircraft (docs/AIRPORTS.md) is carried by
+three airports out of eighty, so turboprops and regional jets justify
+themselves almost entirely on capital cost and thin-route economics rather
+than on airport access. That is a coherent game — small aircraft are the
+low-capital entry rung — but it is not the game the runway ladder was
+drawn for, and it makes the early fleet decision flatter than intended.
+
+**Not changed.** Re-classing airports downward would reshape demand pools,
+slot scarcity, and every AI network at once; the battery's current
+calibration sits on this distribution. This is a content-design decision
+for playtest, not an arithmetic defect. The lever, when wanted: move a
+handful of low-population regional fields (not hubs) from `large` to
+`medium`/`small` and re-run the battery, expecting turboprop utilization
+and regional-route margins to rise.
+
+### F-005 (2026-08-26): the aircraft roster carries no dead SKUs
+
+Checked all 14 types pairwise across every axis a player can value —
+seats, range, comfort, reliability, speed against burn, list price, lease,
+maintenance, delivery lead, turnaround. **No type is strictly dominated.**
+An earlier four-axis reading (seats/range/burn/price) suggested PA-228 was
+dominated by MR-220; including comfort (0.60 vs 0.57) and delivery lead
+(365 vs 420 days) shows the real trade — Pacifica sells denser, more
+comfortable, thirstier airframes sooner; Meridian sells efficiency and
+range. No content change. The invariant is now pinned by
+`ContentQualityTests.noAircraftIsStrictlyDominated`.
+
 ## Tuning changelog
 
 *(No tuning-constant changes made in Phase 18 — all findings resolved as

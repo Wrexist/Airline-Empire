@@ -95,7 +95,8 @@ struct DashboardView: View {
                 } else {
                     ForEach(Array(controller.recentEvents.suffix(12).reversed()
                         .enumerated()), id: \.offset) { _, event in
-                        EventRow(event: event)
+                        EventRow(event: event,
+                                 player: controller.snapshot?.playerAirline?.id)
                     }
                 }
             }
@@ -200,17 +201,32 @@ struct OnboardingCard: View {
 /// noise (curation over completeness).
 struct EventRow: View {
     let event: SimEvent
+    /// Distinguishes "your airline" from "a rival" in shared news.
+    var player: AirlineID? = nil
 
     var body: some View {
         if let text = description {
             HStack(alignment: .top, spacing: AETheme.spacingS) {
                 Image(systemName: icon)
                     .font(.caption)
-                    .foregroundStyle(AETheme.mutedText)
+                    .foregroundStyle(isAlarm ? AETheme.negative : AETheme.mutedText)
                     .frame(width: 16)
-                Text(text).font(.subheadline)
+                Text(text)
+                    .font(.subheadline)
+                    .fontWeight(isAlarm ? .semibold : .regular)
+                    .foregroundStyle(isAlarm ? AETheme.negative : .primary)
                 Spacer(minLength: 0)
             }
+        }
+    }
+
+    /// Events the player must not miss get emphasis, not just a line.
+    private var isAlarm: Bool {
+        switch event.kind {
+        case .airlineEnteredAdministration(let id), .airlineCollapsed(let id):
+            return id == player
+        default:
+            return false
         }
     }
 
@@ -240,8 +256,14 @@ struct EventRow: View {
             "Mission complete! \(Format.money(reward))"
         case .statementClosed(_, _, let month, let net):
             "Month \(month) closed: \(Format.money(net))"
-        case .airlineCollapsed:
-            "An airline has collapsed"
+        // The most important warning in the game: the player is failing but
+        // is not dead yet (BUG-004 — this case rendered nothing at all).
+        case .airlineEnteredAdministration(let id):
+            id == player
+                ? "Your airline has entered administration — sell aircraft or raise cash now"
+                : "A rival has entered administration"
+        case .airlineCollapsed(let id):
+            id == player ? "Your airline has collapsed" : "A rival airline has collapsed"
         case .loanTaken(_, let amount, _):
             "Loan drawn: \(Format.money(amount))"
         default:
@@ -268,6 +290,7 @@ struct EventRow: View {
         case .missionOffered, .missionCompleted: "target"
         case .worldEventStarted, .worldEventForecast: "bolt"
         case .statementClosed: "doc.text"
+        case .airlineEnteredAdministration, .airlineCollapsed: "exclamationmark.octagon"
         default: "circle"
         }
     }

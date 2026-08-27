@@ -210,6 +210,10 @@ struct SettingsView: View {
                 }
                 Section("Save") {
                     Button("Save now") { controller.saveOnBackground() }
+                    Button("Save and quit to menu") {
+                        controller.saveOnBackground()
+                        controller.quitToMenu()
+                    }
                     if let generation = controller.loadedFromBackup {
                         Text("This game was restored from backup #\(generation) — some recent progress may be missing.")
                             .font(.caption)

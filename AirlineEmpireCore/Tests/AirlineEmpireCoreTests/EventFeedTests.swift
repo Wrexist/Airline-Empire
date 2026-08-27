@@ -1,0 +1,166 @@
+import Testing
+@testable import AirlineEmpireCore
+
+/// The player's operations feed must show the player's business, world news,
+/// and rivals' public fates — never a rival's private books (BUG-004) — and
+/// a command rejected while the world is running must still reach the
+/// player (BUG-005).
+@Suite("Event feed and rejection delivery")
+struct EventFeedTests {
+    @Test func rivalPrivateBusinessIsNotInThePlayerFeed() throws {
+        let (engine, player) = try AIFixtures.world(competitors: 3)
+        let rival = try #require(engine.state.airlines.values
+            .first { $0.kind == .ai })
+        let state = engine.state
+
+        // A rival's closed statement and loan are private.
+        let rivalStatement = SimEvent(at: state.clock.now, kind: .statementClosed(
+            airline: rival.id, year: 2030, month: 4, netProfit: Money.dollars(1_000)))
+        let rivalLoan = SimEvent(at: state.clock.now, kind: .loanTaken(
+            airline: rival.id, amount: Money.dollars(5_000_000), rateBasisPoints: 700))
+        #expect(!state.isFeedEvent(rivalStatement, for: player))
+        #expect(!state.isFeedEvent(rivalLoan, for: player))
+        #expect(state.subjectAirline(of: rivalStatement) == rival.id)
+
+        // The player's own equivalents are.
+        let ownStatement = SimEvent(at: state.clock.now, kind: .statementClosed(
+            airline: player, year: 2030, month: 4, netProfit: Money.dollars(1_000)))
+        #expect(state.isFeedEvent(ownStatement, for: player))
+    }
+
+    @Test func rivalFailureIsIndustryNewsButRivalOpsAreNot() throws {
+        let (engine, player) = try AIFixtures.world(competitors: 3)
+        let rival = try #require(engine.state.airlines.values
+            .first { $0.kind == .ai })
+        let state = engine.state
+
+        for kind: SimEventKind in [.airlineEnteredAdministration(id: rival.id),
+                                   .airlineCollapsed(id: rival.id),
+                                   .airlineFounded(id: rival.id, name: rival.name)] {
+            #expect(state.isFeedEvent(SimEvent(at: state.clock.now, kind: kind),
+                                      for: player))
+        }
+    }
+
+    @Test func flightAndFleetEventsResolveThroughOwnership() throws {
+        let (engine, player) = try AIFixtures.world(competitors: 2)
+        // Give the player a route and an aircraft, then let both sides fly.
+        _ = engine.applyNow(BuyUsedAircraftCommand(buyer: player, type: "MR180",
+                                                   ageYears: 8))
+        let aircraft = try #require(engine.state.fleet(of: player).first).id
+        engine.advance(ticks: Fixtures.ticksPerDay * 30)
+        let state = engine.state
+
+        let fleetEvent = SimEvent(at: state.clock.now,
+                                  kind: .maintenanceCompleted(id: aircraft))
+        #expect(state.subjectAirline(of: fleetEvent) == player)
+        #expect(state.isFeedEvent(fleetEvent, for: player))
+
+        // A rival's route: its flight events belong to the rival, not us.
+        let rivalRoute = try #require(state.orderedRouteIDs
+            .compactMap { state.routes[$0] }
+            .first { $0.airline != player })
+        let rivalFlight = SimEvent(at: state.clock.now, kind: .flightDelayed(
+            id: EntityID(raw: 1), route: rivalRoute.id, delayMinutes: 45))
+        #expect(state.subjectAirline(of: rivalFlight) == rivalRoute.airline)
+        #expect(!state.isFeedEvent(rivalFlight, for: player))
+    }
+
+    @Test func worldNewsReachesEveryoneAndKernelChatterReachesNobody() throws {
+        let (engine, player) = try AIFixtures.world(competitors: 2)
+        let state = engine.state
+        let storm = SimEvent(at: state.clock.now, kind: .worldEventStarted(
+            id: 1, kind: .storm(region: .europe)))
+        #expect(state.subjectAirline(of: storm) == nil)
+        #expect(state.isFeedEvent(storm, for: player))
+
+        // Diagnostics are not news.
+        let chatter = SimEvent(at: state.clock.now,
+                               kind: .commandApplied(name: "OpenRoute"))
+        #expect(!state.isFeedEvent(chatter, for: player))
+    }
+
+    /// The live path: a filtered subscription must not carry rival noise
+    /// while an unfiltered one still sees everything.
+    @Test func filteredSubscriptionDropsRivalEvents() async throws {
+        let catalog = try ContentCatalog.loadBundled()
+        let session = GameSession(state: Fixtures.newState(seed: 9),
+                                  systems: GamePipeline.standard(),
+                                  catalog: catalog)
+        _ = await session.submit(FoundAirlineCommand(
+            airlineName: "Feed Air", kind: .player, homeAirport: "STV",
+            startingCash: Money.dollars(120_000_000)))
+        await session.populateStandardWorld(competitors: 3)
+        let player = try #require(await session.snapshot.playerAirline).id
+
+        let filtered = await session.events(playerFeedOnly: true)
+        let collector = Task {
+            var seen: [SimEvent] = []
+            for await event in filtered {
+                seen.append(event)
+                if seen.count >= 40 { break }
+            }
+            return seen
+        }
+        await session.advance(ticks: Fixtures.ticksPerDay * 45)
+        let seen = await collector.value
+        let snapshot = await session.snapshot
+        #expect(!seen.isEmpty)
+        for event in seen {
+            let subject = snapshot.subjectAirline(of: event)
+            let publicNews: Bool
+            switch event.kind {
+            case .airlineFounded, .airlineEnteredAdministration, .airlineCollapsed:
+                publicNews = true
+            default:
+                publicNews = false
+            }
+            #expect(subject == nil || subject == player || publicNews)
+        }
+    }
+
+    @Test func queuedCommandRejectionReachesTheSubscriber() async throws {
+        let catalog = try ContentCatalog.loadBundled()
+        let session = GameSession(state: Fixtures.newState(seed: 4),
+                                  systems: GamePipeline.standard(),
+                                  catalog: catalog)
+        _ = await session.submit(FoundAirlineCommand(
+            airlineName: "Broke Air", kind: .player, homeAirport: "STV",
+            startingCash: Money.dollars(1_000)))
+        let player = try #require(await session.snapshot.playerAirline).id
+
+        let rejections = await session.rejections()
+        let collector = Task {
+            for await rejection in rejections { return rejection }
+            return CommandRejection(code: "none", message: "none")
+        }
+
+        // Running, not paused: the command is queued, not applied now.
+        await session.setSpeed(.x4)
+        let immediate = await session.submit(BuyNewAircraftCommand(
+            buyer: player, type: "MR180"))
+        #expect(immediate == nil)
+
+        await session.advance(ticks: 4)
+        let rejection = await collector.value
+        #expect(rejection.code != "none")
+        #expect(!rejection.message.isEmpty)
+    }
+
+    @Test func appliedQueuedCommandsProduceNoRejection() async throws {
+        let catalog = try ContentCatalog.loadBundled()
+        let session = GameSession(state: Fixtures.newState(seed: 5),
+                                  systems: GamePipeline.standard(),
+                                  catalog: catalog)
+        _ = await session.submit(FoundAirlineCommand(
+            airlineName: "Solvent Air", kind: .player, homeAirport: "STV",
+            startingCash: Money.dollars(120_000_000)))
+        let player = try #require(await session.snapshot.playerAirline).id
+        await session.setSpeed(.x4)
+        _ = await session.submit(BuyUsedAircraftCommand(buyer: player,
+                                                        type: "MR180", ageYears: 8))
+        await session.advance(ticks: 4)
+        let fleet = await session.snapshot.fleet(of: player)
+        #expect(fleet.count == 1)
+    }
+}

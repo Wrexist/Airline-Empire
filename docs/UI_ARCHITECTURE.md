@@ -130,6 +130,25 @@ suggestion-prefilled OpenRouteSheet, and the RouteDetail "Aircraft"
 assign/unassign section (BUG-002 fix — the loop was previously
 uncloseable from the UI).
 
+**Added 2026-08-26 (V3 Linux-first pass):**
+- **Event audience** (`Session/EventFeed.swift`, decision D-011):
+  `GameState.subjectAirline(of:)` resolves whose business an event is
+  (entity events resolve through ownership); `isFeedEvent(_:for:)` decides
+  feed visibility — own business, world news, and rivals' public fates.
+  `GameSession.events(playerFeedOnly:)` filters at publish time, against
+  the exact state that produced the event. The app subscribes filtered.
+- **Rejection delivery** (D-011): `GameSession.rejections()` publishes the
+  outcome of commands queued while the simulation is running — the only
+  path by which such a failure can reach the player.
+- **Session lifecycle:** `GameController.quitToMenu()` releases the
+  session and cancels the pump, event, and rejection tasks, so the app can
+  return to the menu (game over, or save-and-quit).
+- **Contract tests:** `ScreenContractTests` asserts that Dashboard, Route
+  detail, Fleet, Finance, Map, and World screens can be drawn from Core
+  alone on a real mid-game world; `PlayerJourneyTests` drives complete
+  journeys through the command surface. These are the Linux stand-in for
+  simulator walkthroughs and are how BUG-003/004/005 were caught.
+
 **Open item (AE-023):** first macOS session generates the project
 (`xcodegen`), compiles, fixes view-layer syntax issues, and validates the
 new-game → route → fast-forward flow on simulator. Until then these phases

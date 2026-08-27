@@ -49,8 +49,20 @@ known compile blockers.
   Instruments profiling, release checklist — per the phase ladder.
 **Tests:** Core suite stays green (never weakened); UI validation is
 manual walkthrough + Instruments evidence recorded in docs/.
-**Status:** BLOCKED on environment (B-002) — this session (2026-08-26) is
-Linux; `xcodebuild`/`xcodegen` unavailable. All audit-scope work done.
+- 2026-08-26 V3 Linux-first pass: player-journey gap hunt found and fixed
+  three more P1 defects (BUG-003 game-over dead end, BUG-004 rivals'
+  private business in the player feed + missing administration warning,
+  BUG-005 silent rejection of commands queued while running). Core gained
+  an event-audience classifier and a rejection stream (decision D-011,
+  additive and pure — save format still v10). New suites:
+  `PlayerJourneyTests`, `EventFeedTests`, `ScreenContractTests`,
+  `ContentQualityTests`. `docs/APPLE_VALIDATION.md` written as the Xcode
+  handoff. Content audited (no dead SKUs; F-004 runway-ladder finding
+  documented, not unilaterally changed). Offline-first re-verified.
+**Status:** LINUX SCOPE COMPLETE — no known Linux-side P0/P1 remains.
+Apple-runtime steps (compile, simulator, rendering, gestures,
+accessibility, Instruments, signing) are blocked on macOS (B-002) and
+fully enumerated in `docs/APPLE_VALIDATION.md`.
 
 ---
 

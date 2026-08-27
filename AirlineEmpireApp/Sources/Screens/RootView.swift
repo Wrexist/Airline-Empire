@@ -80,6 +80,13 @@ struct GameOverView: View {
                 }
                 .padding(.horizontal)
             }
+            // Without a way out this screen is a dead end (BUG-003).
+            Button("Start a new airline") {
+                controller.quitToMenu()
+            }
+            .font(.headline)
+            .buttonStyle(.borderedProminent)
+            .padding(.top, AETheme.spacingS)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
