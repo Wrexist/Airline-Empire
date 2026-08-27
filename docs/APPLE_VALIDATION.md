@@ -114,6 +114,13 @@ Everything here is unproven on Apple platforms and must be checked by hand:
   Route detail, Fleet, Finance, Map, and the World screens, the read models
   supply every field the view renders, on a real mid-game world.
 - No network dependency exists anywhere in Core or App (offline-first).
+- Concurrency hygiene: no `DispatchQueue`, `@unchecked Sendable`, detached
+  tasks, timers, or mutable global state in the App; all `Task` creation is
+  in the `@MainActor` composition root (`GameController`).
+
+The full picture of what is proven versus assumed is in
+`docs/LINUX_QA_AUDIT.md` — read it before deciding where to spend the first
+hours of Xcode time.
 
 ## 7. Expected test results
 
@@ -130,7 +137,7 @@ Most recent Linux run (2026-08-26, Swift 6.0.3, debug tests / release bench):
 
 | Metric | Result |
 |---|---|
-| Core test suite | **239 tests, all passing** |
+| Core test suite | **245 tests, all passing** (~6 min; the per-tick integrity assert dominates and is compiled out in release) |
 | Release build | clean, no warnings |
 | 2 airlines × 5 routes, 1 game-year | 0.37 s |
 | 4 airlines × 15 routes, 1 game-year | 1.39 s |

@@ -147,6 +147,47 @@ struct EventFeedTests {
         #expect(!rejection.message.isEmpty)
     }
 
+    /// Subscription lifecycle (V3 prompt §27): subscribers are independent,
+    /// and a session can be re-subscribed after a consumer goes away —
+    /// the Core-side half of the TD-002 class of bug.
+    @Test func subscriptionsAreIndependentAndResubscribable() async throws {
+        let catalog = try ContentCatalog.loadBundled()
+        let session = GameSession(state: Fixtures.newState(seed: 12),
+                                  systems: GamePipeline.standard(),
+                                  catalog: catalog)
+        _ = await session.submit(FoundAirlineCommand(
+            airlineName: "Stream Air", kind: .player, homeAirport: "STV",
+            startingCash: Money.dollars(80_000_000)))
+
+        func collectFive(_ stream: AsyncStream<SimEvent>) -> Task<Int, Never> {
+            Task {
+                var count = 0
+                for await _ in stream {
+                    count += 1
+                    if count >= 5 { break }
+                }
+                return count
+            }
+        }
+
+        // Two concurrent consumers both get served.
+        let first = collectFive(await session.events())
+        let second = collectFive(await session.events())
+        // 30 days of calendar events comfortably exceeds the five each
+        // consumer waits for (an airline with no fleet emits little else).
+        await session.advance(ticks: Fixtures.ticksPerDay * 30)
+        #expect(await first.value == 5)
+        #expect(await second.value == 5)
+
+        // Both are finished; a fresh subscription still works, so a new
+        // game inside one app run is not deaf.
+        let third = collectFive(await session.events())
+        // 30 days of calendar events comfortably exceeds the five each
+        // consumer waits for (an airline with no fleet emits little else).
+        await session.advance(ticks: Fixtures.ticksPerDay * 30)
+        #expect(await third.value == 5)
+    }
+
     @Test func appliedQueuedCommandsProduceNoRejection() async throws {
         let catalog = try ContentCatalog.loadBundled()
         let session = GameSession(state: Fixtures.newState(seed: 5),

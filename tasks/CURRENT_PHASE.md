@@ -39,6 +39,15 @@ onboarding beat built (Core `OnboardingModel` + Dashboard card).
 - Offline-first re-audited: zero network references in Core or App.
 - `docs/APPLE_VALIDATION.md` written — the full Xcode handoff.
 
+**2026-08-26 (late-game + audit close).** `LateGameTests` (5): a decade of
+play keeps every bounded collection bounded and the save within a small
+multiple of year one; the world stays alive without runaway wealth; fleets
+age inside their domains; **a decade is bit-identical for a given seed**;
+five save/reload cycles over five years equal one unbroken run.
+Subscription-lifecycle test added (§27). Swift 6 concurrency audit of the
+App: clean. `docs/LINUX_QA_AUDIT.md` written — proven vs. unknown, with
+§37's questions answered honestly.
+
 ## Next
 
 Remaining work is Apple-runtime by nature (compile, simulator, rendering,
