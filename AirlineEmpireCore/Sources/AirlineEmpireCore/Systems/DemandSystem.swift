@@ -120,6 +120,36 @@ public struct DemandSystem: SimulationSystem {
         return schedule * comfort * operations * reputation
     }
 
+    /// Passengers a single operator could expect to carry per day on a
+    /// market, at a given fare ratio and service quality — the pool times
+    /// the share the logit split actually awards, including the outside
+    /// option. The raw pool is market *mass*, not a passenger count: a
+    /// lone operator at the reference fare captures roughly a third of it,
+    /// so showing the pool to a player overstates the market by ~3x and
+    /// invites planning against traffic that will never board (BUG-006).
+    public static func expectedCapturedPassengers(
+        pool: SegmentDemand, fareRatio: Double, quality: Double,
+        tuning: DemandTuning) -> Double {
+        guard quality > 0 else { return 0 }
+        let out = tuning.outsideOptionWeight
+        let business = exp(tuning.priceSensitivityBusiness * (1 - fareRatio)) * quality
+        let leisure = exp(tuning.priceSensitivityLeisure * (1 - fareRatio)) * quality
+        return pool.business * (business / (out + business))
+            + pool.leisure * (leisure / (out + leisure))
+    }
+
+    /// Service quality of a representative starter operation, used for
+    /// pre-flight estimates where no route exists yet: a mid-comfort
+    /// aircraft flying the reference frequency with as-yet-unproven
+    /// operations and a neutral reputation.
+    public static func representativeStarterQuality(tuning: DemandTuning) -> Double {
+        let schedule = pow(2.0 / tuning.scheduleQualityReferenceTrips,
+                           tuning.scheduleQualityExponent)
+        let comfort = tuning.comfortBase + tuning.comfortWeight * 0.55
+        let operations = tuning.operationsBase + tuning.operationsWeight * 0.8
+        return schedule * comfort * operations
+    }
+
     /// Distance-anchored reference fare the market prices against.
     /// Public: the route-opening UI shows it so players price against the
     /// same anchor the simulation uses (docs/UI_ARCHITECTURE.md §2).

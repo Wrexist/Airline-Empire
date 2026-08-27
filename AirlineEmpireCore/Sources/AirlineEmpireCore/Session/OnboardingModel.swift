@@ -32,9 +32,12 @@ public struct FirstRouteSuggestion: Equatable, Sendable {
     public let destination: AirportCode
     public let destinationCity: String
     public let distanceKm: Int
-    /// Round-trip daily demand pool (both directions, today's date) —
-    /// a hint, not a promise; competition and pricing decide the rest.
-    public let expectedDailyDemand: Int
+    /// Passengers a typical starter service could expect to carry per day
+    /// across both directions at the reference fare — the share the logit
+    /// split actually awards, not the raw market pool, which is several
+    /// times larger and would overstate the market (BUG-006). A hint, not
+    /// a promise: competition and pricing decide the rest.
+    public let expectedDailyPassengers: Int
     /// The market reference fare at this distance (what "normal" costs).
     public let referenceFare: Money
 }
@@ -107,12 +110,18 @@ extension GameState {
                                            aircraftRunwayRequirement: runway).isEmpty,
                   let distance = catalog.distanceKm(home, code)
             else { continue }
-            let outbound = DemandSystem.demandPool(
-                from: home, to: code, date: date,
-                economicIndex: world.economicIndex, catalog: catalog).total
-            let inbound = DemandSystem.demandPool(
-                from: code, to: home, date: date,
-                economicIndex: world.economicIndex, catalog: catalog).total
+            let quality = DemandSystem.representativeStarterQuality(
+                tuning: catalog.tuning.demand)
+            let outbound = DemandSystem.expectedCapturedPassengers(
+                pool: DemandSystem.demandPool(from: home, to: code, date: date,
+                                              economicIndex: world.economicIndex,
+                                              catalog: catalog),
+                fareRatio: 1.0, quality: quality, tuning: catalog.tuning.demand)
+            let inbound = DemandSystem.expectedCapturedPassengers(
+                pool: DemandSystem.demandPool(from: code, to: home, date: date,
+                                              economicIndex: world.economicIndex,
+                                              catalog: catalog),
+                fareRatio: 1.0, quality: quality, tuning: catalog.tuning.demand)
             let pool = outbound + inbound
             let fare = DemandSystem.referenceFare(distanceKm: distance,
                                                   tuning: catalog.tuning.demand)
@@ -120,7 +129,7 @@ extension GameState {
                 origin: home, destination: code,
                 destinationCity: catalog.airport(code)?.city ?? code.raw,
                 distanceKm: distance,
-                expectedDailyDemand: Int(pool.rounded()),
+                expectedDailyPassengers: Int(pool.rounded()),
                 referenceFare: Money(rounding: fare)), pool))
         }
         return scored

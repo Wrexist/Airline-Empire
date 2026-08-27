@@ -39,6 +39,23 @@ onboarding beat built (Core `OnboardingModel` + Dashboard card).
 - Offline-first re-audited: zero network references in Core or App.
 - `docs/APPLE_VALIDATION.md` written — the full Xcode handoff.
 
+**2026-08-27 (BUG-006 — the economy's biggest defect).** Found while
+producing a screen-by-screen dump of a real game to answer "how does it
+look": the onboarding card read "≈2,610,001 travellers/day". Root cause:
+`populationThousands` held raw people, so every demand pool was exactly
+1000x too large (~1,600x real capacity) and every route ran capacity-pinned
+at 100% load regardless of fare — pricing, the game's central economic
+decision, had no downside. Fixed by dividing all 80 populations by 1000; no
+tuning constant, formula, or capacity touched. Price now moves volume and
+profit has an interior optimum at ~1.6x reference. Baseline economics at
+default pricing are unchanged, which is why all 251 tests passed before and
+after — and why the battery never caught it. New guards:
+`BalanceTests.pricingHasRealConsequencesEndToEnd` (verified to fail on the
+old data with all four diagnostics) and
+`ContentQualityTests.airportPopulationsAreInThousands`. Onboarding now
+reports capturable passengers, not raw market mass. Documented as F-006;
+F-001 marked root-caused.
+
 **2026-08-26 (evening digest).** `DailyDigestModel` closes PRODUCT_REVIEW
 #9 and PLAYER_JOURNEY §1 step 4: yesterday's money by category, flights,
 and news, derived from the ledger ring and event log — no new persisted

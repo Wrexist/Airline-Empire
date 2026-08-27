@@ -8,8 +8,8 @@ is *pending*, and the app target's honest status is:
 > NOT APPLE-RUNTIME-VALIDATED**
 
 What *is* proven, on Linux: the simulation core (`AirlineEmpireCore`) builds
-clean in debug and release, its full test suite passes, the release benchmark
-meets budget, and the App↔Core data contracts are covered by tests
+clean in debug and release, its full test suite passes, the simulation scales
+linearly with network size, and the App↔Core data contracts are covered by tests
 (`ScreenContractTests`, `PlayerJourneyTests`). What is *not* proven: that
 SwiftUI compiles, renders, or behaves correctly on a device. Those are
 different claims and this project does not conflate them.
@@ -134,21 +134,29 @@ swift build -c release        # expect: clean
 swift run -c release ae-bench # expect: numbers in the table below
 ```
 
-Most recent Linux run (2026-08-26, Swift 6.0.3, debug tests / release bench):
+Most recent Linux run (2026-08-27, Swift 6.0.3, debug tests / release bench):
 
 | Metric | Result |
 |---|---|
-| Core test suite | **251 tests, all passing** (~6 min; the per-tick integrity assert dominates and is compiled out in release) |
+| Core test suite | **253 tests, all passing** (the per-tick integrity assert dominates and is compiled out in release) |
 | Release build | clean, no warnings |
-| 2 airlines × 5 routes, 1 game-year | 0.37 s |
-| 4 airlines × 15 routes, 1 game-year | 1.39 s |
-| 8 airlines × 25 routes, 1 game-year (200 aircraft, 200 routes) | **3.02 s** (budget 10 s) |
-| Save size at that scale | 607 KiB |
-| Save encode / decode | 0.04 s / 0.03 s |
+| 8 airlines × 25 routes, 1 game-year (200 aircraft, 200 routes) | 3.02 s on a fast container, 13.9 s on a slow one — same commit, same entity counts |
+| Save size at that scale | 605 KiB |
+| Save encode / decode | ~0.05 s / ~0.03 s |
 
 On macOS the same commands should pass; absolute timings will differ with
 hardware. A *failure* here means the checkout or toolchain is wrong — fix that
 before starting Xcode work.
+
+**Treat the bench seconds as relative, not absolute.** The same commit
+measured 3.02 s and 13.7 s for the 200-route case a few hours apart in this
+Linux container, with identical entity counts — the machine's available CPU
+changed, the code did not. Verified by benching the unchanged commit
+back-to-back against the modified tree (13.71 s vs 14.03 s: noise). So use
+the bench to compare *two builds on one machine in one sitting*, which is
+what catches a real regression; never to certify an absolute budget. The
+only budget that matters is measured on a device, and that is Apple work
+(§8, Instruments).
 
 ## 8. Release checklist (Phase 23 — none of it done)
 

@@ -27,11 +27,14 @@ actually reach it and understand the outcome?**
 | BUG-003 | Game over was a dead end: no new game, no other save, no menu | A state machine that only moved one way |
 | BUG-004 | The feed showed rivals' statements and loans as the player's own money, and never rendered the administration warning at all | Events are emitted for every airline; the view rendered the raw stream |
 | BUG-005 | Commands queued while unpaused were rejected silently — no alert, no event, nothing | The rejection existed in Core but had no delivery path out of the actor |
+| BUG-006 | Demand pools 1000x too large: pricing had no downside, and the onboarding card advertised "≈2,610,001 travellers/day" | A unit error in content. Every demand *unit* test passed — the curve was right, only the scale was wrong |
 
-Three of the four are *information* failures rather than logic failures: the
-simulation was right and the player could not see it. That is the
-characteristic failure mode of a well-tested core behind an unvalidated
-client, and it is worth expecting more of the same during runtime QA.
+Three of the five (003, 004, 005) are *information* failures rather than
+logic failures: the simulation was right and the player could not see it.
+That is the characteristic failure mode of a well-tested core behind an
+unvalidated client, and it is worth expecting more of the same during
+runtime QA. BUG-006 is the opposite and rarer case — the presentation was
+faithful, and the *content* was wrong.
 
 ### Capability coverage (audited by enumeration)
 
@@ -62,8 +65,12 @@ model that shows the result.
 - **Content quality.** No strictly-dominated aircraft, no orphaned or
   unreachable content, unique identity, sane economics, ordered difficulty.
 - **Offline-first.** Zero network references in Core or App.
-- **Performance.** 3.02 s per game-year at 200 routes / 200 aircraft against
-  a 10 s budget; linear scaling; 607 KiB saves.
+- **Performance.** Linear scaling with network size; 605 KiB saves at 200
+  routes / 200 aircraft. Absolute seconds are not portable — the same commit
+  measured 3.02 s and 13.9 s for one game-year at that scale in this
+  container hours apart (environmental, verified by A/B against the
+  unchanged commit). The bench is an A/B instrument, not a budget
+  certificate; the shipping budget needs a device.
 - **Concurrency hygiene (static).** No `DispatchQueue`, `@unchecked`,
   detached tasks, timers, or mutable global state anywhere in the App; all
   nine `Task` sites are in the `@MainActor` composition root.
@@ -75,6 +82,12 @@ Answering §37's questions without flattering the project:
 **What can still break?** SwiftUI itself — none of it has ever compiled.
 Layout, rendering, gesture handling, `@Observable` update propagation, scene
 phase transitions, and actor hops under a real scheduler are all unverified.
+
+Also content *scale*, as BUG-006 showed: values that load, validate, and
+pass every unit test while quietly making a mechanic inert. The new guards
+cover populations and aircraft dominance; other content dimensions (airport
+fees, slot capacities, seasonality amplitude) have no equivalent end-to-end
+assertion yet.
 
 **What player journey is untested?** Every journey is tested at the Core
 level and none at the UI level. Specifically unexercised: navigation between
@@ -99,9 +112,18 @@ reaches the `empire` era with a very large fleet — the balance battery reaches
 four years, the late-game suite ten, and neither drives a maximal network for
 that long.
 
-**What economic strategy is broken?** None found. F-001 (uncontested
-scarcity rents) remains a documented watch item awaiting playtest evidence
-rather than a tuning change.
+**What economic strategy is broken?** One was, badly: charging more cost
+nothing, so gouging dominated (BUG-006 / F-006). Fixed 2026-08-27 by
+correcting the population unit; profit now has an interior optimum at ~1.6x
+reference fare on an uncontested mega-market. That optimum is a
+monopolist's price and should compress under competition — the first thing
+to re-measure at playtest. F-001 is now root-caused rather than open.
+
+The lesson generalises: this defect was invisible to every unit test
+because the *model* was correct and only the *content scale* was wrong, and
+it was invisible to the balance battery because the battery never played a
+high-fare strategy. Batteries must exercise the extremes of a decision, not
+only its default.
 
 **What AI behaviour is pathological?** None observed. Known thinness: AI
 carriers never order new aircraft or retire old ones, so over very long runs

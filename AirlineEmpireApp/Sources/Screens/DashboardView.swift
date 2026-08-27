@@ -230,7 +230,7 @@ struct OnboardingCard: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("\(suggestion.origin.raw) → \(suggestion.destination.raw) · \(suggestion.destinationCity)")
                                         .font(.subheadline.weight(.medium))
-                                    Text("≈\(suggestion.expectedDailyDemand) travellers/day · \(suggestion.distanceKm) km · fares near \(Format.money(suggestion.referenceFare))")
+                                    Text("≈\(suggestion.expectedDailyPassengers) passengers/day for a typical service · \(suggestion.distanceKm) km · fares near \(Format.money(suggestion.referenceFare))")
                                         .font(.caption)
                                         .foregroundStyle(AETheme.mutedText)
                                 }

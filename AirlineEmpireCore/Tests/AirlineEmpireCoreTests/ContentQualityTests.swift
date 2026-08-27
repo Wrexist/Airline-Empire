@@ -143,4 +143,40 @@ struct ContentQualityTests {
         #expect(founder.competitorCount <= entrepreneur.competitorCount)
         #expect(entrepreneur.competitorCount <= magnate.competitorCount)
     }
+
+    /// Unit guard (BUG-006). `populationThousands` must hold *thousands*.
+    /// It once held raw people, making every demand pool 1000x too large and
+    /// pricing a free variable — a defect no demand unit test could see,
+    /// because the curve was right and only the scale was wrong. Real metro
+    /// areas run from ~50 thousand to ~40 million people, so a value outside
+    /// 10...60_000 thousands means the unit slipped again.
+    @Test func airportPopulationsAreInThousands() throws {
+        let catalog = try catalog()
+        for code in catalog.orderedAirportCodes {
+            let spec = try #require(catalog.airport(code))
+            let thousands = spec.demographics.populationThousands
+            #expect(thousands >= 10,
+                    "\(code.raw) population \(thousands)k is implausibly small")
+            #expect(thousands <= 60_000,
+                    "\(code.raw) population \(thousands)k — over 60M people suggests raw people in a thousands field (BUG-006)")
+        }
+        // And the resulting market must be within reach of real capacity:
+        // the biggest city pair should not out-demand a widebody fleet by
+        // orders of magnitude, or price can never bite.
+        let biggest = catalog.orderedAirportCodes
+            .compactMap { catalog.airport($0) }
+            .max { $0.demographics.populationThousands < $1.demographics.populationThousands }
+        let home = try #require(biggest)
+        let other = try #require(catalog.orderedAirportCodes
+            .compactMap { catalog.airport($0) }
+            .filter { $0.code != home.code }
+            .max { $0.demographics.populationThousands < $1.demographics.populationThousands })
+        let pool = DemandSystem.demandPool(
+            from: home.code, to: other.code,
+            date: GameCalendar.date(at: .epoch, startYear: 2030),
+            economicIndex: 1.0, catalog: catalog).total
+        // A very large twin-aisle operation is a few thousand seats a day.
+        #expect(pool < 100_000,
+                "largest market pool is \(Int(pool))/day — capacity can never constrain it (BUG-006)")
+    }
 }

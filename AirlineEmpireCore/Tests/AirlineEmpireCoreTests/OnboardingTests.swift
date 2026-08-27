@@ -29,7 +29,7 @@ struct OnboardingTests {
         #expect(model.suggestions.count == 2)
         for suggestion in model.suggestions {
             #expect(suggestion.origin == "STV")
-            #expect(suggestion.expectedDailyDemand > 0)
+            #expect(suggestion.expectedDailyPassengers > 0)
             #expect(suggestion.referenceFare > .zero)
             #expect(!suggestion.destinationCity.isEmpty)
             // Every candidate must actually be openable this era.
@@ -39,8 +39,8 @@ struct OnboardingTests {
                 aircraftRangeKm: spec.rangeKm,
                 aircraftRunwayRequirement: spec.runwayRequirement).isEmpty)
         }
-        #expect(model.suggestions[0].expectedDailyDemand
-            >= model.suggestions[1].expectedDailyDemand)
+        #expect(model.suggestions[0].expectedDailyPassengers
+            >= model.suggestions[1].expectedDailyPassengers)
     }
 
     @Test func modelIsDeterministicAndPure() throws {

@@ -108,6 +108,43 @@ rejection alert.
 
 ---
 
+## BUG-006 — Airport populations 1000x too large; pricing had no downside
+**Severity:** P1 (core mechanic inert; misleading UI) · **Phase found:**
+2026-08-27, while producing a screen-by-screen dump of a real game to show
+what the UI would display.
+**Repro:** Start any game, open a route, raise the fare. Passengers carried
+do not change. At 0.6x and 2.4x of the reference fare a route carries the
+identical 75,780 passengers at exactly 100% load, and monthly profit rises
+¤614k -> ¤7.43M. Raising price cost nothing, so the dominant strategy was
+to charge as much as the UI allowed.
+**Root cause:** `AirportSpec.Demographics.populationThousands` held raw
+people rather than thousands (Tromso 80,000; London 14,800,000; Tokyo
+37,300,000 — real metro populations). The gravity model uses
+`sqrt(popA * popB)`, so every demand pool was exactly 1000x too large —
+~1,600x the seats any aircraft could offer. Demand could therefore never
+fall below capacity, and the interior revenue optimum the exponential price
+utility was designed around (docs/ECONOMY.md, Phase 7) was unreachable.
+Same class as the Phase 8 `tuning.json` cents bug, also 1000x.
+**How it hid:** every unit test of the demand curve passed, because the
+curve itself was correct; the defect only appears when capacity truncates
+demand in the full pipeline. The balance battery never ran a high-fare
+strategy, so it measured the symptom (fat margins, F-001) and not the cause.
+**Fix layer:** Content — all 80 populations divided by 1000 so the data
+matches its declared unit. No tuning constant, formula, or capacity changed.
+Secondary (App/Core): `OnboardingModel` published the raw pool as
+"travellers/day" (≈2,610,001 on the first suggested route); it now reports
+`expectedDailyPassengers`, the share a representative starter service would
+actually capture, via `DemandSystem.expectedCapturedPassengers`.
+**Verification:** price now moves volume (load 99.5% -> 45.4% from 1.0x to
+2.0x fare) and profit has an interior optimum at ~1.6x. Full suite 251
+passing before and after; release bench unchanged at 3.02 s. Pinned by
+`BalanceTests.pricingHasRealConsequencesEndToEnd`, which fails on the old
+data with all four diagnostics. Documented as BALANCING F-006; F-001
+marked root-caused.
+**Status:** FIXED 2026-08-27.
+
+---
+
 *(Historical note: bugs found and fixed test-first inside a phase are
 recorded in that phase's COMPLETED.md entry, not here — this register is
 for bugs that escape a phase.)*
