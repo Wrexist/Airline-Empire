@@ -5,13 +5,29 @@ struct RootView: View {
     @Environment(GameController.self) private var controller
 
     var body: some View {
-        if !controller.hasGame {
-            NewGameView()
-        } else if controller.snapshot?.progression.gameOver == true {
-            GameOverView()
-        } else {
-            GameTabs()
+        // Crossfaded rather than swapped. These three are the only whole-screen
+        // changes in the app — founding an airline, and losing one — and both
+        // are moments. A hard cut makes them feel like a bug.
+        ZStack {
+            switch state {
+            case .newGame:
+                NewGameView().transition(.opacity)
+            case .gameOver:
+                GameOverView()
+                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
+            case .playing:
+                GameTabs().transition(.opacity)
+            }
         }
+        .animation(AEMotion.screen, value: state)
+    }
+
+    private enum Screen: Equatable { case newGame, gameOver, playing }
+
+    private var state: Screen {
+        if !controller.hasGame { return .newGame }
+        if controller.snapshot?.progression.gameOver == true { return .gameOver }
+        return .playing
     }
 }
 
@@ -33,6 +49,7 @@ struct GameTabs: View {
             OperationsView()
                 .tabItem { Label("World", systemImage: "bolt") }
         }
+        .tint(AETheme.accent)
         .alert("Not possible", isPresented: rejectionPresented,
                presenting: controller.lastRejection) { _ in
             Button("OK", role: .cancel) { controller.clearRejection() }
@@ -56,6 +73,7 @@ struct GameOverView: View {
             Image(systemName: "airplane.arrival")
                 .font(.system(size: 56))
                 .foregroundStyle(AETheme.mutedText)
+                .symbolEffect(.pulse)
             Text("The airline has collapsed")
                 .font(.title2.weight(.semibold))
             if let dashboard = controller.snapshot?.dashboardModel() {
@@ -89,5 +107,7 @@ struct GameOverView: View {
             .padding(.top, AETheme.spacingS)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, AETheme.spacingM)
+        .background(AEGameBackdrop())
     }
 }

@@ -39,6 +39,28 @@ enum AETheme {
     static let glassEdge = Color.white.opacity(0.12)
 }
 
+/// Motion tokens (docs/UI_ARCHITECTURE.md §2). Screens name a feeling, not a
+/// duration — so the whole app can be retimed in one place, and so nobody
+/// invents a 0.37-second spring at 2am.
+///
+/// Three curves, because three is what a simulation needs:
+///
+/// - `selection` — a tap changed something. Fast enough to feel like the
+///   finger did it (~0.2s), never bouncy: this fires dozens of times a session.
+/// - `content` — data arrived or a card appeared. Slightly softer, so a
+///   dashboard refreshing at 16× speed reads as movement rather than flicker.
+/// - `screen` — a whole view swapped. The only one slow enough to notice, and
+///   the only one that should be.
+///
+/// All three respect Reduce Motion through SwiftUI's own handling of
+/// `withAnimation`; nothing here animates position over long distances, which
+/// is the thing that actually makes people ill.
+enum AEMotion {
+    static let selection: Animation = .snappy(duration: 0.22)
+    static let content: Animation = .smooth(duration: 0.32)
+    static let screen: Animation = .smooth(duration: 0.42)
+}
+
 /// Centralized formatting (docs/UI_ARCHITECTURE.md §2): views never invent
 /// number formats.
 enum Format {

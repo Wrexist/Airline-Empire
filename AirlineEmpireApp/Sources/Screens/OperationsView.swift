@@ -6,16 +6,81 @@ import AirlineEmpireCore
 struct OperationsView: View {
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    NavigationLink("World events") { WorldEventsView() }
-                    NavigationLink("Competitors") { CompetitorsView() }
-                    NavigationLink("Progression") { ProgressionView() }
-                    NavigationLink("Service & settings") { SettingsView() }
+            // A hub, not a table of contents. Four destinations, each saying
+            // what is inside it — a list of bare nouns makes the player open
+            // all four to find out which one they wanted.
+            ScrollView {
+                VStack(spacing: AETheme.spacingS) {
+                    hubLink(title: "World events", icon: "bolt.horizontal.fill",
+                            subtitle: "Storms, fuel shocks and what they are doing to demand") {
+                        WorldEventsView()
+                    }
+                    hubLink(title: "Competitors", icon: "person.2.fill",
+                            subtitle: "Who else is flying, and how they are doing") {
+                        CompetitorsView()
+                    }
+                    hubLink(title: "Progression", icon: "chart.line.uptrend.xyaxis",
+                            subtitle: "Your era, capability programs and missions") {
+                        ProgressionView()
+                    }
+                    hubLink(title: "Service & settings", icon: "gearshape.fill",
+                            subtitle: "Service tier, saving, and leaving the game") {
+                        SettingsView()
+                    }
                 }
+                .padding(.horizontal, AETheme.spacingM)
+                .padding(.top, AETheme.spacingS)
             }
+            .aeScreenBackground()
             .navigationTitle("World")
         }
+    }
+}
+
+private extension OperationsView {
+    /// One destination in the hub: an icon that says which, a subtitle that
+    /// says why, and a whole-card tap target.
+    func hubLink<Destination: View>(
+        title: String,
+        icon: String,
+        subtitle: String,
+        @ViewBuilder destination: () -> Destination
+    ) -> some View {
+        NavigationLink {
+            destination()
+        } label: {
+            HStack(spacing: AETheme.spacingM) {
+                Image(systemName: icon)
+                    .font(.title3)
+                    .foregroundStyle(AETheme.accent)
+                    .frame(width: 32)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(AETheme.mutedText)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AETheme.mutedText)
+                    .accessibilityHidden(true)
+            }
+            .padding(AETheme.spacingM)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4,
+                                           style: .continuous))
+            .aeGlass(in: RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4,
+                                          style: .continuous),
+                     interactive: true)
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
     }
 }
 
@@ -48,6 +113,7 @@ struct WorldEventsView: View {
                 }
             }
         }
+        .aeScreenBackground()
         .navigationTitle("World events")
     }
 
@@ -94,6 +160,7 @@ struct CompetitorsView: View {
                 }
             }
         }
+        .aeScreenBackground()
         .navigationTitle("Competitors")
     }
 }
@@ -136,6 +203,7 @@ struct ProgressionView: View {
                 }
             }
         }
+        .aeScreenBackground()
         .navigationTitle("Progression")
     }
 
@@ -222,6 +290,7 @@ struct SettingsView: View {
                 }
             }
         }
+        .aeScreenBackground()
         .navigationTitle("Airline")
     }
 

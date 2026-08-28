@@ -21,7 +21,11 @@ struct RoutesView: View {
                             NavigationLink(value: card.id) {
                                 RouteRow(card: card)
                             }
+                            .aeListRow()
                         }
+                        .listStyle(.plain)
+                        .aeScreenBackground()
+                        .animation(AEMotion.content, value: cards.count)
                         .navigationDestination(for: RouteID.self) { routeID in
                             RouteDetailView(routeID: routeID)
                         }
@@ -30,6 +34,7 @@ struct RoutesView: View {
                     ProgressView()
                 }
             }
+            .background(AEGameBackdrop())
             .navigationTitle("Routes")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {

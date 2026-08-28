@@ -30,6 +30,16 @@ digest test advanced the clock first, so day 0 — the only day a player is
 guaranteed to see — was the one day never exercised; the regression tests were
 verified by removing the guard and watching them crash. 257 tests green.
 
+The rest of the game got the same pass: `AECard`, `StatTile`, `SpeedControl`
+and the empty states are glass now, so every screen inherited it from the
+design system rather than being rewritten one at a time. Motion tokens
+(`AEMotion.selection/content/screen`) replace ad-hoc durations; stat and money
+values roll their digits instead of swapping (`contentTransition(.numericText)`),
+which is what makes a dashboard readable at 16×; the ops feed slides new events
+in; whole-screen changes crossfade; the speed control is one capsule with a
+sliding selection rather than four blinking buttons; and the World tab is a hub
+with four described destinations rather than a list of bare nouns.
+
 Onboarding rebuilt in the same session: it was a `Form` that read like the
 Settings app, and it is now a dusk-lit screen with Liquid Glass
 (availability-gated to iOS 26, `.ultraThinMaterial` below), a decision-shaped

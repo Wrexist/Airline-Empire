@@ -22,12 +22,17 @@ struct FleetView: View {
                                 .swipeActions {
                                     fleetActions(card, player: player.id)
                                 }
+                                .aeListRow()
                         }
+                        .listStyle(.plain)
+                        .aeScreenBackground()
+                        .animation(AEMotion.content, value: cards.count)
                     }
                 } else {
                     ProgressView()
                 }
             }
+            .background(AEGameBackdrop())
             .navigationTitle("Fleet")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {

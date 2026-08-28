@@ -44,7 +44,9 @@ struct DashboardView: View {
                     }
                 }
                 .padding(.horizontal)
+                .padding(.bottom, AETheme.spacingM)
             }
+            .aeScreenBackground()
             .navigationTitle(controller.snapshot?.dashboardModel()?.airlineName ?? "…")
             .toolbar {
                 ToolbarItem(placement: .principal) { SpeedControl() }
@@ -65,6 +67,11 @@ struct DashboardView: View {
                 VStack(alignment: .leading, spacing: AETheme.spacingXS) {
                     Text(Format.date(snapshot.currentDate))
                         .font(.headline).monospacedDigit()
+                        // The date advances while you watch at 4× and 16×.
+                        // Rolling digits read as time passing; a hard swap
+                        // reads as a glitch.
+                        .contentTransition(.numericText())
+                        .animation(AEMotion.content, value: snapshot.currentDate.day)
                     Text("\(Format.clock(snapshot.currentDate)) · \(String(describing: snapshot.currentDate.season)) · era: \(String(describing: dashboard.era))")
                         .font(.caption)
                         .foregroundStyle(AETheme.mutedText)
@@ -101,19 +108,25 @@ struct DashboardView: View {
     private var eventsFeed: some View {
         AECard {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                Text("Operations feed").font(.headline)
+                AESectionHeader(text: "Operations feed", systemImage: "dot.radiowaves.left.and.right")
                 if controller.recentEvents.isEmpty {
                     Text("Quiet skies. Open a route to get moving.")
                         .font(.subheadline)
                         .foregroundStyle(AETheme.mutedText)
+                        .transition(.opacity)
                 } else {
+                    // Newest first, sliding in from the top: the feed is the
+                    // one part of the dashboard that is a live stream, and it
+                    // should read like one.
                     ForEach(Array(controller.recentEvents.suffix(12).reversed()
                         .enumerated()), id: \.offset) { _, event in
                         EventRow(event: event,
                                  player: controller.snapshot?.playerAirline?.id)
+                            .transition(.move(edge: .top).combined(with: .opacity))
                     }
                 }
             }
+            .animation(AEMotion.content, value: controller.recentEvents.count)
         }
     }
 }
