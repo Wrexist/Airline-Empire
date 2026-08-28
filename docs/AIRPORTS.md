@@ -6,7 +6,8 @@
   (code/name/city/country), `WorldRegion`, coordinates, fixed UTC offset
   (no DST by design), `RunwayClass` (small→veryLarge, Comparable), daily
   slot capacity, daily terminal capacity, movement + passenger fees
-  (`Money`), `Demographics` (population, business/leisure/tourism/cargo
+  (`Money`), `Demographics` (population **in thousands** — see the unit
+  note below, business/leisure/tourism/cargo
   indices 0…1), seasonality profile reference, `WeatherRisk`.
 - **`AirportRuntime`** (state, in `GameState.world`): per-airline slot
   allocations only. Entries exist lazily — an untouched airport costs zero
@@ -68,3 +69,19 @@ test: `worldStateSurvivesSaveDeterministically`). Save format bumped to
 `airport(_:)`, `airports(in region:)`, `distanceKm(_:_:)`,
 `nearestAirports(to:limit:)` (deterministic tie-break by code),
 `orderedAirportCodes` as the canonical deterministic iteration order.
+
+## Unit note: `populationThousands` (added 2026-08-27)
+
+The field holds **thousands of people**: Reykjavik is `230`, London is
+`14800`. It once held raw people, which made every gravity-model demand
+pool exactly 1000x too large and rendered ticket pricing a free variable —
+see `tasks/BUGS.md` BUG-006 and `docs/BALANCING.md` F-006. Because the
+demand curve itself was correct, no unit test caught it; the defect only
+showed when capacity truncated demand in the full pipeline.
+
+Two guards now exist and must not be weakened:
+`ContentQualityTests.airportPopulationsAreInThousands` (bounds every value
+to a plausible metro range and asserts the largest market pool stays within
+reach of real fleet capacity) and
+`BalanceTests.pricingHasRealConsequencesEndToEnd` (a fare rise must cost
+passengers, and profit must have an interior optimum).

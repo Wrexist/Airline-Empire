@@ -19,6 +19,8 @@ final class GameController {
     private var session: GameSession?
     private var saveManager: SaveManager?
     private var pumpTask: Task<Void, Never>?
+    private var eventTask: Task<Void, Never>?
+    private var rejectionTask: Task<Void, Never>?
 
     var hasGame: Bool { session != nil }
 
@@ -96,6 +98,26 @@ final class GameController {
         Task { try? await session.saveNow(slot: "auto") }
     }
 
+    /// Leaves the current game and returns to the menu. Without this the
+    /// game-over screen is a dead end — no new game, no other save
+    /// (tasks/BUGS.md BUG-003).
+    func quitToMenu() {
+        pumpTask?.cancel()
+        pumpTask = nil
+        eventTask?.cancel()
+        eventTask = nil
+        rejectionTask?.cancel()
+        rejectionTask = nil
+        session = nil
+        saveManager = nil
+        snapshot = nil
+        catalog = nil
+        recentEvents = []
+        speed = .paused
+        lastRejection = nil
+        loadedFromBackup = nil
+    }
+
     // MARK: Time control
 
     func setSpeed(_ newSpeed: SimSpeed) {
@@ -158,14 +180,29 @@ final class GameController {
 
     private func subscribe() async {
         guard let session else { return }
-        let events = await session.events()
-        Task { [weak self] in
+        // Replacing the session replaces the streams; cancelling the old
+        // consumers finishes their iteration (tasks/TECH_DEBT.md TD-002).
+        eventTask?.cancel()
+        rejectionTask?.cancel()
+        recentEvents = []
+        // Player feed only: rivals' private books are not our news (BUG-004).
+        let events = await session.events(playerFeedOnly: true)
+        eventTask = Task { [weak self] in
             for await event in events {
                 guard let self else { return }
                 self.recentEvents.append(event)
                 if self.recentEvents.count > 200 {
                     self.recentEvents.removeFirst(self.recentEvents.count - 200)
                 }
+            }
+        }
+        // Commands queued while running are validated at the next tick;
+        // their rejections arrive here, not from `submit` (BUG-005).
+        let rejections = await session.rejections()
+        rejectionTask = Task { [weak self] in
+            for await rejection in rejections {
+                guard let self else { return }
+                self.lastRejection = rejection
             }
         }
     }

@@ -163,6 +163,11 @@ struct AircraftShopSheet: View {
                 .font(.caption)
                 .foregroundStyle(AETheme.mutedText)
             if !locked {
+                // A new aircraft is an order, not a delivery — saying so
+                // here prevents "I bought it, where is it?".
+                Text("New aircraft arrive after \(spec.deliveryLeadDays) days; used and leased fly immediately.")
+                    .font(.caption2)
+                    .foregroundStyle(AETheme.mutedText)
                 HStack(spacing: AETheme.spacingS) {
                     Button("New \(Format.money(spec.listPrice))") {
                         controller.submit(BuyNewAircraftCommand(buyer: player,

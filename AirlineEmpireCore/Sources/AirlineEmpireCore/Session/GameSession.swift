@@ -22,7 +22,11 @@ public actor GameSession {
     public private(set) var lastSaveError: String?
 
     private var snapshotContinuations: [Int: AsyncStream<GameState>.Continuation] = [:]
-    private var eventContinuations: [Int: AsyncStream<SimEvent>.Continuation] = [:]
+    /// Event subscriptions; `playerFeedOnly` subscribers receive only events
+    /// the player's airline may see (see EventFeed.swift / BUG-004).
+    private var eventContinuations: [Int: (continuation: AsyncStream<SimEvent>.Continuation,
+                                           playerFeedOnly: Bool)] = [:]
+    private var rejectionContinuations: [Int: AsyncStream<CommandRejection>.Continuation] = [:]
     private var nextSubscriptionID = 0
     private var deliveredEventCount: Int64
 
@@ -49,13 +53,32 @@ public actor GameSession {
         }
     }
 
-    public func events() -> AsyncStream<SimEvent> {
+    /// Simulation events as they happen. `playerFeedOnly` restricts delivery
+    /// to what the player's airline may see — its own business, world news,
+    /// and rivals' public fates — instead of every airline's private
+    /// bookkeeping (see EventFeed.swift).
+    public func events(playerFeedOnly: Bool = false) -> AsyncStream<SimEvent> {
         AsyncStream { continuation in
             nextSubscriptionID += 1
             let id = nextSubscriptionID
-            eventContinuations[id] = continuation
+            eventContinuations[id] = (continuation, playerFeedOnly)
             continuation.onTermination = { [weak self] _ in
                 Task { await self?.removeEventContinuation(id) }
+            }
+        }
+    }
+
+    /// Rejections of commands that were queued while the simulation was
+    /// running. `submit` can only report immediately for a paused game; a
+    /// queued command is validated at the next tick boundary, and without
+    /// this stream that failure would never reach the player (BUG-005).
+    public func rejections() -> AsyncStream<CommandRejection> {
+        AsyncStream { continuation in
+            nextSubscriptionID += 1
+            let id = nextSubscriptionID
+            rejectionContinuations[id] = continuation
+            continuation.onTermination = { [weak self] _ in
+                Task { await self?.removeRejectionContinuation(id) }
             }
         }
     }
@@ -159,6 +182,9 @@ public actor GameSession {
             let step = min(chunk, remaining)
             engine.advance(ticks: step)
             remaining -= step
+            // Per chunk: the engine's results are overwritten by the next
+            // advance, so queued-command rejections must be published now.
+            publishRejections()
             autosaveIfDue()
             publish()
         }
@@ -200,12 +226,27 @@ public actor GameSession {
         let missed = state.eventLog.totalCount - deliveredEventCount
         if missed > 0 {
             let available = min(Int(missed), state.eventLog.recent.count)
+            let player = state.playerAirline?.id
             for event in state.eventLog.recent.suffix(available) {
-                for continuation in eventContinuations.values {
+                // Classified against the state that produced the event, so
+                // ownership is resolved before anything can be sold on.
+                let playerVisible = player.map { state.isFeedEvent(event, for: $0) } ?? false
+                for (continuation, playerFeedOnly) in eventContinuations.values
+                where !playerFeedOnly || playerVisible {
                     continuation.yield(event)
                 }
             }
             deliveredEventCount = state.eventLog.totalCount
+        }
+    }
+
+    private func publishRejections() {
+        guard !rejectionContinuations.isEmpty else { return }
+        for result in engine.lastCommandResults {
+            guard case .rejected(let rejection) = result else { continue }
+            for continuation in rejectionContinuations.values {
+                continuation.yield(rejection)
+            }
         }
     }
 
@@ -215,6 +256,10 @@ public actor GameSession {
 
     private func removeEventContinuation(_ id: Int) {
         eventContinuations[id] = nil
+    }
+
+    private func removeRejectionContinuation(_ id: Int) {
+        rejectionContinuations[id] = nil
     }
 }
 

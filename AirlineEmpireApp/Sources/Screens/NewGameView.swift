@@ -9,6 +9,10 @@ struct NewGameView: View {
     @State private var selectedStart = CuratedStart.all[0]
     @State private var scenario: ScenarioCode = "entrepreneur"
     @State private var seedText = ""
+    // Loaded once on appear: content parsing and save-slot IO do not belong
+    // in the render pass.
+    @State private var catalog: ContentCatalog?
+    @State private var slots: [(slot: String, meta: SlotMeta?)] = []
 
     var body: some View {
         NavigationStack {
@@ -40,7 +44,7 @@ struct NewGameView: View {
                     }
                 }
                 Section("Difficulty") {
-                    if let catalog = try? ContentCatalog.loadBundled() {
+                    if let catalog {
                         ForEach(catalog.orderedScenarioCodes, id: \.self) { code in
                             if let spec = catalog.scenarios[code] {
                                 Button {
@@ -82,9 +86,9 @@ struct NewGameView: View {
                     }
                     .font(.headline)
                 }
-                if !controller.availableSlots().isEmpty {
+                if !slots.isEmpty {
                     Section("Continue") {
-                        ForEach(controller.availableSlots(), id: \.slot) { entry in
+                        ForEach(slots, id: \.slot) { entry in
                             Button {
                                 controller.loadGame(slot: entry.slot)
                             } label: {
@@ -102,6 +106,12 @@ struct NewGameView: View {
                 }
             }
             .navigationTitle("Airline Empire")
+            .onAppear {
+                if catalog == nil {
+                    catalog = try? ContentCatalog.loadBundled()
+                }
+                slots = controller.availableSlots()
+            }
         }
     }
 }

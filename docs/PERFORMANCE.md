@@ -41,3 +41,18 @@ UI rendering, map Canvas frame cost at zoom levels, startup time, memory
 footprint on device, background/foreground transitions, battery — all need
 the running app; they join the Phase 14–17 macOS work with the budgets in
 ARCHITECTURE §11 (snapshot→frame work O(visible), map LOD verified there).
+
+## Measurement caveat (added 2026-08-27)
+
+Absolute bench seconds in this document were measured in a Linux CI-style
+container whose available CPU varies substantially between sessions: one
+commit measured 3.02 s and 13.7 s for the same 200-route/200-aircraft
+game-year a few hours apart, with identical entity counts. Confirmed
+environmental by benching the unchanged commit against a modified tree
+back-to-back (13.71 s vs 14.03 s — noise).
+
+Use the bench as an A/B instrument: measure both builds on one machine in
+one sitting. A ratio between two runs taken minutes apart is meaningful; a
+number carried across sessions is not. Device performance is the only
+figure that can certify the shipping budget, and it requires Instruments on
+Apple hardware.

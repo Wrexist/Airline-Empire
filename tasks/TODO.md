@@ -5,158 +5,70 @@ Active task list. Format follows the Master Task Rule (see
 
 ---
 
-## AE-001
-**Title:** Resolve Swift toolchain blocker B-001
-**Purpose:** Make `swift build` / `swift test` possible in the agent
-environment so phases 3+ can satisfy the Definition of Done.
-**Dependencies:** None. **Owner action required** (environment settings are
-not controllable from inside a session).
-**Implementation notes:** Either (a) allowlist `swift.org` +
-`download.swift.org` in the remote environment's network policy and add a
-setup script installing the Swift 6.x Ubuntu 24.04 toolchain, or (b) run
-implementation phases on macOS with Xcode. Details: `/docs/PROJECT_AUDIT.md` §4.
+## AE-023
+**Title:** macOS queue — compile, validate, and polish the authored app
+**Purpose:** Take the app target from AUTHORED to PRODUCTION READY: generate
+the Xcode project, compile, run in the simulator, validate every screen
+against the live Core, then execute phases 16, 17, 19b, 20b, 21, the final
+22 pass, and 23 in order (owner's Mac/Xcode/polish/QA/release prompt,
+2026-08-26).
+**Dependencies:** A macOS session with Xcode + xcodegen (blocker B-002).
+Everything Linux-executable is done — Core is complete (212 tests green,
+save v10) and the static integration audit below has already cleared the
+known compile blockers.
+**Implementation notes:**
+- `cd AirlineEmpireApp && xcodegen generate`, open the project, build.
+- Work the owner's phase ladder A→R in order; statuses move
+  AUTHORED → COMPILED → TESTED → RUNTIME VALIDATED → PRODUCTION READY,
+  never by assertion.
+- Priorities P0 (crash/corruption) → P3 (polish); never polish while a
+  P0/P1 is open.
+- 2026-08-26 static integration audit (Linux session): all 12 app source
+  files parse; every Core API the app touches was verified against the
+  package by inspection (command initializers, read-model fields, enum
+  case arities, catalog accessors, hardcoded content codes). Findings
+  fixed: BUG-001 (Core visibility compile blocker), deprecated alert API,
+  force-unwraps in RouteDetailView, per-render content/disk IO in
+  NewGameView.
+- 2026-08-26 continuation: BUG-002 fixed (no aircraft-assignment UI
+  existed — core loop was uncloseable); TD-002 fixed (event-stream task
+  cancellation); onboarding beat built to the Linux limit — Core
+  `OnboardingModel` + 4 tests, Dashboard card + prefilled route sheet
+  authored (PRODUCT_REVIEW Critical #2 now pending only runtime
+  validation). Phase L's remaining scope: validate the beat live and
+  add the evening-digest surface.
 **Acceptance criteria:**
-- `swift --version` succeeds in a fresh session, OR implementation sessions
-  run on macOS with Xcode available.
-**Tests:** n/a (environment task).
-**Status:** RESOLVED 2026-08-25 (in-session) — Swift 6.0.3 installed via GitHub mirror; see D-009 and `scripts/setup-linux-toolchain.sh`. Moved to COMPLETED.md.
+- App compiles with zero new warnings; runs in the iPhone and iPad
+  simulators; new game → first route → fast-forward → save → relaunch →
+  load walkthrough passes.
+- Map renders the live network and flights; save/load UX honest about
+  backup recovery; large-world (hundreds of aircraft/routes) stays
+  responsive.
+- Onboarding beat (guided first route, PLAYER_JOURNEY §1), UX polish,
+  art direction, accessibility audit, UI-surface adversarial QA,
+  Instruments profiling, release checklist — per the phase ladder.
+**Tests:** Core suite stays green (never weakened); UI validation is
+manual walkthrough + Instruments evidence recorded in docs/.
+- 2026-08-26 V3 Linux-first pass: player-journey gap hunt found and fixed
+  three more P1 defects (BUG-003 game-over dead end, BUG-004 rivals'
+  private business in the player feed + missing administration warning,
+  BUG-005 silent rejection of commands queued while running). Core gained
+  an event-audience classifier and a rejection stream (decision D-011,
+  additive and pure — save format still v10). New suites:
+  `PlayerJourneyTests`, `EventFeedTests`, `ScreenContractTests`,
+  `ContentQualityTests`. `docs/APPLE_VALIDATION.md` written as the Xcode
+  handoff. Content audited (no dead SKUs; F-004 runway-ladder finding
+  documented, not unilaterally changed). Offline-first re-verified.
+**Status:** LINUX SCOPE COMPLETE — no known Linux-side P0/P1 remains.
+Apple-runtime steps (compile, simulator, rendering, gestures,
+accessibility, Instruments, signing) are blocked on macOS (B-002) and
+fully enumerated in `docs/APPLE_VALIDATION.md`.
 
 ---
 
-## AE-002
-**Title:** Phase 1 — Master Architecture
-**Purpose:** Author the complete long-term architecture (the "architectural
-constitution") covering all systems listed in Master Prompt 1, with strict
-rules for simulation/UI separation, persistence, determinism, DI,
-testability, concurrency, performance, data-driven content, versioned saves.
-**Dependencies:** Phase 0 (complete).
-**Implementation notes:** Ratify or overturn proposed decision D-002
-(Core package / app-shell split) in `/tasks/DECISIONS.md`. Must support
-thousands of entities offline. Review as if maintaining for five years.
-**Acceptance criteria:**
-- `/docs/ARCHITECTURE.md` fully authored (replaces Phase 0 stub)
-- `/docs/DOMAIN_MODEL.md`, `/docs/SIMULATION_ARCHITECTURE.md`,
-  `/docs/PERSISTENCE_ARCHITECTURE.md`, `/docs/UI_ARCHITECTURE.md`,
-  `/docs/TECHNICAL_STANDARDS.md` created
-- Architectural risks identified; `/tasks/MASTER_PLAN.md` updated
-- No large gameplay systems implemented
-**Tests:** n/a (design phase).
-**Status:** COMPLETE 2026-08-25 — moved to COMPLETED.md.
+## Backlog (do not start before AE-023 clears)
 
----
-
-## AE-003
-**Title:** Phase 2 — Game Design Bible
-**Purpose:** Define the complete player experience, all game systems and
-their interactions, per Master Prompt 2.
-**Dependencies:** AE-002.
-**Acceptance criteria:**
-- `/docs/GAME_DESIGN.md`, `/docs/CORE_LOOP.md`, `/docs/PROGRESSION.md`,
-  `/docs/GAME_BALANCE.md`, `/docs/PLAYER_JOURNEY.md` created
-- Every system has a purpose; complexity without decisions removed
-**Tests:** n/a (design phase).
-**Status:** COMPLETE 2026-08-25 — moved to COMPLETED.md.
-
----
-
-## AE-004
-**Title:** Phase 3 — Simulation kernel scaffold and implementation
-**Purpose:** Implement the foundational simulation kernel (state, clock,
-ticks, deterministic RNG, events, commands, snapshots, scheduling, system
-ordering, pause/resume/speed) as the `AirlineEmpireCore` SwiftPM package.
-**Dependencies:** AE-001 (toolchain), AE-002 (architecture), AE-003 (design).
-**Acceptance criteria:** per Master Prompt 3 — real infrastructure, no
-placeholders, deterministic, testable without SwiftUI, full unit tests
-passing, docs updated.
-**Tests:** time progression, deterministic randomness, state transitions,
-event ordering, scheduling, pause/resume, speed, edge cases.
-**Status:** COMPLETE 2026-08-25 — moved to COMPLETED.md.
-
----
-
-Later phases (4–24) are tracked at roadmap level in `/tasks/MASTER_PLAN.md`
-and get AE-numbered task breakdowns when their phase opens — pre-writing
-detailed tasks for unarchitected systems would be speculation.
-
----
-
-## AE-005
-**Title:** Phase 4 — World and Airport System
-**Purpose:** Data-driven airports (specs + runtime slice), world data layer,
-distance/eligibility/slot logic, content loading + validation, per Master
-Prompt 4.
-**Dependencies:** AE-004 (kernel) — complete.
-**Acceptance criteria:** data-driven airport specs with all designed
-attributes; ContentCatalog loading with referential validation; distance
-(great-circle) and route-eligibility calculations; slot allocation logic;
-regional classification; tests for distance/capacity/slots/invalid
-routes/lookup; docs/AIRPORTS.md; offline-only.
-**Tests:** geographic math, capacity/slot invariants, invalid data rejection,
-lookup, eligibility edge cases.
-**Status:** COMPLETE 2026-08-25 — moved to COMPLETED.md.
-
----
-
-## AE-006
-**Title:** Phase 5 — Aircraft and Fleet System
-**Purpose:** Data-driven aircraft types + fleet lifecycle (buy/lease/sell,
-assignment, availability, age, condition, maintenance state, reliability,
-utilization, operating cost, lifecycle states) per Master Prompt 5.
-**Dependencies:** AE-005 (world) — complete.
-**Acceptance criteria:** AircraftTypeSpec content with all designed
-attributes; Airline + Aircraft runtime entities; purchase/lease/sell
-commands through the command pipeline with ledger-ready cost hooks;
-aging/depreciation/reliability model; integration with kernel; tests incl.
-expensive edge cases; docs/AIRCRAFT.md.
-**Tests:** acquisition validation, lifecycle transitions, depreciation
-curve, availability rules, save round-trip with fleet.
-**Status:** COMPLETE 2026-08-25 — moved to COMPLETED.md.
-
----
-
-## AE-007
-**Title:** Phase 6 — Routes and Flight Operations
-**Purpose:** Routes (create/modify/close, schedules, aircraft assignment,
-slot consumption) and the real flight lifecycle driven by the simulation
-(scheduled→boarding→departing→enRoute→arriving→turnaround→ready, with
-disruptions), per Master Prompt 6.
-**Dependencies:** AE-006 (fleet) — complete.
-**Acceptance criteria:** Route + Flight entities; open/modify/close/assign
-commands consuming slots; schedule materialization; per-tick flight phase
-system; travel time from distance/speed; operating cost hooks (fuel, fees,
-crew) posted per flight; disruption states from reliability/weather;
-conflict detection; multi-aircraft concurrency without corruption; tests;
-docs/ROUTES.md.
-**Status:** COMPLETE 2026-08-25 — moved to COMPLETED.md.
-
----
-
-## AE-008
-**Title:** Phase 7 — Passenger Demand and Pricing
-**Purpose:** The demand engine per Master Prompt 7: market demand pools from
-demographics × seasonality × economy, logit share allocation across
-competing offers (price, schedule quality, reputation hooks, comfort,
-punctuality), price elasticity by segment, passengers allocated to
-departures, ticket revenue posted.
-**Dependencies:** AE-007 (flights) — complete.
-**Acceptance criteria:** DemandSystem + PassengerAllocation into flights;
-price→demand→load→revenue chain measurable; low/optimal/high price
-simulations as tests; demand conservation (no passenger counted twice);
-docs/ECONOMY.md started; economy tests with tolerances.
-**Status:** COMPLETE 2026-08-25 — moved to COMPLETED.md.
-
----
-
-## AE-009
-**Title:** Phase 8 — Finance and Airline Economics
-**Purpose:** Complete business layer per Master Prompt 8: loans/interest/
-credit rating, monthly financial statements (bounded rollups), overhead &
-staff payroll, fuel price dynamics + economic cycle driver, bankruptcy/
-administration path, explainable route-level P&L read models.
-**Dependencies:** AE-008 (demand) — complete.
-**Acceptance criteria:** every money flow categorized and traceable;
-monthly statement rollups keep ledger bounded; loans with rates scaled by
-leverage; administration triggers and consequences; WorldSystem moving fuel
-price and economy index deterministically; route P&L breakdown API; economy
-correctness tests.
-**Status:** OPEN — next up.
+- **AE-015** — Revenue-management fare buckets (docs/EXPANSION_ROADMAP.md).
+- **Hub connections** — first content update (decision D-010).
+- **AI market-entry lever** — post-playtest (BALANCING F-001).
+- Everything else: `docs/EXPANSION_ROADMAP.md`, `tasks/POST_LAUNCH.md`.

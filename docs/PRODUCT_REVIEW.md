@@ -18,7 +18,7 @@ dimensions are assessed on authored code + Core read models and flagged.
 | UX / UI | **Authored, unvalidated** | Complete screen set consuming tested read models; zero compile/run validation (B-002) — nothing here counts until the macOS pass |
 | Visual quality | **Deferred** | v1 tokens only; Phase 17 art direction not started |
 | Accessibility | **Baseline only** | Labels/44pt/semantic colors authored; audit requires devices |
-| Onboarding | **Missing** | Curated starts exist; the guided first-route beat (PLAYER_JOURNEY §1) is not built |
+| Onboarding | **Core built + UI authored** (2026-08-26) | Guided first-route beat: `OnboardingModel` read model (checklist + demand-ranked route suggestions) tested in Core; Dashboard card + prefilled route sheet authored. Runtime validation pending macOS |
 | Replayability | **Good** | Seeded worlds, archetype casts, era variety; scenario presets missing (fixed this phase — see below) |
 
 ## Ranked issues
@@ -26,10 +26,22 @@ dimensions are assessed on authored code + Core read models and flagged.
 ### Critical (release-blocking)
 1. **The app has never been compiled or run** (B-002). Everything UI is
    unvalidated. → First macOS session: compile, fix, run the core flow.
+   **Update 2026-08-26:** the Linux-side risk reduction is now done — all
+   sources parse, every Core API call is verified, screen data contracts
+   and full player journeys are covered by Core tests, and three P1
+   journey defects invisible to unit tests were found and fixed (BUG-003
+   game-over dead end, BUG-004 rival financials in the player feed,
+   BUG-005 silent command rejection). The Xcode handoff is
+   `docs/APPLE_VALIDATION.md`. The claim remains **not Apple-runtime
+   validated** — that cannot change without a Mac.
 2. **No onboarding**: a new player lands on an empty dashboard with no
    guided first route. The first-five-minutes contract (PLAYER_JOURNEY §1)
    is the difference between a game and a simulator core. → macOS queue,
-   design exists.
+   design exists. **Update 2026-08-26:** built to the limit of Linux —
+   Core `OnboardingModel` (derived checklist, no persisted flags, zero
+   save impact; demand-ranked first-route suggestions) with 4 tests;
+   Dashboard onboarding card + suggestion-prefilled OpenRouteSheet
+   authored. Remains on this list only for its macOS runtime validation.
 
 ### High
 3. **Hub connections not implemented.** GAME_DESIGN §4.14 and the demand
@@ -53,8 +65,14 @@ dimensions are assessed on authored code + Core read models and flagged.
 7. `LocalAnalytics` service (ARCHITECTURE §8) superseded by statement
    series + route economics, which feed the charts. → D-010 amends.
 8. Mission variety: one kind (boomRush). Seam is clean (`MissionKind`).
-9. Weekly/evening digest aggregation (CORE_LOOP §3) is UI work; events
-   and statements provide the data. → macOS queue.
+9. ~~Weekly/evening digest aggregation (CORE_LOOP §3)~~ → **Built
+   2026-08-26.** `DailyDigestModel` derives yesterday's money by category,
+   flights flown/cancelled, and the day's news from the ledger's
+   timestamped ring and the event log — no new persisted state, save
+   format still v10. It reports `isComplete: false` rather than
+   under-counting when a very large network out-posts the ring. Dashboard
+   renders it as a "Yesterday" card with a **Why?** breakdown. 6 tests.
+   Runtime validation pending macOS like the rest of the UI.
 10. iPad sidebar layout not authored (TabView only). → macOS queue.
 
 ### Low

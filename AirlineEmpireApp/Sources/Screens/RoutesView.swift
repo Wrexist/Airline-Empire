@@ -89,6 +89,8 @@ struct RouteDetailView: View {
                    .first(where: { $0.id == routeID }) {
                 VStack(spacing: AETheme.spacingM) {
                     breakdown(card)
+                    aircraftSection(card, player: player.id,
+                                    snapshot: snapshot, catalog: catalog)
                     operations(card)
                     fareControls(card)
                     dangerZone(card, player: player.id)
@@ -153,11 +155,13 @@ struct RouteDetailView: View {
                 HStack(spacing: AETheme.spacingS) {
                     ForEach([-10, -5, 5, 10], id: \.self) { percent in
                         Button("\(percent > 0 ? "+" : "")\(percent)%") {
+                            guard let player = controller.snapshot?.playerAirline?.id
+                            else { return }
                             let newFare = Money(rounding: card.ticketPrice.asDouble
                                 * (1 + Double(percent) / 100))
                             controller.submit(SetRoutePriceCommand(
-                                airline: controller.snapshot!.playerAirline!.id,
-                                route: routeID, ticketPrice: newFare))
+                                airline: player, route: routeID,
+                                ticketPrice: newFare))
                         }
                         .buttonStyle(.bordered)
                     }
@@ -165,6 +169,53 @@ struct RouteDetailView: View {
                 Stepper("Frequency: \(card.dailyRoundTrips)×/day",
                         onIncrement: { changeFrequency(card, by: 1) },
                         onDecrement: { changeFrequency(card, by: -1) })
+            }
+        }
+    }
+
+    /// Who flies this route — and the way to put an idle aircraft on it
+    /// (without this, nothing ever takes off).
+    private func aircraftSection(_ card: RouteCardModel, player: AirlineID,
+                                 snapshot: GameState,
+                                 catalog: ContentCatalog) -> some View {
+        let fleet = snapshot.fleetCards(for: player, catalog: catalog)
+        let assigned = fleet.filter { $0.assignedRoute == routeID }
+        let idle = fleet.filter { $0.assignedRoute == nil && $0.status == .active }
+        return AECard {
+            VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                Text("Aircraft").font(.headline)
+                if assigned.isEmpty {
+                    Label("No aircraft — this route is not flying",
+                          systemImage: "exclamationmark.triangle")
+                        .font(.subheadline)
+                        .foregroundStyle(AETheme.caution)
+                }
+                ForEach(assigned, id: \.id) { aircraft in
+                    HStack {
+                        Text(aircraft.typeName).font(.subheadline)
+                        Spacer()
+                        Button("Unassign") {
+                            controller.submit(UnassignAircraftCommand(
+                                airline: player, aircraftID: aircraft.id))
+                        }
+                        .buttonStyle(.bordered)
+                        .font(.caption)
+                    }
+                }
+                if !idle.isEmpty {
+                    Menu {
+                        ForEach(idle, id: \.id) { aircraft in
+                            Button("\(aircraft.typeName) — at \(aircraft.location.raw)") {
+                                controller.submit(AssignAircraftToRouteCommand(
+                                    airline: player, route: routeID,
+                                    aircraftID: aircraft.id))
+                            }
+                        }
+                    } label: {
+                        Label("Assign an aircraft", systemImage: "plus")
+                            .font(.subheadline.weight(.medium))
+                    }
+                }
             }
         }
     }
@@ -213,6 +264,15 @@ struct OpenRouteSheet: View {
     @State private var destination: AirportCode = "LNW"
     @State private var trips = 2
     @State private var fare = 129.0
+
+    init() {}
+
+    /// Pre-filled from an onboarding suggestion (guided first route).
+    init(suggestion: FirstRouteSuggestion) {
+        _origin = State(initialValue: suggestion.origin)
+        _destination = State(initialValue: suggestion.destination)
+        _fare = State(initialValue: suggestion.referenceFare.asDouble)
+    }
 
     var body: some View {
         NavigationStack {

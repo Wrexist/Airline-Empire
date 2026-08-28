@@ -121,7 +121,47 @@ world (events, competitors, progression incl. capability starts, service &
 reputation, save), map (zoomable Canvas rendering MapModel with LOD,
 selection callouts, rotated live aircraft), game-over screen.
 
-**Open item (AE-016/AE-017):** first macOS session generates the project
+**Added 2026-08-26 (AE-023 Linux scope):** onboarding read model
+(`OnboardingModel.swift`) — the PLAYER_JOURNEY §1 guided first-route beat
+as a pure derived checklist (no persisted flags, zero save impact) with
+demand-ranked, eligibility-checked first-route suggestions; tested in
+Core. App side: Dashboard onboarding card (auto-hides when complete),
+suggestion-prefilled OpenRouteSheet, and the RouteDetail "Aircraft"
+assign/unassign section (BUG-002 fix — the loop was previously
+uncloseable from the UI).
+
+**Added 2026-08-26 (V3 Linux-first pass):**
+- **Event audience** (`Session/EventFeed.swift`, decision D-011):
+  `GameState.subjectAirline(of:)` resolves whose business an event is
+  (entity events resolve through ownership); `isFeedEvent(_:for:)` decides
+  feed visibility — own business, world news, and rivals' public fates.
+  `GameSession.events(playerFeedOnly:)` filters at publish time, against
+  the exact state that produced the event. The app subscribes filtered.
+- **Rejection delivery** (D-011): `GameSession.rejections()` publishes the
+  outcome of commands queued while the simulation is running — the only
+  path by which such a failure can reach the player.
+- **Session lifecycle:** `GameController.quitToMenu()` releases the
+  session and cancels the pump, event, and rejection tasks, so the app can
+  return to the menu (game over, or save-and-quit).
+- **Contract tests:** `ScreenContractTests` asserts that Dashboard, Route
+  detail, Fleet, Finance, Map, and World screens can be drawn from Core
+  alone on a real mid-game world; `PlayerJourneyTests` drives complete
+  journeys through the command surface. These are the Linux stand-in for
+  simulator walkthroughs and are how BUG-003/004/005 were caught.
+
+**Added 2026-08-26 (evening digest):** `Session/DailyDigest.swift` —
+`GameState.dailyDigest(for:day:)` summarizes a game day (money by
+category, net cash change, flights flown/cancelled, the day's news) purely
+from the ledger's timestamped ring and the event log. No per-day
+accumulation, nothing new persisted, save format unchanged. Because the
+ring is bounded, the model carries `isComplete` and the UI states plainly
+when a day is partial rather than showing a wrong total. The Dashboard
+renders it as a "Yesterday" card with an expandable breakdown; it is
+snapshot-derived, so fast-forward updates it instead of queueing modals.
+`TransactionCategory` labels live in one place (`DigestCard.label(for:)`)
+and are reused by the Finance statement rows.
+
+**Open item (AE-023):** first macOS session generates the project
 (`xcodegen`), compiles, fixes view-layer syntax issues, and validates the
 new-game → route → fast-forward flow on simulator. Until then these phases
 are *authored*, not done.

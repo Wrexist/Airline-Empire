@@ -136,26 +136,9 @@ struct FinanceView: View {
         }
     }
 
+    /// One name per category across the whole app (see DigestCard).
     private func label(for category: TransactionCategory) -> String {
-        switch category {
-        case .ticketRevenue: "Ticket revenue"
-        case .missionReward: "Mission rewards"
-        case .fuel: "Fuel"
-        case .airportFees: "Airport fees"
-        case .crewCosts: "Crew"
-        case .maintenance: "Maintenance"
-        case .leasePayment: "Leases"
-        case .leasePenalty: "Lease penalties"
-        case .passengerService: "Onboard service"
-        case .salaries: "Payroll"
-        case .overhead: "Overhead"
-        case .loanInterest: "Loan interest"
-        case .loanPrincipal: "Loan principal"
-        case .loanProceeds: "Loan drawdowns"
-        case .initialCapital: "Capital"
-        case .aircraftPurchase: "Aircraft purchases"
-        case .aircraftSale: "Aircraft sales"
-        }
+        DigestCard.label(for: category)
     }
 }
 

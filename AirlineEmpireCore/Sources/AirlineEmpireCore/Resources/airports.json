@@ -12,7 +12,7 @@
     "businessIndex": 0.72,
     "cargoIndex": 0.45,
     "leisureIndex": 0.78,
-    "populationThousands": 2400000,
+    "populationThousands": 2400,
     "tourismIndex": 0.55
    },
    "movementFee": {
@@ -42,7 +42,7 @@
     "businessIndex": 0.66,
     "cargoIndex": 0.4,
     "leisureIndex": 0.76,
-    "populationThousands": 1600000,
+    "populationThousands": 1600,
     "tourismIndex": 0.5
    },
    "movementFee": {
@@ -72,7 +72,7 @@
     "businessIndex": 0.74,
     "cargoIndex": 0.5,
     "leisureIndex": 0.8,
-    "populationThousands": 2100000,
+    "populationThousands": 2100,
     "tourismIndex": 0.6
    },
    "movementFee": {
@@ -102,7 +102,7 @@
     "businessIndex": 0.62,
     "cargoIndex": 0.42,
     "leisureIndex": 0.74,
-    "populationThousands": 1500000,
+    "populationThousands": 1500,
     "tourismIndex": 0.45
    },
    "movementFee": {
@@ -132,7 +132,7 @@
     "businessIndex": 0.98,
     "cargoIndex": 0.85,
     "leisureIndex": 0.82,
-    "populationThousands": 14800000,
+    "populationThousands": 14800,
     "tourismIndex": 0.9
    },
    "movementFee": {
@@ -162,7 +162,7 @@
     "businessIndex": 0.92,
     "cargoIndex": 0.8,
     "leisureIndex": 0.8,
-    "populationThousands": 12500000,
+    "populationThousands": 12500,
     "tourismIndex": 0.95
    },
    "movementFee": {
@@ -192,7 +192,7 @@
     "businessIndex": 0.88,
     "cargoIndex": 0.9,
     "leisureIndex": 0.82,
-    "populationThousands": 2900000,
+    "populationThousands": 2900,
     "tourismIndex": 0.78
    },
    "movementFee": {
@@ -222,7 +222,7 @@
     "businessIndex": 0.94,
     "cargoIndex": 0.95,
     "leisureIndex": 0.72,
-    "populationThousands": 2700000,
+    "populationThousands": 2700,
     "tourismIndex": 0.55
    },
    "movementFee": {
@@ -252,7 +252,7 @@
     "businessIndex": 0.86,
     "cargoIndex": 0.6,
     "leisureIndex": 0.76,
-    "populationThousands": 3000000,
+    "populationThousands": 3000,
     "tourismIndex": 0.65
    },
    "movementFee": {
@@ -282,7 +282,7 @@
     "businessIndex": 0.72,
     "cargoIndex": 0.45,
     "leisureIndex": 0.8,
-    "populationThousands": 3700000,
+    "populationThousands": 3700,
     "tourismIndex": 0.75
    },
    "movementFee": {
@@ -312,7 +312,7 @@
     "businessIndex": 0.9,
     "cargoIndex": 0.55,
     "leisureIndex": 0.74,
-    "populationThousands": 1500000,
+    "populationThousands": 1500,
     "tourismIndex": 0.6
    },
    "movementFee": {
@@ -342,7 +342,7 @@
     "businessIndex": 0.76,
     "cargoIndex": 0.5,
     "leisureIndex": 0.76,
-    "populationThousands": 2000000,
+    "populationThousands": 2000,
     "tourismIndex": 0.72
    },
    "movementFee": {
@@ -372,7 +372,7 @@
     "businessIndex": 0.78,
     "cargoIndex": 0.55,
     "leisureIndex": 0.78,
-    "populationThousands": 6700000,
+    "populationThousands": 6700,
     "tourismIndex": 0.75
    },
    "movementFee": {
@@ -402,7 +402,7 @@
     "businessIndex": 0.7,
     "cargoIndex": 0.5,
     "leisureIndex": 0.8,
-    "populationThousands": 5600000,
+    "populationThousands": 5600,
     "tourismIndex": 0.9
    },
    "movementFee": {
@@ -432,7 +432,7 @@
     "businessIndex": 0.62,
     "cargoIndex": 0.4,
     "leisureIndex": 0.76,
-    "populationThousands": 2900000,
+    "populationThousands": 2900,
     "tourismIndex": 0.82
    },
    "movementFee": {
@@ -462,7 +462,7 @@
     "businessIndex": 0.72,
     "cargoIndex": 0.45,
     "leisureIndex": 0.74,
-    "populationThousands": 4300000,
+    "populationThousands": 4300,
     "tourismIndex": 0.95
    },
    "movementFee": {
@@ -492,7 +492,7 @@
     "businessIndex": 0.86,
     "cargoIndex": 0.65,
     "leisureIndex": 0.72,
-    "populationThousands": 3200000,
+    "populationThousands": 3200,
     "tourismIndex": 0.62
    },
    "movementFee": {
@@ -522,7 +522,7 @@
     "businessIndex": 0.58,
     "cargoIndex": 0.35,
     "leisureIndex": 0.74,
-    "populationThousands": 3800000,
+    "populationThousands": 3800,
     "tourismIndex": 0.88
    },
    "movementFee": {
@@ -552,7 +552,7 @@
     "businessIndex": 0.72,
     "cargoIndex": 0.4,
     "leisureIndex": 0.8,
-    "populationThousands": 1400000,
+    "populationThousands": 1400,
     "tourismIndex": 0.66
    },
    "movementFee": {
@@ -582,7 +582,7 @@
     "businessIndex": 0.64,
     "cargoIndex": 0.45,
     "leisureIndex": 0.72,
-    "populationThousands": 1800000,
+    "populationThousands": 1800,
     "tourismIndex": 0.52
    },
    "movementFee": {
@@ -612,7 +612,7 @@
     "businessIndex": 0.6,
     "cargoIndex": 0.35,
     "leisureIndex": 0.74,
-    "populationThousands": 1300000,
+    "populationThousands": 1300,
     "tourismIndex": 0.8
    },
    "movementFee": {
@@ -642,7 +642,7 @@
     "businessIndex": 0.76,
     "cargoIndex": 0.75,
     "leisureIndex": 0.72,
-    "populationThousands": 15500000,
+    "populationThousands": 15500,
     "tourismIndex": 0.85
    },
    "movementFee": {
@@ -672,7 +672,7 @@
     "businessIndex": 0.5,
     "cargoIndex": 0.2,
     "leisureIndex": 0.76,
-    "populationThousands": 1000000,
+    "populationThousands": 1000,
     "tourismIndex": 0.85
    },
    "movementFee": {
@@ -702,7 +702,7 @@
     "businessIndex": 0.3,
     "cargoIndex": 0.15,
     "leisureIndex": 0.7,
-    "populationThousands": 550000,
+    "populationThousands": 550,
     "tourismIndex": 0.95
    },
    "movementFee": {
@@ -732,7 +732,7 @@
     "businessIndex": 0.2,
     "cargoIndex": 0.1,
     "leisureIndex": 0.6,
-    "populationThousands": 80000,
+    "populationThousands": 80,
     "tourismIndex": 0.62
    },
    "movementFee": {
@@ -762,7 +762,7 @@
     "businessIndex": 0.4,
     "cargoIndex": 0.2,
     "leisureIndex": 0.72,
-    "populationThousands": 230000,
+    "populationThousands": 230,
     "tourismIndex": 0.85
    },
    "movementFee": {
@@ -792,7 +792,7 @@
     "businessIndex": 0.98,
     "cargoIndex": 0.9,
     "leisureIndex": 0.82,
-    "populationThousands": 19800000,
+    "populationThousands": 19800,
     "tourismIndex": 0.92
    },
    "movementFee": {
@@ -822,7 +822,7 @@
     "businessIndex": 0.9,
     "cargoIndex": 0.85,
     "leisureIndex": 0.76,
-    "populationThousands": 9500000,
+    "populationThousands": 9500,
     "tourismIndex": 0.65
    },
    "movementFee": {
@@ -852,7 +852,7 @@
     "businessIndex": 0.88,
     "cargoIndex": 0.8,
     "leisureIndex": 0.8,
-    "populationThousands": 13200000,
+    "populationThousands": 13200,
     "tourismIndex": 0.88
    },
    "movementFee": {
@@ -882,7 +882,7 @@
     "businessIndex": 0.94,
     "cargoIndex": 0.6,
     "leisureIndex": 0.78,
-    "populationThousands": 4700000,
+    "populationThousands": 4700,
     "tourismIndex": 0.78
    },
    "movementFee": {
@@ -912,7 +912,7 @@
     "businessIndex": 0.72,
     "cargoIndex": 0.7,
     "leisureIndex": 0.78,
-    "populationThousands": 6100000,
+    "populationThousands": 6100,
     "tourismIndex": 0.92
    },
    "movementFee": {
@@ -942,7 +942,7 @@
     "businessIndex": 0.86,
     "cargoIndex": 0.75,
     "leisureIndex": 0.72,
-    "populationThousands": 7600000,
+    "populationThousands": 7600,
     "tourismIndex": 0.55
    },
    "movementFee": {
@@ -972,7 +972,7 @@
     "businessIndex": 0.84,
     "cargoIndex": 0.8,
     "leisureIndex": 0.74,
-    "populationThousands": 6100000,
+    "populationThousands": 6100,
     "tourismIndex": 0.6
    },
    "movementFee": {
@@ -1002,7 +1002,7 @@
     "businessIndex": 0.82,
     "cargoIndex": 0.65,
     "leisureIndex": 0.76,
-    "populationThousands": 4000000,
+    "populationThousands": 4000,
     "tourismIndex": 0.66
    },
    "movementFee": {
@@ -1032,7 +1032,7 @@
     "businessIndex": 0.74,
     "cargoIndex": 0.55,
     "leisureIndex": 0.74,
-    "populationThousands": 3000000,
+    "populationThousands": 3000,
     "tourismIndex": 0.7
    },
    "movementFee": {
@@ -1062,7 +1062,7 @@
     "businessIndex": 0.88,
     "cargoIndex": 0.45,
     "leisureIndex": 0.76,
-    "populationThousands": 4900000,
+    "populationThousands": 4900,
     "tourismIndex": 0.68
    },
    "movementFee": {
@@ -1092,7 +1092,7 @@
     "businessIndex": 0.84,
     "cargoIndex": 0.65,
     "leisureIndex": 0.78,
-    "populationThousands": 6200000,
+    "populationThousands": 6200,
     "tourismIndex": 0.66
    },
    "movementFee": {
@@ -1122,7 +1122,7 @@
     "businessIndex": 0.72,
     "cargoIndex": 0.55,
     "leisureIndex": 0.78,
-    "populationThousands": 2600000,
+    "populationThousands": 2600,
     "tourismIndex": 0.8
    },
    "movementFee": {
@@ -1152,7 +1152,7 @@
     "businessIndex": 0.7,
     "cargoIndex": 0.45,
     "leisureIndex": 0.76,
-    "populationThousands": 4300000,
+    "populationThousands": 4300,
     "tourismIndex": 0.68
    },
    "movementFee": {
@@ -1182,7 +1182,7 @@
     "businessIndex": 0.68,
     "cargoIndex": 0.6,
     "leisureIndex": 0.66,
-    "populationThousands": 21800000,
+    "populationThousands": 21800,
     "tourismIndex": 0.72
    },
    "movementFee": {
@@ -1212,7 +1212,7 @@
     "businessIndex": 0.24,
     "cargoIndex": 0.15,
     "leisureIndex": 0.62,
-    "populationThousands": 900000,
+    "populationThousands": 900,
     "tourismIndex": 0.98
    },
    "movementFee": {
@@ -1242,7 +1242,7 @@
     "businessIndex": 0.8,
     "cargoIndex": 0.7,
     "leisureIndex": 0.66,
-    "populationThousands": 22400000,
+    "populationThousands": 22400,
     "tourismIndex": 0.62
    },
    "movementFee": {
@@ -1272,7 +1272,7 @@
     "businessIndex": 0.58,
     "cargoIndex": 0.45,
     "leisureIndex": 0.68,
-    "populationThousands": 13600000,
+    "populationThousands": 13600,
     "tourismIndex": 0.95
    },
    "movementFee": {
@@ -1302,7 +1302,7 @@
     "businessIndex": 0.62,
     "cargoIndex": 0.45,
     "leisureIndex": 0.7,
-    "populationThousands": 15400000,
+    "populationThousands": 15400,
     "tourismIndex": 0.75
    },
    "movementFee": {
@@ -1332,7 +1332,7 @@
     "businessIndex": 0.64,
     "cargoIndex": 0.45,
     "leisureIndex": 0.68,
-    "populationThousands": 6900000,
+    "populationThousands": 6900,
     "tourismIndex": 0.66
    },
    "movementFee": {
@@ -1362,7 +1362,7 @@
     "businessIndex": 0.6,
     "cargoIndex": 0.5,
     "leisureIndex": 0.62,
-    "populationThousands": 11000000,
+    "populationThousands": 11000,
     "tourismIndex": 0.58
    },
    "movementFee": {
@@ -1392,7 +1392,7 @@
     "businessIndex": 0.54,
     "cargoIndex": 0.4,
     "leisureIndex": 0.6,
-    "populationThousands": 10700000,
+    "populationThousands": 10700,
     "tourismIndex": 0.72
    },
    "movementFee": {
@@ -1422,7 +1422,7 @@
     "businessIndex": 0.9,
     "cargoIndex": 0.95,
     "leisureIndex": 0.74,
-    "populationThousands": 3600000,
+    "populationThousands": 3600,
     "tourismIndex": 0.9
    },
    "movementFee": {
@@ -1452,7 +1452,7 @@
     "businessIndex": 0.82,
     "cargoIndex": 0.85,
     "leisureIndex": 0.68,
-    "populationThousands": 2400000,
+    "populationThousands": 2400,
     "tourismIndex": 0.62
    },
    "movementFee": {
@@ -1482,7 +1482,7 @@
     "businessIndex": 0.78,
     "cargoIndex": 0.6,
     "leisureIndex": 0.62,
-    "populationThousands": 7700000,
+    "populationThousands": 7700,
     "tourismIndex": 0.42
    },
    "movementFee": {
@@ -1512,7 +1512,7 @@
     "businessIndex": 0.78,
     "cargoIndex": 0.45,
     "leisureIndex": 0.74,
-    "populationThousands": 4300000,
+    "populationThousands": 4300,
     "tourismIndex": 0.72
    },
    "movementFee": {
@@ -1542,7 +1542,7 @@
     "businessIndex": 0.58,
     "cargoIndex": 0.5,
     "leisureIndex": 0.56,
-    "populationThousands": 21300000,
+    "populationThousands": 21300,
     "tourismIndex": 0.85
    },
    "movementFee": {
@@ -1572,7 +1572,7 @@
     "businessIndex": 0.68,
     "cargoIndex": 0.6,
     "leisureIndex": 0.6,
-    "populationThousands": 10100000,
+    "populationThousands": 10100,
     "tourismIndex": 0.6
    },
    "movementFee": {
@@ -1602,7 +1602,7 @@
     "businessIndex": 0.52,
     "cargoIndex": 0.35,
     "leisureIndex": 0.64,
-    "populationThousands": 4800000,
+    "populationThousands": 4800,
     "tourismIndex": 0.92
    },
    "movementFee": {
@@ -1632,7 +1632,7 @@
     "businessIndex": 0.54,
     "cargoIndex": 0.5,
     "leisureIndex": 0.54,
-    "populationThousands": 5100000,
+    "populationThousands": 5100,
     "tourismIndex": 0.72
    },
    "movementFee": {
@@ -1662,7 +1662,7 @@
     "businessIndex": 0.6,
     "cargoIndex": 0.55,
     "leisureIndex": 0.52,
-    "populationThousands": 15400000,
+    "populationThousands": 15400,
     "tourismIndex": 0.42
    },
    "movementFee": {
@@ -1692,7 +1692,7 @@
     "businessIndex": 0.52,
     "cargoIndex": 0.4,
     "leisureIndex": 0.6,
-    "populationThousands": 3800000,
+    "populationThousands": 3800,
     "tourismIndex": 0.7
    },
    "movementFee": {
@@ -1722,7 +1722,7 @@
     "businessIndex": 0.5,
     "cargoIndex": 0.6,
     "leisureIndex": 0.48,
-    "populationThousands": 5200000,
+    "populationThousands": 5200,
     "tourismIndex": 0.48
    },
    "movementFee": {
@@ -1752,7 +1752,7 @@
     "businessIndex": 0.74,
     "cargoIndex": 0.75,
     "leisureIndex": 0.58,
-    "populationThousands": 31200000,
+    "populationThousands": 31200,
     "tourismIndex": 0.72
    },
    "movementFee": {
@@ -1782,7 +1782,7 @@
     "businessIndex": 0.78,
     "cargoIndex": 0.75,
     "leisureIndex": 0.56,
-    "populationThousands": 20700000,
+    "populationThousands": 20700,
     "tourismIndex": 0.65
    },
    "movementFee": {
@@ -1812,7 +1812,7 @@
     "businessIndex": 0.76,
     "cargoIndex": 0.6,
     "leisureIndex": 0.58,
-    "populationThousands": 13200000,
+    "populationThousands": 13200,
     "tourismIndex": 0.52
    },
    "movementFee": {
@@ -1842,7 +1842,7 @@
     "businessIndex": 0.4,
     "cargoIndex": 0.3,
     "leisureIndex": 0.52,
-    "populationThousands": 2400000,
+    "populationThousands": 2400,
     "tourismIndex": 0.85
    },
    "movementFee": {
@@ -1872,7 +1872,7 @@
     "businessIndex": 0.94,
     "cargoIndex": 0.85,
     "leisureIndex": 0.78,
-    "populationThousands": 37300000,
+    "populationThousands": 37300,
     "tourismIndex": 0.88
    },
    "movementFee": {
@@ -1902,7 +1902,7 @@
     "businessIndex": 0.82,
     "cargoIndex": 0.7,
     "leisureIndex": 0.74,
-    "populationThousands": 19100000,
+    "populationThousands": 19100,
     "tourismIndex": 0.75
    },
    "movementFee": {
@@ -1932,7 +1932,7 @@
     "businessIndex": 0.88,
     "cargoIndex": 0.85,
     "leisureIndex": 0.76,
-    "populationThousands": 25500000,
+    "populationThousands": 25500,
     "tourismIndex": 0.72
    },
    "movementFee": {
@@ -1962,7 +1962,7 @@
     "businessIndex": 0.88,
     "cargoIndex": 0.85,
     "leisureIndex": 0.68,
-    "populationThousands": 20900000,
+    "populationThousands": 20900,
     "tourismIndex": 0.8
    },
    "movementFee": {
@@ -1992,7 +1992,7 @@
     "businessIndex": 0.92,
     "cargoIndex": 0.95,
     "leisureIndex": 0.7,
-    "populationThousands": 28500000,
+    "populationThousands": 28500,
     "tourismIndex": 0.75
    },
    "movementFee": {
@@ -2022,7 +2022,7 @@
     "businessIndex": 0.92,
     "cargoIndex": 0.95,
     "leisureIndex": 0.76,
-    "populationThousands": 7500000,
+    "populationThousands": 7500,
     "tourismIndex": 0.82
    },
    "movementFee": {
@@ -2052,7 +2052,7 @@
     "businessIndex": 0.84,
     "cargoIndex": 0.85,
     "leisureIndex": 0.72,
-    "populationThousands": 7000000,
+    "populationThousands": 7000,
     "tourismIndex": 0.66
    },
    "movementFee": {
@@ -2082,7 +2082,7 @@
     "businessIndex": 0.94,
     "cargoIndex": 0.95,
     "leisureIndex": 0.78,
-    "populationThousands": 5900000,
+    "populationThousands": 5900,
     "tourismIndex": 0.88
    },
    "movementFee": {
@@ -2112,7 +2112,7 @@
     "businessIndex": 0.66,
     "cargoIndex": 0.65,
     "leisureIndex": 0.66,
-    "populationThousands": 10700000,
+    "populationThousands": 10700,
     "tourismIndex": 0.95
    },
    "movementFee": {
@@ -2142,7 +2142,7 @@
     "businessIndex": 0.68,
     "cargoIndex": 0.65,
     "leisureIndex": 0.64,
-    "populationThousands": 8300000,
+    "populationThousands": 8300,
     "tourismIndex": 0.75
    },
    "movementFee": {
@@ -2172,7 +2172,7 @@
     "businessIndex": 0.66,
     "cargoIndex": 0.65,
     "leisureIndex": 0.58,
-    "populationThousands": 34500000,
+    "populationThousands": 34500,
     "tourismIndex": 0.6
    },
    "movementFee": {
@@ -2202,7 +2202,7 @@
     "businessIndex": 0.6,
     "cargoIndex": 0.55,
     "leisureIndex": 0.58,
-    "populationThousands": 24300000,
+    "populationThousands": 24300,
     "tourismIndex": 0.66
    },
    "movementFee": {
@@ -2232,7 +2232,7 @@
     "businessIndex": 0.62,
     "cargoIndex": 0.55,
     "leisureIndex": 0.58,
-    "populationThousands": 9300000,
+    "populationThousands": 9300,
     "tourismIndex": 0.72
    },
    "movementFee": {
@@ -2262,7 +2262,7 @@
     "businessIndex": 0.26,
     "cargoIndex": 0.2,
     "leisureIndex": 0.56,
-    "populationThousands": 730000,
+    "populationThousands": 730,
     "tourismIndex": 0.98
    },
    "movementFee": {
@@ -2292,7 +2292,7 @@
     "businessIndex": 0.84,
     "cargoIndex": 0.6,
     "leisureIndex": 0.78,
-    "populationThousands": 5300000,
+    "populationThousands": 5300,
     "tourismIndex": 0.85
    },
    "movementFee": {
@@ -2322,7 +2322,7 @@
     "businessIndex": 0.8,
     "cargoIndex": 0.55,
     "leisureIndex": 0.76,
-    "populationThousands": 5100000,
+    "populationThousands": 5100,
     "tourismIndex": 0.72
    },
    "movementFee": {
@@ -2352,7 +2352,7 @@
     "businessIndex": 0.62,
     "cargoIndex": 0.45,
     "leisureIndex": 0.74,
-    "populationThousands": 1700000,
+    "populationThousands": 1700,
     "tourismIndex": 0.82
    },
    "movementFee": {
@@ -2382,7 +2382,7 @@
     "businessIndex": 0.16,
     "cargoIndex": 0.1,
     "leisureIndex": 0.5,
-    "populationThousands": 90000,
+    "populationThousands": 90,
     "tourismIndex": 0.95
    },
    "movementFee": {

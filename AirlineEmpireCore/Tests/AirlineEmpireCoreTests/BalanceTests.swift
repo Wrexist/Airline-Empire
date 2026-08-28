@@ -296,4 +296,63 @@ struct BalanceTests {
         }
         #expect(activeAirlines.count >= 2, "Only \(activeAirlines.count) active operators after 10y")
     }
+
+    /// Pricing must be a real decision (BUG-006 regression).
+    ///
+    /// Before the population unit fix, demand pools were 1000x too large, so
+    /// every route ran capacity-pinned at 100% load no matter what it
+    /// charged: a fare rise cost nothing and profit grew without bound. The
+    /// exponential price utility was chosen precisely to give an interior
+    /// revenue optimum (docs/ECONOMY.md), which the shipped content made
+    /// unreachable. This pins the restored behaviour through the *full*
+    /// pipeline, not the demand unit alone — that is where the bug hid.
+    @Test func pricingHasRealConsequencesEndToEnd() async throws {
+        let catalog = try ContentCatalog.loadBundled()
+        let spec = try #require(catalog.scenario("founder"))
+
+        func run(fareMultiple: Double) async throws -> (pax: Int64, profit: Money, load: Double) {
+            let session = GameSession(
+                state: ScenarioBootstrap.newGame(scenario: "founder", worldSeed: 4242,
+                                                 startYear: spec.startYear),
+                systems: GamePipeline.standard(), catalog: catalog)
+            _ = await session.beginScenario(spec, airlineName: "Pricer", home: "STV")
+            var state = await session.snapshot
+            let player = try #require(state.playerAirline).id
+            let market = try #require(state.onboardingModel(catalog: catalog)?
+                .suggestions.first)
+            _ = await session.submit(LeaseAircraftCommand(lessee: player,
+                                                          type: "MR180", termMonths: 60))
+            state = await session.snapshot
+            let aircraft = try #require(state.fleet(of: player).first).id
+            _ = await session.submit(OpenRouteCommand(
+                airline: player, origin: market.origin, destination: market.destination,
+                dailyRoundTrips: 3,
+                ticketPrice: Money(rounding: market.referenceFare.asDouble * fareMultiple)))
+            state = await session.snapshot
+            let route = try #require(state.routes(of: player).first).id
+            _ = await session.submit(AssignAircraftToRouteCommand(
+                airline: player, route: route, aircraftID: aircraft))
+            await session.advance(ticks: Fixtures.ticksPerDay * 90)
+            let final = try #require(await session.snapshot.routes[route])
+            return (final.stats.passengersCarried,
+                    final.economicsLastMonth.directOperatingProfit,
+                    final.stats.loadFactor)
+        }
+
+        let cheap = try await run(fareMultiple: 1.0)
+        let dear = try await run(fareMultiple: 1.6)
+        let gouging = try await run(fareMultiple: 2.0)
+
+        // Price moves volume: charging more must cost passengers.
+        #expect(dear.pax < cheap.pax,
+                "fare rise did not cost a single passenger — demand is capacity-pinned")
+        #expect(gouging.pax < dear.pax)
+        // And it must empty seats, not just shuffle money.
+        #expect(cheap.load > 0.9)
+        #expect(gouging.load < 0.7,
+                "load \(gouging.load) at 2x fare: price is not biting")
+        // Profit has an interior optimum: gouging is punished.
+        #expect(gouging.profit < dear.profit,
+                "profit still rising at 2x reference fare — pricing has no downside")
+    }
 }
