@@ -12,6 +12,13 @@ from the same setup performed in a sibling repository, and each one should be
 ticked here *by the person who did it*, with the date — the same rule
 [`APPLE_VALIDATION.md`](APPLE_VALIDATION.md) §9 sets for itself.
 
+**Looking for the values to type in?** They are not here. This page is the
+account plumbing — enrolment, keys, certificates, secrets. Every field of the
+listing itself, with the exact text to paste and in the order App Store
+Connect asks for it, is
+[`APP_STORE_CONNECT_FILL_IN.md`](APP_STORE_CONNECT_FILL_IN.md), generated
+from `store/` so it cannot drift from what the pipeline pushes.
+
 Related: [`GO_LIVE.md`](GO_LIVE.md) (all of this as an ordered checklist, with
 everything else that has to happen around it) ·
 [`RELEASE_PIPELINE.md`](RELEASE_PIPELINE.md) (what the workflows do once this

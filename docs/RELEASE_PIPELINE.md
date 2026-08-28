@@ -116,6 +116,7 @@ for why Node in a Swift repository), and none of them ship in the app.
 |---|---|---|
 | `selftest.mjs` | 30 tests over the JWT, the HTTP client, PNG inspection, the app icon and the listing validator | nothing |
 | `validate-metadata.mjs` | Character limits, keyword hygiene, trademarks, URLs, screenshot canvases, bundle-id agreement across three files | nothing |
+| `build-fill-in-sheet.mjs` | Generates `docs/APP_STORE_CONNECT_FILL_IN.md` from `store/`; `--check` fails CI when it is stale | nothing |
 | `check-app-icon.mjs` | Whether the icon exists, is 1024×1024 and has no alpha — the most common first-upload rejection, caught before the archive | nothing |
 | `preflight.mjs` | Secrets, authentication, app record, version state | the three ASC secrets |
 | `next-build-number.mjs` | The next CFBundleVersion, from Apple or from the clock | optional |

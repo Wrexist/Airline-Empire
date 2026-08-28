@@ -88,9 +88,10 @@ Details: [`APP_STORE_CONNECT.md`](APP_STORE_CONNECT.md) §2.
 **3.1** 🧑 Developer portal → Identifiers → + → App IDs → App. Explicit bundle
 ID **`com.airlineempire.game`**. **No capabilities** — the app uses none.
 
-**3.2** 🧑 App Store Connect → Apps → + → New App. iOS, name **Airline
-Empire**, primary language English (U.S.), the bundle ID above, SKU
-`airline-empire-ios`.
+**3.2** 🧑 App Store Connect → Apps → + → New App. Every value for this form
+— and for every other screen App Store Connect will ask you about — is in
+[`APP_STORE_CONNECT_FILL_IN.md`](APP_STORE_CONNECT_FILL_IN.md) §1, ready to
+paste.
 
 > If the name is taken, pick the alternative now and change it in
 > `store/metadata/en-US/name.txt`, `store/metadata/en-GB/name.txt` and
@@ -301,7 +302,10 @@ mode **plan**. Read the before/after it prints.
 tick **screenshots**.
 
 **11.3** 🧑 Open the app in App Store Connect and look at the page. Everything
-should be there except the answers only the web UI takes:
+should be there except the answers only the web UI takes — those, and every
+other field with its exact value, are in
+[`APP_STORE_CONNECT_FILL_IN.md`](APP_STORE_CONNECT_FILL_IN.md), which is
+generated from `store/` and can be worked top to bottom:
 
 - **App Privacy** → "Do you collect data?" → **No**
   ([`APP_STORE_CONNECT.md`](APP_STORE_CONNECT.md) §6)

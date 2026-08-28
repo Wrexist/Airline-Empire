@@ -44,5 +44,15 @@ warning on a pull request and an error on a release, so the tree can be
 complete and reviewable today while a real submission stays blocked until those
 values are real.
 
+Changing any of this copy means regenerating the fill-in sheet:
+
+```sh
+node scripts/asc/build-fill-in-sheet.mjs
+```
+
+That writes [`docs/APP_STORE_CONNECT_FILL_IN.md`](../docs/APP_STORE_CONNECT_FILL_IN.md),
+the page a human pastes from. CI fails when it is stale, because a listing
+that disagrees with the sheet means the wrong version reaches the store.
+
 **Why each word is the word it is:** [`docs/ASO.md`](../docs/ASO.md).
 **How it reaches Apple:** [`docs/RELEASE_PIPELINE.md`](../docs/RELEASE_PIPELINE.md).

@@ -419,6 +419,16 @@ test('an unused keyword budget is a warning', () => {
   assertIncludes(validateStore(store).warnings, 'unused', 'a mostly empty keyword field drew no comment')
 })
 
+await asyncTest('the committed fill-in sheet matches store/', async () => {
+  // Runs the generator in --check mode in-process. The sheet is what a human
+  // pastes into App Store Connect; if it disagrees with store/, the wrong copy
+  // is the one that reaches the store.
+  const { execFileSync } = await import('node:child_process')
+  execFileSync(process.execPath, [join(REPO_ROOT, 'scripts', 'asc', 'build-fill-in-sheet.mjs'), '--check'], {
+    stdio: 'pipe',
+  })
+})
+
 rmSync(scratch, { recursive: true, force: true })
 
 // ---------------------------------------------------------------------------

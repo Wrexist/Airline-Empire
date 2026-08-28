@@ -180,9 +180,15 @@ export function loadStore(root) {
   }
 
   const reviewNotesPath = join(metadataRoot, 'review', 'notes.txt')
+  const testflightPath = join(metadataRoot, 'review', 'testflight.txt')
   const review = {
     ...(config.review ?? {}),
     notes: existsSync(reviewNotesPath) ? readText(reviewNotesPath) : null,
+    // TestFlight's "beta app description" and "what to test". Required before
+    // external testing, never sent by push-metadata.mjs — App Store Connect
+    // keeps beta metadata on a different resource from the store listing, and
+    // the fill-in sheet is where a human pastes it.
+    testflight: existsSync(testflightPath) ? readText(testflightPath) : null,
   }
 
   return { root, config, locales, review, screenshots: loadScreenshots(join(root, 'screenshots')) }
