@@ -106,7 +106,9 @@ Everything not requiring them is done.
 - [x] Every path that can be exercised without an Apple account is exercised
 - [x] The macOS `app` job has produced a green compile — CI run 33213797384,
       2026-08-28, `** BUILD SUCCEEDED **` with no source changes
-- [ ] A build has been archived, signed and uploaded — **never run**
+- [x] A build has been archived, signed and exported — run 33216345773,
+      2026-08-28. The upload itself is still unproven: Apple refused that
+      bundle at validation (error 90474, iPad orientations), which is fixed
 - [ ] The listing has been pushed to App Store Connect — **never run**
 **Blocking a submission (none of it fixable from Linux):**
 1. ~~App icon~~ — **placed 2026-08-28**, 1024×1024 with no alpha, cropped out

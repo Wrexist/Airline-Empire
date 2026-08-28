@@ -19,6 +19,17 @@ Apple-layer work is prepared, never claimed.
 
 ## Session log
 
+**2026-08-28 (first real archive, and Apple's first verdict).** Release run
+33216345773 signed and exported a real `.ipa` on a macOS runner — signing, the
+App Store Connect API key, the build-number resolver and the export options all
+work against the live Apple account. Apple refused the bundle at validation
+with error **90474**: an iPad build must declare all four interface
+orientations, because shipping for iPad opts into Slide Over and Split View.
+Fixed by splitting the orientation key per device in `project.yml` (iPhone
+keeps three; upside-down on a phone is a mis-rotation, not a feature). The
+rejection is now a 1x-runner check — `scripts/asc/check-bundle-config.mjs`,
+verified to reproduce the failure against the exact manifest Apple rejected.
+
 **2026-08-28 (first full green CI).** All three jobs of run 33213797384
 passed: the core suite (253 tests, 8m), the release build with
 `-warnings-as-errors` (clean — the zero-warnings target is now machine-

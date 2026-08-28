@@ -191,6 +191,12 @@ Expect: "✓ App icon present, 1024×1024, no alpha."
 
 Details: [`RELEASE_PIPELINE.md`](RELEASE_PIPELINE.md).
 
+> **Run 1, 2026-08-28: archive, signing and export all worked.** Apple then
+> refused the bundle at validation with error 90474 — an iPad build must
+> support all four orientations for Slide Over and Split View. Fixed in
+> `project.yml`, and `check-bundle-config.mjs` now catches that class of
+> rejection on the cheap runner. Re-run 6.3 and it should go through.
+
 **6.1** 🤖 Actions → **iOS TestFlight** → Run workflow. Version `1.0.0`,
 **upload OFF**. This proves signing and export without touching Apple.
 
