@@ -109,8 +109,9 @@ Everything not requiring them is done.
 - [ ] A build has been archived, signed and uploaded — **never run**
 - [ ] The listing has been pushed to App Store Connect — **never run**
 **Blocking a submission (none of it fixable from Linux):**
-1. App icon — the slot exists, the 1024×1024 does not
-   (`AirlineEmpireApp/Resources/README.md`, brief in `docs/ASO.md` §6)
+1. ~~App icon~~ — **placed 2026-08-28**, 1024×1024 with no alpha, cropped out
+   of a pre-rounded 1254 render (`AirlineEmpireApp/Resources/README.md`).
+   Open question: whether a photographic scene reads at 60 pt (`docs/ASO.md` §6)
 2. Screenshots — need a simulator and a real mid-game world (`docs/ASO.md` §5)
 3. `REPLACE_ME` in `store/config.json` and `site/support.html` — the App
    Review contact, the copyright entity and the support email

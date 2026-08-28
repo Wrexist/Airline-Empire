@@ -257,13 +257,12 @@ purchase, no in-app purchases, no ads, no subscription** (`GAME_DESIGN.md`).
 Independent of everything above, and none of it fixable from a Linux agent
 session:
 
-1. **The app has never compiled.** `AirlineEmpireApp` is authored and parsed,
-   never built by Xcode (`APPLE_VALIDATION.md`). `.github/workflows/ci.yml`
-   answers this on a macOS runner without anyone owning a Mac — it is the
-   first thing to run.
-2. **No app icon.** `AirlineEmpireApp/Resources/README.md` has the slot and
-   the brief; the 1024×1024 does not exist. Validation rejects the upload
-   without it.
+1. ~~The app has never compiled.~~ **Done 2026-08-28** — CI run 33213797384,
+   `** BUILD SUCCEEDED **` on a macOS runner. Rendering and behaviour are
+   still unproven; that needs a device (`APPLE_VALIDATION.md` §3–§5).
+2. ~~No app icon.~~ **Done 2026-08-28** — 1024×1024, no alpha, verified by
+   `scripts/asc/check-app-icon.mjs`. Still worth looking at on a real home
+   screen at thumbnail size (`ASO.md` §6).
 3. **No screenshots.** They need a simulator and a real mid-game world —
    `ASO.md` §5 is the storyboard.
 4. **`REPLACE_ME` in `store/config.json` and `site/support.html`** — the App

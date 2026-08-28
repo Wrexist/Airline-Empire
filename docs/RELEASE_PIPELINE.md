@@ -88,7 +88,7 @@ core, nor the workflow — checked with `git diff` rather than a job-level
 ## Releasing: the order
 
 0. **`node scripts/asc/check-app-icon.mjs`** — if this fails, an upload will
-   fail too, and everything below is wasted time.
+   fail too, and everything below is wasted time. (Passing since 2026-08-28.)
 1. **Merge to main with CI green.** In particular the macOS `app` job — if the
    app does not compile, nothing downstream matters.
 2. **Run `ios-testflight.yml`** with the marketing version, `upload` off the

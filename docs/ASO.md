@@ -190,8 +190,26 @@ unchanged.
 
 ## 6 · The icon
 
-**Missing, and it blocks release** (`AirlineEmpireApp/Resources/README.md`).
-The brief, so whoever draws it is not starting from nothing:
+**Shipped as of 2026-08-28.** A rendered dusk scene — an airliner in a blue
+and gold livery lifting off past a lit control tower and terminal — placed at
+`AppIcon.appiconset/icon-1024.png`, with the master render kept at
+`docs/design/icon-source-1254.png`. The same art is the cover on
+`site/index.html` and its social card.
+
+It came with a rounded-corner mask already applied, which iOS would have
+double-masked; the crop that fixed that is documented in
+`AirlineEmpireApp/Resources/README.md`.
+
+**What to watch.** It is photographic and busy, which is the one thing the
+brief below warns about: the icon is seen at 60 points far more often than at
+1024, and detail that disappears there is detail that cost nothing but
+legibility. Test it on a real home screen beside the category's other icons
+before launch, and treat "crop tighter" as the cheap fix if it smudges. It is
+also the highest-leverage thing to A/B test through Product Page Optimisation
+once that is available.
+
+The original brief, kept because it is the standard any replacement should
+meet:
 
 - **One idea, readable at 60 points.** The category is full of detailed
   three-quarter aircraft renders that turn to mush at thumbnail size. The

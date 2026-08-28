@@ -152,10 +152,19 @@ the first build: without them, Xcode signs automatically using the API key.
 
 ---
 
-## Stage 5 — The app icon (blocking, needs a designer or you)
+## Stage 5 — The app icon ✅ done, 2026-08-28
 
-**Nothing can be uploaded without it.** The workflow now fails on the cheap
-runner rather than after the archive, but it still fails.
+Placed at `AppIcon.appiconset/icon-1024.png` and verified:
+`node scripts/asc/check-app-icon.mjs` reports 1024×1024 with no alpha. The
+master render is `docs/design/icon-source-1254.png`, and the same art is the
+cover on the marketing page.
+
+One thing left for you, and it needs a device rather than a script: look at it
+on a real home screen at 60 points, beside the other games in Simulation. It
+is a detailed scene, and detail is what a thumbnail eats. If it smudges, crop
+tighter — the reasoning is `ASO.md` §6.
+
+The original instructions, for a replacement:
 
 **5.1** 🧑 Draw or commission a 1024×1024 PNG, **no alpha channel**, no
 rounded corners of its own, no text, legible at 60 points. The brief — what to
@@ -353,10 +362,11 @@ email.
 
 ## The critical path, in one line
 
-Compile (stage 1) → Apple account (2) → app record (3) → secrets (4) → **icon
-(5)** → TestFlight (6) → **play it (7)** → screenshots (8) → listing (9–11) →
-submit (12).
+~~Compile (stage 1)~~ → Apple account (2) → app record (3) → secrets (4) →
+~~icon (5)~~ → TestFlight (6) → **play it (7)** → screenshots (8) → listing
+(9–11) → submit (12).
 
-Stages 2 and 5 are the long poles: one is bureaucratic waiting, the other is
-creative work nobody has started. Both can begin today, in parallel with
-everything else.
+Stages 1 and 5 are done. **The Apple Developer account (stage 2) is now the
+only thing on the critical path** — everything from stage 3 onward waits on
+it, and enrolment is the one step that can take days. Start it today.
+Screenshots (stage 8) are the other creative job and need a build first.
