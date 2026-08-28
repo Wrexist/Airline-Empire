@@ -48,14 +48,58 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 0
+
+      # Most of a `swift test` run is compilation, not assertions: measured at
+      # 7m30s cold (run 33215272439) for 253 tests that are pure computation.
+      # SwiftPM does its own dependency tracking, so a restored `.build` turns
+      # the usual case into an incremental compile.
+      #
+      # The key pins the toolchain and the manifest; `restore-keys` deliberately
+      # falls back to the newest cache for the same toolchain when sources have
+      # changed, which is the case that matters — a source edit should recompile
+      # one module, not the package. A stale cache cannot produce a false green:
+      # SwiftPM recompiles what changed, and the key changes with the toolchain.
+      - name: Restore the SwiftPM build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            AirlineEmpireCore/.build
+            /root/.cache/org.swift.swiftpm
+          key: swiftpm-6.0.3-${{ hashFiles('AirlineEmpireCore/Package.swift') }}-${{ hashFiles('AirlineEmpireCore/Sources/**/*.swift', 'AirlineEmpireCore/Tests/**/*.swift') }}
+          restore-keys: |
+            swiftpm-6.0.3-${{ hashFiles('AirlineEmpireCore/Package.swift') }}-
+            swiftpm-6.0.3-
+
+      # The same reasoning as the macOS job below, applied to the 1x runner:
+      # a commit that touches only docs or the store listing cannot break the
+      # simulation, and this job is nine minutes of it. Expressed as a step so
+      # the job still reports a status on every pull request.
+      - name: What changed?
+        id: changes
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "test=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git diff --name-only "$BASE" "${{ github.sha }}" | grep -Eq '^(AirlineEmpireCore/|\.github/workflows/ci\.yml$)'; then
+            echo "test=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "test=false" >> "$GITHUB_OUTPUT"
+            echo "No changes under AirlineEmpireCore — skipping the suite."
+          fi
 
       - name: Swift version
+        if: steps.changes.outputs.test == 'true'
         run: swift --version
 
       # Debug first: the per-tick integrity assertion that catches state
       # corruption is compiled out in release, so a release-only run would
       # skip the strongest check the suite has.
       - name: Test (debug)
+        if: steps.changes.outputs.test == 'true'
         run: swift test
 
       # Release is what ships, and Swift 6 strict concurrency diagnostics
@@ -63,6 +107,7 @@ jobs:
       # "target: zero new warnings" line in docs/APPLE_VALIDATION.md §2 to
       # something a machine enforces rather than something a human remembers.
       - name: Build (release, warnings are errors)
+        if: steps.changes.outputs.test == 'true'
         run: swift build -c release -Xswiftc -warnings-as-errors
 
   # ── 2 · Release tooling and the store listing ──────────────────────────────

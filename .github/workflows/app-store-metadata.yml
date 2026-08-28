@@ -19,12 +19,13 @@ name: App Store metadata
 # Submission stays a deliberate human action in App Store Connect — see
 # docs/RELEASE_PIPELINE.md for where the line is and why it is there.
 
+# No `pull_request:` trigger, deliberately. `ci.yml`'s release-tooling job
+# already runs the selftest, the listing validation, the fill-in-sheet
+# freshness check and the bundle-config check on EVERY pull request — a
+# superset of what this file's validate job was doing on the subset of PRs
+# that touch store/. Two jobs running the same checks is two jobs to pay for
+# and two places to keep in step; the duplicate is the one that goes.
 on:
-  pull_request:
-    paths:
-      - 'store/**'
-      - 'scripts/asc/**'
-      - '.github/workflows/app-store-metadata.yml'
   workflow_dispatch:
     inputs:
       version:
@@ -55,8 +56,11 @@ permissions:
   contents: read
 
 jobs:
+  # Kept for dispatch runs only, where it does something CI cannot: validation
+  # WITHOUT --allow-placeholders, so a listing still containing REPLACE_ME
+  # never reaches Apple.
   validate:
-    name: Validate the listing
+    name: Validate the listing (strict)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -73,16 +77,9 @@ jobs:
       - name: Fill-in sheet is current
         run: node scripts/asc/build-fill-in-sheet.mjs --check
 
-      # On a pull request, REPLACE_ME is a warning: the copy is reviewable
-      # long before anyone owns the Apple account that can fill those in.
-      # On a dispatch it is an error, because that run can reach Apple.
+      # Strict: no --allow-placeholders. This run can reach Apple.
       - name: Validate
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            node scripts/asc/validate-metadata.mjs
-          else
-            node scripts/asc/validate-metadata.mjs --allow-placeholders
-          fi
+        run: node scripts/asc/validate-metadata.mjs
 
   push:
     # A static name. An expression here is not evaluated for the check-run

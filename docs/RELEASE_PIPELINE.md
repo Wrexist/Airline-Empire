@@ -64,26 +64,94 @@ refuses to write anything until it is asked twice.
 
 ## Cost, and why the jobs are split the way they are
 
-GitHub bills macOS runners at **ten times** the ubuntu rate. The split in
-`ios-testflight.yml` comes from a measurement in a sibling repository
-(Wrexist/WorldQuest, run #50): a release job that waited for Apple's queue on
-the same macOS runner that had compiled spent **53 minutes idle** — 73% of a
-1h13m job, roughly 530 billed minutes for nothing.
+GitHub bills macOS runners at **ten times** the ubuntu rate. Everything below
+is measured from real runs rather than estimated, because a cost argument made
+from intuition is how the 53-minute idle wait in the sibling repository
+happened in the first place.
 
-So the rule here is: **only compilation and `xcrun` run on macOS.**
+### Measured, before optimisation
 
-| Job | Runner | Roughly | Why there |
-|---|---|---|---|
-| preflight | ubuntu | 2 min | Secrets, version, listing, Apple's answers — none of it needs Xcode |
-| core-tests | ubuntu | 5 min | The simulation builds and tests on Linux |
-| archive | macOS | 15–30 min | Compiling, signing, and `altool` genuinely need Xcode |
-| processing | ubuntu | 5–30 min | Waiting for Apple is waiting; it needs a network connection and nothing else |
+| Run | Job | Runner | Wall | Billed |
+|---|---|---|---|---|
+| CI 33215272439 | Core (test + release build) | ubuntu | 7m30s | 7.5 |
+| | Release tooling | ubuntu | 9s | 0.1 |
+| | iOS app (xcodebuild) | macOS | 1m07s | **11.2** |
+| | | | | **18.8 min** |
+| Release 33216345773 | Core tests | ubuntu | 9m16s | 9.3 |
+| | Preflight | ubuntu | 7s | 0.1 |
+| | Archive + export + validate | macOS | 2m50s | **28.3** |
+| | | | | **37.7 min** |
 
-`ci.yml`'s macOS job is skipped when a commit touches neither the app, the
-core, nor the workflow — checked with `git diff` rather than a job-level
-`paths:` filter, so the check still reports a status on every pull request.
+Two things stood out, and both were addressed on 2026-08-28:
 
----
+**`--validate-app` cost 62 seconds of macOS — 10.3 billed minutes, 27% of the
+release — to ask a question the upload repeats.** `altool --upload-app`
+validates server-side before delivering; that is precisely how error 90474
+surfaced. So validation now runs only on runs that do NOT upload, where it is
+the entire point (learning whether the bundle would be accepted, without
+submitting it). An uploading run goes straight to the upload and gets the same
+error codes if the bundle is bad.
+
+**`swift test` is mostly compilation.** 253 tests of pure computation do not
+take nine minutes to execute; the package and the test target take nine minutes
+to build. Both the CI job and the release job now restore a SwiftPM build
+cache keyed on the toolchain and the manifest, with `restore-keys` falling back
+to the newest build for the same toolchain so a source edit recompiles one
+module rather than the package. They share one key, so releasing a commit CI
+has already built restores that build.
+
+Two further cuts, same date:
+
+- **The Linux core job is now diff-gated**, like the macOS one already was. A
+  docs-only commit — most commits in this repository — no longer spends nine
+  minutes proving a simulation nobody touched still works. The job still
+  reports a status on every pull request; only its expensive steps are
+  conditional, because a required check that silently does not run is a
+  required check that never blocks anything.
+- **`app-store-metadata.yml` no longer runs on pull requests.** `ci.yml`
+  already ran the same selftest and listing validation on every PR — a
+  superset — so the duplicate was a second job to pay for and a second place
+  to keep in step. It remains on dispatch, where it does something CI cannot:
+  strict validation with no placeholders allowed.
+
+### Expected after, and how to know
+
+These are **projections, not measurements** — the numbers above were taken from
+runs, these have not happened yet. Update this table from real runs and delete
+this sentence when you do.
+
+| Scenario | Before | Projected after |
+|---|---|---|
+| PR touching only docs or the listing | 18.8 | ~0.3 |
+| PR touching the app or core, warm cache | 18.8 | ~14 |
+| Release, warm cache, upload on | 37.7 | ~20 |
+
+The rule the split still follows: **only compilation and `xcrun` run on
+macOS.** The sibling-repository measurement that produced it (Wrexist/
+WorldQuest, run #50) is worth keeping in view — a release job that waited for
+Apple's queue on the same macOS runner that had compiled spent **53 minutes
+idle**, 73% of a 1h13m job, roughly 530 billed minutes for nothing.
+
+| Job | Runner | Why there |
+|---|---|---|
+| preflight | ubuntu | Secrets, version, listing, bundle config, icon, Apple's answers — none of it needs Xcode |
+| core-tests | ubuntu | The simulation builds and tests on Linux |
+| archive | macOS | Compiling, signing and `altool` genuinely need Xcode |
+| processing | ubuntu | Waiting for Apple is waiting; it needs a network connection and nothing else |
+
+### What was considered and rejected
+
+- **Dropping the release workflow's `swift test`** because CI already ran it on
+  the same commit. It is the one check whose absence would be discovered by
+  players rather than by a machine, and with the cache it is now cheap. Kept.
+- **`swift test --parallel`.** Might help, might introduce flakiness in a suite
+  no one here can run to find out. Not changed blind; try it on a branch and
+  measure.
+- **Shorter artefact retention.** The dSYMs are kept 90 days on purpose: a
+  TestFlight build expires at 90 days, and a crash report from a build whose
+  symbols have been deleted is unreadable.
+- **Skipping the archive-only rehearsal run.** It is the cheapest way to prove
+  signing without touching Apple, and it costs less than a failed upload.
 
 ## Releasing: the order
 

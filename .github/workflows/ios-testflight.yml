@@ -200,9 +200,25 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+
+      # Shares CI's cache key, so a release of a commit CI has already built
+      # restores that build rather than repeating it: measured 9m16s cold on
+      # run 33216345773, and most of it compilation.
+      - name: Restore the SwiftPM build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            AirlineEmpireCore/.build
+            /root/.cache/org.swift.swiftpm
+          key: swiftpm-6.0.3-${{ hashFiles('AirlineEmpireCore/Package.swift') }}-${{ hashFiles('AirlineEmpireCore/Sources/**/*.swift', 'AirlineEmpireCore/Tests/**/*.swift') }}
+          restore-keys: |
+            swiftpm-6.0.3-${{ hashFiles('AirlineEmpireCore/Package.swift') }}-
+            swiftpm-6.0.3-
+
       # The release ships whatever the simulation does. Running the suite here
       # rather than trusting CI's last green run means the exact commit being
-      # archived is the exact commit that passed.
+      # archived is the exact commit that passed — cheap now that the build is
+      # cached, and the one check whose absence would be discovered by players.
       - name: swift test
         working-directory: AirlineEmpireCore
         run: swift test
@@ -442,11 +458,19 @@ jobs:
 
       # ---- Upload ----------------------------------------------------------
 
-      # Validation runs Apple's own checks locally-ish (icons, Info.plist keys,
-      # entitlements, SDK version) in about a minute. Failing here costs a
-      # minute; failing during processing costs the round trip plus the wait.
-      - name: Validate the app with Apple
-        if: inputs.upload
+      # Only when this run will NOT upload.
+      #
+      # `--upload-app` validates server-side before it delivers anything — that
+      # is exactly how run 33216345773's error 90474 would have surfaced — so
+      # running `--validate-app` first and then uploading asks Apple the same
+      # question twice. Measured on that run: the validate step took 62 seconds
+      # on the 10x runner, which is 10.3 billed minutes, 27% of the whole
+      # release. An invalid bundle fails either way, with the same error code.
+      #
+      # For an archive-only run it is the entire point: it is the only way to
+      # learn whether the bundle would be accepted without submitting it.
+      - name: Validate the app with Apple (archive-only runs)
+        if: ${{ !inputs.upload }}
         run: |
           IPA=$(ls "$EXPORT_PATH"/*.ipa | head -1)
           xcrun altool --validate-app \
