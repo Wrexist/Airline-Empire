@@ -14,6 +14,25 @@ Apple-layer work is prepared, never claimed.
 
 ## Session log
 
+**2026-08-28 (release pipeline and store listing).** Everything the Apple
+layer needs that can be built without Apple:
+- CI now compiles the app. `.github/workflows/ci.yml` runs `xcodegen` +
+  `xcodebuild` on a macOS runner alongside the Linux core tests, so "does the
+  SwiftUI shell compile" stops being a question only a Mac can answer (D-014).
+  It does not close B-002 — rendering, gestures, accessibility, Instruments and
+  signing still need a device.
+- `.github/workflows/ios-testflight.yml` archives, signs, exports and uploads a
+  build, split across cheap and expensive runners for a measured reason.
+- The store listing is now versioned content in `/store` (D-012), with a
+  validator that enforces Apple's limits offline, `docs/ASO.md` for why each
+  word is the word, and a metadata deploy workflow that dry-runs by default.
+- `scripts/asc/` — dependency-free Node tooling (D-013) with 30 tests.
+- App-side: privacy manifest, asset catalogue with an empty icon slot, pinned
+  bundle id, version, build number and export-compliance declaration.
+- Still blocking a submission, none of it fixable from Linux: the app icon,
+  the screenshots, and three `REPLACE_ME` values only the account holder can
+  supply. AE-024 records all of it.
+
 **2026-08-26 (audit session).** Repository audit; BUG-001 (Core visibility
 compile blocker) fixed; deprecated alert API modernized; force-unwraps
 removed; per-render content/disk IO cached; `GENERATE_INFOPLIST_FILE`

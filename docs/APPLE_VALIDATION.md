@@ -160,6 +160,15 @@ only budget that matters is measured on a device, and that is Apple work
 
 ## 8. Release checklist (Phase 23 — none of it done)
 
+Since 2026-08-28, several of these have machinery behind them rather than only
+a checkbox: CI compiles the app on a macOS runner
+(`.github/workflows/ci.yml`), `.github/workflows/ios-testflight.yml` archives,
+signs and uploads a build, and the store listing lives in `/store` with its
+own validator. What that machinery has never done is *run* — see
+[`RELEASE_PIPELINE.md`](RELEASE_PIPELINE.md), which tracks exactly which paths
+have been executed. The rows below stay unticked until someone ticks them from
+a run.
+
 - [ ] Clean build from a fresh clone, release configuration
 - [ ] Zero warnings
 - [ ] Run on a physical iPhone and iPad
@@ -169,11 +178,18 @@ only budget that matters is measured on a device, and that is Apple work
 - [ ] Memory ceiling checked on the oldest supported device
 - [ ] Accessibility: VoiceOver pass, Dynamic Type at largest size, contrast
 - [ ] Save/restore across an app update (install over a previous build)
-- [ ] App icon, launch screen, screenshots
-- [ ] Bundle identifier, version, build number
+- [ ] App icon, launch screen, screenshots — **the icon and screenshots do not
+      exist**; the slot and the brief do (`AirlineEmpireApp/Resources/README.md`,
+      `docs/ASO.md` §5–6)
+- [ ] Bundle identifier, version, build number — pinned in `project.yml`
+      (`com.airlineempire.game`), with the build number resolved from App Store
+      Connect at release time (`scripts/asc/next-build-number.mjs`)
 - [ ] Signing and provisioning
-- [ ] Privacy manifest — the app collects nothing and makes no network calls
-- [ ] App Store metadata, age rating, description
+- [ ] Privacy manifest — written and bundled
+      (`AirlineEmpireApp/Resources/PrivacyInfo.xcprivacy`): nothing collected,
+      nothing tracked, no required-reason APIs, each claim derived from the code
+- [ ] App Store metadata, age rating, description (written: `/store`,
+      `docs/ASO.md`, `docs/APP_STORE_CONNECT.md` §6–7; never pushed)
 - [ ] `RELEASE_CHECKLIST.md` and `KNOWN_LIMITATIONS.md` written from the
       results of the above
 

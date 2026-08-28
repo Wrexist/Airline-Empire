@@ -1,0 +1,67 @@
+name: Publish the support site
+
+# Publishes `site/` to GitHub Pages: the marketing page, the support page and
+# the privacy policy.
+#
+# ## Why the repository owns these pages at all
+#
+# App Store Connect requires a support URL and a privacy policy URL, both of
+# which must resolve to a real page before a submission is accepted, and
+# `store/metadata/*/support_url.txt` points at exactly these files. Hosting
+# them anywhere else would put two of the listing's required fields outside
+# version control, where nothing checks them and nobody reviews a change.
+#
+# ## Manual only, deliberately
+#
+# Publishing is outward-facing: it makes a page public under the account's
+# github.io domain. That is a decision for a person, not a side effect of a
+# push to main, so this workflow only ever runs when someone dispatches it.
+#
+# ## Before the first run
+#
+# Repository → Settings → Pages → Source: GitHub Actions. Pages needs the
+# repository to be public (or a plan that allows private Pages). The published
+# URL is https://<owner>.github.io/<repo>/ — which is what the listing's URL
+# files already assume; if the site ends up somewhere else, those three files
+# are what must change.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # A support page nobody can contact is worse than no support page, and
+      # Apple's reviewer will open this URL. The same REPLACE_ME convention as
+      # store/config.json: complete and reviewable in the repository, blocked
+      # at the one moment it would become public.
+      - name: Refuse to publish placeholders
+        run: |
+          if grep -rn "REPLACE_ME" site/; then
+            echo "::error::site/ still contains REPLACE_ME. Fill in the support contact before publishing."
+            exit 1
+          fi
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4

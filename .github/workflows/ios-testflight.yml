@@ -1,0 +1,496 @@
+name: iOS TestFlight
+
+# Archive Airline Empire on a macOS runner and (optionally) upload it to App
+# Store Connect for TestFlight.
+#
+# ## Shape, and why it is three jobs
+#
+#   preflight  ubuntu, 1x   secrets, core tests, listing, App Store Connect
+#   archive    macOS, 10x   xcodegen → xcodebuild archive → export → upload
+#   processing ubuntu, 1x   wait for Apple to finish processing the build
+#
+# The split is a cost decision with a measured origin. Wrexist/WorldQuest's
+# equivalent workflow waited for Apple on the SAME macOS runner that had just
+# compiled: 53 minutes of idle time at ten times the billing rate, 73% of a
+# 1h13m job, for a state change that needed nothing from the machine. Anything
+# that does not need Xcode runs on ubuntu here.
+#
+# The archive job does the upload itself rather than handing the .ipa to a
+# fourth job, because `xcrun altool` needs Xcode and a second macOS runner
+# would cost more than the transfer does. What it does NOT do is wait for
+# processing — that is the expensive mistake above, and it is the `processing`
+# job's whole purpose.
+#
+# ## Required repository secrets
+#
+# App Store Connect API key (all three come from one key —
+# App Store Connect → Users and Access → Integrations → App Store Connect API →
+# Team Keys → +, with the App Manager role or better):
+#
+#   APP_STORE_CONNECT_KEY_ID          e.g. ABC123XYZ9
+#   APP_STORE_CONNECT_ISSUER_ID       a UUID
+#   APP_STORE_CONNECT_API_KEY_BASE64  base64 of the AuthKey_*.p8, or the .p8
+#                                     text pasted directly — both are accepted
+#                                       macOS/Linux: base64 -i AuthKey_XXX.p8
+#                                       Windows PS:  [Convert]::ToBase64String(
+#                                                      [IO.File]::ReadAllBytes('AuthKey_XXX.p8'))
+#
+#   APPLE_TEAM_ID                     the 10-character team id
+#
+# Signing, one of two ways (see docs/APP_STORE_CONNECT.md §4 for the trade-off):
+#
+#   MANUAL (preferred, deterministic) — export the distribution certificate as
+#   a .p12 and the App Store provisioning profile from the Developer portal:
+#     IOS_DISTRIBUTION_CERT_P12_BASE64
+#     IOS_DISTRIBUTION_CERT_PASSWORD
+#     IOS_PROVISIONING_PROFILE_BASE64
+#
+#   AUTOMATIC (fallback) — set none of those three and Xcode signs with
+#   `-allowProvisioningUpdates` using the API key, creating the certificate and
+#   profile itself. Convenient, and it has a real cost: an Apple Developer
+#   account holds at most two Apple Distribution certificates, and an
+#   ephemeral runner cannot reuse the one it made last time. Fine for the first
+#   build; move to manual before it becomes routine.
+#
+# NONE OF THIS HAS EVER RUN. As of 2026-08-28 the project has no Apple
+# Developer account, no app record, no certificate and no icon
+# (docs/APPLE_VALIDATION.md). Every claim about what happens here is derived
+# from Apple's documentation and from WorldQuest's runs of the same shape, not
+# from a run of this file. docs/RELEASE_PIPELINE.md tracks that honestly.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Marketing version (e.g. 1.0.0). Apple rejects a version it has already released — bump it every time.'
+        type: string
+        required: true
+      upload:
+        description: 'Upload the build to App Store Connect (TestFlight) after archiving'
+        type: boolean
+        default: false
+
+concurrency:
+  # Never two archives at once: they would race for build numbers and produce
+  # two binaries claiming the same CFBundleVersion. Not cancel-in-progress —
+  # a half-cancelled upload is worse than a queue.
+  group: ios-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # ── 1 · Everything answerable before the expensive runner starts ───────────
+  preflight:
+    name: Preflight (ubuntu, 1x)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # The archive job writes this straight into the binary. A malformed
+      # value would surface as an Apple rejection after the compile is paid
+      # for, which is the most expensive possible moment to learn it.
+      - name: Validate the version input
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Version '$VERSION' must be MAJOR.MINOR.PATCH (e.g. 1.0.0)."
+            exit 1
+          fi
+          echo "::notice::Preparing marketing version $VERSION"
+
+      - name: Require signing and upload secrets
+        env:
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CERT: ${{ secrets.IOS_DISTRIBUTION_CERT_P12_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERT_PASSWORD }}
+          PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          missing=()
+          [ -n "$TEAM_ID" ] || missing+=("APPLE_TEAM_ID")
+          # The API key is needed for signing (automatic mode), for the build
+          # number lookup and for the upload — i.e. always.
+          [ -n "$KEY_ID" ] || missing+=("APP_STORE_CONNECT_KEY_ID")
+          [ -n "$ISSUER_ID" ] || missing+=("APP_STORE_CONNECT_ISSUER_ID")
+          [ -n "$API_KEY" ] || missing+=("APP_STORE_CONNECT_API_KEY_BASE64")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing secret(s): ${missing[*]}. See this file's header and docs/APP_STORE_CONNECT.md."
+            exit 1
+          fi
+
+          # Manual signing is all-or-nothing: two of the three secrets present
+          # is a misconfiguration that would otherwise fail deep inside
+          # xcodebuild with an unrelated-looking error.
+          set_count=0
+          for value in "$CERT" "$CERT_PASSWORD" "$PROFILE"; do
+            [ -n "$value" ] && set_count=$((set_count + 1))
+          done
+          if [ "$set_count" -eq 3 ]; then
+            echo "::notice::Manual signing: certificate and profile supplied."
+          elif [ "$set_count" -eq 0 ]; then
+            echo "::warning::No signing certificate in secrets — falling back to automatic signing with -allowProvisioningUpdates. Xcode may create a new distribution certificate; an account holds at most two."
+          else
+            echo "::error::Manual signing needs all three of IOS_DISTRIBUTION_CERT_P12_BASE64, IOS_DISTRIBUTION_CERT_PASSWORD and IOS_PROVISIONING_PROFILE_BASE64. Set all three, or none."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Release tooling selftest
+        run: node scripts/asc/selftest.mjs
+
+      # Informational here, deliberately: a TestFlight build needs no store
+      # listing at all. The strict check that blocks REPLACE_ME lives in
+      # app-store-metadata.yml, where the listing actually reaches Apple.
+      - name: Validate store listing
+        run: node scripts/asc/validate-metadata.mjs --allow-placeholders
+
+      # The most likely reason a first upload is rejected, and the rejection
+      # arrives last — after the archive, the export and the transfer, as an
+      # email about a missing marketing icon. Milliseconds here, on the 1x
+      # runner. Fatal only for a run that will upload: archiving without an
+      # icon is a perfectly good way to test signing.
+      - name: Check the app icon
+        run: |
+          if node scripts/asc/check-app-icon.mjs; then
+            exit 0
+          fi
+          if [ "${{ inputs.upload }}" = "true" ]; then
+            echo "::error::The app icon must exist before a build can be uploaded."
+            exit 1
+          fi
+          echo "::warning::No usable app icon. Fine for this archive-only run; an upload would be rejected."
+
+      # Asks Apple the questions that only Apple can answer: does the key
+      # authenticate, does an app record exist for the bundle id, and is this
+      # marketing version already used? Fail-open on anything it cannot
+      # determine — see the script's header.
+      - name: App Store Connect preflight
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+        run: node scripts/asc/preflight.mjs --version "${{ inputs.version }}"
+
+  # ── 2 · The core must be green before anything is archived ─────────────────
+  core-tests:
+    name: Core tests (ubuntu, 1x)
+    runs-on: ubuntu-latest
+    container: swift:6.0.3-jammy
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      # The release ships whatever the simulation does. Running the suite here
+      # rather than trusting CI's last green run means the exact commit being
+      # archived is the exact commit that passed.
+      - name: swift test
+        working-directory: AirlineEmpireCore
+        run: swift test
+
+  # ── 3 · Archive, export and upload ─────────────────────────────────────────
+  archive:
+    name: Archive and upload (macOS, 10x)
+    needs: [preflight, core-tests]
+    runs-on: macos-26
+    # A hung compile must not sit on a 10x runner until the six-hour default.
+    timeout-minutes: 75
+    outputs:
+      build-number: ${{ steps.build-number.outputs.value }}
+    env:
+      BUNDLE_ID: com.airlineempire.game
+      ARCHIVE_PATH: ${{ github.workspace }}/build/AirlineEmpire.xcarchive
+      EXPORT_PATH: ${{ github.workspace }}/build/export
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Xcode version
+        run: |
+          xcodebuild -version
+          xcode-select -p
+
+      # Apple requires store uploads to be built with a current SDK — Wrexist/
+      # WorldQuest's run #5 was refused with "This app was built with the iOS
+      # 18.5 SDK. All iOS and iPadOS apps must be built with the iOS 26 SDK or
+      # later." That rejection arrives after the archive is paid for, so the
+      # runner image is pinned above (macos-26) and this asserts what it gave
+      # us rather than assuming.
+      - name: Show the iOS SDK this runner will build against
+        run: xcodebuild -showsdks | grep -i "iOS" || true
+
+      # ---- Credentials -----------------------------------------------------
+
+      # `altool` looks for the key by name in a fixed set of directories; this
+      # is the one it documents. Written outside the workspace so it cannot be
+      # picked up by anything that archives the checkout.
+      - name: Install the App Store Connect API key
+        env:
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          API_KEY_B64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8"
+          # Tolerant decode: a raw pasted .p8, a CRLF-mangled base64 paste, or
+          # clean base64. Different operating systems produce different shapes
+          # and a release should not fail forty minutes in on a line ending.
+          if printf '%s' "$API_KEY_B64" | grep -q 'BEGIN PRIVATE KEY'; then
+            printf '%s' "$API_KEY_B64" | tr -d '\r' > "$KEY_PATH"
+          else
+            printf '%s' "$API_KEY_B64" | tr -d '[:space:]' | base64 --decode > "$KEY_PATH"
+          fi
+          chmod 600 "$KEY_PATH"
+          grep -q 'BEGIN PRIVATE KEY' "$KEY_PATH" || {
+            echo "::error::APP_STORE_CONNECT_API_KEY_BASE64 did not decode to a .p8 private key."
+            exit 1
+          }
+          echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Import the signing certificate and profile
+        id: signing
+        env:
+          CERT_B64: ${{ secrets.IOS_DISTRIBUTION_CERT_P12_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERT_PASSWORD }}
+          PROFILE_B64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$CERT_B64" ]; then
+            echo "style=automatic" >> "$GITHUB_OUTPUT"
+            echo "::notice::Automatic signing — Xcode will resolve credentials through the API key."
+            exit 0
+          fi
+
+          # A dedicated, throwaway keychain rather than the login one: the
+          # runner is ephemeral, but the certificate should still never be
+          # importable by another step by accident, and this is what Apple's
+          # own CI documentation prescribes.
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+
+          printf '%s' "$CERT_B64" | tr -d '[:space:]' | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -P "$CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          rm -f "$RUNNER_TEMP/cert.p12"
+          # Without this, codesign prompts for keychain access and hangs the
+          # job until the timeout — the classic silent CI signing failure.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
+          security list-keychain -d user -s "$KEYCHAIN" login.keychain-db
+
+          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFILE_DIR"
+          printf '%s' "$PROFILE_B64" | tr -d '[:space:]' | base64 --decode > "$RUNNER_TEMP/profile.mobileprovision"
+          # A .mobileprovision is a CMS envelope around a plist; the export
+          # step needs the profile's NAME, and reading it here means nobody has
+          # to keep a copy of it in a secret that can disagree with the file.
+          security cms -D -i "$RUNNER_TEMP/profile.mobileprovision" > "$RUNNER_TEMP/profile.plist"
+          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c 'Print :Name' "$RUNNER_TEMP/profile.plist")
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$RUNNER_TEMP/profile.plist")
+          cp "$RUNNER_TEMP/profile.mobileprovision" "$PROFILE_DIR/$PROFILE_UUID.mobileprovision"
+
+          echo "style=manual" >> "$GITHUB_OUTPUT"
+          echo "profile-name=$PROFILE_NAME" >> "$GITHUB_OUTPUT"
+          echo "::notice::Manual signing with profile '$PROFILE_NAME' ($PROFILE_UUID)."
+
+      # ---- Version stamping ------------------------------------------------
+
+      # CFBundleVersion must be strictly higher than anything App Store Connect
+      # already holds, or the upload is refused. Resolved from Apple when the
+      # app record exists, and from epoch seconds when it does not — either
+      # way it goes up. See the script's header.
+      - name: Compute the build number
+        id: build-number
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+        run: |
+          VALUE=$(node scripts/asc/next-build-number.mjs)
+          echo "value=$VALUE" >> "$GITHUB_OUTPUT"
+          echo "::notice::Build number $VALUE for version ${{ inputs.version }}"
+
+      # ---- Build -----------------------------------------------------------
+
+      - name: Generate the Xcode project
+        working-directory: AirlineEmpireApp
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      # MARKETING_VERSION and CURRENT_PROJECT_VERSION are passed on the command
+      # line rather than patched into project.yml: the working tree is
+      # discarded at the end of the job either way, and a build setting is one
+      # source of truth where an edited manifest is two.
+      - name: Archive
+        run: |
+          set -o pipefail
+          mkdir -p "$(dirname "$ARCHIVE_PATH")"
+          EXTRA=()
+          if [ "${{ steps.signing.outputs.style }}" = "automatic" ]; then
+            # -allowProvisioningUpdates is the one path that CAN mint signing
+            # assets from CI (unlike EAS, which refuses in non-interactive
+            # mode). It needs the API key to do it.
+            EXTRA+=(-allowProvisioningUpdates
+                    -authenticationKeyPath "$ASC_KEY_PATH"
+                    -authenticationKeyID "${{ secrets.APP_STORE_CONNECT_KEY_ID }}"
+                    -authenticationKeyIssuerID "${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}")
+          else
+            EXTRA+=(CODE_SIGN_STYLE=Manual
+                    PROVISIONING_PROFILE_SPECIFIER="${{ steps.signing.outputs.profile-name }}"
+                    CODE_SIGN_IDENTITY="Apple Distribution")
+          fi
+          xcodebuild archive \
+            -project AirlineEmpireApp/AirlineEmpire.xcodeproj \
+            -scheme AirlineEmpire \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$ARCHIVE_PATH" \
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+            MARKETING_VERSION="${{ inputs.version }}" \
+            CURRENT_PROJECT_VERSION="${{ steps.build-number.outputs.value }}" \
+            "${EXTRA[@]}"
+
+      - name: Export the .ipa
+        run: |
+          set -o pipefail
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <!-- "app-store-connect" is the current spelling; older Xcode called
+                 the same thing "app-store". -->
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>export</string>
+            <key>teamID</key><string>${{ secrets.APPLE_TEAM_ID }}</string>
+            <!-- Symbols make TestFlight and Organizer crash reports readable.
+                 They contain no user data; the app collects none to begin with. -->
+            <key>uploadSymbols</key><true/>
+            <key>signingStyle</key><string>${{ steps.signing.outputs.style }}</string>
+          PLIST
+          if [ "${{ steps.signing.outputs.style }}" = "manual" ]; then
+            cat >> "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>$BUNDLE_ID</key><string>${{ steps.signing.outputs.profile-name }}</string>
+            </dict>
+          PLIST
+          fi
+          printf '</dict>\n</plist>\n' >> "$RUNNER_TEMP/ExportOptions.plist"
+
+          EXTRA=()
+          if [ "${{ steps.signing.outputs.style }}" = "automatic" ]; then
+            EXTRA+=(-allowProvisioningUpdates
+                    -authenticationKeyPath "$ASC_KEY_PATH"
+                    -authenticationKeyID "${{ secrets.APP_STORE_CONNECT_KEY_ID }}"
+                    -authenticationKeyIssuerID "${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}")
+          fi
+          xcodebuild -exportArchive \
+            -archivePath "$ARCHIVE_PATH" \
+            -exportPath "$EXPORT_PATH" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            "${EXTRA[@]}"
+          ls -la "$EXPORT_PATH"
+
+      # Kept whether or not the upload runs or succeeds: with the .ipa in hand
+      # someone can always fall back to Transporter and upload it by hand.
+      - name: Upload the .ipa as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: airline-empire-${{ inputs.version }}-${{ steps.build-number.outputs.value }}
+          path: ${{ env.EXPORT_PATH }}/*.ipa
+          if-no-files-found: error
+          retention-days: 14
+
+      # Also keep the archive: it carries the dSYMs, which is what turns a
+      # TestFlight crash report into a symbolicated stack trace, and they
+      # cannot be regenerated from the .ipa afterwards.
+      - name: Upload the dSYMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: airline-empire-dsyms-${{ inputs.version }}-${{ steps.build-number.outputs.value }}
+          path: ${{ env.ARCHIVE_PATH }}/dSYMs
+          if-no-files-found: warn
+          retention-days: 90
+
+      # ---- Upload ----------------------------------------------------------
+
+      # Validation runs Apple's own checks locally-ish (icons, Info.plist keys,
+      # entitlements, SDK version) in about a minute. Failing here costs a
+      # minute; failing during processing costs the round trip plus the wait.
+      - name: Validate the app with Apple
+        if: inputs.upload
+        run: |
+          IPA=$(ls "$EXPORT_PATH"/*.ipa | head -1)
+          xcrun altool --validate-app \
+            --type ios \
+            --file "$IPA" \
+            --apiKey "${{ secrets.APP_STORE_CONNECT_KEY_ID }}" \
+            --apiIssuer "${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}"
+
+      - name: Upload to App Store Connect
+        if: inputs.upload
+        run: |
+          IPA=$(ls "$EXPORT_PATH"/*.ipa | head -1)
+          # This returns when the bytes are transferred, NOT when the build is
+          # usable — Apple then processes it for minutes to half an hour. That
+          # wait is the `processing` job below, on a 1x runner.
+          xcrun altool --upload-app \
+            --type ios \
+            --file "$IPA" \
+            --apiKey "${{ secrets.APP_STORE_CONNECT_KEY_ID }}" \
+            --apiIssuer "${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}"
+
+      - name: Remove the API key
+        if: always()
+        run: rm -f "$HOME/.appstoreconnect/private_keys/AuthKey_"*.p8
+
+  # ── 4 · Wait for Apple, on a cheap runner ──────────────────────────────────
+  processing:
+    name: Wait for processing (ubuntu, 1x)
+    needs: archive
+    if: inputs.upload
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Poll App Store Connect
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+        run: |
+          node scripts/asc/wait-for-processing.mjs \
+            --version "${{ inputs.version }}" \
+            --build "${{ needs.archive.outputs.build-number }}" \
+            --timeout 45
+
+      - name: What happens next
+        run: |
+          echo "::notice::Build ${{ needs.archive.outputs.build-number }} is in TestFlight."
+          echo "Internal testers can install it now. External testing needs Beta App Review;"
+          echo "the store listing itself is pushed separately by app-store-metadata.yml."

@@ -185,3 +185,63 @@ default so no caller or test changes meaning.
 failures without duplicating domain logic. Future event kinds must be
 classified in `subjectAirline(of:)` — the switch is exhaustive, so the
 compiler enforces it.
+
+---
+
+## D-012 — The store listing is versioned content, not a web form
+**Date:** 2026-08-28 · **Status:** ACCEPTED · **Phase:** 23 (prepared early)
+**Context:** An App Store listing — name, subtitle, keywords, description,
+screenshots — is normally edited in App Store Connect's web UI, where it has
+no history, no review and no way back. It is also the surface that decides
+whether anyone ever installs the game.
+**Decision:** `store/` is the source of truth: one text file per field, one
+directory per locale, plus a `config.json` for the non-localised settings.
+App Store Connect is a deployment target, written to by
+`scripts/asc/push-metadata.mjs`. A validator enforces Apple's limits and this
+project's rules offline, on every pull request.
+**Consequences:** Listing changes are diffed and reviewed like code, and
+reverting a commit restores the previous listing exactly. The cost is a second
+place the listing exists: an edit made directly in App Store Connect will be
+overwritten by the next push, and that is the intended direction of travel.
+The layout matches fastlane `deliver`'s so the tooling can be replaced without
+moving any copy.
+
+---
+
+## D-013 — Node for the release tooling, in a Swift repository
+**Date:** 2026-08-28 · **Status:** ACCEPTED · **Phase:** 23 (prepared early)
+**Context:** The release path needs an App Store Connect API client: an ES256
+JWT and a dozen REST calls, running before and after the compile, on Linux and
+macOS runners. Master plan rule 6 forbids unnecessary dependencies.
+**Decision:** `scripts/asc/` is dependency-free Node — no packages, no
+`package.json`, no lockfile — and ships in nothing. Swift was the natural
+choice and is the wrong one: building a helper binary on every runner costs
+more than the helper saves, and the tooling must run at points where the app
+cannot be built at all. Ruby (fastlane) would add a toolchain and a Gemfile for
+the same REST calls; bash would mean hand-converting OpenSSL's DER signature
+into the raw r||s pair JWS requires.
+**Consequences:** Node is now required to work on the release path, and it is
+preinstalled on every GitHub runner. The crypto is covered by tests that verify
+a real signature (`scripts/asc/selftest.mjs`), because the failure mode — a
+DER-encoded signature — produces a well-formed token that Apple answers with a
+bare 401.
+
+---
+
+## D-014 — CI compiles the iOS app on a macOS runner
+**Date:** 2026-08-28 · **Status:** ACCEPTED · **Phase:** 23 (prepared early)
+**Context:** Blocker B-002 has stood since Phase 14: `AirlineEmpireApp` is
+authored, parsed and structurally validated, and has never been compiled,
+because no session has had macOS. Every Apple-layer claim in the project is
+qualified by that.
+**Decision:** `.github/workflows/ci.yml` runs `xcodegen generate` and
+`xcodebuild build` on a `macos-26` runner, scoped by a `git diff` to commits
+that touch the app, the core or the workflow itself.
+**Consequences:** The compile question is answerable by anyone who can push a
+branch, and a regression in the app shell is caught by the machine rather than
+by the first macOS session. It does **not** close B-002: rendering, gestures,
+`@Observable` behaviour, scene-phase autosave, accessibility, Instruments and
+signing still need a device and a person, and `docs/APPLE_VALIDATION.md`
+remains the list. macOS minutes bill at ten times ubuntu ones, which is why
+the job is scoped rather than unconditional.
+

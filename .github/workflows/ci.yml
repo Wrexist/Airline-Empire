@@ -1,0 +1,165 @@
+name: CI
+
+# The gate. Three questions, each answered on the cheapest machine that can
+# answer it:
+#
+#   1. Does the simulation core build and pass its 253 tests?  (ubuntu, 1x)
+#   2. Is the release tooling sound and the store listing legal? (ubuntu, 1x)
+#   3. Does the SwiftUI app actually COMPILE?                    (macOS, 10x)
+#
+# Question 3 is the one this repository has never been able to answer. Every
+# session so far has run on Linux, where the Apple SDKs do not exist, so
+# `AirlineEmpireApp` is "authored, parsed, structurally validated, never
+# compiled" (docs/APPLE_VALIDATION.md). A macOS runner can answer it in about
+# ten minutes without anyone owning a Mac — which is the single highest-value
+# thing this file does. It is scoped by a `git diff` rather than run on every
+# commit, because macOS minutes bill at ten times ubuntu ones and a docs-only
+# change cannot break a compile.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ── 1 · The simulation core, on Linux ──────────────────────────────────────
+  core:
+    name: Core (swift build + test)
+    runs-on: ubuntu-latest
+    # The official image, pinned to the toolchain every result in
+    # docs/APPLE_VALIDATION.md §7 was measured with. `scripts/setup-linux-
+    # toolchain.sh` exists for sandboxes where download.swift.org is blocked;
+    # a GitHub runner has no such problem, so the container is simpler and
+    # reproducible.
+    container: swift:6.0.3-jammy
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: AirlineEmpireCore
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Swift version
+        run: swift --version
+
+      # Debug first: the per-tick integrity assertion that catches state
+      # corruption is compiled out in release, so a release-only run would
+      # skip the strongest check the suite has.
+      - name: Test (debug)
+        run: swift test
+
+      # Release is what ships, and Swift 6 strict concurrency diagnostics
+      # differ between configurations. `-warnings-as-errors` holds the
+      # "target: zero new warnings" line in docs/APPLE_VALIDATION.md §2 to
+      # something a machine enforces rather than something a human remembers.
+      - name: Build (release, warnings are errors)
+        run: swift build -c release -Xswiftc -warnings-as-errors
+
+  # ── 2 · Release tooling and the store listing ──────────────────────────────
+  release-tooling:
+    name: Release tooling (selftest + listing)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # Node is preinstalled on the runner image; this pins the major version
+      # so a runner-image bump cannot change what the release tooling runs on.
+      # Nothing is installed — scripts/asc has no dependencies by design.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # 30 tests: the App Store Connect JWT (including the DER-vs-raw
+      # signature trap that produces a silent 401), the HTTP client's paging
+      # and retry rules, PNG alpha detection, and the listing validator
+      # against deliberate mistakes.
+      - name: Release tooling selftest
+        run: node scripts/asc/selftest.mjs
+
+      # --allow-placeholders: REPLACE_ME in the review contact is a warning
+      # here and an error in the release workflow. The listing is complete and
+      # reviewable before anyone owns an Apple Developer account; what it must
+      # not do is reach Apple in that state. See scripts/asc/lib/metadata.mjs.
+      - name: Validate store listing
+        run: node scripts/asc/validate-metadata.mjs --allow-placeholders
+
+  # ── 3 · Does the app compile? ──────────────────────────────────────────────
+  app:
+    name: iOS app (xcodebuild)
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          # Needed by the change detection below: a shallow clone has no base
+          # commit to diff against.
+          fetch-depth: 0
+
+      # Only spend the 10x minutes when something that can affect the build
+      # changed. Done here as a step rather than as the job's `paths:` filter
+      # so the job still reports a status on every pull request — a required
+      # check that silently does not run is a required check that never blocks
+      # anything. Plain git rather than a marketplace action, for master plan
+      # rule 6: this is three lines, and an action here would be a third-party
+      # dependency in the release path.
+      - name: What changed?
+        id: changes
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "Building: dispatched by hand, or no usable base commit to diff against."
+            exit 0
+          fi
+          CHANGED=$(git diff --name-only "$BASE" "${{ github.sha }}")
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -Eq '^(AirlineEmpireApp/|AirlineEmpireCore/|\.github/workflows/ci\.yml$)'; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            echo "No app, core or workflow changes — skipping the macOS build."
+          fi
+
+      - name: Xcode version
+        if: steps.changes.outputs.build == 'true'
+        run: xcodebuild -version
+
+      # project.yml is the source of truth; the .xcodeproj is generated and
+      # git-ignored. That is decision D-002's shape carried into CI: there is
+      # no checked-in Xcode project that can drift from the manifest.
+      - name: Generate the Xcode project
+        if: steps.changes.outputs.build == 'true'
+        working-directory: AirlineEmpireApp
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      # No signing: this answers "does it compile", not "can it ship".
+      # Signing needs credentials and belongs to ios-testflight.yml.
+      - name: Build for the simulator
+        if: steps.changes.outputs.build == 'true'
+        working-directory: AirlineEmpireApp
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project AirlineEmpire.xcodeproj \
+            -scheme AirlineEmpire \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
