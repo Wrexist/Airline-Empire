@@ -66,6 +66,59 @@ fully enumerated in `docs/APPLE_VALIDATION.md`.
 
 ---
 
+## AE-024
+**Title:** Release pipeline and App Store listing (authored; Apple steps pending)
+**Purpose:** Give the project a way to get a build onto a phone and a listing
+onto the App Store that does not depend on anyone remembering a sequence of
+manual steps — and, in the same move, answer the question this repository has
+never been able to answer: does the SwiftUI app compile?
+**Dependencies:** An Apple Developer account, an App Store Connect app record
+and a signing certificate — none of which exist (`docs/APP_STORE_CONNECT.md`).
+Everything not requiring them is done.
+**Implementation notes:**
+- `.github/workflows/ci.yml` — Swift 6.0.3 core build + test on Linux, the
+  release tooling's own tests, listing validation, and an **`xcodebuild`
+  compile of the app on macOS**, scoped by a `git diff` so a docs commit does
+  not spend 10x-billed minutes. This closes B-002 for the *compile* question
+  without anyone owning a Mac; it does not close rendering, gestures,
+  Instruments or accessibility, which still need a device.
+- `.github/workflows/ios-testflight.yml` — preflight (ubuntu) → archive,
+  export, upload (macOS) → wait for processing (ubuntu). The split is a cost
+  decision with a measured origin; see the file header.
+- `.github/workflows/app-store-metadata.yml` — validates the listing on every
+  PR that touches it; deploys it on an explicit dispatch with a typed
+  confirmation. `.github/workflows/pages.yml` publishes the support and
+  privacy pages Apple requires a link to.
+- `scripts/asc/` — dependency-free Node: App Store Connect JWT client, build
+  number resolver, preflight, listing validator, metadata push, screenshot
+  upload, processing watcher, and 26 tests over the parts that can be tested
+  from Linux.
+- `store/` — the listing as files (en-US, en-GB, review notes), with the
+  reasoning in `docs/ASO.md`.
+- App-side: `PrivacyInfo.xcprivacy` (nothing collected, nothing tracked, no
+  required-reason APIs — each derived from the code), an asset catalogue with
+  an empty `AppIcon` slot, and a pinned bundle id, marketing version, build
+  number and export-compliance declaration in `project.yml`.
+**Acceptance criteria:**
+- [x] Core tests, tooling tests and listing validation run in CI on Linux
+- [x] Listing validated: no over-long field, no wasted keyword character, no
+      third-party mark, no unresolvable URL
+- [x] Every path that can be exercised without an Apple account is exercised
+- [ ] The macOS `app` job has produced a green compile — **never run**
+- [ ] A build has been archived, signed and uploaded — **never run**
+- [ ] The listing has been pushed to App Store Connect — **never run**
+**Blocking a submission (none of it fixable from Linux):**
+1. App icon — the slot exists, the 1024×1024 does not
+   (`AirlineEmpireApp/Resources/README.md`, brief in `docs/ASO.md` §6)
+2. Screenshots — need a simulator and a real mid-game world (`docs/ASO.md` §5)
+3. `REPLACE_ME` in `store/config.json` and `site/support.html` — the App
+   Review contact, the copyright entity and the support email
+4. An in-app rating prompt: deliberately not implemented, policy written in
+   `docs/ASO.md` §9
+**Status:** LINUX SCOPE COMPLETE.
+
+---
+
 ## Backlog (do not start before AE-023 clears)
 
 - **AE-015** — Revenue-management fare buckets (docs/EXPANSION_ROADMAP.md).

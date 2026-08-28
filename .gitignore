@@ -23,3 +23,17 @@ default.profraw
 # Editors
 .vscode/
 .idea/
+
+# Xcode project (generated from AirlineEmpireApp/project.yml by XcodeGen —
+# see .github/workflows/ci.yml; never commit it, or it drifts from the manifest)
+*.xcodeproj/
+*.xcworkspace/
+
+# Release artefacts
+build/
+*.ipa
+*.xcarchive
+ExportOptions.plist
+AuthKey_*.p8
+*.mobileprovision
+*.p12

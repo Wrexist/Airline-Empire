@@ -1,0 +1,23 @@
+Airline Empire is a single-player airline management simulation. Everything a reviewer needs is in the app on first launch — there is nothing to sign in to.
+
+WHAT THE APP DOES NOT DO
+• No account, no sign-in, no user-generated content, no social features, no chat.
+• No network access of any kind. The app makes no requests; it will behave identically in Airplane Mode, and we would encourage testing it that way.
+• No advertising, no in-app purchases, no third-party SDKs, no analytics and no tracking. Nothing is collected, so the privacy nutrition label declares no data collection and the bundled privacy manifest declares no tracking domains and no required-reason API use.
+• No gambling, no loot boxes, no randomised paid rewards. The only randomness is the simulation's own seeded world generation, which the player sets and can repeat.
+
+HOW TO SEE THE GAME QUICKLY
+1. Launch → "New Game" → name an airline, pick the "Magnate" scenario (the well-funded start) and any seed.
+2. Fleet → Acquire → buy a used aircraft (it is available immediately; new aircraft are orders with a delivery lead time).
+3. Dashboard → the onboarding card suggests two routes ranked by demand → tap one → the route sheet opens pre-filled → open the route.
+4. Route detail → Aircraft → assign the aircraft you bought.
+5. Set the speed to 4× → flights depart and arrive, the map animates, and the feed narrates the day. A month boundary closes a statement, which Finance then charts.
+
+AGE RATING
+The game contains no violence, no sexual content, no profanity, no substances, no gambling and no horror. Its subject matter is running an airline: money, aircraft, schedules and reputation. Aircraft losses are modelled as financial and reputational events only; there are no crashes, casualties or injury depicted anywhere in the game.
+
+CONTENT AND LIKENESS
+The world is entirely fictional. Airports, cities, airlines, aircraft models and manufacturers were invented for this simulation. No real airline, manufacturer, aircraft model, airport or trademark is depicted or referenced, and no real-world flight data is used.
+
+CONTACT
+The contact on this version is the developer, who can respond the same day for anything that blocks the review.

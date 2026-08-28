@@ -1,0 +1,60 @@
+{
+  "$comment": [
+    "Non-localised store settings. The localised copy lives in metadata/<locale>/*.txt.",
+    "REPLACE_ME marks a value only a human with the Apple Developer account can supply.",
+    "`validate-metadata.mjs` treats those as warnings under --allow-placeholders (what CI",
+    "runs on a pull request) and as errors without it (what the release workflow runs), so",
+    "the tree can be complete and reviewable today while a real submission stays blocked",
+    "until the values are real. See docs/APP_STORE_CONNECT.md."
+  ],
+
+  "bundleId": "com.airlineempire.game",
+  "platform": "IOS",
+  "primaryLocale": "en-US",
+
+  "copyright": "2026 REPLACE_ME",
+
+  "$comment_categories": [
+    "App Store Connect category identifiers, passed to the API verbatim. A game takes the",
+    "GAMES primary category plus up to two subcategories; Simulation is what this is, and",
+    "Strategy is the adjacent category its players browse. There is deliberately no",
+    "secondary category: the only honest candidates are other game categories, and a",
+    "second, weaker category dilutes the browse ranking of the first."
+  ],
+  "categories": {
+    "primary": "GAMES",
+    "primarySubcategoryOne": "GAMES_SIMULATION",
+    "primarySubcategoryTwo": "GAMES_STRATEGY",
+    "secondary": null
+  },
+
+  "$comment_release": [
+    "MANUAL: an approved build waits for a human to press Release. A first release is a",
+    "one-shot event with a press and support surface around it, and AFTER_APPROVAL hands",
+    "the timing to Apple's review queue. Phased release is deliberately absent — Apple",
+    "offers it for updates, not for a first version."
+  ],
+  "releaseType": "MANUAL",
+
+  "$comment_screenshots": [
+    "Display types Apple requires before a submission is accepted. These are the two",
+    "canvases everything else is scaled from; project.yml declares TARGETED_DEVICE_FAMILY",
+    "1,2, and shipping an iPad build is what makes the iPad row mandatory rather than a",
+    "nicety. The names are App Store Connect `screenshotDisplayType` enum values and are",
+    "passed to the API unchanged — see the TODO(verify) in scripts/asc/lib/metadata.mjs."
+  ],
+  "requiredScreenshotDisplayTypes": ["APP_IPHONE_67", "APP_IPAD_PRO_3GEN_129"],
+
+  "$comment_review": [
+    "App Review's contact for this app. Apple will not accept a version without one, and",
+    "a wrong number is a rejection that costs a review cycle. demoAccountRequired is false",
+    "because the game has no accounts of any kind — see metadata/review/notes.txt."
+  ],
+  "review": {
+    "contactFirstName": "REPLACE_ME",
+    "contactLastName": "REPLACE_ME",
+    "contactEmail": "REPLACE_ME@example.com",
+    "contactPhone": "REPLACE_ME",
+    "demoAccountRequired": false
+  }
+}

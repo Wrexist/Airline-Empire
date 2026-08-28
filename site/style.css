@@ -1,0 +1,31 @@
+/* One stylesheet for the three pages Apple requires a link to. Deliberately
+   small and dependency-free: this is a support surface, not a product. */
+:root {
+  color-scheme: light dark;
+  --ink: #101418;
+  --muted: #59636e;
+  --bg: #fbfaf7;
+  --rule: #e3e0d8;
+  --accent: #1f5f8b;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --ink: #eef1f4; --muted: #a3adb8; --bg: #12161a; --rule: #262d34; --accent: #7fb8dd; }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0 auto;
+  max-width: 42rem;
+  padding: 3rem 1.25rem 6rem;
+  background: var(--bg);
+  color: var(--ink);
+  font: 17px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 .25rem; letter-spacing: -0.01em; }
+h2 { font-size: 1.15rem; margin: 2.5rem 0 .5rem; }
+p, li { color: var(--ink); }
+.lede { color: var(--muted); font-size: 1.05rem; margin-top: 0; }
+nav { margin: 0 0 2.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--rule); }
+nav a { color: var(--accent); text-decoration: none; margin-right: 1.25rem; }
+nav a:hover { text-decoration: underline; }
+footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: .9rem; }
+code { background: rgba(127,127,127,.14); padding: .1em .35em; border-radius: 4px; font-size: .9em; }

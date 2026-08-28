@@ -1,5 +1,9 @@
 # XcodeGen manifest — generate the Xcode project on macOS with:
 #   brew install xcodegen && xcodegen generate
+#
+# The .xcodeproj is generated and git-ignored: this file is the source of
+# truth, and CI regenerates the project on every run (.github/workflows/ci.yml,
+# .github/workflows/ios-testflight.yml) so the two can never disagree.
 name: AirlineEmpire
 options:
   bundleIdPrefix: com.airlineempire
@@ -12,7 +16,15 @@ targets:
   AirlineEmpire:
     type: application
     platform: iOS
-    sources: [Sources]
+    sources:
+      - path: Sources
+      # Apple reads the privacy manifest out of the app bundle; it has to be a
+      # resource, not a compiled source, and XcodeGen will not guess that from
+      # the extension.
+      - path: Resources/PrivacyInfo.xcprivacy
+        buildPhase: resources
+      - path: Resources/Assets.xcassets
+        buildPhase: resources
     dependencies:
       - package: AirlineEmpireCore
     settings:
@@ -22,3 +34,58 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_KEY_CFBundleDisplayName: Airline Empire
+
+        # The bundle identifier is pinned rather than derived from
+        # bundleIdPrefix + target name, because it is the key App Store Connect
+        # matches an app record on and it must equal store/config.json's
+        # `bundleId` exactly. Deriving it means renaming the target silently
+        # renames the app.
+        PRODUCT_BUNDLE_IDENTIFIER: com.airlineempire.game
+
+        # Defaults for a local build. The release workflow overrides both on
+        # the xcodebuild command line: the marketing version from its input,
+        # the build number from App Store Connect's highest + 1
+        # (scripts/asc/next-build-number.mjs).
+        MARKETING_VERSION: 1.0.0
+        CURRENT_PROJECT_VERSION: 1
+
+        # The app contains no encryption beyond what Apple exempts (it makes no
+        # network calls at all). Declaring it here means every upload skips the
+        # export-compliance questionnaire instead of stopping for a human.
+        # Its absence is what turns each TestFlight build into a manual step.
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+
+        # Shows up on the Mac App Store and in Finder metadata; harmless on
+        # iOS and free to be correct. Matches the GAMES_SIMULATION primary
+        # subcategory in store/config.json.
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.simulation-games
+
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+
+        # Signing is deliberately not pinned here. A local build uses
+        # automatic signing with whatever team the developer is logged into;
+        # the release workflow passes DEVELOPMENT_TEAM, CODE_SIGN_STYLE and
+        # the profile explicitly. Pinning a team id in the manifest would make
+        # the project unbuildable for anyone else.
+
+# XcodeGen does not generate a shared scheme unless one is declared, and Xcode
+# only autocreates schemes when a human opens the project. `xcodebuild -scheme
+# AirlineEmpire` on a runner would fail with "scheme not found" — which is a
+# confusing way to lose a 10x-billed job — so the scheme is declared here and
+# committed as part of the manifest.
+schemes:
+  AirlineEmpire:
+    build:
+      targets:
+        AirlineEmpire: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

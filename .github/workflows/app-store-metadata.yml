@@ -1,0 +1,143 @@
+name: App Store metadata
+
+# The store listing — name, subtitle, keywords, description, screenshots — from
+# `store/` to App Store Connect.
+#
+# ## Two very different things happen in this file
+#
+#   · On every pull request that touches store/, the listing is VALIDATED.
+#     Offline, no secrets, seconds. This is the check that catches a
+#     101-character keyword field before anyone is waiting on a release.
+#
+#   · On workflow_dispatch, the listing is PLANNED or APPLIED. Applying writes
+#     to a public product page, so it needs three separate acts of intent: a
+#     manual dispatch, mode=apply, and the word APPLY typed into a confirmation
+#     box. A plan run is the default and prints the exact before/after for
+#     every field it would change.
+#
+# Nothing here deletes anything, and nothing here submits the app for review.
+# Submission stays a deliberate human action in App Store Connect — see
+# docs/RELEASE_PIPELINE.md for where the line is and why it is there.
+
+on:
+  pull_request:
+    paths:
+      - 'store/**'
+      - 'scripts/asc/**'
+      - '.github/workflows/app-store-metadata.yml'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'App Store version to push the listing into (e.g. 1.0.0)'
+        type: string
+        required: true
+      mode:
+        description: 'plan prints what would change; apply writes it to App Store Connect'
+        type: choice
+        options: [plan, apply]
+        default: plan
+      confirm:
+        description: 'Type APPLY to confirm a write. Ignored for a plan.'
+        type: string
+        default: ''
+      screenshots:
+        description: 'Also upload store/screenshots (replaces the existing sets)'
+        type: boolean
+        default: false
+
+concurrency:
+  # One writer at a time. Two concurrent pushes to the same listing would
+  # interleave PATCHes and leave a page nobody wrote.
+  group: app-store-metadata
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate the listing
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Release tooling selftest
+        run: node scripts/asc/selftest.mjs
+
+      # On a pull request, REPLACE_ME is a warning: the copy is reviewable
+      # long before anyone owns the Apple account that can fill those in.
+      # On a dispatch it is an error, because that run can reach Apple.
+      - name: Validate
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            node scripts/asc/validate-metadata.mjs
+          else
+            node scripts/asc/validate-metadata.mjs --allow-placeholders
+          fi
+
+  push:
+    name: ${{ inputs.mode == 'apply' && 'Apply to App Store Connect' || 'Plan' }}
+    needs: validate
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # The typed confirmation is not ceremony: `mode` is a dropdown, and a
+      # dropdown is one mis-click away from rewriting a live product page.
+      - name: Check the confirmation
+        if: inputs.mode == 'apply'
+        run: |
+          if [ "${{ inputs.confirm }}" != "APPLY" ]; then
+            echo "::error::mode=apply requires the confirm box to contain exactly APPLY."
+            exit 1
+          fi
+
+      - name: Require secrets
+        run: |
+          missing=()
+          [ -n "$APP_STORE_CONNECT_KEY_ID" ] || missing+=("APP_STORE_CONNECT_KEY_ID")
+          [ -n "$APP_STORE_CONNECT_ISSUER_ID" ] || missing+=("APP_STORE_CONNECT_ISSUER_ID")
+          [ -n "$APP_STORE_CONNECT_API_KEY_BASE64" ] || missing+=("APP_STORE_CONNECT_API_KEY_BASE64")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing secret(s): ${missing[*]} — see docs/APP_STORE_CONNECT.md."
+            exit 1
+          fi
+
+      - name: Push metadata
+        run: |
+          node scripts/asc/push-metadata.mjs \
+            --version "${{ inputs.version }}" \
+            ${{ inputs.mode == 'apply' && '--apply' || '' }}
+
+      # --replace is implied by an apply run: a listing that is the source of
+      # truth cannot half-replace a screenshot set, and leaving the old shots
+      # beside the new ones is the one outcome nobody wants.
+      - name: Push screenshots
+        if: inputs.screenshots
+        run: |
+          node scripts/asc/upload-screenshots.mjs \
+            --version "${{ inputs.version }}" \
+            ${{ inputs.mode == 'apply' && '--apply --replace' || '' }}
+
+      - name: What happens next
+        if: inputs.mode == 'apply'
+        run: |
+          echo "::notice::The listing is written. Nothing has been submitted for review."
+          echo "Attach a build and submit from App Store Connect when the release is ready."

@@ -1,0 +1,5 @@
+First release.
+
+The whole simulation, from a single turboprop on a single regional route to a widebody network across nine world regions: routes and fares, fleet buying and leasing, monthly statements and loans, reputation, competitor airlines, seasons, fuel markets and world events.
+
+Offline, one purchase, no ads and no in-app purchases.
