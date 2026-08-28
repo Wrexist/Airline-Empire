@@ -12,8 +12,10 @@ from the same setup performed in a sibling repository, and each one should be
 ticked here *by the person who did it*, with the date — the same rule
 [`APPLE_VALIDATION.md`](APPLE_VALIDATION.md) §9 sets for itself.
 
-Related: [`RELEASE_PIPELINE.md`](RELEASE_PIPELINE.md) (what the workflows do
-once this exists) · [`ASO.md`](ASO.md) (what goes in the listing and why).
+Related: [`GO_LIVE.md`](GO_LIVE.md) (all of this as an ordered checklist, with
+everything else that has to happen around it) ·
+[`RELEASE_PIPELINE.md`](RELEASE_PIPELINE.md) (what the workflows do once this
+exists) · [`ASO.md`](ASO.md) (what goes in the listing and why).
 
 ---
 

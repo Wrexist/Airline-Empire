@@ -155,6 +155,22 @@ jobs:
       - name: Validate store listing
         run: node scripts/asc/validate-metadata.mjs --allow-placeholders
 
+      # The most likely reason a first upload is rejected, and the rejection
+      # arrives last — after the archive, the export and the transfer, as an
+      # email about a missing marketing icon. Milliseconds here, on the 1x
+      # runner. Fatal only for a run that will upload: archiving without an
+      # icon is a perfectly good way to test signing.
+      - name: Check the app icon
+        run: |
+          if node scripts/asc/check-app-icon.mjs; then
+            exit 0
+          fi
+          if [ "${{ inputs.upload }}" = "true" ]; then
+            echo "::error::The app icon must exist before a build can be uploaded."
+            exit 1
+          fi
+          echo "::warning::No usable app icon. Fine for this archive-only run; an upload would be rejected."
+
       # Asks Apple the questions that only Apple can answer: does the key
       # authenticate, does an app record exist for the bundle id, and is this
       # marketing version already used? Fail-open on anything it cannot

@@ -26,7 +26,7 @@ import { fileURLToPath } from 'node:url'
 import { Buffer } from 'node:buffer'
 
 import { decodePrivateKey, credentialsFromEnv, mintToken, AppStoreConnect, AscError } from './lib/asc.mjs'
-import { loadStore, validateStore, inspectPng, LIMITS } from './lib/metadata.mjs'
+import { loadStore, validateStore, checkBundleIdConsistency, checkAppIcon, inspectPng, LIMITS } from './lib/metadata.mjs'
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
@@ -230,6 +230,47 @@ test('the committed listing blocks a real submission while placeholders remain',
   const store = loadStore(join(REPO_ROOT, 'store'))
   const { errors } = validateStore(store)
   assertIncludes(errors, 'REPLACE_ME', 'placeholders did not block a strict validation')
+})
+
+test('the bundle id agrees across all three files that carry it', () => {
+  const store = loadStore(join(REPO_ROOT, 'store'))
+  const errors = checkBundleIdConsistency(REPO_ROOT, store.config.bundleId)
+  assert(errors.length === 0, `bundle id disagreement:\n    ${errors.join('\n    ')}`)
+})
+
+test('a bundle id disagreement is caught rather than assumed away', () => {
+  const errors = checkBundleIdConsistency(REPO_ROOT, 'com.example.wrong')
+  assert(errors.length === 2, `expected both files to disagree, got ${errors.length}`)
+  assertIncludes(errors, 'project.yml', 'the project manifest was not checked')
+  assertIncludes(errors, 'ios-testflight.yml', 'the release workflow was not checked')
+})
+
+test('the empty app icon slot is reported, not overlooked', () => {
+  // This asserts the CURRENT state of the repository on purpose: there is no
+  // icon, and the check must say so. When one is drawn, this test flips to
+  // asserting the opposite — and that is the moment to update it, not before.
+  const problems = checkAppIcon(REPO_ROOT)
+  assertIncludes(problems, 'slot is empty', 'the missing app icon was not reported')
+})
+
+test('an app icon with alpha or the wrong size is rejected', () => {
+  const root = mkdtempSync(join(tmpdir(), 'ae-icon-'))
+  const set = join(root, 'AirlineEmpireApp', 'Resources', 'Assets.xcassets', 'AppIcon.appiconset')
+  mkdirSync(set, { recursive: true })
+  const write = (images) => writeFileSync(join(set, 'Contents.json'), JSON.stringify({ images, info: {} }))
+
+  write([{ idiom: 'universal', size: '1024x1024', filename: 'icon.png' }])
+  assertIncludes(checkAppIcon(root), 'not in the asset catalogue', 'a referenced but absent icon passed')
+
+  writePngHeader(join(set, 'icon.png'), { width: 1024, height: 1024, colorType: 6 })
+  assertIncludes(checkAppIcon(root), 'alpha channel', 'an icon with transparency passed')
+
+  writePngHeader(join(set, 'icon.png'), { width: 512, height: 512, colorType: 2 })
+  assertIncludes(checkAppIcon(root), '1024×1024', 'an undersized icon passed')
+
+  writePngHeader(join(set, 'icon.png'), { width: 1024, height: 1024, colorType: 2 })
+  assert(checkAppIcon(root).length === 0, 'a correct icon was rejected')
+  rmSync(root, { recursive: true, force: true })
 })
 
 /** A minimal valid tree, so each mistake below is the only thing wrong with it. */

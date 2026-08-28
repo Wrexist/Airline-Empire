@@ -91,7 +91,7 @@ Everything not requiring them is done.
   privacy pages Apple requires a link to.
 - `scripts/asc/` — dependency-free Node: App Store Connect JWT client, build
   number resolver, preflight, listing validator, metadata push, screenshot
-  upload, processing watcher, and 26 tests over the parts that can be tested
+  upload, processing watcher, and 30 tests over the parts that can be tested
   from Linux.
 - `store/` — the listing as files (en-US, en-GB, review notes), with the
   reasoning in `docs/ASO.md`.
@@ -115,6 +115,8 @@ Everything not requiring them is done.
    Review contact, the copyright entity and the support email
 4. An in-app rating prompt: deliberately not implemented, policy written in
    `docs/ASO.md` §9
+**Owner's runbook:** `docs/GO_LIVE.md` — the twelve stages from here to a
+released app, in dependency order, marked by who does each one.
 **Status:** LINUX SCOPE COMPLETE.
 
 ---

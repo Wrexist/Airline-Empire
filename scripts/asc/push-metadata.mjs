@@ -40,7 +40,7 @@
 
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { AppStoreConnect, findApp, versionState, EDITABLE_VERSION_STATES } from './lib/asc.mjs'
+import { AppStoreConnect, findApp, listVersions, versionState, EDITABLE_VERSION_STATES } from './lib/asc.mjs'
 import { loadStore, validateStore } from './lib/metadata.mjs'
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -186,10 +186,7 @@ for (const locale of appInfoByLocale.keys()) {
 // ---------------------------------------------------------------------------
 
 console.log('\nVersion')
-const versions = await client.getAll(
-  `/v1/appStoreVersions?filter[app]=${app.id}&limit=50&fields[appStoreVersions]=versionString,appVersionState,appStoreState,platform,copyright,releaseType`,
-)
-const iosVersions = versions.filter((version) => (version.attributes?.platform ?? 'IOS') === 'IOS')
+const iosVersions = await listVersions(client, app.id, { fields: ['copyright', 'releaseType'] })
 let version = iosVersions.find((candidate) => candidate.attributes?.versionString === versionString)
 
 // Apple rejects `whatsNew` on an app's very first version — there is nothing

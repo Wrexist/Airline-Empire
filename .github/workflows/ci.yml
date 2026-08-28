@@ -82,7 +82,7 @@ jobs:
         with:
           node-version: '22'
 
-      # 26 tests: the App Store Connect JWT (including the DER-vs-raw
+      # 30 tests: the App Store Connect JWT (including the DER-vs-raw
       # signature trap that produces a silent 401), the HTTP client's paging
       # and retry rules, PNG alpha detection, and the listing validator
       # against deliberate mistakes.

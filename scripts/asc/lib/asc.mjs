@@ -289,3 +289,24 @@ export const EDITABLE_VERSION_STATES = new Set([
 export function versionState(version) {
   return version?.attributes?.appVersionState ?? version?.attributes?.appStoreState ?? null
 }
+
+/**
+ * Every iOS App Store version for an app, newest first.
+ *
+ * Through the app's own relationship endpoint — `GET /v1/apps/{id}/appStoreVersions`
+ * — which is the one Apple documents. The top-level `/v1/appStoreVersions`
+ * collection accepts POST and GET-by-id but has no documented list form, so a
+ * `?filter[app]=` against it is a request Apple never promised to answer. The
+ * first draft of this tooling used exactly that, in three places; one helper
+ * means the endpoint is spelled once and can be corrected once.
+ */
+export async function listVersions(client, appId, { fields = [], limit = 50 } = {}) {
+  const attributes = ['versionString', 'appVersionState', 'appStoreState', 'platform', ...fields]
+  const versions = await client.getAll(
+    `/v1/apps/${appId}/appStoreVersions?limit=${limit}&fields[appStoreVersions]=${attributes.join(',')}`,
+  )
+  // filter[platform] exists, but an app that is iOS-only returns nothing else
+  // anyway and a filter Apple rejects would fail the whole call. Filter here.
+  return versions.filter((version) => (version.attributes?.platform ?? 'IOS') === 'IOS')
+}
+

@@ -6,7 +6,9 @@ actually been run, and what to do when a step fails.
 
 Setup that has to happen once, by a human with the Apple account, is in
 [`APP_STORE_CONNECT.md`](APP_STORE_CONNECT.md). The listing copy and its
-reasoning are in [`ASO.md`](ASO.md).
+reasoning are in [`ASO.md`](ASO.md). If you are asking "what do I do next",
+read [`GO_LIVE.md`](GO_LIVE.md) instead — it is the same material as an
+ordered checklist.
 
 ---
 
@@ -43,8 +45,8 @@ to point at, and put the date and the run number in when you do.
 | Path | Status |
 |---|---|
 | `swift test` on Linux | **Proven** — 253 tests, 2026-08-27 (`APPLE_VALIDATION.md` §7) |
-| Release tooling selftest (26 tests) | **Proven** — run locally, 2026-08-28 |
-| Listing validation | **Proven** — run against `store/`, 2026-08-28 |
+| Release tooling selftest (30 tests) | **Proven** — run locally, 2026-08-28 |
+| Listing validation, bundle-id agreement, icon check | **Proven** — run against this checkout, 2026-08-28 (the icon check correctly reports the icon as missing) |
 | `xcodebuild` compile of the app | **Never run.** The app has never been built by Xcode. |
 | Archive, export, signing | **Never run.** No certificate, no team. |
 | Upload to App Store Connect | **Never run.** No app record. |
@@ -84,6 +86,8 @@ core, nor the workflow — checked with `git diff` rather than a job-level
 
 ## Releasing: the order
 
+0. **`node scripts/asc/check-app-icon.mjs`** — if this fails, an upload will
+   fail too, and everything below is wasted time.
 1. **Merge to main with CI green.** In particular the macOS `app` job — if the
    app does not compile, nothing downstream matters.
 2. **Run `ios-testflight.yml`** with the marketing version, `upload` off the
@@ -110,8 +114,9 @@ for why Node in a Swift repository), and none of them ship in the app.
 
 | Script | Does | Needs |
 |---|---|---|
-| `selftest.mjs` | 26 tests over the JWT, the HTTP client, PNG inspection and the validator | nothing |
-| `validate-metadata.mjs` | Character limits, keyword hygiene, trademarks, URLs, screenshot canvases | nothing |
+| `selftest.mjs` | 30 tests over the JWT, the HTTP client, PNG inspection, the app icon and the listing validator | nothing |
+| `validate-metadata.mjs` | Character limits, keyword hygiene, trademarks, URLs, screenshot canvases, bundle-id agreement across three files | nothing |
+| `check-app-icon.mjs` | Whether the icon exists, is 1024×1024 and has no alpha — the most common first-upload rejection, caught before the archive | nothing |
 | `preflight.mjs` | Secrets, authentication, app record, version state | the three ASC secrets |
 | `next-build-number.mjs` | The next CFBundleVersion, from Apple or from the clock | optional |
 | `push-metadata.mjs` | Deploys `store/` to a version; dry run by default | the three ASC secrets |

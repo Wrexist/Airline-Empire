@@ -41,7 +41,7 @@ import crypto from 'node:crypto'
 import { readFileSync, statSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { AppStoreConnect, findApp, versionState, EDITABLE_VERSION_STATES } from './lib/asc.mjs'
+import { AppStoreConnect, findApp, listVersions, versionState, EDITABLE_VERSION_STATES } from './lib/asc.mjs'
 import { loadStore, inspectPng, SCREENSHOT_SIZES, MAX_SCREENSHOTS_PER_SET } from './lib/metadata.mjs'
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -70,13 +70,8 @@ if (!app) {
   process.exit(1)
 }
 
-const versions = await client.getAll(
-  `/v1/appStoreVersions?filter[app]=${app.id}&limit=50&fields[appStoreVersions]=versionString,appVersionState,appStoreState,platform`,
-)
-const version = versions.find(
-  (candidate) =>
-    candidate.attributes?.versionString === versionString && (candidate.attributes?.platform ?? 'IOS') === 'IOS',
-)
+const versions = await listVersions(client, app.id)
+const version = versions.find((candidate) => candidate.attributes?.versionString === versionString)
 if (!version) {
   console.error(`✗ No iOS version ${versionString}. Run push-metadata.mjs --apply first; it creates the version.`)
   process.exit(1)

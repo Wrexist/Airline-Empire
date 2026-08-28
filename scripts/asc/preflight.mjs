@@ -39,7 +39,7 @@
 import { readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { AppStoreConnect, findApp, versionState, EDITABLE_VERSION_STATES } from './lib/asc.mjs'
+import { AppStoreConnect, findApp, listVersions, versionState, EDITABLE_VERSION_STATES } from './lib/asc.mjs'
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const args = process.argv.slice(2)
@@ -98,10 +98,7 @@ if (!app) {
 console.log(`✓ App record found: "${app.attributes?.name}" (id ${app.id}, SKU ${app.attributes?.sku ?? '—'}).`)
 
 try {
-  const versions = await client.getAll(
-    `/v1/appStoreVersions?filter[app]=${app.id}&limit=20&fields[appStoreVersions]=versionString,appVersionState,appStoreState,platform,createdDate`,
-  )
-  const ios = versions.filter((version) => (version.attributes?.platform ?? 'IOS') === 'IOS')
+  const ios = await listVersions(client, app.id, { fields: ['createdDate'], limit: 20 })
 
   if (!ios.length) {
     notes.push('No App Store version exists yet. `push-metadata.mjs --apply` will create one.')

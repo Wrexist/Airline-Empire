@@ -26,7 +26,7 @@ layer needs that can be built without Apple:
 - The store listing is now versioned content in `/store` (D-012), with a
   validator that enforces Apple's limits offline, `docs/ASO.md` for why each
   word is the word, and a metadata deploy workflow that dry-runs by default.
-- `scripts/asc/` — dependency-free Node tooling (D-013) with 26 tests.
+- `scripts/asc/` — dependency-free Node tooling (D-013) with 30 tests.
 - App-side: privacy manifest, asset catalogue with an empty icon slot, pinned
   bundle id, version, build number and export-compliance declaration.
 - Still blocking a submission, none of it fixable from Linux: the app icon,

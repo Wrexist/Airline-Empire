@@ -20,7 +20,7 @@
 
 import { fileURLToPath } from 'node:url'
 import { dirname, join, resolve } from 'node:path'
-import { loadStore, validateStore, LIMITS } from './lib/metadata.mjs'
+import { loadStore, validateStore, checkBundleIdConsistency, checkAppIcon, LIMITS } from './lib/metadata.mjs'
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
@@ -39,6 +39,16 @@ try {
 }
 
 const { errors, warnings } = validateStore(store, { allowPlaceholders })
+
+// The bundle id lives in three files and all three have to agree. Checked here
+// rather than in the pure validator because it reads outside store/.
+errors.push(...checkBundleIdConsistency(REPO_ROOT, store.config.bundleId))
+
+// The app icon is a store asset like any other, and its absence is the most
+// likely reason a first upload is rejected. A warning here and a hard failure
+// in the release workflow, which is where it actually costs something.
+const iconProblems = checkAppIcon(REPO_ROOT)
+for (const problem of iconProblems) warnings.push(`app icon: ${problem}`)
 
 // A budget line per locale, printed on success as well as failure. Character
 // counts are the whole game in ASO copy — the keyword field in particular is

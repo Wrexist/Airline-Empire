@@ -525,6 +525,11 @@ function validateScreenshots(store, { error, warn }) {
       if (files.length > MAX_SCREENSHOTS_PER_SET) {
         error(`${locale}/${displayType}: ${files.length} screenshots, Apple accepts at most ${MAX_SCREENSHOTS_PER_SET}.`)
       }
+      // Three is where a gallery stops looking like a placeholder. Apple
+      // requires one; a listing with one is a listing nobody finished.
+      if (files.length < 3) {
+        warn(`${locale}/${displayType}: only ${files.length} screenshot(s). The storyboard in docs/ASO.md §5 is six.`)
+      }
       for (const file of files) {
         if (extname(file).toLowerCase() !== '.png') continue // JPEG is legal; only PNG is inspectable here.
         const png = inspectPng(file)
@@ -551,3 +556,118 @@ function validateScreenshots(store, { error, warn }) {
     warn(`No screenshots for the primary locale ${primary}. Other locales fall back to it, so this is the set that matters most.`)
   }
 }
+
+// ---------------------------------------------------------------------------
+// Cross-file consistency
+// ---------------------------------------------------------------------------
+
+/**
+ * The bundle identifier is written down in three places. Do they agree?
+ *
+ * `store/config.json` is what finds the app record, `project.yml` is what the
+ * binary is stamped with, and the release workflow's `BUNDLE_ID` is what the
+ * export options hand to the signing profile. A disagreement between any two
+ * of them fails late and confusingly: the archive succeeds, the export picks
+ * the wrong profile, or the upload lands against no app record at all.
+ *
+ * Read with regular expressions rather than a YAML parser on purpose — a YAML
+ * parser is a dependency, and this needs one line out of each file. If the
+ * pattern stops matching, the check reports that it could not read the value
+ * rather than silently passing.
+ */
+export function checkBundleIdConsistency(repoRoot, expected) {
+  const sources = [
+    {
+      path: join(repoRoot, 'AirlineEmpireApp', 'project.yml'),
+      label: 'AirlineEmpireApp/project.yml PRODUCT_BUNDLE_IDENTIFIER',
+      pattern: /^\s*PRODUCT_BUNDLE_IDENTIFIER:\s*(\S+)\s*$/m,
+    },
+    {
+      path: join(repoRoot, '.github', 'workflows', 'ios-testflight.yml'),
+      label: '.github/workflows/ios-testflight.yml BUNDLE_ID',
+      pattern: /^\s*BUNDLE_ID:\s*(\S+)\s*$/m,
+    },
+  ]
+
+  const errors = []
+  for (const source of sources) {
+    if (!existsSync(source.path)) {
+      errors.push(`${source.label}: file not found at ${source.path}.`)
+      continue
+    }
+    const match = readFileSync(source.path, 'utf8').match(source.pattern)
+    if (!match) {
+      errors.push(`${source.label}: could not find the value. The check cannot confirm the bundle id.`)
+      continue
+    }
+    const found = match[1].replace(/^["']|["']$/g, '')
+    if (found !== expected) {
+      errors.push(`${source.label} is "${found}" but store/config.json says "${expected}". They must match exactly.`)
+    }
+  }
+  return errors
+}
+
+/**
+ * Is there an app icon, and is it one Apple will accept?
+ *
+ * This is the single most likely reason a first upload is rejected, and the
+ * rejection arrives at the *end*: after the 10x-billed archive, after the
+ * export, after the transfer, as an email about a missing marketing icon. Two
+ * seconds here on the cheap runner buys that whole cycle back.
+ *
+ * Checks, in order of how often each one bites:
+ *   · the asset catalogue names a file at all
+ *   · the file exists on disk
+ *   · it is 1024×1024
+ *   · it has no alpha channel — Apple rejects transparency in the app icon,
+ *     and the usual symptom is a black square where the rounded corners were
+ *
+ * Returns an array of problems; empty means the icon is submittable. Missing
+ * entirely is reported as a problem rather than thrown, because the caller
+ * decides whether that blocks (an upload) or merely warns (a pull request).
+ */
+export function checkAppIcon(repoRoot) {
+  const setDir = join(repoRoot, 'AirlineEmpireApp', 'Resources', 'Assets.xcassets', 'AppIcon.appiconset')
+  const contentsPath = join(setDir, 'Contents.json')
+  if (!existsSync(contentsPath)) {
+    return [`No app icon set at ${contentsPath}.`]
+  }
+
+  let contents
+  try {
+    contents = JSON.parse(readFileSync(contentsPath, 'utf8'))
+  } catch (cause) {
+    return [`${contentsPath} is not valid JSON: ${cause.message}`]
+  }
+
+  const named = (contents.images ?? []).filter((image) => image.filename)
+  if (!named.length) {
+    return [
+      'The app icon slot is empty — no image in AppIcon.appiconset names a file.',
+      'Apple rejects an upload without one. The brief is in AirlineEmpireApp/Resources/README.md.',
+    ]
+  }
+
+  const problems = []
+  for (const image of named) {
+    const file = join(setDir, image.filename)
+    if (!existsSync(file)) {
+      problems.push(`AppIcon references ${image.filename}, which is not in the asset catalogue.`)
+      continue
+    }
+    const png = inspectPng(file)
+    if (!png) {
+      problems.push(`${image.filename} is not a readable PNG.`)
+      continue
+    }
+    if (png.hasAlpha) {
+      problems.push(`${image.filename} has an alpha channel. Apple rejects transparency in the app icon.`)
+    }
+    if (png.width !== 1024 || png.height !== 1024) {
+      problems.push(`${image.filename} is ${png.width}×${png.height}; the app icon must be 1024×1024.`)
+    }
+  }
+  return problems
+}
+
