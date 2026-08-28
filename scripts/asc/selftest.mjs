@@ -245,12 +245,14 @@ test('a bundle id disagreement is caught rather than assumed away', () => {
   assertIncludes(errors, 'ios-testflight.yml', 'the release workflow was not checked')
 })
 
-test('the empty app icon slot is reported, not overlooked', () => {
-  // This asserts the CURRENT state of the repository on purpose: there is no
-  // icon, and the check must say so. When one is drawn, this test flips to
-  // asserting the opposite — and that is the moment to update it, not before.
+test('the committed app icon is submittable', () => {
+  // This asserted the opposite until 2026-08-28 — that the slot was empty and
+  // the check said so — with a note that the day an icon arrived was the day
+  // to flip it. It arrived; this is the flip. What it guards now is a real
+  // regression: an icon replaced with the wrong size, or one re-exported from
+  // an editor that helpfully added an alpha channel.
   const problems = checkAppIcon(REPO_ROOT)
-  assertIncludes(problems, 'slot is empty', 'the missing app icon was not reported')
+  assert(problems.length === 0, `the committed app icon would be rejected:\n    ${problems.join('\n    ')}`)
 })
 
 test('an app icon with alpha or the wrong size is rejected', () => {
@@ -417,6 +419,16 @@ test('an unused keyword budget is a warning', () => {
     files['keywords.txt'] = 'aviation'
   })
   assertIncludes(validateStore(store).warnings, 'unused', 'a mostly empty keyword field drew no comment')
+})
+
+await asyncTest('the committed fill-in sheet matches store/', async () => {
+  // Runs the generator in --check mode in-process. The sheet is what a human
+  // pastes into App Store Connect; if it disagrees with store/, the wrong copy
+  // is the one that reaches the store.
+  const { execFileSync } = await import('node:child_process')
+  execFileSync(process.execPath, [join(REPO_ROOT, 'scripts', 'asc', 'build-fill-in-sheet.mjs'), '--check'], {
+    stdio: 'pipe',
+  })
 })
 
 rmSync(scratch, { recursive: true, force: true })

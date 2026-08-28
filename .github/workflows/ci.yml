@@ -96,6 +96,13 @@ jobs:
       - name: Validate store listing
         run: node scripts/asc/validate-metadata.mjs --allow-placeholders
 
+      # docs/APP_STORE_CONNECT_FILL_IN.md is generated from store/ and is what
+      # a human actually pastes into App Store Connect. If it drifts from the
+      # copy the pipeline pushes, the wrong version is the one that reaches the
+      # store — so a stale sheet fails here rather than at a keyboard.
+      - name: Fill-in sheet is current
+        run: node scripts/asc/build-fill-in-sheet.mjs --check
+
   # ── 3 · Does the app compile? ──────────────────────────────────────────────
   app:
     name: iOS app (xcodebuild)

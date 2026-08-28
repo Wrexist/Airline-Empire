@@ -44,10 +44,11 @@ to point at, and put the date and the run number in when you do.
 
 | Path | Status |
 |---|---|
-| `swift test` on Linux | **Proven** — 253 tests, 2026-08-27 (`APPLE_VALIDATION.md` §7) |
-| Release tooling selftest (30 tests) | **Proven** — run locally, 2026-08-28 |
+| `swift test` on Linux | **Proven** — 253 tests locally 2026-08-27 (`APPLE_VALIDATION.md` §7), and in CI 2026-08-28 (run 33213797384: 8m 02s) |
+| Release release-build gate (`-warnings-as-errors`) | **Proven** — 2026-08-28, run 33213797384. The core builds in release with zero warnings, so "target: zero new warnings" is now enforced by a machine rather than remembered. |
+| Release tooling selftest (30 tests) | **Proven** — locally and in CI, 2026-08-28 (run 33213797384) |
 | Listing validation, bundle-id agreement, icon check | **Proven** — run against this checkout, 2026-08-28 (the icon check correctly reports the icon as missing) |
-| `xcodebuild` compile of the app | **Never run.** The app has never been built by Xcode. |
+| `xcodebuild` compile of the app | **PROVEN — 2026-08-28**, [CI run 33213797384](https://github.com/Wrexist/Airline-Empire/actions/runs/33213797384). `** BUILD SUCCEEDED **` on `macos-26` / Xcode 26.6 / iPhoneSimulator 26.5 SDK, universal arm64 + x86_64, `com.airlineempire.game`, in 53 seconds. The first Xcode build in this project's history. |
 | Archive, export, signing | **Never run.** No certificate, no team. |
 | Upload to App Store Connect | **Never run.** No app record. |
 | Any App Store Connect API call | **Never run** from this repository. The JWT construction is ported from a repository where it authenticated successfully; that is evidence, not proof. |
@@ -87,7 +88,7 @@ core, nor the workflow — checked with `git diff` rather than a job-level
 ## Releasing: the order
 
 0. **`node scripts/asc/check-app-icon.mjs`** — if this fails, an upload will
-   fail too, and everything below is wasted time.
+   fail too, and everything below is wasted time. (Passing since 2026-08-28.)
 1. **Merge to main with CI green.** In particular the macOS `app` job — if the
    app does not compile, nothing downstream matters.
 2. **Run `ios-testflight.yml`** with the marketing version, `upload` off the
@@ -116,6 +117,7 @@ for why Node in a Swift repository), and none of them ship in the app.
 |---|---|---|
 | `selftest.mjs` | 30 tests over the JWT, the HTTP client, PNG inspection, the app icon and the listing validator | nothing |
 | `validate-metadata.mjs` | Character limits, keyword hygiene, trademarks, URLs, screenshot canvases, bundle-id agreement across three files | nothing |
+| `build-fill-in-sheet.mjs` | Generates `docs/APP_STORE_CONNECT_FILL_IN.md` from `store/`; `--check` fails CI when it is stale | nothing |
 | `check-app-icon.mjs` | Whether the icon exists, is 1024×1024 and has no alpha — the most common first-upload rejection, caught before the archive | nothing |
 | `preflight.mjs` | Secrets, authentication, app record, version state | the three ASC secrets |
 | `next-build-number.mjs` | The next CFBundleVersion, from Apple or from the clock | optional |

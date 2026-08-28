@@ -1,11 +1,16 @@
 # Apple Validation — handoff for the first Mac/Xcode session
 
-**Status of this document: nothing in it has been executed.** All development
-so far has run on Linux, where the Apple SDKs do not exist. Every step below
-is *pending*, and the app target's honest status is:
+**Status of this document: §2 has now been executed; nothing else has.** On
+2026-08-28, CI run 33213797384 compiled the app with `xcodebuild` on a
+`macos-26` runner — `** BUILD SUCCEEDED **`, Xcode 26.6, iPhoneSimulator 26.5
+SDK. Everything from §3 onward (simulator, walkthrough, Instruments,
+accessibility, signing) is still *pending*, and the app target's honest status
+is:
 
-> **AUTHORED · PARSED · STRUCTURALLY VALIDATED · READY FOR XCODE ·
-> NOT APPLE-RUNTIME-VALIDATED**
+> **COMPILED · NOT APPLE-RUNTIME-VALIDATED**
+
+A compiler proves the code type-checks and links. It proves nothing about what
+appears on a screen, which is the whole of §3 to §5 below.
 
 What *is* proven, on Linux: the simulation core (`AirlineEmpireCore`) builds
 clean in debug and release, its full test suite passes, the simulation scales
@@ -31,7 +36,13 @@ SwiftPM dependency on `../AirlineEmpireCore`. `GENERATE_INFOPLIST_FILE` is on
 because the target configures itself through `INFOPLIST_KEY_*` build settings
 rather than a checked-in `Info.plist`.
 
-## 2. Build
+## 2. Build — done, 2026-08-28
+
+`.github/workflows/ci.yml` does this on every commit that touches the app or
+the core, so it need not be redone by hand; run 33213797384 was the first and
+it passed with no source changes. The paragraph below is kept for the local
+case, and because its expectation was worth recording: it predicted
+SDK-specific errors, and there were none.
 
 Expect first-build errors to be **Apple-SDK-specific**, not logic errors:
 SwiftUI API availability, `#if os(iOS)` gaps, toolbar/navigation API

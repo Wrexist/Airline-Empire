@@ -70,6 +70,9 @@ jobs:
       - name: Release tooling selftest
         run: node scripts/asc/selftest.mjs
 
+      - name: Fill-in sheet is current
+        run: node scripts/asc/build-fill-in-sheet.mjs --check
+
       # On a pull request, REPLACE_ME is a warning: the copy is reviewable
       # long before anyone owns the Apple account that can fill those in.
       # On a dispatch it is an error, because that run can reach Apple.

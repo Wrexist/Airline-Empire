@@ -1,0 +1,15 @@
+Airline Empire is a single-player airline management simulation. You found an airline, buy aircraft, open routes, set fares, and run a living network while competitors, seasons, fuel prices and world events push back.
+
+This build is the whole game. It is entirely offline — no account, no sign-in, no network calls of any kind — so it behaves identically in Airplane Mode.
+
+WHAT TO TEST
+1. New game: name an airline, pick a scenario and a seed, and found it.
+2. Fleet → Acquire → buy a used aircraft (used ones are available immediately; new ones are orders with a delivery lead time).
+3. Dashboard → open one of the two suggested routes → assign your aircraft to it from the route's detail screen.
+4. Run at 1x and 4x: flights should depart and arrive, the map should animate, and the feed should narrate the day.
+5. Cross a month boundary so a statement closes, then read Finance.
+6. Save, quit to the menu, and continue — the game should resume at the same date, cash and network.
+7. Background the app mid-flight and return: autosave should have fired and the simulation should resume.
+
+WHAT WE MOST WANT TO HEAR ABOUT
+Anything that renders wrong, any control that is hard to hit, anything that is slow on your device, and any number on screen you cannot explain from the screen it is on. Please include your device, your iOS version, and the seed and scenario you started with — the simulation is deterministic, so with those a run can be reproduced exactly.

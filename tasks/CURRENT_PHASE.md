@@ -7,12 +7,29 @@ Apple-layer work is prepared, never claimed.
 
 - `AirlineEmpireCore` — **LINUX VALIDATED.** Builds debug + release clean,
   full suite green, release benchmark inside budget.
-- `AirlineEmpireApp` — **AUTHORED · PARSED · STRUCTURALLY VALIDATED ·
-  READY FOR XCODE · NOT APPLE-RUNTIME-VALIDATED.** Every source passes
-  `swiftc -parse`; every Core API it calls is verified; screen data
-  contracts are covered by Core tests. SwiftUI has never compiled or run.
+- `AirlineEmpireApp` — **COMPILED · NOT APPLE-RUNTIME-VALIDATED.** As of
+  2026-08-28 the target builds under Xcode 26.6 for the iOS 26.5 simulator SDK
+  on a CI runner (`** BUILD SUCCEEDED **`, CI run 33213797384) — so SwiftUI
+  compiles and every Core API the views call resolves for real, not merely by
+  inspection. What is still unproven is everything a compiler cannot answer:
+  rendering, layout, iPad size classes, `Canvas` map performance, gestures,
+  `@Observable` update behaviour, actor hops, scene-phase autosave,
+  accessibility, haptics and signing. `docs/APPLE_VALIDATION.md` remains the
+  list, and it still needs a device and a person.
 
 ## Session log
+
+**2026-08-28 (first full green CI).** All three jobs of run 33213797384
+passed: the core suite (253 tests, 8m), the release build with
+`-warnings-as-errors` (clean — the zero-warnings target is now machine-
+enforced), the release tooling's own 31 tests, and the macOS app compile.
+
+**2026-08-28 (the app compiled).** CI run 33213797384 built
+`AirlineEmpireApp` with `xcodebuild` on a `macos-26` runner: XcodeGen
+generated the project from `project.yml`, the local `AirlineEmpireCore`
+package linked, and the build succeeded in 53 seconds. Blocker **B-002** is
+half closed — the compile question no longer needs a Mac in the room; the
+runtime questions still need a device.
 
 **2026-08-28 (release pipeline and store listing).** Everything the Apple
 layer needs that can be built without Apple:

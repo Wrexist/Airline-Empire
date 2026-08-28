@@ -31,11 +31,12 @@ repository's history — see stage 1.
 
 ---
 
-## Stage 1 — Find out whether the app compiles (30 minutes, free)
+## Stage 1 — Find out whether the app compiles ✅ done, 2026-08-28
 
-This is the highest-value step in the whole list, and it needs no Apple
-account, no Mac and no money. The app has never been compiled by Xcode; every
-Apple-layer claim in the project is qualified by that.
+**Already answered: it compiles.** CI run 33213797384 built the app with
+`xcodebuild` on a macOS runner — `** BUILD SUCCEEDED **`, Xcode 26.6, iOS 26.5
+simulator SDK, no source changes needed. Nothing to do here unless CI goes red
+later, in which case:
 
 **1.1** 🤖 Actions → **CI** → Run workflow → on `main`. A manual dispatch
 always runs the macOS job regardless of what changed.
@@ -87,9 +88,10 @@ Details: [`APP_STORE_CONNECT.md`](APP_STORE_CONNECT.md) §2.
 **3.1** 🧑 Developer portal → Identifiers → + → App IDs → App. Explicit bundle
 ID **`com.airlineempire.game`**. **No capabilities** — the app uses none.
 
-**3.2** 🧑 App Store Connect → Apps → + → New App. iOS, name **Airline
-Empire**, primary language English (U.S.), the bundle ID above, SKU
-`airline-empire-ios`.
+**3.2** 🧑 App Store Connect → Apps → + → New App. Every value for this form
+— and for every other screen App Store Connect will ask you about — is in
+[`APP_STORE_CONNECT_FILL_IN.md`](APP_STORE_CONNECT_FILL_IN.md) §1, ready to
+paste.
 
 > If the name is taken, pick the alternative now and change it in
 > `store/metadata/en-US/name.txt`, `store/metadata/en-GB/name.txt` and
@@ -150,10 +152,19 @@ the first build: without them, Xcode signs automatically using the API key.
 
 ---
 
-## Stage 5 — The app icon (blocking, needs a designer or you)
+## Stage 5 — The app icon ✅ done, 2026-08-28
 
-**Nothing can be uploaded without it.** The workflow now fails on the cheap
-runner rather than after the archive, but it still fails.
+Placed at `AppIcon.appiconset/icon-1024.png` and verified:
+`node scripts/asc/check-app-icon.mjs` reports 1024×1024 with no alpha. The
+master render is `docs/design/icon-source-1254.png`, and the same art is the
+cover on the marketing page.
+
+One thing left for you, and it needs a device rather than a script: look at it
+on a real home screen at 60 points, beside the other games in Simulation. It
+is a detailed scene, and detail is what a thumbnail eats. If it smudges, crop
+tighter — the reasoning is `ASO.md` §6.
+
+The original instructions, for a replacement:
 
 **5.1** 🧑 Draw or commission a 1024×1024 PNG, **no alpha channel**, no
 rounded corners of its own, no text, legible at 60 points. The brief — what to
@@ -300,7 +311,10 @@ mode **plan**. Read the before/after it prints.
 tick **screenshots**.
 
 **11.3** 🧑 Open the app in App Store Connect and look at the page. Everything
-should be there except the answers only the web UI takes:
+should be there except the answers only the web UI takes — those, and every
+other field with its exact value, are in
+[`APP_STORE_CONNECT_FILL_IN.md`](APP_STORE_CONNECT_FILL_IN.md), which is
+generated from `store/` and can be worked top to bottom:
 
 - **App Privacy** → "Do you collect data?" → **No**
   ([`APP_STORE_CONNECT.md`](APP_STORE_CONNECT.md) §6)
@@ -348,10 +362,11 @@ email.
 
 ## The critical path, in one line
 
-Compile (stage 1) → Apple account (2) → app record (3) → secrets (4) → **icon
-(5)** → TestFlight (6) → **play it (7)** → screenshots (8) → listing (9–11) →
-submit (12).
+~~Compile (stage 1)~~ → Apple account (2) → app record (3) → secrets (4) →
+~~icon (5)~~ → TestFlight (6) → **play it (7)** → screenshots (8) → listing
+(9–11) → submit (12).
 
-Stages 2 and 5 are the long poles: one is bureaucratic waiting, the other is
-creative work nobody has started. Both can begin today, in parallel with
-everything else.
+Stages 1 and 5 are done. **The Apple Developer account (stage 2) is now the
+only thing on the critical path** — everything from stage 3 onward waits on
+it, and enrolment is the one step that can take days. Start it today.
+Screenshots (stage 8) are the other creative job and need a build first.

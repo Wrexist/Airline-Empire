@@ -23,6 +23,7 @@ and it is not the source of truth.
 | `/tasks/TECH_DEBT.md` | Debt register |
 | `/tasks/BUGS.md` | Bug register |
 | `/docs/GO_LIVE.md` | **Step by step from here to the App Store — start here for shipping** |
+| `/docs/APP_STORE_CONNECT_FILL_IN.md` | Every App Store Connect field with the exact value to paste (generated from `/store`) |
 | `/docs/RELEASE_PIPELINE.md` | How a commit becomes a build and a listing |
 | `/docs/APP_STORE_CONNECT.md` | The one-time Apple account setup, and its secrets |
 | `/docs/ASO.md` | The store listing's design rationale |

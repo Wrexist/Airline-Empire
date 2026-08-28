@@ -12,6 +12,13 @@ from the same setup performed in a sibling repository, and each one should be
 ticked here *by the person who did it*, with the date — the same rule
 [`APPLE_VALIDATION.md`](APPLE_VALIDATION.md) §9 sets for itself.
 
+**Looking for the values to type in?** They are not here. This page is the
+account plumbing — enrolment, keys, certificates, secrets. Every field of the
+listing itself, with the exact text to paste and in the order App Store
+Connect asks for it, is
+[`APP_STORE_CONNECT_FILL_IN.md`](APP_STORE_CONNECT_FILL_IN.md), generated
+from `store/` so it cannot drift from what the pipeline pushes.
+
 Related: [`GO_LIVE.md`](GO_LIVE.md) (all of this as an ordered checklist, with
 everything else that has to happen around it) ·
 [`RELEASE_PIPELINE.md`](RELEASE_PIPELINE.md) (what the workflows do once this
@@ -250,13 +257,12 @@ purchase, no in-app purchases, no ads, no subscription** (`GAME_DESIGN.md`).
 Independent of everything above, and none of it fixable from a Linux agent
 session:
 
-1. **The app has never compiled.** `AirlineEmpireApp` is authored and parsed,
-   never built by Xcode (`APPLE_VALIDATION.md`). `.github/workflows/ci.yml`
-   answers this on a macOS runner without anyone owning a Mac — it is the
-   first thing to run.
-2. **No app icon.** `AirlineEmpireApp/Resources/README.md` has the slot and
-   the brief; the 1024×1024 does not exist. Validation rejects the upload
-   without it.
+1. ~~The app has never compiled.~~ **Done 2026-08-28** — CI run 33213797384,
+   `** BUILD SUCCEEDED **` on a macOS runner. Rendering and behaviour are
+   still unproven; that needs a device (`APPLE_VALIDATION.md` §3–§5).
+2. ~~No app icon.~~ **Done 2026-08-28** — 1024×1024, no alpha, verified by
+   `scripts/asc/check-app-icon.mjs`. Still worth looking at on a real home
+   screen at thumbnail size (`ASO.md` §6).
 3. **No screenshots.** They need a simulator and a real mid-game world —
    `ASO.md` §5 is the storyboard.
 4. **`REPLACE_ME` in `store/config.json` and `site/support.html`** — the App
