@@ -143,6 +143,36 @@ data with all four diagnostics. Documented as BALANCING F-006; F-001
 marked root-caused.
 **Status:** FIXED 2026-08-27.
 
+## BUG-007 — Deleted-entity events leaked into the player's feed
+**Severity:** P2 (misleading feed; undercounted digest) · **Phase found:**
+CodeRabbit review of PR #1, 2026-08-28 — verified against the code and
+confirmed real.
+**Repro:** `GameSession.publish()` classifies a whole tick chunk's events
+against the state at the *end* of that chunk. `SolvencySystem.collapse()`
+deletes an airline's routes (`state.routes[id] = nil`) and fleet
+(`state.aircraft[id] = nil`) within the same chunk. The flight events that
+airline emitted earlier the same day then resolve to no owner, and
+`isFeedEvent` treated a nil subject as world news — so a collapsing rival's
+`flightDelayed` events reached the player's filtered feed and rendered as
+if they were the player's own. The same nil-owner path undercounted
+`DailyDigestModel.flightsCompleted` after any route closure.
+**Root cause:** conflating "belongs to nobody" (a storm, the calendar) with
+"owner can no longer be resolved" (an entity deleted since). Both arrived
+as `subjectAirline(of:) == nil`.
+**Fix layer:** Core. `GameState.isEntityScoped(_:)` distinguishes events
+whose subject must be resolved from an aircraft, route, or flight; an
+entity-scoped event with an unresolvable owner is now excluded from the
+feed rather than promoted to world news. `dailyDigest` additionally reports
+`isComplete: false` when it saw flight events it could not attribute, so a
+truncated count is never presented as a whole day.
+**Not done:** storing the subject airline in the event payload, as the
+review suggested. `eventLog` is persisted inside `GameState`, so changing
+`SimEventKind` payloads would force save format v11 for a defect that a
+pure read-side fix resolves. Save format stays v10.
+**Tests:** `EventFeedTests.deletedEntityEventsAreNotTreatedAsWorldNews`,
+`collapsingRivalDoesNotLeakIntoThePlayerFeed`.
+**Status:** FIXED 2026-08-28.
+
 ---
 
 *(Historical note: bugs found and fixed test-first inside a phase are

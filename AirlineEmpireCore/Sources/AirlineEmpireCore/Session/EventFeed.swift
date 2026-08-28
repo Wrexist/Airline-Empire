@@ -63,12 +63,37 @@ extension GameState {
         }
     }
 
+    /// Whether this event's subject can only be known by resolving an entity
+    /// — an aircraft, route, or flight — rather than from the payload itself.
+    ///
+    /// The distinction matters because those entities can be *gone* by the
+    /// time an event is classified: an airline collapsing closes its routes
+    /// and liquidates its fleet within the same tick chunk, so the flight and
+    /// route events it emitted moments earlier no longer resolve. Such an
+    /// event has an *unknown* owner, which is not the same as belonging to
+    /// nobody (BUG-007).
+    public func isEntityScoped(_ event: SimEvent) -> Bool {
+        switch event.kind {
+        case .aircraftOrdered, .aircraftDelivered, .aircraftSold, .leaseReturned,
+             .maintenanceStarted, .maintenanceCompleted,
+             .routeOpened, .routeClosed, .aircraftAssigned, .aircraftUnassigned,
+             .flightDeparted, .flightDelayed, .flightCancelled, .flightArrived:
+            return true
+        default:
+            return false
+        }
+    }
+
     /// Whether an airline's operations feed should carry this event: its own
     /// business, world news, and the publicly-visible fate of a rival.
     /// A rival's delayed flight or closed statement is private; a rival
     /// entering administration or collapsing is industry news.
     public func isFeedEvent(_ event: SimEvent, for airline: AirlineID) -> Bool {
         guard let subject = subjectAirline(of: event) else {
+            // An entity event whose owner no longer resolves is unknown, not
+            // world news. Admitting it here would put a collapsing rival's
+            // flights into the player's feed — the very leak BUG-004 fixed.
+            if isEntityScoped(event) { return false }
             // World news, minus the pure-diagnostic kernel chatter.
             switch event.kind {
             case .wakeFired, .commandApplied: return false

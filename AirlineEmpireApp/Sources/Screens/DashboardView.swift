@@ -30,7 +30,7 @@ struct DashboardView: View {
                            let digest = snapshot.dailyDigest(
                                for: player, day: snapshot.clock.now.dayIndex - 1),
                            digest.hasContent {
-                            DigestCard(digest: digest)
+                            DigestCard(digest: digest, player: player)
                         }
                         statGrid(dashboard)
                         eventsFeed
@@ -119,6 +119,9 @@ struct DashboardView: View {
 /// `DailyDigestModel`; this view only formats.
 struct DigestCard: View {
     let digest: DailyDigestModel
+    /// Needed so the player's own administration or collapse is not rendered
+    /// as a rival's, losing its alarm styling.
+    let player: AirlineID
     @State private var expanded = false
 
     var body: some View {
@@ -166,7 +169,7 @@ struct DigestCard: View {
                 }
                 ForEach(Array(digest.notableEvents.prefix(3).enumerated()),
                         id: \.offset) { _, event in
-                    EventRow(event: event)
+                    EventRow(event: event, player: player)
                 }
             }
         }

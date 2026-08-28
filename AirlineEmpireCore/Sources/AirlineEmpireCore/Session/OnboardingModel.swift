@@ -97,18 +97,21 @@ extension GameState {
                 .compactMap { catalog.aircraftType($0) }
                 .filter { progression.era.allowedCategories.contains($0.category) }
             : ownedSpecs
-        guard let rangeKm = candidateSpecs.map(\.rangeKm).max(),
-              let runway = candidateSpecs.map(\.runwayRequirement).min()
-        else { return [] }
+        guard !candidateSpecs.isEmpty else { return [] }
 
         let home = player.homeAirport
         let date = currentDate
         var scored: [(FirstRouteSuggestion, Double)] = []
         for code in catalog.orderedAirportCodes where code != home {
-            guard catalog.routeEligibility(from: home, to: code,
-                                           aircraftRangeKm: rangeKm,
-                                           aircraftRunwayRequirement: runway).isEmpty,
-                  let distance = catalog.distanceKm(home, code)
+            // Per aircraft, never the best range paired with the least
+            // demanding runway: that chimera suggests routes no single
+            // aircraft can serve, and every assignment would then be rejected.
+            guard candidateSpecs.contains(where: { spec in
+                catalog.routeEligibility(
+                    from: home, to: code,
+                    aircraftRangeKm: spec.rangeKm,
+                    aircraftRunwayRequirement: spec.runwayRequirement).isEmpty
+            }), let distance = catalog.distanceKm(home, code)
             else { continue }
             let quality = DemandSystem.representativeStarterQuality(
                 tuning: catalog.tuning.demand)

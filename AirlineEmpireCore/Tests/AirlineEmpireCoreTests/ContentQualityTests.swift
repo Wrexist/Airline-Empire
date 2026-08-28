@@ -31,11 +31,20 @@ struct ContentQualityTests {
                 && a.maintenancePerFlightHour <= b.maintenancePerFlightHour
                 && a.deliveryLeadDays <= b.deliveryLeadDays
                 && a.turnaroundMinutes <= b.turnaroundMinutes
+            // Every dimension compared above must also be able to supply the
+            // strict improvement, or a type dominated solely on reliability,
+            // speed, lease, upkeep, delivery or turnaround slips past.
             let strictlyBetterSomewhere =
                 a.seats > b.seats || a.rangeKm > b.rangeKm
                 || a.comfortBaseline > b.comfortBaseline
+                || a.reliabilityBaseline > b.reliabilityBaseline
+                || a.cruiseSpeedKmh > b.cruiseSpeedKmh
                 || a.fuelBurnKgPerKm < b.fuelBurnKgPerKm
                 || a.listPrice < b.listPrice
+                || a.leaseMonthly < b.leaseMonthly
+                || a.maintenancePerFlightHour < b.maintenancePerFlightHour
+                || a.deliveryLeadDays < b.deliveryLeadDays
+                || a.turnaroundMinutes < b.turnaroundMinutes
             return benefitsAtLeastEqual && costsAtMostEqual && strictlyBetterSomewhere
         }
 

@@ -119,6 +119,78 @@ struct EventFeedTests {
         }
     }
 
+
+    /// An entity event whose route or aircraft was deleted before
+    /// classification has an *unknown* owner, not a world-wide one. Treating
+    /// the two alike leaked a collapsing rival's flights into the player's
+    /// feed (BUG-007), because `collapse()` removes the airline's routes and
+    /// fleet in the same chunk that produced those events.
+    @Test func deletedEntityEventsAreNotTreatedAsWorldNews() throws {
+        let (engine, player) = try AIFixtures.world(competitors: 2)
+        _ = engine.applyNow(BuyUsedAircraftCommand(buyer: player, type: "MR180",
+                                                   ageYears: 8))
+        engine.advance(ticks: Fixtures.ticksPerDay * 20)
+        let state = engine.state
+
+        // A flight event naming a route that no longer exists.
+        let ghostRoute = RouteID(raw: 999_999)
+        #expect(state.routes[ghostRoute] == nil)
+        let ghostFlight = SimEvent(at: state.clock.now, kind: .flightDelayed(
+            id: EntityID(raw: 1), route: ghostRoute, delayMinutes: 30))
+        #expect(state.subjectAirline(of: ghostFlight) == nil)
+        #expect(state.isEntityScoped(ghostFlight))
+        #expect(!state.isFeedEvent(ghostFlight, for: player),
+                "an unattributable flight must not reach the player's feed")
+
+        // Same for a sold/liquidated aircraft and a closed route.
+        let ghostAircraft = SimEvent(at: state.clock.now,
+                                     kind: .aircraftSold(id: EntityID(raw: 999_999),
+                                                         proceeds: Money.dollars(1)))
+        #expect(!state.isFeedEvent(ghostAircraft, for: player))
+        let ghostClosure = SimEvent(at: state.clock.now,
+                                    kind: .routeClosed(id: ghostRoute))
+        #expect(!state.isFeedEvent(ghostClosure, for: player))
+
+        // World news with no entity behind it still reaches everyone.
+        let storm = SimEvent(at: state.clock.now, kind: .worldEventStarted(
+            id: 7, kind: .storm(region: .europe)))
+        #expect(!state.isEntityScoped(storm))
+        #expect(state.isFeedEvent(storm, for: player))
+    }
+
+    /// A rival collapsing must not spill its final day of operations into the
+    /// player's feed — the end-to-end version of the case above.
+    @Test func collapsingRivalDoesNotLeakIntoThePlayerFeed() throws {
+        let catalog = try ContentCatalog.loadBundled()
+        let engine = SimulationEngine(state: Fixtures.newState(seed: 4242),
+                                      systems: GamePipeline.standard(),
+                                      catalog: catalog)
+        _ = engine.applyNow(FoundAirlineCommand(
+            airlineName: "Survivor", kind: .player, homeAirport: "STV",
+            startingCash: Money.dollars(150_000_000)))
+        let player = engine.state.airlines.values.first!.id
+        // A rival with barely any cash, flying an expensive lease: it fails.
+        _ = engine.applyNow(FoundAirlineCommand(
+            airlineName: "Doomed", kind: .ai, homeAirport: "LNW",
+            startingCash: Money.dollars(3_000_000)))
+        let rival = try #require(engine.state.airlines.values
+            .first { $0.name == "Doomed" }).id
+        _ = engine.applyNow(LeaseAircraftCommand(lessee: rival, type: "MR300",
+                                                 termMonths: 60))
+        engine.advance(ticks: Fixtures.ticksPerYear)
+
+        let state = engine.state
+        // Whatever survived in the ring, nothing entity-scoped that resolves
+        // to the rival — or to nobody — may be in the player's feed.
+        for event in state.eventLog.recent where state.isFeedEvent(event, for: player) {
+            let subject = state.subjectAirline(of: event)
+            if state.isEntityScoped(event) {
+                #expect(subject == player,
+                        "entity event \(event.kind) leaked with subject \(String(describing: subject))")
+            }
+        }
+    }
+
     @Test func queuedCommandRejectionReachesTheSubscriber() async throws {
         let catalog = try ContentCatalog.loadBundled()
         let session = GameSession(state: Fixtures.newState(seed: 4),

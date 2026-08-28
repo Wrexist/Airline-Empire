@@ -7,11 +7,12 @@
 /// so the save format is untouched (v10) — a digest is a *view* of what
 /// already happened, never a second copy of it.
 ///
-/// The ring is bounded (`Ledger.defaultRecentCapacity`), so a very large
-/// network can post more transactions in one day than it retains. That case
-/// is detected and reported through `isComplete` rather than quietly
-/// under-counting: a digest that lies about money is worse than one that
-/// admits it is partial.
+/// Both rings are bounded (`Ledger.defaultRecentCapacity`,
+/// `BoundedEventLog.defaultCapacity`), so a very large network can post more
+/// in one day than either retains, and an entity deleted mid-day can leave a
+/// flight event unattributable. Every such case is reported through
+/// `isComplete` rather than quietly under-counting: a digest that lies about
+/// money or flights is worse than one that admits it is partial.
 
 public struct DailyDigestModel: Equatable, Sendable {
     public let date: GameDate
@@ -74,16 +75,30 @@ extension GameState {
         let oldestRetained = ledger.recent.first?.at
         let isComplete = !ringFull || (oldestRetained.map { $0 < dayStart } ?? true)
 
+        // The event ring is bounded independently of the ledger's, so a day
+        // can be complete in money and truncated in news. Both must hold.
+        let eventRingFull = eventLog.recent.count >= eventLog.capacity
+        let oldestEvent = eventLog.recent.first?.at
+        let eventsComplete = !eventRingFull || (oldestEvent.map { $0 < dayStart } ?? true)
+
         var completed = 0
         var cancelled = 0
         var notable: [SimEvent] = []
+        // A flight event whose route was deleted during the day (the player
+        // closed it, or its airline collapsed) cannot be attributed, so it can
+        // neither be counted nor safely shown (BUG-007).
+        var unattributableFlights = false
         for event in eventLog.recent
         where event.at >= dayStart && event.at < dayEnd {
             switch event.kind {
             case .flightArrived:
-                if subjectAirline(of: event) == airline { completed += 1 }
+                let subject = subjectAirline(of: event)
+                if subject == airline { completed += 1 }
+                else if subject == nil { unattributableFlights = true }
             case .flightCancelled:
-                if subjectAirline(of: event) == airline { cancelled += 1 }
+                let subject = subjectAirline(of: event)
+                if subject == airline { cancelled += 1 }
+                else if subject == nil { unattributableFlights = true }
             // Individual departures and arrivals are the day's texture, not
             // its story; the story is what changed.
             case .flightDeparted, .flightDelayed, .dayStarted, .weekStarted,
@@ -105,6 +120,6 @@ extension GameState {
             flightsCompleted: completed,
             flightsCancelled: cancelled,
             notableEvents: notable,
-            isComplete: isComplete)
+            isComplete: isComplete && eventsComplete && !unattributableFlights)
     }
 }
