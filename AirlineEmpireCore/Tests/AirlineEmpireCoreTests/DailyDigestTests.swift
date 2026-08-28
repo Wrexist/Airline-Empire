@@ -169,4 +169,43 @@ struct DailyDigestTests {
             for: player, day: engine.state.clock.now.dayIndex - 1))
         #expect(!digest.isComplete, "a full ring must flag the day as partial")
     }
+    // MARK: - BUG-008: the first day has no yesterday
+
+    /// The crash TestFlight found in 1.0.0 (1), reproduced at the Core level.
+    ///
+    /// On the first day `clock.now.dayIndex` is 0, so a caller asking for
+    /// "yesterday" asks for day −1. That reached `GameCalendar.date(at:)`,
+    /// whose `day >= 0` precondition killed the process — on the first screen
+    /// after founding an airline, which is every new player's first action.
+    @Test("A day before the game began has no digest, and does not crash")
+    func digestBeforeEpochIsNil() throws {
+        let catalog = try ContentCatalog.loadBundled()
+        let engine = SimulationEngine(state: Fixtures.newState(seed: 808),
+                                      systems: GamePipeline.standard(),
+                                      catalog: catalog)
+        _ = engine.applyNow(FoundAirlineCommand(
+            airlineName: "Day Zero Air", kind: .player, homeAirport: "STV",
+            startingCash: Money.dollars(50_000_000)))
+        let player = engine.state.airlines.values.first!.id
+
+        #expect(engine.state.clock.now.dayIndex == 0)
+        #expect(engine.state.dailyDigest(for: player, day: -1) == nil)
+        #expect(engine.state.dailyDigest(for: player, day: -365) == nil)
+        // Today still works: the guard rejects days before the epoch, not the
+        // first day itself.
+        #expect(engine.state.dailyDigest(for: player, day: 0) != nil)
+    }
+
+    /// The shape the dashboard actually uses. `previousDayIndex` is the fix
+    /// at the call site: it makes "there is no yesterday" representable
+    /// instead of arithmetic that silently produces −1.
+    @Test("previousDayIndex is nil on day 0 and one less thereafter")
+    func previousDayIndexIsSafe() {
+        #expect(SimTime(rawMinutes: 0).previousDayIndex == nil)
+        #expect(SimTime(rawMinutes: 60).previousDayIndex == nil)
+        #expect(SimTime(rawMinutes: GameCalendar.minutesPerDay - 1).previousDayIndex == nil)
+        #expect(SimTime(rawMinutes: GameCalendar.minutesPerDay).previousDayIndex == 0)
+        #expect(SimTime(rawMinutes: 10 * GameCalendar.minutesPerDay + 5).previousDayIndex == 9)
+    }
+
 }

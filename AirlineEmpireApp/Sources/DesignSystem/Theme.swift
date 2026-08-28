@@ -23,6 +23,20 @@ enum AETheme {
     static let mapLand = Color(red: 0.13, green: 0.17, blue: 0.24)
     static let playerRoute = Color.cyan
     static let rivalRoute = Color.gray.opacity(0.55)
+
+    // MARK: - Dusk palette
+    //
+    // The onboarding and other "presentation" surfaces sit on a dusk sky
+    // rather than the system background: it is the app icon's own palette
+    // (docs/ASO.md §6), and it is what makes the first screen read as a
+    // product rather than a settings pane. Gameplay screens keep the system
+    // background — a dashboard is for reading numbers, not for atmosphere.
+    static let duskTop = Color(red: 0.04, green: 0.07, blue: 0.14)
+    static let duskBottom = Color(red: 0.10, green: 0.13, blue: 0.22)
+    /// The warm horizon in the icon, used as a low, wide glow.
+    static let ember = Color(red: 0.95, green: 0.66, blue: 0.23)
+    /// Hairline for glass edges where the OS does not draw its own.
+    static let glassEdge = Color.white.opacity(0.12)
 }
 
 /// Centralized formatting (docs/UI_ARCHITECTURE.md §2): views never invent

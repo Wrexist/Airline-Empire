@@ -46,10 +46,23 @@ extension GameState {
     /// The digest for a given game day (defaults to the day in progress).
     /// Pass `clock.now.dayIndex - 1` at a day boundary for "yesterday",
     /// which is what an evening digest actually summarizes.
+    ///
+    /// Returns nil for a day that cannot have a digest: an airline that does
+    /// not exist, or — BUG-008 — a day before the game began. The second case
+    /// is not hypothetical: on the very first day `clock.now.dayIndex` is 0,
+    /// so the caller asking for "yesterday" asks for day −1, which used to
+    /// reach `GameCalendar.date(at:)` and trip its `day >= 0` precondition.
+    /// That is a crash on the first screen after founding an airline, which is
+    /// how it shipped in 1.0.0 (1) and how TestFlight found it.
+    ///
+    /// Nil rather than an empty digest, deliberately: a day that never
+    /// happened is not a day where nothing happened, and every caller already
+    /// handles nil because an unknown airline returns it too.
     public func dailyDigest(for airline: AirlineID,
                             day: Int64? = nil) -> DailyDigestModel? {
         guard airlines[airline] != nil else { return nil }
         let dayIndex = day ?? clock.now.dayIndex
+        guard dayIndex >= 0 else { return nil }
         let dayStart = SimTime(rawMinutes: dayIndex * GameCalendar.minutesPerDay)
         let dayEnd = SimTime(rawMinutes: (dayIndex + 1) * GameCalendar.minutesPerDay)
 

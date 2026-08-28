@@ -26,9 +26,14 @@ struct DashboardView: View {
                         // The evening digest (docs/CORE_LOOP.md §3): yesterday
                         // closed, with its reasons. Rendered from the snapshot
                         // so fast-forward updates it instead of queueing modals.
+                        //
+                        // `yesterday` is nil on the first day, because there is
+                        // no yesterday to summarize. Core also refuses a
+                        // negative day now (BUG-008) — this states the intent
+                        // at the call site rather than leaning on that.
                         if let player = snapshot.playerAirline?.id,
-                           let digest = snapshot.dailyDigest(
-                               for: player, day: snapshot.clock.now.dayIndex - 1),
+                           let yesterday = snapshot.clock.now.previousDayIndex,
+                           let digest = snapshot.dailyDigest(for: player, day: yesterday),
                            digest.hasContent {
                             DigestCard(digest: digest, player: player)
                         }

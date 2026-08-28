@@ -178,3 +178,52 @@ pure read-side fix resolves. Save format stays v10.
 *(Historical note: bugs found and fixed test-first inside a phase are
 recorded in that phase's COMPLETED.md entry, not here — this register is
 for bugs that escape a phase.)*
+
+---
+
+## BUG-008 — First screen after founding an airline crashes the app
+**Severity:** P0 (crash on the primary path) · **Phase found:** TestFlight
+build 1.0.0 (1) on a physical iPhone 15 Pro, iOS 26.5.2, 2026-08-29 — the
+first time the app has ever run on a device.
+**Repro:** Launch, name an airline, tap "Found the airline". The Dashboard
+appears and the process dies immediately. 100% reproducible; it is the first
+thing every new player does.
+
+**Crash:**
+```
+EXC_BREAKPOINT (SIGTRAP) · Swift runtime failure: precondition failure
+GameCalendar.date(at:startYear:)   (GameCalendar.swift:28)
+GameState.dailyDigest(for:day:)    (DailyDigest.swift:114)
+DashboardView.body.getter          (DashboardView.swift:30)
+```
+
+**Root cause:** `DashboardView` asks for the evening digest of *yesterday* —
+`snapshot.clock.now.dayIndex - 1`. On the first day `dayIndex` is 0, so it
+asks for day −1. `dailyDigest` accepted that, built a `SimTime` before the
+epoch, and handed it to `GameCalendar.date(at:)`, whose
+`precondition(day >= 0, "Simulation time before epoch has no date")` is a
+trap in release builds.
+
+Two defects, one line apart in the stack, and both were fixed:
+
+1. **Core accepted a day that cannot exist.** `dailyDigest` already returns
+   nil for an unknown airline; a day before the game began is the same kind of
+   "no such thing" and now returns nil too. This is the fix that guarantees no
+   other caller can reach the precondition.
+2. **The view asked a question with no answer.** `SimTime.previousDayIndex`
+   now returns `Int64?`, so "there is no yesterday" is representable instead
+   of being arithmetic that silently produces −1.
+
+**Why the test suite missed it:** every digest test built a world that had
+already run for at least a day (`DailyDigestTests.flyingWorld` advances the
+clock before asserting anything), so day 0 — the only day a player is
+guaranteed to see — was the one day never exercised. The new tests cover it
+directly, and were verified the hard way: with the Core guard removed they
+crash with the same trap, and with it they pass.
+
+**Fix layer:** Core (`DailyDigest.swift`, `SimTime.swift`) and App
+(`DashboardView.swift`). Regression tests: `digestBeforeEpochIsNil`,
+`previousDayIndexIsSafe`. Full suite 257 tests green on Linux, Swift 6.0.3.
+**Status:** FIXED 2026-08-29, awaiting a device run of the next build to
+confirm on hardware.
+

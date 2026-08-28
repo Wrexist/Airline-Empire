@@ -19,6 +19,26 @@ Apple-layer work is prepared, never claimed.
 
 ## Session log
 
+**2026-08-29 (the app ran on a phone, and BUG-008).** The first TestFlight
+build reached a physical iPhone — and crashed on the first screen after
+founding an airline. `DashboardView` asked for *yesterday's* digest on day 0,
+which is day −1, which tripped `GameCalendar`'s before-epoch precondition. Two
+fixes, one layer each: Core refuses a day that cannot exist (nil, like it
+already does for an unknown airline), and `SimTime.previousDayIndex` makes
+"there is no yesterday" representable. The suite missed it because every
+digest test advanced the clock first, so day 0 — the only day a player is
+guaranteed to see — was the one day never exercised; the regression tests were
+verified by removing the guard and watching them crash. 257 tests green.
+
+Onboarding rebuilt in the same session: it was a `Form` that read like the
+Settings app, and it is now a dusk-lit screen with Liquid Glass
+(availability-gated to iOS 26, `.ultraThinMaterial` below), a decision-shaped
+hierarchy (name → where → how hard → fly), start cards carrying real signals
+from `airports.json` instead of one line of prose, and the found button pinned
+where it can always be reached. The app's status ladder is unchanged:
+**COMPILED · RUNS ON DEVICE**, and still not runtime-validated beyond the
+first screens.
+
 **2026-08-28 (first real archive, and Apple's first verdict).** Release run
 33216345773 signed and exported a real `.ipa` on a macOS runner — signing, the
 App Store Connect API key, the build-number resolver and the export options all
