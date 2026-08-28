@@ -31,11 +31,12 @@ repository's history — see stage 1.
 
 ---
 
-## Stage 1 — Find out whether the app compiles (30 minutes, free)
+## Stage 1 — Find out whether the app compiles ✅ done, 2026-08-28
 
-This is the highest-value step in the whole list, and it needs no Apple
-account, no Mac and no money. The app has never been compiled by Xcode; every
-Apple-layer claim in the project is qualified by that.
+**Already answered: it compiles.** CI run 33213797384 built the app with
+`xcodebuild` on a macOS runner — `** BUILD SUCCEEDED **`, Xcode 26.6, iOS 26.5
+simulator SDK, no source changes needed. Nothing to do here unless CI goes red
+later, in which case:
 
 **1.1** 🤖 Actions → **CI** → Run workflow → on `main`. A manual dispatch
 always runs the macOS job regardless of what changed.

@@ -208,6 +208,87 @@ The icon is also the single highest-leverage thing to A/B test once Product
 Page Optimisation is available — it is the only asset that appears in search
 results, in browse, and on the page.
 
+### A prompt you can paste into an image model
+
+Three concepts, because the right one is decided at thumbnail size and not
+before. Generate four variations of each, shrink them all to 60×60, and judge
+them there, beside the real icons in Games → Simulation. Detail that vanishes
+at that size was never doing any work.
+
+**Concept 1 — The Arc** (the flagship: a route is what this game is about)
+
+```
+A premium mobile game app icon for an airline management strategy game.
+
+SUBJECT: A single bold golden flight-path arc sweeping from lower-left to
+upper-right across the frame. The arc is a clean, thick, tapering ribbon —
+thin where it starts, widest at its apex. At the leading tip of the arc sits
+one small solid triangle, abstracted to a paper-plane silhouette, banking
+slightly upward. Two small filled circles mark the arc's origin and its
+destination. Below and behind the arc, the gentle curve of a planet's horizon
+crosses the lower third of the frame, rendered as one simple curved band with
+a soft glow along its edge — no continents, no countries, no map detail.
+
+COMPOSITION: Centered, symmetrical weight, generous margins. Exactly three
+elements: horizon curve, arc, aircraft mark. Nothing else. The arc occupies
+roughly 60% of the frame width. Flat vector geometry with crisp edges — every
+shape readable as a silhouette.
+
+STYLE: Modern flat vector illustration with subtle depth. Geometric and
+confident, in the spirit of premium simulation-game iconography — clean, not
+cartoonish, not photorealistic, not skeuomorphic, not 3D-rendered.
+
+COLOR: Deep midnight navy background (#0E2033) with a subtle vertical
+gradient to indigo (#1B3358). The arc and aircraft mark in warm gold
+(#F2A93B) with a soft amber glow. Horizon band edge in pale warm white
+(#FFE9C4). High contrast: the gold must read instantly against the navy at
+very small sizes.
+
+LIGHT: A faint warm glow radiating from the arc's apex, as if the route
+itself is lit. No lens flare, no heavy bloom.
+
+FORMAT: Perfect square, 1024x1024, fully opaque background extending to all
+four edges. No transparency, no drop shadow outside the canvas, no rounded
+corners, no border, no frame, no device mockup.
+
+CRITICAL: No text, no letters, no numbers, no logos, no wordmarks. No real
+airline liveries or manufacturer shapes. No detailed airliner. No clouds, no
+runways, no airport terminals, no clutter. The design must remain legible when
+scaled down to 60x60 pixels.
+```
+
+Negative prompt, for models that take one:
+
+```
+text, letters, numbers, watermark, logo, signature, rounded corners,
+transparency, alpha channel, drop shadow, border, frame, device mockup,
+photorealistic airplane, 3D render, cluttered, busy, gradient mesh, lens
+flare, clouds, map continents, realistic earth texture
+```
+
+**Concept 2 — The Tail.** *A single airline tail fin, flat geometric
+silhouette, filling the frame at a slight angle; one gold route-arc stripe
+sweeping across it as the livery mark; deep navy background.* Same COLOR,
+FORMAT and CRITICAL blocks. Reads as "airline" fastest, and is the most
+ownable as a brand mark.
+
+**Concept 3 — The Hub.** *Three gold arcs radiating from one glowing node in
+the lower-centre, spreading upward and outward like a route network; deep navy
+field.* Same blocks. Says *empire* and *network growth* rather than *a flight*.
+
+Why the prompt is shaped this way, in case it needs rewriting: the SUBJECT
+block names exactly three elements because anything more disappears at 60 pt;
+the FORMAT block spells out opacity and corners because Apple flattens alpha
+to black and applies its own mask; the CRITICAL block forbids text because
+image models garble letterforms, and a wordmark with a malformed letter is a
+brand you cannot use and cannot fix.
+
+Afterwards: flatten to no alpha, save as
+`AirlineEmpireApp/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png`,
+add its `"filename"` to that folder's `Contents.json`, and run
+`node scripts/asc/check-app-icon.mjs` — which checks the two things Apple
+rejects uploads over.
+
 ---
 
 ## 7 · The description, and the one field you can change any time

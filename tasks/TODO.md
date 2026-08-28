@@ -104,7 +104,8 @@ Everything not requiring them is done.
 - [x] Listing validated: no over-long field, no wasted keyword character, no
       third-party mark, no unresolvable URL
 - [x] Every path that can be exercised without an Apple account is exercised
-- [ ] The macOS `app` job has produced a green compile — **never run**
+- [x] The macOS `app` job has produced a green compile — CI run 33213797384,
+      2026-08-28, `** BUILD SUCCEEDED **` with no source changes
 - [ ] A build has been archived, signed and uploaded — **never run**
 - [ ] The listing has been pushed to App Store Connect — **never run**
 **Blocking a submission (none of it fixable from Linux):**

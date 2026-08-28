@@ -6,10 +6,13 @@ docs/UI_ARCHITECTURE.md).
 
 ## Status
 
-**Authored on Linux, NOT yet compiled** — SwiftUI requires macOS/Xcode
-(blocker B-002, docs/PROJECT_AUDIT.md).
+**COMPILED, not yet run.** On 2026-08-28 this target built under Xcode 26.6
+for the iOS 26.5 simulator SDK on a CI runner (`** BUILD SUCCEEDED **`, CI run
+33213797384) — the first Xcode build in the project's history, and it needed
+no source changes. It has still never been *run*: nothing has rendered, no
+gesture has been received, no autosave has fired on a real scene-phase change.
 
-Since 2026-08-28 the *compile* question no longer needs a Mac in the room:
+The compile question no longer needs a Mac in the room:
 `.github/workflows/ci.yml` runs `xcodegen generate` and `xcodebuild build` on
 a macOS runner for any commit touching this target or the core package. Push a
 branch and read the result. Everything else below still needs a device and a

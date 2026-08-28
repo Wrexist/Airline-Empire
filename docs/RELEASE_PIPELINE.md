@@ -45,9 +45,9 @@ to point at, and put the date and the run number in when you do.
 | Path | Status |
 |---|---|
 | `swift test` on Linux | **Proven** — 253 tests, 2026-08-27 (`APPLE_VALIDATION.md` §7) |
-| Release tooling selftest (30 tests) | **Proven** — run locally, 2026-08-28 |
+| Release tooling selftest (30 tests) | **Proven** — locally and in CI, 2026-08-28 (run 33213797384) |
 | Listing validation, bundle-id agreement, icon check | **Proven** — run against this checkout, 2026-08-28 (the icon check correctly reports the icon as missing) |
-| `xcodebuild` compile of the app | **Never run.** The app has never been built by Xcode. |
+| `xcodebuild` compile of the app | **PROVEN — 2026-08-28**, [CI run 33213797384](https://github.com/Wrexist/Airline-Empire/actions/runs/33213797384). `** BUILD SUCCEEDED **` on `macos-26` / Xcode 26.6 / iPhoneSimulator 26.5 SDK, universal arm64 + x86_64, `com.airlineempire.game`, in 53 seconds. The first Xcode build in this project's history. |
 | Archive, export, signing | **Never run.** No certificate, no team. |
 | Upload to App Store Connect | **Never run.** No app record. |
 | Any App Store Connect API call | **Never run** from this repository. The JWT construction is ported from a repository where it authenticated successfully; that is evidence, not proof. |
