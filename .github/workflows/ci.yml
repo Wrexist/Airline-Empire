@@ -155,6 +155,15 @@ jobs:
       - name: Bundle configuration
         run: node scripts/asc/check-bundle-config.mjs
 
+      # Does every AE type and ae modifier the app uses actually exist?
+      # `swiftc -parse` — the only compiler check a Linux session has — answers
+      # syntax and resolves no names, so an edit that deleted four declarations
+      # from Components.swift passed every local check and cost run
+      # 33220172265 a 10x-billed build to report 29 "cannot find X in scope".
+      # This asks that question on the cheap runner, in milliseconds.
+      - name: App symbols resolve
+        run: node scripts/check-app-symbols.mjs
+
   # ── 3 · Does the app compile? ──────────────────────────────────────────────
   app:
     name: iOS app (xcodebuild)
