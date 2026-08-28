@@ -19,6 +19,11 @@ Apple-layer work is prepared, never claimed.
 
 ## Session log
 
+**2026-08-28 (first full green CI).** All three jobs of run 33213797384
+passed: the core suite (253 tests, 8m), the release build with
+`-warnings-as-errors` (clean — the zero-warnings target is now machine-
+enforced), the release tooling's own 31 tests, and the macOS app compile.
+
 **2026-08-28 (the app compiled).** CI run 33213797384 built
 `AirlineEmpireApp` with `xcodebuild` on a `macos-26` runner: XcodeGen
 generated the project from `project.yml`, the local `AirlineEmpireCore`

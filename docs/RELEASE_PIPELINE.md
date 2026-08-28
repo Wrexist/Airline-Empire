@@ -44,7 +44,8 @@ to point at, and put the date and the run number in when you do.
 
 | Path | Status |
 |---|---|
-| `swift test` on Linux | **Proven** — 253 tests, 2026-08-27 (`APPLE_VALIDATION.md` §7) |
+| `swift test` on Linux | **Proven** — 253 tests locally 2026-08-27 (`APPLE_VALIDATION.md` §7), and in CI 2026-08-28 (run 33213797384: 8m 02s) |
+| Release release-build gate (`-warnings-as-errors`) | **Proven** — 2026-08-28, run 33213797384. The core builds in release with zero warnings, so "target: zero new warnings" is now enforced by a machine rather than remembered. |
 | Release tooling selftest (30 tests) | **Proven** — locally and in CI, 2026-08-28 (run 33213797384) |
 | Listing validation, bundle-id agreement, icon check | **Proven** — run against this checkout, 2026-08-28 (the icon check correctly reports the icon as missing) |
 | `xcodebuild` compile of the app | **PROVEN — 2026-08-28**, [CI run 33213797384](https://github.com/Wrexist/Airline-Empire/actions/runs/33213797384). `** BUILD SUCCEEDED **` on `macos-26` / Xcode 26.6 / iPhoneSimulator 26.5 SDK, universal arm64 + x86_64, `com.airlineempire.game`, in 53 seconds. The first Xcode build in this project's history. |
