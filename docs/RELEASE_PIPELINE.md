@@ -49,9 +49,9 @@ to point at, and put the date and the run number in when you do.
 | Release tooling selftest (30 tests) | **Proven** — locally and in CI, 2026-08-28 (run 33213797384) |
 | Listing validation, bundle-id agreement, icon check | **Proven** — run against this checkout, 2026-08-28 (the icon check correctly reports the icon as missing) |
 | `xcodebuild` compile of the app | **PROVEN — 2026-08-28**, [CI run 33213797384](https://github.com/Wrexist/Airline-Empire/actions/runs/33213797384). `** BUILD SUCCEEDED **` on `macos-26` / Xcode 26.6 / iPhoneSimulator 26.5 SDK, universal arm64 + x86_64, `com.airlineempire.game`, in 53 seconds. The first Xcode build in this project's history. |
-| Archive, export, signing | **Never run.** No certificate, no team. |
-| Upload to App Store Connect | **Never run.** No app record. |
-| Any App Store Connect API call | **Never run** from this repository. The JWT construction is ported from a repository where it authenticated successfully; that is evidence, not proof. |
+| Archive, export, signing | **PROVEN — 2026-08-28**, [run 33216345773](https://github.com/Wrexist/Airline-Empire/actions/runs/33216345773). Archive in 71s, export in 16s, a real signed `.ipa` and its dSYMs kept as artefacts. Signing, the API key, the export options and the whole macOS job work. |
+| Upload to App Store Connect | **Attempted, refused at validation** — same run. `xcrun altool --validate-app` reached Apple and came back with error 90474 (iPad multitasking orientations). That is the validation step doing its job: the bundle never left for the store. Fixed in `project.yml`, and the rule now runs on the 1x preflight (`check-bundle-config.mjs`). Still unproven: the upload itself and TestFlight processing. |
+| App Store Connect API calls | **PROVEN — 2026-08-28**, same run: `preflight.mjs` and `next-build-number.mjs` both authenticated and answered. The JWT, the client and the resolver work against the live API. |
 | Metadata push, screenshot upload | **Never run.** |
 | Pages deploy | **Never run.** |
 
@@ -118,6 +118,7 @@ for why Node in a Swift repository), and none of them ship in the app.
 | `selftest.mjs` | 30 tests over the JWT, the HTTP client, PNG inspection, the app icon and the listing validator | nothing |
 | `validate-metadata.mjs` | Character limits, keyword hygiene, trademarks, URLs, screenshot canvases, bundle-id agreement across three files | nothing |
 | `build-fill-in-sheet.mjs` | Generates `docs/APP_STORE_CONNECT_FILL_IN.md` from `store/`; `--check` fails CI when it is stale | nothing |
+| `check-bundle-config.mjs` | Apple's bundle rules read off `project.yml` — iPad orientations, export compliance, the icon set, the shared scheme — before anything compiles | nothing |
 | `check-app-icon.mjs` | Whether the icon exists, is 1024×1024 and has no alpha — the most common first-upload rejection, caught before the archive | nothing |
 | `preflight.mjs` | Secrets, authentication, app record, version state | the three ASC secrets |
 | `next-build-number.mjs` | The next CFBundleVersion, from Apple or from the clock | optional |
@@ -148,6 +149,7 @@ Two conventions run through all of them:
 | Upload rejected: SDK version | The runner's Xcode is older than Apple's current minimum | `runs-on: macos-26` in the workflow; Apple refuses the upload *after* the compile, which is why the runner is pinned |
 | Upload rejected: build number already used | Two runs produced the same CFBundleVersion | `next-build-number.mjs` prevents it when the app record exists; the `ios-release` concurrency group prevents the race |
 | Processing → INVALID | Usually a missing icon | `AirlineEmpireApp/Resources/README.md` |
+| Validation: error **90474**, orientations | An iPad build must support all four orientations for Slide Over and Split View | Fixed 2026-08-28; `check-bundle-config.mjs` now catches it on the 1x runner. If it returns, read that script's rule 1 |
 | Metadata push: "version is … and does not accept edits" | The version is in review or released | Create the next version, or push to the editable one |
 | `still contains REPLACE_ME` | The review contact or support email is unset | `store/config.json`, `site/support.html` |
 

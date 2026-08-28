@@ -32,7 +32,26 @@ targets:
         # INFOPLIST_KEY_* below require the Xcode-generated Info.plist.
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        # Orientations are declared PER DEVICE, and the iPad list must contain
+        # all four. Apple rejected upload run 33216345773 with error 90474:
+        #
+        #   Invalid bundle. The "…Portrait,…LandscapeLeft,…LandscapeRight"
+        #   orientations were provided … but you need to include all of the
+        #   "…Portrait,…PortraitUpsideDown,…LandscapeLeft,…LandscapeRight"
+        #   orientations to support iPad multitasking.
+        #
+        # It is a consequence of TARGETED_DEVICE_FAMILY "1,2" below: shipping an
+        # iPad build opts into Slide Over and Split View, and an iPad app that
+        # refuses one orientation cannot be tiled beside another app. The one
+        # alternative — UIRequiresFullScreen: YES — buys the old list back by
+        # opting out of multitasking entirely, which is worse for a game whose
+        # own pitch is that it fits into five minutes beside something else.
+        #
+        # The iPhone list deliberately stays three-wide: upside-down portrait on
+        # a phone is a mis-rotation, not a feature, and no iPhone since the X
+        # supports it anyway.
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         TARGETED_DEVICE_FAMILY: "1,2"
         INFOPLIST_KEY_CFBundleDisplayName: Airline Empire
 

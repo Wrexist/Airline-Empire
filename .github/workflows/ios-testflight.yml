@@ -155,6 +155,14 @@ jobs:
       - name: Validate store listing
         run: node scripts/asc/validate-metadata.mjs --allow-placeholders
 
+      # Apple's bundle rules, read off project.yml before the 10x runner
+      # starts. This is where run #1's rejection (error 90474, iPad
+      # multitasking orientations) would have surfaced, eleven minutes and one
+      # archive earlier. Always fatal: a bundle Apple will refuse is not worth
+      # compiling, upload or no upload.
+      - name: Bundle configuration
+        run: node scripts/asc/check-bundle-config.mjs
+
       # The most likely reason a first upload is rejected, and the rejection
       # arrives last — after the archive, the export and the transfer, as an
       # email about a missing marketing icon. Milliseconds here, on the 1x

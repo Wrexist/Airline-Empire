@@ -103,6 +103,13 @@ jobs:
       - name: Fill-in sheet is current
         run: node scripts/asc/build-fill-in-sheet.mjs --check
 
+      # The bundle rules Apple enforces at upload, read off project.yml. Run
+      # 33216345773 archived, signed and exported before Apple refused it over
+      # an Info.plist key that had been committed for hours; this is that
+      # rejection moved onto the 1x runner, where it costs seconds.
+      - name: Bundle configuration
+        run: node scripts/asc/check-bundle-config.mjs
+
   # ── 3 · Does the app compile? ──────────────────────────────────────────────
   app:
     name: iOS app (xcodebuild)

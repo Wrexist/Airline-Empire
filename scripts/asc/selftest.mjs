@@ -19,7 +19,7 @@
 // Run: node scripts/asc/selftest.mjs
 
 import crypto from 'node:crypto'
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -27,6 +27,7 @@ import { Buffer } from 'node:buffer'
 
 import { decodePrivateKey, credentialsFromEnv, mintToken, AppStoreConnect, AscError } from './lib/asc.mjs'
 import { loadStore, validateStore, checkBundleIdConsistency, checkAppIcon, inspectPng, LIMITS } from './lib/metadata.mjs'
+import { checkBundleConfig } from './check-bundle-config.mjs'
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
@@ -243,6 +244,78 @@ test('a bundle id disagreement is caught rather than assumed away', () => {
   assert(errors.length === 2, `expected both files to disagree, got ${errors.length}`)
   assertIncludes(errors, 'project.yml', 'the project manifest was not checked')
   assertIncludes(errors, 'ios-testflight.yml', 'the release workflow was not checked')
+})
+
+/** A manifest with everything right, so each mutation below is the only fault. */
+function manifest(overrides = {}) {
+  const settings = {
+    TARGETED_DEVICE_FAMILY: '"1,2"',
+    INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone:
+      'UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight',
+    INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad:
+      'UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight',
+    INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: 'NO',
+    ASSETCATALOG_COMPILER_APPICON_NAME: 'AppIcon',
+    ...overrides,
+  }
+  const lines = Object.entries(settings)
+    .filter(([, value]) => value !== undefined)
+    .map(([key, value]) => `        ${key}: ${value}`)
+  return `targets:\n  AirlineEmpire:\n    settings:\n      base:\n${lines.join('\n')}\nschemes:\n  AirlineEmpire:\n    build:\n      targets:\n        AirlineEmpire: all\n`
+}
+
+test('the committed manifest produces a bundle Apple accepts', () => {
+  const problems = checkBundleConfig(readFileSync(join(REPO_ROOT, 'AirlineEmpireApp', 'project.yml'), 'utf8'))
+  assert(problems.length === 0, `project.yml would be rejected:\n    ${problems.join('\n    ')}`)
+})
+
+test('the fixture is clean, so the mutations below prove something', () => {
+  assert(checkBundleConfig(manifest()).length === 0, `fixture is not clean: ${checkBundleConfig(manifest()).join(', ')}`)
+})
+
+test('an iPad build missing upside-down portrait is caught (Apple error 90474)', () => {
+  // The exact shape of run 33216345773's rejection: one generic orientation
+  // list of three, on a build that ships for iPad.
+  const problems = checkBundleConfig(
+    manifest({
+      INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: undefined,
+      INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: undefined,
+      INFOPLIST_KEY_UISupportedInterfaceOrientations:
+        'UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight',
+    }),
+  )
+  assertIncludes(problems, 'PortraitUpsideDown', 'the missing iPad orientation was not caught')
+  assertIncludes(problems, '90474', 'the error code that names this rejection was not cited')
+})
+
+test('an iPhone-only build is not held to the iPad orientation rule', () => {
+  const problems = checkBundleConfig(
+    manifest({
+      TARGETED_DEVICE_FAMILY: '"1"',
+      INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: undefined,
+    }),
+  )
+  assert(problems.length === 0, `an iPhone-only build was flagged: ${problems.join(', ')}`)
+})
+
+test('opting out of iPad multitasking is surfaced rather than silently allowed', () => {
+  const problems = checkBundleConfig(manifest({ INFOPLIST_KEY_UIRequiresFullScreen: 'YES' }))
+  assertIncludes(problems, 'Slide Over', 'UIRequiresFullScreen passed without comment')
+})
+
+test('a missing export-compliance declaration is caught', () => {
+  const problems = checkBundleConfig(manifest({ INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: undefined }))
+  assertIncludes(problems, 'export-compliance', 'the missing encryption declaration passed')
+})
+
+test('an icon setting that names a set which does not exist is caught', () => {
+  const problems = checkBundleConfig(manifest({ ASSETCATALOG_COMPILER_APPICON_NAME: 'NotAnIconSet' }))
+  assertIncludes(problems, 'NotAnIconSet', 'a dangling app-icon reference passed')
+})
+
+test('a manifest with no scheme is caught before xcodebuild fails on a runner', () => {
+  const problems = checkBundleConfig(manifest().replace(/schemes:[\s\S]*$/, ''))
+  assertIncludes(problems, 'no schemes', 'a manifest without a shared scheme passed')
 })
 
 test('the committed app icon is submittable', () => {
