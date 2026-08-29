@@ -73,3 +73,35 @@ print(String(format: "mapModel build: %.2f ms/call over %d calls (sink %d)",
 let model = state.mapModel(catalog: catalog)
 let segments = model.routes.reduce(0) { $0 + $1.arc.count }
 print("route arc waypoints: \(segments); flights: \(model.flights.count); opportunities: \(model.opportunities.count)")
+
+// ── Audio direction ────────────────────────────────────────────────────────
+// The director runs on every snapshot refresh — four times a second, forever —
+// so its cost sits in the same budget as the map model. Two cases matter and
+// they are very different: an airline still earning its first-time moments,
+// which walks every route and every live flight; and one that has had them
+// all, which is where a campaign spends the other twenty hours and where the
+// `allSeen` early-out should make the whole check free.
+let quiet = AudioDirector.Milestones(hasRoute: true, hasDeparted: true,
+                                     hasArrived: true, hasEarned: true)
+let busyBatch = (1...24).map {
+    SimEvent(at: state.clock.now,
+             kind: .flightDeparted(id: FlightID(raw: Int64($0)),
+                                   route: RouteID(raw: 1)))
+}
+
+measure("director, first-times outstanding (empty batch)") {
+    var director = AudioDirector(milestones: AudioDirector.Milestones())
+    return director.cues(for: [], state: state, speed: .x16, now: 0).count &+ 1
+}
+measure("director, first-times done (empty batch)") {
+    var director = AudioDirector(milestones: quiet)
+    return director.cues(for: [], state: state, speed: .x16, now: 0).count &+ 1
+}
+measure("director, 24 departures at 16x") {
+    var director = AudioDirector(milestones: quiet)
+    return director.cues(for: busyBatch, state: state, speed: .x16, now: 0).count &+ 1
+}
+measure("director, 24 departures at 1x") {
+    var director = AudioDirector(milestones: quiet)
+    return director.cues(for: busyBatch, state: state, speed: .x1, now: 0).count &+ 1
+}

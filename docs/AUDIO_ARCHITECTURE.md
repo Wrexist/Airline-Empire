@@ -9,7 +9,7 @@ for the assets themselves and the briefs for replacing them.
 **Status, stated the way this project always states it:** the policy is
 **tested** (19 tests, Linux). The app layer is **built** (macOS CI,
 `xcodebuild`, Xcode 26.6). None of it has been **runtime validated**, and
-nobody has **heard** a single sound. See §12.
+nobody has **heard** a single sound. See §13.
 
 ---
 
@@ -350,7 +350,43 @@ a matter of handing over that section.
 
 ---
 
-## 12. What is and is not proven
+## 12. Performance
+
+Measured by `ae-map-bench` (release, Linux, server CPU) on the same late-game
+world the map is benchmarked against — 8 airlines, 200 routes, 200 aircraft,
+403 live flights:
+
+| Call | Cost |
+| --- | --- |
+| `AudioDirector.cues`, first-times outstanding, empty batch | 0.02 ms |
+| `AudioDirector.cues`, first-times done, empty batch | below 0.01 ms |
+| `AudioDirector.cues`, 24 departures at 16x | below 0.01 ms |
+| `AudioDirector.cues`, 24 departures at 1x | below 0.01 ms |
+| *(for scale)* `mapModel`, same world | 1.72 ms |
+
+The director runs on the same schedule as the map model — four times a second
+— and costs roughly a hundredth of it. The first row is the one that needed
+the `allSeen` early-out: without it, every refresh walks every route and every
+live flight forever, to answer a question that can only change during the
+opening hour.
+
+On the app side, the costs that matter are structural rather than measured
+here, because nothing here can run them:
+
+- **Playing a cue allocates nothing.** All 54 buffers are decoded at launch;
+  a play is one `scheduleBuffer` on a pre-attached node.
+- **No player is ever constructed at runtime.** Eight voices, created once.
+- **Category trim is baked at load**, so no per-play gain arithmetic.
+- **Muting idles the graph** rather than leaving a render thread running.
+- **Backgrounding releases the audio route** and stops ambience.
+
+Bundle cost: 54 files, ~5.1 MB of uncompressed PCM. Deliberately not
+compressed — decode cost at launch is the thing being avoided, and 5 MB is
+small against an app that ships a world.
+
+---
+
+## 13. What is and is not proven
 
 | Claim | Status |
 | --- | --- |

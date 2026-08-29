@@ -34,7 +34,7 @@ This environment has no speaker and cannot run an iOS simulator. What is
 verified is measurable: correct format, non-silent, click-free at both edges,
 inside the mix ceiling, and following a deliberate loudness hierarchy. What is
 *not* verified is whether any of it sounds good — see `docs/AUDIO_ARCHITECTURE.md`
-§12 and task **AE-026**.
+§13 and task **AE-026**.
 
 Treat them as a real, shippable first voice for the game and as **the brief for
 their own replacement**. §4 below is written so that commissioning a
