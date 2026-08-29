@@ -415,3 +415,29 @@ setting, which is uniform across every sound at any instant so re-levelling a
 sounding node is harmless. A play now costs one `scheduleBuffer` and nothing
 else, which also serves §28.
 **Status:** FIXED 2026-08-29 (not runtime validated — see TD-006).
+
+---
+
+## BUG-017 — The audio graph was wired to guess its own format, and would have crashed
+**Severity:** P0 had it shipped (a crash on the first sound of every session) ·
+**Phase found:** MASTER PROMPT 3 §29 bug hunt, 2026-08-29, in code written the
+same day.
+**Repro (of the first implementation):** launch the app and trigger any cue.
+`AudioEngine.prepare()` connected the eight player nodes with `format: nil`
+and only *then* decoded the buffers. With a nil format the engine infers one
+from the destination, which resolves to the hardware's — stereo. Every asset
+in this game is mono. `AVAudioPlayerNode.scheduleBuffer` with a buffer whose
+format does not match the node's output connection raises an Objective-C
+exception, and Swift cannot catch that: it is a crash, not a failure.
+**Root cause:** ordering. The graph was built before there was anything to
+measure, so the only format available to build it with was a guess. Nothing in
+a compile can see this — the code is perfectly well-typed — and no Linux test
+can reach it, which is exactly the class of defect that survives to a device.
+**Fix layer:** App. Buffers are decoded first, the voices are wired with the
+real format of a real decoded buffer, and `play` additionally refuses a buffer
+whose format does not match the node it would go to — turning any future
+mismatch into silence rather than a crash. `scripts/audio/check-assets.py`
+already enforces that all 52 assets share one format, which is what makes
+"any buffer's format" a safe choice.
+**Status:** FIXED 2026-08-29 (authored; the crash it prevents has never been
+observed, because nothing has run — see TD-006).

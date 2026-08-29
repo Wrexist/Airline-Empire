@@ -70,6 +70,32 @@ final class AudioEngine {
         guard !isRunning else { return }
         configureSession()
 
+        // Buffers first, deliberately. A player node's output connection has
+        // a format, and `scheduleBuffer` with a buffer that does not match it
+        // raises an Objective-C exception — which Swift cannot catch, so it is
+        // a crash rather than a failure. Connecting with `format: nil` lets
+        // the engine guess, and it guesses the hardware's format, which is
+        // stereo. Every asset here is mono. So the voices are wired with the
+        // real format of a real decoded buffer, and there is no guessing.
+        //
+        // `scripts/audio/check-assets.py` enforces that all 52 share one
+        // format, which is what makes "any buffer's format" a safe choice.
+        for cue in AudioCue.allCases {
+            if let buffer = loadBuffer(cue) {
+                buffers[cue] = buffer
+            } else {
+                unavailable.insert(cue)
+            }
+        }
+        guard let voiceFormat = buffers.first(where: { !$0.key.isLoop })?
+            .value.format else {
+            // No effect assets loaded at all. The graph would have nothing to
+            // carry, and building it would only invite the format mismatch
+            // above.
+            isRunning = false
+            return
+        }
+
         engine.attach(effectsMixer)
         engine.attach(ambienceMixer)
         engine.connect(effectsMixer, to: engine.mainMixerNode, format: nil)
@@ -78,16 +104,8 @@ final class AudioEngine {
         for _ in 0..<Self.voiceCount {
             let node = AVAudioPlayerNode()
             engine.attach(node)
-            engine.connect(node, to: effectsMixer, format: nil)
+            engine.connect(node, to: effectsMixer, format: voiceFormat)
             voices.append(node)
-        }
-
-        for cue in AudioCue.allCases {
-            if let buffer = loadBuffer(cue) {
-                buffers[cue] = buffer
-            } else {
-                unavailable.insert(cue)
-            }
         }
 
         do {
@@ -178,11 +196,13 @@ final class AudioEngine {
     /// busy moment overlaps rather than cutting itself off. The round robin
     /// spreads the load so no single node accumulates a long queue.
     func play(_ cue: AudioCue, gain: Float) {
-        guard isRunning, !cue.isLoop, let buffer = buffers[cue] else { return }
+        guard isRunning, !cue.isLoop, let buffer = buffers[cue],
+              let node = voices.first,
+              buffer.format == node.outputFormat(forBus: 0) else { return }
         effectsMixer.outputVolume = min(1, max(0, gain))
-        let node = voices[nextVoice]
+        let voice = voices[nextVoice]
         nextVoice = (nextVoice + 1) % voices.count
-        node.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)
+        voice.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)
     }
 
     // MARK: - Ambience

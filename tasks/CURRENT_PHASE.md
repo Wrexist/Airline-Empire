@@ -56,7 +56,13 @@ every card, row and pill in the app was visually inert under the finger. One
 design-system `AEPressStyle` now gives all of them a small scale and dim,
 Reduce-Motion aware. That is most of why the interface felt weightless.
 
-**Three bugs found by the audit rather than by playing:** the haptics setting
+**Four bugs found by reading rather than by playing** — one of which would
+have been a crash on the first sound of every session: the audio graph wired
+its player nodes with `format: nil` before decoding anything, so the engine
+inferred the hardware's stereo format for mono buffers, and
+`scheduleBuffer` raises an uncatchable Objective-C exception on a mismatch
+(BUG-017). Nothing in a compile can see that, and no Linux test can reach it.
+The other three: the haptics setting
 only worked on two of seven screens (BUG-014); the celebration banner was
 about to fire a second haptic on top of the director's for every era,
 milestone and mission (BUG-015); and per-play node volume would have ducked a
