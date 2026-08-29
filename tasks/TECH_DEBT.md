@@ -149,3 +149,40 @@ count and era, all of which Core already publishes, but none of it is written.
 **Resolution path:** commission the six tracks against §5, then add the
 crossfading selector to `Feedback` and a `Music` toggle to Settings. Not
 before: a switch controlling nothing is a dead control.
+
+---
+
+## TD-009 — The music beds are drones, not a score
+**Severity:** P3 (a deliberate ceiling, recorded so it is not mistaken for an
+attempt that fell short).
+**Introduced:** AE-AUDIO-01, 2026-08-29.
+**Description:** four sustained pads ship — menu, planning, operating, crisis.
+Each is two or three voices from the game's pitch set slowly detuning against
+each other over a low noise floor. There is no melody, no rhythm, no chord
+change and no development. That was chosen rather than attempted: a pad can be
+made tolerable for an hour by construction, and a tune either develops (and
+competes with the strategy) or repeats (and an hour of route planning becomes
+an hour of the same eight bars). What ships is therefore the *floor* of what
+music can be here, not an approximation of a score.
+**Resolution path:** commission four tracks against `docs/AUDIO_ASSET_MANIFEST.md`
+§5, which also lists two optional additions the state machine can already
+carry. The states, crossfades, ducking and settings are built — adding a track
+is dropping in a file with the right name.
+
+---
+
+## TD-010 — The soundscape's response curves are guesses
+**Severity:** P2 (correct in structure, unvalidated in value).
+**Introduced:** AE-AUDIO-01, 2026-08-29.
+**Description:** `AmbienceDirector` is tested for its *properties* — that
+growth moves movement and not level, that pause thins activity, that 16x is
+not busier than 4x, that no combination exceeds full. Those hold. What is not
+established is whether the specific numbers are right: 0.22/0.45/0.62 for the
+three zoom levels, saturation at 24 airborne aircraft, ×0.15 for pause, ×0.75
+for solvency danger. They were chosen to satisfy the properties and to sound
+plausible on paper. Nobody has heard any of them, and the honest expectation is
+that several will be wrong by a factor that only becomes obvious with a
+speaker.
+**Resolution path:** task AE-026. The numbers are all constants in one function
+and are meant to be tuned there; the tests assert relationships rather than
+values precisely so that tuning does not break them.

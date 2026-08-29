@@ -197,6 +197,19 @@ needs re-voicing rather than fixing.
   expects it to fail.
 - Instruments: no player-node churn, no growth in audio memory over a long
   session, no CPU cost while muted.
+
+**Added by AE-AUDIO-01** — the continuous layer, none of which has been heard:
+- Every music transition heard at least once: menu → planning → operating →
+  crisis and back. The crossfade must sound like a crossfade, not a cut and
+  not a dip (BUG-018 was fixed blind; this is where it is confirmed).
+- The four beds judged for an hour each. TD-009 expects them to be the first
+  thing a composer replaces.
+- The ambience response curves tuned against a real speaker (TD-010): the
+  three zoom levels, saturation at 24 airborne, the pause thinning and the
+  solvency recession are all plausible-on-paper numbers.
+- Growth actually reads as *richer and not louder* — the property the whole
+  design rests on, and the one only ears can confirm.
+- Mute everything, then unmute: the mix the player built comes back.
 **Tests:** manual listening + Instruments evidence recorded in `docs/`.
 **Status:** BLOCKED on B-002.
 
