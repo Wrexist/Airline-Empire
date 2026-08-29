@@ -216,17 +216,20 @@ struct MapSelectionPanel: View {
 
     var body: some View {
         Group {
+            // `.some(...)` spelled out: this switches over an *optional*
+            // `MapHit`, and being explicit about the layer costs one word and
+            // removes a question.
             switch selection {
-            case .airport(let code):
+            case .some(.airport(let code)):
                 if let airport = model.airports.first(where: { $0.code == code }) {
                     MapAirportCard(airport: airport, model: model, snapshot: snapshot,
                                    dismiss: dismiss, openRoute: openRoute)
                 }
-            case .route(let id):
+            case .some(.route(let id)):
                 if let route = model.routes.first(where: { $0.id == id }) {
                     MapRouteCard(route: route, snapshot: snapshot, dismiss: dismiss)
                 }
-            case .aircraft(let id):
+            case .some(.aircraft(let id)):
                 if let flight = model.flights.first(where: { $0.id == id }) {
                     MapFlightCard(flight: flight, model: model, snapshot: snapshot,
                                   dismiss: dismiss)
@@ -246,6 +249,13 @@ struct MapIdlePanel: View {
     let model: MapModel
     let overlay: MapOverlay
     let openRoute: (FirstRouteSuggestion) -> Void
+
+    /// The city name for a code, from the model's own airports. The
+    /// opportunity carries codes; the route sheet shows a city, and an empty
+    /// string there would be a blank where a place name belongs.
+    private func city(_ code: AirportCode) -> String {
+        model.airports.first { $0.code == code }?.city ?? code.raw
+    }
 
     var body: some View {
         if model.routes.filter(\.isPlayer).isEmpty {
@@ -290,7 +300,8 @@ struct MapIdlePanel: View {
                 Button {
                     openRoute(FirstRouteSuggestion(
                         origin: market.origin, destination: market.destination,
-                        destinationCity: "", distanceKm: market.distanceKm,
+                        destinationCity: city(market.destination),
+                        distanceKm: market.distanceKm,
                         expectedDailyPassengers: market.expectedDailyPassengers,
                         referenceFare: market.referenceFare))
                 } label: {

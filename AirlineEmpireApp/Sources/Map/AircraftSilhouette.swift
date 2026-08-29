@@ -38,12 +38,16 @@ enum AircraftSilhouette {
         case narrowbody
         case widebody
 
+        /// Spelled out rather than written with leading dots: a `switch`
+        /// *expression* whose branches are implicit members needs a contextual
+        /// type to resolve them, and this toolchain has already refused that
+        /// once in this project (`MapModel.tier`, same shape, same session).
         static func of(_ category: AircraftCategory) -> Planform {
             switch category {
-            case .turboprop: .turboprop
-            case .regionalJet: .regionalJet
-            case .narrowbody, .largeNarrowbody: .narrowbody
-            case .widebody, .largeWidebody: .widebody
+            case .turboprop: Planform.turboprop
+            case .regionalJet: Planform.regionalJet
+            case .narrowbody, .largeNarrowbody: Planform.narrowbody
+            case .widebody, .largeWidebody: Planform.widebody
             }
         }
 

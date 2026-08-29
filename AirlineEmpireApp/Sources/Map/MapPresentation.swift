@@ -126,13 +126,32 @@ struct InterpolatedFlight {
 /// rather than drawing and because Core is where it can be tested. These
 /// forward, so the renderer reads in screen-space terms.
 enum MapGeodesy {
-    static func unwrap(_ points: [MapPoint]) -> [CGPoint] {
-        MapMath.unwrap(points).map { CGPoint(x: $0.x, y: $0.y) }
+    /// Stays in `MapPoint` rather than converting to `CGPoint`: an unwrapped
+    /// arc is still normalised map space — it just may run past 0…1 — and
+    /// moving it into screen-space types early only invites mixing `CGFloat`
+    /// with the `Double` offsets it has to be added to.
+    static func unwrap(_ points: [MapPoint]) -> [MapPoint] {
+        MapMath.unwrap(points)
     }
 
-    static func worldOffsets(for points: [CGPoint]) -> [Double] {
-        MapMath.worldOffsets(for: points.map { MapPoint(x: $0.x, y: $0.y) })
+    static func worldOffsets(for points: [MapPoint]) -> [Double] {
+        MapMath.worldOffsets(for: points)
     }
+}
+
+// MARK: - Opening a route
+
+/// A route the player is about to open, identified so it can drive a sheet.
+///
+/// `FirstRouteSuggestion` lives in Core and conforming it to `Identifiable`
+/// from the app would be a retroactive conformance — a warning, and CI builds
+/// with warnings as errors. Lives here rather than in the map screen because
+/// the airport browser presents the same sheet; it moved with the map files
+/// once and vanished with them, which is how the whole module failed to
+/// compile.
+struct RouteDraft: Identifiable {
+    let id = UUID()
+    let suggestion: FirstRouteSuggestion
 }
 
 // MARK: - Level of detail
@@ -150,9 +169,9 @@ struct MapDetailPolicy {
     /// their airline stays visible. That is the promise the map makes.
     var minimumTier: MapModel.AirportTier {
         switch level {
-        case .world: .major
-        case .regional: .regional
-        case .local: .small
+        case .world: MapModel.AirportTier.major
+        case .regional: MapModel.AirportTier.regional
+        case .local: MapModel.AirportTier.small
         }
     }
 
@@ -287,7 +306,10 @@ enum MapLabelLayout {
 // MARK: - Hit testing
 
 /// What the player just tapped.
-enum MapHit: Equatable {
+/// Hashable, not merely Equatable: `aeAnimation(value:)` takes `some Hashable`
+/// (it erases to `AnyHashable`), and the selection panel animates on the
+/// selection. Same lesson `Celebration` taught this project earlier today.
+enum MapHit: Hashable {
     case airport(AirportCode)
     case route(RouteID)
     case aircraft(FlightID)

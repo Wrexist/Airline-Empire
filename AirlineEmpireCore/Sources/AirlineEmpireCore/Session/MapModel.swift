@@ -41,7 +41,7 @@ public struct MapModel: Equatable, Sendable {
 
     /// What a route looks like it is doing. Never colour alone in the
     /// renderer — this drives weight and pattern too.
-    public enum RouteHealth: Int, Equatable, Sendable, CaseIterable {
+    public enum RouteHealth: Int, Equatable, Sendable, Comparable, CaseIterable {
         /// No aircraft assigned: paying fees, flying nothing.
         case grounded = 0
         /// An airport on it is shut, or its completion rate has collapsed.
@@ -51,6 +51,14 @@ public struct MapModel: Equatable, Sendable {
         case healthy
         /// Full and profitable.
         case strong
+
+        /// The ladder is ordered on purpose — worst first — so "at least this
+        /// bad" is expressible. Callers ask `health <= .weak` for "needs
+        /// attention"; without the ordering each of them would spell out the
+        /// same set of cases and one of them would eventually forget one.
+        public static func < (lhs: Self, rhs: Self) -> Bool {
+            lhs.rawValue < rhs.rawValue
+        }
     }
 
     public struct MapAirport: Equatable, Sendable {

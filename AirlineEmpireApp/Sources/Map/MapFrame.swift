@@ -151,8 +151,8 @@ struct MapFrame {
         for opportunity in model.opportunities {
             let unwrapped = MapGeodesy.unwrap([opportunity.from, opportunity.to])
             guard let a = unwrapped.first, let b = unwrapped.last else { continue }
-            let from = projector.project(MapPoint(x: a.x, y: a.y))
-            let to = projector.project(MapPoint(x: b.x, y: b.y))
+            let from = projector.project(a)
+            let to = projector.project(b)
             guard projector.isVisible(from, margin: 120)
                     || projector.isVisible(to, margin: 120) else { continue }
             var path = Path()
@@ -454,11 +454,12 @@ struct MapFrame {
     // MARK: - Labels
 
     private func drawLabels(_ context: inout GraphicsContext) {
-        let selectedCode: AirportCode? = if case .airport(let code) = selection {
-            code
-        } else {
-            nil
-        }
+        // A statement rather than an `if case` expression: pattern-matching
+        // conditions in expression position are the kind of thing that either
+        // compiles or teaches you something, and this file has no business
+        // finding out.
+        var selectedCode: AirportCode?
+        if case .airport(let code) = selection { selectedCode = code }
         let labels = MapLabelLayout.place(
             geometry.airports, level: policy.level, selected: selectedCode,
             limit: policy.level == .world ? 14 : 28)
