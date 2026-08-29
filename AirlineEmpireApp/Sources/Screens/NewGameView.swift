@@ -193,7 +193,7 @@ struct NewGameView: View {
                 .foregroundStyle(.white.opacity(0.55))
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .sensoryFeedback(.selection, trigger: livery)
+        .aeFeedback(.uiSelect, on: livery)
     }
 
     // MARK: - 2 · Home airport
@@ -220,7 +220,7 @@ struct NewGameView: View {
                 anywhereCardBody
             }
         }
-        .sensoryFeedback(.selection, trigger: selectedStart.id)
+        .aeFeedback(.uiSelect, on: selectedStart.id)
         .sheet(isPresented: $showingAllAirports) {
             HomeAirportPicker(catalog: catalog) { code in
                 withAnimation(.snappy(duration: 0.22)) { customHome = code }
@@ -329,7 +329,7 @@ struct NewGameView: View {
                     .accessibilityLabel("Loading scenarios")
             }
         }
-        .sensoryFeedback(.selection, trigger: scenario)
+        .aeFeedback(.uiSelect, on: scenario)
     }
 
     private func difficultyPill(code: ScenarioCode, spec: ScenarioSpec) -> some View {

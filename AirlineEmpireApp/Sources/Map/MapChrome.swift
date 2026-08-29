@@ -162,7 +162,7 @@ struct MapOverlayPicker: View {
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .sensoryFeedback(.selection, trigger: selection)
+        .aeFeedback(.uiSelect, on: selection)
     }
 }
 

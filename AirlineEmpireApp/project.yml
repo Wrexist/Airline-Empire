@@ -25,6 +25,14 @@ targets:
         buildPhase: resources
       - path: Resources/Assets.xcassets
         buildPhase: resources
+      # The sound palette. Declared as a plain source path (not a folder
+      # reference) so XcodeGen makes a group and the .wav files land flat in
+      # the bundle — which is what `Bundle.main.url(forResource:withExtension:)`
+      # in AudioEngine expects. A folder reference would put them in a
+      # subdirectory and every lookup would return nil, silently
+      # (docs/AUDIO_ARCHITECTURE.md §10).
+      - path: Resources/Audio
+        buildPhase: resources
     dependencies:
       - package: AirlineEmpireCore
     settings:

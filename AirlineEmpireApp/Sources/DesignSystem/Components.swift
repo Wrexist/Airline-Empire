@@ -347,9 +347,7 @@ struct SpeedControl: View {
         .padding(3)
         .aeGlass(in: Capsule(style: .continuous))
         .aeAnimation(AEMotion.selection, value: controller.speed)
-        .sensoryFeedback(.selection, trigger: controller.speed) { _, _ in
-            controller.preferences.haptics
-        }
+        .aeFeedback(.uiSelect, on: controller.speed)
     }
 
     private func label(for speed: SimSpeed) -> String {

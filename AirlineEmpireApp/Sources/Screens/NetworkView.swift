@@ -68,7 +68,7 @@ struct NetworkView: View {
         .padding(.horizontal, AETheme.spacingM)
         .padding(.bottom, AETheme.spacingS)
         .background(.bar)
-        .sensoryFeedback(.selection, trigger: section)
+        .aeFeedback(.uiSelect, on: section)
     }
 }
 

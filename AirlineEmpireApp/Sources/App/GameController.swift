@@ -32,7 +32,20 @@ final class GameController {
     /// network, nothing ever marked growth (UIUX_FORENSIC_AUDIT UI-014).
     private(set) var celebration: Celebration?
 
-    var preferences = Preferences()
+    var preferences: Preferences
+
+    /// Sound and haptics. Owned here rather than by the scene because the
+    /// three moments audio cares about — a game beginning, a game ending, and
+    /// a tick publishing events — are all moments only this object sees
+    /// (docs/AUDIO_ARCHITECTURE.md §3).
+    let feedback: Feedback
+
+    init() {
+        let preferences = Preferences()
+        self.preferences = preferences
+        self.feedback = Feedback(preferences: preferences)
+    }
+
 
     private var session: GameSession?
     private var saveManager: SaveManager?
@@ -51,6 +64,10 @@ final class GameController {
     private var lastSolvencyStage: SolvencyModel.Stage = .healthy
     /// Monotonic id so a repeated celebration still re-triggers its animation.
     @ObservationIgnored private var celebrationCounter: Int64 = 0
+    /// Events published since the last snapshot refresh, awaiting the audio
+    /// director. Bounded: a very long stall must not grow this without limit,
+    /// and the director would thin the batch to a handful anyway.
+    @ObservationIgnored private var pendingAudioEvents: [SimEvent] = []
 
     var hasGame: Bool { session != nil }
 
@@ -303,6 +320,11 @@ final class GameController {
         autoPauseReason = nil
         celebration = nil
         lastSolvencyStage = .healthy
+        pendingAudioEvents = []
+        // The director goes with the game. Without this the next airline
+        // inherits the last one's history and never hears its own first route
+        // (tasks/BUGS.md BUG-013).
+        feedback.endSession()
         cachedTick = -1
         cachedMap = nil
         cachedRouteCards = nil
@@ -380,21 +402,38 @@ final class GameController {
     func submit(_ command: any Command) -> CommandRejection? {
         guard let session else { return nil }
         if let rejection = precheck(command) {
-            lastRejection = rejection
+            reject(rejection)
             return rejection
         }
         Task {
             let result = await session.submit(command)
             if case .rejected(let rejection) = result {
-                self.lastRejection = rejection
+                self.reject(rejection)
             }
             await self.refresh()
         }
         return nil
     }
 
+    /// Every refusal, from whichever of the three paths raised it — the
+    /// pre-check, the immediate result, or the queued-command stream — makes
+    /// the same sound. A command that succeeds makes none here: its own
+    /// domain event will voice it a moment later, and playing a confirmation
+    /// as well would say the same thing twice
+    /// (docs/AUDIO_ARCHITECTURE.md §4).
+    private func reject(_ rejection: CommandRejection) {
+        lastRejection = rejection
+        feedback.play(.uiError)
+    }
+
     func clearRejection() {
         lastRejection = nil
+    }
+
+    /// Called by the settings screen after a toggle. Turning sound off should
+    /// silence the sound currently playing, not merely the next one.
+    func audioSettingsChanged() {
+        feedback.settingsChanged()
     }
 
     func dismissCelebration() {
@@ -442,6 +481,15 @@ final class GameController {
         eventTask?.cancel()
         rejectionTask?.cancel()
         recentEvents = []
+        // Anything the previous game left queued is not this game's news.
+        // `loadGame` can replace a session without passing through
+        // `quitToMenu`, so the reset belongs here as well as there.
+        pendingAudioEvents = []
+        // Seeds the audio director from the state as loaded. A save that has
+        // already flown carries that fact in its route statistics, so the
+        // first-time moments are established as *past* rather than replayed
+        // at somebody who has been playing for a season (BUG-013).
+        feedback.beginSession(state: await session.snapshot)
         // Player feed only: rivals' private books are not our news (BUG-004).
         let events = await session.events(playerFeedOnly: true)
         eventTask = Task { [weak self] in
@@ -452,6 +500,12 @@ final class GameController {
                     self.recentEvents.removeFirst(self.recentEvents.count - 200)
                 }
                 self.noteCelebration(event)
+                // Queued rather than played. Audio is decided per *batch* so
+                // the director can see that eleven flights departed together
+                // and say so once; playing from inside this loop would be one
+                // sound per event, which is the spam the policy exists to
+                // prevent (docs/AUDIO_ARCHITECTURE.md §5).
+                self.pendingAudioEvents.append(event)
             }
         }
         // Commands queued while running are validated at the next tick;
@@ -460,7 +514,7 @@ final class GameController {
         rejectionTask = Task { [weak self] in
             for await rejection in rejections {
                 guard let self else { return }
-                self.lastRejection = rejection
+                self.reject(rejection)
             }
         }
     }
@@ -475,6 +529,17 @@ final class GameController {
         snapshot = state
         speed = await session.speed
         checkAutoPause(state)
+        publishAudio(state)
+    }
+
+    /// Hands the batch to the director together with the state that produced
+    /// it. Drained unconditionally — the director is asked on every refresh
+    /// even with no events, because the once-per-campaign moments are read
+    /// from the world rather than from the feed.
+    private func publishAudio(_ state: GameState) {
+        let batch = pendingAudioEvents
+        pendingAudioEvents.removeAll(keepingCapacity: true)
+        feedback.handle(events: batch, state: state, speed: speed)
     }
 
     /// Fast-forward must never skip the one decision that ends the game
@@ -506,6 +571,10 @@ final class Preferences {
         static let autoPause = "ae.autoPauseOnDanger"
         static let haptics = "ae.haptics"
         static let confirmDestructive = "ae.confirmDestructive"
+        static let sound = "ae.sound"
+        static let ambience = "ae.ambience"
+        static let soundVolume = "ae.soundVolume"
+        static let ambienceVolume = "ae.ambienceVolume"
     }
 
     private let defaults: UserDefaults
@@ -519,15 +588,31 @@ final class Preferences {
             Key.autoPause: true,
             Key.haptics: true,
             Key.confirmDestructive: true,
+            // Sound on, ambience off. A bed of air is the setting most
+            // likely to be unwanted on a commute and the one nobody thinks
+            // to look for, so it is opt-in; effects are the game's voice and
+            // are opt-out (docs/AUDIO_ARCHITECTURE.md §7).
+            Key.sound: true,
+            Key.ambience: false,
+            Key.soundVolume: 0.8,
+            Key.ambienceVolume: 0.5,
         ])
         storedAutoPause = defaults.bool(forKey: Key.autoPause)
         storedHaptics = defaults.bool(forKey: Key.haptics)
         storedConfirmDestructive = defaults.bool(forKey: Key.confirmDestructive)
+        storedSound = defaults.bool(forKey: Key.sound)
+        storedAmbience = defaults.bool(forKey: Key.ambience)
+        storedSoundVolume = defaults.double(forKey: Key.soundVolume)
+        storedAmbienceVolume = defaults.double(forKey: Key.ambienceVolume)
     }
 
     private var storedAutoPause: Bool
     private var storedHaptics: Bool
     private var storedConfirmDestructive: Bool
+    private var storedSound: Bool
+    private var storedAmbience: Bool
+    private var storedSoundVolume: Double
+    private var storedAmbienceVolume: Double
 
     var autoPauseOnDanger: Bool {
         get { storedAutoPause }
@@ -544,5 +629,33 @@ final class Preferences {
     var confirmDestructive: Bool {
         get { storedConfirmDestructive }
         set { storedConfirmDestructive = newValue; defaults.set(newValue, forKey: Key.confirmDestructive) }
+    }
+
+    /// Sound effects: the game's whole audible vocabulary except ambience.
+    var sound: Bool {
+        get { storedSound }
+        set { storedSound = newValue; defaults.set(newValue, forKey: Key.sound) }
+    }
+
+    /// The looping bed. Off by default — see the registration above.
+    var ambience: Bool {
+        get { storedAmbience }
+        set { storedAmbience = newValue; defaults.set(newValue, forKey: Key.ambience) }
+    }
+
+    var soundVolume: Double {
+        get { storedSoundVolume }
+        set {
+            storedSoundVolume = min(1, max(0, newValue))
+            defaults.set(storedSoundVolume, forKey: Key.soundVolume)
+        }
+    }
+
+    var ambienceVolume: Double {
+        get { storedAmbienceVolume }
+        set {
+            storedAmbienceVolume = min(1, max(0, newValue))
+            defaults.set(storedAmbienceVolume, forKey: Key.ambienceVolume)
+        }
     }
 }

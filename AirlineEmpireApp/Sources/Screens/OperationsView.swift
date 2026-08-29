@@ -781,8 +781,46 @@ struct SettingsView: View {
                 Text("Selling an aircraft, returning a lease and closing a route ask first.")
                     .font(.caption)
                     .foregroundStyle(AETheme.mutedText)
-                Toggle("Haptics", isOn: $preferences.haptics)
             }
+
+            Section("Sound and feel") {
+                Toggle("Sound effects", isOn: $preferences.sound)
+                if preferences.sound {
+                    LabeledContent("Volume") {
+                        Slider(value: $preferences.soundVolume, in: 0...1)
+                            .frame(maxWidth: 160)
+                            .accessibilityLabel("Sound effects volume")
+                            .accessibilityValue(Format.percent(preferences.soundVolume))
+                    }
+                }
+                Toggle("Ambience", isOn: $preferences.ambience)
+                if preferences.ambience {
+                    LabeledContent("Ambience volume") {
+                        Slider(value: $preferences.ambienceVolume, in: 0...1)
+                            .frame(maxWidth: 160)
+                            .accessibilityLabel("Ambience volume")
+                            .accessibilityValue(Format.percent(preferences.ambienceVolume))
+                    }
+                }
+                Text("A quiet bed of air under the world. Off by default — the game is designed to be complete without it.")
+                    .font(.caption)
+                    .foregroundStyle(AETheme.mutedText)
+                Toggle("Haptics", isOn: $preferences.haptics)
+                Text("Nothing the simulation does on its own schedule vibrates the phone. Only your own actions, and the few things you must not miss.")
+                    .font(.caption)
+                    .foregroundStyle(AETheme.mutedText)
+                // Shown only when something is actually wrong. A missing sound
+                // is otherwise indistinguishable from a working one, so the
+                // build gets somewhere to say so.
+                if !controller.feedback.missingAssets.isEmpty {
+                    Text("\(controller.feedback.missingAssets.count) sounds are missing from this build and will play silently.")
+                        .font(.caption)
+                        .foregroundStyle(AETheme.caution)
+                }
+            }
+            .onChange(of: preferences.sound) { _, _ in controller.audioSettingsChanged() }
+            .onChange(of: preferences.ambience) { _, _ in controller.audioSettingsChanged() }
+            .onChange(of: preferences.ambienceVolume) { _, _ in controller.audioSettingsChanged() }
 
             Section("Your airline") {
                 NavigationLink("Reputation and service") { ReputationDetailView() }

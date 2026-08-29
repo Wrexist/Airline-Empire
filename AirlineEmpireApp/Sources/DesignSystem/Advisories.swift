@@ -248,9 +248,12 @@ struct CelebrationOverlay: View {
         .transition(.move(edge: .top).combined(with: .opacity))
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isStaticText)
-        .sensoryFeedback(.success, trigger: celebration.id) { _, _ in
-            controller.preferences.haptics
-        }
+        // No feedback here on purpose. Every event that raises a celebration
+        // — an era, a milestone, an achievement, a finished programme, a
+        // completed mission — already carries its own cue and its own haptic
+        // through the audio director. Adding a second success buzz to the
+        // banner would fire two haptics for one moment, which is the
+        // "haptics triggering repeatedly" failure in MASTER PROMPT 3 §29.
         .task(id: celebration.id) {
             // Long enough to read, short enough never to be in the way.
             try? await Task.sleep(for: .seconds(4))
