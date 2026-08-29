@@ -118,10 +118,8 @@ private extension OperationsView {
             }
             .padding(AETheme.spacingM)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4,
-                                           style: .continuous))
-            .aeGlass(in: RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4,
-                                          style: .continuous),
+            .contentShape(AETheme.cardShape)
+            .aeGlass(in: AETheme.cardShape,
                      interactive: true)
         }
         .buttonStyle(.plain)
@@ -313,7 +311,7 @@ struct CompetitorsView: View {
                         AEBadge(text: "collapsed", color: AETheme.negative,
                                 icon: "xmark.octagon")
                     } else if let profile = rival.aiProfile {
-                        AEBadge(text: Vocab.archetype(profile.archetype), color: .purple)
+                        AEBadge(text: Vocab.archetype(profile.archetype), color: AETheme.fare)
                     }
                 }
                 if rival.status != .collapsed {

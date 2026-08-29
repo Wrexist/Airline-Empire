@@ -106,7 +106,7 @@ struct DashboardView: View {
                         // Rolling digits read as time passing; a hard swap
                         // reads as a glitch.
                         .contentTransition(.numericText())
-                        .animation(AEMotion.content, value: snapshot.currentDate.day)
+                        .aeAnimation(AEMotion.content, value: snapshot.currentDate.day)
                     Text("\(Format.clock(snapshot.currentDate)) · \(Vocab.season(snapshot.currentDate.season)) · \(Vocab.era(dashboard.era)) era")
                         .font(.caption)
                         .foregroundStyle(AETheme.mutedText)
@@ -196,7 +196,7 @@ struct DashboardView: View {
                     }
                 }
             }
-            .animation(AEMotion.content, value: controller.recentEvents.count)
+            .aeAnimation(AEMotion.content, value: controller.recentEvents.count)
         }
     }
 }

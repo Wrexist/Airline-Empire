@@ -34,7 +34,7 @@ struct FleetList: View {
                     }
                     .listStyle(.plain)
                     .aeScreenBackground()
-                    .animation(AEMotion.content, value: cards.count)
+                    .aeAnimation(AEMotion.content, value: cards.count)
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) { sortMenu }
                     }
@@ -153,9 +153,9 @@ struct FleetRow: View {
                         color: card.condition > 0.8 ? AETheme.positive : AETheme.caution)
                 switch card.ownershipDescription {
                 case .owned(let book):
-                    AEBadge(text: "owned · \(Format.money(book))", color: .indigo)
+                    AEBadge(text: "owned · \(Format.money(book))", color: AETheme.owned)
                 case .leased(let rate, _):
-                    AEBadge(text: "lease \(Format.money(rate))/mo", color: .teal)
+                    AEBadge(text: "lease \(Format.money(rate))/mo", color: AETheme.leased)
                 }
                 if card.assignedRoute == nil, card.status == .active {
                     AEBadge(text: "idle", color: AETheme.caution, icon: "pause")
@@ -432,6 +432,23 @@ struct AircraftShopSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var usedAge = 8
     @State private var leaseTermMonths = 60
+    @State private var sort: Sort = .seats
+    @State private var hidesLocked = false
+
+    /// Fourteen types with seven attributes each, and no way to order them,
+    /// was a catalogue rather than a market (UIUX_FORENSIC_AUDIT UI-017).
+    enum Sort: String, CaseIterable, Hashable {
+        case seats, range, efficiency, price
+
+        var title: String {
+            switch self {
+            case .seats: "Seats"
+            case .range: "Range"
+            case .efficiency: "Fuel per seat"
+            case .price: "Price"
+            }
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -443,6 +460,15 @@ struct AircraftShopSheet: View {
                         Section {
                             wallet(snapshot: snapshot, player: player.id)
                         }
+                        Section("Show") {
+                            Picker("Sort", selection: $sort) {
+                                ForEach(Sort.allCases, id: \.self) { option in
+                                    Text(option.title).tag(option)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                            Toggle("Hide what this era cannot buy", isOn: $hidesLocked)
+                        }
                         Section("Terms") {
                             Stepper("Used aircraft age: \(usedAge) \(usedAge == 1 ? "year" : "years")",
                                     value: $usedAge,
@@ -452,12 +478,11 @@ struct AircraftShopSheet: View {
                                     value: $leaseTermMonths, in: 12...120, step: 12)
                                 .frame(minHeight: 44)
                         }
-                        ForEach(catalog.orderedAircraftTypeCodes, id: \.self) { code in
-                            if let spec = catalog.aircraftTypes[code] {
-                                Section {
-                                    shopRow(spec, catalog: catalog, snapshot: snapshot,
-                                            player: player.id)
-                                }
+                        ForEach(types(catalog: catalog, snapshot: snapshot),
+                                id: \.code) { spec in
+                            Section {
+                                shopRow(spec, catalog: catalog, snapshot: snapshot,
+                                        player: player.id)
                             }
                         }
                     }
@@ -465,6 +490,7 @@ struct AircraftShopSheet: View {
                     LoadingState(message: "Loading the market")
                 }
             }
+            .aeScreenBackground()
             .navigationTitle("Aircraft market")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -472,6 +498,31 @@ struct AircraftShopSheet: View {
                     Button("Done") { dismiss() }
                 }
             }
+        }
+    }
+
+    /// The market, ordered the way the player asked and filtered to what they
+    /// can actually act on.
+    private func types(catalog: ContentCatalog,
+                       snapshot: GameState) -> [AircraftTypeSpec] {
+        let allowed = snapshot.progression.era.allowedCategories
+        let specs = catalog.orderedAircraftTypeCodes
+            .compactMap { catalog.aircraftTypes[$0] }
+            .filter { !hidesLocked || allowed.contains($0.category) }
+        switch sort {
+        case .seats:
+            return specs.sorted { $0.seats > $1.seats }
+        case .range:
+            return specs.sorted { $0.rangeKm > $1.rangeKm }
+        case .efficiency:
+            // Burn per seat is the number that actually decides a fleet, and
+            // it was nowhere in the app.
+            return specs.sorted {
+                $0.fuelBurnKgPerKm / Double($0.seats)
+                    < $1.fuelBurnKgPerKm / Double($1.seats)
+            }
+        case .price:
+            return specs.sorted { $0.listPrice.cents < $1.listPrice.cents }
         }
     }
 
@@ -520,7 +571,7 @@ struct AircraftShopSheet: View {
                 AEChip(icon: "person.2.fill", text: "\(spec.seats) seats")
                 AEChip(icon: "arrow.left.and.right", text: "\(spec.rangeKm) km")
                 AEChip(icon: "fuelpump.fill",
-                       text: "\(String(format: "%.1f", spec.fuelBurnKgPerKm)) kg/km")
+                       text: "\(String(format: "%.3f", spec.fuelBurnKgPerKm / Double(max(1, spec.seats)))) kg/km per seat")
             }
 
             if locked {

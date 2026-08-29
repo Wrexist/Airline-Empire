@@ -41,7 +41,7 @@ struct RoutesList: View {
                     .listStyle(.plain)
                     .aeScreenBackground()
                     .searchable(text: $search, prompt: "Airport code or city")
-                    .animation(AEMotion.content, value: cards.count)
+                    .aeAnimation(AEMotion.content, value: cards.count)
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) { sortMenu }
                     }
@@ -119,7 +119,7 @@ struct RouteRow: View {
                 AEBadge(text: "\(card.dailyRoundTrips)×/day", color: AETheme.accent)
                 AEBadge(text: "load \(Format.percent(card.loadFactor))",
                         color: card.loadFactor > 0.7 ? AETheme.positive : AETheme.caution)
-                AEBadge(text: Format.money(card.ticketPrice), color: .purple)
+                AEBadge(text: Format.money(card.ticketPrice), color: AETheme.fare)
                 if card.assignedAircraftCount == 0 {
                     AEBadge(text: "no aircraft", color: AETheme.negative,
                             icon: "exclamationmark.triangle")
@@ -318,7 +318,7 @@ struct RouteDetailView: View {
                         .font(.title3.weight(.semibold))
                         .monospacedDigit()
                         .contentTransition(.numericText())
-                        .animation(AEMotion.content, value: card.ticketPrice.cents)
+                        .aeAnimation(AEMotion.content, value: card.ticketPrice.cents)
                     Spacer()
                     AEBadge(text: farePositionLabel(card),
                             color: farePositionColor(card))
@@ -656,6 +656,7 @@ struct OpenRouteSheet: View {
             }
         }
         .searchable(text: $search, prompt: "Airport code or city")
+        .aeScreenBackground()
     }
 
     private func originPicker(catalog: ContentCatalog, snapshot: GameState,

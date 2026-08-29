@@ -18,7 +18,7 @@ struct AECard<Content: View>: View {
     @ViewBuilder var content: Content
 
     private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4, style: .continuous)
+        AETheme.cardShape
     }
 
     var body: some View {
@@ -71,8 +71,7 @@ extension View {
                                       bottom: 5, trailing: AETheme.spacingM))
             .listRowBackground(
                 Color.clear
-                    .aeGlass(in: RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4,
-                                                  style: .continuous))
+                    .aeGlass(in: AETheme.cardShape)
                     .padding(.vertical, 4)
             )
     }
@@ -131,14 +130,13 @@ struct StatTile: View {
         }
         .padding(AETheme.spacingM)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .aeGlass(in: RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4,
-                                      style: .continuous))
+        .aeGlass(in: AETheme.cardShape)
         // The simulation changes these while you watch. Rolling the digits
         // instead of swapping them is the difference between a dashboard that
         // is alive and one that flickers — and at 16× speed it is the only
         // way the numbers stay readable at all.
         .contentTransition(.numericText())
-        .animation(AEMotion.content, value: value)
+        .aeAnimation(AEMotion.content, value: value)
     }
 }
 
@@ -170,7 +168,7 @@ struct MoneyText: View {
         Text(Format.money(money))
             .monospacedDigit()
             .contentTransition(.numericText())
-            .animation(AEMotion.content, value: money.cents)
+            .aeAnimation(AEMotion.content, value: money.cents)
             .foregroundStyle(money.isNegative ? AETheme.negative
                              : money == .zero ? .primary : AETheme.positive)
     }
@@ -287,8 +285,7 @@ struct EmptyStateView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, AETheme.spacingL)
         .padding(.horizontal, AETheme.spacingM)
-        .aeGlass(in: RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4,
-                                      style: .continuous))
+        .aeGlass(in: AETheme.cardShape)
         .accessibilityElement(children: .combine)
     }
 }
@@ -349,7 +346,7 @@ struct SpeedControl: View {
         }
         .padding(3)
         .aeGlass(in: Capsule(style: .continuous))
-        .animation(AEMotion.selection, value: controller.speed)
+        .aeAnimation(AEMotion.selection, value: controller.speed)
         .sensoryFeedback(.selection, trigger: controller.speed) { _, _ in
             controller.preferences.haptics
         }
@@ -414,7 +411,7 @@ struct TimeMenuButton: View {
                         .font(.caption.weight(.medium))
                         .monospacedDigit()
                         .contentTransition(.numericText())
-                        .animation(AEMotion.content, value: date.day)
+                        .aeAnimation(AEMotion.content, value: date.day)
                 }
             }
             .frame(minHeight: 44)
@@ -554,7 +551,7 @@ struct AEChoiceCard<Content: View>: View {
     @ViewBuilder var content: Content
 
     private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4, style: .continuous)
+        AETheme.cardShape
     }
 
     var body: some View {

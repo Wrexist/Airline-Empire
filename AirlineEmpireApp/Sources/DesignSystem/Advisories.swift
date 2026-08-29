@@ -242,8 +242,7 @@ struct CelebrationOverlay: View {
             Spacer(minLength: 0)
         }
         .padding(AETheme.spacingM)
-        .aeGlass(in: RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4,
-                                      style: .continuous),
+        .aeGlass(in: AETheme.cardShape,
                  tint: AETheme.ember.opacity(0.2))
         .padding(.horizontal, AETheme.spacingM)
         .transition(.move(edge: .top).combined(with: .opacity))

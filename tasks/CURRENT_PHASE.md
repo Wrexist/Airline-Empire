@@ -19,6 +19,45 @@ Apple-layer work is prepared, never claimed.
 
 ## Session log
 
+**2026-08-29 (the UI/UX forensic audit, and acting on it).** A complete
+product-and-UX pass over the whole repository produced
+`docs/UIUX_FORENSIC_AUDIT.md` — the baseline every future UI decision is
+measured against — and then the audit's own action list was worked.
+
+The framing finding: an exceptional simulation wearing a thin client. The
+Core/app seam holds everywhere (views format, Core calculates), so the
+client's problems were entirely presentation and interaction, never truth —
+and almost every fix was *showing the player something the snapshot already
+held*. This month's route economics, the insolvency countdown, era gate
+thresholds, capability costs and completion dates, aircraft reliability and
+hours, today's demand pool: all computed, none displayed.
+
+Five P0s, closed: six tabs overflowed into the system *More* list, burying
+Finance and the World hub including the only path to saving (BUG-009); a new
+route reported ¤0 for its whole first month because only the closed month was
+published; the first flight departing and landing rendered nothing at all,
+which is the promised payoff of the first five minutes; the one rejection
+alert was mounted beneath the sheets that raise nearly every rejection and
+absent from the menu entirely, so a failed save load reached nobody; and the
+failure journey — `SolvencySystem`'s daily countdown to administration — had
+no interface whatsoever.
+
+Nine P1s and most of the P2/P3 list followed. Two more real defects surfaced
+while fixing: a capability Start button whose only possible outcome was a
+refusal (BUG-010), and a finance chart that drew its zero line in a different
+place for every bar (BUG-011).
+
+Core gained four additive, pure files — `EraGate`, `MissionMath`,
+`AdvisoryModels`, and this-month route economics — each built so the screen
+and the simulation ask the *same* arithmetic rather than two copies of it.
+**276 tests green** (up from 257), release build clean under
+`-warnings-as-errors`, save format still v10.
+
+The app's status ladder is unchanged and stated the same way it always has
+been: **COMPILED · NOT APPLE-RUNTIME-VALIDATED**. Every UI change in this
+session is parse-checked and no more. The `[device]` predictions in the audit
+— the tab overflow first among them — still need a screen.
+
 **2026-08-29 (the app ran on a phone, and BUG-008).** The first TestFlight
 build reached a physical iPhone — and crashed on the first screen after
 founding an airline. `DashboardView` asked for *yesterday's* digest on day 0,

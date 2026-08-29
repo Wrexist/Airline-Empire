@@ -32,6 +32,13 @@ targets:
         # INFOPLIST_KEY_* below require the Xcode-generated Info.plist.
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        # The generated launch screen is a blank white field, which is a poor
+        # use of the first second of every session and a hard flash into a
+        # dark first screen (docs/UIUX_FORENSIC_AUDIT.md UI-033). Painting it
+        # the onboarding's own dusk means the app appears to fade up out of
+        # its own sky. The colour lives in the asset catalogue so it is one
+        # value, not two.
+        INFOPLIST_KEY_UILaunchScreen_BackgroundColor: LaunchBackground
         # Orientations are declared PER DEVICE, and the iPad list must contain
         # all four. Apple rejected upload run 33216345773 with error 90474:
         #

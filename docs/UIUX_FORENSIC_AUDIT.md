@@ -9,6 +9,13 @@
 > `f771257`. Scope: the entire repository — 12 app sources (2,968 lines of
 > SwiftUI), 49 Core sources (7,573 lines), 5 content packs, 30 docs, 8 task
 > files, the release tooling and the store listing.
+>
+> **Remediation status (2026-08-29, same session):** the audit's own action
+> list has been worked. Every P0 and P1 is addressed, along with all but two
+> P2/P3 items; see **§17 Remediation log** at the end of this document for
+> what was done, what was verified, and what deliberately was not. The body of
+> this report is left as it was written — it is the baseline, and a baseline
+> that gets edited to match the fix stops being one.
 
 ---
 
@@ -1080,3 +1087,108 @@ player what the game already knows.**
 
 *Audit performed 2026-08-29 against `f771257`. Analysis only — no application
 code was modified.*
+
+
+---
+
+## 17. Remediation log
+
+Written after the fixes, in the same session as the audit. The findings above
+are unchanged; this section records what happened to each one.
+
+**Verification available in this environment.** Core is built and tested on
+Linux with Swift 6.0.3: **276 tests green** (up from 257), release build clean
+under `-warnings-as-errors`, save format still **v10** — every Core addition
+is additive and pure. The app target is **parse-checked only**; SwiftUI cannot
+be compiled without an Apple SDK, so every UI change here carries the same
+honest status the project has always used: **AUTHORED · NOT
+APPLE-RUNTIME-VALIDATED** until CI's macOS job compiles it and a device runs
+it. The `[device]` findings in this report — the tab overflow above all — are
+predictions that a screen still has to confirm.
+
+### What Core gained (additive, pure, save-format-neutral)
+
+| File | Why |
+|---|---|
+| `Domain/EraGate.swift` | The era gate as `[EraRequirement]` rather than a boolean. `ProgressionSystem` asks `isPassed`, the progression screen asks `requirements` — **one arithmetic, two questions**, so the gate and the progress bar cannot drift. Gate behaviour unchanged. |
+| `Domain/MissionMath.swift` | Mission progress in one place, so the bar and the payout agree. `ProgressionSystem` forwards to it. |
+| `Session/AdvisoryModels.swift` | `SolvencyModel` (the countdown the UI never saw) and `ProgressionModel` (era requirements, capability cost/duration/progress, mission progress). |
+| `Session/ReadModels.swift` | `RouteCardModel` gains `thisMonth*` and `hasClosedMonth`. |
+| `Domain/Progression.swift` | `CapabilityProgram.unlockEra`, shared with the command that enforces it. |
+| `Tests/AdvisoryModelTests.swift` | 19 tests, every one an *agreement* test: the model must report what the simulation acts on. |
+
+**A defect the audit missed, found while fixing it:** capability programs are
+era-locked to National in `StartCapabilityProgramCommand`, and
+`ProgressionView` offered an always-enabled Start button in every era — a
+control whose only possible outcome was a refusal. `ProgressionModel`
+now models `.eraLocked` and `.unaffordable`, and a test asserts that the
+model's `isStartable` and the command's `validate` answer the same question in
+every state.
+
+### P0
+
+| ID | Status |
+|---|---|
+| UI-001 tab overflow | **Fixed.** Five tabs: Home, Map, **Network** (Routes + Fleet, segmented), Finance, World. Settings moved to the Home toolbar. Nothing sits behind the system *More* list. |
+| UI-002 zeroed route P&L | **Fixed.** Route board and detail lead with the month in progress; the closed month sits beside it once there is one, and a route with no closed month says so instead of reporting a loss of nothing. |
+| UI-003 silent first flight | **Fixed.** `flightDeparted` / `flightArrived` render, named by route, with arrival delay when it matters; departures, orders, maintenance, route openings and loan events joined them. |
+| UI-004 unreachable rejections | **Fixed.** Presentation moved to `RootView`, above all three screen states. Every sheet additionally **pre-validates through Core's own `Command.validate`**, so the control is disabled with the reason attached before the tap, and a refusal keeps the sheet and its inputs. `loadGame` and `startNewGame` failures are now visible — the latter replaced an `assertionFailure`, a release no-op. |
+| UI-005 invisible failure journey | **Fixed.** `SolvencyBanner` escalates from *watch* (short runway) to *danger* (countdown running, days remaining, what administration will do, and whether the next failure is terminal); the sim **auto-pauses** on entering the countdown and says why; Finance carries a cash-runway card. |
+
+### P1
+
+| ID | Status |
+|---|---|
+| UI-006 unguarded money | **Fixed.** Confirmations quoting the money on sell, return, close, pay-off and capability start; the aircraft market shows cash, balance-after and per-option affordability; disabled states everywhere, driven by Core's validation. |
+| UI-007 moving chart baseline | **Fixed.** Swift Charts, as `UI_ARCHITECTURE` §2 always specified — one baseline by construction, real axes, accessible per-bar values. |
+| UI-008 illegible progression | **Fixed.** Capabilities carry name, effect, cost, duration and live progress; era gates state every requirement with current-vs-target; missions show progress and a countdown; milestones and achievements read as English. |
+| UI-009 map without a world | **Fixed.** `WorldOutline` coastlines, a marked home the view opens on, a legend, route width by frequency, a selected airport that can **open a route** or jump to one you fly, zoom buttons and fit-to-network, and pan/zoom composed with `SimultaneousGesture` so both work. |
+| UI-010 time control on two screens | **Fixed.** `TimeMenuButton` — date, current speed, every speed and jump-to-morning — on every secondary screen; the full `SpeedControl` stays on Home and Map. |
+| UI-011 causes and consequences | **Fixed.** World events name which of *your* routes they touch and link to them; route detail lists who else flies the pair and how their fare compares; the feed names routes, aircraft and airlines instead of ids. |
+| UI-012 silent save/load | **Fixed.** `saveNow` reports success and failure; the swallowed `try?` is gone. |
+| UI-013 iPad phone layout | **Fixed.** `NavigationSplitView` at regular width. |
+| UI-014 nothing is celebrated | **Fixed.** A brief, non-blocking overlay for eras, milestones, achievements, completed programs and missions, with success haptics honouring the player's setting. |
+
+### P2 and P3
+
+Fixed: UI-015 (one surface across sheets and pushed screens), UI-016 (read
+models cached per tick, not per frame), UI-017 (sort/search on routes, fleet,
+airports and the aircraft market — including fuel-per-seat, the number that
+actually decides a fleet), UI-018 (aircraft detail with reliability and hours),
+UI-019 (airport browser and detail), UI-020 (`Vocabulary.swift` — no
+`String(describing:)` or model `rawValue` reaches a screen), UI-021 (loan index
+resolved at tap time), UI-022 (`LoadingState`, empty states), UI-023 (real
+settings: auto-pause, confirmations, haptics, about), UI-024 (a "Coming up"
+card from deliveries, maintenance, missions and forecasts), UI-025 (any of the
+80 airports can be home), UI-028 (`cornerRadius` is the number cards use;
+`AETheme.cardShape` replaces nine open-coded radii), UI-029 (badge hues are
+tokens), UI-030 (`AESectionHeader` throughout), UI-031 (grouped money), UI-032
+(map labels at 11pt), UI-033 (launch screen painted the onboarding's dusk),
+UI-034 (the unused parameter and the unlabelled danger card), UI-035 (save
+slots are labelled and deletable), plus §9's accent — the system blue became
+the icon's own blue — and an explicit Reduce Motion path (`aeAnimation`)
+rather than relying on SwiftUI's defaults.
+
+**Deliberately not done, and why:**
+
+- **UI-026 livery colour.** `GAME_DESIGN` §4.1 asks for it, and it is airline
+  *state* — it belongs in `Airline`, which means a save-format migration. That
+  is a Core change with a v11 envelope behind it, not a UI fix, and it should
+  not ride along in a UI pass.
+- **UI-036 localization.** Still zero. Every string is a literal. Migrating
+  ~700 strings to a String Catalog is a mechanical change that touches every
+  file and cannot be verified here at all — doing it blind, in the same pass
+  as the UI rewrite, would make both harder to review. It remains the largest
+  single piece of debt and the cheapest one to pay *before* the string count
+  grows again.
+- **Hub connections** remain descoped to the first content update (D-010).
+
+### What still needs a device
+
+Everything the audit tagged `[device]`, and now also everything above. In
+particular: that five tabs render as five; that `NavigationSplitView` behaves
+on iPad; that the composed map gestures pan and zoom as intended; that Swift
+Charts lays out inside the card; that the coastline fill costs nothing at map
+cadence; and the 44pt and Dynamic Type audit at accessibility sizes. The
+walkthrough in `docs/APPLE_VALIDATION.md` §4 is still the script — it now has
+more to check.

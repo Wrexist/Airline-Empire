@@ -37,6 +37,7 @@ struct NewGameView: View {
     /// A home chosen from the whole world rather than the three curated ones.
     @State private var customHome: AirportCode?
     @State private var showingAllAirports = false
+    @State private var pendingDeletion: String?
     @State private var scenario: ScenarioCode = "entrepreneur"
     @State private var seedText = ""
     @State private var showsSeed = false
@@ -45,6 +46,11 @@ struct NewGameView: View {
     @State private var catalog: ContentCatalog?
     @State private var slots: [(slot: String, meta: SlotMeta?)] = []
     @FocusState private var nameFocused: Bool
+
+    private var deletionPresented: Binding<Bool> {
+        Binding(get: { pendingDeletion != nil },
+                set: { presented in if !presented { pendingDeletion = nil } })
+    }
 
     private var trimmedName: String {
         airlineName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -79,6 +85,19 @@ struct NewGameView: View {
         }
         .safeAreaInset(edge: .bottom) { foundBar }
         .preferredColorScheme(.dark)
+        .confirmationDialog("Delete this save?",
+                            isPresented: deletionPresented,
+                            titleVisibility: .visible,
+                            presenting: pendingDeletion) { slot in
+            Button("Delete", role: .destructive) {
+                controller.deleteSlot(slot)
+                slots = controller.availableSlots()
+                pendingDeletion = nil
+            }
+            Button("Cancel", role: .cancel) { pendingDeletion = nil }
+        } message: { _ in
+            Text("That airline and its history are gone for good.")
+        }
         .onAppear {
             if catalog == nil { catalog = try? ContentCatalog.loadBundled() }
             slots = controller.availableSlots()
@@ -120,8 +139,7 @@ struct NewGameView: View {
                 .foregroundStyle(.white)
                 .padding(AETheme.spacingM)
                 .frame(minHeight: 56)
-                .aeGlass(in: RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4,
-                                              style: .continuous))
+                .aeGlass(in: AETheme.cardShape)
                 .accessibilityLabel("Airline name")
                 .accessibilityHint("Leave empty to be called Skyline Air")
         }
@@ -257,6 +275,7 @@ struct NewGameView: View {
                 }
             } else {
                 ProgressView().tint(.white)
+                    .accessibilityLabel("Loading scenarios")
             }
         }
         .sensoryFeedback(.selection, trigger: scenario)
@@ -300,8 +319,7 @@ struct NewGameView: View {
         }
         .padding(AETheme.spacingM)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .aeGlass(in: RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4,
-                                      style: .continuous))
+        .aeGlass(in: AETheme.cardShape)
         .accessibilityElement(children: .combine)
     }
 
@@ -347,8 +365,7 @@ struct NewGameView: View {
                 }
                 .padding(AETheme.spacingM)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .aeGlass(in: RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4,
-                                              style: .continuous))
+                .aeGlass(in: AETheme.cardShape)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
@@ -369,7 +386,7 @@ struct NewGameView: View {
                                 .font(.headline)
                                 .foregroundStyle(.white)
                             if let meta = entry.meta {
-                                Text("\(meta.gameDateDescription) · \(meta.era)")
+                                Text("\(meta.gameDateDescription) · \(meta.era) · \(GameController.slotLabel(entry.slot))")
                                     .font(.caption)
                                     .foregroundStyle(.white.opacity(0.6))
                             }
@@ -382,16 +399,19 @@ struct NewGameView: View {
                     }
                     .padding(AETheme.spacingM)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4,
-                                                   style: .continuous))
-                    .aeGlass(in: RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4,
-                                                  style: .continuous),
+                    .contentShape(AETheme.cardShape)
+                    .aeGlass(in: AETheme.cardShape,
                              tint: AETheme.ember.opacity(0.16),
                              interactive: true)
                 }
                 .buttonStyle(.plain)
                 .accessibilityElement(children: .combine)
                 .accessibilityHint("Resumes this airline")
+                .contextMenu {
+                    Button("Delete this save", role: .destructive) {
+                        pendingDeletion = entry.slot
+                    }
+                }
             }
         }
     }

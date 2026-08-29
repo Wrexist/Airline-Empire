@@ -210,6 +210,27 @@ final class GameController {
         return manager.store.slots().map { ($0, manager.store.meta(slot: $0)) }
     }
 
+    /// Removes a save. The menu listed slots with no way to manage them, and
+    /// no way to tell the rolling autosave from a deliberate one
+    /// (UIUX_FORENSIC_AUDIT UI-035).
+    @discardableResult
+    func deleteSlot(_ slot: String) -> Bool {
+        let manager = saveManager ?? makeSaveManager()
+        do {
+            try manager.store.deleteSlot(slot)
+            return true
+        } catch {
+            lastSaveOutcome = .failed("That save could not be deleted.")
+            return false
+        }
+    }
+
+    /// A player-facing name for a slot. `auto` is the rolling autosave; a
+    /// named slot is something the player asked for.
+    static func slotLabel(_ slot: String) -> String {
+        slot == "auto" ? "Autosave" : slot.capitalized
+    }
+
     private func makeSaveManager() -> SaveManager {
         let root = FileManager.default.urls(for: .applicationSupportDirectory,
                                             in: .userDomainMask)[0]

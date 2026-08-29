@@ -165,3 +165,44 @@ and are reused by the Finance statement rows.
 (`xcodegen`), compiles, fixes view-layer syntax issues, and validates the
 new-game → route → fast-forward flow on simulator. Until then these phases
 are *authored*, not done.
+
+
+---
+
+## 8. As-built after the forensic audit (2026-08-29)
+
+`docs/UIUX_FORENSIC_AUDIT.md` measured the client against this document and
+found the structural rules honoured and several of the *product* rules not.
+What changed, against the rules above:
+
+- **§2 adaptive shell — now built.** `NavigationSplitView` at regular width,
+  a five-item `TabView` at compact. Six tabs overflowed into the system *More*
+  list (BUG-009); Routes and Fleet merged into **Network**.
+- **§2 navigation state as a value — partially.** Typed destinations
+  (`RouteID`, `AircraftID`, `AirportCode`, `DashboardRoute`) are values and
+  every screen links by value, so cross-screen navigation is data. A single
+  app-wide `AppRoute` tree with a bound `NavigationPath` is still not built;
+  deep links from notifications would need it.
+- **§2 charts on Swift Charts — now true.** The hand-rolled `MonthlyBars`
+  misplaced its own baseline (BUG-011).
+- **§4 rejections surface as human-readable reasons — now reachable.** They
+  are presented at `RootView`, and every sheet additionally pre-checks through
+  `Command.validate`, which is what turns a rejection into a disabled control
+  with a reason instead of an alert nobody sees.
+- **§5 O(visible), not O(world) — now honoured.** `GameController` caches the
+  map model and the route/fleet cards per simulation tick; screens previously
+  rebuilt them inside `body`, four times a second.
+- **§5 Reduce Motion honoured centrally — now explicit.** `aeAnimation`
+  consults `accessibilityReduceMotion` rather than relying on SwiftUI's
+  defaults.
+- **§6 every number tappable to its explanation — now true on the
+  dashboard.** Fleet, Routes, Reputation, Last month and Economy each open the
+  screen that explains them.
+- **Presentation vocabulary.** `Vocabulary.swift` is the single place model
+  enums and progression codes become English. No screen calls
+  `String(describing:)` or `rawValue` on a model type.
+
+**Still not built:** an `AppRoute` tree with bound paths; `HapticService` and
+`AudioService` as `SimEvent`-keyed services (haptics are inline
+`sensoryFeedback`, gated on the player's setting; there is no audio);
+localization of any kind.

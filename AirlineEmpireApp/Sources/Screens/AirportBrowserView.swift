@@ -52,6 +52,7 @@ struct AirportBrowserView: View {
                     }
                 }
                 .searchable(text: $search, prompt: "Airport code, city or country")
+                .aeScreenBackground()
                 .navigationDestination(for: AirportCode.self) {
                     AirportDetailView(code: $0)
                 }

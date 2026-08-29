@@ -227,3 +227,65 @@ crash with the same trap, and with it they pass.
 **Status:** FIXED 2026-08-29, awaiting a device run of the next build to
 confirm on hardware.
 
+
+
+---
+
+## BUG-009 — Six tabs overflow into the system *More* list on iPhone
+**Severity:** P0 (two of six top-level areas demoted, and the only path to
+saving or quitting among them) · **Phase found:** UI/UX forensic audit,
+2026-08-29.
+**Repro:** Launch on any iPhone. `GameTabs` declared six `tabItem`s — Home,
+Map, Routes, Fleet, Finance, World. iOS shows four plus an automatic *More*
+tab once a tab bar passes five, so Finance (the survival system) and the whole
+World hub (events, competitors, progression, missions, service tier,
+reputation, **save and quit**) sat one level deeper than everything else,
+inside a system-styled list that ignores the app's design language.
+**Root cause:** the tab set grew a screen at a time across phases 14–17 and
+nobody counted it against the platform's limit. Invisible on Linux; invisible
+to a compiler; visible the first second the app renders.
+**Fix layer:** App. Five tabs: Routes and Fleet merge into **Network** behind
+a segmented switch (they are the two halves of one question and a player
+crosses between them constantly), and Settings moves to the Home toolbar,
+where a player looks for settings and where saving and quitting belong.
+**Status:** FIXED (authored) 2026-08-29 — needs a device to confirm, like
+every rendering claim in this project.
+
+---
+
+## BUG-010 — Capability programs offered a Start button that could only refuse
+**Severity:** P2 (a control whose sole outcome is an error) · **Phase found:**
+while implementing the audit's UI-008, 2026-08-29.
+**Repro:** Start any game and open World → Progression. Every capability shows
+an enabled "Start" button. Tap one: `StartCapabilityProgramCommand.validate`
+rejects with "Capability programs open in the National era" — three eras away.
+**Root cause:** the era gate lived only inside the command's `validate`, so
+the view had no way to know about it and rendered the same affordance in every
+state. The same hole hid the program limit and affordability.
+**Fix layer:** Core (additive) + App. `CapabilityProgram.unlockEra` names the
+gate once and the command defers to it; `ProgressionModel.CapabilityStatus`
+models `.eraLocked`, `.blockedBySlots` and `.unaffordable` alongside
+`.available`, and its `isStartable` is asserted by test to agree with the
+command's own validation in every state.
+**Tests:** `AdvisoryModelTests.startableAgreesWithTheCommand`,
+`capabilitiesAreEraLockedEarly`, `programLimitIsVisible`.
+**Status:** FIXED 2026-08-29.
+
+---
+
+## BUG-011 — The monthly profit chart drew its zero line in a different place for every bar
+**Severity:** P1 (the finance screen misrepresented its own data) ·
+**Phase found:** UI/UX forensic audit, 2026-08-29.
+**Repro:** Play to two closed months with one profit and one loss, then open
+Finance. `MonthlyBars` built each column as a centred
+`VStack { Spacer; +bar; 1pt rule; -bar; Spacer }`. The column's content height
+is `barHeight + 1`, and the `HStack` centres each column independently — so
+the rule that represents zero sat at a different y for every month. Bars could
+not be compared against each other or against zero.
+**Root cause:** a hand-rolled chart that encoded the baseline as *layout*
+rather than as a scale. `docs/UI_ARCHITECTURE.md` §2 specified Swift Charts
+from the start; the hand-rolled version was a placeholder that outlived its
+note.
+**Fix layer:** App. Swift Charts `BarMark` on a shared y-scale, with axes,
+month labels and per-bar accessibility values.
+**Status:** FIXED (authored) 2026-08-29.

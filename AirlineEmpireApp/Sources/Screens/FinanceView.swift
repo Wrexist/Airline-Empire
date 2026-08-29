@@ -288,6 +288,7 @@ struct LoanSheet: View {
                     }
                 }
             }
+            .aeScreenBackground()
             .navigationTitle("Borrow")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

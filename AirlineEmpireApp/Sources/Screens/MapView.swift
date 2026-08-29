@@ -88,7 +88,7 @@ struct MapScreen: View {
                     }
                     // Tapping an airport should feel like the panel rises to
                     // meet you, and tapping away like it leaves.
-                    .animation(AEMotion.content, value: selectedAirport)
+                    .aeAnimation(AEMotion.content, value: selectedAirport)
                     .sensoryFeedback(.selection, trigger: selectedAirport)
                     .ignoresSafeArea(edges: .bottom)
                     .onAppear {

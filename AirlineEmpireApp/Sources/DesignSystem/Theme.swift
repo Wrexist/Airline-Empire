@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 import AirlineEmpireCore
 
@@ -10,14 +11,42 @@ enum AETheme {
     static let spacingM: CGFloat = 16
     static let spacingL: CGFloat = 24
 
-    static let cornerRadius: CGFloat = 14
+    /// The card radius, as the number cards actually use.
+    ///
+    /// Nine call sites wrote `AETheme.cornerRadius + 4`, which meant the token
+    /// said 14 and the app drew 18 — a token that is not the source of truth
+    /// is worse than no token (UIUX_FORENSIC_AUDIT UI-028).
+    static let cornerRadius: CGFloat = 18
+    /// The tighter radius, for capsule-adjacent controls and small chips.
+    static let cornerRadiusSmall: CGFloat = 12
+
+    /// The standard card shape, so nobody writes the radius out again.
+    static var cardShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+    }
 
     // Semantic colors (asset-catalog free v1; Phase 17 refines).
-    static let accent = Color.blue
+    //
+    // The accent used to be the system blue — the accent of a utility, on a
+    // game whose own identity is a dusk sky and an ember horizon
+    // (UIUX_FORENSIC_AUDIT §9). This is that palette's blue: deep enough to
+    // sit under white text, bright enough to read on the dusk backdrop, and
+    // distinct from the cyan the map already spends on the player's routes.
+    static let accent = Color(red: 0.24, green: 0.51, blue: 0.92)
     static let positive = Color.green
     static let negative = Color.red
     static let caution = Color.orange
     static let mutedText = Color.secondary
+
+    // Badge hues. Five call sites reached past the tokens for `.purple`,
+    // `.indigo` and `.teal`, which is exactly the drift a token set exists to
+    // prevent (UIUX_FORENSIC_AUDIT UI-029).
+    /// Fares and pricing.
+    static let fare = Color(red: 0.55, green: 0.36, blue: 0.86)
+    /// Assets the airline owns outright.
+    static let owned = Color(red: 0.31, green: 0.35, blue: 0.76)
+    /// Assets the airline rents.
+    static let leased = Color(red: 0.17, green: 0.56, blue: 0.60)
     static let cardBackground = Color(.secondarySystemBackground)
     static let mapBackground = Color(red: 0.07, green: 0.10, blue: 0.16)
     static let mapLand = Color(red: 0.13, green: 0.17, blue: 0.24)
@@ -63,6 +92,29 @@ enum AEMotion {
     static let screen: Animation = .smooth(duration: 0.42)
 }
 
+/// Reduce Motion, honoured on purpose rather than by luck.
+///
+/// The audit found the app relying entirely on SwiftUI's own defaults, which
+/// soften some animations and leave others alone. A simulation whose screens
+/// slide, roll digits and crossfade should ask the system directly and mean it.
+struct AEMotionModifier: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let animation: Animation
+    let value: AnyHashable
+
+    func body(content: Content) -> some View {
+        content.animation(reduceMotion ? nil : animation, value: value)
+    }
+}
+
+extension View {
+    /// Animate with one of the motion tokens, unless the player has asked the
+    /// system for less movement.
+    func aeAnimation(_ animation: Animation, value: some Hashable) -> some View {
+        modifier(AEMotionModifier(animation: animation, value: AnyHashable(value)))
+    }
+}
+
 /// Centralized formatting (docs/UI_ARCHITECTURE.md §2): views never invent
 /// number formats.
 enum Format {
@@ -78,8 +130,18 @@ enum Format {
         case 10_000...:
             return "\(sign)¤\(String(format: "%.0f", magnitude / 1_000))k"
         default:
-            return "\(sign)¤\(String(format: "%.0f", magnitude))"
+            // Grouped, so ¤9999 does not read as a serial number
+            // (UIUX_FORENSIC_AUDIT UI-031).
+            return "\(sign)¤\(grouped(Int64(magnitude.rounded())))"
         }
+    }
+
+    /// Thousands separators for the reader's locale.
+    static func grouped(_ value: Int64) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = 0
+        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 
     static func percent(_ value: Double) -> String {
@@ -114,9 +176,5 @@ enum Format {
 
     /// Whole numbers with thousands separators — `Format.money` compresses
     /// above ¤10k, but a passenger count should read exactly.
-    static func count(_ value: Int64) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
-    }
+    static func count(_ value: Int64) -> String { grouped(value) }
 }

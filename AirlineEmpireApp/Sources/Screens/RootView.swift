@@ -19,7 +19,7 @@ struct RootView: View {
                 GameShell().transition(.opacity)
             }
         }
-        .animation(AEMotion.screen, value: state)
+        .aeAnimation(AEMotion.screen, value: state)
         // Every presentation the whole app can raise lives here, above the
         // three screen states — a rejection alert mounted on the tab view
         // could not appear over a sheet, and could not appear on the menu at
@@ -136,7 +136,7 @@ struct GameShell: View {
                 CelebrationOverlay(celebration: celebration)
             }
         }
-        .animation(AEMotion.content, value: controller.celebration)
+        .aeAnimation(AEMotion.content, value: controller.celebration)
         // A save the player asked for must say whether it worked (UI-012).
         .alert("Save", isPresented: saveOutcomePresented,
                presenting: controller.lastSaveOutcome) { _ in
