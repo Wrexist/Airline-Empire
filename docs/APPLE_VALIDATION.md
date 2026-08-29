@@ -95,13 +95,45 @@ it.
 15. Play until collapse (or force it) → Game Over screen → **"Start a new
     airline"** returns to the menu (BUG-003: this used to be a dead end).
 
+## 4b. What the 2026-08-29 UI pass added to the walkthrough
+
+`docs/UIUX_FORENSIC_AUDIT.md` rebuilt most of the client. The §4 script still
+holds; these are the claims it does not yet cover, each one a `[device]`
+prediction in the audit:
+
+1. **Five tabs render as five** — Home, Map, Network, Finance, World, with no
+   *More* item. This is BUG-009's fix and the single most important thing to
+   look at first.
+2. **Network's segmented switch** moves between Routes and Fleet without
+   losing a pushed detail screen.
+3. **iPad** shows a sidebar (`NavigationSplitView`), not a phone tab bar, in
+   both orientations and in Slide Over.
+4. **The map**: coastlines draw, home is ringed in amber, the view opens on
+   the player's own airport, pinch *and* drag both work (they are composed
+   with `SimultaneousGesture` — the old code attached two `.gesture`
+   modifiers, the second replacing the first), the zoom buttons and
+   fit-to-network behave, and a tapped airport can open a route.
+5. **Frame cost**: the map model is cached per tick now. Profile a large
+   network at 16× and confirm the Canvas is not the bottleneck.
+6. **Swift Charts** lays out inside its card at every Dynamic Type size.
+7. **Solvency**: drive an airline below the overdraft floor and confirm the
+   banner escalates, the countdown counts, and fast-forward auto-pauses once
+   and says why.
+8. **Rejections**: with a sheet open (aircraft market, route sheet, loan
+   desk), attempt something the simulation refuses. The control should already
+   be disabled with the reason under it; if one slips through, the alert must
+   appear *over* the sheet and the sheet must keep its inputs.
+9. **Accessibility**: VoiceOver over the map summary, the 44pt audit on the
+   `.caption`-sized bordered buttons, and Dynamic Type at XXL on the
+   progression and route screens.
+
 ## 5. Known Apple-specific validation gaps
 
 Everything here is unproven on Apple platforms and must be checked by hand:
 
 | Area | Why it is unknown on Linux |
 |---|---|
-| SwiftUI compilation | No Apple SDK; only `swiftc -parse` (syntax) has run |
+| ~~SwiftUI compilation~~ | **Answered.** CI run 33244671402, 2026-08-29, `** BUILD SUCCEEDED **`. Note what a parse does *not* buy: the run before it found five type errors `swiftc -parse` cannot see |
 | Rendering and layout | No renderer; no device, no size classes |
 | iPad layout | `TabView` only — no sidebar/split layout authored yet |
 | `Canvas` map performance | `MapModel` math is tested; drawing cost is not |

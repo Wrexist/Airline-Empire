@@ -53,10 +53,20 @@ and the simulation ask the *same* arithmetic rather than two copies of it.
 **276 tests green** (up from 257), release build clean under
 `-warnings-as-errors`, save format still v10.
 
-The app's status ladder is unchanged and stated the same way it always has
-been: **COMPILED · NOT APPLE-RUNTIME-VALIDATED**. Every UI change in this
-session is parse-checked and no more. The `[device]` predictions in the audit
-— the tab overflow first among them — still need a screen.
+The app **compiles** — CI run 33244671402, `** BUILD SUCCEEDED **` on
+`macos-26` with Xcode 26.6. It took two runs, and the first is worth recording:
+`swiftc -parse` on Linux answers syntax only, and five type errors were
+invisible to it — an `==` against an enum case carrying a payload, a
+synthesised internal initialiser the app could not reach, a missing `Hashable`,
+a `List(selection:)` overload, and an unused binding fatal under
+`-warnings-as-errors`. Two of them sat in code fixing P0s. The lesson is the
+old one this project already knows and this session had to relearn: *parsed*
+and *compiled* are different claims, and only the second can be made from a
+green macOS job.
+
+The status ladder moves exactly one rung: **COMPILED · NOT
+APPLE-RUNTIME-VALIDATED**. The `[device]` predictions in the audit — the tab
+overflow first among them — still need a screen.
 
 **2026-08-29 (the app ran on a phone, and BUG-008).** The first TestFlight
 build reached a physical iPhone — and crashed on the first screen after

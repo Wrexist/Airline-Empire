@@ -1096,15 +1096,32 @@ code was modified.*
 Written after the fixes, in the same session as the audit. The findings above
 are unchanged; this section records what happened to each one.
 
-**Verification available in this environment.** Core is built and tested on
-Linux with Swift 6.0.3: **276 tests green** (up from 257), release build clean
-under `-warnings-as-errors`, save format still **v10** — every Core addition
-is additive and pure. The app target is **parse-checked only**; SwiftUI cannot
-be compiled without an Apple SDK, so every UI change here carries the same
-honest status the project has always used: **AUTHORED · NOT
-APPLE-RUNTIME-VALIDATED** until CI's macOS job compiles it and a device runs
-it. The `[device]` findings in this report — the tab overflow above all — are
-predictions that a screen still has to confirm.
+**Verification.** Core is built and tested on Linux with Swift 6.0.3: **276
+tests green** (up from 257), release build clean under `-warnings-as-errors`,
+save format still **v10** — every Core addition is additive and pure.
+
+The app **compiles**: CI run 33244671402, 2026-08-29, `xcodebuild` on a
+`macos-26` runner with Xcode 26.6 against the iPhoneSimulator 26.5 SDK,
+`** BUILD SUCCEEDED **`.
+
+That took two runs, and the first one is the point. On Linux the app can only
+be *parsed* — `swiftc -parse` answers syntax and nothing else — and a parse
+pass had been read, here and in earlier sessions, as though it were close to a
+compile. Run 33244485553 found **five type errors** a parse structurally
+cannot see: `status == .ordered` on an enum case carrying a `SimTime`;
+`FirstRouteSuggestion`'s synthesised *internal* initialiser, which let the app
+read a suggestion and never build one; `Celebration` needing `Hashable` rather
+than `Equatable` to drive an animation; a sidebar `List(selection:)` binding an
+optional; and an unused binding that the release build's
+`-warnings-as-errors` treats as fatal. Two were in code fixing P0s. Reading
+for the same *class* of error rather than the same error found a sixth before
+it was pushed.
+
+The status ladder therefore moves one rung, and one rung only:
+**COMPILED · NOT APPLE-RUNTIME-VALIDATED**. A compiler proves the code
+type-checks and links. It proves nothing about what appears on a screen. Every
+`[device]` finding in this report — the tab overflow above all — is still a
+prediction that a screen has to confirm.
 
 ### What Core gained (additive, pure, save-format-neutral)
 
