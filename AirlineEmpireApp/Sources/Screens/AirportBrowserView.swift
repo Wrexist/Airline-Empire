@@ -210,11 +210,11 @@ struct AirportDetailView: View {
                 labelled("Catchment",
                          "\(Format.count(Int64(spec.demographics.populationThousands))) thousand people")
                 labelled("Business demand",
-                         String(format: "%.2f", spec.demographics.businessIndex))
+                         Format.decimal(spec.demographics.businessIndex, places: 2))
                 labelled("Leisure demand",
-                         String(format: "%.2f", spec.demographics.leisureIndex))
+                         Format.decimal(spec.demographics.leisureIndex, places: 2))
                 labelled("Tourism draw",
-                         String(format: "%.2f", spec.demographics.tourismIndex))
+                         Format.decimal(spec.demographics.tourismIndex, places: 2))
                 Text(spec.demographics.businessIndex >= spec.demographics.leisureIndex
                      ? "Business-led: demand is steadier across the year and less sensitive to fare."
                      : "Leisure-led: demand swings with the season and reacts hard to price.")

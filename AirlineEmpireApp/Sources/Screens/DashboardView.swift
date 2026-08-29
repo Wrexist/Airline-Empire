@@ -99,6 +99,14 @@ struct DashboardView: View {
     private func header(snapshot: GameState, dashboard: DashboardModel) -> some View {
         AECard {
             HStack {
+                if let livery = snapshot.playerAirline?.livery {
+                    RoundedRectangle(cornerRadius: 2, style: .continuous)
+                        .fill(Vocab.liveryColor(livery))
+                        .frame(width: 4)
+                        .frame(maxHeight: 38)
+                        .accessibilityHidden(true)
+                        .padding(.trailing, AETheme.spacingXS)
+                }
                 VStack(alignment: .leading, spacing: AETheme.spacingXS) {
                     Text(Format.date(snapshot.currentDate))
                         .font(.headline).monospacedDigit()
@@ -149,7 +157,7 @@ struct DashboardView: View {
             StatTile(label: "Fuel /t", value: Format.money(dashboard.fuelPricePerTon))
             NavigationLink(value: DashboardRoute.economy) {
                 StatTile(label: "Economy",
-                         value: String(format: "%.2f", dashboard.economicIndex),
+                         value: Format.decimal(dashboard.economicIndex, places: 2),
                          trend: dashboard.economicIndex >= 1 ? .up : .down)
             }
         }
@@ -501,24 +509,86 @@ struct EventRow: View {
 
     var body: some View {
         if let text = description {
-            HStack(alignment: .top, spacing: AETheme.spacingS) {
-                Image(systemName: icon)
-                    .font(.caption)
-                    .foregroundStyle(tint)
-                    .frame(width: 16)
-                    .accessibilityHidden(true)
-                Text(text)
-                    .font(.subheadline)
-                    .fontWeight(isAlarm ? .semibold : .regular)
-                    .foregroundStyle(isAlarm ? AETheme.negative : .primary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
-                Text(Format.clock(clockDate))
-                    .font(.caption2.monospacedDigit())
-                    .foregroundStyle(AETheme.mutedText)
+            // An event about something you own leads to that thing.
+            // `docs/UI_ARCHITECTURE.md` §2 asks for "tap → the delayed
+            // flight"; the feed was a wall of unreachable text
+            // (UIUX_FORENSIC_AUDIT UI-011).
+            switch subject {
+            case .route(let id):
+                NavigationLink(value: id) { line(text) }
+                    .buttonStyle(.plain)
+            case .aircraft(let id):
+                NavigationLink(value: id) { line(text) }
+                    .buttonStyle(.plain)
+            case .none:
+                line(text)
             }
-            .accessibilityElement(children: .combine)
         }
+    }
+
+    /// What this event is about, when it is about something the player can
+    /// open. Nil for world news and for anything already deleted — a link to
+    /// a route that has been closed is a dead end, not a shortcut.
+    private var subject: Subject {
+        switch event.kind {
+        case .flightDeparted(_, let route), .flightArrived(_, let route, _),
+             .flightDelayed(_, let route, _), .flightCancelled(_, let route),
+             .routeOpened(let route, _, _):
+            return liveRoute(route).map(Subject.route) ?? .none
+        case .aircraftDelivered(let id), .aircraftOrdered(let id, _, _),
+             .maintenanceStarted(let id, _, _), .maintenanceCompleted(let id):
+            return liveAircraft(id).map(Subject.aircraft) ?? .none
+        default:
+            return .none
+        }
+    }
+
+    private enum Subject {
+        case route(RouteID)
+        case aircraft(AircraftID)
+        case none
+    }
+
+    /// Only the player's own, and only while it still exists.
+    private func liveRoute(_ id: RouteID) -> RouteID? {
+        guard let snapshot, let route = snapshot.routes[id],
+              route.airline == player else { return nil }
+        return id
+    }
+
+    private func liveAircraft(_ id: AircraftID) -> AircraftID? {
+        guard let snapshot, let aircraft = snapshot.aircraft[id],
+              aircraft.owner == player else { return nil }
+        return id
+    }
+
+    private func line(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: AETheme.spacingS) {
+            Image(systemName: icon)
+                .font(.caption)
+                .foregroundStyle(tint)
+                .frame(width: 16)
+                .accessibilityHidden(true)
+            Text(text)
+                .font(.subheadline)
+                .fontWeight(isAlarm ? .semibold : .regular)
+                .foregroundStyle(isAlarm ? AETheme.negative : .primary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            if case .none = subject {
+                EmptyView()
+            } else {
+                Image(systemName: "chevron.right")
+                    .font(.caption2)
+                    .foregroundStyle(AETheme.mutedText)
+                    .accessibilityHidden(true)
+            }
+            Text(Format.clock(clockDate))
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(AETheme.mutedText)
+        }
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
     }
 
     private var clockDate: GameDate {

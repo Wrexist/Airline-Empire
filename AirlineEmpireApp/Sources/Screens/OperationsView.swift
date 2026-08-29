@@ -297,6 +297,10 @@ struct CompetitorsView: View {
         return AECard(tint: overlap > 0 ? AETheme.accent.opacity(0.12) : nil) {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 HStack {
+                    Circle()
+                        .fill(Vocab.liveryColor(rival.livery))
+                        .frame(width: 12, height: 12)
+                        .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(rival.name).font(.headline)
                         if let profile = rival.aiProfile {
@@ -692,7 +696,7 @@ struct EconomyDetailView: View {
                         VStack(alignment: .leading, spacing: AETheme.spacingS) {
                             AESectionHeader(text: "The world economy",
                                             systemImage: "chart.line.uptrend.xyaxis")
-                            Text(String(format: "%.2f", snapshot.world.economicIndex))
+                            Text(Format.decimal(snapshot.world.economicIndex, places: 2))
                                 .font(.largeTitle.weight(.semibold))
                                 .monospacedDigit()
                             Text(economyDescription(snapshot.world.economicIndex))
@@ -706,7 +710,7 @@ struct EconomyDetailView: View {
                             HStack {
                                 Text("Heading toward").font(.subheadline)
                                 Spacer()
-                                Text(String(format: "%.2f", snapshot.world.economicCycleTarget))
+                                Text(Format.decimal(snapshot.world.economicCycleTarget, places: 2))
                                     .monospacedDigit()
                                     .font(.subheadline)
                             }

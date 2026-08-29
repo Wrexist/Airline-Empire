@@ -178,11 +178,14 @@ What changed, against the rules above:
 - **§2 adaptive shell — now built.** `NavigationSplitView` at regular width,
   a five-item `TabView` at compact. Six tabs overflowed into the system *More*
   list (BUG-009); Routes and Fleet merged into **Network**.
-- **§2 navigation state as a value — partially.** Typed destinations
-  (`RouteID`, `AircraftID`, `AirportCode`, `DashboardRoute`) are values and
-  every screen links by value, so cross-screen navigation is data. A single
-  app-wide `AppRoute` tree with a bound `NavigationPath` is still not built;
-  deep links from notifications would need it.
+- **§2 navigation state as a value — mostly.** Typed destinations
+  (`RouteID`, `AircraftID`, `AirportCode`, `DashboardRoute`) are values, every
+  screen links by value, and **a feed line about something you own opens it** —
+  §2's "tap → the delayed flight", with dead subjects (a closed route, a sold
+  aircraft) resolving to no link rather than a dead end. What is still not
+  built is a single app-wide route tree with a *bound* `NavigationPath`, which
+  is what an external deep link — a notification, a URL — would need to push a
+  screen from outside the view hierarchy.
 - **§2 charts on Swift Charts — now true.** The hand-rolled `MonthlyBars`
   misplaced its own baseline (BUG-011).
 - **§4 rejections surface as human-readable reasons — now reachable.** They
@@ -202,7 +205,14 @@ What changed, against the rules above:
   enums and progression codes become English. No screen calls
   `String(describing:)` or `rawValue` on a model type.
 
-**Still not built:** an `AppRoute` tree with bound paths; `HapticService` and
-`AudioService` as `SimEvent`-keyed services (haptics are inline
-`sensoryFeedback`, gated on the player's setting; there is no audio);
-localization of any kind.
+- **Formatting is locale-correct.** Every number goes through `FormatStyle`.
+  It previously went through `String(format: "%.1f")`, which prints `3.5` to a
+  reader who writes `3,5` — a defect for a French or German player in an
+  English app, and unrelated to translating anything. The `¤` sign and the ISO
+  game date stay fixed deliberately; `Format` says why.
+
+**Still not built:** a bound `NavigationPath` for external deep links;
+`AudioService` and any sound at all (this needs sound design, not code —
+haptics exist as inline `sensoryFeedback` gated on the player's setting, which
+is how SwiftUI does this now, and a separate `HapticService` would be
+architecture for its own sake); localization of the strings themselves.

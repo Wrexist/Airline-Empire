@@ -349,7 +349,7 @@ struct RouteDetailView: View {
     }
 
     private func farePositionLabel(_ card: RouteCardModel) -> String {
-        String(format: "%.0f%% of market", card.farePosition * 100)
+        "\(Format.percent(card.farePosition)) of market"
     }
 
     private func farePositionColor(_ card: RouteCardModel) -> Color {

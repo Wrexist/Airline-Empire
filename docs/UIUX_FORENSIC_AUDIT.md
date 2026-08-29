@@ -1096,9 +1096,10 @@ code was modified.*
 Written after the fixes, in the same session as the audit. The findings above
 are unchanged; this section records what happened to each one.
 
-**Verification.** Core is built and tested on Linux with Swift 6.0.3: **276
-tests green** (up from 257), release build clean under `-warnings-as-errors`,
-save format still **v10** — every Core addition is additive and pure.
+**Verification.** Core is built and tested on Linux with Swift 6.0.3: **285
+tests green** (up from 257), release build clean under `-warnings-as-errors`.
+Every Core addition through the UI passes was additive and pure; the livery
+pass that followed moves the save format to **v11** behind a tested migration.
 
 The app **compiles**: CI run 33244671402, 2026-08-29, `xcodebuild` on a
 `macos-26` runner with Xcode 26.6 against the iPhoneSimulator 26.5 SDK,
@@ -1161,7 +1162,7 @@ every state.
 | UI-008 illegible progression | **Fixed.** Capabilities carry name, effect, cost, duration and live progress; era gates state every requirement with current-vs-target; missions show progress and a countdown; milestones and achievements read as English. |
 | UI-009 map without a world | **Fixed.** `WorldOutline` coastlines, a marked home the view opens on, a legend, route width by frequency, a selected airport that can **open a route** or jump to one you fly, zoom buttons and fit-to-network, and pan/zoom composed with `SimultaneousGesture` so both work. |
 | UI-010 time control on two screens | **Fixed.** `TimeMenuButton` — date, current speed, every speed and jump-to-morning — on every secondary screen; the full `SpeedControl` stays on Home and Map. |
-| UI-011 causes and consequences | **Fixed.** World events name which of *your* routes they touch and link to them; route detail lists who else flies the pair and how their fare compares; the feed names routes, aircraft and airlines instead of ids. |
+| UI-011 causes and consequences | **Fixed.** World events name which of *your* routes they touch and link to them; route detail lists who else flies the pair and how their fare compares; the feed names routes, aircraft and airlines instead of ids — and every feed line about something you own now opens it, which is `UI_ARCHITECTURE` §2's "tap → the delayed flight". *(This row read "Fixed" before the feed was tappable, on the strength of the naming and the world-event links alone. That was an overclaim; the tap is what the finding was about.)* |
 | UI-012 silent save/load | **Fixed.** `saveNow` reports success and failure; the swallowed `try?` is gone. |
 | UI-013 iPad phone layout | **Fixed.** `NavigationSplitView` at regular width. |
 | UI-014 nothing is celebrated | **Fixed.** A brief, non-blocking overlay for eras, milestones, achievements, completed programs and missions, with success haptics honouring the player's setting. |
@@ -1186,18 +1187,39 @@ slots are labelled and deletable), plus §9's accent — the system blue became
 the icon's own blue — and an explicit Reduce Motion path (`aeAnimation`)
 rather than relying on SwiftUI's defaults.
 
-**Deliberately not done, and why:**
+**UI-026 livery colour — done, in its own pass.** It was deferred above on the
+grounds that it is airline *state* and needs a save migration, which is true
+and is exactly why it was worth doing properly rather than not at all:
+`Airline.livery`, save format **v11**, and `MigrationV10AddLivery`. That
+migration is the first in this project's history that runs on somebody else's
+data — v10 is what TestFlight 1.0.0 wrote to a real phone — so it is tested for
+the things that would cost a player their game: a v10 save opens with every
+airline, balance, route and aircraft intact; the player keeps their colour;
+rivals get distinct ones, stably, so reopening a save does not reshuffle the
+world; the step is idempotent; and a 120-day run is bit-identical whichever
+livery it was played in, which is what makes it identity rather than a balance
+change. Nine tests.
 
-- **UI-026 livery colour.** `GAME_DESIGN` §4.1 asks for it, and it is airline
-  *state* — it belongs in `Airline`, which means a save-format migration. That
-  is a Core change with a v11 envelope behind it, not a UI fix, and it should
-  not ride along in a UI pass.
-- **UI-036 localization.** Still zero. Every string is a literal. Migrating
-  ~700 strings to a String Catalog is a mechanical change that touches every
-  file and cannot be verified here at all — doing it blind, in the same pass
-  as the UI rewrite, would make both harder to review. It remains the largest
-  single piece of debt and the cheapest one to pay *before* the string count
-  grows again.
+**Still not done, and why:**
+
+- **UI-036 localization.** Still zero: every string is a literal.
+  The earlier note here said it "cannot be verified here at all" — that is no
+  longer true, because CI now compiles the app on macOS, so a String Catalog
+  migration *would* be checkable. What is unchanged is the judgement: it is a
+  mechanical change touching every file, with no second locale and no
+  translator, whose only benefit is future optionality — and doing it in the
+  same pass as a UI rewrite that has not yet been seen render would make both
+  harder to review. What *was* wrong and is now fixed is the part that is a
+  defect rather than a deferral: every number went through
+  `String(format: "%.1f")`, which prints `3.5` to a player who writes `3,5`.
+  All numeric formatting is `FormatStyle` and locale-aware now. The `¤` sign
+  and the ISO game date stay fixed on purpose, and `Format` says why.
+- **`HapticService` / `AudioService`** as `SimEvent`-keyed services
+  (`UI_ARCHITECTURE` §4). Haptics exist, as inline `sensoryFeedback` gated on
+  the player's setting — which is how SwiftUI does this now, and a separate
+  service would be architecture for its own sake. Audio genuinely does not
+  exist: it needs sound design and actual audio assets, neither of which is a
+  code change.
 - **Hub connections** remain descoped to the first content update (D-010).
 
 ### What still needs a device

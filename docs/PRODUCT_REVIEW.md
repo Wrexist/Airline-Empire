@@ -15,13 +15,19 @@ dimensions are assessed on authored code + Core read models and flagged.
 | Progression | **Good** | Era gates + rule-changing capabilities + missions; thin in mission variety (one kind) and celebration surfaces (UI) |
 | Persistence | **Strong** | Atomic, rotated, migrated, fuzz-tested; honest recovery reporting |
 | Performance | **Strong** | 2.7× under budget at late-game scale, linear scaling, measured not guessed |
-| UX / UI | **Authored, unvalidated** | Complete screen set consuming tested read models; zero compile/run validation (B-002) — nothing here counts until the macOS pass |
-| Visual quality | **Deferred** | v1 tokens only; Phase 17 art direction not started |
-| Accessibility | **Baseline only** | Labels/44pt/semantic colors authored; audit requires devices |
-| Onboarding | **Core built + UI authored** (2026-08-26) | Guided first-route beat: `OnboardingModel` read model (checklist + demand-ranked route suggestions) tested in Core; Dashboard card + prefilled route sheet authored. Runtime validation pending macOS |
+| UX / UI | **Rebuilt, compiled, unvalidated on a device** | Reassessed 2026-08-29 by `docs/UIUX_FORENSIC_AUDIT.md`, which found the screen set complete and the *product* thin: five P0s including a tab bar that overflowed into the system More list, a route P&L that read ¤0 for a month, a first flight that produced no feed line, rejections raised beneath the sheets that caused them, and a failure journey with no interface at all. All P0s and P1s addressed; the app now compiles on macOS (CI 33244671402). Rendering still needs a device |
+| Visual quality | **Improved, art direction still not started** | Coastlines under the map, liveries per carrier, an identity accent instead of the system blue, celebration moments, a painted launch screen. Still no custom art of any kind: no aircraft silhouettes, no airport imagery, SF Symbols throughout (audit §9) |
+| Accessibility | **Baseline plus, unaudited** | Labels/44pt/semantic colours authored; explicit Reduce Motion; a map summary for VoiceOver over an otherwise opaque `Canvas`. The 44pt and Dynamic Type audits need devices |
+| Onboarding | **Core built + UI authored** (2026-08-26) | Guided first-route beat: `OnboardingModel` read model (checklist + demand-ranked route suggestions) tested in Core; Dashboard card + prefilled route sheet authored. Runtime validation pending macOS. The audit's remaining gap against `PLAYER_JOURNEY` §1 is that the player starts with **no aircraft** — the script opens with a leased turboprop on the apron, which makes the first decision "where do I fly" rather than "how do I shop" |
 | Replayability | **Good** | Seeded worlds, archetype casts, era variety; scenario presets missing (fixed this phase — see below) |
 
 ## Ranked issues
+
+> **Status note, 2026-08-29.** Items 1 and 2 below are largely superseded.
+> The app **compiles** (CI run 33244671402, `xcodebuild` on macOS), and the
+> UI/UX forensic audit rebuilt most of the client. What has *not* changed is
+> the honest part of item 1: nothing here has been seen to render. Read the
+> two entries as history plus the updates inside them.
 
 ### Critical (release-blocking)
 1. **The app has never been compiled or run** (B-002). Everything UI is
@@ -76,9 +82,23 @@ dimensions are assessed on authored code + Core read models and flagged.
 10. iPad sidebar layout not authored (TabView only). → macOS queue.
 
 ### Low
-11. Milestone celebration moments (map flourish) — Phase 16/17.
+11. ~~Milestone celebration moments~~ → **Built 2026-08-29.** Eras, milestones,
+    achievements, completed programs and missions raise a brief non-blocking
+    overlay with success haptics. The *map flourish* specifically is not built.
 12. Fictional-name polish pass on airport/city naming consistency.
 13. Reputation-change events for the feed (state is visible; no events).
+    Still true, and now the clearest remaining explainability gap: the
+    reputation screen says what each component *is* and what moves it, but
+    nothing tells the player when one actually moved.
+
+### Added by the 2026-08-29 audit and still open
+14. **No starter aircraft.** `PLAYER_JOURNEY` §1 opens with one on the apron.
+15. **Localization: zero.** ~700 string literals; numeric formatting is now
+    locale-correct, the strings are not (audit UI-036).
+16. **No audio at all.** `UI_ARCHITECTURE` §4 specifies an `AudioService`;
+    this needs sound design, not code.
+17. **Hub connections** — still descoped to the first content update (D-010),
+    and still the missing mid-game transformation.
 
 ## Release-blocking list (consolidated macOS queue)
 

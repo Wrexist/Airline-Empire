@@ -100,10 +100,11 @@ public actor GameSession {
     /// Returns the founding result so the UI can surface a rejection.
     @discardableResult
     public func beginScenario(_ spec: ScenarioSpec, airlineName: String,
-                              home: AirportCode) -> CommandResult {
+                              home: AirportCode,
+                              livery: Livery = .default) -> CommandResult {
         let result = engine.applyNow(FoundAirlineCommand(
             airlineName: airlineName, kind: .player, homeAirport: home,
-            startingCash: spec.playerStartingCash))
+            startingCash: spec.playerStartingCash, livery: livery))
         if result == .applied {
             populateStandardWorld(competitors: spec.competitorCount,
                                   competitorCash: spec.competitorStartingCash)

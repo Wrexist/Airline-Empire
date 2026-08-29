@@ -245,3 +245,31 @@ signing still need a device and a person, and `docs/APPLE_VALIDATION.md`
 remains the list. macOS minutes bill at ten times ubuntu ones, which is why
 the job is scoped rather than unconditional.
 
+
+
+---
+
+## D-015 — Save format v11 for airline livery
+**Date:** 2026-08-29 · **Status:** ACCEPTED · **Phase:** UI/UX remediation
+**Context:** `GAME_DESIGN` §4.1 lists livery colour among the first decisions
+a player makes, and the client never had it (UIUX_FORENSIC_AUDIT UI-026). It
+was deferred once on the grounds that it is airline *state*, not a UI
+preference, and therefore costs a format bump. The alternative — storing the
+colour app-side in `UserDefaults` — was rejected: a rival's livery has to be as
+real as the player's for the map to use it, and a colour that does not travel
+with the save is not identity, it is a setting.
+**Decision:** `Airline.livery: Livery` (a closed, named palette rather than a
+free colour, so the map can promise carriers stay distinguishable and so the
+save encodes a name rather than a colour space). Format goes to **v11** with
+`MigrationV10AddLivery` in the shipping chain.
+**Consequences:** v10 is the format TestFlight 1.0.0 wrote to a real phone, so
+this is the first migration here that runs on data the project did not create.
+It is tested for what would actually cost a player their game rather than for
+decodability: every airline, balance, route and aircraft intact; the player
+keeps their colour; rivals are assigned over `airlines.keys.sorted()` so the
+world does not repaint itself on each load; the step is idempotent; and a
+120-day run is bit-identical whichever livery it was played in — the field is
+identity, and a test says so rather than a comment. Nine tests
+(`LiveryMigrationTests`). The map now draws each carrier in its own colours,
+which is the first time a rival on that screen has been distinguishable from
+any other rival.

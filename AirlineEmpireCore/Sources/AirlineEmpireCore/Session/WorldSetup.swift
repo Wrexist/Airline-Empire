@@ -32,7 +32,10 @@ public enum WorldSetup {
             let result = engine.applyNow(FoundAirlineCommand(
                 airlineName: competitorNames[index], kind: .ai,
                 homeAirport: home.code, startingCash: startingCash,
-                aiProfile: profile))
+                aiProfile: profile,
+                // Distinct from the player's default and from each other, so
+                // the map can tell four carriers apart at a glance.
+                livery: Livery.forCompetitor(index: index)))
             guard result == .applied,
                   let airline = engine.state.airlines.values.first(where: {
                       $0.name == competitorNames[index]

@@ -31,6 +31,9 @@ public struct MapModel: Equatable, Sendable {
         public let arc: [MapPoint]
         public let dailyRoundTrips: Int
         public let profitable: Bool
+        /// The operator's colours, so the map can tell four carriers apart
+        /// instead of drawing every rival in the same grey.
+        public let livery: Livery
     }
 
     public struct MapFlight: Equatable, Sendable {
@@ -41,6 +44,7 @@ public struct MapModel: Equatable, Sendable {
         /// Course in degrees clockwise from north (icon rotation).
         public let heading: Double
         public let airborne: Bool
+        public let livery: Livery
     }
 }
 
@@ -149,7 +153,8 @@ extension GameState {
                 to: MapPoint(coordinate: destination.coordinate),
                 arc: MapMath.arc(from: origin.coordinate, to: destination.coordinate),
                 dailyRoundTrips: route.dailyRoundTrips,
-                profitable: route.economicsLastMonth.directOperatingProfit > .zero)
+                profitable: route.economicsLastMonth.directOperatingProfit > .zero,
+                livery: airlines[route.airline]?.livery ?? .default)
         }
 
         let mapFlights = orderedFlightIDs.compactMap { flightID -> MapModel.MapFlight? in
@@ -165,19 +170,23 @@ extension GameState {
                 let ahead = MapMath.greatCirclePoint(
                     from: from.coordinate, to: to.coordinate,
                     fraction: min(1, fraction + 0.02))
+                let owner = aircraft[flight.aircraft]?.owner
                 return MapModel.MapFlight(
-                    id: flightID, airline: aircraft[flight.aircraft]?.owner ?? AirlineID(raw: 0),
-                    isPlayer: aircraft[flight.aircraft]?.owner == player,
+                    id: flightID, airline: owner ?? AirlineID(raw: 0),
+                    isPlayer: owner == player,
                     position: MapPoint(coordinate: position),
                     heading: MapMath.heading(from: position, to: ahead),
-                    airborne: true)
+                    airborne: true,
+                    livery: owner.flatMap { airlines[$0]?.livery } ?? .default)
             case .boarding, .turnaround:
+                let owner = aircraft[flight.aircraft]?.owner
                 return MapModel.MapFlight(
-                    id: flightID, airline: aircraft[flight.aircraft]?.owner ?? AirlineID(raw: 0),
-                    isPlayer: aircraft[flight.aircraft]?.owner == player,
+                    id: flightID, airline: owner ?? AirlineID(raw: 0),
+                    isPlayer: owner == player,
                     position: MapPoint(coordinate: from.coordinate),
                     heading: MapMath.heading(from: from.coordinate, to: to.coordinate),
-                    airborne: false)
+                    airborne: false,
+                    livery: owner.flatMap { airlines[$0]?.livery } ?? .default)
             case .scheduled:
                 return nil
             }

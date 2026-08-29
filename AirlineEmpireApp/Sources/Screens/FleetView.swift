@@ -91,7 +91,7 @@ struct FleetSummaryRow: View {
             summary("\(cards.count)", "aircraft")
             summary("\(idleCount)", "idle", tint: idleCount > 0 ? AETheme.caution : nil)
             summary(Format.money(monthlyLeases), "leases/mo")
-            summary(String(format: "%.0f y", averageAge), "avg age")
+            summary("\(Format.decimal(averageAge, places: 0)) y", "avg age")
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, AETheme.spacingXS)
@@ -147,7 +147,7 @@ struct FleetRow: View {
                 statusBadge
             }
             HStack(spacing: AETheme.spacingS) {
-                AEBadge(text: "\(String(format: "%.0f", card.ageYears))y",
+                AEBadge(text: "\(Format.decimal(card.ageYears, places: 0))y",
                         color: .secondary)
                 AEBadge(text: "cond \(Format.percent(card.condition))",
                         color: card.condition > 0.8 ? AETheme.positive : AETheme.caution)
@@ -237,7 +237,7 @@ struct AircraftDetailView: View {
                     AEChip(icon: "person.2.fill", text: "\(spec.seats) seats")
                     AEChip(icon: "arrow.left.and.right", text: "\(spec.rangeKm) km")
                     AEChip(icon: "fuelpump.fill",
-                           text: "\(String(format: "%.1f", spec.fuelBurnKgPerKm)) kg/km")
+                           text: "\(Format.decimal(spec.fuelBurnKgPerKm, places: 1)) kg/km")
                 }
                 Text("Needs a \(Vocab.runway(spec.runwayRequirement).lowercased()) · cruises at \(spec.cruiseSpeedKmh) km/h · \(spec.turnaroundMinutes) min turnaround")
                     .font(.caption)
@@ -317,7 +317,7 @@ struct AircraftDetailView: View {
                       tint: card.condition > 0.8 ? AETheme.positive : AETheme.caution)
                 gauge("Reliability", card.reliability,
                       tint: card.reliability > 0.95 ? AETheme.positive : AETheme.caution)
-                labelled("Age", "\(String(format: "%.1f", card.ageYears)) years")
+                labelled("Age", "\(Format.decimal(card.ageYears, places: 1)) years")
                 labelled("Flight hours",
                          Format.count(Int64(card.totalFlightHours.rounded())))
                 labelled("Maintenance",
@@ -571,7 +571,7 @@ struct AircraftShopSheet: View {
                 AEChip(icon: "person.2.fill", text: "\(spec.seats) seats")
                 AEChip(icon: "arrow.left.and.right", text: "\(spec.rangeKm) km")
                 AEChip(icon: "fuelpump.fill",
-                       text: "\(String(format: "%.3f", spec.fuelBurnKgPerKm / Double(max(1, spec.seats)))) kg/km per seat")
+                       text: "\(Format.decimal(spec.fuelBurnKgPerKm / Double(max(1, spec.seats)), places: 3)) kg/km per seat")
             }
 
             if locked {

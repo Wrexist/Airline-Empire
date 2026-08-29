@@ -38,6 +38,7 @@ struct NewGameView: View {
     @State private var customHome: AirportCode?
     @State private var showingAllAirports = false
     @State private var pendingDeletion: String?
+    @State private var livery: Livery = .default
     @State private var scenario: ScenarioCode = "entrepreneur"
     @State private var seedText = ""
     @State private var showsSeed = false
@@ -70,6 +71,7 @@ struct NewGameView: View {
                 VStack(alignment: .leading, spacing: AETheme.spacingL) {
                     masthead
                     nameField
+                    liverySection
                     if !slots.isEmpty { continueSection }
                     homeSection
                     difficultySection
@@ -143,6 +145,55 @@ struct NewGameView: View {
                 .accessibilityLabel("Airline name")
                 .accessibilityHint("Leave empty to be called Skyline Air")
         }
+    }
+
+    // MARK: - 1b · Colours
+    //
+    // `GAME_DESIGN` §4.1 lists "name/livery color" as the first decision a
+    // player makes, and the app never had it (UIUX_FORENSIC_AUDIT UI-026). It
+    // sits with the name because it is the same decision — who are you — and
+    // it is one row, because it is not a decision with consequences.
+
+    private var liverySection: some View {
+        VStack(alignment: .leading, spacing: AETheme.spacingS) {
+            SectionLabel("Your colours")
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: AETheme.spacingS) {
+                    ForEach(Livery.allCases, id: \.self) { option in
+                        Button {
+                            withAnimation(.snappy(duration: 0.22)) { livery = option }
+                        } label: {
+                            Circle()
+                                .fill(Vocab.liveryColor(option))
+                                .frame(width: 34, height: 34)
+                                .overlay {
+                                    if livery == option {
+                                        Image(systemName: "checkmark")
+                                            .font(.caption.weight(.bold))
+                                            .foregroundStyle(.white)
+                                    }
+                                }
+                                .overlay {
+                                    Circle().stroke(.white.opacity(livery == option ? 0.9 : 0.2),
+                                                    lineWidth: livery == option ? 2 : 1)
+                                }
+                                .frame(width: 44, height: 44)
+                                .contentShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(Vocab.livery(option))
+                        .accessibilityAddTraits(livery == option
+                                                ? [.isButton, .isSelected] : .isButton)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            Text("\(Vocab.livery(livery)) — your routes and aircraft fly in this colour on the map.")
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.55))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .sensoryFeedback(.selection, trigger: livery)
     }
 
     // MARK: - 2 · Home airport
@@ -247,8 +298,8 @@ struct NewGameView: View {
     private static func market(_ spec: AirportSpec) -> String {
         let millions = Double(spec.demographics.populationThousands) / 1_000
         return millions >= 10
-            ? String(format: "%.0fM catchment", millions)
-            : String(format: "%.1fM catchment", millions)
+            ? "\(Format.decimal(millions, places: 0))M catchment"
+            : "\(Format.decimal(millions, places: 1))M catchment"
     }
 
     /// Which half of the market is the bigger prize here.
@@ -425,7 +476,8 @@ struct NewGameView: View {
             controller.startNewGame(airlineName: effectiveName,
                                     home: home,
                                     seed: seed,
-                                    scenario: scenario)
+                                    scenario: scenario,
+                                    livery: livery)
         } label: {
             HStack(spacing: AETheme.spacingS) {
                 Text("Found \(effectiveName)")

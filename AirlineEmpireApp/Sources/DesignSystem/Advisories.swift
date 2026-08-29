@@ -84,7 +84,7 @@ struct SolvencyBanner: View {
             return Format.money(model.cash)
         case .watch:
             if let months = model.monthsOfRunway {
-                return "\(Format.money(model.cash)) · about \(String(format: "%.1f", months)) months at last month's burn"
+                return "\(Format.money(model.cash)) · about \(Format.decimal(months, places: 1)) months at last month's burn"
             }
             return "\(Format.money(model.cash)) · overdrawn"
         case .healthy:

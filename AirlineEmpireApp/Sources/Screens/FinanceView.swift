@@ -82,7 +82,7 @@ struct FinanceContent: View {
                         HStack {
                             Text("At last month's burn")
                             Spacer()
-                            Text("\(String(format: "%.1f", months)) months")
+                            Text("\(Format.decimal(months, places: 1)) months")
                                 .monospacedDigit()
                                 .foregroundStyle(months < 3 ? AETheme.negative
                                                  : months < 6 ? AETheme.caution
@@ -195,7 +195,7 @@ struct FinanceContent: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(Format.money(loan.principalRemaining))
                     .font(.subheadline.weight(.medium))
-                Text("\(String(format: "%.1f", Double(loan.annualRateBasisPoints) / 100))% · \(loan.monthsRemaining) months · \(Format.money(loan.monthlyPayment))/mo")
+                Text("\(Format.decimal(Double(loan.annualRateBasisPoints) / 100, places: 1))% · \(loan.monthsRemaining) months · \(Format.money(loan.monthlyPayment))/mo")
                     .font(.caption)
                     .foregroundStyle(AETheme.mutedText)
             }
@@ -275,7 +275,7 @@ struct LoanSheet: View {
                     Section("What this costs") {
                         // The exact numbers the simulation will charge.
                         LabeledContent("Offered rate",
-                                       value: "\(String(format: "%.1f", Double(rate) / 100))%")
+                                       value: "\(Format.decimal(Double(rate) / 100, places: 1))%")
                         LabeledContent("Monthly payment", value: Format.money(payment))
                         LabeledContent("Total repaid", value: Format.money(total))
                         LabeledContent("Interest over the term",

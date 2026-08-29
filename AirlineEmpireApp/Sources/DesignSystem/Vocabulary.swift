@@ -111,6 +111,37 @@ enum Vocab {
         }
     }
 
+    // MARK: - Livery
+
+    /// Core names a livery; the app decides what that looks like. The values
+    /// are chosen to stay apart from one another on the map's dark ocean and
+    /// to hold up against both appearances.
+    static func liveryColor(_ livery: Livery) -> Color {
+        switch livery {
+        case .azure: AETheme.accent
+        case .ember: Color(red: 0.95, green: 0.55, blue: 0.20)
+        case .jade: Color(red: 0.16, green: 0.70, blue: 0.48)
+        case .crimson: Color(red: 0.87, green: 0.24, blue: 0.32)
+        case .violet: Color(red: 0.56, green: 0.36, blue: 0.87)
+        case .slate: Color(red: 0.49, green: 0.56, blue: 0.65)
+        case .gold: Color(red: 0.86, green: 0.70, blue: 0.20)
+        case .teal: Color(red: 0.16, green: 0.62, blue: 0.68)
+        }
+    }
+
+    static func livery(_ livery: Livery) -> String {
+        switch livery {
+        case .azure: "Azure"
+        case .ember: "Ember"
+        case .jade: "Jade"
+        case .crimson: "Crimson"
+        case .violet: "Violet"
+        case .slate: "Slate"
+        case .gold: "Gold"
+        case .teal: "Teal"
+        }
+    }
+
     // MARK: - Airlines
 
     static func archetype(_ archetype: AIArchetype) -> String {

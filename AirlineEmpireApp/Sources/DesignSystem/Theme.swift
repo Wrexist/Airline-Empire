@@ -117,6 +117,17 @@ extension View {
 
 /// Centralized formatting (docs/UI_ARCHITECTURE.md §2): views never invent
 /// number formats.
+///
+/// Everything numeric goes through `FormatStyle`, which reads the reader's
+/// locale. That is not a localization nicety — `String(format: "%.1f")` prints
+/// `3.5` to a player in Paris who writes `3,5`, and it did so on every screen
+/// in this app. Two things stay deliberately fixed:
+///
+/// - **`¤`**, the generic currency sign. The world is fictional and its money
+///   is not any real currency; picking one would be a lie, and localizing an
+///   invented currency into euros would be a bigger one.
+/// - **The ISO game date.** `2031-03-14` is unambiguous everywhere, which a
+///   date in a game about global schedules should be.
 enum Format {
     static func money(_ money: Money) -> String {
         let dollars = Double(money.cents) / 100
@@ -124,11 +135,11 @@ enum Format {
         let sign = dollars < 0 ? "−" : ""
         switch magnitude {
         case 1_000_000_000...:
-            return "\(sign)¤\(String(format: "%.2f", magnitude / 1_000_000_000))B"
+            return "\(sign)¤\(decimal(magnitude / 1_000_000_000, places: 2))B"
         case 1_000_000...:
-            return "\(sign)¤\(String(format: "%.1f", magnitude / 1_000_000))M"
+            return "\(sign)¤\(decimal(magnitude / 1_000_000, places: 1))M"
         case 10_000...:
-            return "\(sign)¤\(String(format: "%.0f", magnitude / 1_000))k"
+            return "\(sign)¤\(decimal(magnitude / 1_000, places: 0))k"
         default:
             // Grouped, so ¤9999 does not read as a serial number
             // (UIUX_FORENSIC_AUDIT UI-031).
@@ -136,18 +147,23 @@ enum Format {
         }
     }
 
+    /// A fraction as a whole-number percentage, in the reader's locale.
+    static func percent(_ value: Double) -> String {
+        value.formatted(.percent.precision(.fractionLength(0)))
+    }
+
+    /// A decimal with a fixed number of places, in the reader's locale.
+    static func decimal(_ value: Double, places: Int) -> String {
+        value.formatted(.number.precision(.fractionLength(places))
+            .grouping(.automatic))
+    }
+
     /// Thousands separators for the reader's locale.
     static func grouped(_ value: Int64) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
+        value.formatted(.number)
     }
 
-    static func percent(_ value: Double) -> String {
-        String(format: "%.0f%%", value * 100)
-    }
-
+    /// Deliberately ISO, and deliberately not localized — see the note above.
     static func date(_ date: GameDate) -> String {
         String(format: "%04d-%02d-%02d", date.year, date.month, date.day)
     }
@@ -171,7 +187,7 @@ enum Format {
     /// A count of days as a phrase, because "1 days" is how a game loses a
     /// player's trust in everything else it says.
     static func days(_ count: Int) -> String {
-        count == 1 ? "1 day" : "\(count) days"
+        count == 1 ? "1 day" : "\(grouped(Int64(count))) days"
     }
 
     /// Whole numbers with thousands separators — `Format.money` compresses

@@ -137,7 +137,8 @@ final class GameController {
     // MARK: Lifecycle
 
     func startNewGame(airlineName: String, home: AirportCode, seed: UInt64,
-                      scenario: ScenarioCode = "entrepreneur") {
+                      scenario: ScenarioCode = "entrepreneur",
+                      livery: Livery = .default) {
         startupFailure = nil
         let catalog: ContentCatalog
         do {
@@ -162,7 +163,7 @@ final class GameController {
         self.lastSolvencyStage = .healthy
         Task {
             let result = await session.beginScenario(spec, airlineName: airlineName,
-                                                     home: home)
+                                                     home: home, livery: livery)
             if case .rejected(let rejection) = result {
                 // Founding is the one command whose failure must not leave the
                 // player looking at a half-built game.

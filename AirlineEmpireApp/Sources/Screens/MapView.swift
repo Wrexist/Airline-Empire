@@ -48,7 +48,8 @@ struct MapScreen: View {
                         MapCanvas(model: model, zoom: liveZoom,
                                   center: liveCenter(size: geometry.size),
                                   home: home,
-                                  selectedAirport: selectedAirport)
+                                  selectedAirport: selectedAirport,
+                                  playerLivery: snapshot.playerAirline?.livery ?? .default)
                             .background(AETheme.mapBackground)
                             .contentShape(Rectangle())
                             // `.gesture` twice replaced the first with the
@@ -71,7 +72,7 @@ struct MapScreen: View {
                                     openRoute: { routeSheet = RouteDraft(suggestion: $0) })
                                     .transition(.move(edge: .bottom).combined(with: .opacity))
                             } else {
-                                MapLegend()
+                                MapLegend(playerLivery: snapshot.playerAirline?.livery ?? .default)
                                     .transition(.opacity)
                             }
                         }
@@ -220,6 +221,10 @@ struct MapCanvas: View {
     let center: CGPoint
     let home: AirportCode?
     let selectedAirport: AirportCode?
+    /// The player's own colours, for the airports they serve.
+    var playerLivery: Livery = .default
+
+    private var playerColor: Color { Vocab.liveryColor(playerLivery) }
 
     var body: some View {
         Canvas { context, canvasSize in
@@ -250,14 +255,18 @@ struct MapCanvas: View {
                     if first { path.move(to: projected); first = false }
                     else { path.addLine(to: projected) }
                 }
+                // Your colours when the route works, amber when it does not —
+                // the health signal outranks the identity one. Rivals fly in
+                // their own livery, dimmed, so "who is that" has an answer
+                // without a legend lookup.
                 let color = route.isPlayer
-                    ? (route.profitable ? AETheme.playerRoute : AETheme.caution)
-                    : AETheme.rivalRoute
+                    ? (route.profitable ? Vocab.liveryColor(route.livery) : AETheme.caution)
+                    : Vocab.liveryColor(route.livery)
                 // Frequency is in the model and was never drawn; a trunk route
                 // should look like one.
                 let weight = min(3.2, 1.2 + CGFloat(route.dailyRoundTrips) * 0.22)
                 let width: CGFloat = route.isPlayer ? weight : (zoom > 3 ? 1.0 : 0.5)
-                context.stroke(path, with: .color(color.opacity(route.isPlayer ? 0.9 : 0.45)),
+                context.stroke(path, with: .color(color.opacity(route.isPlayer ? 0.9 : 0.38)),
                                lineWidth: width)
             }
 
@@ -277,7 +286,7 @@ struct MapCanvas: View {
                                   width: radius * 2, height: radius * 2)
                 let color: Color = airport.closed ? AETheme.negative
                     : isHome ? AETheme.ember
-                    : airport.servedByPlayer ? AETheme.playerRoute : .white.opacity(0.7)
+                    : airport.servedByPlayer ? playerColor : .white.opacity(0.7)
                 context.fill(Path(ellipseIn: rect), with: .color(color))
                 if isHome {
                     // Home gets a ring of its own, so "where am I" is never a
@@ -308,7 +317,9 @@ struct MapCanvas: View {
                 symbol.rotate(by: .degrees(flight.heading))
                 symbol.draw(Text(Image(systemName: "airplane"))
                     .font(.system(size: flight.isPlayer ? 13 : 10))
-                    .foregroundStyle(flight.isPlayer ? AETheme.playerRoute : .gray),
+                    .foregroundStyle(flight.isPlayer
+                                     ? Vocab.liveryColor(flight.livery)
+                                     : Vocab.liveryColor(flight.livery).opacity(0.55)),
                     at: .zero)
             }
         }
@@ -330,10 +341,12 @@ struct MapCanvas: View {
 /// What the colours mean. There was no legend, so a red dot or an amber line
 /// was a mystery.
 struct MapLegend: View {
+    var playerLivery: Livery = .default
+
     var body: some View {
         HStack(spacing: AETheme.spacingM) {
             key(AETheme.ember, "Home")
-            key(AETheme.playerRoute, "Yours")
+            key(Vocab.liveryColor(playerLivery), "Yours")
             key(AETheme.caution, "Losing money")
             key(AETheme.rivalRoute, "Rivals")
         }

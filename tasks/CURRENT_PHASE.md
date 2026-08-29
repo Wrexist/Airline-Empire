@@ -19,6 +19,38 @@ Apple-layer work is prepared, never claimed.
 
 ## Session log
 
+**2026-08-29 (continuation — the last of the audit list).** Four things the
+remediation pass had left:
+
+- **The feed is tappable.** UI-011 was marked "Fixed" on the strength of
+  naming and world-event links; that overclaimed, because the finding was
+  about the *tap*. A feed line about a route or aircraft you own now opens it,
+  and a line about something already closed or sold resolves to no link rather
+  than a dead end. The audit row has been corrected rather than quietly
+  amended.
+- **Formatting is locale-correct.** Every number went through
+  `String(format: "%.1f")`, which prints `3.5` to a player who writes `3,5`.
+  That is a defect today, for a French or German player of an English app, and
+  distinct from translating anything. All numeric formatting is `FormatStyle`
+  now. `¤` and the ISO game date stay fixed on purpose.
+- **Livery (D-015, save v11).** Deferred earlier because it is airline state
+  and costs a format bump — which is precisely why it was worth doing
+  properly. v10 is what TestFlight wrote to a real phone, so this is the first
+  migration here that runs on somebody else's data, and it is tested for what
+  would cost a player their game rather than for decodability. The map now
+  draws each carrier in its own colours, which is the first time a rival there
+  has been distinguishable from any other rival.
+- **The stale docs.** `PRODUCT_REVIEW` still scored UX as "Authored,
+  unvalidated" and listed fixed issues; `TODO` predated the compile.
+
+285 tests green, release build clean, and the app compiles.
+
+**Still open, and honestly:** localization (zero — the strings, not the
+numbers), audio (none, and it needs sound design rather than code), a starter
+aircraft on the apron per `PLAYER_JOURNEY` §1, reputation-change events, and
+hub connections (D-010). None of it is blocked on this environment; all of it
+is a choice about what to build next.
+
 **2026-08-29 (the UI/UX forensic audit, and acting on it).** A complete
 product-and-UX pass over the whole repository produced
 `docs/UIUX_FORENSIC_AUDIT.md` — the baseline every future UI decision is

@@ -10,15 +10,19 @@ public struct FoundAirlineCommand: Command, Equatable {
     public let startingCash: Money
     /// Personality for AI airlines; must be nil for the player.
     public let aiProfile: AIProfile?
+    /// The airline's colours (docs/GAME_DESIGN.md §4.1). Defaulted so every
+    /// existing call site — and every existing test — keeps working.
+    public let livery: Livery
 
     public init(airlineName: String, kind: AirlineKind,
                 homeAirport: AirportCode, startingCash: Money,
-                aiProfile: AIProfile? = nil) {
+                aiProfile: AIProfile? = nil, livery: Livery = .default) {
         self.airlineName = airlineName
         self.kind = kind
         self.homeAirport = homeAirport
         self.startingCash = startingCash
         self.aiProfile = aiProfile
+        self.livery = livery
     }
 
     public func validate(state: GameState, catalog: ContentCatalog) -> CommandRejection? {
@@ -54,6 +58,7 @@ public struct FoundAirlineCommand: Command, Equatable {
         let id = state.meta.idAllocator.allocateAirlineID()
         var airline = Airline(id: id, name: airlineName.trimmed(), kind: kind,
                               homeAirport: homeAirport, foundedAt: context.current)
+        airline.livery = livery
         if kind == .ai, let profile = aiProfile {
             airline.aiProfile = profile
             airline.serviceTier = profile.serviceTier

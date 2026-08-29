@@ -59,10 +59,21 @@ manual walkthrough + Instruments evidence recorded in docs/.
   `ContentQualityTests`. `docs/APPLE_VALIDATION.md` written as the Xcode
   handoff. Content audited (no dead SKUs; F-004 runway-ladder finding
   documented, not unilaterally changed). Offline-first re-verified.
-**Status:** LINUX SCOPE COMPLETE — no known Linux-side P0/P1 remains.
-Apple-runtime steps (compile, simulator, rendering, gestures,
-accessibility, Instruments, signing) are blocked on macOS (B-002) and
-fully enumerated in `docs/APPLE_VALIDATION.md`.
+- 2026-08-29 UI/UX forensic audit + remediation: `docs/UIUX_FORENSIC_AUDIT.md`
+  is the new baseline. It found the screen set complete and the *product* thin
+  — five P0s, nine P1s, 22 P2/P3s — and the list has been worked. Three more
+  defects surfaced while fixing (BUG-009 tab overflow, BUG-010 a Start button
+  that could only refuse, BUG-011 a chart whose zero line moved per bar), and
+  five more that only a real compiler could see. Core gained `EraGate`,
+  `MissionMath`, `AdvisoryModels`, month-to-date route economics and
+  `Airline.livery` (save v11, D-015). 285 tests.
+**Status:** LINUX SCOPE COMPLETE, AND THE COMPILE QUESTION IS ANSWERED.
+`xcodebuild` runs on every dispatch (D-014) and run 33244671402 is green on
+`macos-26`. What remains is genuinely device-only — rendering, gestures, size
+classes, `@Observable` behaviour, scene-phase autosave, accessibility,
+Instruments and signing. `docs/APPLE_VALIDATION.md` §4 and §4b are the script;
+§4b lists the nine things this UI pass added to it, starting with the one that
+matters most: that five tabs render as five, with no *More* item.
 
 ---
 
