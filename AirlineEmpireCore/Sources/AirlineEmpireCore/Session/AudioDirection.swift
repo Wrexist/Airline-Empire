@@ -124,6 +124,12 @@ public enum AudioCue: String, Hashable, Sendable, CaseIterable {
     case monthClosedLoss
     case loanTaken
     case loanRepaid
+    /// Cash has fallen far enough that the airline is being watched. Not a
+    /// crisis; a warning while there is still time to act.
+    case solvencyWarning
+    /// The administration countdown has started. This is the last moment the
+    /// game can be saved, so it is the loudest thing short of losing.
+    case solvencyDanger
 
     // MARK: World
 
@@ -170,8 +176,10 @@ public enum AudioCue: String, Hashable, Sendable, CaseIterable {
         case .routeOpened, .routeClosed, .firstRoute:
             return .routes
         case .monthClosedProfit, .monthClosedLoss, .loanTaken, .loanRepaid,
-             .firstRevenue:
+             .firstRevenue, .solvencyWarning:
             return .finance
+        case .solvencyDanger:
+            return .critical
         case .worldEventForecast, .stormStarted, .strikeStarted,
              .fuelShockStarted, .boomStarted, .airportClosed, .worldEventEnded:
             return .world
@@ -205,7 +213,7 @@ public enum AudioCue: String, Hashable, Sendable, CaseIterable {
             return .normal
 
         case .routeOpened, .aircraftDelivered, .disruptionFlurry,
-             .monthClosedProfit, .monthClosedLoss, .loanTaken,
+             .monthClosedProfit, .monthClosedLoss, .loanTaken, .solvencyWarning,
              .stormStarted, .strikeStarted, .fuelShockStarted, .airportClosed,
              .missionCompleted, .milestoneReached, .achievementUnlocked,
              .capabilityCompleted:
@@ -217,7 +225,7 @@ public enum AudioCue: String, Hashable, Sendable, CaseIterable {
              .eraAdvanced:
             return .important
 
-        case .administrationEntered, .collapse, .gameOver:
+        case .administrationEntered, .collapse, .gameOver, .solvencyDanger:
             return .critical
         }
     }
@@ -271,6 +279,8 @@ public enum AudioCue: String, Hashable, Sendable, CaseIterable {
         case .monthClosedLoss: return "month_loss"
         case .loanTaken: return "loan_taken"
         case .loanRepaid: return "loan_repaid"
+        case .solvencyWarning: return "solvency_warning"
+        case .solvencyDanger: return "solvency_danger"
 
         case .worldEventForecast: return "world_forecast"
         case .stormStarted: return "world_storm"
@@ -683,9 +693,10 @@ extension AudioCue {
 
         // Trouble the player must not scroll past.
         case .flightCancelled, .disruptionFlurry, .monthClosedLoss,
-             .stormStarted, .strikeStarted, .fuelShockStarted, .airportClosed:
+             .stormStarted, .strikeStarted, .fuelShockStarted, .airportClosed,
+             .solvencyWarning:
             return .warning
-        case .administrationEntered, .collapse, .gameOver:
+        case .administrationEntered, .collapse, .gameOver, .solvencyDanger:
             return .error
 
         // Everything else — every routine flight, every forecast, every

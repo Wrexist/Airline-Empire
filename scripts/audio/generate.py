@@ -443,6 +443,25 @@ asset("loan_taken", _loan, 0.44)
 asset("loan_repaid",
       chord([A3, D4, A4], 0.55, spread=0.06, attack=0.012, decay=0.28), 0.38)
 
+# Solvency. Two rungs of the same ladder, so the player hears that the second
+# is the first getting worse rather than a different problem.
+
+_warn = []
+_mix_into(_warn, tone(A3, 0.42, attack=0.03, decay=0.22,
+                      harmonics=(1.0, 0.24, 0.08)), 0.0, 1.0)
+_mix_into(_warn, tone(A3 * 0.943, 0.46, attack=0.04, decay=0.24), 0.16, 0.7)
+asset("solvency_warning", _warn, 0.40)
+
+# The same interval, lower, three times, slower. Urgent by repetition.
+_danger = []
+for k in range(3):
+    _mix_into(_danger, tone(D3, 0.50, attack=0.04, decay=0.26,
+                            harmonics=(1.0, 0.30, 0.12)), 0.38 * k, 1.0)
+    _mix_into(_danger, tone(D3 * 0.943, 0.50, attack=0.05, decay=0.26),
+              0.38 * k, 0.65)
+_mix_into(_danger, lowpass(noise(1.4, 63), 260), 0.0, 0.22)
+asset("solvency_danger", _danger, 0.58)
+
 # --- World. Each one has a different physical character on purpose. --------
 
 asset("world_forecast",

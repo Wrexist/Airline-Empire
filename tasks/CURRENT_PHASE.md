@@ -37,7 +37,7 @@ no sound at all. It has a complete semantic audio language now.
   is seeded from `RouteStats`, which is persisted — so loading a mature
   airline cannot replay the beginning of the game at somebody. Verified in
   both directions by sabotage.
-- **52 original assets**, synthesised by `scripts/audio/generate.py` from
+- **54 original assets**, synthesised by `scripts/audio/generate.py` from
   additive synthesis and swept filtered noise on one pitch set. No samples, no
   licences, nothing that belongs to anyone else — and not the work of a sound
   designer. The loudness hierarchy is deliberate: an era change peaks at 0.80,
@@ -47,6 +47,11 @@ no sound at all. It has a complete semantic audio language now.
   so a play costs one `scheduleBuffer`. Session category `.ambient` with
   `.mixWithOthers`: the game never interrupts the podcast a player already has
   on, and it obeys the silent switch.
+- **Money trouble is audible before it is fatal.** `SolvencyModel.stage` was
+  already computed every refresh for the auto-pause and had no voice; crossing
+  into `watch` and into `danger` now sound, on the *transition* only, and
+  deliberately not gated on the auto-pause preference — that setting is about
+  time control, not about whether the game tells you it is failing.
 - **Music is deliberately absent**, with the six-track brief written and no
   dead toggle in Settings (TD-008).
 

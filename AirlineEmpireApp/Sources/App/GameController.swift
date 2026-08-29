@@ -528,7 +528,7 @@ final class GameController {
         invalidateCachesIfNeeded(state)
         snapshot = state
         speed = await session.speed
-        checkAutoPause(state)
+        checkSolvency(state)
         publishAudio(state)
     }
 
@@ -542,17 +542,38 @@ final class GameController {
         feedback.handle(events: batch, state: state, speed: speed)
     }
 
+    /// Money trouble, heard and acted on.
+    ///
+    /// Two separate consequences of one observation, deliberately not
+    /// entangled: crossing a solvency threshold always *sounds*, and it pauses
+    /// only if the player asked for that. Tying the warning to the auto-pause
+    /// setting would have made a preference about fast-forward silently also
+    /// a preference about being told the airline is failing.
+    ///
     /// Fast-forward must never skip the one decision that ends the game
-    /// (docs/CORE_LOOP.md §2). Crossing into the administration countdown
+    /// (docs/CORE_LOOP.md §2), so crossing into the administration countdown
     /// pauses once, and says so.
-    private func checkAutoPause(_ state: GameState) {
-        guard preferences.autoPauseOnDanger,
-              let catalog,
+    private func checkSolvency(_ state: GameState) {
+        guard let catalog,
               let player = state.playerAirline?.id,
               let solvency = state.solvencyModel(for: player, catalog: catalog)
         else { return }
-        defer { lastSolvencyStage = solvency.stage }
-        guard solvency.stage == .danger, lastSolvencyStage != .danger else { return }
+        let previous = lastSolvencyStage
+        lastSolvencyStage = solvency.stage
+
+        // Only a transition sounds. The stage is recomputed four times a
+        // second and holding at `.danger` for a week must not be a week of
+        // warnings (docs/AUDIO_ARCHITECTURE.md §4).
+        if solvency.stage > previous {
+            switch solvency.stage {
+            case .watch: feedback.play(.solvencyWarning)
+            case .danger: feedback.play(.solvencyDanger)
+            case .healthy: break
+            }
+        }
+
+        guard preferences.autoPauseOnDanger else { return }
+        guard solvency.stage == .danger, previous != .danger else { return }
         guard speed != .paused else { return }
         setSpeed(.paused)
         autoPauseReason = .solvencyDanger

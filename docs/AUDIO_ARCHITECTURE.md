@@ -90,7 +90,7 @@ Three things it buys that a director inside a SwiftUI view could not have:
 
 ## 4. The event taxonomy
 
-`AudioCue` has 52 cases across seven categories. Each carries a category, a
+`AudioCue` has 54 cases across seven categories. Each carries a category, a
 priority, a cooldown and an asset name.
 
 | Category | Cues | Character |
@@ -98,10 +98,10 @@ priority, a cooldown and an asset name.
 | `ui` | select, navigate, confirm, cancel, sheet open/close, toggle, error | The quietest family. Trimmed to 0.55 and mastered at 0.11–0.34. |
 | `operations` | ordered, delivered, sold, lease returned, assigned, unassigned, maintenance ×2, departed, arrived, delayed, cancelled, 3 flurries | The busiest family, therefore the most rate-limited. |
 | `routes` | opened, closed | The signature sound of the game. |
-| `finance` | month profit/loss, loan taken/repaid | Restrained. No coins. |
+| `finance` | month profit/loss, loan taken/repaid, solvency warning | Restrained. No coins. |
 | `world` | forecast, storm, strike, fuel shock, boom, airport closed, ended | Five distinct identities, by test. |
 | `progression` | mission ×3, milestone, achievement, capability, era | The only family allowed to be beautiful. |
-| `critical` | administration, collapse, game over | Never rate-limited, never cut. |
+| `critical` | solvency danger, administration, collapse, game over | Never rate-limited, never cut. |
 
 Plus four **first-time** cues (`firstRoute`, `firstDeparture`, `firstArrival`,
 `firstRevenue`) which are treated specially throughout — see §6.
@@ -157,6 +157,31 @@ director pure and lets tests hand it their own clock; the app passes elapsed
 `ContinuousClock` seconds. Using simulation time would have been exactly
 backwards — at 16x more sim-time passes per second, so a sim-time cooldown
 would permit *more* sound the faster you played.
+
+### State-derived cues, and why they are not events
+
+Two cues are raised from *state* rather than from the event stream, because
+the thing they describe is a threshold rather than a happening:
+
+- **The four first-time moments** (§6).
+- **`solvencyWarning` / `solvencyDanger`**, raised by `GameController` when
+  `SolvencyModel.stage` crosses upward. Only a *transition* sounds: the stage
+  is recomputed four times a second, and holding at `danger` for a game week
+  must not be a week of warnings.
+
+These are deliberately not tied to the auto-pause preference. That setting is
+about whether fast-forward stops itself; entangling it with the warning would
+have made a preference about time control silently also a preference about
+being told the airline is failing.
+
+**A note on revenue magnitude.** The phase brief asked for a distinction
+between "small" and "significant" revenue. This implementation makes the
+month's sound depend on its *sign* and nothing else, deliberately: the game's
+currency is fictional and unpegged, so any absolute threshold for "significant"
+would be a number invented to sound like a design decision. The mechanism that
+already exists for genuine financial achievement is `milestoneReached`, which
+Core emits against thresholds the simulation itself believes in. A magnitude
+tier should be added only if it can be grounded in one of those.
 
 ### A player's own actions are never rate-limited
 
@@ -292,7 +317,7 @@ is otherwise indistinguishable from a working one.
 
 ## 10. Assets
 
-`AirlineEmpireApp/Resources/Audio/*.wav`, 52 files, mono 16-bit 44.1 kHz,
+`AirlineEmpireApp/Resources/Audio/*.wav`, 54 files, mono 16-bit 44.1 kHz,
 ~5 MB. Flat, not in a subdirectory: XcodeGen adds `Resources/Audio` as a group
 so the files land in the bundle root, which is what
 `Bundle.main.url(forResource:withExtension:)` expects. A folder reference would
