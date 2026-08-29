@@ -21,6 +21,8 @@ enum AETheme {
     static let cardBackground = Color(.secondarySystemBackground)
     static let mapBackground = Color(red: 0.07, green: 0.10, blue: 0.16)
     static let mapLand = Color(red: 0.13, green: 0.17, blue: 0.24)
+    /// The coastline itself, a shade up from the land so the silhouette reads.
+    static let mapCoast = Color(red: 0.22, green: 0.28, blue: 0.37)
     static let playerRoute = Color.cyan
     static let rivalRoute = Color.gray.opacity(0.55)
 
@@ -90,5 +92,31 @@ enum Format {
 
     static func clock(_ date: GameDate) -> String {
         String(format: "%02d:%02d", date.hour, date.minute)
+    }
+
+    /// "14 Mar" — the form that fits in a navigation bar beside a control.
+    static func shortDate(_ date: GameDate) -> String {
+        "\(date.day) \(monthAbbreviation(date.month))"
+    }
+
+    static func monthAbbreviation(_ month: Int) -> String {
+        let names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        guard (1...12).contains(month) else { return "—" }
+        return names[month - 1]
+    }
+
+    /// A count of days as a phrase, because "1 days" is how a game loses a
+    /// player's trust in everything else it says.
+    static func days(_ count: Int) -> String {
+        count == 1 ? "1 day" : "\(count) days"
+    }
+
+    /// Whole numbers with thousands separators — `Format.money` compresses
+    /// above ¤10k, but a passenger count should read exactly.
+    static func count(_ value: Int64) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 }

@@ -39,6 +39,16 @@ public struct RouteCardModel: Equatable, Sendable {
     public let lastMonthPassengers: Int64
     /// Cost breakdown for "why did this route make/lose money".
     public let lastMonthBreakdown: RouteMonthEconomics
+    /// The month in progress, so a route that opened three days ago has a
+    /// story instead of a column of zeros (UIUX_FORENSIC_AUDIT UI-002).
+    /// Partial by definition — it is what has happened so far this month.
+    public let thisMonthBreakdown: RouteMonthEconomics
+    public let thisMonthProfit: Money
+    public let thisMonthPassengers: Int64
+    /// True before the route's first month has ever closed: `lastMonth*` is
+    /// then structurally zero rather than a real result, and a screen must
+    /// say so instead of reporting a loss of nothing.
+    public let hasClosedMonth: Bool
 }
 
 public struct FleetCardModel: Equatable, Sendable {
@@ -129,7 +139,14 @@ extension GameState {
                 completionRate: route.stats.completionRate,
                 lastMonthProfit: route.economicsLastMonth.directOperatingProfit,
                 lastMonthPassengers: route.economicsLastMonth.passengers,
-                lastMonthBreakdown: route.economicsLastMonth)
+                lastMonthBreakdown: route.economicsLastMonth,
+                thisMonthBreakdown: route.economicsThisMonth,
+                thisMonthProfit: route.economicsThisMonth.directOperatingProfit,
+                thisMonthPassengers: route.economicsThisMonth.passengers,
+                // A month that closed leaves a trace even when it lost money:
+                // some flight flew, or some cost posted. All-zero means the
+                // route has not yet lived through a close.
+                hasClosedMonth: route.economicsLastMonth != RouteMonthEconomics())
         }
     }
 

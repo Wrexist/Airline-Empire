@@ -34,6 +34,9 @@ struct NewGameView: View {
     @Environment(GameController.self) private var controller
     @State private var airlineName = ""
     @State private var selectedStart = CuratedStart.all[0]
+    /// A home chosen from the whole world rather than the three curated ones.
+    @State private var customHome: AirportCode?
+    @State private var showingAllAirports = false
     @State private var scenario: ScenarioCode = "entrepreneur"
     @State private var seedText = ""
     @State private var showsSeed = false
@@ -130,14 +133,65 @@ struct NewGameView: View {
         VStack(alignment: .leading, spacing: AETheme.spacingS) {
             SectionLabel("Where you start")
             ForEach(CuratedStart.all) { start in
-                AEChoiceCard(isSelected: start.id == selectedStart.id) {
-                    withAnimation(.snappy(duration: 0.22)) { selectedStart = start }
+                AEChoiceCard(isSelected: customHome == nil && start.id == selectedStart.id) {
+                    withAnimation(.snappy(duration: 0.22)) {
+                        selectedStart = start
+                        customHome = nil
+                    }
                 } content: {
                     startCardBody(start)
                 }
             }
+            // Three curated openings on a world of eighty airports capped
+            // replayability at three (UIUX_FORENSIC_AUDIT UI-025). The curated
+            // three stay first because they are the ones tuned to teach.
+            AEChoiceCard(isSelected: customHome != nil) {
+                showingAllAirports = true
+            } content: {
+                anywhereCardBody
+            }
         }
         .sensoryFeedback(.selection, trigger: selectedStart.id)
+        .sheet(isPresented: $showingAllAirports) {
+            HomeAirportPicker(catalog: catalog) { code in
+                withAnimation(.snappy(duration: 0.22)) { customHome = code }
+            }
+        }
+    }
+
+    /// The chosen home, curated or not.
+    private var home: AirportCode {
+        customHome ?? selectedStart.home
+    }
+
+    @ViewBuilder
+    private var anywhereCardBody: some View {
+        VStack(alignment: .leading, spacing: AETheme.spacingS) {
+            HStack(spacing: AETheme.spacingS) {
+                Text(customHome.flatMap { catalog?.airport($0)?.city } ?? "Somewhere else")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                if let customHome {
+                    Text(customHome.raw)
+                        .font(.caption.weight(.semibold))
+                        .monospaced()
+                        .foregroundStyle(AETheme.ember)
+                }
+            }
+            Text(customHome == nil
+                 ? "Choose any of the world's airports. Some of them are very hard openings — that is the point."
+                 : (catalog?.airport(customHome!).map { "\($0.country) · \(Vocab.runwayDetail($0.runwayClass))" } ?? ""))
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.62))
+                .fixedSize(horizontal: false, vertical: true)
+            if let customHome, let spec = catalog?.airport(customHome) {
+                HStack(spacing: AETheme.spacingXS) {
+                    AEChip(icon: "person.2.fill", text: Self.market(spec))
+                    AEChip(icon: "briefcase.fill", text: Self.lean(spec))
+                    AEChip(icon: "cloud.rain.fill", text: Vocab.weatherRisk(spec.weatherRisk))
+                }
+            }
+        }
     }
 
     @ViewBuilder
@@ -165,7 +219,7 @@ struct NewGameView: View {
                 HStack(spacing: AETheme.spacingXS) {
                     AEChip(icon: "person.2.fill", text: Self.market(spec))
                     AEChip(icon: "briefcase.fill", text: Self.lean(spec))
-                    AEChip(icon: "cloud.rain.fill", text: spec.weatherRisk.label)
+                    AEChip(icon: "cloud.rain.fill", text: Vocab.weatherRisk(spec.weatherRisk))
                 }
             }
         }
@@ -349,7 +403,7 @@ struct NewGameView: View {
             nameFocused = false
             let seed = UInt64(seedText) ?? UInt64.random(in: 1...UInt64.max / 2)
             controller.startNewGame(airlineName: effectiveName,
-                                    home: selectedStart.home,
+                                    home: home,
                                     seed: seed,
                                     scenario: scenario)
         } label: {
@@ -373,7 +427,7 @@ struct NewGameView: View {
         .padding(.horizontal, AETheme.spacingM)
         .padding(.bottom, AETheme.spacingS)
         .accessibilityLabel("Found \(effectiveName)")
-        .accessibilityHint("Starts a new game at \(selectedStart.city)")
+        .accessibilityHint("Starts a new game at \(homeCityName)")
     }
 }
 
@@ -392,14 +446,66 @@ private struct SectionLabel: View {
     }
 }
 
-private extension WeatherRisk {
-    /// Player-facing wording. The enum's own names are model vocabulary.
-    var label: String {
-        switch self {
-        case .low: "Calm skies"
-        case .moderate: "Some storms"
-        case .high: "Rough weather"
-        case .severe: "Storm belt"
+private extension NewGameView {
+    var homeCityName: String {
+        customHome.flatMap { catalog?.airport($0)?.city } ?? selectedStart.city
+    }
+}
+
+/// Any airport in the world as a home, searchable — the alternative to three
+/// hardcoded openings.
+struct HomeAirportPicker: View {
+    @Environment(\.dismiss) private var dismiss
+    let catalog: ContentCatalog?
+    let select: (AirportCode) -> Void
+    @State private var search = ""
+
+    var body: some View {
+        NavigationStack {
+            List(rows, id: \.self) { code in
+                if let spec = catalog?.airport(code) {
+                    Button {
+                        select(code)
+                        dismiss()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: AETheme.spacingS) {
+                                Text(code.raw)
+                                    .font(.subheadline.weight(.semibold)).monospaced()
+                                Text(spec.city).font(.subheadline)
+                            }
+                            Text("\(spec.country) · \(Vocab.runwayDetail(spec.runwayClass)) · \(Vocab.weatherRisk(spec.weatherRisk))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .searchable(text: $search, prompt: "City, country or code")
+            .navigationTitle("Choose a home")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private var rows: [AirportCode] {
+        guard let catalog else { return [] }
+        let needle = search.uppercased()
+        return catalog.orderedAirportCodes.filter { code in
+            guard needle.isEmpty else {
+                guard let spec = catalog.airport(code) else { return false }
+                return code.raw.uppercased().contains(needle)
+                    || spec.city.uppercased().contains(needle)
+                    || spec.country.uppercased().contains(needle)
+            }
+            return true
         }
     }
 }

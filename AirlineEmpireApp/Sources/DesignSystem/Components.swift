@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 import AirlineEmpireCore
 
 /// Reusable component library (Phase 14). Touch-first: every interactive
@@ -175,37 +176,91 @@ struct MoneyText: View {
     }
 }
 
-/// Minimal monthly bar chart (net profit); Phase 17 may upgrade to Swift
-/// Charts once macOS validation is running.
+/// Monthly net profit.
+///
+/// This was hand-rolled, and it was wrong: every column was a centred `VStack`
+/// of `Spacer / bar / rule / bar / Spacer`, so the column's content height
+/// varied with the bar and **the zero line sat at a different y for every
+/// month**. A chart on the finance screen that misplaces its own baseline is
+/// worse than no chart. It also carried no axis, no month labels and no
+/// values, so a reader could not tell which bar was which month.
+///
+/// Swift Charts, which `docs/UI_ARCHITECTURE.md` §2 specified from the start:
+/// one baseline by construction, real axes, and accessible values for free.
 struct MonthlyBars: View {
     let points: [FinanceModel.MonthPoint]
 
+    private struct Point: Identifiable {
+        let id: Int
+        let label: String
+        let shortLabel: String
+        let dollars: Double
+        let money: Money
+    }
+
+    private var series: [Point] {
+        points.enumerated().map { index, point in
+            Point(id: index,
+                  label: String(format: "%04d-%02d", point.year, point.month),
+                  shortLabel: Format.monthAbbreviation(point.month),
+                  dollars: Double(point.netProfit.cents) / 100,
+                  money: point.netProfit)
+        }
+    }
+
     var body: some View {
-        GeometryReader { geometry in
-            let maxAbs = max(1, points.map { abs($0.netProfit.cents) }.max() ?? 1)
-            let barWidth = max(3, geometry.size.width / CGFloat(max(1, points.count)) - 3)
-            HStack(alignment: .center, spacing: 3) {
-                ForEach(Array(points.enumerated()), id: \.offset) { _, point in
-                    let height = CGFloat(abs(point.netProfit.cents))
-                        / CGFloat(maxAbs) * geometry.size.height / 2
-                    VStack(spacing: 0) {
-                        Spacer(minLength: 0)
-                        if !point.netProfit.isNegative {
-                            Rectangle().fill(AETheme.positive)
-                                .frame(width: barWidth, height: max(2, height))
-                        }
-                        Rectangle().fill(AETheme.mutedText.opacity(0.4))
-                            .frame(width: barWidth, height: 1)
-                        if point.netProfit.isNegative {
-                            Rectangle().fill(AETheme.negative)
-                                .frame(width: barWidth, height: max(2, height))
-                        }
-                        Spacer(minLength: 0)
+        Chart(series) { point in
+            BarMark(
+                x: .value("Month", point.label),
+                y: .value("Net profit", point.dollars)
+            )
+            .foregroundStyle(point.dollars < 0 ? AETheme.negative : AETheme.positive)
+            .accessibilityLabel(point.label)
+            .accessibilityValue(Format.money(point.money))
+        }
+        // A zero rule that is actually at zero, once, for the whole chart.
+        .chartYAxis {
+            AxisMarks { value in
+                AxisGridLine()
+                AxisValueLabel {
+                    if let dollars = value.as(Double.self) {
+                        Text(Format.money(Money(cents: Int64(dollars * 100))))
+                            .font(.caption2)
+                    }
+                }
+            }
+        }
+        .chartXAxis {
+            // Twenty-four labels do not fit on a phone; every third is enough
+            // to read the shape and place a month.
+            AxisMarks(values: .automatic(desiredCount: 6)) { value in
+                AxisValueLabel {
+                    if let label = value.as(String.self) {
+                        Text(String(label.suffix(2)))
+                            .font(.caption2)
                     }
                 }
             }
         }
         .accessibilityLabel("Monthly net profit chart")
+    }
+}
+
+/// A loading state that says what it is loading. Five screens used to show a
+/// bare, unlabelled `ProgressView` (UIUX_FORENSIC_AUDIT UI-022).
+struct LoadingState: View {
+    let message: String
+
+    var body: some View {
+        VStack(spacing: AETheme.spacingS) {
+            ProgressView()
+            Text(message)
+                .font(.subheadline)
+                .foregroundStyle(AETheme.mutedText)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(message)
     }
 }
 
@@ -295,7 +350,9 @@ struct SpeedControl: View {
         .padding(3)
         .aeGlass(in: Capsule(style: .continuous))
         .animation(AEMotion.selection, value: controller.speed)
-        .sensoryFeedback(.selection, trigger: controller.speed)
+        .sensoryFeedback(.selection, trigger: controller.speed) { _, _ in
+            controller.preferences.haptics
+        }
     }
 
     private func label(for speed: SimSpeed) -> String {
@@ -313,6 +370,96 @@ struct SpeedControl: View {
         case .x1: "Normal speed"
         case .x4: "Four times speed"
         case .x16: "Sixteen times speed"
+        }
+    }
+}
+
+/// The compact time control, for every screen that is not Home or the Map.
+///
+/// Time control lived on two of six screens, and no other screen showed the
+/// date — so from Routes, Fleet, Finance or World a player could not pause,
+/// could not change speed, and could not tell whether the world was even
+/// running (UIUX_FORENSIC_AUDIT UI-010). The full `SpeedControl` capsule is
+/// ~240pt wide and does not belong in a navigation bar beside a title, so
+/// secondary screens get this: the date, the current speed, and a menu with
+/// every speed and the jump to morning.
+struct TimeMenuButton: View {
+    @Environment(GameController.self) private var controller
+
+    private static let speeds: [SimSpeed] = [.paused, .x1, .x4, .x16]
+
+    var body: some View {
+        Menu {
+            Picker("Speed", selection: speedBinding) {
+                ForEach(Self.speeds, id: \.self) { speed in
+                    Label(Self.name(for: speed), systemImage: Self.icon(for: speed))
+                        .tag(speed)
+                }
+            }
+            .pickerStyle(.inline)
+            Divider()
+            Button {
+                controller.advanceToNextMorning()
+            } label: {
+                Label("Advance to next morning", systemImage: "sunrise")
+            }
+        } label: {
+            HStack(spacing: AETheme.spacingXS) {
+                Image(systemName: Self.icon(for: controller.speed))
+                    .font(.caption)
+                    .foregroundStyle(controller.speed == .paused
+                                     ? AETheme.caution : AETheme.accent)
+                if let date = controller.snapshot?.currentDate {
+                    Text(Format.shortDate(date))
+                        .font(.caption.weight(.medium))
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .animation(AEMotion.content, value: date.day)
+                }
+            }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .accessibilityLabel("Time controls")
+        .accessibilityValue(accessibilityValue)
+    }
+
+    private var speedBinding: Binding<SimSpeed> {
+        Binding(get: { controller.speed },
+                set: { controller.setSpeed($0) })
+    }
+
+    private var accessibilityValue: String {
+        guard let date = controller.snapshot?.currentDate else {
+            return Self.name(for: controller.speed)
+        }
+        return "\(Format.date(date)), \(Self.name(for: controller.speed))"
+    }
+
+    static func name(for speed: SimSpeed) -> String {
+        switch speed {
+        case .paused: "Paused"
+        case .x1: "Normal speed"
+        case .x4: "Four times speed"
+        case .x16: "Sixteen times speed"
+        }
+    }
+
+    static func icon(for speed: SimSpeed) -> String {
+        switch speed {
+        case .paused: "pause.fill"
+        case .x1: "play.fill"
+        case .x4: "forward.fill"
+        case .x16: "forward.end.fill"
+        }
+    }
+}
+
+extension View {
+    /// The toolbar every secondary game screen carries: time, always reachable.
+    func aeTimeToolbar() -> some View {
+        toolbar {
+            ToolbarItem(placement: .topBarLeading) { TimeMenuButton() }
         }
     }
 }
