@@ -476,3 +476,77 @@ calls would have driven the bed to zero and left it there. Dead code with a
 latent bug in it; deleting beat fixing.
 **Status:** FIXED 2026-08-29 (authored; not runtime validated — no crossfade
 has ever been heard, TD-006).
+
+---
+
+## BUG-019 — The audio session category was silently never applied
+**Severity:** P1 (the game would have interrupted whatever the player was
+listening to) · **Phase found:** CodeRabbit review of PR #6, 2026-08-29.
+**Repro:** launch the app with a podcast playing. The podcast stops.
+**Root cause:** `setCategory(.ambient, mode: .default, options: [.mixWithOthers])`.
+`.mixWithOthers` is only valid with `.playback`, `.playAndRecord` and
+`.multiRoute`; passing it with `.ambient` makes `setCategory` throw. The call
+site used `try?`, so the throw was swallowed and the session stayed on its
+default **`.soloAmbient`** — which does not mix and does interrupt.
+`.ambient` already mixes by definition, so the option was not merely
+unnecessary, it was the thing that stopped the category from being set at all.
+**Why it survived review here:** the line is one call with a plausible comment
+above it explaining behaviour that the line prevented. Nothing in a compile or
+a Linux test can reach it, and `docs/AUDIO_ARCHITECTURE.md` §10 asserted the
+correct behaviour confidently enough that re-reading the file did not question
+it. A confident comment is not a mechanism.
+**Fix layer:** App. `setCategory(.ambient, mode: .default)`.
+**Status:** FIXED 2026-08-29 (authored; not runtime validated — no audio
+session has ever been configured on a device, TD-006).
+
+---
+
+## BUG-020 — A parked aircraft made its airport permanently untappable
+**Severity:** P1 (the map's most-used target, unreachable) · **Phase found:**
+CodeRabbit review of PR #6, 2026-08-29.
+**Repro:** open the map with any aircraft on the ground at home — the normal
+state — and tap the home airport. The parked aircraft is selected instead.
+The airport can never be selected while anything is parked there.
+**Root cause:** `MapFrame.drawFlights` appended **every** drawn flight to the
+hit geometry, airborne or not. A parked flight projects to its airport's own
+position, and `MapHitTester.hit` tests flights first, with a 26pt tolerance,
+returning on the first hit. So a 2pt dot with a 26pt target sat on top of the
+airport and won every tap.
+**The reasoning that allowed it:** `MapHitTester`'s ordering comment argues
+that "an aircraft is the smallest and most transient thing on the map, so it
+must win where it overlaps". That is a sound argument about an aircraft *in
+flight*. It is not an argument for a stationary dot outranking the airport it
+is drawn on top of, and the code applied it to both because the distinction
+was never made.
+**Fix layer:** App. Only airborne flights enter the hit geometry. Parked
+aircraft remain reachable through the airport card, which is the better route
+to them regardless.
+**Status:** FIXED 2026-08-29 (authored; the map has still never been tapped —
+TD-003).
+
+---
+
+## BUG-021 — "Save and quit to menu" threw the save away
+**Severity:** P0 (silent, unrecoverable loss of player progress, on the button
+whose entire purpose is not losing it) · **Phase found:** CodeRabbit review of
+PR #6, 2026-08-29, and independently while tracing it.
+**Repro:** play past the last autosave, open Settings, tap "Save and quit to
+menu", reload the save. Everything since the last autosave is gone, and
+nothing said so.
+**Root cause:** ordering across an async boundary.
+
+    controller.saveNow()      // starts a Task
+    controller.quitToMenu()   // runs now; sets session = nil
+
+Both the button body and `saveNow` are on the main actor, so the queued task
+cannot begin until the button's closure returns. By then `quitToMenu` has
+released the session, and `save(slot:announce:)` opens with
+`guard let session else { return }` — so it returns having written nothing.
+The failure is silent twice over: no file is written, and the code path that
+sets `lastSaveOutcome = .failed` is never reached, so the existing "say what
+happened when a save fails" machinery (UI-012) reports success by omission.
+**Fix layer:** App, in the controller rather than the screen.
+`saveAndQuit(slot:)` awaits the save and only then quits, and it carries
+`lastSaveOutcome` across the transition so a failed save is still reported on
+the menu — `quitToMenu` clears it.
+**Status:** FIXED 2026-08-29.

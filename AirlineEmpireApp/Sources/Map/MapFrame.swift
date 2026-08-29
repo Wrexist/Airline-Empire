@@ -395,7 +395,19 @@ struct MapFrame {
             let interpolated = interpolate(flight)
             let point = projector.project(interpolated.position)
             guard projector.isVisible(point) else { continue }
-            geometry.flights.append((interpolated, point))
+            // Airborne only. A parked aircraft draws a 2pt dot *at its
+            // airport's own position*, and the hit tester gives every flight a
+            // 26pt target and tests flights first — so a parked aircraft made
+            // its airport permanently untappable, starting with the home base,
+            // which almost always has one (tasks/BUGS.md BUG-020).
+            //
+            // The ordering rationale in `MapHitTester` — that an aircraft is
+            // the smallest and most transient thing on the map, so it must win
+            // where it overlaps — is about an aircraft *in flight*. It was
+            // never an argument for a stationary dot outranking the airport
+            // underneath it. Parked aircraft are reachable through the airport
+            // card, which is the better route to them anyway.
+            if flight.airborne { geometry.flights.append((interpolated, point)) }
 
             let size = policy.aircraftSize(isPlayer: flight.isPlayer)
             let color = flight.isPlayer

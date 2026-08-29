@@ -178,9 +178,18 @@ final class AudioEngine {
 
     private func configureSession() {
         let session = AVAudioSession.sharedInstance()
-        // `.ambient` + `.mixWithOthers`: never interrupt the player's music,
-        // always obey the silent switch.
-        try? session.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+        // `.ambient`: never interrupt the player's music, always obey the
+        // silent switch. It mixes by default — that is what the category
+        // *means* — so the option is not needed.
+        //
+        // It was `[.mixWithOthers]` here, which is worse than redundant.
+        // That option is only valid with `.playback`, `.playAndRecord` and
+        // `.multiRoute`; passing it with `.ambient` makes `setCategory` throw,
+        // the `try?` swallowed the throw, and the session was left on its
+        // default `.soloAmbient` — which does **not** mix. The one behaviour
+        // this line exists to guarantee was the behaviour it prevented
+        // (tasks/BUGS.md BUG-019).
+        try? session.setCategory(.ambient, mode: .default)
         try? session.setActive(true)
     }
 

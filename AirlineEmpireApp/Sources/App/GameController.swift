@@ -282,6 +282,25 @@ final class GameController {
         Task { await self.save(slot: slot, announce: true) }
     }
 
+    /// Saves, waits for it, and only then leaves.
+    ///
+    /// The ordering is the whole point, and it belongs here rather than in a
+    /// screen. `saveNow` starts a `Task`; `quitToMenu` releases the session
+    /// synchronously; and `save` opens with `guard let session`. A screen that
+    /// called the two in sequence therefore queued a save, tore the session
+    /// down before the task could start, and the save returned having written
+    /// nothing — silently, because the code path that reports a failure was
+    /// never reached (tasks/BUGS.md BUG-021).
+    func saveAndQuit(slot: String = "auto") async {
+        await save(slot: slot, announce: true)
+        // Deliberately read before `quitToMenu` clears it: the player asked to
+        // save, and if that failed they need to know on the menu rather than
+        // discovering it the next time they try to load.
+        let outcome = lastSaveOutcome
+        quitToMenu()
+        lastSaveOutcome = outcome
+    }
+
     private func save(slot: String, announce: Bool) async {
         guard let session else { return }
         do {
