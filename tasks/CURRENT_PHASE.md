@@ -67,9 +67,26 @@ answer and an **8.6x** win: **1.79 ms**. `ae-map-bench` is the harness.
 **308 Core tests green** (257 at the start of the session), release build clean
 under `-warnings-as-errors`.
 
-**What is not proven:** everything about how it looks. `Sources/Map/` had never
-been through a compiler when it was written, let alone a renderer — see TD-003.
-The status ladder does not move.
+**The map compiles.** CI run 33247689097 built the whole app target with
+`xcodebuild` on `macos-26` / Xcode 26.6, `Sources/Map/` included. It took two
+runs. The first failed on a single error that stopped the module before one
+function body was type-checked: `RouteDraft` had been declared at the bottom
+of the old `Screens/MapView.swift`, which the overhaul deleted, and the
+airport browser presents the same sheet. Reading the new files for the
+*classes* of error this project has already hit found four more the next run
+would have raised — a non-`Comparable` enum compared with `<=`, an
+`Equatable` where `aeAnimation` wants `Hashable`, two `switch` expressions
+whose branches were implicit members (the shape this toolchain refused once
+already today), and an `if case` used as an expression — plus one product
+bug: the map's empty-state card built a route suggestion with an empty city
+name.
+
+**What is still not proven:** everything about how it *looks*. A compiler
+says the code is well-typed; it says nothing about whether the projection
+reads at each zoom, whether labels avoid each other on a real screen, whether
+drag and pinch cooperate, or whether 30fps holds with 400 flights on real
+silicon. `ae-map-bench` times the *model*, on Linux, on a server CPU. TD-003
+is that list; AE-025 is the task. The status ladder does not move.
 
 **2026-08-29 (continuation — the last of the audit list).** Four things the
 remediation pass had left:

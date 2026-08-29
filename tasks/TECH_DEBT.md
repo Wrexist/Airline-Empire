@@ -61,17 +61,20 @@ then, no claim about how the map *looks* or *performs on device* is supported.
 
 ---
 
-## TD-004 — Hit geometry is published from inside the draw closure
-**Severity:** P2 (correct in practice, fragile by construction).
+## TD-004 — Hit geometry is written from inside the draw closure
+**Severity:** P2 (correct in practice, unusual by construction).
 **Introduced:** map overhaul, 2026-08-29.
-**Description:** `MapFrame` records the points it drew and `MapScreen` stores
-them into `MapHitGeometry` via `DispatchQueue.main.async` so a tap resolves
-against the frame the player actually saw. `MapHitGeometry` is deliberately
-not `@Observable` — observing it would let a frame's output invalidate the
-view that produced it — but the arrangement still leans on an implementation
-detail: that Canvas's draw closure runs on the main actor and the hop lands
-before the next event. It is also one frame stale by design, which at 30fps is
-33ms and invisible, and at `.paused` is exact.
+**Description:** `MapFrame` records the points it drew and `MapScreen` writes
+them into `MapHitGeometry` from inside the `Canvas` renderer, so a tap
+resolves against the frame the player actually saw rather than against a
+recomputed layout. This is a side effect in a draw, which is not how SwiftUI
+views usually behave. It is safe for one specific reason: `MapHitGeometry` is
+a plain class and deliberately *not* `@Observable`, so writing it cannot
+invalidate the view that produced it — observing it would be a redraw loop at
+30 frames a second. The first version routed the write through
+`DispatchQueue.main.async`. That compiled (CI run 33247689097) but bought
+nothing: it cost a frame of staleness and leaned on the hop landing before the
+next tap, to protect against a re-entrancy that cannot happen here.
 **Resolution path:** if it ever misbehaves, compute the layout once per
 snapshot outside the draw and have both the renderer and the hit-tester read
 that, at the cost of doing projection work the frame will redo. Not done now

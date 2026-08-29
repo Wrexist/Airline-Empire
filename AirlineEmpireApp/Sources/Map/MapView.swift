@@ -85,7 +85,12 @@ struct MapScreen: View {
                 frame.draw(into: &context, size: canvasSize)
                 // Handing the drawn geometry back is what keeps hit-testing
                 // honest — the tap resolves against the frame on screen.
-                DispatchQueue.main.async { hitGeometry.store(frame.geometry) }
+                //
+                // Stored straight from the draw, with no hop. `MapHitGeometry`
+                // is a plain class and deliberately not `@Observable`, so
+                // writing it cannot invalidate the view that is drawing; the
+                // hop bought nothing and cost a frame of staleness.
+                hitGeometry.store(frame.geometry)
             }
             .contentShape(Rectangle())
             .gesture(SimultaneousGesture(dragGesture(size: size), zoomGesture(size: size)))
