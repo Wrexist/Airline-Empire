@@ -440,15 +440,21 @@ small against an app that ships a world.
 
 | Claim | Status |
 | --- | --- |
-| Cue mapping, priority, dedup, cooldown, aggregation, speed policy | **Tested** — 19 tests, Linux, two verified by sabotage |
+| Cue mapping, priority, dedup, cooldown, aggregation, speed policy | **Tested** — Linux, two verified by sabotage |
+| Ambience response to zoom, scale, speed, selection, solvency | **Tested** — including the bounding property: no input combination can push the bed past full |
+| Music state machine, precedence, crossfade durations | **Tested** |
+| Settings resolution and persistence | **Tested** — including that an empty store yields defaults rather than silence |
 | Save/restore baseline and no-backlog behaviour | **Tested** |
 | Every cue has an asset, within format and mix ceilings | **Tested** — `scripts/audio/check-assets.py`, in CI |
 | App audio and haptic code compiles | **Built** — macOS CI, `xcodebuild`, Xcode 26.6 |
 | Assets are valid mono 16-bit 44.1 kHz, non-silent, click-free | **Verified by measurement** |
 | The game sounds good | **Not validated.** Nobody has heard any of it. |
+| A crossfade sounds like a crossfade | **Not validated.** No music transition has ever been played. |
+| The bed reads as "a busy network" rather than as noise | **Not validated**, and the least certain claim here. |
 | Latency, mixing, ducking, engine behaviour on device | **Not validated.** |
 | Haptics feel right | **Not validated.** |
 | Ambience is tolerable for an hour | **Not validated**, and the least likely of these to survive contact with a listener. |
 
-`tasks/TODO.md` AE-026 is the listening pass. Until somebody does it, no claim
+**50 audio tests in total** — 23 for the cue policy, 16 for the soundscape, 11 for settings. `tasks/TODO.md` AE-026 is the listening pass;
+AE-027 is the deferred density work from the feel audit. Until somebody does it, no claim
 about how this *sounds* is supported by anything.

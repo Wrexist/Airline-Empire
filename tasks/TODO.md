@@ -202,6 +202,33 @@ needs re-voicing rather than fixing.
 
 ---
 
+## AE-027
+**Title:** Density and hierarchy pass on the management screens
+**Purpose:** The moment-to-moment audit (`docs/UIUX_FORENSIC_AUDIT.md` §18)
+found ten issues that are redesign rather than defect — empty states that are
+structurally present and semantically blank, rows that read as spreadsheet
+lines, a hub that is four cards and space. They are listed there as D-01
+through D-10.
+**Dependencies:** Best done where the result can be seen (blocker B-002), and
+after AE-025/AE-026 have put eyes on the map and ears on the audio.
+**Implementation notes:** §18 of MASTER PROMPT AE-AUDIO-01 is explicit that
+these must not be redesigned blindly, which is why they were recorded rather
+than done. Two of the ten (D-06, D-08) are closer to defects than to taste and
+could go first.
+**Acceptance criteria:**
+- Finance reads as a screen with nothing *yet* rather than a screen that is
+  broken, in all four of its empty cards.
+- A statement is scannable: revenue and cost are visually distinct, and the
+  largest lines are findable without reading all seventeen.
+- A brand-new route does not present as three warnings.
+- The ops feed inserts rows rather than re-binding all of them.
+- The World hub shows something live, not only links to it.
+**Tests:** Core read-model tests where a finding turns out to need one;
+otherwise a walkthrough on a device.
+**Status:** OPEN.
+
+---
+
 ## Backlog (do not start before AE-023 clears)
 
 - **AE-015** — Revenue-management fare buckets (docs/EXPANSION_ROADMAP.md).

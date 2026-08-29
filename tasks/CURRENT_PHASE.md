@@ -19,6 +19,47 @@ Apple-layer work is prepared, never claimed.
 
 ## Session log
 
+**2026-08-29 (the continuous audio layer, and a feel audit — AE-AUDIO-01).**
+The previous phase built the *discrete* half of the audio system. This phase
+built the continuous half, which was genuinely absent, and then audited how the
+game feels to touch.
+
+- **`SoundscapeDirection.swift` (Core, pure).** `AmbienceDirector` derives the
+  world bed from focus, airborne count, speed, selection and solvency; the rule
+  it enforces is that **the game gets richer as the airline grows, never
+  louder**, so scale moves movement and never level. Pause keeps the bed and
+  drops activity to 15%. 16x is deliberately *quieter* than 4x. A failing
+  airline recedes rather than alarms. `MusicDirector` is a five-state machine
+  with written precedence — a milestone outranks a crisis, because a player who
+  achieves something while failing still achieved it.
+- **Music ships, honestly.** Four sustained pads at 22.05 kHz. Drones, not a
+  score: no melody, no rhythm, no development. That is a deliberate ceiling —
+  a pad can be made tolerable for an hour by construction, a tune cannot. Two
+  crossfading decks, equal-power, because two linear ramps dip in the middle.
+- **`AudioSettings` (Core).** The settings *rules* are testable now: mute beats
+  everything, unmuting restores the mix rather than a default, a fresh install
+  cannot come up silent because a missing key read as `false`, and non-finite
+  volumes fail to silence rather than to full.
+- **A moment-to-moment audit across seven screens** found nine real defects and
+  ten pieces of deferred redesign. Two screens were stating things that were
+  not true: the dashboard drew a green up-arrow beside a dash for a whole
+  game-month, and the route sheet promised a demand ranking it did not do and
+  a passenger figure it did not show. Three actions in the game — fare,
+  frequency, service tier — emitted nothing at all, because they emit no
+  `SimEvent` and `submit` relies on one. Buying an aircraft left the sheet
+  open. Both empty states issued instructions and offered no way to follow
+  them.
+- **BUG-018**, found hunting my own code: `applyMusic` re-derives on every
+  snapshot and called the engine's same-track path, which **cancelled any fade
+  in flight** — so every crossfade died 250 ms in and the game would have been
+  stuck between two tracks at almost full volume, permanently.
+
+**358 Core tests green** (331 before), app builds on macOS CI.
+
+**What is not proven: all of it, audibly, and all of the feel work visually.**
+The deferred redesign is recorded in `docs/UIUX_FORENSIC_AUDIT.md` §18 rather
+than hidden, and AE-027 is the task. The status ladder does not move.
+
 **2026-08-29 (audio, haptics and game feel — MASTER PROMPT 3).** The game had
 no sound at all. It has a complete semantic audio language now.
 `docs/AUDIO_ARCHITECTURE.md` and `docs/AUDIO_ASSET_MANIFEST.md` are the full account.

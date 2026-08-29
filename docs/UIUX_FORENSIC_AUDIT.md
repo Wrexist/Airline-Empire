@@ -1231,3 +1231,48 @@ Charts lays out inside the card; that the coastline fill costs nothing at map
 cadence; and the 44pt and Dynamic Type audit at accessibility sizes. The
 walkthrough in `docs/APPLE_VALIDATION.md` §4 is still the script — it now has
 more to check.
+
+---
+
+# §18. Moment-to-moment feel audit (AE-AUDIO-01, 2026-08-29)
+
+A second pass, narrower than the original audit and asking one question per
+screen: **does the player know what they are doing, why it matters, what just
+happened, and what to consider next?**
+
+Nine findings were fixed in this phase (see the session log in
+`tasks/CURRENT_PHASE.md`). The rest are recorded here rather than acted on,
+because they are density and hierarchy work — redesign — and this environment
+cannot see a screen. `AE-027` is the task.
+
+## Fixed
+
+| # | Screen | Finding |
+| --- | --- | --- |
+| F-01 | Home | "Last month" drew a green up-arrow beside `—` for the whole first game-month; `nil` fell through to `.up`. A false statement, same class as BUG-011. |
+| F-02 | Routes | The destination header claimed a demand ranking; the sort was servable-then-nearest and no passenger figure was shown anywhere. Now ranks by capturable demand and shows it. |
+| F-03 | Routes | Fare buttons and the frequency stepper produced no event, no sound, no haptic — the two primary tuning verbs of the game were the only actions with no feedback at all. |
+| F-04 | World | Service tier — an airline-wide recurring cost change — was a silent, uncosted submit whose only evidence was a radio circle moving. |
+| F-05 | Fleet | The purchase sheet never dismissed. The largest single action in the game left the player looking at an identical row. |
+| F-06 | Network | Both empty states issued an instruction and offered no way to follow it; the only entry point was an icon-only `+`. |
+| F-07 | Onboarding | Choosing a home airport from the full list of 80 was silent — the cue was keyed on a value the picker does not change. |
+| F-08 | Fleet | `labelled("Owned outright", "")` rendered a label with a blank value cell. |
+| F-09 | Home | "Coming up" vanished entirely rather than saying what it is for. |
+
+## Recorded, not fixed
+
+| # | Screen | Finding | Why deferred |
+| --- | --- | --- | --- |
+| D-01 | Finance | Four cards say "nothing yet" in four different bare-`Text` styles, none of them `EmptyStateView`; the 160 pt chart collapses to one line. The largest dead screen in the first twenty minutes. | Four full empty-state cards on one screen would be heavier than the disease. Needs a lighter in-card empty treatment, designed against a real screen. |
+| D-02 | Finance | `statementRows` is up to 17 identical rows — same typography for revenue and cost, no icons, no proportion bars, no grouping. | Genuine spreadsheet feel, but the fix is a visual design decision. |
+| D-03 | World | The hub is four cards and empty space; its two best-fed screens (world events, competitors) are behind an extra tap. | Restructuring a navigation hub is not a change to make blind. |
+| D-04 | World | `missionsCard` disappears when there are no missions, so a new player never learns missions exist; `capabilitiesCard` renders a column of locked rows with no action. | Same class as D-01. |
+| D-05 | Routes | `RouteRow` is the only major row with no leading visual anchor — no line, no direction glyph, no livery colour, though all three are available. | Worth doing; wants an eye on it. |
+| D-06 | Routes | A brand-new route renders as `¤0`, a yellow `load 0%` and a red `no aircraft`, and `attentionRank` sorts it to the top. The first route a player opens looks broken. | Needs a "just opened" state in the read model, which is Core work. |
+| D-07 | Fleet | The aircraft market defaults to showing locked types, so the first era is mostly inert sections with no prices and no buttons. | One-line default change, but it interacts with discoverability of later eras — wants a playtest. |
+| D-08 | Home | The ops feed's `ForEach` is keyed on array offset, so appending an event re-binds all 14 rows and the promised per-row slide-in cannot fire. | Real, and a correctness issue rather than taste — but the visible symptom needs a screen to confirm. |
+| D-09 | Onboarding | The 80-airport picker is two-line text rows with none of the three signals the curated cards argue from; no no-results state. | Density work. |
+| D-10 | Onboarding | The Found button has no cue and is enabled while the catalog is still loading, so a player can found on a default scenario they never saw. | The enablement half is a real defect; fix with the rest of this screen. |
+
+**One claim checked and rejected:** `aircraftAssigned` *is* a `SimEvent` case
+and does already produce a cue. The audit reported otherwise.

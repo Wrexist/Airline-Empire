@@ -216,3 +216,40 @@ What changed, against the rules above:
 haptics exist as inline `sensoryFeedback` gated on the player's setting, which
 is how SwiftUI does this now, and a separate `HapticService` would be
 architecture for its own sake); localization of the strings themselves.
+
+
+---
+
+## 9. Feedback (AE-AUDIO-01, 2026-08-29)
+
+The client gained a fourth output alongside layout, colour and motion: **sound
+and haptics**. Two rules bind it to the rest of this document.
+
+**Views express intent, never mechanism.** A view says
+`feedback.play(.routeOpened)`. It never names a file, a volume, a duration, or
+whether the cue is also a haptic. This is the same seam as
+`Format`/`Vocab`/`AETheme`: the screen states *what*, the design system decides
+*how*.
+
+**The decisions live in Core.** Which sounds a moment deserves, how a busy
+quarter-second is thinned, what the world bed does at each zoom, which music
+state the airline is in, and which settings switch wins are all pure policy in
+`AudioDirection.swift`, `SoundscapeDirection.swift` and `AudioSettings.swift`.
+The app layer is the hands. That placement is what makes 50 tests possible on
+a machine with no speaker, and it is the same reasoning that put `MapModel` in
+Core rather than in the renderer.
+
+`docs/AUDIO_ARCHITECTURE.md` is the full account.
+
+### Consequences for anything new
+
+- A new screen gets press feedback for free: use `.buttonStyle(.aePress)`
+  rather than `.plain`, which on iOS gives no press state at all.
+- A new action that emits a `SimEvent` needs no view-side cue — the director
+  voices it. An action that emits *no* event (there are three:
+  fare, frequency, service tier) must confirm at the call site.
+- `.sensoryFeedback` is not used anywhere and should not be reintroduced: it
+  bypasses the player's haptics setting, which is how that setting came to be
+  dead on five of seven screens (BUG-014).
+- An empty state that instructs the player should carry the action —
+  `EmptyStateView` takes one.
