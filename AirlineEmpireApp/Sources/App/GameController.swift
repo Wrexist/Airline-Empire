@@ -407,6 +407,11 @@ final class GameController {
         }
         Task {
             let result = await session.submit(command)
+            // The game can be quit while a command is in flight. Without this
+            // the refusal of a command belonging to an abandoned session
+            // would still make a noise on the menu — the "sound after
+            // switching saves" case in the audio bug hunt.
+            guard self.session != nil else { return }
             if case .rejected(let rejection) = result {
                 self.reject(rejection)
             }

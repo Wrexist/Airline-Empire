@@ -264,10 +264,20 @@ struct LoadingState: View {
 
 /// An empty state is a screen the player reached on purpose, so it gets the
 /// same surface as a full one — never a bare label floating on the background.
+/// The screen has nothing to show yet — and, where there is something the
+/// player could do about that, the button to do it.
+///
+/// The action is the point. Both of the app's largest empty states told the
+/// player to open a route or buy an aircraft and offered no way to do either:
+/// the only entry point was an icon-only `+` in the navigation bar, which is
+/// the least discoverable control on the screen. An empty state that issues an
+/// instruction it cannot help you follow is worse than one that says nothing.
 struct EmptyStateView: View {
     let icon: String
     let title: String
     let message: String
+    var actionTitle: String?
+    var action: (() -> Void)?
 
     var body: some View {
         VStack(spacing: AETheme.spacingS) {
@@ -281,12 +291,27 @@ struct EmptyStateView: View {
                 .foregroundStyle(AETheme.mutedText)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
+            if let actionTitle, let action {
+                Button(action: action) {
+                    Text(actionTitle)
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, AETheme.spacingL)
+                        .frame(minHeight: 44)
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.aePress)
+                .aeGlass(in: Capsule(style: .continuous),
+                         tint: AETheme.accent.opacity(0.28))
+                .padding(.top, AETheme.spacingXS)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, AETheme.spacingL)
         .padding(.horizontal, AETheme.spacingM)
         .aeGlass(in: AETheme.cardShape)
-        .accessibilityElement(children: .combine)
+        // Combined only when there is nothing to press; a button inside a
+        // combined element is unreachable to VoiceOver.
+        .accessibilityElement(children: action == nil ? .combine : .contain)
     }
 }
 

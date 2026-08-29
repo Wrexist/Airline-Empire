@@ -3,13 +3,13 @@
 How Airline Empire decides what to be heard doing, and what makes the noise.
 
 Written at the end of MASTER PROMPT 3, when the game went from having no audio
-at all to having a complete semantic sound language. Read `docs/AUDIO_ASSETS.md`
+at all to having a complete semantic sound language. Read `docs/AUDIO_ASSET_MANIFEST.md`
 for the assets themselves and the briefs for replacing them.
 
 **Status, stated the way this project always states it:** the policy is
 **tested** (19 tests, Linux). The app layer is **built** (macOS CI,
 `xcodebuild`, Xcode 26.6). None of it has been **runtime validated**, and
-nobody has **heard** a single sound. See §13.
+nobody has **heard** a single sound. See §12.
 
 ---
 
@@ -192,7 +192,76 @@ input.
 
 ---
 
-## 6. Save, restore, and the first-time moments
+## 6. The continuous layer: ambience and music
+
+`AudioDirection.swift` decides which *discrete* sounds a moment deserves.
+`SoundscapeDirection.swift` decides what the game sounds like when nothing in
+particular is happening. Both are pure Core policy for the same reason.
+
+### The rule
+
+**The game must not get louder as the airline grows. It must get richer.**
+
+So scale moves *movement* — the density of activity in the bed — and never
+*level*. `AmbienceDirector.mix` takes focus, airborne count, speed, selection
+and solvency, and returns a `bed`, a `level` and a `movement`. A test asserts
+that two aircraft and two hundred produce **the same level** and different
+density, because that is the property, not the implementation.
+
+| Input | Effect |
+| --- | --- |
+| Focus `away` | Silence. Not on the map, no bed. |
+| Focus `world` → `regional` → `local` | Presence rises 0.22 → 0.45 → 0.62. The whole range is under 3×: no layer is ever loud. |
+| Airborne count | Movement, saturating at 24 aircraft. Two versus twenty must be obvious; two hundred versus four hundred must not. |
+| `paused` | Bed stays, movement drops to 15%. A paused world is still a world — and this is what makes unpausing feel like *starting* something. |
+| `x4` | Movement ×1.15. |
+| `x16` | Movement ×1.05 — deliberately **below** 4×. The discrete cues are already aggregating there; a busier bed on top is how fast-forward becomes exhausting. |
+| Selection, at `regional` or closer | ×1.12. The one place the map is allowed to be more present. |
+| Solvency `watch` / `danger` | ×0.9 / ×0.75. A failing airline **recedes**. Not a siren — the world going quiet is a more useful feeling. |
+
+Speed never changes pitch. Pitching a loop up with the clock is the single most
+arcade thing an audio system can do.
+
+### Music
+
+A five-state machine with written precedence:
+
+```
+menu  ←  no game
+milestone  ←  something was just achieved   (outranks everything below)
+crisis     ←  solvency in danger            (outranks the clock)
+planning   ←  paused
+operating  ←  running
+```
+
+A milestone during a crisis is still a milestone: a player who achieves
+something while failing still achieved it. `watch` is deliberately *not* a
+crisis — the crisis bed is for the administration countdown.
+
+Transitions always crossfade, 0.6–4 s depending on the pair, and the crossfade
+is **equal-power** (`sin`/`cos`) rather than linear: two linear ramps sum to a
+dip in the middle, audible as a stumble on every transition.
+
+The engine carries **two decks** because a crossfade needs the outgoing track
+still sounding while the incoming one rises. The fade reads its target level
+on every step, so a slider moved mid-transition is obeyed rather than ignored
+for four seconds.
+
+**The architecture is correct with an empty music library.** A state with no
+track is silence, never a substituted track — `MusicState.milestone` ships that
+way on purpose. See `docs/AUDIO_ASSET_MANIFEST.md` §5 for what does ship and
+why it is four drones rather than a score.
+
+### Where the map comes in
+
+`MapScreen` reports focus and selection to `Feedback` on appear, on zoom-level
+change and on selection change — *reported*, not applied, so a pinch does not
+touch the audio graph on every gesture frame. The bed is then re-derived on the
+next snapshot, from the same instant the discrete cues are drained.
+
+---
+
+## 7. Save, restore, and the first-time moments
 
 This is the part the phase brief flagged as high-risk, and it is where the
 design earns its keep.
@@ -233,7 +302,7 @@ Session lifecycle, for completeness:
 
 ---
 
-## 7. Settings
+## 8. Settings
 
 Persisted in `UserDefaults` through the existing `Preferences` object — not a
 second copy, so the settings screen and the engine cannot disagree.
@@ -255,7 +324,7 @@ Nothing here touches the save file, so none of it can affect Core determinism.
 
 ---
 
-## 8. Haptics
+## 9. Haptics
 
 Sound says *what* happened. Haptics say *how much it mattered*. They are chosen
 per cue rather than paired automatically, because pairing them everywhere is
@@ -282,7 +351,7 @@ lag rather than feedback.
 
 ---
 
-## 9. The engine
+## 10. The engine
 
 One `AVAudioEngine`. Two mixers (effects, ambience) so the two volume settings
 are genuinely independent faders. Eight `AVAudioPlayerNode`s in a round robin.
@@ -315,7 +384,7 @@ is otherwise indistinguishable from a working one.
 
 ---
 
-## 10. Assets
+## 11. Assets
 
 `AirlineEmpireApp/Resources/Audio/*.wav`, 54 files, mono 16-bit 44.1 kHz,
 ~5 MB. Flat, not in a subdirectory: XcodeGen adds `Resources/Audio` as a group
@@ -327,26 +396,7 @@ which is why `scripts/audio/check-assets.py` exists and runs in CI.
 The name for each cue lives in Core (`AudioCue.assetName`) so that "every cue
 can be voiced" is a property a Linux test and a CI script can both check.
 
-Full inventory, provenance and production briefs: `docs/AUDIO_ASSETS.md`.
-
----
-
-## 11. Music
-
-**Deliberately not shipped, and the architecture is not blocked on it.**
-
-The honest evaluation the brief asked for: this phase can synthesise sound
-*effects* to a shippable standard because an effect is a short gesture with a
-clear function. It cannot compose and produce *music* of releasable quality,
-and a mediocre loop is worse than silence for a game that wants to sound
-expensive — it is the single most likely thing to be turned off and remembered.
-
-So there is no music, no music toggle (a switch controlling nothing is a dead
-control, and this project has a standing rule against those), and no
-placeholder pretending to be a score. `docs/AUDIO_ASSETS.md` §5 carries the
-production briefs for the six states a score would need — menu, early game,
-normal operations, tension, critical, late empire — so that commissioning it is
-a matter of handing over that section.
+Full inventory, provenance and production briefs: `docs/AUDIO_ASSET_MANIFEST.md`.
 
 ---
 

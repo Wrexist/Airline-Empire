@@ -13,6 +13,11 @@ struct RoutesList: View {
     @Environment(GameController.self) private var controller
     @State private var sort: RouteSort = .needsAttention
     @State private var search = ""
+    /// Supplied by whichever screen owns the "open a route" sheet, so the
+    /// empty state can offer the action it is telling the player to take.
+    /// Optional because the Dashboard reaches this list by navigation and has
+    /// no sheet of its own to raise.
+    var openRoute: (() -> Void)?
 
     var body: some View {
         Group {
@@ -22,7 +27,9 @@ struct RoutesList: View {
                 if snapshot.routes(of: player.id).isEmpty {
                     EmptyStateView(icon: "point.topleft.down.to.point.bottomright.curvepath",
                                    title: "No routes yet",
-                                   message: "Open your first route — pick a market and put an aircraft on it.")
+                                   message: "Open your first route — pick a market and put an aircraft on it.",
+                                   actionTitle: openRoute == nil ? nil : "Open a route",
+                                   action: openRoute)
                         .padding(.horizontal, AETheme.spacingM)
                 } else if cards.isEmpty {
                     EmptyStateView(icon: "magnifyingglass",
@@ -134,6 +141,7 @@ struct RouteRow: View {
 /// (docs/ECONOMY.md) — the exact simulation figures, no UI math.
 struct RouteDetailView: View {
     @Environment(GameController.self) private var controller
+    @Environment(\.feedback) private var feedback
     @Environment(\.dismiss) private var dismiss
     let routeID: RouteID
 
@@ -332,6 +340,13 @@ struct RouteDetailView: View {
                         Button("\(percent > 0 ? "+" : "")\(percent)%") {
                             let newFare = Money(rounding: card.ticketPrice.asDouble
                                 * (1 + Double(percent) / 100))
+                            // Price and frequency are the two tuning verbs
+                            // of the whole game and neither emits a
+                            // `SimEvent`, so `submit`'s usual "the domain
+                            // event will voice it" does not apply — without
+                            // this they are the only actions in the game with
+                            // no feedback at all.
+                            feedback.play(.uiConfirm)
                             controller.submit(SetRoutePriceCommand(
                                 airline: player, route: routeID,
                                 ticketPrice: newFare))
@@ -512,6 +527,7 @@ struct RouteDetailView: View {
 
     private func changeFrequency(_ card: RouteCardModel, by delta: Int,
                                  player: AirlineID) {
+        feedback.play(.uiConfirm)
         controller.submit(SetRouteFrequencyCommand(
             airline: player, route: routeID,
             dailyRoundTrips: card.dailyRoundTrips + delta))
@@ -699,10 +715,22 @@ struct OpenRouteSheet: View {
         let distanceKm: Int
         let referenceFare: Money
         let servable: Bool
+        /// Passengers a starter service could expect to capture per day
+        /// across both directions — the same figure the onboarding card
+        /// shows, so the guided path and the manual one agree.
+        let expectedDailyPassengers: Int
     }
 
-    /// Every airport the player could fly to from `from`, ranked by distance
-    /// band and marked with whether the current fleet can actually reach it.
+    /// Every airport the player could fly to from `from`, **ranked by
+    /// capturable demand**, and marked with whether the current fleet can
+    /// actually reach it.
+    ///
+    /// The section header has always claimed this ranking; the sort was
+    /// servable-then-nearest and the rows never showed a passenger figure at
+    /// all, so the screen promised information it then withheld. The demand
+    /// call is the one `MarketOpportunities` uses and costs about 0.1 ms for
+    /// eighty airports — affordable in a sheet, which is why it belongs here
+    /// and not in a per-tick model.
     private func destinations(from: AirportCode, snapshot: GameState,
                               catalog: ContentCatalog) -> [Candidate] {
         guard let player = snapshot.playerAirline else { return [] }
@@ -721,17 +749,35 @@ struct OpenRouteSheet: View {
                                          aircraftRunwayRequirement: type.runwayRequirement)
                     .isEmpty
             }
+            let quality = DemandSystem.representativeStarterQuality(
+                tuning: catalog.tuning.demand)
+            let outbound = DemandSystem.expectedCapturedPassengers(
+                pool: DemandSystem.demandPool(
+                    from: from, to: code, date: snapshot.currentDate,
+                    economicIndex: snapshot.world.economicIndex, catalog: catalog),
+                fareRatio: 1.0, quality: quality, tuning: catalog.tuning.demand)
+            let inbound = DemandSystem.expectedCapturedPassengers(
+                pool: DemandSystem.demandPool(
+                    from: code, to: from, date: snapshot.currentDate,
+                    economicIndex: snapshot.world.economicIndex, catalog: catalog),
+                fareRatio: 1.0, quality: quality, tuning: catalog.tuning.demand)
             return Candidate(
                 code: code, city: spec.city, country: spec.country,
                 distanceKm: distance,
                 referenceFare: Money(rounding: DemandSystem.referenceFare(
                     distanceKm: distance, tuning: catalog.tuning.demand)),
-                servable: servable)
+                servable: servable,
+                expectedDailyPassengers: Int((outbound + inbound).rounded()))
         }
-        // Servable first, then nearest: a first route should be a short one.
+        // What the header says: demand first. Servable still breaks ties, so
+        // a market this fleet can actually reach wins over an equal one it
+        // cannot, and the code is a deterministic last resort.
         .sorted { lhs, rhs in
-            lhs.servable != rhs.servable ? lhs.servable
-                : lhs.distanceKm < rhs.distanceKm
+            if lhs.expectedDailyPassengers != rhs.expectedDailyPassengers {
+                return lhs.expectedDailyPassengers > rhs.expectedDailyPassengers
+            }
+            if lhs.servable != rhs.servable { return lhs.servable }
+            return lhs.code.raw < rhs.code.raw
         }
         .prefix(40)
         .map { $0 }
@@ -749,7 +795,7 @@ struct OpenRouteSheet: View {
                             .font(.subheadline.weight(.semibold)).monospaced()
                         Text(candidate.city).font(.subheadline)
                     }
-                    Text("\(candidate.distanceKm) km · market fare ≈ \(Format.money(candidate.referenceFare))")
+                    Text("≈\(Format.count(Int64(candidate.expectedDailyPassengers))) passengers/day · \(candidate.distanceKm) km · fare ≈ \(Format.money(candidate.referenceFare))")
                         .font(.caption)
                         .foregroundStyle(AETheme.mutedText)
                     if !candidate.servable {

@@ -7,14 +7,14 @@ Why a generator rather than files
 ---------------------------------
 Every asset this writes is original: it is arithmetic, not a recording and
 not a sample library, so there is no licence to track and nothing that could
-belong to anyone else (docs/AUDIO_ASSETS.md).  Checking in the generator as
+belong to anyone else (docs/AUDIO_ASSET_MANIFEST.md).  Checking in the generator as
 well as its output means the palette can be re-voiced by editing a number
 here rather than by finding whoever made the files.
 
 What this is not
 ----------------
 This is not the work of a sound designer.  It is a coherent, deliberately
-restrained synthesis palette built to the briefs in docs/AUDIO_ASSETS.md, and
+restrained synthesis palette built to the briefs in docs/AUDIO_ASSET_MANIFEST.md, and
 it is a real, shippable first voice for the game — but a professional pass
 would replace most of it.  Nobody has heard any of it; see §32 of the phase
 report.

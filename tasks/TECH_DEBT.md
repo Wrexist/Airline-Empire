@@ -128,7 +128,7 @@ and eight seconds of shaped noise is very likely to read as hiss rather than
 as a place. They are off by default partly for the reason given in
 `docs/AUDIO_ARCHITECTURE.md` §7 and partly because of this.
 **Resolution path:** replace with recorded or professionally designed beds to
-the brief in `docs/AUDIO_ASSETS.md` §4, or cut the feature. Cutting is a
+the brief in `docs/AUDIO_ASSET_MANIFEST.md` §4, or cut the feature. Cutting is a
 legitimate outcome: the game is designed to be complete with ambience
 disabled, and a bad bed is worse than none.
 
@@ -143,7 +143,7 @@ in `docs/AUDIO_ARCHITECTURE.md` §11: this phase can synthesise effects to a
 shippable standard but cannot compose and produce releasable music, and a
 mediocre loop is worse than silence for a game that wants to sound expensive.
 What exists is the brief — six tracks, their states, lengths and character —
-in `docs/AUDIO_ASSETS.md` §5. What does not exist is any code that selects
+in `docs/AUDIO_ASSET_MANIFEST.md` §5. What does not exist is any code that selects
 between them; the selection is derivable from `SolvencyModel.stage`, route
 count and era, all of which Core already publishes, but none of it is written.
 **Resolution path:** commission the six tracks against §5, then add the

@@ -11,6 +11,8 @@ import AirlineEmpireCore
 struct FleetList: View {
     @Environment(GameController.self) private var controller
     @State private var sort: FleetSort = .status
+    /// See `RoutesList.openRoute` — the same reasoning.
+    var acquireAircraft: (() -> Void)?
 
     var body: some View {
         Group {
@@ -19,7 +21,9 @@ struct FleetList: View {
                 if cards.isEmpty {
                     EmptyStateView(icon: "airplane",
                                    title: "No aircraft",
-                                   message: "Buy or lease your first aircraft to start flying. Leasing keeps cash free while you learn a market.")
+                                   message: "Buy or lease your first aircraft to start flying. Leasing keeps cash free while you learn a market.",
+                                   actionTitle: acquireAircraft == nil ? nil : "Browse the market",
+                                   action: acquireAircraft)
                         .padding(.horizontal, AETheme.spacingM)
                 } else {
                     List {
@@ -339,7 +343,10 @@ struct AircraftDetailView: View {
                 AESectionHeader(text: "Ownership", systemImage: "doc.text")
                 switch card.ownershipDescription {
                 case .owned(let book):
-                    labelled("Owned outright", "")
+                    // A blank right-hand column in a card where every other
+                    // row carries a number reads as missing data rather than
+                    // as an answer.
+                    labelled("Ownership", "Owned outright")
                     labelled("Book value", Format.money(book))
                     Text("Selling returns roughly its market value, which falls with age and condition.")
                         .font(.caption)
@@ -622,7 +629,14 @@ struct AircraftShopSheet: View {
                     ? "\(Format.money(price)) every month for \(leaseTermMonths) months. Returning early costs a penalty."
                     : "\(Format.money(price)) now, leaving \(Format.money(after ?? cash)).",
                 confirmTitle: title, role: nil,
-                action: { controller.submit(command) }
+                // Dismiss on success, like every other sheet in the app.
+                // Without it the largest single action in the game left the
+                // player looking at the identical row, with the only evidence
+                // a wallet figure scrolled off the top and a feed line on a
+                // different tab.
+                action: {
+                    if controller.submit(command) == nil { dismiss() }
+                }
             ) {
                 HStack {
                     Text(title).font(.subheadline.weight(.medium))

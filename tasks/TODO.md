@@ -174,7 +174,7 @@ This is the list of questions only ears and a device can answer.
 **Dependencies:** macOS + Xcode + a physical device (blocker B-002). A
 simulator answers most of the audio questions but **not** the haptic ones.
 **Implementation notes:** none — this is validation. Defects it finds become
-their own tasks. `docs/AUDIO_ASSETS.md` §4 is the brief for anything that
+their own tasks. `docs/AUDIO_ASSET_MANIFEST.md` §4 is the brief for anything that
 needs re-voicing rather than fixing.
 **Acceptance criteria:**
 - Every one of the 52 cues triggered at least once, audibly, with the palette

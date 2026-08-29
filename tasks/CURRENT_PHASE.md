@@ -21,7 +21,7 @@ Apple-layer work is prepared, never claimed.
 
 **2026-08-29 (audio, haptics and game feel — MASTER PROMPT 3).** The game had
 no sound at all. It has a complete semantic audio language now.
-`docs/AUDIO_ARCHITECTURE.md` and `docs/AUDIO_ASSETS.md` are the full account.
+`docs/AUDIO_ARCHITECTURE.md` and `docs/AUDIO_ASSET_MANIFEST.md` are the full account.
 
 - **The policy is in Core, so it is tested.** `AudioDirection.swift` maps
   `SimEvent` to `AudioCue` and then ranks, deduplicates, rate-limits,

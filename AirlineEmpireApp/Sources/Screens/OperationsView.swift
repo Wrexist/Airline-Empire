@@ -579,6 +579,7 @@ struct ProgressionView: View {
 /// dashboard's "Reputation 61%", which used to be an inert label.
 struct ReputationDetailView: View {
     @Environment(GameController.self) private var controller
+    @Environment(\.feedback) private var feedback
 
     var body: some View {
         ScrollView {
@@ -659,6 +660,10 @@ struct ReputationDetailView: View {
     private func serviceTierRow(_ tier: ServiceTier, player: Airline) -> some View {
         let isSelected = player.serviceTier == tier
         return Button {
+            // Service tier is an airline-wide recurring cost change that
+            // emits no `SimEvent`; the only other evidence it worked is a
+            // radio circle moving on the next refresh.
+            feedback.play(.uiConfirm)
             controller.submit(SetServiceTierCommand(airline: player.id, tier: tier))
         } label: {
             HStack(alignment: .top, spacing: AETheme.spacingS) {

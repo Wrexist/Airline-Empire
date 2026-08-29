@@ -8,7 +8,7 @@ let package = Package(
         .library(name: "AirlineEmpireCore", targets: ["AirlineEmpireCore"]),
         .executable(name: "ae-bench", targets: ["AEBench"]),
         .executable(name: "ae-map-bench", targets: ["AEMapBench"]),
-        // Regenerates docs/AUDIO_ASSETS.md §3 from AudioCue itself, so the
+        // Regenerates docs/AUDIO_ASSET_MANIFEST.md §3 from AudioCue itself, so the
         // documented mix cannot drift from the one the game uses.
         .executable(name: "ae-audio-manifest", targets: ["AEAudioManifest"]),
     ],

@@ -28,8 +28,8 @@ struct NetworkView: View {
         NavigationStack {
             Group {
                 switch section {
-                case .routes: RoutesList()
-                case .fleet: FleetList()
+                case .routes: RoutesList { showingOpenRoute = true }
+                case .fleet: FleetList { showingShop = true }
                 }
             }
             .background(AEGameBackdrop())

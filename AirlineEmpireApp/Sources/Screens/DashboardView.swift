@@ -149,10 +149,16 @@ struct DashboardView: View {
                          value: Format.percent(dashboard.reputationScore))
             }
             NavigationLink(value: DashboardRoute.finance) {
+                // No trend until a month has actually closed. The first
+                // version fell through to `.up` for nil, so for the whole of
+                // the first game-month the dashboard drew a green arrow beside
+                // a dash — asserting a positive trend on a number that did not
+                // exist yet. Same class of defect as BUG-011.
                 StatTile(label: "Last month",
                          value: dashboard.lastMonthNetProfit.map(Format.money) ?? "—",
-                         trend: (dashboard.lastMonthNetProfit?.isNegative ?? false)
-                             ? .down : .up)
+                         trend: dashboard.lastMonthNetProfit.map {
+                             $0.isNegative ? StatTile.Trend.down : StatTile.Trend.up
+                         } ?? .neutral)
             }
             StatTile(label: "Fuel /t", value: Format.money(dashboard.fuelPricePerTon))
             NavigationLink(value: DashboardRoute.economy) {
@@ -229,9 +235,30 @@ struct UpcomingCard: View {
         let when: String
     }
 
+    /// Whether the player has anything that *could* be scheduled. On a fresh
+    /// game the answer is no, and the card stays away — the onboarding card
+    /// owns that space and a second box saying "nothing yet" would be noise.
+    /// Once there is a fleet, silence becomes confusing rather than obvious,
+    /// which is when the card starts saying so.
+    private var hasOperations: Bool {
+        guard let player = snapshot.playerAirline?.id else { return false }
+        return !snapshot.fleet(of: player).isEmpty
+            || !snapshot.routes(of: player).isEmpty
+    }
+
     var body: some View {
         let items = upcoming
-        if !items.isEmpty {
+        if items.isEmpty, hasOperations {
+            AECard {
+                VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                    AESectionHeader(text: "Coming up", systemImage: "calendar")
+                    Text("Nothing scheduled. Deliveries, maintenance and lease expiries appear here.")
+                        .font(.caption)
+                        .foregroundStyle(AETheme.mutedText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        } else if !items.isEmpty {
             AECard {
                 VStack(alignment: .leading, spacing: AETheme.spacingS) {
                     AESectionHeader(text: "Coming up", systemImage: "calendar")

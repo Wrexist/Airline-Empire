@@ -220,7 +220,11 @@ struct NewGameView: View {
                 anywhereCardBody
             }
         }
-        .aeFeedback(.uiSelect, on: selectedStart.id)
+        // Keyed on the resolved home rather than on `selectedStart.id`,
+        // which does not change when the player picks from the full airport
+        // list — so choosing a curated start made a sound and choosing any of
+        // the other seventy-odd made none.
+        .aeFeedback(.uiSelect, on: customHome?.raw ?? selectedStart.id)
         .sheet(isPresented: $showingAllAirports) {
             HomeAirportPicker(catalog: catalog) { code in
                 withAnimation(.snappy(duration: 0.22)) { customHome = code }
