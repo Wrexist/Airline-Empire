@@ -52,7 +52,11 @@ final class Feedback {
 
     func applicationWillEnterForeground() {
         audio.resume()
-        refreshAmbience()
+        // Both continuous layers were torn down on the way out; forcing a
+        // re-derive is what brings them back on the next snapshot.
+        lastMix = nil
+        musicState = .menu
+        audioHasMusic = false
     }
 
     /// A new game, or a loaded one. Seeds the director from the state so a
@@ -61,13 +65,25 @@ final class Feedback {
     func beginSession(state: GameState) {
         audio.stopAll()
         director = AudioDirector(state: state)
-        refreshAmbience()
+        // Every continuous piece of state resets with the game. Without this
+        // a new airline inherits the last one's bed level and music state.
+        lastMix = nil
+        musicState = .menu
+        audioHasMusic = false
+        milestoneUntil = -1
+        focus = .away
+        hasSelection = false
     }
 
     /// Back to the menu. The director goes with the game.
     func endSession() {
         audio.stopAll()
         director = nil
+        lastMix = nil
+        musicState = .menu
+        audioHasMusic = false
+        milestoneUntil = -1
+        clearMapFocus()
     }
 
     // MARK: - Playing
@@ -103,38 +119,141 @@ final class Feedback {
     }
 
     private func emit(_ cue: AudioCue) {
-        if preferences.sound {
-            audio.play(cue, gain: Float(preferences.soundVolume))
+        // One question, answered in Core: mute, then the layer's switch, then
+        // master, then the layer's own volume (`AudioSettings.gain(for:)`).
+        let gain = preferences.audio.gain(for: cue)
+        if gain > 0 { audio.play(cue, gain: Float(gain)) }
+        // A milestone opens a short window in which the continuous layers sit
+        // back, so the cue that marks the moment is not competing with a bed.
+        if cue.isMilestone || cue.priority == .critical {
+            milestoneUntil = elapsed + MusicDirector.milestoneHold
         }
         // Haptics are a separate decision from sound, not a companion to it:
         // most cues have no haptic at all, and a few are felt without being
         // heard (docs/AUDIO_ARCHITECTURE.md §8).
-        if preferences.haptics, let style = cue.haptic {
+        // Haptics ask a different question on purpose: a player who mutes
+        // the game may still want to feel it.
+        if preferences.audio.hapticsEnabled, let style = cue.haptic {
             haptics.play(style)
         }
     }
 
-    // MARK: - Ambience
+    // MARK: - The continuous layer
 
-    /// Starts, stops or re-levels the bed to match the current settings.
-    /// Idempotent, so calling it from `onAppear` cannot stack loops.
-    func refreshAmbience(_ cue: AudioCue = .ambienceWorld) {
-        guard preferences.ambience, director != nil else {
+    /// Where the player is looking, and what they have singled out. Set by
+    /// the map; everything else leaves it `.away`, which is silence.
+    ///
+    /// Held here rather than passed through every call because the bed has to
+    /// be re-derived on every snapshot, and a screen that is not the map
+    /// should not have to say so four times a second.
+    @ObservationIgnored private var focus: SoundscapeFocus = .away
+    @ObservationIgnored private var hasSelection = false
+    @ObservationIgnored private var lastMix: AmbienceMix?
+    @ObservationIgnored private var musicState: MusicState = .menu
+    @ObservationIgnored private var milestoneUntil: Double = -1
+
+    /// Called by the map as the camera and selection change.
+    ///
+    /// Cheap and idempotent: it stores, and the next snapshot applies. Doing
+    /// the work here instead would run it on every gesture frame.
+    func setMapFocus(_ focus: SoundscapeFocus, hasSelection: Bool) {
+        self.focus = focus
+        self.hasSelection = hasSelection
+    }
+
+    /// The map is no longer on screen.
+    func clearMapFocus() {
+        focus = .away
+        hasSelection = false
+    }
+
+    /// Re-derives the bed and the music state from the world.
+    ///
+    /// Called once per snapshot refresh, from the same place the cues are
+    /// drained — so the continuous layer and the discrete one always describe
+    /// the same instant.
+    func updateSoundscape(state: GameState?, speed: SimSpeed,
+                          stage: SolvencyModel.Stage) {
+        applyAmbience(state: state, speed: speed, stage: stage)
+        applyMusic(hasGame: state != nil, speed: speed, stage: stage)
+    }
+
+    private func applyAmbience(state: GameState?, speed: SimSpeed,
+                               stage: SolvencyModel.Stage) {
+        let ambienceGain = preferences.audio.gain(for: .ambience)
+        guard ambienceGain > 0, let state,
+              let player = state.playerAirline?.id else {
+            if lastMix != nil { audio.stopAmbience(); lastMix = nil }
+            return
+        }
+        let airborne = state.flights.values.reduce(into: 0) { count, flight in
+            guard case .enRoute = flight.phase,
+                  state.routes[flight.route]?.airline == player else { return }
+            count += 1
+        }
+        let mix = AmbienceDirector.mix(focus: focus, airborne: airborne,
+                                       speed: speed, hasSelection: hasSelection,
+                                       stage: stage)
+        guard mix != lastMix else { return }
+        lastMix = mix
+        guard let bed = mix.bed else {
             audio.stopAmbience()
             return
         }
-        audio.startAmbience(cue, gain: Float(preferences.ambienceVolume) * 0.35)
+        // Movement rides on top of level rather than replacing it: a busy
+        // network is more *present* in its activity band without the bed
+        // itself getting louder. The 0.3 floor is what stops a paused, empty
+        // early game from being literally inaudible.
+        let gain = ambienceGain * mix.level * (0.3 + 0.7 * mix.movement)
+        audio.startAmbience(bed, gain: Float(gain))
     }
+
+    private func applyMusic(hasGame: Bool, speed: SimSpeed,
+                            stage: SolvencyModel.Stage) {
+        let musicGain = preferences.audio.gain(for: .music)
+        guard musicGain > 0 else {
+            if musicState != .menu || audioHasMusic { audio.stopMusic() }
+            musicState = .menu
+            audioHasMusic = false
+            return
+        }
+        // A milestone holds for a fixed span and then falls back, so a
+        // celebration is a moment rather than a mode.
+        let now = elapsed
+        let celebrating = now < milestoneUntil
+        let next = MusicDirector.state(hasGame: hasGame, speed: speed,
+                                       stage: stage, celebrating: celebrating)
+        let gain = Float(musicGain * MusicDirector.duck(for: next))
+        guard next != musicState else {
+            audio.setMusic(MusicDirector.asset(for: next), gain: gain, fade: 0)
+            return
+        }
+        let fade = musicState.crossfadeSeconds(to: next)
+        musicState = next
+        audioHasMusic = true
+        audio.setMusic(MusicDirector.asset(for: next), gain: gain, fade: fade)
+    }
+
+    @ObservationIgnored private var audioHasMusic = false
 
     /// Called when a setting changes, so a toggle takes effect on the sound
     /// already playing rather than only on the next one.
     func settingsChanged() {
-        if !preferences.sound { audio.stopAll() }
-        refreshAmbience()
-        // Everything off means the engine has nothing to do, and a running
+        let settings = preferences.audio
+        if settings.gain(for: .effects) == 0 { audio.stopAll() }
+        if settings.gain(for: .music) == 0 {
+            audio.stopMusic()
+            musicState = .menu
+            audioHasMusic = false
+        }
+        if settings.gain(for: .ambience) == 0 { audio.stopAmbience() }
+        // Force the next snapshot to re-derive rather than short-circuit on
+        // an unchanged mix.
+        lastMix = nil
+        // Nothing audible means the engine has nothing to do, and a running
         // engine is not free. Muting the game should cost nothing rather than
         // merely produce nothing.
-        audio.setActive(preferences.sound || preferences.ambience)
+        audio.setActive(!settings.isSilent)
     }
 }
 

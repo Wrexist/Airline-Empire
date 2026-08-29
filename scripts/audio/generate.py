@@ -595,6 +595,88 @@ _mix_into(_amb_world, tone(A3 * 0.5, 11.0, attack=3.0, decay=11.0), 0.0, 0.07)
 asset("ambience_world", loopable(_amb_world), 0.26)
 
 
+# ── Music ──────────────────────────────────────────────────────────────────
+#
+# Four beds, written at 22.05 kHz because none of them contains anything above
+# about 3 kHz: a slow pad is all fundamental and low partials, so half the rate
+# is inaudible here and halves the bundle cost. They go to their own mixer
+# node, which converts, so the rate difference costs nothing at runtime.
+#
+# These are NOT a score. They are drones: two or three sustained voices from
+# the game's own pitch set, slowly detuning against each other, with no melody,
+# no rhythm and no development. That is a deliberate ceiling rather than an
+# attempt at composition — a pad can be made tolerable for an hour by
+# construction, and a tune cannot. docs/AUDIO_ASSET_MANIFEST.md §5 is the brief
+# for replacing all four with something written by a person.
+
+MUSIC_RATE = 22050
+
+
+def pad(freqs, duration, seed=1, breath=0.22, detune=0.0035, brightness=380):
+    """A sustained chord that never quite settles.
+
+    Each voice is paired with a copy a few cents away, so the two beat against
+    each other on a cycle of tens of seconds. That slow movement is what stops
+    a drone reading as a held organ note, and it is the only thing here that
+    changes over time.
+    """
+    global RATE
+    previous, RATE = RATE, MUSIC_RATE
+    n = int(RATE * duration)
+    out = [0.0] * n
+    for index, f in enumerate(freqs):
+        for direction in (1.0, 1.0 + detune * (1 + index)):
+            phase = 0.0
+            # Each voice breathes on its own period, so they never line up.
+            period = RATE * (7.0 + index * 3.1 + direction)
+            for i in range(n):
+                phase += 2 * math.pi * f * direction / RATE
+                swell = 1.0 + breath * math.sin(2 * math.pi * i / period)
+                out[i] += math.sin(phase) * swell / (len(freqs) * 2.4)
+    out = lowpass(out, brightness)
+    # A very quiet noise floor: without it a pure synthesis pad sounds like a
+    # test tone rather than like air.
+    air = lowpass(noise(duration, seed), 900)
+    _mix_into(out, air, gain=0.05)
+    result = loopable(out, crossfade=2.5)
+    RATE = previous
+    return result
+
+
+MUSIC = {}
+
+
+def music(name, samples, peak):
+    MUSIC[name] = (samples, peak)
+
+
+# Menu: the airline does not exist yet. Two voices, very wide apart.
+music("music_menu", pad([D3 * 0.5, A3 * 0.5, D4], 20.0, seed=201,
+                        breath=0.26, brightness=320), 0.30)
+
+# Planning: paused, reading, comparing. Slightly warmer, one more voice.
+music("music_planning", pad([D3 * 0.5, A3 * 0.5, D4, F4], 22.0, seed=202,
+                            breath=0.20, brightness=360), 0.28)
+
+# Operating: the clock is running. A fifth added underneath for momentum
+# without anything resembling a beat.
+music("music_operating", pad([D3 * 0.5, G3 * 0.5, D4, A4], 24.0, seed=203,
+                             breath=0.16, brightness=420), 0.30)
+
+# Crisis: the same world, a semitone of grit in it, darker and thinner.
+music("music_crisis", pad([D3 * 0.5, D3 * 0.5 * 1.06, A3 * 0.5], 20.0,
+                          seed=204, breath=0.30, detune=0.006,
+                          brightness=260), 0.32)
+
+
+def write_music(name, samples, peak):
+    global RATE
+    previous, RATE = RATE, MUSIC_RATE
+    path, dur = write(name, samples, peak)
+    RATE = previous
+    return path, dur
+
+
 if __name__ == "__main__":
     total = 0
     print(f"{'asset':28} {'seconds':>8} {'kB':>7}")
@@ -604,5 +686,11 @@ if __name__ == "__main__":
         size = os.path.getsize(path)
         total += size
         print(f"{name:28} {dur:8.2f} {size / 1024:7.0f}")
+    for name in sorted(MUSIC):
+        samples, peak = MUSIC[name]
+        path, dur = write_music(name, samples, peak)
+        size = os.path.getsize(path)
+        total += size
+        print(f"{name:28} {dur:8.2f} {size / 1024:7.0f}  (22 kHz)")
     print(f"{'':28} {'':>8} {'-' * 7}")
-    print(f"{len(ASSETS)} assets{'':17} {total / 1024:7.0f} kB")
+    print(f"{len(ASSETS) + len(MUSIC)} assets{'':17} {total / 1024:7.0f} kB")

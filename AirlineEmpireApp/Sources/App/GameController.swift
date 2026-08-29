@@ -540,6 +540,11 @@ final class GameController {
         let batch = pendingAudioEvents
         pendingAudioEvents.removeAll(keepingCapacity: true)
         feedback.handle(events: batch, state: state, speed: speed)
+        // The continuous layer is derived from the same instant as the
+        // discrete one, so the bed and the cues can never describe different
+        // moments (docs/AUDIO_ARCHITECTURE.md §6).
+        feedback.updateSoundscape(state: state, speed: speed,
+                                  stage: lastSolvencyStage)
     }
 
     /// Money trouble, heard and acted on.
@@ -590,59 +595,36 @@ final class GameController {
 final class Preferences {
     private enum Key {
         static let autoPause = "ae.autoPauseOnDanger"
-        static let haptics = "ae.haptics"
         static let confirmDestructive = "ae.confirmDestructive"
-        static let sound = "ae.sound"
-        static let ambience = "ae.ambience"
-        static let soundVolume = "ae.soundVolume"
-        static let ambienceVolume = "ae.ambienceVolume"
     }
 
     private let defaults: UserDefaults
 
+    /// Audio settings, whose *rules* live in Core (`AudioSettings`) so that
+    /// "which switch wins" and "does this survive a relaunch" are questions a
+    /// Linux test can answer. This object only stores and forwards.
+    private var audioSettings: AudioSettings
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        // `bool(forKey:)` is false for a missing key, and every setting here
-        // defaults to on — so absence is registered as the default rather
-        // than read as "off".
         defaults.register(defaults: [
             Key.autoPause: true,
-            Key.haptics: true,
             Key.confirmDestructive: true,
-            // Sound on, ambience off. A bed of air is the setting most
-            // likely to be unwanted on a commute and the one nobody thinks
-            // to look for, so it is opt-in; effects are the game's voice and
-            // are opt-out (docs/AUDIO_ARCHITECTURE.md §7).
-            Key.sound: true,
-            Key.ambience: false,
-            Key.soundVolume: 0.8,
-            Key.ambienceVolume: 0.5,
         ])
         storedAutoPause = defaults.bool(forKey: Key.autoPause)
-        storedHaptics = defaults.bool(forKey: Key.haptics)
         storedConfirmDestructive = defaults.bool(forKey: Key.confirmDestructive)
-        storedSound = defaults.bool(forKey: Key.sound)
-        storedAmbience = defaults.bool(forKey: Key.ambience)
-        storedSoundVolume = defaults.double(forKey: Key.soundVolume)
-        storedAmbienceVolume = defaults.double(forKey: Key.ambienceVolume)
+        // No `register(defaults:)` for audio: `AudioSettings(store:)` already
+        // treats a missing key as its own default, which is that rule said
+        // once rather than in two places that can disagree.
+        audioSettings = AudioSettings(store: DefaultsStore(defaults: defaults))
     }
 
     private var storedAutoPause: Bool
-    private var storedHaptics: Bool
     private var storedConfirmDestructive: Bool
-    private var storedSound: Bool
-    private var storedAmbience: Bool
-    private var storedSoundVolume: Double
-    private var storedAmbienceVolume: Double
 
     var autoPauseOnDanger: Bool {
         get { storedAutoPause }
         set { storedAutoPause = newValue; defaults.set(newValue, forKey: Key.autoPause) }
-    }
-
-    var haptics: Bool {
-        get { storedHaptics }
-        set { storedHaptics = newValue; defaults.set(newValue, forKey: Key.haptics) }
     }
 
     /// Whether selling, returning and closing ask first. On by default:
@@ -652,31 +634,83 @@ final class Preferences {
         set { storedConfirmDestructive = newValue; defaults.set(newValue, forKey: Key.confirmDestructive) }
     }
 
-    /// Sound effects: the game's whole audible vocabulary except ambience.
-    var sound: Bool {
-        get { storedSound }
-        set { storedSound = newValue; defaults.set(newValue, forKey: Key.sound) }
+    // MARK: Audio
+
+    /// The resolved settings, for anything that needs to ask about gain.
+    var audio: AudioSettings { audioSettings }
+
+    private func mutateAudio(_ change: (inout AudioSettings) -> Void) {
+        var next = audioSettings
+        change(&next)
+        audioSettings = next
+        next.write(to: DefaultsStore(defaults: defaults))
     }
 
-    /// The looping bed. Off by default — see the registration above.
-    var ambience: Bool {
-        get { storedAmbience }
-        set { storedAmbience = newValue; defaults.set(newValue, forKey: Key.ambience) }
+    var masterVolume: Double {
+        get { audioSettings.masterVolume }
+        set { mutateAudio { $0.masterVolume = newValue } }
+    }
+
+    var sound: Bool {
+        get { audioSettings.sound }
+        set { mutateAudio { $0.sound = newValue } }
     }
 
     var soundVolume: Double {
-        get { storedSoundVolume }
-        set {
-            storedSoundVolume = min(1, max(0, newValue))
-            defaults.set(storedSoundVolume, forKey: Key.soundVolume)
-        }
+        get { audioSettings.soundVolume }
+        set { mutateAudio { $0.soundVolume = newValue } }
+    }
+
+    var music: Bool {
+        get { audioSettings.music }
+        set { mutateAudio { $0.music = newValue } }
+    }
+
+    var musicVolume: Double {
+        get { audioSettings.musicVolume }
+        set { mutateAudio { $0.musicVolume = newValue } }
+    }
+
+    var ambience: Bool {
+        get { audioSettings.ambience }
+        set { mutateAudio { $0.ambience = newValue } }
     }
 
     var ambienceVolume: Double {
-        get { storedAmbienceVolume }
-        set {
-            storedAmbienceVolume = min(1, max(0, newValue))
-            defaults.set(storedAmbienceVolume, forKey: Key.ambienceVolume)
-        }
+        get { audioSettings.ambienceVolume }
+        set { mutateAudio { $0.ambienceVolume = newValue } }
     }
+
+    var haptics: Bool {
+        get { audioSettings.haptics }
+        set { mutateAudio { $0.haptics = newValue } }
+    }
+
+    var muteAll: Bool {
+        get { audioSettings.muteAll }
+        set { mutateAudio { $0.muteAll = newValue } }
+    }
+}
+
+/// `UserDefaults` as Core's storage protocol.
+///
+/// `object(forKey:)` rather than `bool(forKey:)` on purpose: the typed
+/// accessors return `false` and `0` for a missing key, which is exactly how a
+/// fresh install ends up silent. Core distinguishes absent from off, and this
+/// is what lets it.
+private final class DefaultsStore: AudioSettingsStore {
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults) { self.defaults = defaults }
+
+    func bool(forKey key: String) -> Bool? {
+        defaults.object(forKey: key) as? Bool
+    }
+
+    func double(forKey key: String) -> Double? {
+        defaults.object(forKey: key) as? Double
+    }
+
+    func set(_ value: Bool, forKey key: String) { defaults.set(value, forKey: key) }
+    func set(_ value: Double, forKey key: String) { defaults.set(value, forKey: key) }
 }

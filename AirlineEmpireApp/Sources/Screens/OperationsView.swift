@@ -783,42 +783,68 @@ struct SettingsView: View {
                     .foregroundStyle(AETheme.mutedText)
             }
 
-            Section("Sound and feel") {
-                Toggle("Sound effects", isOn: $preferences.sound)
-                if preferences.sound {
-                    LabeledContent("Volume") {
-                        Slider(value: $preferences.soundVolume, in: 0...1)
-                            .frame(maxWidth: 160)
-                            .accessibilityLabel("Sound effects volume")
-                            .accessibilityValue(Format.percent(preferences.soundVolume))
+            Section("Sound") {
+                Toggle("Mute everything", isOn: $preferences.muteAll)
+                if !preferences.muteAll {
+                    LabeledContent("Overall") {
+                        Slider(value: $preferences.masterVolume, in: 0...1)
+                            .frame(maxWidth: 150)
+                            .accessibilityLabel("Overall volume")
+                            .accessibilityValue(Format.percent(preferences.masterVolume))
                     }
-                }
-                Toggle("Ambience", isOn: $preferences.ambience)
-                if preferences.ambience {
-                    LabeledContent("Ambience volume") {
-                        Slider(value: $preferences.ambienceVolume, in: 0...1)
-                            .frame(maxWidth: 160)
-                            .accessibilityLabel("Ambience volume")
-                            .accessibilityValue(Format.percent(preferences.ambienceVolume))
+                    Toggle("Sound effects", isOn: $preferences.sound)
+                    if preferences.sound {
+                        LabeledContent("Effects volume") {
+                            Slider(value: $preferences.soundVolume, in: 0...1)
+                                .frame(maxWidth: 150)
+                                .accessibilityLabel("Sound effects volume")
+                                .accessibilityValue(Format.percent(preferences.soundVolume))
+                        }
                     }
+                    Toggle("Music", isOn: $preferences.music)
+                    if preferences.music {
+                        LabeledContent("Music volume") {
+                            Slider(value: $preferences.musicVolume, in: 0...1)
+                                .frame(maxWidth: 150)
+                                .accessibilityLabel("Music volume")
+                                .accessibilityValue(Format.percent(preferences.musicVolume))
+                        }
+                    }
+                    Text("Four slow beds that follow the airline's situation — planning, operating, and trouble. There is no melody and nothing repeats on a short cycle.")
+                        .font(.caption)
+                        .foregroundStyle(AETheme.mutedText)
+                    Toggle("World ambience", isOn: $preferences.ambience)
+                    if preferences.ambience {
+                        LabeledContent("Ambience volume") {
+                            Slider(value: $preferences.ambienceVolume, in: 0...1)
+                                .frame(maxWidth: 150)
+                                .accessibilityLabel("World ambience volume")
+                                .accessibilityValue(Format.percent(preferences.ambienceVolume))
+                        }
+                    }
+                    Text("A quiet bed under the map that thickens as more of your aircraft are in the air. Off by default — the game is complete without it.")
+                        .font(.caption)
+                        .foregroundStyle(AETheme.mutedText)
                 }
-                Text("A quiet bed of air under the world. Off by default — the game is designed to be complete without it.")
-                    .font(.caption)
-                    .foregroundStyle(AETheme.mutedText)
-                Toggle("Haptics", isOn: $preferences.haptics)
-                Text("Nothing the simulation does on its own schedule vibrates the phone. Only your own actions, and the few things you must not miss.")
-                    .font(.caption)
-                    .foregroundStyle(AETheme.mutedText)
-                // Shown only when something is actually wrong. A missing sound
-                // is otherwise indistinguishable from a working one, so the
-                // build gets somewhere to say so.
                 if !controller.feedback.missingAssets.isEmpty {
                     Text("\(controller.feedback.missingAssets.count) sounds are missing from this build and will play silently.")
                         .font(.caption)
                         .foregroundStyle(AETheme.caution)
                 }
             }
+
+            Section("Feel") {
+                Toggle("Haptics", isOn: $preferences.haptics)
+                Text("Nothing the simulation does on its own schedule vibrates the phone — only your own actions, and the few things you must not miss.")
+                    .font(.caption)
+                    .foregroundStyle(AETheme.mutedText)
+            }
+            .onChange(of: preferences.muteAll) { _, _ in controller.audioSettingsChanged() }
+            .onChange(of: preferences.masterVolume) { _, _ in controller.audioSettingsChanged() }
             .onChange(of: preferences.sound) { _, _ in controller.audioSettingsChanged() }
+            .onChange(of: preferences.soundVolume) { _, _ in controller.audioSettingsChanged() }
+            .onChange(of: preferences.music) { _, _ in controller.audioSettingsChanged() }
+            .onChange(of: preferences.musicVolume) { _, _ in controller.audioSettingsChanged() }
             .onChange(of: preferences.ambience) { _, _ in controller.audioSettingsChanged() }
             .onChange(of: preferences.ambienceVolume) { _, _ in controller.audioSettingsChanged() }
 

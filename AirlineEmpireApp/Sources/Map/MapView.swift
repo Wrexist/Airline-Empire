@@ -23,6 +23,7 @@ import AirlineEmpireCore
 struct MapScreen: View {
     @Environment(GameController.self) private var controller
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.feedback) private var feedback
 
     @State private var camera = MapCamera()
     @State private var selection: MapHit?
@@ -42,7 +43,20 @@ struct MapScreen: View {
                         chrome(model: model, snapshot: snapshot)
                     }
                     .background(AETheme.mapBackground)
-                    .onAppear { frameHomeOnce(model) }
+                    .onAppear {
+                        frameHomeOnce(model)
+                        reportFocus()
+                    }
+                    // The soundscape follows the camera and the selection.
+                    // Reported rather than applied: the bed is re-derived on
+                    // the next snapshot, so a pinch does not touch the audio
+                    // graph on every gesture frame
+                    // (docs/AUDIO_ARCHITECTURE.md §6).
+                    .onChange(of: MapZoomLevel(zoom: camera.zoom)) { _, _ in
+                        reportFocus()
+                    }
+                    .onChange(of: selection) { _, _ in reportFocus() }
+                    .onDisappear { feedback.clearMapFocus() }
                 } else {
                     LoadingState(message: "Drawing the world")
                 }
@@ -157,6 +171,19 @@ struct MapScreen: View {
     private func handleTap(at location: CGPoint, model: MapModel) {
         let hit = hitGeometry.hit(at: location)
         withAnimation(AEMotion.content) { selection = hit }
+    }
+
+    /// Translates the renderer's zoom ladder into the one Core's soundscape
+    /// policy speaks. Two enums rather than one because Core cannot know
+    /// about `CGFloat` zoom, and the map cannot own audio policy.
+    private func reportFocus() {
+        let level = MapZoomLevel(zoom: camera.zoom)
+        let focus: SoundscapeFocus = switch level {
+        case .world: SoundscapeFocus.world
+        case .regional: SoundscapeFocus.regional
+        case .local: SoundscapeFocus.local
+        }
+        feedback.setMapFocus(focus, hasSelection: selection != nil)
     }
 
     private func frameHomeOnce(_ model: MapModel) {

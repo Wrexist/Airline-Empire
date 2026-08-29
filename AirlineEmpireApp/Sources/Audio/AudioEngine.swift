@@ -54,6 +54,22 @@ final class AudioEngine {
     private var ambienceNode: AVAudioPlayerNode?
     private var ambienceCue: AudioCue?
 
+    /// Music, on its own mixer so its volume is a third independent fader.
+    private let musicMixer = AVAudioMixerNode()
+    /// Two decks. A crossfade needs the outgoing track to keep sounding while
+    /// the incoming one comes up, which one node cannot do — and cutting
+    /// between music states is the thing that would make a strategy game feel
+    /// like a menu system.
+    private var musicDecks: [AVAudioPlayerNode] = []
+    private var activeDeck = 0
+    private var musicTrack: String?
+    private var musicBuffers: [String: AVAudioPCMBuffer] = [:]
+    private var musicFade: Task<Void, Never>?
+    /// The player's music setting, held so a crossfade knows what "full"
+    /// means without asking back through the facade every step.
+    private var musicTarget: Float = 0
+    private(set) var missingMusic: Set<String> = []
+
     private var buffers: [AudioCue: AVAudioPCMBuffer] = [:]
     private(set) var isRunning = false
     /// Cues whose file was missing or unreadable. Surfaced rather than
@@ -98,14 +114,38 @@ final class AudioEngine {
 
         engine.attach(effectsMixer)
         engine.attach(ambienceMixer)
+        engine.attach(musicMixer)
         engine.connect(effectsMixer, to: engine.mainMixerNode, format: nil)
         engine.connect(ambienceMixer, to: engine.mainMixerNode, format: nil)
+        engine.connect(musicMixer, to: engine.mainMixerNode, format: nil)
+        musicMixer.outputVolume = 0
 
         for _ in 0..<Self.voiceCount {
             let node = AVAudioPlayerNode()
             engine.attach(node)
             engine.connect(node, to: effectsMixer, format: voiceFormat)
             voices.append(node)
+        }
+
+        // Music beds are addressed by name rather than by cue, and they run
+        // at half the rate (see docs/AUDIO_ASSET_MANIFEST.md §3), so each deck
+        // is wired to the format of the bed it will actually carry.
+        for state in MusicState.allCases {
+            guard let name = MusicDirector.asset(for: state),
+                  musicBuffers[name] == nil else { continue }
+            if let buffer = loadBuffer(named: name) {
+                musicBuffers[name] = buffer
+            } else {
+                missingMusic.insert(name)
+            }
+        }
+        if let musicFormat = musicBuffers.values.first?.format {
+            for _ in 0..<2 {
+                let deck = AVAudioPlayerNode()
+                engine.attach(deck)
+                engine.connect(deck, to: musicMixer, format: musicFormat)
+                musicDecks.append(deck)
+            }
         }
 
         do {
@@ -124,6 +164,7 @@ final class AudioEngine {
     func suspend() {
         guard isRunning else { return }
         stopAmbience()
+        stopMusic()
         engine.pause()
         try? AVAudioSession.sharedInstance().setActive(false,
                                                        options: .notifyOthersOnDeactivation)
@@ -144,7 +185,13 @@ final class AudioEngine {
     }
 
     private func loadBuffer(_ cue: AudioCue) -> AVAudioPCMBuffer? {
-        guard let url = Bundle.main.url(forResource: cue.assetName,
+        guard let buffer = loadBuffer(named: cue.assetName) else { return nil }
+        applyCategoryTrim(to: buffer, cue: cue)
+        return buffer
+    }
+
+    private func loadBuffer(named name: String) -> AVAudioPCMBuffer? {
+        guard let url = Bundle.main.url(forResource: name,
                                         withExtension: "wav"),
               let file = try? AVAudioFile(forReading: url),
               let buffer = AVAudioPCMBuffer(
@@ -156,7 +203,6 @@ final class AudioEngine {
         } catch {
             return nil
         }
-        applyCategoryTrim(to: buffer, cue: cue)
         return buffer
     }
 
@@ -243,6 +289,102 @@ final class AudioEngine {
     /// Silences everything currently sounding without tearing the graph down
     /// — used when a game ends or the player mutes mid-sound, so a two-second
     /// era swell does not outlive the screen that earned it.
+    // MARK: - Music
+
+    /// Crossfades to `track`, or fades out entirely when it is nil.
+    ///
+    /// Idempotent: asking for the track already playing only re-levels. That
+    /// is what makes it safe to call from an observation that fires on every
+    /// snapshot, which is exactly how a music system ends up with four copies
+    /// of the same bed running at once.
+    func setMusic(_ track: String?, gain: Float, fade: Double) {
+        guard isRunning, !musicDecks.isEmpty else { return }
+        musicTarget = min(1, max(0, gain))
+        guard track != musicTrack else {
+            // Same bed: just move the level, respecting a duck.
+            musicFade?.cancel()
+            musicFade = nil
+            musicMixer.outputVolume = musicTarget
+            return
+        }
+        musicTrack = track
+
+        musicFade?.cancel()
+        let outgoing = musicDecks[activeDeck]
+        guard let track, let buffer = musicBuffers[track] else {
+            // Fading to silence.
+            musicFade = Task { [weak self] in
+                await self?.ramp(to: 0, over: fade)
+                guard !Task.isCancelled else { return }
+                outgoing.stop()
+            }
+            return
+        }
+
+        activeDeck = (activeDeck + 1) % musicDecks.count
+        let incoming = musicDecks[activeDeck]
+        incoming.stop()
+        incoming.scheduleBuffer(buffer, at: nil, options: [.loops],
+                                completionHandler: nil)
+        incoming.volume = 0
+        incoming.play()
+
+        musicFade = Task { [weak self] in
+            await self?.crossfade(from: outgoing, to: incoming, over: fade)
+        }
+    }
+
+    /// Equal-power crossfade over `seconds`, stepped at 20 Hz.
+    ///
+    /// Equal-power rather than linear because two linear ramps sum to a dip in
+    /// the middle, and a dip in the middle of every music transition is
+    /// audible as a stumble.
+    private func crossfade(from outgoing: AVAudioPlayerNode,
+                           to incoming: AVAudioPlayerNode,
+                           over seconds: Double) async {
+        let steps = max(1, Int(seconds * 20))
+        musicMixer.outputVolume = musicTarget
+        for step in 0...steps {
+            if Task.isCancelled { return }
+            let t = Double(step) / Double(steps)
+            incoming.volume = Float(sin(t * .pi / 2))
+            outgoing.volume = Float(cos(t * .pi / 2))
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        guard !Task.isCancelled else { return }
+        outgoing.stop()
+        outgoing.volume = 0
+        incoming.volume = 1
+    }
+
+    private func ramp(to level: Float, over seconds: Double) async {
+        let steps = max(1, Int(seconds * 20))
+        let from = musicMixer.outputVolume
+        for step in 0...steps {
+            if Task.isCancelled { return }
+            let t = Float(step) / Float(steps)
+            musicMixer.outputVolume = from + (level - from) * t
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+    }
+
+    /// Momentary attenuation of music and bed, for a milestone cue to sit in.
+    func duckContinuous(_ factor: Float) {
+        musicMixer.outputVolume = musicTarget * factor
+        ambienceMixer.outputVolume = ambienceMixer.outputVolume * factor
+    }
+
+    func stopMusic() {
+        musicFade?.cancel()
+        musicFade = nil
+        for deck in musicDecks {
+            deck.stop()
+            deck.volume = 0
+        }
+        musicMixer.outputVolume = 0
+        musicTrack = nil
+    }
+
     /// Idles the graph when the player has turned everything off.
     ///
     /// A running `AVAudioEngine` with nothing to play still holds a render
@@ -258,12 +400,14 @@ final class AudioEngine {
             }
         } else if engine.isRunning {
             stopAmbience()
+            stopMusic()
             engine.pause()
         }
     }
 
     func stopAll() {
         stopAmbience()
+        stopMusic()
         guard isRunning else { return }
         for voice in voices {
             voice.stop()
