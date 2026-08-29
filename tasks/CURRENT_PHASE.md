@@ -19,6 +19,58 @@ Apple-layer work is prepared, never claimed.
 
 ## Session log
 
+**2026-08-29 (the world map overhaul — MASTER PROMPT 2).** The map was four
+files' worth of dots on a 260-point outline; it is now the screen the rest of
+the game points at. `docs/MAP_ARCHITECTURE.md` is the full account. In short:
+
+- **Renderer decided, not defaulted.** One SwiftUI `Canvas` inside a
+  `TimelineView`, chosen against SpriteKit, Metal, MapKit and a web map, each
+  rejected in writing with a reason. No new dependencies. Immediate mode is the
+  point: a view per airport is what makes a SwiftUI map fall over, and the
+  whole world is a few thousand primitives.
+- **Cartography.** 631 coordinate pairs across 24 landmasses (was 260/16),
+  a 30° graticule, and a palette built for a premium strategy game rather than
+  for looking like a road atlas.
+- **A model that knows things.** `MapModel` gained airport tiers, regions,
+  hubs, slot pressure and weather risk; routes gained load factor, health and
+  livery; flights gained origin, destination, progress, delay and category.
+  All derived from state Core already had — the map shows what the simulation
+  already knew and never computed anything of its own.
+- **Live aircraft, honestly.** Markers interpolate between snapshots as client-
+  side prediction only. Nothing they do re-enters the simulation, the clock is
+  Core's, and at `.paused` the timeline stops entirely rather than drifting.
+- **Original aircraft art.** Four planforms authored as unit-box paths — no
+  copyrighted planform, no airline branding, no livery copied from a real
+  carrier.
+- **Overlays that answer questions.** Five, each with the question it answers
+  written next to it: network, opportunity, profitability, competition,
+  disruption. Route health is drawn with dash pattern and weight as well as
+  colour, so it survives colour blindness and greyscale.
+- **One ranking of "where should I fly next".** The onboarding card and the map
+  opportunity overlay were about to hold two copies; `MarketOpportunities` in
+  Core is the one, with a test asserting both callers agree.
+
+**BUG-012**, found by hunting my own new code: a Tokyo–LA arc crossed the date
+line and drew a line back across the entire world. Fixed in Core, because the
+projection is what owes the guarantee — `MapMath.unwrap` carries a whole-world
+offset across the seam and `worldOffsets` says which copies to draw. Seven
+tests.
+
+**Performance**, measured, and worth recording because the first number was
+bad: `mapModel` is rebuilt every tick, and at late-game scale (8 airlines, 200
+routes, 200 aircraft, 403 live flights) it cost **15.42 ms** — of which
+`marketOpportunities` alone was 13.93 ms, scanning every airport the player
+touches against all eighty. Restricting origins to actual *bases* (home, plus
+anywhere with three or more routes, capped at five) is both the better product
+answer and an **8.6x** win: **1.79 ms**. `ae-map-bench` is the harness.
+
+**308 Core tests green** (257 at the start of the session), release build clean
+under `-warnings-as-errors`.
+
+**What is not proven:** everything about how it looks. `Sources/Map/` had never
+been through a compiler when it was written, let alone a renderer — see TD-003.
+The status ladder does not move.
+
 **2026-08-29 (continuation — the last of the audit list).** Four things the
 remediation pass had left:
 

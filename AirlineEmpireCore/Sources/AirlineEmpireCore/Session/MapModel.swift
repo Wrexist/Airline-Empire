@@ -1,22 +1,83 @@
 import Foundation
 
-/// Map read model (docs/UI_ARCHITECTURE.md §3): everything the map renderer
-/// draws, computed in Core so positions, arcs, and live-flight
-/// interpolation are tested headlessly. The renderer projects and draws;
-/// it never computes gameplay-adjacent values.
+/// Map read model (docs/MAP_ARCHITECTURE.md, docs/UI_ARCHITECTURE.md §3):
+/// everything the map renderer draws, computed in Core so positions, arcs,
+/// classifications and live-flight interpolation are tested headlessly. The
+/// renderer projects and draws; it never computes gameplay-adjacent values.
+///
+/// The model answers the strategic questions the map screen exists to answer —
+/// where am I, where is my aircraft, what is working, who am I fighting, what
+/// is at risk, where should I go next — so a renderer never has to reach past
+/// it into `GameState` and re-derive an answer of its own.
 public struct MapModel: Equatable, Sendable {
     public let airports: [MapAirport]
     public let routes: [MapRoute]
     public let flights: [MapFlight]
+    public let events: [MapEvent]
+    /// Best unopened markets, so an early-game map has something to say and
+    /// the demand overlay has something to draw.
+    public let opportunities: [MapOpportunity]
+    public let playerHome: AirportCode?
+    /// The simulation minute the model was built at; the renderer measures its
+    /// own interpolation from here.
+    public let builtAt: SimTime
+
+    /// How much an airport matters, which is what decides its size, its label
+    /// priority, and whether it is drawn at all when zoomed out.
+    ///
+    /// Derived from what the content pack already says — catchment, slot
+    /// capacity and runway class — rather than a hand-kept list, so adding an
+    /// airport to `airports.json` classifies it automatically.
+    public enum AirportTier: Int, Equatable, Sendable, Comparable, CaseIterable {
+        case small = 0
+        case regional
+        case major
+        case global
+
+        public static func < (lhs: Self, rhs: Self) -> Bool {
+            lhs.rawValue < rhs.rawValue
+        }
+    }
+
+    /// What a route looks like it is doing. Never colour alone in the
+    /// renderer — this drives weight and pattern too.
+    public enum RouteHealth: Int, Equatable, Sendable, CaseIterable {
+        /// No aircraft assigned: paying fees, flying nothing.
+        case grounded = 0
+        /// An airport on it is shut, or its completion rate has collapsed.
+        case disrupted
+        /// Losing money, or flying half-empty.
+        case weak
+        case healthy
+        /// Full and profitable.
+        case strong
+    }
 
     public struct MapAirport: Equatable, Sendable {
         public let code: AirportCode
         public let name: String
         public let city: String
+        public let country: String
+        public let region: WorldRegion
         public let position: MapPoint
-        /// 0…1 size tier for level-of-detail (population-derived).
+        /// 0…1 catchment size, for level-of-detail and marker scale.
         public let prominence: Double
+        public let tier: AirportTier
         public let servedByPlayer: Bool
+        /// The player's own base.
+        public let isPlayerHome: Bool
+        /// Somewhere the player has built real presence (three or more
+        /// routes) — a hub in behaviour rather than by declaration, since
+        /// the game has no hub mechanic yet (D-010).
+        public let isPlayerHub: Bool
+        public let playerRouteCount: Int
+        /// Rivals with at least one route touching here.
+        public let competitorCount: Int
+        /// Rivals *based* here — this is somebody's fortress.
+        public let competitorHubCount: Int
+        /// 0…1 of the airport's daily movements already claimed.
+        public let slotPressure: Double
+        public let weatherRisk: WeatherRisk
         public let closed: Bool
     }
 
@@ -24,13 +85,16 @@ public struct MapModel: Equatable, Sendable {
         public let id: RouteID
         public let airline: AirlineID
         public let isPlayer: Bool
+        public let origin: AirportCode
+        public let destination: AirportCode
         public let from: MapPoint
         public let to: MapPoint
         /// Great-circle waypoints from `from` to `to` (inclusive), ready to
         /// draw as a polyline — correct curvature and date-line handling.
         public let arc: [MapPoint]
         public let dailyRoundTrips: Int
-        public let profitable: Bool
+        public let loadFactor: Double
+        public let health: RouteHealth
         /// The operator's colours, so the map can tell four carriers apart
         /// instead of drawing every rival in the same grey.
         public let livery: Livery
@@ -38,13 +102,79 @@ public struct MapModel: Equatable, Sendable {
 
     public struct MapFlight: Equatable, Sendable {
         public let id: FlightID
+        public let route: RouteID
+        public let aircraft: AircraftID
         public let airline: AirlineID
         public let isPlayer: Bool
+        public let origin: AirportCode
+        public let destination: AirportCode
         public let position: MapPoint
         /// Course in degrees clockwise from north (icon rotation).
         public let heading: Double
         public let airborne: Bool
+        /// 0…1 along the great circle at `builtAt`. The renderer advances a
+        /// *copy* of this between snapshots for smooth motion; the simulation
+        /// never reads it back.
+        public let progress: Double
+        /// Total scheduled flying time, which is what lets the renderer know
+        /// how fast the fraction should advance per game minute.
+        public let flightMinutes: Int64
+        public let category: AircraftCategory
+        public let delayMinutes: Int64
+        public let isFerry: Bool
         public let livery: Livery
+    }
+
+    /// A world event, placed. Events had no geography on screen at all, which
+    /// made "a storm over Southeast Asia" a line of text rather than a thing
+    /// happening somewhere.
+    public struct MapEvent: Equatable, Sendable {
+        public let id: Int64
+        public let kind: WorldEventKind
+        public let hasStarted: Bool
+        public let severity: Double
+        public let beginsAt: SimTime
+        public let endsAt: SimTime
+        /// Airports inside the event's reach. Empty for a global event such
+        /// as a fuel shock, which the renderer shows as a banner rather than
+        /// as a place.
+        public let affectedAirports: [AirportCode]
+        /// True when the event has no location — global, not regional.
+        public let isGlobal: Bool
+        /// Player routes it touches; the number that makes an event a
+        /// decision rather than a headline.
+        public let affectedPlayerRoutes: [RouteID]
+    }
+
+    /// A market the player could open, positioned for drawing.
+    public struct MapOpportunity: Equatable, Sendable {
+        public let origin: AirportCode
+        public let destination: AirportCode
+        public let from: MapPoint
+        public let to: MapPoint
+        public let expectedDailyPassengers: Int
+        public let distanceKm: Int
+        /// The market fare at this distance, so a "open a route here" tap can
+        /// pre-fill the sheet with a sane number rather than zero.
+        public let referenceFare: Money
+        public let incumbents: Int
+        public let servableNow: Bool
+    }
+}
+
+extension MapModel {
+    /// Positions a ranked market for drawing.
+    public static func opportunity(_ market: MarketOpportunity,
+                                   catalog: ContentCatalog) -> MapOpportunity? {
+        guard let a = catalog.airport(market.origin),
+              let b = catalog.airport(market.destination) else { return nil }
+        return MapOpportunity(
+            origin: market.origin, destination: market.destination,
+            from: MapPoint(coordinate: a.coordinate),
+            to: MapPoint(coordinate: b.coordinate),
+            expectedDailyPassengers: market.expectedDailyPassengers,
+            distanceKm: market.distanceKm, referenceFare: market.referenceFare,
+            incumbents: market.incumbents, servableNow: market.servableNow)
     }
 }
 
@@ -102,6 +232,46 @@ public enum MapMath {
         return 2 * atan2(h.squareRoot(), (1 - h).squareRoot())
     }
 
+    /// Great circles cross the 180th meridian; equirectangular map space does
+    /// not. A Tokyo–Los Angeles arc runs off the right edge of the world and
+    /// back on at the left, so its x values jump from ~0.99 to ~0.01 between
+    /// two consecutive waypoints — and a renderer that draws the raw polyline
+    /// puts a straight line back across the entire map (BUG-012).
+    ///
+    /// `unwrap` walks the arc accumulating whole-world offsets so x stays
+    /// continuous even when it leaves 0…1. The renderer then draws the
+    /// unwrapped line once per world copy it reaches into.
+    ///
+    /// This lives in Core rather than in the renderer because it is geometry,
+    /// not drawing — and because Core's own comment has always claimed correct
+    /// date-line handling, which was true of the points and not of the line
+    /// through them.
+    public static func unwrap(_ points: [MapPoint]) -> [MapPoint] {
+        guard var previous = points.first else { return [] }
+        var offset: Double = 0
+        var out: [MapPoint] = [previous]
+        for point in points.dropFirst() {
+            let delta = point.x - previous.x
+            // Half a world between adjacent waypoints means the arc wrapped,
+            // not that it crossed the planet in one step.
+            if delta > 0.5 { offset -= 1 } else if delta < -0.5 { offset += 1 }
+            out.append(MapPoint(x: point.x + offset, y: point.y))
+            previous = point
+        }
+        return out
+    }
+
+    /// The world copies worth drawing for an unwrapped polyline: always the
+    /// original, plus a shifted copy when the line runs off an edge.
+    public static func worldOffsets(for points: [MapPoint]) -> [Double] {
+        guard let minX = points.map(\.x).min(), let maxX = points.map(\.x).max()
+        else { return [0] }
+        var offsets: [Double] = [0]
+        if minX < 0 { offsets.append(1) }
+        if maxX > 1 { offsets.append(-1) }
+        return offsets
+    }
+
     /// Arc polyline with enough segments to look smooth at any zoom.
     public static func arc(from a: Coordinate, to b: Coordinate,
                            segments: Int = 24) -> [MapPoint] {
@@ -115,83 +285,214 @@ public enum MapMath {
 
 extension GameState {
     /// Builds the full map model for the current snapshot.
-    /// Presentation-only interpolation: airborne flights place along the
-    /// great circle by elapsed flight-time fraction — never fed back into
-    /// the simulation (docs/UI_ARCHITECTURE.md §3).
-    public func mapModel(catalog: ContentCatalog) -> MapModel {
+    ///
+    /// Presentation-only interpolation: airborne flights place along the great
+    /// circle by elapsed flight-time fraction — never fed back into the
+    /// simulation (docs/UI_ARCHITECTURE.md §3).
+    ///
+    /// One pass over routes builds every per-airport tally, so the whole model
+    /// is O(airports + routes + flights) rather than O(airports × routes).
+    public func mapModel(catalog: ContentCatalog,
+                         opportunityLimit: Int = 6) -> MapModel {
         let player = playerAirline?.id
-        let playerAirports: Set<AirportCode> = player.map { id in
-            var set = Set<AirportCode>()
-            for route in routes(of: id) {
-                set.insert(route.origin)
-                set.insert(route.destination)
-            }
-            return set
-        } ?? []
+        let home = playerAirline?.homeAirport
 
-        let maxPopulation = Double(catalog.orderedAirportCodes
+        // --- One pass over routes: everything per-airport comes from here.
+        var playerAirports: Set<AirportCode> = []
+        var playerRouteCounts: [AirportCode: Int] = [:]
+        var competitorsAt: [AirportCode: Set<AirlineID>] = [:]
+        for id in orderedRouteIDs {
+            guard let route = routes[id] else { continue }
+            for code in [route.origin, route.destination] {
+                if route.airline == player {
+                    playerAirports.insert(code)
+                    playerRouteCounts[code, default: 0] += 1
+                } else {
+                    competitorsAt[code, default: []].insert(route.airline)
+                }
+            }
+        }
+        // A rival "based" somewhere is one whose home airport it is.
+        var competitorHomes: [AirportCode: Int] = [:]
+        for id in orderedAirlineIDs {
+            guard let airline = airlines[id], airline.kind == .ai,
+                  airline.status == .active else { continue }
+            competitorHomes[airline.homeAirport, default: 0] += 1
+        }
+
+        let populations = catalog.orderedAirportCodes
             .compactMap { catalog.airports[$0]?.demographics.populationThousands }
-            .max() ?? 1)
+        let maxPopulation = Double(populations.max() ?? 1)
+
         let airports = catalog.orderedAirportCodes.compactMap { code -> MapModel.MapAirport? in
             guard let spec = catalog.airports[code] else { return nil }
+            let prominence = maxPopulation > 0
+                ? Double(spec.demographics.populationThousands) / maxPopulation : 0
+            let playerRoutes = playerRouteCounts[code] ?? 0
+            let capacity = max(1, spec.slotCapacityPerDay)
             return MapModel.MapAirport(
-                code: code, name: spec.name, city: spec.city,
+                code: code, name: spec.name, city: spec.city, country: spec.country,
+                region: spec.region,
                 position: MapPoint(coordinate: spec.coordinate),
-                prominence: Double(spec.demographics.populationThousands) / maxPopulation,
+                prominence: prominence,
+                tier: MapModel.tier(for: spec, prominence: prominence),
                 servedByPlayer: playerAirports.contains(code),
+                isPlayerHome: code == home,
+                // Three routes is the point at which a station stops being a
+                // destination and starts being a base you plan around.
+                isPlayerHub: playerRoutes >= 3,
+                playerRouteCount: playerRoutes,
+                competitorCount: competitorsAt[code]?.count ?? 0,
+                competitorHubCount: competitorHomes[code] ?? 0,
+                slotPressure: min(1, Double(world.slotsUsed(at: code)) / Double(capacity)),
+                weatherRisk: spec.weatherRisk,
                 closed: world.isAirportClosed(code, at: clock.now))
         }
 
+        let closedAirports = Set(airports.filter(\.closed).map(\.code))
+
         let mapRoutes = orderedRouteIDs.compactMap { routeID -> MapModel.MapRoute? in
-            guard let route = self.routes[routeID],
+            guard let route = routes[routeID],
                   let origin = catalog.airport(route.origin),
                   let destination = catalog.airport(route.destination) else { return nil }
+            let disrupted = closedAirports.contains(route.origin)
+                || closedAirports.contains(route.destination)
             return MapModel.MapRoute(
                 id: routeID, airline: route.airline,
                 isPlayer: route.airline == player,
+                origin: route.origin, destination: route.destination,
                 from: MapPoint(coordinate: origin.coordinate),
                 to: MapPoint(coordinate: destination.coordinate),
                 arc: MapMath.arc(from: origin.coordinate, to: destination.coordinate),
                 dailyRoundTrips: route.dailyRoundTrips,
-                profitable: route.economicsLastMonth.directOperatingProfit > .zero,
+                loadFactor: route.stats.loadFactor,
+                health: MapModel.health(of: route, disrupted: disrupted),
                 livery: airlines[route.airline]?.livery ?? .default)
         }
 
         let mapFlights = orderedFlightIDs.compactMap { flightID -> MapModel.MapFlight? in
             guard let flight = flights[flightID],
                   let from = catalog.airport(flight.from),
-                  let to = catalog.airport(flight.to) else { return nil }
+                  let to = catalog.airport(flight.to),
+                  let aircraft = aircraft[flight.aircraft],
+                  let spec = catalog.aircraftType(aircraft.typeCode) else { return nil }
+            let owner = aircraft.owner
+            let livery = airlines[owner]?.livery ?? .default
+
+            func build(position: Coordinate, heading: Double,
+                       airborne: Bool, progress: Double) -> MapModel.MapFlight {
+                MapModel.MapFlight(
+                    id: flightID, route: flight.route, aircraft: flight.aircraft,
+                    airline: owner, isPlayer: owner == player,
+                    origin: flight.from, destination: flight.to,
+                    position: MapPoint(coordinate: position), heading: heading,
+                    airborne: airborne, progress: progress,
+                    flightMinutes: flight.flightMinutes, category: spec.category,
+                    delayMinutes: flight.delayMinutes,
+                    isFerry: flight.kind == .ferry, livery: livery)
+            }
+
             switch flight.phase {
             case .enRoute(let actualDeparture):
                 let elapsed = Double(clock.now.rawMinutes - actualDeparture.rawMinutes)
-                let fraction = min(1, max(0, elapsed / Double(flight.flightMinutes)))
+                let fraction = min(1, max(0, elapsed / Double(max(1, flight.flightMinutes))))
                 let position = MapMath.greatCirclePoint(
                     from: from.coordinate, to: to.coordinate, fraction: fraction)
                 let ahead = MapMath.greatCirclePoint(
                     from: from.coordinate, to: to.coordinate,
                     fraction: min(1, fraction + 0.02))
-                let owner = aircraft[flight.aircraft]?.owner
-                return MapModel.MapFlight(
-                    id: flightID, airline: owner ?? AirlineID(raw: 0),
-                    isPlayer: owner == player,
-                    position: MapPoint(coordinate: position),
-                    heading: MapMath.heading(from: position, to: ahead),
-                    airborne: true,
-                    livery: owner.flatMap { airlines[$0]?.livery } ?? .default)
+                return build(position: position,
+                             heading: MapMath.heading(from: position, to: ahead),
+                             airborne: true, progress: fraction)
             case .boarding, .turnaround:
-                let owner = aircraft[flight.aircraft]?.owner
-                return MapModel.MapFlight(
-                    id: flightID, airline: owner ?? AirlineID(raw: 0),
-                    isPlayer: owner == player,
-                    position: MapPoint(coordinate: from.coordinate),
-                    heading: MapMath.heading(from: from.coordinate, to: to.coordinate),
-                    airborne: false,
-                    livery: owner.flatMap { airlines[$0]?.livery } ?? .default)
+                return build(position: from.coordinate,
+                             heading: MapMath.heading(from: from.coordinate,
+                                                      to: to.coordinate),
+                             airborne: false, progress: 0)
             case .scheduled:
                 return nil
             }
         }
 
-        return MapModel(airports: airports, routes: mapRoutes, flights: mapFlights)
+        // --- Events, placed.
+        let playerRoutesByID = orderedRouteIDs.compactMap { routes[$0] }
+            .filter { $0.airline == player }
+        let mapEvents = world.activeEvents.map { event -> MapModel.MapEvent in
+            let affected: [AirportCode]
+            var isGlobal = false
+            switch event.kind {
+            case .fuelShock:
+                affected = []
+                isGlobal = true
+            case .storm(let region), .tourismBoom(let region):
+                affected = catalog.orderedAirportCodes.filter {
+                    catalog.airports[$0]?.region == region
+                }
+            case .airportClosure(let code):
+                affected = [code]
+            case .strike(let airline):
+                affected = orderedRouteIDs.compactMap { routes[$0] }
+                    .filter { $0.airline == airline }
+                    .flatMap { [$0.origin, $0.destination] }
+                    .reduce(into: [AirportCode]()) { list, code in
+                        if !list.contains(code) { list.append(code) }
+                    }
+            }
+            let affectedSet = Set(affected)
+            let touched = isGlobal
+                ? playerRoutesByID.map(\.id)
+                : playerRoutesByID.filter {
+                    affectedSet.contains($0.origin) || affectedSet.contains($0.destination)
+                }.map(\.id)
+            return MapModel.MapEvent(
+                id: event.id, kind: event.kind, hasStarted: event.hasStarted,
+                severity: event.severity, beginsAt: event.beginsAt,
+                endsAt: event.endsAt, affectedAirports: affected,
+                isGlobal: isGlobal, affectedPlayerRoutes: touched)
+        }
+
+        let mapOpportunities = opportunityLimit == 0 ? []
+            : marketOpportunities(catalog: catalog, limit: opportunityLimit)
+                .compactMap { MapModel.opportunity($0, catalog: catalog) }
+
+        return MapModel(airports: airports, routes: mapRoutes, flights: mapFlights,
+                        events: mapEvents, opportunities: mapOpportunities,
+                        playerHome: home, builtAt: clock.now)
+    }
+}
+
+extension MapModel {
+    /// Classification from what the content pack already knows. A global hub
+    /// is a very large catchment that can also physically take the aircraft;
+    /// a huge city with a short runway is not a global hub, it is a market
+    /// nobody can serve properly.
+    static func tier(for spec: AirportSpec, prominence: Double) -> AirportTier {
+        let big = spec.slotCapacityPerDay >= 500
+        if prominence >= 0.55, spec.runwayClass >= .veryLarge, big {
+            return .global
+        }
+        if prominence >= 0.30 {
+            return spec.runwayClass >= .large ? .major : .regional
+        }
+        return prominence >= 0.12 ? .regional : .small
+    }
+
+    /// What a route looks like it is doing, from the figures the simulation
+    /// already keeps. Grounded outranks everything: a route with no aircraft
+    /// is not "unprofitable", it is not operating.
+    static func health(of route: Route, disrupted: Bool) -> RouteHealth {
+        if route.assignedAircraft.isEmpty { return .grounded }
+        if disrupted { return .disrupted }
+        let profit = route.economicsThisMonth.directOperatingProfit
+        let closed = route.economicsLastMonth.directOperatingProfit
+        // The month in progress is the live signal; the closed month is the
+        // fallback while this one is still a rounding error.
+        let money = route.economicsThisMonth == RouteMonthEconomics() ? closed : profit
+        if route.stats.totalFlights > 0, route.stats.completionRate < 0.75 {
+            return .disrupted
+        }
+        if money.isNegative || route.stats.loadFactor < 0.45 { return .weak }
+        if route.stats.loadFactor >= 0.78 && money > .zero { return .strong }
+        return .healthy
     }
 }

@@ -94,65 +94,14 @@ extension GameState {
                                suggestions: suggestions)
     }
 
-    /// Best first routes from home: eligible for what the player flies (or
-    /// could buy this era), ranked by today's round-trip demand pool.
-    /// Deterministic: ties break on destination code.
+    /// Best first routes, from the one ranking the whole game uses
+    /// (`marketOpportunities`). This was a private near-copy of that
+    /// function; two rankings of "where should I fly" that can disagree is
+    /// one ranking too many, and the map needs the general form anyway.
     private func firstRouteSuggestions(for player: Airline,
                                        catalog: ContentCatalog,
                                        limit: Int) -> [FirstRouteSuggestion] {
-        guard limit > 0, catalog.airport(player.homeAirport) != nil else { return [] }
-
-        // Capability basis: the fleet if one exists, otherwise the best the
-        // current era lets the player acquire.
-        let ownedSpecs = fleet(of: player.id)
-            .compactMap { catalog.aircraftType($0.typeCode) }
-        let candidateSpecs = ownedSpecs.isEmpty
-            ? catalog.orderedAircraftTypeCodes
-                .compactMap { catalog.aircraftType($0) }
-                .filter { progression.era.allowedCategories.contains($0.category) }
-            : ownedSpecs
-        guard !candidateSpecs.isEmpty else { return [] }
-
-        let home = player.homeAirport
-        let date = currentDate
-        var scored: [(FirstRouteSuggestion, Double)] = []
-        for code in catalog.orderedAirportCodes where code != home {
-            // Per aircraft, never the best range paired with the least
-            // demanding runway: that chimera suggests routes no single
-            // aircraft can serve, and every assignment would then be rejected.
-            guard candidateSpecs.contains(where: { spec in
-                catalog.routeEligibility(
-                    from: home, to: code,
-                    aircraftRangeKm: spec.rangeKm,
-                    aircraftRunwayRequirement: spec.runwayRequirement).isEmpty
-            }), let distance = catalog.distanceKm(home, code)
-            else { continue }
-            let quality = DemandSystem.representativeStarterQuality(
-                tuning: catalog.tuning.demand)
-            let outbound = DemandSystem.expectedCapturedPassengers(
-                pool: DemandSystem.demandPool(from: home, to: code, date: date,
-                                              economicIndex: world.economicIndex,
-                                              catalog: catalog),
-                fareRatio: 1.0, quality: quality, tuning: catalog.tuning.demand)
-            let inbound = DemandSystem.expectedCapturedPassengers(
-                pool: DemandSystem.demandPool(from: code, to: home, date: date,
-                                              economicIndex: world.economicIndex,
-                                              catalog: catalog),
-                fareRatio: 1.0, quality: quality, tuning: catalog.tuning.demand)
-            let pool = outbound + inbound
-            let fare = DemandSystem.referenceFare(distanceKm: distance,
-                                                  tuning: catalog.tuning.demand)
-            scored.append((FirstRouteSuggestion(
-                origin: home, destination: code,
-                destinationCity: catalog.airport(code)?.city ?? code.raw,
-                distanceKm: distance,
-                expectedDailyPassengers: Int(pool.rounded()),
-                referenceFare: Money(rounding: fare)), pool))
-        }
-        return scored
-            .sorted { $0.1 != $1.1 ? $0.1 > $1.1
-                                   : $0.0.destination < $1.0.destination }
-            .prefix(limit)
-            .map(\.0)
+        marketOpportunities(catalog: catalog, limit: limit)
+            .map(\.asFirstRouteSuggestion)
     }
 }

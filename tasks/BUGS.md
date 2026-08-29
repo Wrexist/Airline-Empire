@@ -289,3 +289,37 @@ note.
 **Fix layer:** App. Swift Charts `BarMark` on a shared y-scale, with axes,
 month labels and per-bar accessibility values.
 **Status:** FIXED (authored) 2026-08-29.
+
+---
+
+## BUG-012 — Great-circle arcs crossing the date line drew a line back across the whole world
+**Severity:** P1 (the map's central visual, wrong on exactly the routes a
+player is proudest of) · **Phase found:** map overhaul adversarial bug hunt
+(MASTER PROMPT 2 §27), 2026-08-29, in code written earlier the same session.
+**Repro:** Open a route from Tokyo (HND) to Los Angeles (LAX) and look at the
+map. The slerp waypoints are correct in latitude/longitude, but projected to
+normalised x they run ~0.94 → 0.99 → **0.01** → 0.06. A path stroked through
+those points draws a near-full-width horizontal streak across the Atlantic,
+Africa and Eurasia between the two Pacific segments — and the aircraft marker
+teleports along it.
+**Root cause:** `MapMath` projected each waypoint independently and the
+renderer stroked them in order. Projection is per-point correct; a *polyline*
+through an equirectangular projection is not, because the seam at ±180° is a
+discontinuity in x that a straight segment interpolates straight through.
+Core's own comment claimed the date line was handled — true of the points,
+false of the line between them, which is the kind of half-truth a comment can
+carry for a long time.
+**Fix layer:** Core. `MapMath.unwrap(_:)` walks the projected points and
+carries a whole-world offset whenever consecutive x jump more than half a
+world, so the arc becomes monotone and may legitimately run past x=1 or below
+x=0; `MapMath.worldOffsets(for:)` then reports which ±1 world copies a shape
+touches, and the renderer draws it once per copy so the arc leaves one edge
+and re-enters the other. Fixed in Core rather than in the drawing code because
+the guarantee belongs to the projection, and the same unwrap is what makes
+flight-marker interpolation continuous across the seam.
+**Tests:** `AntimeridianTests` (7) — an eastward Pacific crossing, a westward
+one, a route that does not cross (offset never moves), monotonicity of the
+unwrapped sequence, offsets for a shape straddling the seam, and that unwrap
+preserves y exactly.
+**Status:** FIXED 2026-08-29 (Core; covered by tests, so this one is *tested*,
+not merely authored).

@@ -39,6 +39,13 @@ final class GameController {
     private var pumpTask: Task<Void, Never>?
     private var eventTask: Task<Void, Never>?
     private var rejectionTask: Task<Void, Never>?
+    /// When the current snapshot arrived in real time.
+    ///
+    /// The map interpolates flight positions between simulation ticks, and it
+    /// measures that from here. Wall-clock rather than simulation time on
+    /// purpose: it is a *presentation* clock, it never re-enters the
+    /// simulation, and it resets every time Core hands over a new truth.
+    private(set) var snapshotReceivedAt = Date()
     /// Solvency stage at the last pump, so entering danger fires the
     /// auto-pause exactly once rather than every quarter second.
     private var lastSolvencyStage: SolvencyModel.Stage = .healthy
@@ -461,6 +468,9 @@ final class GameController {
     private func refresh() async {
         guard let session else { return }
         let state = await session.snapshot
+        if state.clock.tickCount != snapshot?.clock.tickCount {
+            snapshotReceivedAt = Date()
+        }
         invalidateCachesIfNeeded(state)
         snapshot = state
         speed = await session.speed

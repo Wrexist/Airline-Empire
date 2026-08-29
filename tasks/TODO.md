@@ -136,6 +136,36 @@ released app, in dependency order, marked by who does each one.
 
 ---
 
+## AE-025
+**Title:** Map runtime validation
+**Purpose:** The world map (MASTER PROMPT 2, `docs/MAP_ARCHITECTURE.md`) is
+authored and — once CI is green — compiled. Nothing about how it *renders*
+is known. This task is the list of questions only a screen can answer.
+**Dependencies:** macOS + Xcode + a device or simulator (blocker B-002).
+**Implementation notes:** none — this is validation, not construction. If it
+finds defects they become their own tasks.
+**Acceptance criteria:**
+- The world reads as a world at each zoom level (world / regional / local),
+  and the label layout genuinely avoids collisions on a 393pt-wide screen.
+- Pan and pinch behave as one gesture; a tap selects the thing under the
+  finger, aircraft before airports before routes; selection cards do not
+  cover what was selected.
+- A route crossing the antimeridian draws as two segments leaving and
+  re-entering the edges, and its aircraft crosses without a jump (BUG-012
+  is fixed and unit-tested; this is the visual confirmation).
+- 60fps held at 16x on a late-game save with hundreds of live flights,
+  measured in Instruments — not inferred from `ae-map-bench`, which times the
+  model on Linux and says nothing about drawing (TD-003).
+- Paused really stops the timeline (no CPU, no battery). Reduce Motion stops
+  interpolation without stopping updates.
+- VoiceOver over the canvas reads a useful summary and the current selection.
+- Route health is distinguishable in greyscale and with a colour-blindness
+  simulation, per the dash/weight encoding.
+**Tests:** manual walkthrough + Instruments evidence recorded in `docs/`.
+**Status:** BLOCKED on B-002.
+
+---
+
 ## Backlog (do not start before AE-023 clears)
 
 - **AE-015** — Revenue-management fare buckets (docs/EXPANSION_ROADMAP.md).

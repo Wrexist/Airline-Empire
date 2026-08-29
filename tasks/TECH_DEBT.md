@@ -37,3 +37,56 @@ in the macOS pass like the rest of the app target.
 
 *(New entries are added the moment debt is knowingly incurred, not
 discovered later.)*
+
+---
+
+## TD-003 — The map's rendering claims are compile-deep only
+**Severity:** P1 for confidence, P0 for nothing — the code may be perfect; the
+point is that nobody knows.
+**Introduced:** map overhaul (MASTER PROMPT 2), 2026-08-29.
+**Description:** `AirlineEmpireApp/Sources/Map/` (6 files, ~2,000 lines) is a
+`Canvas` renderer, a camera, a hit-tester and a chrome layer. Everything about
+it that matters is a runtime property: does the projection look right at each
+zoom, do labels actually avoid each other on a 393pt-wide screen, does a
+`SimultaneousGesture` of drag and magnify behave, does the 30fps timeline hold
+403 flights on real silicon, does `DispatchQueue.main.async` from inside the
+draw closure land before the next tap. A green macOS `xcodebuild` job proves
+only that it compiles. Measured performance in this repo comes from
+`ae-map-bench`, which times the **model**, on Linux, on a server CPU — it says
+nothing about drawing.
+**Resolution path:** `docs/APPLE_VALIDATION.md` gains a map section: simulator
+at each zoom level, Instruments on a large save at 16x, VoiceOver over the
+canvas, Reduce Motion, and a pass on the smallest supported screen. Until
+then, no claim about how the map *looks* or *performs on device* is supported.
+
+---
+
+## TD-004 — Hit geometry is published from inside the draw closure
+**Severity:** P2 (correct in practice, fragile by construction).
+**Introduced:** map overhaul, 2026-08-29.
+**Description:** `MapFrame` records the points it drew and `MapScreen` stores
+them into `MapHitGeometry` via `DispatchQueue.main.async` so a tap resolves
+against the frame the player actually saw. `MapHitGeometry` is deliberately
+not `@Observable` — observing it would let a frame's output invalidate the
+view that produced it — but the arrangement still leans on an implementation
+detail: that Canvas's draw closure runs on the main actor and the hop lands
+before the next event. It is also one frame stale by design, which at 30fps is
+33ms and invisible, and at `.paused` is exact.
+**Resolution path:** if it ever misbehaves, compute the layout once per
+snapshot outside the draw and have both the renderer and the hit-tester read
+that, at the cost of doing projection work the frame will redo. Not done now
+because it trades a real simplification for a hypothetical bug.
+
+---
+
+## TD-005 — Coastlines are hand-authored, at one level of detail
+**Severity:** P3 (aesthetic ceiling, not a defect).
+**Introduced:** map overhaul, 2026-08-29.
+**Description:** `WorldGeometry.swift` carries 631 coordinate pairs across 24
+landmasses, typed by hand. It reads well at world and regional zoom and gets
+visibly coarse at local zoom, where a coastline is a few long straight lines.
+Adding real Natural Earth data would fix the fidelity and cost a data pipeline,
+a licence note, and a dependency the project has so far refused.
+**Resolution path:** if local zoom becomes a place players spend time, import
+Natural Earth 110m/50m as a generated Swift source at build time (no runtime
+dependency, no network), keeping the hand-authored set as the low-detail LOD.

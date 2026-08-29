@@ -48,10 +48,18 @@ enum AETheme {
     /// Assets the airline rents.
     static let leased = Color(red: 0.17, green: 0.56, blue: 0.60)
     static let cardBackground = Color(.secondarySystemBackground)
-    static let mapBackground = Color(red: 0.07, green: 0.10, blue: 0.16)
-    static let mapLand = Color(red: 0.13, green: 0.17, blue: 0.24)
+    // The map's own palette (docs/MAP_ARCHITECTURE.md §2). Near-black ocean,
+    // land a few points above it, coast a few points above that — the whole
+    // geography sits inside a narrow value range so it can never compete with
+    // the network drawn over it.
+    static let mapBackground = Color(red: 0.043, green: 0.063, blue: 0.106)
+    /// Deep water, for the vertical gradient that gives the plane depth.
+    static let mapDeep = Color(red: 0.024, green: 0.039, blue: 0.075)
+    static let mapLand = Color(red: 0.098, green: 0.129, blue: 0.184)
     /// The coastline itself, a shade up from the land so the silhouette reads.
-    static let mapCoast = Color(red: 0.22, green: 0.28, blue: 0.37)
+    static let mapCoast = Color(red: 0.169, green: 0.220, blue: 0.298)
+    /// Meridians and parallels: present, never read as data.
+    static let mapGraticule = Color(red: 0.35, green: 0.45, blue: 0.60).opacity(0.10)
     static let playerRoute = Color.cyan
     static let rivalRoute = Color.gray.opacity(0.55)
 
