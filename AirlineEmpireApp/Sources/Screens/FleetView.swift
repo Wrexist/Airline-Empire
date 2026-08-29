@@ -74,9 +74,9 @@ struct FleetList: View {
     }
 
     private func statusRank(_ card: FleetCardModel) -> Int {
-        if card.assignedRoute == nil && card.status == .active { return 0 }
-        if card.status == .inMaintenance { return 1 }
-        if card.status == .ordered { return 2 }
+        if card.assignedRoute == nil && card.status.isActive { return 0 }
+        if card.status.isInMaintenance { return 1 }
+        if card.status.isOnOrder { return 2 }
         return 3
     }
 }
@@ -99,7 +99,7 @@ struct FleetSummaryRow: View {
     }
 
     private var idleCount: Int {
-        cards.filter { $0.assignedRoute == nil && $0.status == .active }.count
+        cards.filter { $0.assignedRoute == nil && $0.status.isActive }.count
     }
 
     private var monthlyLeases: Money {
@@ -157,7 +157,7 @@ struct FleetRow: View {
                 case .leased(let rate, _):
                     AEBadge(text: "lease \(Format.money(rate))/mo", color: AETheme.leased)
                 }
-                if card.assignedRoute == nil, card.status == .active {
+                if card.assignedRoute == nil, card.status.isActive {
                     AEBadge(text: "idle", color: AETheme.caution, icon: "pause")
                 }
             }
@@ -249,7 +249,7 @@ struct AircraftDetailView: View {
 
     private func assignment(_ card: FleetCardModel, snapshot: GameState,
                             player: AirlineID, catalog: ContentCatalog) -> some View {
-        AECard(tint: card.assignedRoute == nil && card.status == .active
+        AECard(tint: card.assignedRoute == nil && card.status.isActive
                ? AETheme.caution.opacity(0.16) : nil) {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "Assignment", systemImage: "point.topleft.down.to.point.bottomright.curvepath")
@@ -275,7 +275,7 @@ struct AircraftDetailView: View {
                     }
                     .buttonStyle(.bordered)
                     .frame(minHeight: 44)
-                } else if card.status == .ordered {
+                } else if card.status.isOnOrder {
                     Label("On order — it cannot fly until it is delivered.",
                           systemImage: "shippingbox")
                         .font(.subheadline)

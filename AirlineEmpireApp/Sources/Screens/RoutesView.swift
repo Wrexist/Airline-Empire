@@ -377,7 +377,7 @@ struct RouteDetailView: View {
                                  catalog: ContentCatalog) -> some View {
         let fleet = controller.fleetCards
         let assigned = fleet.filter { $0.assignedRoute == routeID }
-        let idle = fleet.filter { $0.assignedRoute == nil && $0.status == .active }
+        let idle = fleet.filter { $0.assignedRoute == nil && $0.status.isActive }
         return AECard(tint: assigned.isEmpty ? AETheme.caution.opacity(0.18) : nil) {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "Aircraft", systemImage: "airplane")

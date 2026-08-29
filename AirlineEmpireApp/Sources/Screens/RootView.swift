@@ -110,8 +110,10 @@ struct GameShell: View {
             // specified and never built, UI-013).
             if sizeClass == .regular {
                 NavigationSplitView {
-                    List(Tab.allCases, id: \.self, selection: $selection) { tab in
-                        Label(tab.title, systemImage: tab.icon).tag(tab)
+                    List(selection: sidebarSelection) {
+                        ForEach(Tab.allCases, id: \.self) { tab in
+                            Label(tab.title, systemImage: tab.icon).tag(tab)
+                        }
                     }
                     .navigationTitle(controller.snapshot?.playerAirline?.name ?? "Airline Empire")
                     .listStyle(.sidebar)
@@ -158,6 +160,13 @@ struct GameShell: View {
         case .finance: FinanceView()
         case .world: OperationsView()
         }
+    }
+
+    /// A sidebar binds an optional selection; the shell always has a tab, so
+    /// clearing the sidebar selection simply keeps the current one.
+    private var sidebarSelection: Binding<Tab?> {
+        Binding(get: { selection },
+                set: { newValue in if let newValue { selection = newValue } })
     }
 
     private var saveOutcomePresented: Binding<Bool> {

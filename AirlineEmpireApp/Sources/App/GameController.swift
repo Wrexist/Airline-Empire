@@ -120,7 +120,7 @@ final class GameController {
     }
 
     /// Something the player earned, worth a moment on screen.
-    struct Celebration: Equatable, Identifiable {
+    struct Celebration: Hashable, Identifiable {
         let id: Int64
         let title: String
         let detail: String
@@ -248,7 +248,7 @@ final class GameController {
     /// Backgrounding: save, quietly. A failure here is recorded but never
     /// interrupts — the player is already looking at another app.
     func saveOnBackground() {
-        guard let session else { return }
+        guard session != nil else { return }
         Task { await self.save(slot: "auto", announce: false) }
     }
 

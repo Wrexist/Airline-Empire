@@ -40,6 +40,20 @@ public struct FirstRouteSuggestion: Equatable, Sendable {
     public let expectedDailyPassengers: Int
     /// The market reference fare at this distance (what "normal" costs).
     public let referenceFare: Money
+
+    /// Public because the suggestion is not only Core's to make: the map's
+    /// airport callout and the airport browser both offer "open a route from
+    /// here", and they hand the same pre-filled shape to the route sheet.
+    public init(origin: AirportCode, destination: AirportCode,
+                destinationCity: String, distanceKm: Int,
+                expectedDailyPassengers: Int, referenceFare: Money) {
+        self.origin = origin
+        self.destination = destination
+        self.destinationCity = destinationCity
+        self.distanceKm = distanceKm
+        self.expectedDailyPassengers = expectedDailyPassengers
+        self.referenceFare = referenceFare
+    }
 }
 
 extension GameState {
