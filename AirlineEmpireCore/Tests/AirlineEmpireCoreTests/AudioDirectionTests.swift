@@ -448,6 +448,70 @@ struct AudioDirectionTests {
         #expect(!AudioDirector(state: empty).milestones.allSeen)
     }
 
+    // MARK: - Market candidates (the route sheet's ranking)
+
+    /// The route sheet's destination list and the onboarding card must agree
+    /// about which markets are worth flying. They are computed by different
+    /// entry points — one takes an origin, the other picks bases — so this is
+    /// the guard against them drifting into two different answers to the same
+    /// question, exactly as `MarketOpportunities` already guards the map.
+    @Test("The route sheet and the onboarding card rank the same markets")
+    func sheetAndOnboardingAgree() async throws {
+        let (session, player, catalog) = try await world()
+        _ = await session.submit(BuyUsedAircraftCommand(
+            buyer: player, type: "MR180", ageYears: 5))
+        let state = await session.snapshot
+        let home = try #require(state.playerAirline).homeAirport
+
+        let sheet = state.marketCandidates(from: home, catalog: catalog)
+        let onboarding = state.marketOpportunities(catalog: catalog, limit: 5)
+            .filter { $0.origin == home }
+        #expect(!sheet.isEmpty)
+        #expect(!onboarding.isEmpty)
+
+        // Same arithmetic: a market in both lists must carry the same figure.
+        for market in onboarding {
+            let match = sheet.first { $0.destination == market.destination }
+            #expect(match?.expectedDailyPassengers == market.expectedDailyPassengers,
+                    "\(market.destination.raw) disagrees between the two lists")
+        }
+    }
+
+    /// The header claims a demand ranking; this is what makes it true.
+    @Test("Candidates come back ranked by demand, deterministically")
+    func candidatesAreRankedByDemand() async throws {
+        let (session, player, catalog) = try await world()
+        _ = await session.submit(BuyUsedAircraftCommand(
+            buyer: player, type: "MR180", ageYears: 5))
+        let state = await session.snapshot
+        let home = try #require(state.playerAirline).homeAirport
+
+        let ranked = state.marketCandidates(from: home, catalog: catalog)
+        #expect(ranked.count == catalog.orderedAirportCodes.count - 1)
+        for (a, b) in zip(ranked, ranked.dropFirst()) {
+            #expect(a.expectedDailyPassengers >= b.expectedDailyPassengers)
+        }
+        // No airport ranks itself, and the same world always ranks the same.
+        #expect(!ranked.contains { $0.destination == home })
+        #expect(state.marketCandidates(from: home, catalog: catalog)
+                    .map(\.destination) == ranked.map(\.destination))
+    }
+
+    /// Unlike the opportunity list, a market the player already serves must
+    /// still appear — a second route on a busy pair is a legitimate move.
+    @Test("A market already served is still offered to the route sheet")
+    func servedMarketsRemainCandidates() async throws {
+        let (session, player, catalog) = try await flyingWorld()
+        let state = await session.snapshot
+        let route = try #require(state.routes(of: player).first)
+        let candidates = state.marketCandidates(from: route.origin, catalog: catalog)
+        #expect(candidates.contains { $0.destination == route.destination })
+        // Whereas the opportunity ranking deliberately excludes it.
+        #expect(!state.marketOpportunities(catalog: catalog, limit: 40)
+                    .contains { $0.origin == route.origin
+                                && $0.destination == route.destination })
+    }
+
     // MARK: - Stream behaviour
 
     /// The regression guard for §26/§27: a subscriber attached to a session

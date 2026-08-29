@@ -721,66 +721,33 @@ struct OpenRouteSheet: View {
         let expectedDailyPassengers: Int
     }
 
-    /// Every airport the player could fly to from `from`, **ranked by
-    /// capturable demand**, and marked with whether the current fleet can
-    /// actually reach it.
+    /// Every airport the player could fly to from `from`, ranked by
+    /// capturable demand, marked with whether the current fleet can reach it.
     ///
-    /// The section header has always claimed this ranking; the sort was
-    /// servable-then-nearest and the rows never showed a passenger figure at
-    /// all, so the screen promised information it then withheld. The demand
-    /// call is the one `MarketOpportunities` uses and costs about 0.1 ms for
-    /// eighty airports — affordable in a sheet, which is why it belongs here
-    /// and not in a per-tick model.
+    /// The ranking and the demand figure come from Core
+    /// (`marketCandidates(from:catalog:)`), not from arithmetic here. The
+    /// first attempt computed the demand in this file and did not compile:
+    /// `DemandSystem.demandPool` is internal to Core, which is the module
+    /// boundary doing exactly its job. Economics belongs behind it, where the
+    /// test suite can reach it.
     private func destinations(from: AirportCode, snapshot: GameState,
                               catalog: ContentCatalog) -> [Candidate] {
-        guard let player = snapshot.playerAirline else { return [] }
-        let fleet = snapshot.fleet(of: player.id)
-            .compactMap { catalog.aircraftType($0.typeCode) }
         let needle = search.uppercased()
-        return catalog.orderedAirportCodes.compactMap { code -> Candidate? in
-            guard code != from, let spec = catalog.airport(code),
-                  let distance = catalog.distanceKm(from, code) else { return nil }
-            if !needle.isEmpty,
-               !code.raw.uppercased().contains(needle),
-               !spec.city.uppercased().contains(needle) { return nil }
-            let servable = fleet.contains { type in
-                catalog.routeEligibility(from: from, to: code,
-                                         aircraftRangeKm: type.rangeKm,
-                                         aircraftRunwayRequirement: type.runwayRequirement)
-                    .isEmpty
+        return snapshot.marketCandidates(from: from, catalog: catalog)
+            .compactMap { market -> Candidate? in
+                guard let spec = catalog.airport(market.destination) else { return nil }
+                if !needle.isEmpty,
+                   !market.destination.raw.uppercased().contains(needle),
+                   !spec.city.uppercased().contains(needle) { return nil }
+                return Candidate(
+                    code: market.destination, city: market.destinationCity,
+                    country: spec.country, distanceKm: market.distanceKm,
+                    referenceFare: market.referenceFare,
+                    servable: market.servableNow,
+                    expectedDailyPassengers: market.expectedDailyPassengers)
             }
-            let quality = DemandSystem.representativeStarterQuality(
-                tuning: catalog.tuning.demand)
-            let outbound = DemandSystem.expectedCapturedPassengers(
-                pool: DemandSystem.demandPool(
-                    from: from, to: code, date: snapshot.currentDate,
-                    economicIndex: snapshot.world.economicIndex, catalog: catalog),
-                fareRatio: 1.0, quality: quality, tuning: catalog.tuning.demand)
-            let inbound = DemandSystem.expectedCapturedPassengers(
-                pool: DemandSystem.demandPool(
-                    from: code, to: from, date: snapshot.currentDate,
-                    economicIndex: snapshot.world.economicIndex, catalog: catalog),
-                fareRatio: 1.0, quality: quality, tuning: catalog.tuning.demand)
-            return Candidate(
-                code: code, city: spec.city, country: spec.country,
-                distanceKm: distance,
-                referenceFare: Money(rounding: DemandSystem.referenceFare(
-                    distanceKm: distance, tuning: catalog.tuning.demand)),
-                servable: servable,
-                expectedDailyPassengers: Int((outbound + inbound).rounded()))
-        }
-        // What the header says: demand first. Servable still breaks ties, so
-        // a market this fleet can actually reach wins over an equal one it
-        // cannot, and the code is a deterministic last resort.
-        .sorted { lhs, rhs in
-            if lhs.expectedDailyPassengers != rhs.expectedDailyPassengers {
-                return lhs.expectedDailyPassengers > rhs.expectedDailyPassengers
-            }
-            if lhs.servable != rhs.servable { return lhs.servable }
-            return lhs.code.raw < rhs.code.raw
-        }
-        .prefix(40)
-        .map { $0 }
+            .prefix(40)
+            .map { $0 }
     }
 
     private func destinationRow(_ candidate: Candidate) -> some View {

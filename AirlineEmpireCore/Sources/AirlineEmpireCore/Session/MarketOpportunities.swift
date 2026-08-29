@@ -168,6 +168,74 @@ extension GameState {
             .map(\.0)
     }
 
+    /// Every destination reachable from `origin`, ranked by capturable demand.
+    ///
+    /// The same arithmetic as `marketOpportunities`, with two differences: the
+    /// caller chooses the origin rather than it being one of the airline's
+    /// bases, and markets the player already serves are **included** — opening
+    /// a second route on a pair is a legitimate move, and the route sheet is
+    /// where it would be made.
+    ///
+    /// This exists because the route sheet needs to rank by demand and show
+    /// the figure, and the alternative was making `DemandSystem.demandPool`
+    /// public so a SwiftUI view could do the arithmetic itself. That would
+    /// have put economics in a view and taken it out of reach of the test
+    /// suite; this keeps the seam the whole project is built on.
+    public func marketCandidates(from origin: AirportCode,
+                                 catalog: ContentCatalog) -> [MarketOpportunity] {
+        guard let player = playerAirline, catalog.airport(origin) != nil else {
+            return []
+        }
+        let ownedSpecs = fleet(of: player.id)
+            .compactMap { catalog.aircraftType($0.typeCode) }
+        let date = currentDate
+        let quality = DemandSystem.representativeStarterQuality(
+            tuning: catalog.tuning.demand)
+
+        var out: [MarketOpportunity] = []
+        for code in catalog.orderedAirportCodes where code != origin {
+            guard let distance = catalog.distanceKm(origin, code) else { continue }
+            // Per aircraft, never the best range paired with the least
+            // demanding runway — the same rule `marketOpportunities` follows,
+            // and for the same reason (BUG-006's neighbourhood).
+            let servable = ownedSpecs.contains { spec in
+                catalog.routeEligibility(
+                    from: origin, to: code,
+                    aircraftRangeKm: spec.rangeKm,
+                    aircraftRunwayRequirement: spec.runwayRequirement).isEmpty
+            }
+            let outbound = DemandSystem.expectedCapturedPassengers(
+                pool: DemandSystem.demandPool(from: origin, to: code, date: date,
+                                              economicIndex: world.economicIndex,
+                                              catalog: catalog),
+                fareRatio: 1.0, quality: quality, tuning: catalog.tuning.demand)
+            let inbound = DemandSystem.expectedCapturedPassengers(
+                pool: DemandSystem.demandPool(from: code, to: origin, date: date,
+                                              economicIndex: world.economicIndex,
+                                              catalog: catalog),
+                fareRatio: 1.0, quality: quality, tuning: catalog.tuning.demand)
+            let fare = DemandSystem.referenceFare(distanceKm: distance,
+                                                  tuning: catalog.tuning.demand)
+            out.append(MarketOpportunity(
+                origin: origin, destination: code,
+                destinationCity: catalog.airport(code)?.city ?? code.raw,
+                distanceKm: distance,
+                expectedDailyPassengers: Int((outbound + inbound).rounded()),
+                referenceFare: Money(rounding: fare),
+                incumbents: airlinesServing(origin, code),
+                servableNow: servable))
+        }
+        // Demand first, then reachability, then code — deterministic, and the
+        // order the route sheet's own header has always claimed.
+        return out.sorted { lhs, rhs in
+            if lhs.expectedDailyPassengers != rhs.expectedDailyPassengers {
+                return lhs.expectedDailyPassengers > rhs.expectedDailyPassengers
+            }
+            if lhs.servableNow != rhs.servableNow { return lhs.servableNow }
+            return lhs.destination.raw < rhs.destination.raw
+        }
+    }
+
     /// How many airlines already fly a city pair, in either direction.
     public func airlinesServing(_ a: AirportCode, _ b: AirportCode) -> Int {
         var carriers = Set<AirlineID>()
