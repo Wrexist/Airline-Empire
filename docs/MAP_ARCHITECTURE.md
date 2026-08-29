@@ -337,8 +337,14 @@ label legibility, colour on a real display.
 
 ## 15. Known limitations
 
-- **Nothing here has been seen to render.** The app compiles (CI 33244671402);
-  the map has never been drawn on a screen. Everything visual is authored.
+- **Nothing here has been seen to render.** The map compiles — CI run
+  33247689097 built the whole target including `Sources/Map/` on `macos-26`
+  with Xcode 26.6 — and it has never been drawn on a screen. Those are
+  different claims and this document only makes the first. Everything visual
+  is authored: the projection at each zoom, the label layout on a real screen
+  width, the drag/pinch pairing, the frame rate, the colour. `ae-map-bench`
+  times the *model*, on Linux, on a server CPU; §11's numbers say nothing
+  about drawing. TD-003 and task AE-025 carry the list.
 - **No hub mechanic.** `isPlayerHub` is behavioural — three or more routes —
   because the game has no hub system yet (D-010). When hubs land, this becomes
   a real flag.
