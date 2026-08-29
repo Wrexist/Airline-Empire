@@ -31,6 +31,18 @@ public struct SimTime: Hashable, Codable, Comparable, Sendable {
     /// Whole game-days elapsed since epoch (day 0 = the first day).
     public var dayIndex: Int64 { rawMinutes.flooredDivision(by: GameCalendar.minutesPerDay) }
 
+    /// The previous day's index, or nil on the first day.
+    ///
+    /// "Yesterday" is a question with no answer on day 0, and the type should
+    /// say so rather than let every caller write `dayIndex - 1` and hand a
+    /// negative day to something that preconditions on non-negative ones.
+    /// That is BUG-008 exactly: the dashboard's evening digest crashed the app
+    /// on the first screen after founding an airline.
+    public var previousDayIndex: Int64? {
+        let index = dayIndex
+        return index > 0 ? index - 1 : nil
+    }
+
     /// Whole game-hours elapsed since epoch.
     public var hourIndex: Int64 { rawMinutes.flooredDivision(by: 60) }
 

@@ -29,9 +29,13 @@ struct MapScreen: View {
                         if let code = selectedAirport {
                             AirportCallout(code: code)
                                 .padding()
-                                .transition(.move(edge: .bottom))
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
                         }
                     }
+                    // Tapping an airport should feel like the panel rises to
+                    // meet you, and tapping away like it leaves.
+                    .animation(AEMotion.content, value: selectedAirport)
+                    .sensoryFeedback(.selection, trigger: selectedAirport)
                     .ignoresSafeArea(edges: .bottom)
                 } else {
                     ProgressView()

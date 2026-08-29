@@ -24,6 +24,7 @@ struct FinanceView: View {
                     ProgressView()
                 }
             }
+            .aeScreenBackground()
             .navigationTitle("Finance")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
