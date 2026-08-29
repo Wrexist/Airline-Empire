@@ -325,7 +325,7 @@ struct SpeedControl: View {
                         }
                         .contentShape(Capsule(style: .continuous))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.aePress)
                 .accessibilityLabel(voiceOverLabel(for: speed))
                 .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
             }
@@ -341,7 +341,7 @@ struct SpeedControl: View {
                     .frame(minWidth: 44, minHeight: 38)
                     .contentShape(Capsule(style: .continuous))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.aePress)
             .accessibilityLabel("Advance to next morning")
         }
         .padding(3)
@@ -571,7 +571,7 @@ struct AEChoiceCard<Content: View>: View {
             .overlay(shape.stroke(isSelected ? AETheme.accent.opacity(0.75) : .clear,
                                   lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.aePress)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }

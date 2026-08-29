@@ -605,6 +605,15 @@ struct OpenRouteSheet: View {
                 }
             }
             .onAppear(perform: prime)
+            .aeSheetFeedback()
+            // The route-creation journey, in three beats
+            // (docs/AUDIO_ARCHITECTURE.md §5). Choosing where you fly from is
+            // a selection; choosing where you fly *to* is the moment the line
+            // between two cities exists, so it resolves upward; and the
+            // commit is voiced by `routeOpened` when Core says it happened,
+            // not when the button was pressed.
+            .aeFeedback(.uiSelect, on: origin)
+            .aeFeedback(.uiConfirm, on: destination)
         }
     }
 
@@ -759,7 +768,7 @@ struct OpenRouteSheet: View {
             .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.aePress)
         .accessibilityAddTraits(destination == candidate.code
                                 ? [.isButton, .isSelected] : .isButton)
     }

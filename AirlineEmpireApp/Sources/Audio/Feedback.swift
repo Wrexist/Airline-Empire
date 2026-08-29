@@ -131,6 +131,10 @@ final class Feedback {
     func settingsChanged() {
         if !preferences.sound { audio.stopAll() }
         refreshAmbience()
+        // Everything off means the engine has nothing to do, and a running
+        // engine is not free. Muting the game should cost nothing rather than
+        // merely produce nothing.
+        audio.setActive(preferences.sound || preferences.ambience)
     }
 }
 
@@ -157,6 +161,29 @@ extension View {
     /// `aeAnimation` and for the same reason: it erases cleanly.
     func aeFeedback(_ cue: AudioCue, on value: some Hashable) -> some View {
         modifier(FeedbackOnChange(cue: cue, value: AnyHashable(value)))
+    }
+}
+
+extension View {
+    /// The open/close pair for a sheet, as one modifier.
+    ///
+    /// Applied to a sheet's outermost container. Pushing onto a
+    /// `NavigationStack` inside the sheet does not disappear that container,
+    /// so a drill-down does not fire the closing sound — only the sheet
+    /// actually going away does, including a swipe-dismiss, which an explicit
+    /// call in the Cancel button would have missed.
+    func aeSheetFeedback() -> some View {
+        modifier(SheetFeedback())
+    }
+}
+
+private struct SheetFeedback: ViewModifier {
+    @Environment(\.feedback) private var feedback
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear { feedback.play(.uiSheetOpen) }
+            .onDisappear { feedback.play(.uiSheetClose) }
     }
 }
 

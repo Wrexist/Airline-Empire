@@ -124,6 +124,53 @@ struct AudioDirectionTests {
         #expect(Set(cues.compactMap { $0 }).count == 5)
     }
 
+    // MARK: - Haptics
+
+    /// The rule that keeps a phone from buzzing itself flat: nothing the
+    /// simulation does on its own schedule may be felt. Flights depart every
+    /// few game-minutes, and a fast-forward that vibrated at each would be
+    /// unusable.
+    @Test("Routine operations are never felt")
+    func routineOperationsHaveNoHaptic() {
+        let routine: [AudioCue] = [.flightDeparted, .flightArrived,
+                                   .flightDelayed, .departureFlurry,
+                                   .arrivalFlurry, .maintenanceStarted,
+                                   .maintenanceCompleted, .worldEventForecast,
+                                   .worldEventEnded, .missionOffered,
+                                   .missionExpired, .monthClosedProfit,
+                                   .loanRepaid, .uiSheetOpen, .uiSheetClose,
+                                   .ambienceOperations, .ambienceWorld]
+        for cue in routine {
+            #expect(cue.haptic == nil, "\(cue.rawValue) should not be felt")
+        }
+    }
+
+    /// And its mirror: the moments that must be felt, are.
+    @Test("The moments that matter carry weight")
+    func consequentialCuesAreFelt() {
+        #expect(AudioCue.routeOpened.haptic == .medium)
+        #expect(AudioCue.aircraftDelivered.haptic == .heavy)
+        #expect(AudioCue.eraAdvanced.haptic == .heavy)
+        #expect(AudioCue.uiError.haptic == .error)
+        for cue in AudioCue.allCases where cue.priority == .critical {
+            #expect(cue.haptic != nil, "\(cue.rawValue) must be felt")
+        }
+        for cue in AudioCue.allCases where cue.isMilestone {
+            #expect(cue.haptic != nil, "\(cue.rawValue) must be felt")
+        }
+    }
+
+    /// Every cue has to name a file, and no two may name the same one — a
+    /// shared asset means two different moments sound identical, which is how
+    /// an audio language stops being one.
+    @Test("Every cue names its own asset")
+    func assetNamesAreTotalAndUnique() {
+        let names = AudioCue.allCases.map(\.assetName)
+        #expect(names.allSatisfy { !$0.isEmpty })
+        #expect(Set(names).count == names.count)
+        #expect(AudioCue.allCases.filter(\.isLoop).count == 2)
+    }
+
     // MARK: - Deduplication and rate limiting
 
     /// The bug this whole design exists to prevent: one event, one sound.
@@ -385,6 +432,20 @@ struct AudioDirectionTests {
         again = AudioDirector(milestones: AudioDirector.Milestones(hasRoute: true))
         #expect(again.milestones.hasRoute)
         _ = director
+    }
+
+    /// The early-out must not change behaviour, only cost. A director that
+    /// has seen everything reports so, and one that has not, does not.
+    @Test("A director stops looking once every first time has happened")
+    func milestoneScanStopsWhenComplete() async throws {
+        let (session, _, _) = try await flyingWorld()
+        let state = await session.snapshot
+        let director = AudioDirector(state: state)
+        #expect(director.milestones.allSeen)
+
+        let (fresh, _, _) = try await world()
+        let empty = await fresh.snapshot
+        #expect(!AudioDirector(state: empty).milestones.allSeen)
     }
 
     // MARK: - Stream behaviour

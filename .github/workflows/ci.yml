@@ -164,6 +164,13 @@ jobs:
       - name: App symbols resolve
         run: node scripts/check-app-symbols.mjs
 
+      # A sound cue with no file is the one audio bug that reports itself as
+      # working: nothing throws, nothing logs, the moment simply passes in
+      # silence. Checked against Core's own `AudioCue.assetName`, on the cheap
+      # runner, in milliseconds (docs/AUDIO_ARCHITECTURE.md §10).
+      - name: Audio assets resolve
+        run: python3 scripts/audio/check-assets.py
+
   # ── 3 · Does the app compile? ──────────────────────────────────────────────
   app:
     name: iOS app (xcodebuild)

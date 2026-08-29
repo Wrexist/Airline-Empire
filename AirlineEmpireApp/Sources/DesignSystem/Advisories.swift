@@ -123,7 +123,7 @@ struct AutoPauseNotice: View {
             Spacer(minLength: 0)
             Button("Dismiss", action: dismiss)
                 .font(.caption.weight(.semibold))
-                .buttonStyle(.plain)
+                .buttonStyle(.aePress)
                 .foregroundStyle(AETheme.accent)
                 .frame(minHeight: 44)
         }

@@ -114,7 +114,7 @@ struct MapOverlayPicker: View {
                 .frame(minHeight: 44)
                 .contentShape(Capsule())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.aePress)
             .aeGlass(in: Capsule(style: .continuous))
             .accessibilityLabel("Map layer")
             .accessibilityValue(selection.title)
@@ -152,7 +152,7 @@ struct MapOverlayPicker: View {
                             .frame(minHeight: 44)
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.aePress)
                         .accessibilityAddTraits(option == selection
                                                 ? [.isButton, .isSelected] : .isButton)
                     }
@@ -196,7 +196,7 @@ struct MapZoomControls: View {
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.aePress)
         .accessibilityLabel(label)
     }
 }
@@ -318,7 +318,7 @@ struct MapIdlePanel: View {
                     .frame(minHeight: 44)
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.aePress)
             }
         }
         .padding(AETheme.spacingM)

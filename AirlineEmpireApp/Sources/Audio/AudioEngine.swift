@@ -138,12 +138,40 @@ final class AudioEngine {
         } catch {
             return nil
         }
+        applyCategoryTrim(to: buffer, cue: cue)
         return buffer
+    }
+
+    /// Scales the category trim into the samples, once, at load.
+    ///
+    /// The obvious alternative — setting `node.volume` per play — is wrong,
+    /// and subtly so. A player node's volume applies to whatever it is
+    /// *currently sounding*, not to the buffer being scheduled: a UI tap
+    /// landing on the node that is still two seconds into an era swell would
+    /// duck the swell to the tap's level. With eight voices that needs only
+    /// eight sounds inside one tail, which a 16x flurry reaches easily.
+    ///
+    /// Baking it here means node volume is a constant 1, the mixer carries
+    /// the player's master setting (uniform across every sound at any
+    /// instant, so re-levelling a sounding node is harmless), and a play
+    /// costs one `scheduleBuffer` and nothing else.
+    private func applyCategoryTrim(to buffer: AVAudioPCMBuffer, cue: AudioCue) {
+        let trim = Self.categoryTrim[cue.category] ?? 1
+        guard trim != 1, let channels = buffer.floatChannelData else { return }
+        let frames = Int(buffer.frameLength)
+        for channel in 0..<Int(buffer.format.channelCount) {
+            let samples = channels[channel]
+            for frame in 0..<frames {
+                samples[frame] *= trim
+            }
+        }
     }
 
     // MARK: - One-shots
 
-    /// Plays a cue immediately at `gain` (0...1), on top of its category trim.
+    /// Plays a cue immediately. `gain` is the player's master effects volume;
+    /// the per-category balance is already in the buffer (see
+    /// `applyCategoryTrim`).
     ///
     /// Scheduling on a node that is already sounding simply layers the new
     /// buffer — `AVAudioPlayerNode` mixes its own scheduled buffers — so a
@@ -151,10 +179,9 @@ final class AudioEngine {
     /// spreads the load so no single node accumulates a long queue.
     func play(_ cue: AudioCue, gain: Float) {
         guard isRunning, !cue.isLoop, let buffer = buffers[cue] else { return }
-        let trim = Self.categoryTrim[cue.category] ?? 1
+        effectsMixer.outputVolume = min(1, max(0, gain))
         let node = voices[nextVoice]
         nextVoice = (nextVoice + 1) % voices.count
-        node.volume = min(1, max(0, gain * trim))
         node.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)
     }
 
@@ -196,6 +223,25 @@ final class AudioEngine {
     /// Silences everything currently sounding without tearing the graph down
     /// — used when a game ends or the player mutes mid-sound, so a two-second
     /// era swell does not outlive the screen that earned it.
+    /// Idles the graph when the player has turned everything off.
+    ///
+    /// A running `AVAudioEngine` with nothing to play still holds a render
+    /// thread and an audio route. Muting the game should cost nothing, not
+    /// merely produce nothing (MASTER PROMPT 3 §29).
+    func setActive(_ active: Bool) {
+        guard isRunning else { return }
+        if active {
+            if !engine.isRunning {
+                configureSession()
+                try? engine.start()
+                for voice in voices { voice.play() }
+            }
+        } else if engine.isRunning {
+            stopAmbience()
+            engine.pause()
+        }
+    }
+
     func stopAll() {
         stopAmbience()
         guard isRunning else { return }

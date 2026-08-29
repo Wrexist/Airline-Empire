@@ -323,3 +323,95 @@ unwrapped sequence, offsets for a shape straddling the seam, and that unwrap
 preserves y exactly.
 **Status:** FIXED 2026-08-29 (Core; covered by tests, so this one is *tested*,
 not merely authored).
+
+---
+
+## BUG-013 — Loading a played save would have replayed the whole first hour
+**Severity:** P1 (a design defect caught before it shipped, in a system that
+did not exist yet) · **Phase found:** audio architecture, MASTER PROMPT 3 §26,
+2026-08-29.
+**Repro (of the naive design):** play until aircraft are flying and money is
+coming in, save, quit, load. A presentation layer that remembers "has the
+player seen their first departure?" in its own memory starts that memory
+empty on load — so the game announces the first route, the first departure,
+the first arrival and the first revenue, all four, at somebody who has been
+running an airline for a season.
+**Root cause:** the once-per-campaign moments are not events. They are facts
+about the world that become true once, and the batch that contained the
+arrival is long gone by the time anyone reloads. Any memory of them held
+outside the save is wrong after a restore.
+**Fix layer:** Core. `AudioDirector.Milestones(state:)` reads the airline's
+own persisted books — `RouteStats.flightsCompleted` and `passengersCarried`,
+which travel with the save — and the director is constructed from the state
+at session start. A mature airline therefore begins with all four already
+true. They also latch forward only, so closing every route cannot re-arm
+"your first route".
+**Tests:** `loadedGameDoesNotReplayMilestones`,
+`firstTimesFireOnceForANewAirline`, `milestonesLatchForward`,
+`loadingPublishesNoBacklog`. Both directions were verified by sabotage:
+seeding from an empty `Milestones()` fires all four at a loaded save, and
+making the state check always return false silences them for a new one.
+**Also checked and found already correct:** `GameSession` seeds
+`deliveredEventCount` from `state.eventLog.totalCount` at init and `events()`
+yields no backlog, so the *stream* never republished history. That was
+existing good design, not something this phase added, and it is now covered
+by a test so it stays that way.
+**Status:** FIXED 2026-08-29 (Core, tested).
+
+---
+
+## BUG-014 — The haptics setting only worked on two screens
+**Severity:** P2 (a preference the player sets and the app ignores) ·
+**Phase found:** audio architecture audit, MASTER PROMPT 3 §2, 2026-08-29.
+**Repro:** Settings → turn Haptics off. Open the map and change the overlay:
+the phone still buzzes. Same in the network Routes/Fleet switcher, and three
+times over in new-game (livery, start airport, difficulty).
+**Root cause:** haptics had grown one `.sensoryFeedback` call at a time as
+screens were built. Seven call sites existed; only two — the celebration
+banner and the speed control — passed the `preferences.haptics` condition.
+The other five simply fired. Nothing enforced the check because nothing named
+it: the condition was a closure each site had to remember to write.
+**Fix layer:** App, structurally rather than by adding five conditions. All
+feedback now goes through one path (`Feedback.emit`), which consults the
+preference once; views ask for a semantic cue and never touch
+`.sensoryFeedback` directly. `grep -rn sensoryFeedback AirlineEmpireApp`
+returns nothing, which is what stops the sixth site from reintroducing it.
+**Status:** FIXED 2026-08-29.
+
+---
+
+## BUG-015 — The celebration banner was about to fire two haptics for one moment
+**Severity:** P2 (found while building, fixed before it shipped) ·
+**Phase found:** MASTER PROMPT 3 §29 bug hunt, 2026-08-29.
+**Repro (of the state mid-phase):** advance to a new era. `CelebrationOverlay`
+carried its own `.sensoryFeedback(.success, trigger: celebration.id)`, and the
+new audio director independently gives `eraAdvanced` a `.heavy` haptic — as it
+does for milestones, achievements, finished capability programmes and
+completed missions, which are the other four things that raise a celebration.
+Every one of them would have buzzed twice.
+**Root cause:** two systems acquiring responsibility for the same moment, one
+of them newly. Exactly the "haptics triggering repeatedly" failure the phase
+brief names.
+**Fix layer:** App. The banner's own feedback is removed, with a comment
+saying why, because the next person to look at that view will notice it is the
+only celebration in the app that does not announce itself and wonder.
+**Status:** FIXED 2026-08-29.
+
+---
+
+## BUG-016 — Per-play volume would have ducked a long sound under a later tap
+**Severity:** P2 (a real defect in new code, found by reading it) ·
+**Phase found:** MASTER PROMPT 3 §29 bug hunt, 2026-08-29.
+**Repro (of the first implementation):** trigger an era change (a 2.6-second
+swell) and tap eight things while it plays. The eighth tap lands on the same
+pooled `AVAudioPlayerNode` and sets its volume to the UI level — and an
+`AVAudioPlayerNode`'s volume applies to what it is *currently sounding*, not
+to the buffer being scheduled. The swell ducks to a tap's loudness mid-note.
+Eight sounds inside one tail is not a stretch: a 16x flurry reaches it.
+**Root cause:** treating a node property as if it were a per-buffer parameter.
+**Fix layer:** App. The per-category trim is scaled into the samples once, at
+load; node volume is a constant 1; and the mixer carries the player's master
+setting, which is uniform across every sound at any instant so re-levelling a
+sounding node is harmless. A play now costs one `scheduleBuffer` and nothing
+else, which also serves §28.
+**Status:** FIXED 2026-08-29 (not runtime validated — see TD-006).

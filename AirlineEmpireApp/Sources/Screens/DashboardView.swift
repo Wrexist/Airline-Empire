@@ -161,7 +161,7 @@ struct DashboardView: View {
                          trend: dashboard.economicIndex >= 1 ? .up : .down)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.aePress)
         .navigationDestination(for: DashboardRoute.self) { route in
             switch route {
             case .fleet:
@@ -516,10 +516,10 @@ struct EventRow: View {
             switch subject {
             case .route(let id):
                 NavigationLink(value: id) { line(text) }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.aePress)
             case .aircraft(let id):
                 NavigationLink(value: id) { line(text) }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.aePress)
             case .none:
                 line(text)
             }

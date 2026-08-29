@@ -122,7 +122,7 @@ private extension OperationsView {
             .aeGlass(in: AETheme.cardShape,
                      interactive: true)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.aePress)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
     }
@@ -678,7 +678,7 @@ struct ReputationDetailView: View {
             .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.aePress)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }

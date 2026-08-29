@@ -166,6 +166,42 @@ finds defects they become their own tasks.
 
 ---
 
+## AE-026
+**Title:** Audio and haptics listening pass
+**Purpose:** The audio system (MASTER PROMPT 3, `docs/AUDIO_ARCHITECTURE.md`)
+is tested as policy and compiled as code. Nobody has heard a single sound.
+This is the list of questions only ears and a device can answer.
+**Dependencies:** macOS + Xcode + a physical device (blocker B-002). A
+simulator answers most of the audio questions but **not** the haptic ones.
+**Implementation notes:** none — this is validation. Defects it finds become
+their own tasks. `docs/AUDIO_ASSETS.md` §4 is the brief for anything that
+needs re-voicing rather than fixing.
+**Acceptance criteria:**
+- Every one of the 52 cues triggered at least once, audibly, with the palette
+  judged as a set rather than one sound at a time: does it sound like one
+  product, and does it sound expensive?
+- The loudness hierarchy holds by ear, not only by peak measurement — a tap
+  must disappear next to an era change.
+- A tap's sound arrives with the tap. Latency on a pooled `AVAudioPlayerNode`
+  is the first thing that would make this feel cheap.
+- 16x on a large save: the flurries carry a busy minute and nothing spams.
+- BUG-013 confirmed on device: save a flying airline, quit, load — silence,
+  not four first-time sounds.
+- Background and foreground: audio stops, the route is released, nothing is
+  left sounding, and it comes back.
+- Playing next to a podcast: the game mixes and never interrupts. Silent
+  switch silences it.
+- Haptics read as weight rather than noise across an hour, and turning them
+  off genuinely stops all of them (the regression BUG-014 fixed).
+- Ambience on for an hour without becoming irritating — the test TD-007
+  expects it to fail.
+- Instruments: no player-node churn, no growth in audio memory over a long
+  session, no CPU cost while muted.
+**Tests:** manual listening + Instruments evidence recorded in `docs/`.
+**Status:** BLOCKED on B-002.
+
+---
+
 ## Backlog (do not start before AE-023 clears)
 
 - **AE-015** — Revenue-management fare buckets (docs/EXPANSION_ROADMAP.md).

@@ -492,6 +492,10 @@ struct AircraftShopSheet: View {
             }
             .aeScreenBackground()
             .navigationTitle("Aircraft market")
+            // Buying an aircraft is the most expensive thing a player does.
+            // The sheet says so on the way in and out; the purchase itself is
+            // voiced by `aircraftOrdered`/`aircraftDelivered` from Core.
+            .aeSheetFeedback()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

@@ -389,6 +389,14 @@ public struct AudioDirector: Sendable {
         public var hasArrived: Bool
         public var hasEarned: Bool
 
+        /// True once every first time has happened. The director uses this to
+        /// stop looking: after the opening hour of a campaign these can never
+        /// change again, and the check walks every route and every live
+        /// flight — four times a second, for the rest of the game.
+        public var allSeen: Bool {
+            hasRoute && hasDeparted && hasArrived && hasEarned
+        }
+
         public init(hasRoute: Bool = false, hasDeparted: Bool = false,
                     hasArrived: Bool = false, hasEarned: Bool = false) {
             self.hasRoute = hasRoute
@@ -512,6 +520,10 @@ public struct AudioDirector: Sendable {
     /// Milestone cues become due the moment the world says they happened,
     /// and each is marked so it can never become due again.
     private mutating func newMilestoneCues(state: GameState) -> [AudioCue] {
+        // The overwhelmingly common case, and the whole reason for `allSeen`:
+        // a campaign spends its first twenty minutes here and the next twenty
+        // hours past it.
+        guard !milestones.allSeen else { return [] }
         let now = Milestones(state: state)
         var cues: [AudioCue] = []
         if now.hasRoute, !milestones.hasRoute { cues.append(.firstRoute) }
@@ -614,3 +626,73 @@ extension AudioCue {
         }
     }
 }
+
+// MARK: - Haptics
+
+public enum HapticStyle: String, Equatable, Sendable, CaseIterable {
+    case selection
+    case light
+    case medium
+    case heavy
+    case success
+    case warning
+    case error
+}
+
+extension AudioCue {
+    /// What this cue should feel like, or nil for the great majority that
+    /// should feel like nothing at all.
+    public var haptic: HapticStyle? {
+        switch self {
+        // Interface: the player's own finger, so the lightest possible
+        // acknowledgement and nothing more.
+        case .uiSelect, .uiNavigate, .uiToggle:
+            return .selection
+        case .uiSheetOpen, .uiSheetClose:
+            return nil          // The sheet's own movement is the feedback.
+        case .uiConfirm:
+            return .light
+        case .uiCancel:
+            return nil
+        case .uiError:
+            return .error
+
+        // Commitments. A route and an aircraft are the two things a player
+        // spends real money and real time on; they get weight.
+        case .routeOpened:
+            return .medium
+        case .aircraftDelivered:
+            return .heavy
+        case .aircraftOrdered, .aircraftAssigned:
+            return .medium
+        case .aircraftSold, .leaseReturned, .routeClosed, .aircraftUnassigned:
+            return .light
+
+        // The first times. The whole point of the opening hour.
+        case .firstRoute, .firstDeparture:
+            return .medium
+        case .firstArrival, .firstRevenue:
+            return .success
+
+        // Progression.
+        case .missionCompleted, .milestoneReached, .achievementUnlocked,
+             .capabilityCompleted:
+            return .success
+        case .eraAdvanced:
+            return .heavy
+
+        // Trouble the player must not scroll past.
+        case .flightCancelled, .disruptionFlurry, .monthClosedLoss,
+             .stormStarted, .strikeStarted, .fuelShockStarted, .airportClosed:
+            return .warning
+        case .administrationEntered, .collapse, .gameOver:
+            return .error
+
+        // Everything else — every routine flight, every forecast, every
+        // month that merely went fine — is silent to the hand on purpose.
+        default:
+            return nil
+        }
+    }
+}
+

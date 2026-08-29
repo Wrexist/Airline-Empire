@@ -100,6 +100,47 @@ enum AEMotion {
     static let screen: Animation = .smooth(duration: 0.42)
 }
 
+/// A press state for the app's own tappable surfaces.
+///
+/// SwiftUI's `.plain` button style on iOS gives no press feedback whatsoever:
+/// the label simply sits there while the finger is down, and the first
+/// evidence that a tap registered is whatever happens after it. Twenty-two
+/// call sites across this app used it — every card, row and pill the player
+/// touches — which is most of why the interface felt weightless to press
+/// (MASTER PROMPT 3 §24).
+///
+/// This keeps `.plain`'s complete absence of chrome, which is why it was
+/// chosen, and adds the one thing it was missing: the surface acknowledges the
+/// finger. The scale is small on purpose — a game about running an airline
+/// should not bounce.
+///
+/// Reduce Motion drops the scale and keeps the dim, because a fade is not
+/// motion and removing the acknowledgement entirely would make the setting
+/// cost the player their feedback.
+struct AEPressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(reduceMotion || !configuration.isPressed ? 1 : 0.972)
+            .opacity(pressOpacity(configuration.isPressed))
+            .animation(reduceMotion ? .easeOut(duration: 0.12) : AEMotion.selection,
+                       value: configuration.isPressed)
+    }
+
+    private func pressOpacity(_ pressed: Bool) -> Double {
+        if !isEnabled { return 0.45 }
+        return pressed ? 0.78 : 1
+    }
+}
+
+extension ButtonStyle where Self == AEPressStyle {
+    /// The app's tappable-surface style. Use instead of `.plain` anywhere the
+    /// player is meant to feel that they hit something.
+    static var aePress: AEPressStyle { AEPressStyle() }
+}
+
 /// Reduce Motion, honoured on purpose rather than by luck.
 ///
 /// The audit found the app relying entirely on SwiftUI's own defaults, which

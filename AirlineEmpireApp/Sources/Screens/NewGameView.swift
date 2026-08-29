@@ -180,7 +180,7 @@ struct NewGameView: View {
                                 .frame(width: 44, height: 44)
                                 .contentShape(Circle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.aePress)
                         .accessibilityLabel(Vocab.livery(option))
                         .accessibilityAddTraits(livery == option
                                                 ? [.isButton, .isSelected] : .isButton)
@@ -350,7 +350,7 @@ struct NewGameView: View {
                 .overlay(shape.stroke(isSelected ? AETheme.accent.opacity(0.75) : .clear,
                                       lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.aePress)
         .accessibilityLabel(spec.name)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
@@ -396,7 +396,7 @@ struct NewGameView: View {
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.aePress)
             .accessibilityLabel("World seed")
             .accessibilityHint(showsSeed ? "Collapse" : "Expand to set a seed")
 
@@ -455,7 +455,7 @@ struct NewGameView: View {
                              tint: AETheme.ember.opacity(0.16),
                              interactive: true)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.aePress)
                 .accessibilityElement(children: .combine)
                 .accessibilityHint("Resumes this airline")
                 .contextMenu {
@@ -495,7 +495,7 @@ struct NewGameView: View {
                      tint: AETheme.accent.opacity(0.55),
                      interactive: true)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.aePress)
         .padding(.horizontal, AETheme.spacingM)
         .padding(.bottom, AETheme.spacingS)
         .accessibilityLabel("Found \(effectiveName)")
@@ -553,7 +553,7 @@ struct HomeAirportPicker: View {
                         .frame(minHeight: 44)
                         .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.aePress)
                 }
             }
             .searchable(text: $search, prompt: "City, country or code")

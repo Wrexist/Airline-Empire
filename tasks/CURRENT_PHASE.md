@@ -19,6 +19,56 @@ Apple-layer work is prepared, never claimed.
 
 ## Session log
 
+**2026-08-29 (audio, haptics and game feel — MASTER PROMPT 3).** The game had
+no sound at all. It has a complete semantic audio language now.
+`docs/AUDIO_ARCHITECTURE.md` and `docs/AUDIO_ASSETS.md` are the full account.
+
+- **The policy is in Core, so it is tested.** `AudioDirection.swift` maps
+  `SimEvent` to `AudioCue` and then ranks, deduplicates, rate-limits,
+  aggregates and caps a batch — purely, from events, state, speed and a
+  caller-supplied clock. 22 tests cover the properties that actually decide
+  whether an audio system feels premium or exhausting: that twenty departures
+  in one quarter-second at 16x become **one** sound, that a cooldown can never
+  mute a bankruptcy warning, that a busy batch drops the quiet cues rather
+  than the loud ones, and that the same batch always sounds the same.
+- **Silence is a tool, by test.** `dayStarted`, `weekStarted`, `monthStarted`,
+  `seasonChanged`, `wakeFired` and `commandApplied` map to no sound at all.
+- **The first times survive a save (BUG-013).** "Your first flight has landed"
+  is seeded from `RouteStats`, which is persisted — so loading a mature
+  airline cannot replay the beginning of the game at somebody. Verified in
+  both directions by sabotage.
+- **52 original assets**, synthesised by `scripts/audio/generate.py` from
+  additive synthesis and swept filtered noise on one pitch set. No samples, no
+  licences, nothing that belongs to anyone else — and not the work of a sound
+  designer. The loudness hierarchy is deliberate: an era change peaks at 0.80,
+  a tab tap at 0.11.
+- **The engine is dumb on purpose.** One `AVAudioEngine`, two mixers, eight
+  voices, every buffer decoded at launch, category trim baked into the samples
+  so a play costs one `scheduleBuffer`. Session category `.ambient` with
+  `.mixWithOthers`: the game never interrupts the podcast a player already has
+  on, and it obeys the silent switch.
+- **Music is deliberately absent**, with the six-track brief written and no
+  dead toggle in Settings (TD-008).
+
+**Game feel, beyond sound.** The audit's real find: twenty-two tap targets
+used `.buttonStyle(.plain)`, which on iOS gives *no* press feedback at all —
+every card, row and pill in the app was visually inert under the finger. One
+design-system `AEPressStyle` now gives all of them a small scale and dim,
+Reduce-Motion aware. That is most of why the interface felt weightless.
+
+**Three bugs found by the audit rather than by playing:** the haptics setting
+only worked on two of seven screens (BUG-014); the celebration banner was
+about to fire a second haptic on top of the director's for every era,
+milestone and mission (BUG-015); and per-play node volume would have ducked a
+long sound under a later tap (BUG-016).
+
+**330 Core tests green** (308 before), app builds on macOS CI.
+
+**What is not proven: all of it, audibly.** This environment has no speaker
+and cannot run a simulator. The policy is tested and the assets measure
+correctly; whether the game *sounds* good is unknown, and TD-006 / AE-026 say
+so. The status ladder does not move.
+
 **2026-08-29 (the world map overhaul — MASTER PROMPT 2).** The map was four
 files' worth of dots on a 260-point outline; it is now the screen the rest of
 the game points at. `docs/MAP_ARCHITECTURE.md` is the full account. In short:

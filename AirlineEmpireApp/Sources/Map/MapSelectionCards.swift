@@ -39,7 +39,7 @@ private struct MapCardShell<Content: View>: View {
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.aePress)
                 .accessibilityLabel("Clear selection")
             }
             content
@@ -176,7 +176,7 @@ struct MapAirportCard: View {
                     .frame(minHeight: 44)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.aePress)
         }
     }
 }
