@@ -57,6 +57,7 @@ final class Feedback {
         lastMix = nil
         musicState = .menu
         audioHasMusic = false
+        lastMusicGain = -1
     }
 
     /// A new game, or a loaded one. Seeds the director from the state so a
@@ -70,6 +71,7 @@ final class Feedback {
         lastMix = nil
         musicState = .menu
         audioHasMusic = false
+        lastMusicGain = -1
         milestoneUntil = -1
         focus = .away
         hasSelection = false
@@ -82,6 +84,7 @@ final class Feedback {
         lastMix = nil
         musicState = .menu
         audioHasMusic = false
+        lastMusicGain = -1
         milestoneUntil = -1
         clearMapFocus()
     }
@@ -215,6 +218,7 @@ final class Feedback {
             if musicState != .menu || audioHasMusic { audio.stopMusic() }
             musicState = .menu
             audioHasMusic = false
+            lastMusicGain = -1
             return
         }
         // A milestone holds for a fixed span and then falls back, so a
@@ -225,16 +229,25 @@ final class Feedback {
                                        stage: stage, celebrating: celebrating)
         let gain = Float(musicGain * MusicDirector.duck(for: next))
         guard next != musicState else {
-            audio.setMusic(MusicDirector.asset(for: next), gain: gain, fade: 0)
+            // Nothing changed. Re-levelling every snapshot is not free and,
+            // more importantly, it is a call into the fade machinery four
+            // times a second for no reason — so it happens only when the
+            // level actually moved (BUG-018).
+            if gain != lastMusicGain {
+                lastMusicGain = gain
+                audio.setMusic(MusicDirector.asset(for: next), gain: gain, fade: 0)
+            }
             return
         }
         let fade = musicState.crossfadeSeconds(to: next)
         musicState = next
+        lastMusicGain = gain
         audioHasMusic = true
         audio.setMusic(MusicDirector.asset(for: next), gain: gain, fade: fade)
     }
 
     @ObservationIgnored private var audioHasMusic = false
+    @ObservationIgnored private var lastMusicGain: Float = -1
 
     /// Called when a setting changes, so a toggle takes effect on the sound
     /// already playing rather than only on the next one.
@@ -245,6 +258,7 @@ final class Feedback {
             audio.stopMusic()
             musicState = .menu
             audioHasMusic = false
+            lastMusicGain = -1
         }
         if settings.gain(for: .ambience) == 0 { audio.stopAmbience() }
         // Force the next snapshot to re-derive rather than short-circuit on

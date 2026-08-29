@@ -300,11 +300,18 @@ final class AudioEngine {
     func setMusic(_ track: String?, gain: Float, fade: Double) {
         guard isRunning, !musicDecks.isEmpty else { return }
         musicTarget = min(1, max(0, gain))
+
         guard track != musicTrack else {
-            // Same bed: just move the level, respecting a duck.
-            musicFade?.cancel()
-            musicFade = nil
-            musicMixer.outputVolume = musicTarget
+            // Same bed: re-level, and **do not touch a fade in flight**.
+            //
+            // This branch is reached four times a second, because the caller
+            // re-derives the music state on every snapshot. Cancelling here —
+            // which the first version did — killed every crossfade about
+            // 250 ms in and left the two decks stranded mid-ramp, so the game
+            // was permanently stuck on the previous track at almost full
+            // volume (tasks/BUGS.md BUG-018). A running fade already reads
+            // `musicTarget` for itself.
+            if musicFade == nil { musicMixer.outputVolume = musicTarget }
             return
         }
         musicTrack = track
@@ -317,6 +324,7 @@ final class AudioEngine {
                 await self?.ramp(to: 0, over: fade)
                 guard !Task.isCancelled else { return }
                 outgoing.stop()
+                self?.musicFade = nil
             }
             return
         }
@@ -331,6 +339,7 @@ final class AudioEngine {
 
         musicFade = Task { [weak self] in
             await self?.crossfade(from: outgoing, to: incoming, over: fade)
+            self?.musicFade = nil
         }
     }
 
@@ -343,9 +352,12 @@ final class AudioEngine {
                            to incoming: AVAudioPlayerNode,
                            over seconds: Double) async {
         let steps = max(1, Int(seconds * 20))
-        musicMixer.outputVolume = musicTarget
         for step in 0...steps {
             if Task.isCancelled { return }
+            // Read the target every step rather than once: the player can
+            // move a slider mid-transition, and a fade that captured the old
+            // value would spend four seconds ignoring them.
+            musicMixer.outputVolume = musicTarget
             let t = Double(step) / Double(steps)
             incoming.volume = Float(sin(t * .pi / 2))
             outgoing.volume = Float(cos(t * .pi / 2))
@@ -366,12 +378,6 @@ final class AudioEngine {
             musicMixer.outputVolume = from + (level - from) * t
             try? await Task.sleep(for: .milliseconds(50))
         }
-    }
-
-    /// Momentary attenuation of music and bed, for a milestone cue to sit in.
-    func duckContinuous(_ factor: Float) {
-        musicMixer.outputVolume = musicTarget * factor
-        ambienceMixer.outputVolume = ambienceMixer.outputVolume * factor
     }
 
     func stopMusic() {

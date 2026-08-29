@@ -441,3 +441,38 @@ already enforces that all 52 assets share one format, which is what makes
 "any buffer's format" a safe choice.
 **Status:** FIXED 2026-08-29 (authored; the crash it prevents has never been
 observed, because nothing has run — see TD-006).
+
+---
+
+## BUG-018 — Every music transition died a quarter-second in
+**Severity:** P1 (the music system's central feature, broken in its first
+implementation) · **Phase found:** AE-AUDIO-01 §23 bug hunt, 2026-08-29, in
+code written the same day.
+**Repro (of the first implementation):** pause a running game. The music state
+moves `operating → planning`, a four-second equal-power crossfade starts, and
+250 ms later the next snapshot arrives. `applyMusic` re-derives the state,
+finds it unchanged, and calls `setMusic(sameTrack, fade: 0)` to re-level —
+which took the "same bed" branch, and that branch **cancelled the fade in
+flight**. The two decks are left stranded wherever the ramp had reached: the
+outgoing track at about 0.98, the incoming at about 0.08. The game stays on
+the *previous* bed at nearly full volume, permanently, and every subsequent
+transition does the same thing.
+**Root cause:** a re-levelling path and a transition path sharing one entry
+point, in a system whose caller runs four times a second. The doc comment on
+`setMusic` even claimed it was "safe to call from an observation that fires on
+every snapshot" — which was true of the duplicate-track case it was written
+for and false of the fade it also cancelled.
+**Fix layer:** App, in three places, because one would not have been enough:
+1. The same-track branch no longer touches a running fade — it re-levels only
+   when `musicFade == nil`. A running fade reads `musicTarget` itself.
+2. The crossfade reads `musicTarget` on **every step** rather than capturing
+   it once, so a slider moved mid-transition is obeyed instead of ignored for
+   four seconds.
+3. `applyMusic` only calls into the engine when the state or the gain actually
+   changed, so the hot path is not in the fade machinery at all.
+**Also removed:** `duckContinuous`, an unused helper that multiplied the
+ambience mixer by a factor *cumulatively* and never restored it — repeated
+calls would have driven the bed to zero and left it there. Dead code with a
+latent bug in it; deleting beat fixing.
+**Status:** FIXED 2026-08-29 (authored; not runtime validated — no crossfade
+has ever been heard, TD-006).
