@@ -386,3 +386,123 @@ extension GameState {
             ownedValue: owned, leasedCount: leased, monthlyLeaseCost: leaseBill)
     }
 }
+
+// MARK: - Why a route makes or loses money
+
+/// A route's economics, said in one sentence (MASTER PROMPT 4 §13).
+///
+/// The Route Detail screen showed a player every number that goes into a
+/// route's profit and left them to work out which one was responsible. That is
+/// the wrong division of labour: the simulation knows exactly which term
+/// dominates, and a management game's job is to make a decision legible, not
+/// to hand over a spreadsheet.
+///
+/// Every verdict is derived from the route's own recorded figures. Nothing
+/// here estimates, models or guesses — if the data cannot support a claim, the
+/// verdict is `.tooEarly` rather than a plausible-sounding sentence.
+public struct RouteVerdict: Equatable, Sendable {
+    public enum Standing: Equatable, Sendable {
+        case earning
+        case losing
+        /// Open, but not yet flying — nothing to judge.
+        case idle
+        /// Flying, but not for long enough to attribute anything.
+        case tooEarly
+    }
+
+    /// What is chiefly responsible. Ordered by how much a player can act on it.
+    public enum Driver: Equatable, Sendable {
+        /// Seats are going out empty.
+        case loadFactor(Double)
+        /// The fare sits below what the market bears.
+        case fareBelowMarket(position: Double)
+        /// The fare is high enough to be suppressing demand.
+        case fareAboveMarket(position: Double)
+        /// Airport fees are eating the revenue.
+        case fees(shareOfRevenue: Double)
+        /// Fuel is eating the revenue.
+        case fuel(shareOfRevenue: Double)
+        /// Flights are not completing.
+        case cancellations(completionRate: Double)
+        /// Full aeroplanes, which is the whole game.
+        case strongDemand(loadFactor: Double)
+    }
+
+    public let standing: Standing
+    /// Nil for `.idle` and `.tooEarly`, where there is nothing to attribute.
+    public let primary: Driver?
+    /// A secondary contributor, when one stands out. Often nil.
+    public let secondary: Driver?
+
+    public init(standing: Standing, primary: Driver? = nil,
+                secondary: Driver? = nil) {
+        self.standing = standing
+        self.primary = primary
+        self.secondary = secondary
+    }
+}
+
+extension RouteCardModel {
+    /// Why this route earns or loses, from its own recorded month.
+    ///
+    /// Thresholds are deliberately generous. A verdict that fires on every
+    /// route says nothing, and one that claims a cause on thin evidence is
+    /// worse than silence — so the bar for naming a driver is that the figure
+    /// is genuinely out of the ordinary, not merely on one side of average.
+    public var verdict: RouteVerdict {
+        // Order matters. An unflown route has no economics to explain, and
+        // saying "low load factor" about an aeroplane that never left would
+        // be technically true and completely useless.
+        guard assignedAircraftCount > 0 else {
+            return RouteVerdict(standing: .idle)
+        }
+        let economics = thisMonthBreakdown
+        guard economics.passengers > 0 || economics.revenueCents > 0 else {
+            return RouteVerdict(standing: .tooEarly)
+        }
+
+        let revenue = Double(economics.revenueCents)
+        let feeShare = revenue > 0 ? Double(economics.feesCents) / revenue : 0
+        let fuelShare = revenue > 0 ? Double(economics.fuelCents) / revenue : 0
+        let profitable = thisMonthProfit.cents > 0
+
+        var drivers: [(RouteVerdict.Driver, Double)] = []
+
+        if profitable {
+            // What is going right, strongest first.
+            if loadFactor >= 0.75 {
+                drivers.append((.strongDemand(loadFactor: loadFactor), loadFactor))
+            }
+            if farePosition >= 1.1 {
+                drivers.append((.fareAboveMarket(position: farePosition),
+                                farePosition - 1))
+            }
+        } else {
+            // What is going wrong. The weight is "how far past the threshold",
+            // so the sentence names the term that is actually dominant rather
+            // than whichever was checked first.
+            if loadFactor < 0.55 {
+                drivers.append((.loadFactor(loadFactor), 0.55 - loadFactor))
+            }
+            if feeShare > 0.30 {
+                drivers.append((.fees(shareOfRevenue: feeShare), feeShare - 0.30))
+            }
+            if fuelShare > 0.45 {
+                drivers.append((.fuel(shareOfRevenue: fuelShare), fuelShare - 0.45))
+            }
+            if farePosition < 0.85 {
+                drivers.append((.fareBelowMarket(position: farePosition),
+                                0.85 - farePosition))
+            }
+            if completionRate < 0.90 && completionRate > 0 {
+                drivers.append((.cancellations(completionRate: completionRate),
+                                0.90 - completionRate))
+            }
+        }
+
+        let ranked = drivers.sorted { $0.1 > $1.1 }.map(\.0)
+        return RouteVerdict(standing: profitable ? .earning : .losing,
+                            primary: ranked.first,
+                            secondary: ranked.dropFirst().first)
+    }
+}

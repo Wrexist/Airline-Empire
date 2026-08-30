@@ -244,6 +244,17 @@ struct RouteDetailView: View {
         return "\(route.origin.raw) – \(route.destination.raw)"
     }
 
+    /// Colour follows the standing, never carries it: the sentence already
+    /// says which way the route is going.
+    private func verdictTint(_ verdict: RouteVerdict) -> Color {
+        switch verdict.standing {
+        case .earning: AETheme.positive
+        case .losing: AETheme.negative
+        case .idle: AETheme.caution
+        case .tooEarly: AETheme.mutedText
+        }
+    }
+
     /// The money story, month to date, before anything else — this is the
     /// question a player opens a route to answer.
     private func headline(_ card: RouteCardModel, snapshot: GameState,
@@ -260,11 +271,23 @@ struct RouteDetailView: View {
                     Spacer()
                     VStack(alignment: .trailing, spacing: 1) {
                         MoneyText(money: card.thisMonthProfit)
-                            .font(.title3.weight(.semibold))
+                            .font(AEType.metric)
                         Text("this month so far")
-                            .font(.caption2)
+                            .font(AEType.caption)
                             .foregroundStyle(AETheme.mutedText)
                     }
+                }
+                // Why, not just how much. The screen listed every term that
+                // goes into the profit and left the player to work out which
+                // one was responsible; Core knows which term dominates, so it
+                // says so (MASTER PROMPT 4 §13). Nil when no single cause
+                // stands out — a reason shown every time is a reason nobody
+                // reads.
+                if let verdict = Vocab.routeVerdict(card.verdict) {
+                    Text(verdict)
+                        .font(AEType.body)
+                        .foregroundStyle(verdictTint(card.verdict))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 if card.hasClosedMonth {
                     HStack {

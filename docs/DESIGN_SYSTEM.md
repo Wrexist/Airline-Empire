@@ -148,6 +148,19 @@ Two conventions inside those types:
   flown, not the mean of the per-route rates — one daily widebody and one
   weekly turboprop are not two equal opinions about how full the airline is.
 
+The same rule covers *explanations*, not only figures. `RouteVerdict` decides
+why a route earns or loses — which term dominates its own recorded month — and
+`Vocab.routeVerdict` only chooses words for that decision. The claim is
+testable on Linux; the phrasing can be rewritten without anyone re-deriving
+what causes what.
+
+Its most important property is restraint. A verdict fires only when a figure is
+genuinely out of the ordinary, and returns no cause at all when nothing is —
+"losing money, with no single cause standing out" is an honest answer, and a
+screen that always produces a culprit teaches the player to stop reading it.
+It also refuses to describe a route that has not flown: calling an unassigned
+route "half empty" would be technically true and useless.
+
 ---
 
 ## 6. Colour

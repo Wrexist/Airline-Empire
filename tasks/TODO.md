@@ -271,12 +271,16 @@ rework continuing.
   the live-flight number Core was already computing and no screen rendered.
 - Fleet and Routes boards gained summary headers fed by those models.
 - `Rejections` — refusals answer what happened, why, and what to do next (§8).
+- `RouteVerdict` in Core + `Vocab.routeVerdict` — Route Detail says *why* a
+  route earns or loses, attributed to the dominant term in its own recorded
+  month, and stays silent when nothing stands out (§13). 9 tests.
 - BUG-027 (live flights counted the whole world), BUG-028 (a save warning
   followed the player into the next game).
 
 **Not done, and why:**
-- Aircraft Market, Route Detail, Route Creation, Finance and the World hub have
-  not been reworked. The foundation they would be built on is in place; the
+- Route Creation, Finance and the World hub have not been reworked. The
+  Aircraft Market gained silhouettes and a price comparison; Route Detail
+  gained its verdict, but its section ordering is untouched. The foundation they would be built on is in place; the
   work is not.
 - Nothing has been visually validated. There is no simulator in this
   environment, so every claim above is "compiles and is tested where testable",
