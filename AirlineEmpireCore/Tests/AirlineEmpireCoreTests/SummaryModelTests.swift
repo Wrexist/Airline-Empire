@@ -176,6 +176,39 @@ struct SummaryModelTests {
         #expect(abs(age - expected) < 1e-9)
     }
 
+    /// TD-012. Two Core functions describe the same population of routes and
+    /// nothing connected them.
+    ///
+    /// `MapModel.health(of:)` returns `.grounded` for `assignedAircraft.isEmpty`;
+    /// `NetworkSummary.idleRoutes` counts exactly that. The map's overlay hint
+    /// ("N of your routes have no aircraft and are still paying fees") and the
+    /// Routes board header ("no aircraft: N") are therefore two independent
+    /// answers to one question, free to drift the moment either definition is
+    /// edited — and a player reading both would have no way to tell which was
+    /// wrong. This is the cheap half of the fix: not a refactor of working
+    /// view code, just a test that fails the day they disagree.
+    @Test("Grounded routes on the map are the same routes the summary calls idle")
+    func groundedAgreesWithIdle() async throws {
+        let (session, player, catalog) = try await flyingWorld()
+        var state = await session.snapshot
+
+        // With everything assigned the count is zero, which would let a broken
+        // implementation pass. Ground one route first so the assertion has
+        // something to be wrong about.
+        let route = try #require(state.routes(of: player).first)
+        _ = await session.submit(UnassignAircraftCommand(
+            airline: player,
+            aircraftID: try #require(route.assignedAircraft.first)))
+        state = await session.snapshot
+
+        let summary = state.networkSummary(for: player)
+        let grounded = state.mapModel(catalog: catalog).routes
+            .filter { $0.isPlayer && $0.health == .grounded }
+            .count
+        #expect(summary.idleRoutes >= 1, "the world must have a grounded route")
+        #expect(summary.idleRoutes == grounded)
+    }
+
     @Test("Live flights are the player's own, counted while airborne")
     func liveFlightsAreThePlayersAndAirborne() async throws {
         let (session, player, _) = try await flyingWorld()

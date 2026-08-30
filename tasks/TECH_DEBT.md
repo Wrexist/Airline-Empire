@@ -213,8 +213,24 @@ when the scale was introduced.
 **Severity:** P3.
 **Introduced:** AE-028, 2026-08-30.
 **Description:** `NetworkSummary` and `FleetSummary` back Home's pulse, the
-Fleet board header and the Routes board header. The map's own chrome and the
-Finance screen still derive comparable figures locally. They do not currently
-disagree, but nothing stops them.
-**Resolution path:** route those two through the same summaries when each is
-next touched.
+Fleet board header, the Routes board header and Finance's operating strip. What
+remains is subtler than "the view does its own maths": the map's overlay hints
+count `MapModel`'s *per-route health classification*, which is Core-computed, so
+those views are counting Core's answers rather than inventing their own. That is
+architecturally fine, and an earlier draft of this entry overstated it.
+
+The real risk is narrower and was worth pinning down. `MapModel.health(of:)`
+returns `.grounded` for `assignedAircraft.isEmpty`, and
+`NetworkSummary.idleRoutes` counts exactly that population. Two Core functions,
+one meaning, nothing connecting them — so the map's "N of your routes have no
+aircraft" and the Routes board's "no aircraft: N" were two independent answers
+to one question, free to drift the moment either definition was edited, with a
+player having no way to tell which was wrong.
+
+**Partly resolved 2026-08-30.** `SummaryModelTests.groundedAgreesWithIdle`
+grounds a route and asserts the two agree; sabotaging either definition fails it
+on both assertions. That is deliberately the cheap half — a test rather than a
+refactor of view code nobody can see rendered. The duplication still exists; it
+can no longer drift silently.
+**Resolution path:** when the map chrome is next touched with a device
+available, have the hints read the summary directly.
