@@ -102,26 +102,45 @@ struct MapFrame {
     }
 
     private func drawLand(_ context: inout GraphicsContext) {
+        // Everything here is chosen by zoom. Detail that helps at one level
+        // hurts at another: 29,000 points at world zoom is a grey fringe on
+        // every coast, competing with the routes the map exists to show
+        // (docs/MAP_ARCHITECTURE.md §2), and 2,000 points at local zoom is a
+        // polygon rather than a coastline.
+        let level = policy.level
+        let land = WorldGeometry.landmasses(for: level)
+        let lakes = WorldGeometry.lakes(for: level)
+        let borders = WorldGeometry.borders(for: level)
+
         for offset in projector.visibleWorldOffsets {
-            for landmass in WorldGeometry.landmasses {
+            for landmass in land {
                 var path = Path()
                 appendPolyline(landmass, offset: offset, to: &path)
                 path.closeSubpath()
                 context.fill(path, with: .color(AETheme.mapLand))
-                context.stroke(path, with: .color(AETheme.mapCoast), lineWidth: 0.7)
+                context.stroke(path, with: .color(AETheme.mapCoast),
+                               lineWidth: level == .local ? 0.5 : 0.7)
             }
-            // Inland water, over the land it sits in. Drawn in the ocean's
-            // own colour rather than a third tone: a lake is the same
-            // substance as the sea, and giving it its own value would add a
-            // band to a palette deliberately kept narrow
-            // (docs/MAP_ARCHITECTURE.md §2).
-            for lake in WorldGeometry.lakes {
+            // Inland water in the ocean's own colour: a lake is the same
+            // substance as the sea, and a third value would widen a palette
+            // deliberately kept narrow.
+            for lake in lakes {
                 var path = Path()
                 appendPolyline(lake, offset: offset, to: &path)
                 path.closeSubpath()
                 context.fill(path, with: .color(AETheme.mapBackground))
                 context.stroke(path, with: .color(AETheme.mapCoast.opacity(0.6)),
                                lineWidth: 0.5)
+            }
+            // Borders last, and faintly. They are what makes a dark field read
+            // as Earth rather than as shapes — but they are line work in the
+            // same weight as a route, so they sit well below it and never
+            // appear at world zoom at all.
+            for border in borders {
+                var path = Path()
+                appendPolyline(border, offset: offset, to: &path)
+                context.stroke(path, with: .color(AETheme.mapCoast.opacity(0.45)),
+                               lineWidth: 0.4)
             }
         }
     }
