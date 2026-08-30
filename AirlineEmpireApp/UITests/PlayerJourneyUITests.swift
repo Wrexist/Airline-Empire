@@ -66,6 +66,8 @@ final class PlayerJourneyUITests: AEUITestCase {
 
     func testDarkAppearanceRendersEveryTab() throws {
         launch(appearance: .dark)
+        // Before anything is captured: prove the appearance actually took.
+        guard requireAppearance(.dark) else { return }
         guard foundAirline() else { return }
         checkpoint("50-dark-home")
 
@@ -83,6 +85,7 @@ final class PlayerJourneyUITests: AEUITestCase {
     /// both appearances, so light is where it risks looking like a hole.
     func testLightAppearanceMapForComparison() throws {
         launch(appearance: .light)
+        guard requireAppearance(.light) else { return }
         guard foundAirline() else { return }
         openTab("Map")
         checkpoint("60-light-map")

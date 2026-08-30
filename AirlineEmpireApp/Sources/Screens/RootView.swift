@@ -3,6 +3,26 @@ import AirlineEmpireCore
 
 struct RootView: View {
     @Environment(GameController.self) private var controller
+    /// Read only to publish it below, for the UI tests.
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// The appearance the app is *actually* rendering in, as something a UI
+    /// test can query.
+    ///
+    /// This exists because a UI test cannot otherwise tell. AE-032 set
+    /// `XCUIDevice.shared.appearance = .dark`, captured five screens, named
+    /// them "dark", and every one rendered light — the switch had not taken.
+    /// The test still passed, because it only asserted that content existed.
+    /// That is worse than no check: it manufactures evidence for a claim
+    /// nobody verified.
+    ///
+    /// An identifier rather than a launch flag, because the question is what
+    /// the app *did*, not what it was asked to do. Costs one identifier on a
+    /// container that has no other, changes no behaviour, and makes
+    /// "validated in dark mode" a statement a test can fail.
+    private var appearanceIdentifier: String {
+        colorScheme == .dark ? "ae-appearance-dark" : "ae-appearance-light"
+    }
 
     var body: some View {
         // Crossfaded rather than swapped. These three are the only whole-screen
@@ -20,6 +40,7 @@ struct RootView: View {
             }
         }
         .aeAnimation(AEMotion.screen, value: state)
+        .accessibilityIdentifier(appearanceIdentifier)
         // Every presentation the whole app can raise lives here, above the
         // three screen states — a rejection alert mounted on the tab view
         // could not appear over a sheet, and could not appear on the menu at

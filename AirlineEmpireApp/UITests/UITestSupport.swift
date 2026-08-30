@@ -56,7 +56,37 @@ class AEUITestCase: XCTestCase {
             // settle, not a guess at a race.
             Thread.sleep(forTimeInterval: 3)
         }
+        // Belt and braces: the device appearance above drives the simulator,
+        // and this drives the app's own defaults domain. On the run that
+        // exposed the problem the first alone was not enough.
+        app.launchArguments.removeAll { $0 == "-AppleInterfaceStyle" || $0 == "Dark" || $0 == "Light" }
+        app.launchArguments += ["-AppleInterfaceStyle",
+                                appearance == .dark ? "Dark" : "Light"]
         app.launch()
+    }
+
+    /// Fail unless the app is rendering in the appearance that was asked for.
+    ///
+    /// `RootView` publishes what it actually rendered as an accessibility
+    /// identifier. Without this the dark tests pass while producing light
+    /// screenshots named "dark" — which is exactly what happened on the first
+    /// run, and is worse than having no dark coverage at all, because it
+    /// manufactures evidence.
+    @discardableResult
+    func requireAppearance(_ appearance: XCUIDevice.Appearance) -> Bool {
+        let wanted = appearance == .dark ? "ae-appearance-dark" : "ae-appearance-light"
+        let element = app.descendants(matching: .any)[wanted]
+        if element.waitForExistence(timeout: 10) { return true }
+        let other = appearance == .dark ? "ae-appearance-light" : "ae-appearance-dark"
+        let actually = app.descendants(matching: .any)[other].exists
+            ? "light" : "neither identifier found"
+        capture(Self.logPrefix + "APPEARANCE-MISMATCH")
+        XCTFail("""
+            Asked for \(appearance == .dark ? "dark" : "light") appearance; the \
+            app reports \(actually). Screenshots from this test would be \
+            mislabelled, so it fails rather than producing false evidence.
+            """)
+        return false
     }
 
     // MARK: Evidence
