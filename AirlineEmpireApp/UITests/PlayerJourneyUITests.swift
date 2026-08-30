@@ -499,6 +499,41 @@ final class PlayerJourneyUITests: AEUITestCase {
             """)
     }
 
+    // MARK: The clock (BUG-040)
+
+    /// Time actually passes when the player asks it to.
+    ///
+    /// The regression test for the most serious defect this phase found:
+    /// founding a game never started the simulation pump, so the clock sat
+    /// at day one, 00:00, whatever speed was selected — photographed twice
+    /// (runs 64 and 65) before the cause was found. This asks the smallest
+    /// possible version of the question, with no market, no sheets and no
+    /// scrolling in the way: found an airline, select 16×, and the date on
+    /// Home must change. At 16× a game-day passes in ~22 real seconds; a
+    /// minute of patience is generous, and a failure here means the game is
+    /// frozen for every player.
+    func testTheClockActuallyRuns() throws {
+        launch(appearance: .light)
+        guard foundAirline() else { return }
+
+        let openingDate = app.staticTexts["2030-01-01"]
+        XCTAssertTrue(openingDate.waitForExistence(timeout: 10),
+                      "Home does not show the scenario's opening date")
+
+        let fast = app.buttons["Sixteen times speed"]
+        require(fast, "the 16x speed control")
+        fast.tap()
+
+        let advanced = openingDate.waitForNonExistence(timeout: 60)
+        checkpoint("85-clock-after-16x")
+        XCTAssertTrue(advanced, """
+            A real minute at 16x — about two and a half game days — and Home \
+            still shows 2030-01-01. The simulation pump is not running: this \
+            is BUG-040's exact shape, and the game is frozen. Screenshot \
+            attached.
+            """)
+    }
+
     // MARK: Performance (§23)
 
     /// Cold launch, measured — the first UI-side performance number this
