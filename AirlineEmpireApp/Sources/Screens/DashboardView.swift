@@ -233,6 +233,8 @@ struct UpcomingCard: View {
         let icon: String
         let text: String
         let when: String
+        /// Days until it happens — what the card is ordered by.
+        let days: Int
     }
 
     /// Whether the player has anything that *could* be scheduled. On a fresh
@@ -296,7 +298,8 @@ struct UpcomingCard: View {
             items.append(Item(id: "delivery-\(aircraft.id.raw)",
                               icon: "shippingbox.fill",
                               text: "\(name) is delivered",
-                              when: days == 0 ? "today" : "in \(Format.days(days))"))
+                              when: days == 0 ? "today" : "in \(Format.days(days))",
+                              days: days))
         }
 
         for aircraft in snapshot.fleet(of: player.id) {
@@ -308,7 +311,8 @@ struct UpcomingCard: View {
             items.append(Item(id: "maintenance-\(aircraft.id.raw)",
                               icon: "wrench.fill",
                               text: "\(name) is back from maintenance",
-                              when: days == 0 ? "today" : "in \(Format.days(days))"))
+                              when: days == 0 ? "today" : "in \(Format.days(days))",
+                              days: days))
         }
 
         for mission in snapshot.progression.missions {
@@ -317,7 +321,8 @@ struct UpcomingCard: View {
             items.append(Item(id: "mission-\(mission.id)",
                               icon: "target",
                               text: "A mission closes — \(Format.money(mission.reward)) on offer",
-                              when: days == 0 ? "today" : "in \(Format.days(days))"))
+                              when: days == 0 ? "today" : "in \(Format.days(days))",
+                              days: days))
         }
 
         for event in snapshot.world.activeEvents where !event.hasStarted {
@@ -326,10 +331,15 @@ struct UpcomingCard: View {
             items.append(Item(id: "event-\(event.id)",
                               icon: Vocab.worldEventIcon(event.kind),
                               text: Vocab.worldEvent(event.kind, state: snapshot),
-                              when: days == 0 ? "today" : "in \(Format.days(days))"))
+                              when: days == 0 ? "today" : "in \(Format.days(days))",
+                              days: days))
         }
 
-        return Array(items.prefix(4))
+        // Sorted before the cap: the list is built category by category, so
+        // taking the first four dropped a mission closing tomorrow in favour
+        // of a delivery two hundred days out — which is the opposite of what
+        // a "what's next" card is for.
+        return Array(items.sorted { $0.days < $1.days }.prefix(4))
     }
 }
 

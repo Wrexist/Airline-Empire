@@ -231,6 +231,29 @@ public enum MapMath {
         return degrees < 0 ? degrees + 360 : degrees
     }
 
+    /// Course of a great-circle route at `fraction` along it, degrees
+    /// clockwise from north.
+    ///
+    /// Sampling a point slightly ahead is the obvious way to do this and is
+    /// wrong at exactly one place: the end. `fraction` is clamped to 1 while a
+    /// flight waits for the next snapshot, so `fraction + 0.02` is also 1, and
+    /// `heading(from:to:)` given two identical coordinates has no direction to
+    /// report — it returns 0, and the aircraft snaps to due north on arrival.
+    /// At the end of the route, measure the leg just travelled instead.
+    public static func heading(alongRouteFrom origin: Coordinate,
+                               to destination: Coordinate,
+                               at fraction: Double) -> Double {
+        let here = greatCirclePoint(from: origin, to: destination, fraction: fraction)
+        if fraction >= 1 {
+            let behind = greatCirclePoint(from: origin, to: destination,
+                                          fraction: max(0, fraction - 0.02))
+            return heading(from: behind, to: here)
+        }
+        let ahead = greatCirclePoint(from: origin, to: destination,
+                                     fraction: min(1, fraction + 0.02))
+        return heading(from: here, to: ahead)
+    }
+
     static func centralAngle(_ a: Coordinate, _ b: Coordinate) -> Double {
         let lat1 = a.latitude * .pi / 180, lat2 = b.latitude * .pi / 180
         let dLat = lat2 - lat1
@@ -406,11 +429,10 @@ extension GameState {
                 let fraction = min(1, max(0, elapsed / Double(max(1, flight.flightMinutes))))
                 let position = MapMath.greatCirclePoint(
                     from: from.coordinate, to: to.coordinate, fraction: fraction)
-                let ahead = MapMath.greatCirclePoint(
-                    from: from.coordinate, to: to.coordinate,
-                    fraction: min(1, fraction + 0.02))
                 return build(position: position,
-                             heading: MapMath.heading(from: position, to: ahead),
+                             heading: MapMath.heading(alongRouteFrom: from.coordinate,
+                                                      to: to.coordinate,
+                                                      at: fraction),
                              airborne: true, progress: fraction)
             case .boarding, .turnaround:
                 return build(position: from.coordinate,
@@ -447,11 +469,28 @@ extension GameState {
                     }
             }
             let affectedSet = Set(affected)
-            let touched = isGlobal
-                ? playerRoutesByID.map(\.id)
-                : playerRoutesByID.filter {
+            // A strike grounds the airline that is striking, not everyone who
+            // happens to fly out of the same airports. Sharing a hub with a
+            // struck rival is normal at any large airport, and reporting it as
+            // a disruption of the player's routes made the overlay claim a
+            // problem that does not exist (Vocab.worldEventEffect says as much:
+            // a strike affects that airline's flights).
+            let strikesAnotherAirline: Bool
+            if case .strike(let striking) = event.kind {
+                strikesAnotherAirline = striking != player
+            } else {
+                strikesAnotherAirline = false
+            }
+            let touched: [RouteID]
+            if isGlobal {
+                touched = playerRoutesByID.map(\.id)
+            } else if strikesAnotherAirline {
+                touched = []
+            } else {
+                touched = playerRoutesByID.filter {
                     affectedSet.contains($0.origin) || affectedSet.contains($0.destination)
                 }.map(\.id)
+            }
             return MapModel.MapEvent(
                 id: event.id, kind: event.kind, hasStarted: event.hasStarted,
                 severity: event.severity, beginsAt: event.beginsAt,

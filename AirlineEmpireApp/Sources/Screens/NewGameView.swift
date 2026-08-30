@@ -38,6 +38,7 @@ struct NewGameView: View {
     @State private var customHome: AirportCode?
     @State private var showingAllAirports = false
     @State private var pendingDeletion: String?
+    @State private var deletionFailure: String?
     @State private var livery: Livery = .default
     @State private var scenario: ScenarioCode = "entrepreneur"
     @State private var seedText = ""
@@ -51,6 +52,11 @@ struct NewGameView: View {
     private var deletionPresented: Binding<Bool> {
         Binding(get: { pendingDeletion != nil },
                 set: { presented in if !presented { pendingDeletion = nil } })
+    }
+
+    private var deletionFailurePresented: Binding<Bool> {
+        Binding(get: { deletionFailure != nil },
+                set: { presented in if !presented { deletionFailure = nil } })
     }
 
     private var trimmedName: String {
@@ -92,13 +98,26 @@ struct NewGameView: View {
                             titleVisibility: .visible,
                             presenting: pendingDeletion) { slot in
             Button("Delete", role: .destructive) {
-                controller.deleteSlot(slot)
+                // `deleteSlot` records its failure in `lastSaveOutcome`, which
+                // only the playing shell presents — so on this screen a failed
+                // deletion set state nobody shows and the row simply stayed,
+                // looking as though nothing had happened (the UI-004 defect
+                // class again). Report it here instead.
+                if !controller.deleteSlot(slot) {
+                    deletionFailure = "That save could not be deleted."
+                }
                 slots = controller.availableSlots()
                 pendingDeletion = nil
             }
             Button("Cancel", role: .cancel) { pendingDeletion = nil }
         } message: { _ in
             Text("That airline and its history are gone for good.")
+        }
+        .alert("Delete failed", isPresented: deletionFailurePresented,
+               presenting: deletionFailure) { _ in
+            Button("OK", role: .cancel) { deletionFailure = nil }
+        } message: { message in
+            Text(message)
         }
         .onAppear {
             if catalog == nil { catalog = try? ContentCatalog.loadBundled() }
@@ -251,9 +270,13 @@ struct NewGameView: View {
                         .foregroundStyle(AETheme.ember)
                 }
             }
-            Text(customHome == nil
-                 ? "Choose any of the world's airports. Some of them are very hard openings — that is the point."
-                 : (catalog?.airport(customHome!).map { "\($0.country) · \(Vocab.runwayDetail($0.runwayClass))" } ?? ""))
+            Text(customHome.flatMap { home in
+                catalog?.airport(home).map {
+                    "\($0.country) · \(Vocab.runwayDetail($0.runwayClass))"
+                }
+            } ?? (customHome == nil
+                  ? "Choose any of the world's airports. Some of them are very hard openings — that is the point."
+                  : ""))
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.62))
                 .fixedSize(horizontal: false, vertical: true)

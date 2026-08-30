@@ -26,14 +26,17 @@ struct FinanceContent: View {
                let player = snapshot.playerAirline,
                let model = snapshot.financeModel(for: player.id),
                let catalog = controller.catalog {
+                // Derived once and passed down. The pump publishes several
+                // snapshots a second and this is an O(world) read model, so
+                // resolving it again inside `runwayCard` doubled the cost of
+                // every refresh of this screen.
+                let solvency = snapshot.solvencyModel(for: player.id, catalog: catalog)
                 VStack(spacing: AETheme.spacingM) {
-                    if let solvency = snapshot.solvencyModel(for: player.id,
-                                                             catalog: catalog) {
+                    if let solvency {
                         SolvencyBanner(model: solvency)
                     }
                     topLine(model)
-                    runwayCard(model, snapshot: snapshot, player: player.id,
-                               catalog: catalog)
+                    runwayCard(model, solvency: solvency)
                     trendCard(model)
                     statementCard(snapshot: snapshot, player: player.id)
                     loansCard(model, snapshot: snapshot, player: player.id)
@@ -70,14 +73,13 @@ struct FinanceContent: View {
 
     /// The number that actually decides whether a player is in trouble, and
     /// which the app never computed: how long the cash lasts at this burn.
-    private func runwayCard(_ model: FinanceModel, snapshot: GameState,
-                            player: AirlineID,
-                            catalog: ContentCatalog) -> some View {
+    private func runwayCard(_ model: FinanceModel,
+                            solvency: SolvencyModel?) -> some View {
         AECard {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "How long the money lasts",
                                 systemImage: "hourglass")
-                if let solvency = snapshot.solvencyModel(for: player, catalog: catalog) {
+                if let solvency {
                     if let months = solvency.monthsOfRunway {
                         HStack {
                             Text("At last month's burn")

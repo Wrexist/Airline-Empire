@@ -246,15 +246,16 @@ struct RunSummaryCard: View {
                             }
                         }
                         summaryRow("Airports served") {
-                            Text("\(snapshot.dashboardModel()?.destinationCount ?? 0)")
+                            Text(Format.count(Int64(snapshot.dashboardModel()?
+                                .destinationCount ?? 0)))
                                 .monospacedDigit()
                         }
                         summaryRow("Flights flown") {
-                            Text("\(snapshot.progression.counters.flightsCompleted)")
+                            Text(Format.count(snapshot.progression.counters.flightsCompleted))
                                 .monospacedDigit()
                         }
                         summaryRow("Passengers carried") {
-                            Text("\(snapshot.progression.counters.passengersCarried)")
+                            Text(Format.count(snapshot.progression.counters.passengersCarried))
                                 .monospacedDigit()
                         }
                     }

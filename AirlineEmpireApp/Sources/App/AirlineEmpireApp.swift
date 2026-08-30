@@ -24,10 +24,16 @@ struct AirlineEmpireApp: App {
                     // Scene-phase autosave (docs/PERSISTENCE_ARCHITECTURE §4).
                     if phase == .background || phase == .inactive {
                         controller.saveOnBackground()
-                        // Hand the audio route back rather than holding it
-                        // open behind another app (docs/AUDIO_ARCHITECTURE §9).
+                    }
+                    // Only a real background hands the audio route back
+                    // (docs/AUDIO_ARCHITECTURE §9). `.inactive` is every
+                    // notification banner, control centre pull and app
+                    // switcher glance, and tearing the ambience down for each
+                    // of those made the game audibly stutter at the moments
+                    // the player had not left it.
+                    if phase == .background {
                         controller.feedback.applicationDidEnterBackground()
-                    } else {
+                    } else if phase == .active {
                         controller.feedback.applicationWillEnterForeground()
                     }
                     controller.setPumping(phase == .active)

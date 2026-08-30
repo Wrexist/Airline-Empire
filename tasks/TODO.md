@@ -14,7 +14,8 @@ against the live Core, then execute phases 16, 17, 19b, 20b, 21, the final
 2026-08-26).
 **Dependencies:** A macOS session with Xcode + xcodegen (blocker B-002).
 Everything Linux-executable is done — Core is complete (212 tests green,
-save v10) and the static integration audit below has already cleared the
+save v10 — the baseline **as of 2026-08-26**; see AE-025 below for the
+current one) and the static integration audit below has already cleared the
 known compile blockers.
 **Implementation notes:**
 - `cd AirlineEmpireApp && xcodegen generate`, open the project, build.
@@ -177,7 +178,9 @@ simulator answers most of the audio questions but **not** the haptic ones.
 their own tasks. `docs/AUDIO_ASSET_MANIFEST.md` §4 is the brief for anything that
 needs re-voicing rather than fixing.
 **Acceptance criteria:**
-- Every one of the 52 cues triggered at least once, audibly, with the palette
+- Every one of the 52 non-ambience cues triggered at least once, audibly
+  (`AudioCue` has 54 cases; the other two are the looping ambience beds, which
+  are not triggered but held), with the palette
   judged as a set rather than one sound at a time: does it sound like one
   product, and does it sound expensive?
 - The loudness hierarchy holds by ear, not only by peak measurement — a tap

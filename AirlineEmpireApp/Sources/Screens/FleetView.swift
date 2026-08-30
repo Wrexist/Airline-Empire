@@ -386,8 +386,11 @@ struct AircraftDetailView: View {
             ConfirmableButton(title: title, message: message,
                               confirmTitle: confirmTitle, role: .destructive,
                               action: {
-                                  controller.submit(command)
-                                  dismiss()
+                                  // `precheck` ran at render time and the
+                                  // simulation has been advancing since, so
+                                  // the refusal is real. Leaving the screen
+                                  // on it would report the sale as done.
+                                  if controller.submit(command) == nil { dismiss() }
                               }) {
                 Label(label, systemImage: icon).frame(minHeight: 44)
             }

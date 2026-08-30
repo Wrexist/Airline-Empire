@@ -135,20 +135,19 @@ disabled, and a bad bed is worse than none.
 ---
 
 ## TD-008 — There is no music, and the state machine for it is unbuilt
-**Severity:** P3 (a deliberate omission, recorded so it is not mistaken for an
-oversight).
+**Severity:** P3.
 **Introduced:** audio architecture, 2026-08-29.
-**Description:** the game ships no score and no music toggle. The reasoning is
-in `docs/AUDIO_ARCHITECTURE.md` §11: this phase can synthesise effects to a
-shippable standard but cannot compose and produce releasable music, and a
-mediocre loop is worse than silence for a game that wants to sound expensive.
-What exists is the brief — six tracks, their states, lengths and character —
-in `docs/AUDIO_ASSET_MANIFEST.md` §5. What does not exist is any code that selects
-between them; the selection is derivable from `SolvencyModel.stage`, route
-count and era, all of which Core already publishes, but none of it is written.
-**Resolution path:** commission the six tracks against §5, then add the
-crossfading selector to `Feedback` and a `Music` toggle to Settings. Not
-before: a switch controlling nothing is a dead control.
+**Status: RESOLVED** by AE-AUDIO-01, later the same day. The selector this
+entry called unwritten is `MusicDirector` in Core — five states derived from
+speed, `SolvencyModel.stage` and whether a milestone is celebrating — driven
+by `Feedback.applyMusic` with equal-power crossfades, and the `Music` toggle
+and volume are in Settings.
+
+Only the first half of the original complaint survives, and it has its own
+entry: the four beds that exist are generated drones rather than a composed
+score (TD-009). This entry is kept rather than deleted because the reasoning
+it recorded — that a mediocre loop is worse than silence — is the reason the
+milestone state deliberately has no track of its own.
 
 ---
 

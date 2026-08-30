@@ -86,24 +86,30 @@ struct MapFrame {
         // The grid earns its place by giving the eye something to measure a
         // great circle against; it stays faint enough to never be read as data.
         var grid = Path()
-        for line in WorldGeometry.graticule {
-            appendPolyline(line, to: &grid)
+        for offset in projector.visibleWorldOffsets {
+            for line in WorldGeometry.graticule {
+                appendPolyline(line, offset: offset, to: &grid)
+            }
         }
         context.stroke(grid, with: .color(AETheme.mapGraticule), lineWidth: 0.5)
 
         var equator = Path()
-        appendPolyline(WorldGeometry.equator, to: &equator)
+        for offset in projector.visibleWorldOffsets {
+            appendPolyline(WorldGeometry.equator, offset: offset, to: &equator)
+        }
         context.stroke(equator, with: .color(AETheme.mapGraticule.opacity(1.6)),
                        lineWidth: 0.7)
     }
 
     private func drawLand(_ context: inout GraphicsContext) {
-        for landmass in WorldGeometry.landmasses {
-            var path = Path()
-            appendPolyline(landmass, to: &path)
-            path.closeSubpath()
-            context.fill(path, with: .color(AETheme.mapLand))
-            context.stroke(path, with: .color(AETheme.mapCoast), lineWidth: 0.7)
+        for offset in projector.visibleWorldOffsets {
+            for landmass in WorldGeometry.landmasses {
+                var path = Path()
+                appendPolyline(landmass, offset: offset, to: &path)
+                path.closeSubpath()
+                context.fill(path, with: .color(AETheme.mapLand))
+                context.stroke(path, with: .color(AETheme.mapCoast), lineWidth: 0.7)
+            }
         }
     }
 
@@ -490,10 +496,12 @@ struct MapFrame {
 
     // MARK: - Primitives
 
-    private func appendPolyline(_ points: [MapPoint], to path: inout Path) {
+    private func appendPolyline(_ points: [MapPoint], offset: Double = 0,
+                                to path: inout Path) {
         var started = false
         for point in points {
-            let projected = projector.project(point)
+            let projected = projector.project(MapPoint(x: point.x + offset,
+                                                       y: point.y))
             if !started {
                 path.move(to: projected)
                 started = true

@@ -550,3 +550,89 @@ happened when a save fails" machinery (UI-012) reports success by omission.
 `lastSaveOutcome` across the transition so a failed save is still reported on
 the menu — `quitToMenu` clears it.
 **Status:** FIXED 2026-08-29.
+
+---
+
+## BUG-022 — A rival's strike was reported as disrupting the player's routes
+**Severity:** P2 (a false alarm on the map's disruption overlay, contradicting
+the game's own wording of what a strike does) · **Phase found:** CodeRabbit
+review of PR #6, 2026-08-29.
+**Repro:** fly out of any large airport a competitor also serves, wait for that
+competitor to strike. The overlay reports "1 world event touching your routes"
+and names routes that are flying normally.
+**Root cause:** for `.strike(airline)`, `affected` collects every airport the
+striking airline's routes touch, and `touched` then names every *player* route
+sharing one of those airports. Sharing a hub with a rival is the normal case at
+a large airport, so the two carriers meeting was enough to manufacture the
+claim. `Vocab.worldEventEffect` describes a strike as affecting that airline's
+own flights, so the overlay contradicted the text beside it.
+**Fix layer:** Core (`MapModel.mapModel`). A strike names player routes only
+when the striking airline *is* the player. The affected airports are still
+listed — the strike is real, it is simply not the player's.
+**Status:** FIXED 2026-08-30. Covered by a test that fails on the old
+behaviour (all three player routes claimed).
+
+---
+
+## BUG-023 — An arriving aircraft snapped to due north
+**Severity:** P3 (cosmetic, but the map is the screen where a wrong picture is
+indistinguishable from a right one) · **Phase found:** CodeRabbit review of
+PR #6, 2026-08-29 (app side); the identical defect in Core was found while
+fixing it.
+**Repro:** watch any flight reach its destination at x4 or x16.
+**Root cause:** heading was sampled as the bearing from the current point to
+one 2% further along the arc. Progress is clamped to 1 so a flight waiting for
+the next snapshot has `advanced == 1` and `min(1, advanced + 0.02) == 1` — two
+identical coordinates. `MapMath.heading` computes `atan2(0, 0)` for those and
+returns 0, so the symbol rotated to north and stayed there until the snapshot
+changed.
+**Fix layer:** Core. `MapMath.heading(alongRouteFrom:to:at:)` measures the leg
+just travelled once the fraction reaches 1, and both call sites — the app's
+interpolator and Core's own `mapModel` — now use it, so the two cannot drift
+apart again.
+**Status:** FIXED 2026-08-30.
+
+---
+
+## BUG-024 — A milestone silenced the music instead of ducking it
+**Severity:** P2 · **Phase found:** CodeRabbit review of PR #6, 2026-08-29.
+**Repro:** complete a mission. The music stops for twelve seconds and fades
+back in.
+**Root cause:** `MusicDirector.asset(for: .milestone)` returns nil on purpose —
+a milestone is marked by its own cue, not by a track — and the comment beside
+it says the state exists "so the *bed* can duck under the cue and return".
+`applyMusic` handed that nil straight to `setMusic`, which fades out and stops
+the deck. `MusicDirector.duck(for: .milestone)`, the 0.55 that was written for
+exactly this, was applied to nothing.
+**Fix layer:** App (`Feedback.applyMusic`). The bed is derived from the state
+*without* the celebration, and the celebration decides only the level.
+**Status:** FIXED 2026-08-30 (not runtime validated — TD-006).
+
+---
+
+## BUG-025 — Turning sound effects off silenced the music for the session
+**Severity:** P2 · **Phase found:** CodeRabbit review of PR #6, 2026-08-29.
+**Repro:** with music on, turn Sound Effects off. The music stops and never
+comes back, whatever you do to the music controls.
+**Root cause:** `settingsChanged` called `audio.stopAll()` when the effects
+gain reached zero, and `stopAll` also stopped the ambience and the music decks.
+Because `musicState` and `lastMusicGain` were left untouched, the next refresh
+saw no change and took the early-out, so nothing ever restarted it.
+**Fix layer:** App. `AudioEngine.stopEffects()` stops the one-shot voices only;
+`stopAll` is now composed from the three layer stops.
+**Status:** FIXED 2026-08-30 (not runtime validated — TD-006).
+
+---
+
+## BUG-026 — A failed autosave raised a modal the player had not asked for
+**Severity:** P3 · **Phase found:** CodeRabbit review of PR #6, 2026-08-29.
+**Repro:** background the app with the disk full, come back. A modal "Save"
+alert is waiting, attached to nothing the player did.
+**Root cause:** `saveOnBackground` passes `announce: false` precisely so it
+never interrupts, and the doc comment says a failure is "recorded but never
+interrupts". The catch block set `lastSaveOutcome` regardless, and that is the
+one piece of state `GameShell` raises an alert from.
+**Fix layer:** App. The announced path keeps the alert; the quiet path records
+`quietSaveFailure`, which Settings' Save section reports in place — quiet, but
+not silent, which was the whole point of UI-012.
+**Status:** FIXED 2026-08-30.

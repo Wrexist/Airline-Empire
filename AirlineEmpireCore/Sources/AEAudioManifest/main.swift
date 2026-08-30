@@ -1,3 +1,4 @@
+import Foundation
 import AirlineEmpireCore
 
 /// Prints the audio manifest as Markdown, straight from `AudioCue`.

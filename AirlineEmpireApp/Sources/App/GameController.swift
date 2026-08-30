@@ -19,6 +19,14 @@ final class GameController {
     /// happened instead of looking identical whether it worked or not
     /// (UIUX_FORENSIC_AUDIT UI-012).
     private(set) var lastSaveOutcome: SaveOutcome?
+
+    /// The reason the last *unannounced* save failed, if one did.
+    ///
+    /// A backgrounding autosave must not interrupt, but it must not lie
+    /// either: this is reported quietly in Settings' Save section, where a
+    /// player looks when they want to know the state of their save, rather
+    /// than as a modal attached to nothing they did.
+    private(set) var quietSaveFailure: String?
     /// Why the last transition into a game failed, if it did. Founding used
     /// to fail through `assertionFailure`, which is a no-op in release — the
     /// button simply did nothing, forever.
@@ -305,11 +313,21 @@ final class GameController {
         guard let session else { return }
         do {
             try await session.saveNow(slot: slot)
+            quietSaveFailure = nil
             if announce { lastSaveOutcome = .saved(slot: slot) }
         } catch {
             // Swallowing this is how a failing save became indistinguishable
-            // from a working one (UI-012).
-            lastSaveOutcome = .failed("Saving failed: \(error.localizedDescription)")
+            // from a working one (UI-012). But `lastSaveOutcome` is what
+            // `GameShell` raises an alert from, and `saveOnBackground` passes
+            // `announce: false` precisely so it never interrupts — setting it
+            // here regardless meant a failed autosave greeted the player with
+            // a modal on return, attached to nothing they had done
+            // (tasks/BUGS.md BUG-026).
+            if announce {
+                lastSaveOutcome = .failed("Saving failed: \(error.localizedDescription)")
+            } else {
+                quietSaveFailure = error.localizedDescription
+            }
         }
     }
 

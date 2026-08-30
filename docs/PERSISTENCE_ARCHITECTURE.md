@@ -114,8 +114,9 @@ player's own data; obfuscation adds support cost, not value).
 - **Migrations**: `MigrationChain` of `SaveMigration` steps over the
   decoded JSON tree, wired into `JSONSaveCodec.decode`; contiguity
   determines `minimumSupportedVersion` automatically; future versions
-  (newer app) refuse. Shipping chain: **v9→v10** (adds the fresh
-  progression slice) — a real migration with a fixture-based test that
+  (newer app) refuse. Shipping chain at the time of writing: **v9→v10**
+  (adds the fresh progression slice); the addendum below extends it to
+  **v9→v10→v11**. Each is a real migration with a fixture-based test that
   migrates, verifies, and *runs* the migrated world. Formats below v9 are
   pre-release and refuse honestly. Fixture note: v9 fixtures are
   synthesized in-test (no public release shipped v9 bytes); from the first

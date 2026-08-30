@@ -96,8 +96,10 @@ dimensions are assessed on authored code + Core read models and flagged.
 14. **No starter aircraft.** `PLAYER_JOURNEY` §1 opens with one on the apron.
 15. **Localization: zero.** ~700 string literals; numeric formatting is now
     locale-correct, the strings are not (audit UI-036).
-16. **No audio at all.** `UI_ARCHITECTURE` §4 specifies an `AudioService`;
-    this needs sound design, not code.
+16. **Audio is built but unheard.** The cue vocabulary, the director, the
+    engine and 58 generated assets all exist (`docs/AUDIO_ARCHITECTURE.md`);
+    what is missing is a device it has ever been played on, and an authored
+    score behind the four generated beds (TD-006, TD-009).
 17. **Hub connections** — still descoped to the first content update (D-010),
     and still the missing mid-game transformation.
 

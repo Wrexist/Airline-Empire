@@ -161,9 +161,17 @@ public struct ProgressionModel: Equatable, Sendable {
 }
 
 extension GameState {
-    /// The player's progression picture; nil before an airline exists.
+    /// The player's progression picture; nil when there is no airline able to
+    /// act on it.
+    ///
+    /// `playerAirline` filters by kind, so it still returns a `.collapsed`
+    /// airline. Every command below opens with `status == .active`, and a
+    /// model built for a dead airline would have reported programs as
+    /// `.available` that `StartCapabilityProgramCommand.validate` rejects with
+    /// `airline.unknown` — which is precisely the disagreement the comment
+    /// further down promises does not exist.
     public func progressionModel(catalog: ContentCatalog) -> ProgressionModel? {
-        guard let player = playerAirline else { return nil }
+        guard let player = playerAirline, player.status == .active else { return nil }
         let tuning = catalog.tuning.progression
         let now = clock.now
         let next = EraGate.next(after: progression.era)

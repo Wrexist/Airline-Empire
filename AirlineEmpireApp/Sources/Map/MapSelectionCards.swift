@@ -165,7 +165,12 @@ struct MapAirportCard: View {
             Button {
                 openRoute(FirstRouteSuggestion(
                     origin: market.origin, destination: market.destination,
-                    destinationCity: airport.city, distanceKm: market.distanceKm,
+                    // The selected airport can be either end of the market, so
+                    // its own city is the destination only half the time.
+                    destinationCity: model.airports.first {
+                        $0.code == market.destination
+                    }?.city ?? market.destination.raw,
+                    distanceKm: market.distanceKm,
                     expectedDailyPassengers: market.expectedDailyPassengers,
                     referenceFare: market.referenceFare))
             } label: {

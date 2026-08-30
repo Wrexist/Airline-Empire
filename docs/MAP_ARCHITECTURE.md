@@ -110,7 +110,7 @@ No new dependencies were added.
 
 ### Layers, back to front
 
-```
+```text
 ocean → graticule → land → event fields → opportunity arcs
 → rival routes → player routes → airports → flights → labels
 ```

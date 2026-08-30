@@ -225,8 +225,18 @@ final class Feedback {
         // celebration is a moment rather than a mode.
         let now = elapsed
         let celebrating = now < milestoneUntil
+        // The bed is derived without the celebration, and the celebration only
+        // decides the level. `MusicDirector.asset(for: .milestone)` is nil on
+        // purpose — a milestone is marked by its own cue, not by a track — so
+        // handing that nil to `setMusic` faded the music out and gave the
+        // moment twelve seconds of silence instead of the 0.55 duck the
+        // director asks for (tasks/BUGS.md BUG-024). Keeping the bed and
+        // dropping its gain is what "duck under the cue and return" means.
+        let bed = MusicDirector.state(hasGame: hasGame, speed: speed,
+                                      stage: stage, celebrating: false)
         let next = MusicDirector.state(hasGame: hasGame, speed: speed,
                                        stage: stage, celebrating: celebrating)
+        let track = MusicDirector.asset(for: next) ?? MusicDirector.asset(for: bed)
         let gain = Float(musicGain * MusicDirector.duck(for: next))
         guard next != musicState else {
             // Nothing changed. Re-levelling every snapshot is not free and,
@@ -235,7 +245,7 @@ final class Feedback {
             // level actually moved (BUG-018).
             if gain != lastMusicGain {
                 lastMusicGain = gain
-                audio.setMusic(MusicDirector.asset(for: next), gain: gain, fade: 0)
+                audio.setMusic(track, gain: gain, fade: 0)
             }
             return
         }
@@ -243,7 +253,7 @@ final class Feedback {
         musicState = next
         lastMusicGain = gain
         audioHasMusic = true
-        audio.setMusic(MusicDirector.asset(for: next), gain: gain, fade: fade)
+        audio.setMusic(track, gain: gain, fade: fade)
     }
 
     @ObservationIgnored private var audioHasMusic = false
@@ -253,7 +263,12 @@ final class Feedback {
     /// already playing rather than only on the next one.
     func settingsChanged() {
         let settings = preferences.audio
-        if settings.gain(for: .effects) == 0 { audio.stopAll() }
+        // Effects only. `stopAll` also stopped the music decks, and because
+        // `musicState` and `lastMusicGain` were left untouched the next
+        // refresh saw no change and never restarted them — so turning sound
+        // effects off silenced the music for the rest of the session
+        // (tasks/BUGS.md BUG-025).
+        if settings.gain(for: .effects) == 0 { audio.stopEffects() }
         if settings.gain(for: .music) == 0 {
             audio.stopMusic()
             musicState = .menu

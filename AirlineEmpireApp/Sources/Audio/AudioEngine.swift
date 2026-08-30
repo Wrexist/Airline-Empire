@@ -420,13 +420,21 @@ final class AudioEngine {
         }
     }
 
-    func stopAll() {
-        stopAmbience()
-        stopMusic()
+    /// Silences the one-shot voices and leaves the continuous layers alone.
+    ///
+    /// The three layers have independent settings, so "sound effects off" must
+    /// not reach the music or the ambience bed.
+    func stopEffects() {
         guard isRunning else { return }
         for voice in voices {
             voice.stop()
             voice.play()
         }
+    }
+
+    func stopAll() {
+        stopAmbience()
+        stopMusic()
+        stopEffects()
     }
 }

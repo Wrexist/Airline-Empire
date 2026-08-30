@@ -74,10 +74,19 @@ struct RoutesList: View {
     }
 
     private func sorted(_ cards: [RouteCardModel]) -> [RouteCardModel] {
+        // The prompt says "Airport code or city", and `OpenRouteSheet` in
+        // this same file already matches city — so typing a city name here
+        // used to produce "No matches" for routes plainly on screen.
+        let catalog = controller.catalog
         let filtered = search.isEmpty ? cards : cards.filter { card in
             let needle = search.uppercased()
-            return card.origin.raw.uppercased().contains(needle)
-                || card.destination.raw.uppercased().contains(needle)
+            if card.origin.raw.uppercased().contains(needle)
+                || card.destination.raw.uppercased().contains(needle) {
+                return true
+            }
+            return [card.origin, card.destination].contains { code in
+                catalog?.airport(code)?.city.uppercased().contains(needle) == true
+            }
         }
         switch sort {
         case .profit:
@@ -512,8 +521,12 @@ struct RouteDetailView: View {
                     confirmTitle: "Close route",
                     role: .destructive,
                     action: {
-                        controller.submit(CloseRouteCommand(airline: player, route: routeID))
-                        dismiss()
+                        // Only leave if the route actually closed; the
+                        // rejection alert is useless behind a dismissed sheet.
+                        if controller.submit(
+                            CloseRouteCommand(airline: player, route: routeID)) == nil {
+                            dismiss()
+                        }
                     }
                 ) {
                     Label("Close route", systemImage: "xmark.circle")

@@ -111,6 +111,7 @@ extension GameState {
         let quality = DemandSystem.representativeStarterQuality(
             tuning: catalog.tuning.demand)
 
+        let carrierCounts = carrierCountByMarket()
         var scored: [(MarketOpportunity, Double)] = []
         for origin in origins.sorted(by: { $0.raw < $1.raw }) {
             for code in catalog.orderedAirportCodes where code != origin {
@@ -141,7 +142,7 @@ extension GameState {
                 let pool = outbound + inbound
                 guard pool > 0 else { continue }
 
-                let incumbents = airlinesServing(origin, code)
+                let incumbents = carrierCounts[Route.market(origin, code)] ?? 0
                 let fare = DemandSystem.referenceFare(distanceKm: distance,
                                                       tuning: catalog.tuning.demand)
                 let opportunity = MarketOpportunity(
@@ -192,6 +193,7 @@ extension GameState {
         let quality = DemandSystem.representativeStarterQuality(
             tuning: catalog.tuning.demand)
 
+        let carrierCounts = carrierCountByMarket()
         var out: [MarketOpportunity] = []
         for code in catalog.orderedAirportCodes where code != origin {
             guard let distance = catalog.distanceKm(origin, code) else { continue }
@@ -222,7 +224,7 @@ extension GameState {
                 distanceKm: distance,
                 expectedDailyPassengers: Int((outbound + inbound).rounded()),
                 referenceFare: Money(rounding: fare),
-                incumbents: airlinesServing(origin, code),
+                incumbents: carrierCounts[Route.market(origin, code)] ?? 0,
                 servableNow: servable))
         }
         // Demand first, then reachability, then code — deterministic, and the
@@ -237,6 +239,21 @@ extension GameState {
     }
 
     /// How many airlines already fly a city pair, in either direction.
+    /// Carrier counts for every served market, in one pass over the routes.
+    ///
+    /// `airlinesServing` scans every route per call, and the pair loops below
+    /// call it once per candidate market — so the cost was
+    /// O(origins x airports x routes) on a model that is rebuilt every tick.
+    /// The origin cap bounds the pairs, not the scan inside each one.
+    func carrierCountByMarket() -> [Route.Market: Int] {
+        var carriers: [Route.Market: Set<AirlineID>] = [:]
+        for id in orderedRouteIDs {
+            guard let route = routes[id] else { continue }
+            carriers[route.market, default: []].insert(route.airline)
+        }
+        return carriers.mapValues(\.count)
+    }
+
     public func airlinesServing(_ a: AirportCode, _ b: AirportCode) -> Int {
         var carriers = Set<AirlineID>()
         for id in orderedRouteIDs {

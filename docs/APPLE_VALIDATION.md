@@ -107,7 +107,8 @@ prediction in the audit:
 2. **Network's segmented switch** moves between Routes and Fleet without
    losing a pushed detail screen.
 3. **iPad** shows a sidebar (`NavigationSplitView`), not a phone tab bar, in
-   both orientations and in Slide Over.
+   both orientations and in Slide Over. (§5's older note that the app is
+   `TabView`-only, with no sidebar, describes the state before this cohort.)
 4. **The map**: coastlines draw, home is ringed in amber, the view opens on
    the player's own airport, pinch *and* drag both work (they are composed
    with `SimultaneousGesture` — the old code attached two `.gesture`

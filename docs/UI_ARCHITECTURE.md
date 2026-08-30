@@ -212,10 +212,13 @@ What changed, against the rules above:
   game date stay fixed deliberately; `Format` says why.
 
 **Still not built:** a bound `NavigationPath` for external deep links;
-`AudioService` and any sound at all (this needs sound design, not code —
-haptics exist as inline `sensoryFeedback` gated on the player's setting, which
-is how SwiftUI does this now, and a separate `HapticService` would be
-architecture for its own sake); localization of the strings themselves.
+localization of the strings themselves.
+
+Audio and haptics *are* built — see §9. Feedback is centralized through
+`Feedback.emit` rather than inline `sensoryFeedback`, so a screen cannot bypass
+the player's haptics setting by forgetting to check it (BUG-014). What remains
+is validation, not architecture: nothing in this system has been heard or felt
+on a device (`tasks/TECH_DEBT.md` TD-006).
 
 
 ---

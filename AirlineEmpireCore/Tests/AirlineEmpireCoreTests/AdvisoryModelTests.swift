@@ -351,16 +351,30 @@ struct AdvisoryModelTests {
     /// both must come from MissionMath.
     @Test("Mission progress matches the measurement that resolves the mission")
     func missionProgressMatchesResolution() async throws {
-        let (session, player, catalog) = try await flyingWorld(seed: 77)
-        await session.advance(ticks: Fixtures.ticksPerDay * 200)
+        let (flying, player, catalog) = try await flyingWorld(seed: 77)
+        await flying.advance(ticks: Fixtures.ticksPerDay * 200)
+
+        // The mission is seeded rather than waited for. Whether a tourism boom
+        // happens to fire for this seed inside 200 days is incidental, and the
+        // early return it used to need meant the agreement below — the whole
+        // point of the test — could go unasserted.
+        var seeded = await flying.snapshot
+        let home = try #require(seeded.playerAirline).homeAirport
+        let region = try #require(catalog.airport(home)).region
+        seeded.progression.missions = [
+            Mission(id: 1, sourceEventID: 1,
+                    kind: .boomRush(region: region, targetPassengers: 5_000),
+                    deadline: SimTime(rawMinutes: seeded.clock.now.rawMinutes
+                                      + GameCalendar.minutesPerDay * 30),
+                    reward: Money.dollars(1_000_000), baseline: 0)
+        ]
+        let session = GameSession(state: seeded, systems: GamePipeline.standard(),
+                                  catalog: catalog)
         let state = await session.snapshot
         let airline = try #require(state.playerAirline)
-        guard let model = state.progressionModel(catalog: catalog),
-              let progress = model.missions.first else {
-            // No boom fired in this world; the agreement below is what matters
-            // and is covered by the direct check on MissionMath.
-            return
-        }
+        let model = try #require(state.progressionModel(catalog: catalog))
+        let progress = try #require(model.missions.first)
+
         let expected = MissionMath.progress(of: progress.mission, player: airline,
                                             state: state, catalog: catalog)
         #expect(progress.current == expected)

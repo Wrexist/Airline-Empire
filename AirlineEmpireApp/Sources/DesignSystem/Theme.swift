@@ -118,20 +118,32 @@ enum AEMotion {
 /// motion and removing the acknowledgement entirely would make the setting
 /// cost the player their feedback.
 struct AEPressStyle: ButtonStyle {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.isEnabled) private var isEnabled
-
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(reduceMotion || !configuration.isPressed ? 1 : 0.972)
-            .opacity(pressOpacity(configuration.isPressed))
-            .animation(reduceMotion ? .easeOut(duration: 0.12) : AEMotion.selection,
-                       value: configuration.isPressed)
+        Surface(configuration: configuration)
     }
 
-    private func pressOpacity(_ pressed: Bool) -> Double {
-        if !isEnabled { return 0.45 }
-        return pressed ? 0.78 : 1
+    /// `isEnabled` is read here rather than on the style itself.
+    ///
+    /// A `ButtonStyle` is not a `View`; its environment is captured when the
+    /// style is created and does not track later changes, so a button that
+    /// became disabled kept full opacity. A nested `View` re-reads it.
+    private struct Surface: View {
+        let configuration: ButtonStyleConfiguration
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
+        @Environment(\.isEnabled) private var isEnabled
+
+        var body: some View {
+            configuration.label
+                .scaleEffect(reduceMotion || !configuration.isPressed ? 1 : 0.972)
+                .opacity(opacity)
+                .animation(reduceMotion ? .easeOut(duration: 0.12) : AEMotion.selection,
+                           value: configuration.isPressed)
+        }
+
+        private var opacity: Double {
+            if !isEnabled { return 0.45 }
+            return configuration.isPressed ? 0.78 : 1
+        }
     }
 }
 

@@ -760,7 +760,7 @@ struct EconomyDetailView: View {
         switch index {
         case ..<0.9: "A downturn. Business travel is thin and everyone is discounting."
         case 0.9..<0.98: "Soft. Demand is below a normal year."
-        case 0.98...1.02: "A normal year."
+        case 0.98..<1.02: "A normal year."
         case 1.02...1.1: "Strong. Business demand is above trend."
         default: "A boom. Demand is running well ahead of a normal year."
         }
@@ -866,6 +866,12 @@ struct SettingsView: View {
                     Text("This game was restored from backup #\(generation) — some recent progress may be missing.")
                         .font(.caption)
                         .foregroundStyle(AETheme.caution)
+                }
+                if let failure = controller.quietSaveFailure {
+                    Text("The last automatic save did not complete: \(failure). Use Save now.")
+                        .font(.caption)
+                        .foregroundStyle(AETheme.negative)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Text("The game also saves itself every week of game time and whenever you leave the app.")
                     .font(.caption)

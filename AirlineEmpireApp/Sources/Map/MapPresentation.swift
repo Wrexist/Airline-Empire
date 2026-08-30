@@ -39,6 +39,25 @@ struct MapProjector {
                 y: (point.y - size.height / 2) / worldHeight + center.y)
     }
 
+    /// The world copies the viewport actually shows, as x offsets in map
+    /// space.
+    ///
+    /// `MapCamera.clamp` lets the centre reach x = 0 and x = 1, so at low zoom
+    /// the viewport extends past the single [0, 1] world. Routes have always
+    /// drawn one copy per offset; the geography did not, which left a Pacific
+    /// route stroked across bare ocean with no coastline or grid beneath it.
+    /// Bounded on both sides, because an extreme zoom-out must not ask for
+    /// hundreds of copies of the coastline.
+    var visibleWorldOffsets: [Double] {
+        let left = unproject(CGPoint(x: 0, y: 0)).x
+        let right = unproject(CGPoint(x: size.width, y: 0)).x
+        guard left.isFinite, right.isFinite, right >= left else { return [0] }
+        let first = max(Int(left.rounded(.down)), -2)
+        let last = min(Int(right.rounded(.down)), 2)
+        guard last >= first else { return [0] }
+        return (first...last).map(Double.init)
+    }
+
     /// Whether a projected point is worth drawing, with a margin so a marker
     /// straddling the edge is not clipped mid-symbol.
     func isVisible(_ point: CGPoint, margin: CGFloat = 40) -> Bool {

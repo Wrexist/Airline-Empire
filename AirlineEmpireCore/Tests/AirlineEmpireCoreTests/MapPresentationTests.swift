@@ -277,10 +277,12 @@ struct MapPresentationTests {
     /// something worth looking at.
     @Test("A brand-new airline is offered real markets from home")
     func newAirlineHasOpportunities() async throws {
-        let (session, _, catalog) = try await world()
+        let (session, player, catalog) = try await world()
         let state = await session.snapshot
         let model = state.mapModel(catalog: catalog)
-        #expect(state.routes.isEmpty)
+        // The player's network is what "brand-new" means here; whether the
+        // rivals have flown yet is a different question.
+        #expect(state.routes(of: player).isEmpty)
         #expect(!model.opportunities.isEmpty)
         let home = try #require(model.playerHome)
         for opportunity in model.opportunities {
@@ -381,6 +383,114 @@ struct MapPresentationTests {
         #expect(model.routes.count == state.routes.count)
         #expect(model.routes.allSatisfy { $0.arc.count == 25 })
         #expect(model.flights.allSatisfy { $0.progress >= 0 && $0.progress <= 1 })
+    }
+
+    private func strikeEvent(id: Int64, by airline: AirlineID,
+                             at now: SimTime) -> WorldEvent {
+        var event = WorldEvent(
+            id: id, kind: .strike(airline: airline), beginsAt: now,
+            endsAt: SimTime(rawMinutes: now.rawMinutes
+                            + GameCalendar.minutesPerDay * 3),
+            severity: 0.8)
+        event.hasStarted = true
+        return event
+    }
+
+    /// BUG-022. A strike grounds the airline that is striking. Sharing a hub
+    /// with a struck rival is normal at any large airport, so counting the
+    /// player's routes through those airports made the disruption overlay
+    /// report a problem the player does not have.
+    @Test("A rival's strike does not disrupt the player's routes")
+    func rivalStrikeLeavesThePlayerAlone() async throws {
+        let (session, player, catalog) = try await flyingWorld()
+        var state = await session.snapshot
+        let rival = try #require(state.airlines.values.first { $0.kind == .ai })
+
+        // The two carriers must actually meet, or the test proves nothing: the
+        // shared airport is what used to manufacture the claim. Competitors
+        // get aircraft at setup but open routes on their first decision day,
+        // so the meeting is seeded rather than waited for.
+        let playerRoute = try #require(state.routes(of: player).first)
+        let hub = playerRoute.origin
+        let rivalRoute = Route(
+            id: RouteID(raw: 90_001), airline: rival.id, origin: hub,
+            destination: rival.homeAirport,
+            distanceKm: catalog.distanceKm(hub, rival.homeAirport) ?? 500,
+            dailyRoundTrips: 2, ticketPrice: Money.dollars(200))
+        state.routes[rivalRoute.id] = rivalRoute
+        #expect(state.routes(of: rival.id).contains { $0.servesAirport(hub) })
+
+        state.world.activeEvents = [
+            strikeEvent(id: 9_001, by: rival.id, at: state.clock.now)
+        ]
+        let rivalStrike = try #require(state.mapModel(catalog: catalog).events.first)
+        #expect(rivalStrike.affectedPlayerRoutes.isEmpty)
+        // The airports are still named — the strike is real, it is just not
+        // the player's.
+        #expect(!rivalStrike.affectedAirports.isEmpty)
+
+        // The player's own strike still reaches the player's routes, so the
+        // fix is a distinction and not a blanket silence.
+        state.world.activeEvents = [
+            strikeEvent(id: 9_002, by: player, at: state.clock.now)
+        ]
+        let ownStrike = try #require(state.mapModel(catalog: catalog).events.first)
+        #expect(!ownStrike.affectedPlayerRoutes.isEmpty)
+    }
+
+    /// BUG-023. `heading(from:to:)` has no direction to report for two
+    /// identical coordinates and returns 0, so an aircraft whose progress had
+    /// been clamped to 1 snapped to due north and stayed there.
+    @Test("A flight at the end of its arc still points along the route")
+    func headingSurvivesArrival() async throws {
+        let (_, _, catalog) = try await world()
+        let from = try #require(catalog.airport("STV")).coordinate
+        let to = try #require(catalog.orderedAirportCodes
+            .compactMap { catalog.airport($0) }
+            .first { $0.coordinate.longitude != from.longitude }).coordinate
+
+        let midway = MapMath.heading(alongRouteFrom: from, to: to, at: 0.5)
+        let arrival = MapMath.heading(alongRouteFrom: from, to: to, at: 1)
+        // Not the "no direction" answer, and still recognisably the same
+        // course as the leg before it.
+        #expect(abs(arrival - midway) < 25)
+
+        // Sabotage: the old expression is what the assertion above rules out.
+        let ahead = MapMath.greatCirclePoint(from: from, to: to,
+                                             fraction: min(1, 1 + 0.02))
+        let end = MapMath.greatCirclePoint(from: from, to: to, fraction: 1)
+        #expect(MapMath.heading(from: end, to: ahead) == 0)
+    }
+
+    /// The pair loops ask for incumbent counts once per candidate market, so
+    /// the counts are built in one pass. That pass must agree with the scan it
+    /// replaced.
+    @Test("Pre-computed carrier counts agree with the per-market scan")
+    func carrierCountsAgreeWithTheScan() async throws {
+        let (session, _, catalog) = try await flyingWorld()
+        let state = await session.snapshot
+        let counts = state.carrierCountByMarket()
+
+        // Every market that is actually flown, so the agreement is checked
+        // where it matters rather than only on empty pairs.
+        var served = 0
+        for route in state.orderedRouteIDs.compactMap({ state.routes[$0] }) {
+            let scanned = state.airlinesServing(route.origin, route.destination)
+            #expect(counts[route.market] ?? 0 == scanned)
+            #expect(scanned > 0)
+            served += 1
+        }
+        #expect(served > 0, "the world must fly something")
+
+        // And a handful of unserved pairs, where the answer must be zero on
+        // both sides rather than absent on one.
+        let codes = catalog.orderedAirportCodes
+        for origin in codes.prefix(8) {
+            for destination in codes.suffix(8) where destination != origin {
+                #expect(counts[Route.market(origin, destination)] ?? 0
+                        == state.airlinesServing(origin, destination))
+            }
+        }
     }
 }
 

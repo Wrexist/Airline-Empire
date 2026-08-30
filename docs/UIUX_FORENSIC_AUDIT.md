@@ -28,9 +28,9 @@ worthless:
 
 | Tag | Meaning |
 |---|---|
-| **[code]** | Verified by reading the source. True regardless of device. |
-| **[device]** | A prediction about rendering/behaviour on a device, derived from the code plus how the framework behaves. Needs a screen to confirm. |
-| **[design]** | A gap against this repository's own design documents. |
+| **`[code]`** | Verified by reading the source. True regardless of device. |
+| **`[device]`** | A prediction about rendering/behaviour on a device, derived from the code plus how the framework behaves. Needs a screen to confirm. |
+| **`[design]`** | A gap against this repository's own design documents. |
 
 Priorities are the prompt's: **P0** critical (blocks or breaks the core
 experience), **P1** high (a promised experience is missing or misleading),
@@ -65,35 +65,35 @@ gets to "the player understands, and knows what to do next".
    *More* list. **Finance and World — the money screen and the entire
    progression, competitor, events and settings hub — are one level deeper
    than every other screen, inside a system list that ignores the app's
-   design language entirely.** [device]
+   design language entirely.** `[device]`
 2. **The failure journey has no UI at all.** Core runs a silent
    `daysInsolvent` countdown to administration. The player is shown no cash
    warning, no countdown, no credit deterioration, no emergency toolkit —
    the first notice is a single line of feed text *after* the airline has been
    restructured. `PLAYER_JOURNEY.md` §6 specifies a warning cascade and a
-   recovery toolkit; none of it exists. [code][design]
+   recovery toolkit; none of it exists. `[code]` `[design]`
 3. **A new route shows ¤0 for up to a month.** The route detail screen renders
    `economicsLastMonth` only. `economicsThisMonth` exists in Core and is never
    read. A player who opens their first route and goes looking for "is this
    working?" gets a P&L of all zeros through the exact window in which they
-   are deciding whether this game is any good. [code]
+   are deciding whether this game is any good. `[code]`
 4. **The map is not a map.** `AETheme.mapLand` is defined and never used.
    There are no coastlines, no landmasses, no context — dots and arcs on a flat
    navy rectangle. The design documents call the map "the emotional
-   centerpiece" and "the primary lens". It is currently a scatter plot. [code]
+   centerpiece" and "the primary lens". It is currently a scatter plot. `[code]`
 5. **Failures are silent in the places failure is most likely.** The single
    rejection alert lives on `GameTabs` (`RootView.swift:53`). A rejection
    raised while a sheet is up (the aircraft shop, the loan desk, the route
    sheet — where nearly every rejectable command is issued) has nowhere to
    appear. And `loadGame`'s "Could not load this save" is set on a screen that
-   has no alert at all, so a corrupt save fails **completely silently**. [code]
+   has no alert at all, so a corrupt save fails **completely silently**. `[code]`
 6. **Model vocabulary leaks onto the screen.** Players are shown
    `firstProfitableMonth`, `efficientTurnarounds`, `northAmerica`,
-   `southeastAsia`, `Strike at airline #3`. [code]
+   `southeastAsia`, `Strike at airline #3`. `[code]`
 7. **Time control exists on two of six screens.** Change speed from Routes,
    Fleet, Finance or World and you cannot — you must navigate back to Home or
    Map. Those four screens also never show the date, so the player cannot tell
-   whether the world is even running. [code]
+   whether the world is even running. `[code]`
 
 **The one-sentence verdict.** This is a finished, hardened, trustworthy
 simulation with a client that has been *authored* rather than *designed
@@ -107,7 +107,7 @@ person reading a correct table.
 
 ### 2.1 Architecture
 
-```
+```text
 AirlineEmpireCore (SwiftPM, platform-free, 7,573 loc, 257 tests)
    Foundation  Money · SimTime · GameCalendar · SeededRandom · StableHash
    Domain      Airline · Aircraft · Route · Flight · Ledger · Loan ·
@@ -139,7 +139,7 @@ in §11.
 
 ### 2.2 Navigation structure
 
-```
+```text
 RootView  (crossfaded, 3 states)
 ├── .newGame   → NewGameView            [no game loaded]
 ├── .gameOver  → GameOverView           [progression.gameOver]
@@ -176,7 +176,7 @@ every live flight — four times a second, whether or not anything moved
 
 ### 2.4 Data flow
 
-```
+```text
 GameSession (actor) ──pump(250ms)──► engine.advance ──► GameState
                                               │
      ┌────────────────────────────────────────┴──────────┐
@@ -213,7 +213,7 @@ the right fixes at the right layer.
   `Assets.xcassets` with a single 1024×1024 `AppIcon`.
 - **Settings the player can change:** service tier, and nothing else. There is
   no `@AppStorage`, no `UserDefaults`, no persisted preference of any kind in
-  the app. [code]
+  the app. `[code]`
 
 ---
 
@@ -325,7 +325,7 @@ the right fixes at the right layer.
 | **Actions** | Pan, pinch, tap an airport, speed control |
 | **Core** | `mapModel(catalog:)` — great-circle arcs, interpolated flight positions, closure flags |
 | **Strengths** | The Core model is genuinely good: real great-circle geometry, correct headings, presentation-only interpolation, LOD prominence, player-network marking. Selection is a Core id round-trip. Sensory feedback on selection |
-| **Weaknesses** | **There is no world.** `AETheme.mapLand` is declared and never referenced — no coastlines, no continents, no graticule, no labels except airport codes. Dots on navy. Nothing tells you which dot is home. **You cannot open a route from the map** — `CORE_LOOP` §6 specifies "≤ 4 taps *from the map*: select origin → destination → sheet → confirm"; the callout has no actions at all, so the map is read-only. Pan speed is scaled by `1/zoom` *and* a 0.05 constant (`MapView.swift:58`), so panning at low zoom is extremely slow and the gesture does not track the finger. `MagnifyGesture` and `DragGesture` are attached as two `.gesture` calls, the second of which replaces the first in SwiftUI unless composed — pan and zoom probably cannot both work [device]. No zoom buttons, so zoom is inaccessible to anyone who cannot pinch. Tap radius is a flat 28 pt in screen space with no zoom compensation, so at low zoom several airports overlap inside one tap target. No legend. No route selection — only airports are hit-tested |
+| **Weaknesses** | **There is no world.** `AETheme.mapLand` is declared and never referenced — no coastlines, no continents, no graticule, no labels except airport codes. Dots on navy. Nothing tells you which dot is home. **You cannot open a route from the map** — `CORE_LOOP` §6 specifies "≤ 4 taps *from the map*: select origin → destination → sheet → confirm"; the callout has no actions at all, so the map is read-only. Pan speed is scaled by `1/zoom` *and* a 0.05 constant (`MapView.swift:58`), so panning at low zoom is extremely slow and the gesture does not track the finger. `MagnifyGesture` and `DragGesture` are attached as two `.gesture` calls, the second of which replaces the first in SwiftUI unless composed — pan and zoom probably cannot both work `[device]`. No zoom buttons, so zoom is inaccessible to anyone who cannot pinch. Tap radius is a flat 28 pt in screen space with no zoom compensation, so at low zoom several airports overlap inside one tap target. No legend. No route selection — only airports are hit-tested |
 | **Missing** | Land; a home indicator; route/flight selection; open-route-from-map; a "find my network" or reset-view control; storm/closure overlays; any pin, label or filter |
 
 ### 4.5 `AirportCallout` — map selection panel
@@ -351,7 +351,7 @@ the right fixes at the right layer.
 | **Shows** | Last-month breakdown (revenue, fuel, fees, crew, direct operating profit, passengers); Aircraft card; Operations (load, punctuality, completion, distance, assigned); Fare + market position + four percentage buttons + a frequency stepper; Close route |
 | **Actions** | Assign/unassign aircraft, ±5/±10 % fare, ±1 frequency, close |
 | **Strengths** | This is the explainability pillar realised — the exact figures the economy used, not a UI re-derivation. The ±% buttons are the right control for repricing (2 taps from the board, as specified). The "no aircraft" warning is repeated where it can be acted on |
-| **Weaknesses** | **Zeros for a month** (`economicsThisMonth` exists in Core and is never read). The breakdown is four lines with no proportion — no bar, no share-of-revenue, no per-passenger unit economics. `farePosition` is shown as a percentage of reference with no indication of whether that is good; there is no demand curve, no "at this fare you are capturing ~X of the market", though `DemandSystem.expectedCapturedPassengers` is public and the onboarding already uses it. Today's demand (`demandOutboundToday`, `remainingOutboundToday`) is in the route and never shown. No competitor list for this city pair — the single most useful thing on a route screen in this genre. No trend: one month, no series. **Close route has no confirmation** and sits in a card labelled nothing (the code calls it `dangerZone`; the player sees an unlabelled card with a red button). No `aeScreenBackground()`, so this screen has a different background from every other screen [device]. The `card` parameter of `dangerZone` is unused |
+| **Weaknesses** | **Zeros for a month** (`economicsThisMonth` exists in Core and is never read). The breakdown is four lines with no proportion — no bar, no share-of-revenue, no per-passenger unit economics. `farePosition` is shown as a percentage of reference with no indication of whether that is good; there is no demand curve, no "at this fare you are capturing ~X of the market", though `DemandSystem.expectedCapturedPassengers` is public and the onboarding already uses it. Today's demand (`demandOutboundToday`, `remainingOutboundToday`) is in the route and never shown. No competitor list for this city pair — the single most useful thing on a route screen in this genre. No trend: one month, no series. **Close route has no confirmation** and sits in a card labelled nothing (the code calls it `dangerZone`; the player sees an unlabelled card with a red button). No `aeScreenBackground()`, so this screen has a different background from every other screen `[device]`. The `card` parameter of `dangerZone` is unused |
 
 ### 4.8 `OpenRouteSheet` — open a route
 
@@ -359,7 +359,7 @@ the right fixes at the right layer.
 |---|---|
 | **Shows** | Two 80-item pickers, a frequency stepper, a fare slider with the market reference for the distance |
 | **Strengths** | Pre-fills from an onboarding suggestion. Shows the reference fare live as distance changes — good, and it is Core's own function (BUG-001 made it public rather than duplicating the formula) |
-| **Weaknesses** | **A raw `Form` — it does not look like this game.** Two 80-row pickers with no search, no grouping by region, no "near home", no distance shown in the row. **Nothing is validated until you tap Open**: no range check against your fleet, no runway check, no slot check, no cost preview, no expected demand, no estimated profit — all of which Core can answer *before* the command. **And the sheet dismisses unconditionally on Open** (`RoutesView.swift:322`), so a rejection destroys every input and the player rebuilds the form from scratch. Worse, the rejection alert is attached to `GameTabs`, underneath the sheet, so it may never appear at all [device]. `destination` defaults to a hardcoded `"LNW"`. `CORE_LOOP` §5 — "cost/commitment shown before confirm (no hidden totals)" — is unmet |
+| **Weaknesses** | **A raw `Form` — it does not look like this game.** Two 80-row pickers with no search, no grouping by region, no "near home", no distance shown in the row. **Nothing is validated until you tap Open**: no range check against your fleet, no runway check, no slot check, no cost preview, no expected demand, no estimated profit — all of which Core can answer *before* the command. **And the sheet dismisses unconditionally on Open** (`RoutesView.swift:322`), so a rejection destroys every input and the player rebuilds the form from scratch. Worse, the rejection alert is attached to `GameTabs`, underneath the sheet, so it may never appear at all `[device]`. `destination` defaults to a hardcoded `"LNW"`. `CORE_LOOP` §5 — "cost/commitment shown before confirm (no hidden totals)" — is unmet |
 
 ### 4.9 `FleetView` — the fleet
 
@@ -376,7 +376,7 @@ the right fixes at the right layer.
 |---|---|
 | **Shows** | A used-market age stepper, then 14 types: manufacturer + model, seats/range/burn, a delivery-lead note, and three price buttons (New / Used / Lease); locked types show a "later era" badge |
 | **Strengths** | Era locking is visible rather than hidden. The delivery-lead sentence pre-empts "I bought it, where is it?". Used pricing recomputes live against the age stepper, using Core's own `FleetEconomics` |
-| **Weaknesses** | **Your cash is not on this screen.** No affordability state, no disabled buttons, no "this leaves you with ¤X". **Three one-tap irreversible purchases per row, no confirmation, no summary** — the largest financial commitments in the game are a single unguarded tap, and the rejection (if you cannot afford it) is an alert attached to the view *behind* this sheet [device]. Lease term is hardcoded to 60 months with no control and no display of total commitment. No comparison: 14 types × 7 attributes and no table, sort, or filter. No per-seat economics, no "suitable for your routes", no cabin configuration (`GAME_DESIGN` §4.3). A locked type shows *nothing* — not even its stats or what era unlocks it, so the player cannot plan toward it. `List` in default style, so this sheet also does not look like the game |
+| **Weaknesses** | **Your cash is not on this screen.** No affordability state, no disabled buttons, no "this leaves you with ¤X". **Three one-tap irreversible purchases per row, no confirmation, no summary** — the largest financial commitments in the game are a single unguarded tap, and the rejection (if you cannot afford it) is an alert attached to the view *behind* this sheet `[device]`. Lease term is hardcoded to 60 months with no control and no display of total commitment. No comparison: 14 types × 7 attributes and no table, sort, or filter. No per-seat economics, no "suitable for your routes", no cabin configuration (`GAME_DESIGN` §4.3). A locked type shows *nothing* — not even its stats or what era unlocks it, so the player cannot plan toward it. `List` in default style, so this sheet also does not look like the game |
 
 ### 4.11 `FinanceView` — the money story
 
@@ -385,7 +385,7 @@ the right fixes at the right layer.
 | **Shows** | Cash, net worth, debt, leverage; a monthly net-profit bar chart; the latest statement by category with operating and net profit; loans with rate, term and payment |
 | **Actions** | Borrow; pay off a loan |
 | **Strengths** | Every cent classified and visible. Category names are shared with the digest via `DigestCard.label(for:)`, so one category never has two names. Leverage flags itself downward past 0.6 |
-| **Weaknesses** | **The chart has a moving baseline.** In `MonthlyBars` each column is a `VStack` of `Spacer / positive bar / 1 pt line / negative bar / Spacer` inside an `alignment: .center` `HStack`. The content height varies with the bar, so the centred column puts the zero line at a *different y for every bar*. The chart is not merely unlabelled — it is **geometrically wrong**, and it is the finance screen (UI-007) [code]. No axis, no month labels, no values, no revenue/expense split — 24 bars and no way to know which month any of them is. The statement is one month; the series exists (24 months) and is only ever drawn as those bars. No cash-flow forecast, no runway ("at this burn you have 4 months"), which is the number that actually decides whether a player is in trouble. `RepayLoanCommand(loanIndex:)` is addressed **by array index** from a `ForEach(enumerated())` — if a loan is removed by the simulation between render and tap, the wrong loan is repaid [code]. "Pay off" is unconfirmed and shows no payoff amount |
+| **Weaknesses** | **The chart has a moving baseline.** In `MonthlyBars` each column is a `VStack` of `Spacer / positive bar / 1 pt line / negative bar / Spacer` inside an `alignment: .center` `HStack`. The content height varies with the bar, so the centred column puts the zero line at a *different y for every bar*. The chart is not merely unlabelled — it is **geometrically wrong**, and it is the finance screen (UI-007) `[code]`. No axis, no month labels, no values, no revenue/expense split — 24 bars and no way to know which month any of them is. The statement is one month; the series exists (24 months) and is only ever drawn as those bars. No cash-flow forecast, no runway ("at this burn you have 4 months"), which is the number that actually decides whether a player is in trouble. `RepayLoanCommand(loanIndex:)` is addressed **by array index** from a `ForEach(enumerated())` — if a loan is removed by the simulation between render and tap, the wrong loan is repaid `[code]`. "Pay off" is unconfirmed and shows no payoff amount |
 
 ### 4.12 `LoanSheet` — borrow
 
@@ -408,7 +408,7 @@ the right fixes at the right layer.
 | | |
 |---|---|
 | **Shows** | Active/forecast events, kind, "until day N" |
-| **Weaknesses** | **"until day 4,271"** — a raw `dayIndex` presented to a player who has only ever seen `YYYY-MM-DD`. `Format.date` exists. Regions print as `northAmerica`. `Strike at airline #3` prints an internal id where an airline name belongs. No severity, no magnitude, no map link, and — the important one — **no statement of which of your routes this affects**, which is the only thing that turns an event into a decision (`GAME_DESIGN` §4.12: "every event creates a decision — never a pure toll"). No history of past events. `EmptyStateView` is placed inside a `List`, so the empty state renders as a list row with list insets rather than as a centred card [device] |
+| **Weaknesses** | **"until day 4,271"** — a raw `dayIndex` presented to a player who has only ever seen `YYYY-MM-DD`. `Format.date` exists. Regions print as `northAmerica`. `Strike at airline #3` prints an internal id where an airline name belongs. No severity, no magnitude, no map link, and — the important one — **no statement of which of your routes this affects**, which is the only thing that turns an event into a decision (`GAME_DESIGN` §4.12: "every event creates a decision — never a pure toll"). No history of past events. `EmptyStateView` is placed inside a `List`, so the empty state renders as a list row with list insets rather than as a centred card `[device]` |
 
 ### 4.15 `CompetitorsView`
 
@@ -430,7 +430,7 @@ the right fixes at the right layer.
 |---|---|
 | **Shows** | Service tier picker; five reputation components with progress bars; Save now; Save and quit; a backup-recovery warning |
 | **Strengths** | The reputation breakdown is good and honest. The backup-recovery notice is exactly the right kind of candour |
-| **Weaknesses** | Three unrelated things in one screen with the navigation title "Airline" and the hub label "Service & settings". Service tier shows no cost per passenger and no effect on reputation, so the choice is uninformed. Reputation shows the five numbers but not *why* any of them moved. **"Save now" gives no confirmation** — it calls `saveOnBackground()`, which fires a detached `Task { try? await ... }` and **discards the error**; a failing save is indistinguishable from a succeeding one [code]. There are **no actual settings**: no sound, no haptics, no auto-pause (`CORE_LOOP` §2 specifies settable auto-pause), no confirmations, no units, no accessibility options, no about/credits, no privacy link, no reset |
+| **Weaknesses** | Three unrelated things in one screen with the navigation title "Airline" and the hub label "Service & settings". Service tier shows no cost per passenger and no effect on reputation, so the choice is uninformed. Reputation shows the five numbers but not *why* any of them moved. **"Save now" gives no confirmation** — it calls `saveOnBackground()`, which fires a detached `Task { try? await ... }` and **discards the error**; a failing save is indistinguishable from a succeeding one `[code]`. There are **no actual settings**: no sound, no haptics, no auto-pause (`CORE_LOOP` §2 specifies settable auto-pause), no confirmations, no units, no accessibility options, no about/credits, no privacy link, no reset |
 
 ---
 
@@ -531,7 +531,7 @@ sites, which is exactly the drift `AETheme` exists to prevent.
 — with four exceptions using `.system(size:)`: `RootView:74` (56 pt icon),
 `Components:222` (34 pt icon) and `MapView:153`/`:167` (9 pt and 12 pt map
 labels). The two icons are decorative and defensible; the **9 pt map labels
-are below the 11 pt minimum and do not scale at all** [code].
+are below the 11 pt minimum and do not scale at all** `[code]`.
 
 **Spacing & layout.** A clean 4/8/16/24 grid, used consistently. Corner radius
 is expressed as `AETheme.cornerRadius + 4` at nine call sites, which means the
@@ -546,7 +546,7 @@ ways (tint, ring, checkmark), which is exactly right.
 VoiceOver labels, sensory feedback. It is the model the rest of the app should
 follow. Elsewhere `.buttonStyle(.bordered)` at `.caption` size (Fleet
 unassign, loan pay-off, fare buttons, digest Why?) produces targets that are
-likely under 44 pt [device].
+likely under 44 pt `[device]`.
 
 **Feedback & states.** Loading is a bare `ProgressView()` on five screens with
 no context. Empty states exist and are well made — but only four of them, and
@@ -579,7 +579,7 @@ graticule, no place names.
 **Readability.** Airport LOD (`prominence > 0.35`, or served by the player, or
 zoom > 3) and route LOD (rival lines thin below zoom 3) are sensible.
 Airport codes draw at 9 pt with no collision avoidance — at zoom > 2.5 in
-Europe, 26 airports will overlap into mush [device].
+Europe, 26 airports will overlap into mush `[device]`.
 
 **Markers.** Radius `2 + prominence·3 + 1.5` gives a 2–6.5 pt dot. That is
 below every touch and legibility guideline. Closed airports turn red; there is
@@ -676,7 +676,7 @@ change and on `quitToMenu`. One real defect: `saveOnBackground()` fires
 *and* when the player explicitly taps "Save now". `GameSession.lastSaveError`
 exists in Core and is never read by the app.
 
-**Correctness defects found by reading** [code]:
+**Correctness defects found by reading** `[code]`:
 - `MonthlyBars` zero-line moves per bar (§4.11).
 - `RepayLoanCommand` addressed by array index across a render boundary (§4.11).
 - The rejection alert is unreachable from sheets and absent from `NewGameView`,
@@ -686,7 +686,7 @@ exists in Core and is never read by the app.
   nothing (`GameController.swift:34`, `:51`).
 - `MapScreen` attaches two `.gesture` modifiers; the later one replaces the
   earlier unless composed with `.simultaneously` — pan and zoom likely cannot
-  coexist [device].
+  coexist `[device]`.
 
 **Accessibility readiness.** Better than most codebases at this stage:
 `accessibilityLabel`/`Hint`/`AddTraits(.isHeader)`/`accessibilityElement(children:
@@ -734,7 +734,7 @@ touches every one of the 12 app files.
 
 ### P0 — critical
 
-**UI-001 · The tab bar overflows on iPhone; Finance and World fall into *More*** [device]
+**UI-001 · The tab bar overflows on iPhone; Finance and World fall into *More*** `[device]`
 `RootView.swift:38–51` declares six tabs. iOS shows four plus an automatic
 *More* tab when a tab bar has more than five items. That buries the finance
 screen — the survival system — and the entire World hub (events, competitors,
@@ -746,7 +746,7 @@ game is through it.
 prominent card, or merge Routes+Fleet into a single "Network" tab; move
 save/quit out of the World hub entirely.
 
-**UI-002 · A new route reports ¤0 for up to a full game month** [code]
+**UI-002 · A new route reports ¤0 for up to a full game month** `[code]`
 `RoutesView.swift:118–133` and `RouteRow` render `economicsLastMonth` only.
 `Route.economicsThisMonth` exists, is maintained by the economy every tick, and
 is never read by any screen. A player who opens their first route and asks
@@ -756,7 +756,7 @@ attention. `CORE_LOOP` §5 promises consequence "within days".
 *Fix direction:* lead with month-to-date, show last month beside it as the
 comparable.
 
-**UI-003 · The first flight is silent** [code]
+**UI-003 · The first flight is silent** `[code]`
 `EventRow.description` (`DashboardView.swift:354–393`) has no case for
 `flightDeparted` or `flightArrived`; they fall to `default: nil` and render
 nothing. `PLAYER_JOURNEY` §1 step 3 — *"the feed narrates: AE001 departed —
@@ -779,7 +779,7 @@ anyone** — a corrupt save fails in total silence.
 each sheet); sheets should stay open and show the rejection inline until the
 command is accepted.
 
-**UI-005 · The failure journey has no interface at all** [code][design]
+**UI-005 · The failure journey has no interface at all** `[code]` `[design]`
 `SolvencySystem` runs a daily countdown: `daysInsolvent` accumulates below
 `overdraftFloorCents`, and at `administrationGraceDays` the airline is
 restructured — aircraft fire-sold, reputation scarred, loans haircut. Neither
@@ -796,14 +796,14 @@ sold and what was forgiven; a triage view.
 
 ### P1 — high
 
-**UI-006 · Irreversible money decisions have no confirmation and no cost context** [code]
+**UI-006 · Irreversible money decisions have no confirmation and no cost context** `[code]`
 Buy / Lease in the aircraft shop, Sell / Return by swipe in Fleet, Close route,
 Start capability (¤12 M), Pay off loan — all single unguarded taps. The
 aircraft shop never shows your cash balance. `CORE_LOOP` §5: "cost/commitment
 shown before confirm (no hidden totals)". There are no disabled states anywhere
 in the app, so nothing signals affordability before the tap.
 
-**UI-007 · The finance chart's zero line moves from bar to bar** [code]
+**UI-007 · The finance chart's zero line moves from bar to bar** `[code]`
 `Components.swift:180–210`. Each column is `Spacer / +bar / line / −bar /
 Spacer` inside a centre-aligned `HStack`, so column content height varies with
 the bar and the centred column places the baseline at a different y for every
@@ -811,7 +811,7 @@ month. The chart is not just unlabelled — it misrepresents the data, on the
 finance screen, in a game about money. No axis, no month labels, no values.
 *Fix direction:* Swift Charts, as `UI_ARCHITECTURE` §2 already specifies.
 
-**UI-008 · Progression is written in model vocabulary and hides its own rules** [code]
+**UI-008 · Progression is written in model vocabulary and hides its own rules** `[code]`
 Capabilities render `code.rawValue` (`efficientTurnarounds`) with no
 description, cost, duration or progress, though `CapabilityProgram` carries
 `cost`, `startedAt` and `completesAt`. Milestones and achievements render as
@@ -819,7 +819,7 @@ raw codes (`firstProfitableMonth`, `weatherProof`). **No screen states what the
 next era requires**, though every threshold is in `ProgressionTuning` — the
 game's macro arc is invisible. Missions show no progress against target.
 
-**UI-009 · The map has no world, and no actions** [code]
+**UI-009 · The map has no world, and no actions** `[code]`
 `AETheme.mapLand` is declared and never used: no coastlines, no landmasses, no
 context. Nothing marks home. Tapping an airport yields facts and no actions, so
 `CORE_LOOP` §6's "open a route ≤ 4 taps from the map" is impossible. Flights
@@ -827,13 +827,13 @@ and routes are not selectable. `GAME_DESIGN` pillar 4 — "the network is the
 hero", "progress is visible geography" — is unmet by the screen that exists to
 carry it.
 
-**UI-010 · Time control and the date exist on two of six screens** [code]
+**UI-010 · Time control and the date exist on two of six screens** `[code]`
 `SpeedControl` appears on Dashboard and Map only. From Routes, Fleet, Finance
 or World the player cannot pause, change speed, or skip to morning, and no
 screen shows the date or whether the simulation is running. `CORE_LOOP` §6:
 "nothing routine requires visiting more than one screen".
 
-**UI-011 · Events, causes and consequences are never connected** [code]
+**UI-011 · Events, causes and consequences are never connected** `[code]`
 `flightDelayed` renders "Flight delayed 12 min" — no route, no aircraft, no
 reason. World events name a region and a raw day index but never say which of
 *your* routes they touch. There are no competitor-action events at all, so
@@ -841,20 +841,20 @@ reason. World events name a region and a raw day index but never say which of
 18 %") has no mechanism behind it. Nothing in the feed is tappable, and there
 is no `NavigationPath`, so deep links are structurally impossible.
 
-**UI-012 · Save and load report nothing** [code]
+**UI-012 · Save and load report nothing** `[code]`
 `saveOnBackground()` discards the result (`GameController.swift:98`); "Save
 now" therefore cannot fail visibly, and cannot succeed visibly either.
 `GameSession.lastSaveError` exists and is never read. Load failure is silent
 (see UI-004). `startNewGame`'s failure paths are `assertionFailure`, a release
 no-op — a content-load failure yields a dead button.
 
-**UI-013 · iPad ships with a phone layout** [code]
+**UI-013 · iPad ships with a phone layout** `[code]`
 `TARGETED_DEVICE_FAMILY: "1,2"` with `TabView` only. No `NavigationSplitView`,
 no `horizontalSizeClass` anywhere. `UI_ARCHITECTURE` §2 specifies an adaptive
 shell with a sidebar on iPad. A route list at iPad width will be one row of
 text across 1,000 pt.
 
-**UI-014 · No celebration, no drama, no sound** [code]
+**UI-014 · No celebration, no drama, no sound** `[code]`
 Milestones, era advances, aircraft deliveries, first profitable months and
 mission completions all arrive as one grey feed line. No haptics beyond three
 selection taps; no audio at all; no `HapticService`/`AudioService` as
@@ -1215,11 +1215,13 @@ change. Nine tests.
   All numeric formatting is `FormatStyle` and locale-aware now. The `¤` sign
   and the ISO game date stay fixed on purpose, and `Format` says why.
 - **`HapticService` / `AudioService`** as `SimEvent`-keyed services
-  (`UI_ARCHITECTURE` §4). Haptics exist, as inline `sensoryFeedback` gated on
-  the player's setting — which is how SwiftUI does this now, and a separate
-  service would be architecture for its own sake. Audio genuinely does not
-  exist: it needs sound design and actual audio assets, neither of which is a
-  code change.
+  (`UI_ARCHITECTURE` §4). Both now exist, as one service rather than two:
+  `AudioDirector` in Core maps `SimEventKind` to cues, and `Feedback` in the
+  app plays them and drives the haptics — so a screen can no longer bypass the
+  player's setting by forgetting to check it (BUG-014). What is missing is not
+  code or assets but validation: none of it has been heard or felt on a device
+  (TD-006), and the four music beds are generated rather than composed
+  (TD-008).
 - **Hub connections** remain descoped to the first content update (D-010).
 
 ### What still needs a device

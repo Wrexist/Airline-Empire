@@ -206,6 +206,21 @@ struct MonthlyBars: View {
         }
     }
 
+    /// About six evenly spaced months, chosen rather than requested.
+    private var axisLabels: [String] {
+        let all = series
+        guard !all.isEmpty else { return [] }
+        let stride = max(1, (all.count + 5) / 6)
+        return all.enumerated()
+            .filter { $0.offset % stride == 0 }
+            .map(\.element.label)
+    }
+
+    private var shortLabels: [String: String] {
+        Dictionary(series.map { ($0.label, $0.shortLabel) },
+                   uniquingKeysWith: { first, _ in first })
+    }
+
     var body: some View {
         Chart(series) { point in
             BarMark(
@@ -229,12 +244,16 @@ struct MonthlyBars: View {
             }
         }
         .chartXAxis {
-            // Twenty-four labels do not fit on a phone; every third is enough
-            // to read the shape and place a month.
-            AxisMarks(values: .automatic(desiredCount: 6)) { value in
+            // Twenty-four labels do not fit on a phone, so about six are
+            // chosen here. `.automatic(desiredCount:)` is a hint the
+            // categorical axis is free to ignore, and it was — while the
+            // label itself rendered the last two characters of "2031-04",
+            // which is the month *number*. `shortLabel` was computed for this
+            // and never reached the chart.
+            AxisMarks(values: axisLabels) { value in
                 AxisValueLabel {
                     if let label = value.as(String.self) {
-                        Text(String(label.suffix(2)))
+                        Text(shortLabels[label] ?? label)
                             .font(.caption2)
                     }
                 }
