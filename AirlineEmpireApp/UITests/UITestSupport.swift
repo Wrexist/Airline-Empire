@@ -390,12 +390,34 @@ class AEUITestCase: XCTestCase {
             // The sheet dismisses itself on a successful lease; Done is the
             // fallback for a build where it does not.
             tapIfPresent(app.buttons["Done"])
-            if market.waitForNonExistence(timeout: 6) { return true }
+            if market.waitForNonExistence(timeout: 6) {
+                // A closed market is NOT the success signal — run 62 closed
+                // it empty-handed (the dismiss tap below used to aim at a
+                // screen coordinate and grazed Done) and three tests chased
+                // a lease that never happened. The agreement is an aircraft
+                // on the fleet board.
+                if app.descendants(matching: .any)
+                    .matching(identifier: "ae-fleet-row").firstMatch
+                    .waitForExistence(timeout: 5) { return true }
+                capture(Self.logPrefix + "MARKET-CLOSED-WITHOUT-LEASE-\(attempt)")
+                let browse = app.buttons["Browse the market"]
+                guard browse.waitForExistence(timeout: 5) else { break }
+                browse.tap()
+                _ = scrollUntil(lease, "the Lease action, reopened market")
+                continue
+            }
 
             // Still here: the wrong dialog is open, or nothing happened.
-            // Photograph it, tap outside any popover, go again.
+            // Photograph it, then dismiss any popover by tapping the sheet's
+            // own title — inert when nothing is presented, and safely far
+            // from Done, which a coordinate tap near the top edge once hit.
             capture(Self.logPrefix + "LEASE-ATTEMPT-\(attempt)")
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.07)).tap()
+            if market.exists {
+                // A coordinate tap at the title's own centre: lands on the
+                // popover's scrim when one is up (dismissing it), and never
+                // throws over hittability the way element.tap() would.
+                market.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            }
             Thread.sleep(forTimeInterval: 1)
         }
 
@@ -478,10 +500,35 @@ class AEUITestCase: XCTestCase {
     /// appeared" over a screenshot showing a perfectly healthy shell. The
     /// fallback is scoped as a plain button lookup because the sidebar rows
     /// expose themselves as buttons named by their tab title.
-    func tabButton(_ title: String) -> XCUIElement {
-        let tab = app.tabBars.buttons[title]
-        if tab.exists { return tab }
-        return app.buttons[title].firstMatch
+    /// The control that opens `title`'s section in the current snapshot, or
+    /// nil if none of its shapes exist yet.
+    ///
+    /// Run 62 taught the second lesson here: the iPad's sidebar rows are not
+    /// `buttons` either — a frame showing a perfectly healthy sidebar failed
+    /// "the Home tab never appeared" because only bar-buttons and plain
+    /// buttons were tried. Sidebar rows surface as cells (with the title as
+    /// a static text), so the ladder now walks tab bar → button → cell →
+    /// bare static text, and callers poll rather than binding to whichever
+    /// rung happened to be empty at first evaluation.
+    func tabButton(_ title: String) -> XCUIElement? {
+        let candidates = [
+            app.tabBars.buttons[title],
+            app.buttons[title].firstMatch,
+            app.cells.containing(.staticText, identifier: title).firstMatch,
+            app.staticTexts[title].firstMatch,
+        ]
+        for candidate in candidates where candidate.exists { return candidate }
+        return nil
+    }
+
+    /// Poll for the section control across all its shapes.
+    func waitForTab(_ title: String, timeout: TimeInterval) -> XCUIElement? {
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if let found = tabButton(title) { return found }
+            Thread.sleep(forTimeInterval: 0.5)
+        } while Date() < deadline
+        return nil
     }
 
     /// Found an airline and arrive in the shell. Every journey starts here.
@@ -489,19 +536,25 @@ class AEUITestCase: XCTestCase {
     func foundAirline() -> Bool {
         // A relaunch inside one test may come back to a shell that is already
         // playing; that is a success, not a missing button.
-        if tabButton("Home").waitForExistence(timeout: 3) { return true }
+        if waitForTab("Home", timeout: 3) != nil { return true }
         let found = app.buttons["Found Skyline Air"]
         guard require(found, "the Found button on the new-game screen") else {
             return false
         }
         found.tap()
-        return require(tabButton("Home"), "the Home tab (bar or sidebar) after founding")
+        if waitForTab("Home", timeout: 25) != nil { return true }
+        capture(Self.logPrefix + "MISSING-the shell after founding")
+        XCTFail("No Home control (tab bar, button, sidebar cell or text) appeared after founding. Screenshot attached.")
+        return false
     }
 
     /// Switch to a tab by its title.
     func openTab(_ title: String) {
-        let button = tabButton(title)
-        require(button, "the \(title) tab")
+        guard let button = waitForTab(title, timeout: 15) else {
+            capture(Self.logPrefix + "MISSING-the \(title) tab")
+            XCTFail("The \(title) tab never appeared in any shape. Screenshot attached.")
+            return
+        }
         button.tap()
     }
 }

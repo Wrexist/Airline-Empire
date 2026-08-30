@@ -534,8 +534,11 @@ final class PlayerJourneyUITests: AEUITestCase {
 
         // Navigation failure is the worst outcome: every tab must survive.
         for tab in ["Map", "Network", "Finance", "World", "Home"] {
-            let button = tabButton(tab)
-            require(button, "the \(tab) tab at accessibility size")
+            guard let button = waitForTab(tab, timeout: 10) else {
+                capture(Self.logPrefix + "MISSING-\(tab)-at-accessibility-size")
+                XCTFail("The \(tab) tab vanished at accessibility size. Screenshot attached.")
+                continue
+            }
             XCTAssertTrue(button.isHittable,
                           "The \(tab) tab is not tappable at accessibility size")
         }
