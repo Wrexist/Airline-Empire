@@ -873,4 +873,8 @@ available space — applied to the Routes and Fleet empty states.
 **Regression cover:** none yet, and worth being honest about. XCUITest can
 assert an element's frame, so "the picker sits in the top quarter of the
 screen" is expressible; it is not written. Recorded as TD-019.
-**Status:** FIXED 2026-08-30, pending visual re-confirmation.
+**Status:** FIXED 2026-08-30, **visually confirmed**. The re-run screenshot
+shows the picker directly under the navigation title with the card immediately
+below it. Both gaps closed with the one change, which corroborates the
+single-cause diagnosis — had they been two problems, the fix would have closed
+one.

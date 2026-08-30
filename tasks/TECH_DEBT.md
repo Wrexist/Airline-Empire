@@ -315,3 +315,43 @@ same as testing the app.
 already known: every code in `Rejections.present` is one Core emits; every
 `NavigationLink(value:)` type is declared by its host stack (TD-013); and
 `Vocab` is total over each Core enum it words. None needs a simulator.
+
+---
+
+## TD-019 — Layout has no regression cover, on the one screen now known to break
+**Severity:** P2.
+**Introduced:** named 2026-08-30 (AE-031) alongside BUG-035.
+**Description:** BUG-035 put a third of the Network tab into dead space and
+floated its primary control mid-screen. It compiled, it parsed, 412 Core tests
+passed, and the UI smoke test passed — because every one of those checks asks
+whether an element *exists*, and none asks *where it is*.
+
+XCUITest can answer that: `element.frame` is available, so "the section picker
+sits in the top quarter of the screen" is directly expressible. It is not
+written.
+
+The general shape is worth stating, because it is the third distinct class of
+defect this project has met that no compiler can see (after inert navigation
+links and mismatched rejection codes): **a control that exists, is hittable,
+and is in the wrong place.**
+**Resolution path:** frame assertions on the handful of positions that carry
+meaning — the section picker under the nav bar, the tab bar at the bottom, a
+primary action inside the safe area. Not a general layout snapshot: those fail
+on every deliberate change and get disabled within a month.
+
+---
+
+## TD-020 — The screenshot bridge is a log scrape
+**Severity:** P3.
+**Introduced:** 2026-08-30 (AE-031).
+**Description:** CI base64s downscaled screenshots into the job log so the
+agent doing the interface work can see them; artifacts need a credential it
+does not have. It works — it found BUG-035 within minutes — but it is a
+scrape: the log carries roughly 200 lines per screen, so only the last two or
+three shots survive a practical `tail`, and adding screens quietly pushes the
+earlier ones out of reach.
+**Resolution path:** cap it deliberately rather than by accident — emit a
+named subset (one per screen under review) at a smaller width, and let the
+artifact remain the full-resolution record. Or, better, have the job fail the
+build on a frame assertion (TD-019) so the screenshots become evidence for a
+human rather than the primary check.

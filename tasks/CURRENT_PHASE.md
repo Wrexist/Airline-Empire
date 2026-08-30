@@ -1,5 +1,46 @@
 # Current Phase
 
+**AE-031 — The app runs. (Premium game feel, phase 1.)**
+2026-08-30.
+
+The brief asked for immersion and polish. The audit said the binding
+constraint was not design: four consecutive phases had shipped interface work
+and every one ended "authored, not observed", because `project.yml` declared a
+single target and CI built against `generic/platform=iOS Simulator`, which
+never boots anything.
+
+So this phase built the missing thing. `AirlineEmpireUITests` is the first
+target that runs the app rather than compiling it; CI boots a real simulator,
+drives the first minute of the game, and keeps a screenshot of every step.
+Because artifacts need a credential the agent doing the work does not have,
+the screenshots are also base64'd into the job log, downscaled.
+
+**It paid for itself immediately.** The first screenshot showed BUG-035: a
+third of the Network tab was dead space and the Routes/Fleet picker floated
+40% down the screen, in the state every new game starts in. One SwiftUI
+default caused both gaps — a compact empty state centres in a parent it does
+not fill, and `safeAreaInset` then anchors to the content's top edge rather
+than the container's. Fixed and re-confirmed by screenshot.
+
+It survived four UI phases because it appears *only* in the empty state: a
+list fills its parent and has nowhere to float to, so every screen anybody
+would think to check looked right.
+
+Also now visually validated: AE-029's market work renders as intended —
+aircraft roles, seat-efficiency bands, the trade sentence, the era-lock
+explanation.
+
+**Not done, and owed:** the full screen-by-screen audit covers only what has
+been seen. Home, Map, Finance and World are proven to load and render content
+but have not been looked at. The app has been observed in exactly one
+appearance — light — which is not the one `DESIGN_SYSTEM.md` is written about.
+See `docs/UI_FULL_AUDIT.md`, which marks every finding by whether it was
+observed, asserted, or merely read.
+
+---
+
+# Previous Phase
+
 **AE-029 — Fleet and aircraft experience (MASTER PROMPT 5).**
 2026-08-30.
 

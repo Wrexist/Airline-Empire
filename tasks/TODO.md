@@ -361,3 +361,26 @@ the fleet; bar appears past eight aircraft; empty results offer the way back.
 - **TD-014/TD-015** — artwork does not distinguish within a class, and the
   fleet row still uses an SF Symbol rather than the silhouette. Both need a
   device to judge.
+
+---
+
+## AE-031 — The app runs (MASTER PROMPT: premium game feel)
+
+### Done
+- `AirlineEmpireUITests`: first target that runs the app. Launch, found an
+  airline, all five tabs, market reachable. 3 tests.
+- CI boots a real simulator (resolved at runtime, not hardcoded), keeps the
+  result bundle, and prints downscaled screenshots into the job log.
+- BUG-035 found by screenshot, root-caused, fixed, re-confirmed by screenshot.
+- `docs/UI_FULL_AUDIT.md` — first audit here written against screens, with
+  every finding marked observed / asserted / read.
+
+### Next, in order
+1. **Dark appearance.** The app has been seen only in light. One line in the
+   UI test. Highest-value next observation, because the design system is
+   written about an appearance nobody has verified exists.
+2. **Frame assertions** (TD-019) so BUG-035's class fails CI rather than
+   waiting for someone to look.
+3. **Extend the journey**: buy an aircraft, open a route, assign it. That is
+   where BUG-032 lived and it is still undriven.
+4. Home, Map, Finance, World — observe, then audit.
