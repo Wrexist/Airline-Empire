@@ -68,14 +68,17 @@ final class PlayerJourneyUITests: AEUITestCase {
         // Reaching gameplay is the check: appearance only varies once the
         // game is running, because the new-game screen is pinned to dark.
         guard reachGameplay(in: .dark) else { return }
-        checkpoint("50-dark-home")
+        // Named by how the appearance was actually obtained, so a screenshot
+        // can never imply more than it proved.
+        let route = appearanceRoute.rawValue
+        checkpoint("50-\(route)-home")
 
         let tabs = ["Map", "Network", "Finance", "World"]
         for (index, tab) in tabs.enumerated() {
             openTab(tab)
             XCTAssertTrue(app.staticTexts.count > 0 || app.otherElements.count > 0,
                           "\(tab) rendered nothing in dark appearance")
-            checkpoint("5\(index + 1)-dark-\(tab.lowercased())")
+            checkpoint("5\(index + 1)-\(route)-\(tab.lowercased())")
         }
     }
 
@@ -131,7 +134,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         // reported the app had failed.
         let leaseButton = app.buttons
             .matching(identifier: "ae-market-lease").firstMatch
-        require(leaseButton, "a Lease action in the market")
+        guard scrollUntil(leaseButton, "a Lease action in the market") else { return }
         leaseButton.tap()
 
         // Confirmed, because the sums involved should never move on one tap.
@@ -216,7 +219,7 @@ final class PlayerJourneyUITests: AEUITestCase {
             eraFilter.tap()
         }
         let lease = app.buttons.matching(identifier: "ae-market-lease").firstMatch
-        require(lease, "a Lease action")
+        guard scrollUntil(lease, "a Lease action") else { return }
         lease.tap()
         let confirmLease = app.buttons["Lease"]
         if confirmLease.waitForExistence(timeout: 5) { confirmLease.tap() }

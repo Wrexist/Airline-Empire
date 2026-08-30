@@ -60,6 +60,19 @@ class AEUITestCase: XCTestCase {
         app.launch()
     }
 
+    /// How the appearance under test was actually achieved. Screenshots are
+    /// named with it, so an image can never imply more than it proved.
+    enum AppearanceRoute: String {
+        /// The simulator itself was switched. What a player would see.
+        case system = "dark"
+        /// The simulator refused, so the app was asked to pin the scheme.
+        /// Proves the app renders correctly in dark; does not prove the app
+        /// follows the system setting.
+        case forced = "darkforced"
+    }
+
+    private(set) var appearanceRoute: AppearanceRoute = .system
+
     /// Reach the game shell in a named appearance, having proved the
     /// appearance actually took — and retrying the launch if it did not.
     ///
@@ -77,9 +90,14 @@ class AEUITestCase: XCTestCase {
     /// animation with no completion to wait on: a fixed sleep either wastes
     /// time or loses the race, and re-launching until the app agrees loses
     /// neither.
+    ///
+    /// If the simulator will not switch at all — which is what the CI runner
+    /// does — it falls back to asking the app to pin the scheme, and records
+    /// that in `appearanceRoute` so no screenshot can overstate what it shows.
     @discardableResult
     func reachGameplay(in appearance: XCUIDevice.Appearance) -> Bool {
         let wanted = appearance == .dark ? "dark" : "light"
+        appearanceRoute = .system
         for attempt in 1...3 {
             applyAppearance(appearance, settle: attempt == 1 ? 3 : 6)
             app.launch()
@@ -90,12 +108,42 @@ class AEUITestCase: XCTestCase {
             app.terminate()
             Self.currentAppearance = nil
         }
+
+        // The simulator would not switch. Three launches at up to six seconds
+        // of settle is past the point where waiting longer is the answer.
+        //
+        // Rather than lose dark coverage entirely, ask the app to pin the
+        // scheme itself, and record in every screenshot name that this is how
+        // it was obtained. The two are not the same claim: this proves the
+        // app *renders* correctly in dark, and says nothing about whether it
+        // follows the system setting. Naming the route is what keeps the
+        // weaker claim from being read as the stronger one — which is the
+        // whole failure this guard exists to prevent.
+        guard appearance == .dark else {
+            capture(Self.logPrefix + "APPEARANCE-MISMATCH")
+            XCTFail("""
+                Asked for light appearance and the shell reports \
+                \(reportedAppearance() ?? "nothing") after three launches.
+                """)
+            return false
+        }
+        app.terminate()
+        app.launchArguments.append("-AEUITestDarkAppearance")
+        app.launch()
+        guard foundAirline() else { return false }
+        if rendersAppearance(.dark) {
+            appearanceRoute = .forced
+            return true
+        }
+
         capture(Self.logPrefix + "APPEARANCE-MISMATCH")
         let reported = reportedAppearance() ?? "no appearance at all"
         XCTFail("""
-            Asked for \(wanted) appearance; after three launches the game \
-            shell still reports \(reported). Screenshots from this test would \
-            be mislabelled, so it fails rather than producing false evidence.
+            Asked for \(wanted) appearance; the simulator would not switch \
+            after three launches, and the app's own override did not take \
+            either — the shell still reports \(reported). Screenshots from \
+            this test would be mislabelled, so it fails rather than producing \
+            false evidence.
             """)
         return false
     }
@@ -138,6 +186,28 @@ class AEUITestCase: XCTestCase {
             XCTFail("\(what) never appeared. Screenshot attached.")
         }
         return found
+    }
+
+    /// Wait for an element, scrolling if it is not on screen yet.
+    ///
+    /// SwiftUI only realises the rows a scroll view has actually laid out, so
+    /// a control below the fold is not "not yet visible" to XCUITest — it does
+    /// not exist. The aircraft market is the case that proved it: its header
+    /// is a cash line, a sort picker, an era switch and two steppers, which is
+    /// most of a phone screen before the first aircraft card begins. A query
+    /// for the Lease button found nothing and the test reported the app had no
+    /// Lease action, which was not true.
+    @discardableResult
+    func scrollUntil(_ element: XCUIElement, _ what: String,
+                     swipes: Int = 8) -> Bool {
+        for _ in 0..<swipes {
+            if element.exists { return true }
+            app.swipeUp()
+        }
+        if element.exists { return true }
+        capture(Self.logPrefix + "MISSING-\(what)")
+        XCTFail("\(what) never appeared, after scrolling \(swipes) times.")
+        return false
     }
 
     // MARK: Layout assertions (TD-019)

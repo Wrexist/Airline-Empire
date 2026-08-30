@@ -40,6 +40,26 @@ struct RootView: View {
             }
         }
         .aeAnimation(AEMotion.screen, value: state)
+        // A UI-test affordance, and deliberately a narrow one.
+        //
+        // `XCUIDevice.shared.appearance = .dark` is the faithful way to test
+        // dark mode — it switches the simulator, so what is captured is what a
+        // player changing Appearance in Settings would get. On the CI runner
+        // it does not take: three launches with up to six seconds of settle
+        // each, and the shell still renders light.
+        //
+        // The choice was then between no dark coverage at all and coverage of
+        // a slightly weaker claim. This is the weaker claim: it proves the app
+        // *renders* correctly in dark, and says nothing about whether it
+        // follows the system setting. `AEUITestCase` names every screenshot
+        // taken this way `darkforced` rather than `dark`, so the weaker
+        // evidence can never be read as the stronger.
+        //
+        // Reads a launch argument, not a build flag: the shipping binary is
+        // the one under test, and no player will ever pass this.
+        .preferredColorScheme(
+            ProcessInfo.processInfo.arguments.contains("-AEUITestDarkAppearance")
+                ? .dark : nil)
         .accessibilityIdentifier(appearanceIdentifier)
         // Every presentation the whole app can raise lives here, above the
         // three screen states — a rejection alert mounted on the tab view
