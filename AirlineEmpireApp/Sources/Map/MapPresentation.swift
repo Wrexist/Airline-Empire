@@ -307,9 +307,14 @@ enum MapLabelLayout {
             // any box overlapping one already placed — so a dense corner
             // quietly falls back to codes while an empty one keeps its cities,
             // with no threshold to guess at.
+            // Fullest first: the airport's own name with its city —
+            // "Sjövik (Stockholm)" — which is how people actually say an
+            // airport. The placer's fit rule degrades a crowded corner to
+            // the bare city and then the code, so density still self-tunes.
             let candidates = level == .world || airport.city.isEmpty
                 ? [airport.code.raw]
-                : [airport.city, airport.code.raw]
+                : [Vocab.airportDisplay(name: airport.name, city: airport.city),
+                   airport.city, airport.code.raw]
 
             var chosen: (text: String, box: CGRect)?
             for text in candidates {

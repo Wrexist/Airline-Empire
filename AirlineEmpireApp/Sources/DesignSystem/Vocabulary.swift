@@ -574,4 +574,28 @@ extension Vocab {
         case .leased: "Leased"
         }
     }
+
+    /// An airport, said the way people say airports: "Sjövik (Stockholm)" —
+    /// the field's own name first, the city it serves in brackets, the way a
+    /// traveller says "Arlanda" and clarifies with "(Stockholm)".
+    ///
+    /// The catalog names airports "City Fieldname" ("Stockholm Sjövik"), so
+    /// the leading city is stripped rather than repeated. An airport whose
+    /// name does not follow that shape keeps its full name; one with no
+    /// distinct field name is just its city.
+    static func airportDisplay(name: String, city: String) -> String {
+        var field = name
+        if !city.isEmpty, name.hasPrefix(city),
+           name.count > city.count {
+            field = String(name.dropFirst(city.count))
+                .trimmingCharacters(in: .whitespaces)
+        }
+        if field.isEmpty || field == city { return city }
+        if city.isEmpty { return field }
+        return "\(field) (\(city))"
+    }
+
+    static func airportDisplay(_ spec: AirportSpec) -> String {
+        airportDisplay(name: spec.name, city: spec.city)
+    }
 }

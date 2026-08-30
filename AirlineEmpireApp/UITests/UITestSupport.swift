@@ -438,6 +438,7 @@ class AEUITestCase: XCTestCase {
 
         // CAUSALITY: the commit bar only exists once a destination is
         // actually selected, so its appearance is proof the tap took.
+        checkpoint("06-route-sheet-destination-picked")
         let open = app.buttons.matching(identifier: "ae-route-open").firstMatch
         guard require(open, "the commit bar after picking a destination",
                       timeout: 8) else { return false }

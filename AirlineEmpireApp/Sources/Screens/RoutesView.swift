@@ -848,7 +848,7 @@ struct OpenRouteSheet: View {
             get: { origin ?? player.homeAirport },
             set: { origin = $0 })) {
             ForEach(servedOrHome(snapshot: snapshot, player: player), id: \.self) { code in
-                Text("\(code.raw) — \(catalog.airport(code)?.city ?? "")").tag(code)
+                Text("\(code.raw) — \(catalog.airport(code).map(Vocab.airportDisplay) ?? "")").tag(code)
             }
         }
         .accessibilityHint("Routes start from an airport you already serve")
@@ -868,6 +868,7 @@ struct OpenRouteSheet: View {
 
     private struct Candidate {
         let code: AirportCode
+        let name: String
         let city: String
         let country: String
         let distanceKm: Int
@@ -903,7 +904,8 @@ struct OpenRouteSheet: View {
                    !market.destination.raw.uppercased().contains(needle),
                    !spec.city.uppercased().contains(needle) { return nil }
                 return Candidate(
-                    code: market.destination, city: market.destinationCity,
+                    code: market.destination, name: spec.name,
+                    city: market.destinationCity,
                     country: spec.country, distanceKm: market.distanceKm,
                     referenceFare: market.referenceFare,
                     servable: market.servableNow,
@@ -924,7 +926,9 @@ struct OpenRouteSheet: View {
                     HStack(spacing: AETheme.spacingXS) {
                         Text(candidate.code.raw)
                             .font(.subheadline.weight(.semibold)).monospaced()
-                        Text(candidate.city).font(.subheadline)
+                        Text(Vocab.airportDisplay(name: candidate.name,
+                                                  city: candidate.city))
+                            .font(.subheadline)
                     }
                     Text("≈\(Format.count(Int64(candidate.expectedDailyPassengers))) passengers/day · \(Format.count(Int64(candidate.distanceKm))) km · fare ≈ \(Format.money(candidate.referenceFare))")
                         .font(AEType.secondary)

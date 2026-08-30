@@ -172,7 +172,7 @@ struct AirportBrowserView: View {
             HStack(spacing: AETheme.spacingS) {
                 Text(row.code.raw)
                     .font(.subheadline.weight(.semibold)).monospaced()
-                Text(row.spec.city).font(.subheadline)
+                Text(Vocab.airportDisplay(row.spec)).font(.subheadline)
                 Spacer()
                 if row.closed {
                     AEBadge(text: "closed", color: AETheme.negative, icon: "xmark.octagon")
