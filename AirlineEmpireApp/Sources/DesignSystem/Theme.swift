@@ -52,12 +52,22 @@ enum AETheme {
     // land a few points above it, coast a few points above that — the whole
     // geography sits inside a narrow value range so it can never compete with
     // the network drawn over it.
+    //
+    // Land and coast were lifted once, in AE-032, after the Natural Earth
+    // coastlines landed. The risk written down beforehand was that 14x the
+    // detail would crowd the routes; the screenshot showed the opposite —
+    // Scandinavia was there and barely legible, so the band was so narrow it
+    // was hiding geography the app had just paid 555 KB to carry. The lift is
+    // deliberately small: the delta between ocean and land roughly doubles,
+    // and coast and land both stay far below the route cyan, the opportunity
+    // green and the label white, so the rule the band exists to enforce still
+    // holds.
     static let mapBackground = Color(red: 0.043, green: 0.063, blue: 0.106)
     /// Deep water, for the vertical gradient that gives the plane depth.
     static let mapDeep = Color(red: 0.024, green: 0.039, blue: 0.075)
-    static let mapLand = Color(red: 0.098, green: 0.129, blue: 0.184)
+    static let mapLand = Color(red: 0.130, green: 0.169, blue: 0.235)
     /// The coastline itself, a shade up from the land so the silhouette reads.
-    static let mapCoast = Color(red: 0.169, green: 0.220, blue: 0.298)
+    static let mapCoast = Color(red: 0.255, green: 0.325, blue: 0.420)
     /// Meridians and parallels: present, never read as data.
     static let mapGraticule = Color(red: 0.35, green: 0.45, blue: 0.60).opacity(0.10)
     static let playerRoute = Color.cyan

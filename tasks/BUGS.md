@@ -878,3 +878,41 @@ shows the picker directly under the navigation title with the card immediately
 below it. Both gaps closed with the one change, which corroborates the
 single-cause diagnosis — had they been two problems, the fix would have closed
 one.
+
+---
+
+## BUG-036 — map chrome is illegible in light appearance
+
+**Severity:** P1. It hits the one card that tells a new player what the map is
+showing them, in the appearance the simulator defaults to.
+**Found:** 2026-08-30, AE-032 — by looking at a map screenshot.
+**Symptom:** the "Your airline begins here" card over the map rendered as
+white text on a pale, near-white panel. The body line — *"The dashed lines are
+the strongest markets from your home airport"* — was effectively invisible.
+The same applies to every glass element over the map: the time controls, the
+overlay picker, the zoom cluster.
+**Root cause:** an agreement between two correct decisions that were never
+checked against each other. The canvas is fixed near-black in *both*
+appearances by design (docs/MAP_ARCHITECTURE.md §2), so its chrome is written
+with hardcoded `.white` text. But that chrome sits on `aeGlass` —
+`glassEffect` on iOS 26, `.ultraThinMaterial` before it — and both resolve
+against the **system** appearance. In light mode the panel goes pale and the
+text stays white.
+**Why nothing caught it:** the map's own palette is a constant, so it looks
+identical in every screenshot; the chrome is not, and until AE-032 no
+screenshot of the map existed at all. It compiles, and no test can read
+contrast.
+**Fix layer:** App. `.environment(\.colorScheme, .dark)` on the map's
+`ZStack`, so every material and semantic colour inside resolves against the
+surface it is actually drawn on. One statement at the level where the fact is
+true, rather than restyling each piece of chrome. Sheets and pushed
+destinations are attached outside that `ZStack` and keep the system
+appearance, which is correct — they are ordinary surfaces, not map chrome.
+**Regression cover:** partial and worth stating plainly. XCUITest cannot read
+contrast, so no assertion covers this. What exists is
+`testLightAppearanceMapForComparison`, which now proves the app is genuinely
+in light appearance and captures the map — turning this from invisible into
+observable at every run.
+**Status:** FIXED IN SOURCE, **not yet visually confirmed.** The claim that it
+now reads correctly is unverified until a light-appearance map screenshot from
+after this change has been looked at.

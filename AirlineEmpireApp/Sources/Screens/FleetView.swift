@@ -851,14 +851,17 @@ struct AircraftShopSheet: View {
                 ])
                 purchase("Buy new", price: spec.listPrice, snapshot: snapshot,
                          player: player, detail: "Delivered in \(Format.days(spec.deliveryLeadDays))",
+                         identifier: "ae-market-buy-new",
                          command: BuyNewAircraftCommand(buyer: player, type: spec.code))
                 purchase("Buy used (\(usedAge)y)", price: usedPrice, snapshot: snapshot,
                          player: player, detail: "Flies immediately, in used condition",
+                         identifier: "ae-market-buy-used",
                          command: BuyUsedAircraftCommand(buyer: player, type: spec.code,
                                                          ageYears: usedAge))
                 purchase("Lease", price: spec.leaseMonthly, snapshot: snapshot,
                          player: player, isMonthly: true,
                          detail: "\(Format.money(spec.leaseMonthly * Int64(leaseTermMonths))) over \(leaseTermMonths) months",
+                         identifier: "ae-market-lease",
                          command: LeaseAircraftCommand(lessee: player, type: spec.code,
                                                        termMonths: leaseTermMonths))
             }
@@ -870,6 +873,7 @@ struct AircraftShopSheet: View {
     /// verdict on whether it can be done — before the tap.
     private func purchase(_ title: String, price: Money, snapshot: GameState,
                           player: AirlineID, isMonthly: Bool = false,
+                          identifier: String,
                           detail: String, command: any Command) -> some View {
         let blocked = controller.precheck(command)
         let cash = snapshot.ledger.balance(of: player)
@@ -899,6 +903,12 @@ struct AircraftShopSheet: View {
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())
             }
+            // A stable name for the one control a UI test has to find. The
+            // visible label cannot serve: "Lease" is also the opening word of
+            // the "Lease term: 60 months" stepper a few rows above, and a
+            // label-prefix query picked the stepper, decremented the term and
+            // leased nothing (AE-032).
+            .accessibilityIdentifier(identifier)
             .disabled(blocked != nil)
             Text(blocked?.message ?? detail)
                 .font(.caption2)

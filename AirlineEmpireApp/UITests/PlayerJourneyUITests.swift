@@ -65,10 +65,9 @@ final class PlayerJourneyUITests: AEUITestCase {
     // near-black palette was designed against.
 
     func testDarkAppearanceRendersEveryTab() throws {
-        launch(appearance: .dark)
-        // Before anything is captured: prove the appearance actually took.
-        guard requireAppearance(.dark) else { return }
-        guard foundAirline() else { return }
+        // Reaching gameplay is the check: appearance only varies once the
+        // game is running, because the new-game screen is pinned to dark.
+        guard reachGameplay(in: .dark) else { return }
         checkpoint("50-dark-home")
 
         let tabs = ["Map", "Network", "Finance", "World"]
@@ -84,11 +83,10 @@ final class PlayerJourneyUITests: AEUITestCase {
     /// The map is the one that matters: its palette is fixed near-black in
     /// both appearances, so light is where it risks looking like a hole.
     func testLightAppearanceMapForComparison() throws {
-        launch(appearance: .light)
-        guard requireAppearance(.light) else { return }
-        guard foundAirline() else { return }
+        guard reachGameplay(in: .light) else { return }
+        checkpoint("60-light-home")
         openTab("Map")
-        checkpoint("60-light-map")
+        checkpoint("61-light-map")
     }
 
     // MARK: The real journey (§6)
@@ -113,11 +111,26 @@ final class PlayerJourneyUITests: AEUITestCase {
         browse.tap()
         checkpoint("02-market")
 
+        // Hide what the era cannot buy, so the first lease action on screen
+        // belongs to an aircraft this airline is actually allowed to take.
+        // Without this the market opens on two locked flagships and the first
+        // buyable row is well below the fold.
+        let eraFilter = app.switches["Hide what this era cannot buy"]
+        if eraFilter.waitForExistence(timeout: 5), eraFilter.value as? String == "0" {
+            eraFilter.tap()
+        }
+
         // Lease rather than buy: a lease delivers immediately, where a new
         // purchase stays `ordered` until its lead days pass. Leasing is also
         // what the empty state itself recommends to a new player.
-        let leaseButton = app.buttons.matching(
-            NSPredicate(format: "label BEGINSWITH %@", "Lease")).firstMatch
+        //
+        // By identifier, not by label. The first version of this matched
+        // `label BEGINSWITH "Lease"` and hit the *"Lease term: 60 months"*
+        // stepper instead, which silently decremented the term to 48 and
+        // leased nothing — a test that drove the wrong control and then
+        // reported the app had failed.
+        let leaseButton = app.buttons
+            .matching(identifier: "ae-market-lease").firstMatch
         require(leaseButton, "a Lease action in the market")
         leaseButton.tap()
 
@@ -125,6 +138,11 @@ final class PlayerJourneyUITests: AEUITestCase {
         let confirm = app.buttons["Lease"]
         if confirm.waitForExistence(timeout: 5) { confirm.tap() }
         checkpoint("03-after-lease")
+
+        // Back to the fleet: the sheet dismisses on success, but only Done
+        // gets us out of a sheet that stayed up.
+        let done = app.buttons["Done"]
+        if done.exists { done.tap() }
 
         // AGREEMENT: leasing must put an aircraft in the fleet. The sheet
         // dismisses on success, so a non-empty Fleet is the observable result.

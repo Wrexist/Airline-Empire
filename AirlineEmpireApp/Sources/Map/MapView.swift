@@ -43,6 +43,21 @@ struct MapScreen: View {
                         chrome(model: model, snapshot: snapshot)
                     }
                     .background(AETheme.mapBackground)
+                    // BUG-036. The canvas is fixed near-black in both
+                    // appearances by design (docs/MAP_ARCHITECTURE.md §2), but
+                    // the chrome over it is glass and system materials, which
+                    // follow the *system* appearance. In light mode that put
+                    // pale glass under text hardcoded to white: the "Your
+                    // airline begins here" card — the only thing telling a new
+                    // player what the dashed lines are — was white on near-white.
+                    //
+                    // Pinning the environment rather than restyling the chrome:
+                    // the map is a dark surface, so the honest fix is to say so
+                    // once, here, and let every material and semantic colour
+                    // inside resolve against it. Sheets and pushed destinations
+                    // are attached outside this ZStack and keep the system
+                    // appearance, which is right — they are ordinary surfaces.
+                    .environment(\.colorScheme, .dark)
                     .onAppear {
                         frameHomeOnce(model)
                         reportFocus()

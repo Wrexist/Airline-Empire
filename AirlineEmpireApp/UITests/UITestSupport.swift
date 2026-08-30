@@ -42,51 +42,75 @@ class AEUITestCase: XCTestCase {
     /// Tracking the current value turns six switches into at most two.
     private static var currentAppearance: XCUIDevice.Appearance?
 
+    /// Put the simulator into an appearance, if it is not already there.
+    private func applyAppearance(_ appearance: XCUIDevice.Appearance,
+                                 settle: TimeInterval) {
+        guard Self.currentAppearance != appearance else { return }
+        XCUIDevice.shared.appearance = appearance
+        Self.currentAppearance = appearance
+        // Let the switch finish. Launching into a system-wide appearance
+        // animation is what produced the two failures above; this is a
+        // settle, not a guess at a race.
+        Thread.sleep(forTimeInterval: settle)
+    }
+
     /// Launch in a named appearance.
-    ///
-    /// The simulator rather than a trait override inside the process, so what
-    /// is captured is what a player changing Appearance in Settings would get,
-    /// including the chrome the app does not draw.
     func launch(appearance: XCUIDevice.Appearance) {
-        if Self.currentAppearance != appearance {
-            XCUIDevice.shared.appearance = appearance
-            Self.currentAppearance = appearance
-            // Let the switch finish. Launching into a system-wide appearance
-            // animation is what produced the two failures above; this is a
-            // settle, not a guess at a race.
-            Thread.sleep(forTimeInterval: 3)
-        }
-        // Belt and braces: the device appearance above drives the simulator,
-        // and this drives the app's own defaults domain. On the run that
-        // exposed the problem the first alone was not enough.
-        app.launchArguments.removeAll { $0 == "-AppleInterfaceStyle" || $0 == "Dark" || $0 == "Light" }
-        app.launchArguments += ["-AppleInterfaceStyle",
-                                appearance == .dark ? "Dark" : "Light"]
+        applyAppearance(appearance, settle: 3)
         app.launch()
     }
 
-    /// Fail unless the app is rendering in the appearance that was asked for.
+    /// Reach the game shell in a named appearance, having proved the
+    /// appearance actually took — and retrying the launch if it did not.
     ///
-    /// `RootView` publishes what it actually rendered as an accessibility
-    /// identifier. Without this the dark tests pass while producing light
-    /// screenshots named "dark" — which is exactly what happened on the first
-    /// run, and is worse than having no dark coverage at all, because it
-    /// manufactures evidence.
+    /// **This replaces a guard that did not work.** The first version asked
+    /// the question on the new-game screen, which `NewGameView` pins to dark
+    /// with `.preferredColorScheme(.dark)` because it is a presentation
+    /// surface. So the answer there is "dark" whatever the simulator is
+    /// doing: the dark test passed for the wrong reason and captured five
+    /// light screens named "dark", and the light test failed with the
+    /// self-refuting message "Asked for light appearance; the app reports
+    /// light."
+    ///
+    /// Appearance only varies once the game is running, so that is where it
+    /// has to be asked. The retry is here because the switch is a system-wide
+    /// animation with no completion to wait on: a fixed sleep either wastes
+    /// time or loses the race, and re-launching until the app agrees loses
+    /// neither.
     @discardableResult
-    func requireAppearance(_ appearance: XCUIDevice.Appearance) -> Bool {
-        let wanted = appearance == .dark ? "ae-appearance-dark" : "ae-appearance-light"
-        let element = app.descendants(matching: .any)[wanted]
-        if element.waitForExistence(timeout: 10) { return true }
-        let other = appearance == .dark ? "ae-appearance-light" : "ae-appearance-dark"
-        let actually = app.descendants(matching: .any)[other].exists
-            ? "light" : "neither identifier found"
+    func reachGameplay(in appearance: XCUIDevice.Appearance) -> Bool {
+        let wanted = appearance == .dark ? "dark" : "light"
+        for attempt in 1...3 {
+            applyAppearance(appearance, settle: attempt == 1 ? 3 : 6)
+            app.launch()
+            guard foundAirline() else { return false }
+            if rendersAppearance(appearance) { return true }
+            guard attempt < 3 else { break }
+            // Force the next pass to re-apply and wait longer.
+            app.terminate()
+            Self.currentAppearance = nil
+        }
         capture(Self.logPrefix + "APPEARANCE-MISMATCH")
+        let reported = reportedAppearance() ?? "no appearance at all"
         XCTFail("""
-            Asked for \(appearance == .dark ? "dark" : "light") appearance; the \
-            app reports \(actually). Screenshots from this test would be \
-            mislabelled, so it fails rather than producing false evidence.
+            Asked for \(wanted) appearance; after three launches the game \
+            shell still reports \(reported). Screenshots from this test would \
+            be mislabelled, so it fails rather than producing false evidence.
             """)
         return false
+    }
+
+    /// What the running app says it is rendering in, or nil if it says
+    /// nothing. Non-failing: the caller decides what to do about it.
+    private func reportedAppearance() -> String? {
+        if app.descendants(matching: .any)["ae-appearance-dark"].exists { return "dark" }
+        if app.descendants(matching: .any)["ae-appearance-light"].exists { return "light" }
+        return nil
+    }
+
+    private func rendersAppearance(_ appearance: XCUIDevice.Appearance) -> Bool {
+        let wanted = appearance == .dark ? "ae-appearance-dark" : "ae-appearance-light"
+        return app.descendants(matching: .any)[wanted].waitForExistence(timeout: 10)
     }
 
     // MARK: Evidence
@@ -215,6 +239,9 @@ class AEUITestCase: XCTestCase {
     /// Found an airline and arrive in the shell. Every journey starts here.
     @discardableResult
     func foundAirline() -> Bool {
+        // A relaunch inside one test may come back to a shell that is already
+        // playing; that is a success, not a missing button.
+        if app.tabBars.buttons["Home"].waitForExistence(timeout: 3) { return true }
         let found = app.buttons["Found Skyline Air"]
         guard require(found, "the Found button on the new-game screen") else {
             return false
