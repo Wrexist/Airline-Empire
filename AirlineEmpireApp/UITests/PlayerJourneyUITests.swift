@@ -1,208 +1,192 @@
 import XCTest
 
-/// The first test in this project that actually runs the app.
+/// The first minute of the game, driven against a booted simulator.
 ///
-/// ## Why this exists
+/// Three defect classes have now been found in this project that no compiler
+/// can see, and all three are *agreements* Swift does not check:
 ///
-/// Four phases have now shipped user interface work — a design system, a map,
-/// a fleet experience, an audio palette — and every one of them ended its
-/// report with the same sentence: *authored, not observed*. The macOS CI job
-/// compiles the app, which proves the types line up and nothing else. Whether
-/// tapping Fleet shows the fleet has never been checked by anything.
+/// | Class | Example | What catches it |
+/// | --- | --- | --- |
+/// | a link that resolves to nothing | BUG-029, BUG-030 | tapping it |
+/// | a string that matches nothing | BUG-033 | a contract test |
+/// | a control in the wrong place | BUG-035 | a frame assertion |
 ///
-/// That gap is not theoretical. It is the direct cause of three defects found
-/// by hand in the last two phases, all of the same shape — a control that
-/// exists, compiles, and does nothing:
-///
-/// - **BUG-029** route links inert on the Finance tab
-/// - **BUG-030** the aircraft link dead on two of five entry paths
-/// - **BUG-032** assignment pickers offering moves the engine refuses
-///
-/// A `NavigationLink(value:)` with no matching `navigationDestination` is
-/// silently inert: no warning, no crash, nothing a compiler or a parse can
-/// see. The only thing that catches it is tapping it. So this target taps it.
-///
-/// ## What this is not
-///
-/// It is not a visual check. XCUITest can tell us a button exists, is
-/// hittable, and that tapping it changed what is on screen. It cannot tell us
-/// the screen looks good. Screenshots are attached to the result bundle so a
-/// human can judge that part; the assertions here are about *reachability*,
-/// which is the half that can be automated and the half that has been failing.
-///
-/// ## Conventions
-///
-/// Queries go through labels the app already sets for VoiceOver rather than
-/// through new test-only identifiers. Two reasons: a label that drifts breaks
-/// this test, which is a cheap early warning that VoiceOver also broke; and
-/// test-only identifiers tend to become the only thing kept correct.
-final class PlayerJourneyUITests: XCTestCase {
+/// This file covers the first and third. The second lives in Core, in
+/// `RejectionCodeContractTests`.
+final class PlayerJourneyUITests: AEUITestCase {
 
-    private var app: XCUIApplication!
+    // MARK: Layout regression (TD-019)
 
-    override func setUp() {
-        super.setUp()
-        // A failed step leaves the rest of the journey meaningless — the
-        // tab assertions cannot pass if the game never started — so stop at
-        // the first failure rather than reporting a cascade.
-        continueAfterFailure = false
-        app = XCUIApplication()
-        // No fresh-start launch argument, deliberately. `GameController.init`
-        // does not load a save — `session` starts nil, so `hasGame` is false
-        // and the app always opens on the new-game screen whatever the
-        // simulator is carrying. Adding an argument the app does not read
-        // would be exactly the kind of dead configuration this target exists
-        // to catch.
-        app.launch()
-    }
-
-    override func tearDown() {
-        app = nil
-        super.tearDown()
-    }
-
-    /// Attach the current screen to the result bundle.
+    /// The assertion that would have failed before BUG-035 was fixed.
     ///
-    /// These are the only visual evidence this project has ever produced.
-    /// `.keepAlways` because a screenshot attached only on failure is no use
-    /// for the question actually being asked, which is "what does it look
-    /// like".
-    private func capture(_ name: String) {
-        let shot = XCTAttachment(screenshot: app.screenshot())
-        shot.name = name
-        shot.lifetime = .keepAlways
-        add(shot)
-    }
+    /// Measured from the screenshots either side of the fix: the section
+    /// picker's top edge sat at roughly **39%** of the window before, and
+    /// **15%** after. The bar is set at 30% — comfortably clear of the fixed
+    /// layout, comfortably under the broken one, and loose enough that an
+    /// intentional change to spacing does not fail it.
+    func testSectionPickerSitsUnderTheNavigationBarNotInDeadSpace() throws {
+        launch(appearance: .light)
+        guard foundAirline() else { return }
+        openTab("Network")
 
-    /// Waits for an element, failing with something a reader can act on.
-    @discardableResult
-    private func require(_ element: XCUIElement, _ what: String,
-                         timeout: TimeInterval = 20) -> Bool {
-        let found = element.waitForExistence(timeout: timeout)
-        if !found {
-            capture("MISSING-\(what)")
-            XCTFail("\(what) never appeared. Screenshot attached.")
-        }
-        return found
-    }
+        let routesSegment = app.buttons["Routes"]
+        require(routesSegment, "the Routes segment")
+        assertNear(routesSegment, top: 0.30, "the section picker (Routes)")
+        checkpoint("40-layout-routes-empty")
 
-    // MARK: The journey
-
-    /// Launch, found an airline, and reach every tab.
-    ///
-    /// This is deliberately the whole first minute of the game rather than
-    /// five separate tests. The bugs worth catching here are transitions —
-    /// founding an airline replaces the entire root view — and a test that
-    /// starts each case from a fresh launch would never cross one.
-    func testFoundingAnAirlineReachesEveryTab() throws {
-        // 1 · The new-game screen.
-        //
-        // `effectiveName` falls back to "Skyline Air" when the field is
-        // empty, and the found button carries it in its accessibility label,
-        // so the default path needs no typing.
-        let found = app.buttons["Found Skyline Air"]
-        require(found, "the Found button on the new-game screen")
-        capture("01-new-game")
-
-        // 2 · Found it. This swaps RootView's whole content.
-        found.tap()
-
-        // 3 · The shell. Home is the default tab; waiting on its tab button
-        // rather than on any content is the narrowest check that the swap
-        // happened at all.
-        let homeTab = app.tabBars.buttons["Home"]
-        require(homeTab, "the tab bar after founding an airline")
-        capture("02-home")
-
-        // 4 · Every tab, in order. This is the assertion that would have
-        // caught a screen that compiles and renders nothing.
-        //
-        // The tab bar is checked for *content*, not merely for selection:
-        // `isSelected` would pass on a tab whose body is an empty VStack.
-        for (index, tab) in ["Home", "Map", "Network", "Finance", "World"].enumerated() {
-            let button = app.tabBars.buttons[tab]
-            require(button, "the \(tab) tab")
-            button.tap()
-
-            XCTAssertTrue(button.waitForExistence(timeout: 5),
-                          "\(tab) tab vanished after being tapped")
-            // Something has to be on screen. A tab showing nothing at all is
-            // the failure this is here for.
-            let hasContent = app.staticTexts.count > 0 || app.otherElements.count > 0
-            XCTAssertTrue(hasContent, "\(tab) rendered no content")
-            capture(String(format: "%02d-tab-%@", index + 3, tab))
-        }
-    }
-
-    /// The onboarding card is on Home for a brand-new airline, and it names
-    /// the path to the first aircraft.
-    ///
-    /// This is the first thing a new player sees, and it is the only thing
-    /// telling them where the market is — the Network tab opens on Routes,
-    /// whose empty state says "put an aircraft on it" to a player who has
-    /// none. That is survivable *because* this card exists, which makes the
-    /// card load-bearing rather than decorative, and worth pinning.
-    func testHomeGuidesANewPlayerToTheirFirstAircraft() throws {
-        let found = app.buttons["Found Skyline Air"]
-        require(found, "the Found button")
-        found.tap()
-        require(app.tabBars.buttons["Home"], "the tab bar")
-        capture("20-home-first-run")
-
-        // The step list is rendered as static text; any of the five titles
-        // proves the card is mounted.
-        let step = app.staticTexts["Get an aircraft"]
-        XCTAssertTrue(step.waitForExistence(timeout: 15), """
-            Home shows no onboarding step for a brand-new airline. This card \
-            is the only signpost to the aircraft market — the Network tab \
-            opens on Routes, and its empty state tells a player with no \
-            aircraft to put one on a route.
-            """)
-    }
-
-    /// The aircraft market is reachable by the path onboarding actually names.
-    ///
-    /// The first version of this test looked for the Fleet empty state's
-    /// "Browse the market" straight after tapping Network, and failed —
-    /// correctly. `NetworkView` opens on `.routes`, so that button is not on
-    /// screen. The app was right and the test was wrong, which is the whole
-    /// argument for running one.
-    func testAircraftMarketIsReachable() throws {
-        let found = app.buttons["Found Skyline Air"]
-        require(found, "the Found button")
-        found.tap()
-
-        let network = app.tabBars.buttons["Network"]
-        require(network, "the Network tab")
-        network.tap()
-        capture("30-network-routes")
-
-        // Onboarding's hint is "Network tab → Fleet → Acquire", so that is
-        // the path tested: a segmented control, then the toolbar action.
         let fleetSegment = app.buttons["Fleet"]
-        require(fleetSegment, "the Fleet segment of the Network picker")
+        require(fleetSegment, "the Fleet segment")
         fleetSegment.tap()
-        capture("31-network-fleet-empty")
+        assertNear(fleetSegment, top: 0.30, "the section picker (Fleet)")
 
-        // Two ways in, both legitimate: the toolbar's Acquire and the empty
-        // state's own call to action. A new player has both, and either
-        // failing is worth knowing about.
-        let acquire = app.buttons["Acquire"]
+        // The other half of BUG-035: the empty-state card had drifted a long
+        // way below the picker that introduces it.
+        let emptyTitle = app.staticTexts["No aircraft"]
+        require(emptyTitle, "the empty fleet state")
+        assertBelow(emptyTitle, fleetSegment, "the empty state")
+        assertClose(fleetSegment, emptyTitle, within: 0.20,
+                    "the picker and the empty state it introduces")
+        assertNotUnderTabBar(emptyTitle, "the empty fleet state")
+        checkpoint("41-layout-fleet-empty")
+    }
+
+    // MARK: Appearance
+    //
+    // `Theme.swift` states the intended behaviour outright: presentation
+    // surfaces sit on the dusk palette (the new-game screen forces
+    // `.preferredColorScheme(.dark)`), while "gameplay screens keep the system
+    // background — a dashboard is for reading numbers, not for atmosphere."
+    // `DESIGN_SYSTEM.md` §10 agrees, listing contrast in *both appearances* as
+    // unverified.
+    //
+    // So the app is adaptive by design, and the light screens seen in AE-031
+    // were correct behaviour, not a theme failing to apply. What has never
+    // been looked at is the dark half — which is the half the map's fixed
+    // near-black palette was designed against.
+
+    func testDarkAppearanceRendersEveryTab() throws {
+        launch(appearance: .dark)
+        guard foundAirline() else { return }
+        checkpoint("50-dark-home")
+
+        let tabs = ["Map", "Network", "Finance", "World"]
+        for (index, tab) in tabs.enumerated() {
+            openTab(tab)
+            XCTAssertTrue(app.staticTexts.count > 0 || app.otherElements.count > 0,
+                          "\(tab) rendered nothing in dark appearance")
+            checkpoint("5\(index + 1)-dark-\(tab.lowercased())")
+        }
+    }
+
+    /// The same screens in light, so the pair can be compared directly.
+    /// The map is the one that matters: its palette is fixed near-black in
+    /// both appearances, so light is where it risks looking like a hole.
+    func testLightAppearanceMapForComparison() throws {
+        launch(appearance: .light)
+        guard foundAirline() else { return }
+        openTab("Map")
+        checkpoint("60-light-map")
+    }
+
+    // MARK: The real journey (§6)
+
+    /// Lease an aircraft, then open a route — checking the game agreed each
+    /// time.
+    ///
+    /// The checks that matter are the **agreements**: a lease must appear in
+    /// the fleet, a route must appear on the board. Each is a place where the
+    /// interface could report success while the simulation did nothing, which
+    /// is the failure this target exists to catch.
+    func testAcquireAircraftThenOpenARoute() throws {
+        launch(appearance: .light)
+        guard foundAirline() else { return }
+        checkpoint("01-home")
+
+        // ── Acquire ────────────────────────────────────────────────────────
+        openTab("Network")
+        app.buttons["Fleet"].tap()
         let browse = app.buttons["Browse the market"]
-        XCTAssertTrue(browse.waitForExistence(timeout: 10),
-                      "the empty fleet offers no way to reach the market")
-        XCTAssertTrue(acquire.exists,
-                      "the Fleet toolbar has no Acquire action")
-
+        require(browse, "the market entry point on an empty fleet")
         browse.tap()
-        capture("32-market")
+        checkpoint("02-market")
 
-        // The catalogue ships fourteen types. Asserting on a known model name
-        // rather than a count: the count is content and may change, but a
-        // market listing nothing at all is the failure worth catching.
-        let anyType = app.staticTexts.containing(
-            NSPredicate(format: "label CONTAINS[c] %@", "seats")).firstMatch
-        XCTAssertTrue(anyType.waitForExistence(timeout: 10),
-                      "the market opened but listed no aircraft")
+        // Lease rather than buy: a lease delivers immediately, where a new
+        // purchase stays `ordered` until its lead days pass. Leasing is also
+        // what the empty state itself recommends to a new player.
+        let leaseButton = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Lease")).firstMatch
+        require(leaseButton, "a Lease action in the market")
+        leaseButton.tap()
+
+        // Confirmed, because the sums involved should never move on one tap.
+        let confirm = app.buttons["Lease"]
+        if confirm.waitForExistence(timeout: 5) { confirm.tap() }
+        checkpoint("03-after-lease")
+
+        // AGREEMENT: leasing must put an aircraft in the fleet. The sheet
+        // dismisses on success, so a non-empty Fleet is the observable result.
+        let emptyFleet = app.staticTexts["No aircraft"]
+        XCTAssertFalse(emptyFleet.waitForExistence(timeout: 8),
+                       """
+                       The fleet still reports "No aircraft" after a lease was \
+                       confirmed. Either the command was rejected without \
+                       saying so, or the screen did not refresh — both are the \
+                       silent failures this target exists to find.
+                       """)
+        checkpoint("04-fleet-with-aircraft")
+
+        // ── Open a route ───────────────────────────────────────────────────
+        app.buttons["Routes"].tap()
+        let openRoute = app.buttons["Open a route"]
+        require(openRoute, "the route entry point on an empty routes board")
+        openRoute.tap()
+        checkpoint("05-open-route-sheet")
+
+        // The sheet ranks destinations by demand; the first row is the guided
+        // path a new player is offered.
+        let firstMarket = app.cells.firstMatch
+        if firstMarket.waitForExistence(timeout: 8) { firstMarket.tap() }
+        let openAction = app.buttons["Open"]
+        if openAction.waitForExistence(timeout: 5), openAction.isEnabled {
+            openAction.tap()
+        }
+        checkpoint("06-after-open-route")
+
+        // AGREEMENT: opening a route must put one on the board.
+        let emptyRoutes = app.staticTexts["No routes yet"]
+        XCTAssertFalse(emptyRoutes.waitForExistence(timeout: 8),
+                       """
+                       The routes board still reports "No routes yet" after \
+                       Open was tapped. The sheet may have dismissed without \
+                       the command being accepted.
+                       """)
+        checkpoint("07-routes-with-route")
+    }
+
+    /// Every tab reachable, and each renders something.
+    func testFoundingAnAirlineReachesEveryTab() throws {
+        launch(appearance: .light)
+        guard foundAirline() else { return }
+
+        for tab in ["Home", "Map", "Network", "Finance", "World"] {
+            openTab(tab)
+            XCTAssertTrue(app.staticTexts.count > 0 || app.otherElements.count > 0,
+                          "\(tab) rendered no content")
+        }
+    }
+
+    /// Home guides a new player to their first aircraft.
+    ///
+    /// Load-bearing rather than decorative: the Network tab opens on Routes,
+    /// whose empty state tells a player with no aircraft to "put an aircraft
+    /// on it". This card is the only thing naming where the market is.
+    func testHomeGuidesANewPlayerToTheirFirstAircraft() throws {
+        launch(appearance: .light)
+        guard foundAirline() else { return }
+        XCTAssertTrue(app.staticTexts["Get an aircraft"].waitForExistence(timeout: 15),
+                      """
+                      Home shows no onboarding step for a new airline. This \
+                      card is the only signpost to the market.
+                      """)
     }
 }

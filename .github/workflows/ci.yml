@@ -355,6 +355,16 @@ jobs:
           if not pairs:
               print("NO-ATTACHMENTS-EXPORTED")
               sys.exit(0)
+          # Only checkpoints. The log carries ~200 lines per screen, so an
+          # unbounded set silently pushes the earliest images past any
+          # practical `tail` — and the earliest are the journey's opening
+          # steps, which are the ones worth seeing (TD-020). Everything is
+          # still in the artifact; this bounds only what is printed.
+          pairs = [(n, p) for n, p in pairs if n.startswith("KEY-")]
+          if not pairs:
+              print("NO-CHECKPOINT-ATTACHMENTS (nothing named KEY-*)")
+              sys.exit(0)
+          print(f"CHECKPOINTS: {len(pairs)}")
           seen = set()
           for name, path in sorted(pairs):
               if name in seen:
