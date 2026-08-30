@@ -251,3 +251,34 @@ otherwise a walkthrough on a device.
 - **Hub connections** — first content update (decision D-010).
 - **AI market-entry lever** — post-playtest (BALANCING F-001).
 - Everything else: `docs/EXPANSION_ROADMAP.md`, `tasks/POST_LAUNCH.md`.
+
+---
+
+## AE-028 — UI/UX polish, density, design system (MASTER PROMPT 4)
+**Status:** IN PROGRESS 2026-08-30. Foundation complete; screen-by-screen
+rework continuing.
+
+**Done:**
+- `AEType` — eleven type roles, replacing "pick a system size and hope"
+  (`docs/DESIGN_SYSTEM.md` §2).
+- `AEPanel` / `AECompactMetric` / `AEMetricStrip` — containers below a card, so
+  a screen is not 40 equal rounded rectangles (§3).
+- `AEButtonRole` — primary / secondary / tertiary / destructive (§4).
+- `NetworkSummary` + `FleetSummary` in Core, with tests holding each against
+  the per-row models it summarises (§5). 6 new tests, 370 total.
+- Home reordered: the pulse (in the air, load factor, aircraft used, month to
+  date) now sits above yesterday's digest and next week's calendar, and shows
+  the live-flight number Core was already computing and no screen rendered.
+- Fleet and Routes boards gained summary headers fed by those models.
+- `Rejections` — refusals answer what happened, why, and what to do next (§8).
+- BUG-027 (live flights counted the whole world), BUG-028 (a save warning
+  followed the player into the next game).
+
+**Not done, and why:**
+- Aircraft Market, Route Detail, Route Creation, Finance and the World hub have
+  not been reworked. The foundation they would be built on is in place; the
+  work is not.
+- Nothing has been visually validated. There is no simulator in this
+  environment, so every claim above is "compiles and is tested where testable",
+  never "looks right" (TD-003, TD-006).
+

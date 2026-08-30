@@ -636,3 +636,40 @@ one piece of state `GameShell` raises an alert from.
 `quietSaveFailure`, which Settings' Save section reports in place — quiet, but
 not silent, which was the whole point of UI-012.
 **Status:** FIXED 2026-08-30.
+
+---
+
+## BUG-027 — "Live flights" counted every aeroplane in the world
+**Severity:** P2 (a headline metric that was simply wrong; it escaped notice
+only because no screen rendered it) · **Phase found:** MASTER PROMPT 4, while
+adding the network summary, 2026-08-30.
+**Repro:** any save. `DashboardModel.liveFlightCount` reported 34 for a player
+with nothing in the air.
+**Root cause:** `liveFlightCount: flights.count`. Every other field on that
+model is scoped to the player; this one was the raw size of the world's flight
+dictionary — every airline's aeroplanes, in every phase, including `scheduled`
+and `boarding`. So the number was neither live nor the player's.
+**How it survived:** `dashboardModel()` is one long initialiser call. Each
+argument is a short expression and `flights.count` reads perfectly plausibly in
+a list of `fleet(of:).count` and `routes.count` — the mistake is only visible
+if you notice that the two neighbours are scoped and this one is not. Nothing
+displayed it, so no screen ever looked wrong.
+**Fix layer:** Core. `airborneFlightCount(for:)` resolves ownership through the
+route (a flight carries no airline of its own) and counts only `.enRoute`.
+`dashboardModel` and `networkSummary` both call it, so they cannot drift.
+**Status:** FIXED 2026-08-30. Covered by a test asserting the two agree, and
+that both equal an independently spelled-out count.
+
+---
+
+## BUG-028 — A failed autosave warning followed the player into the next game
+**Severity:** P3 · **Phase found:** MASTER PROMPT 4 §34 bug hunt, 2026-08-30.
+**Repro:** let a background autosave fail, quit to the menu, start a different
+airline, open Settings. The Save section warns that the last automatic save did
+not complete — describing a game that is no longer loaded.
+**Root cause:** `quietSaveFailure` was added in the previous phase (BUG-026) and
+not added to `quitToMenu`, which clears every other piece of per-game state.
+The same leak class as BUG-013, and introduced by the fix for the bug two
+entries above it — which is the honest reason to keep both recorded.
+**Fix layer:** App. `quitToMenu` clears it with the rest.
+**Status:** FIXED 2026-08-30.

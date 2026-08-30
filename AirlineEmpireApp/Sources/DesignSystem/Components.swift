@@ -89,7 +89,7 @@ struct AESectionHeader: View {
                 Image(systemName: systemImage).font(.caption2)
             }
             Text(text.uppercased())
-                .font(.caption.weight(.semibold))
+                .font(AEType.eyebrow)
                 .tracking(1.2)
         }
         .foregroundStyle(AETheme.mutedText)
@@ -107,12 +107,11 @@ struct StatTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: AETheme.spacingXS) {
             Text(label)
-                .font(.caption)
+                .font(AEType.metricLabel)
                 .foregroundStyle(AETheme.mutedText)
             HStack(spacing: AETheme.spacingXS) {
                 Text(value)
-                    .font(.title3.weight(.semibold))
-                    .monospacedDigit()
+                    .font(AEType.metric)
                     .contentTransition(.numericText())
                 switch trend {
                 case .up:
@@ -150,7 +149,7 @@ struct AEBadge: View {
             if let icon {
                 Image(systemName: icon).font(.caption2)
             }
-            Text(text).font(.caption.weight(.medium))
+            Text(text).font(AEType.badge)
         }
         .padding(.horizontal, AETheme.spacingS)
         .padding(.vertical, 3)
@@ -619,4 +618,166 @@ struct AEChoiceCard<Content: View>: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
+}
+
+// MARK: - Containers below a card
+
+/// A grouped surface for related rows, quieter than `AECard`.
+///
+/// The app reached for `AECard` 40 times, and a screen made entirely of cards
+/// has no hierarchy: when every group is a raised rounded rectangle, being one
+/// stops meaning anything, and the eye gets a list of equal boxes instead of a
+/// shape to read (MASTER PROMPT 4 §22). A card should mark something that
+/// deserves separating. Everything else that merely belongs together gets this
+/// — a flat tinted ground, no glass, no shadow.
+struct AEPanel<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        content
+            .padding(AETheme.spacingM)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(AETheme.cardBackground.opacity(0.5),
+                        in: AETheme.cardShape)
+    }
+}
+
+/// One metric in a dense row: a small number over its label.
+///
+/// `StatTile` gives each metric its own glass card, which is right for six
+/// tappable headline figures and wrong for the eight supporting numbers a
+/// summary header wants — as eight cards those cost most of a screen and read
+/// as eight separate claims rather than one picture.
+struct AECompactMetric: View {
+    let label: String
+    let value: String
+    var tint: Color? = nil
+    /// A metric the player should notice — used sparingly, or it stops working.
+    var emphasised = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(emphasised ? AEType.metric : AEType.metricCompact)
+                .foregroundStyle(tint ?? .primary)
+                .contentTransition(.numericText())
+                .aeAnimation(AEMotion.content, value: value)
+            Text(label)
+                .font(AEType.caption)
+                .foregroundStyle(AETheme.mutedText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
+    }
+}
+
+/// A row of `AECompactMetric`s sharing one container.
+///
+/// Wraps rather than scrolls, so nothing is hidden off the right edge on a
+/// small phone, and so the same strip serves three metrics or eight.
+struct AEMetricStrip<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        AEPanel {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: AETheme.spacingM) { content }
+                Grid(alignment: .leading,
+                     horizontalSpacing: AETheme.spacingM,
+                     verticalSpacing: AETheme.spacingS) {
+                    GridRow { content }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Button hierarchy
+
+/// The four weights a button can have (docs/DESIGN_SYSTEM.md §4).
+///
+/// Before this the app had `.aePress` (no chrome at all), `.bordered` and
+/// `.borderedProminent` — three levels, none of them named for what they mean,
+/// and a destructive action distinguished only by whoever remembered to add a
+/// red tint. These say the intent at the call site, which is the only way the
+/// weights stay consistent as screens get edited.
+enum AEButtonRole {
+    /// The one action a screen is for. At most one per screen.
+    case primary
+    /// A supporting action, offered without being urged.
+    case secondary
+    /// Available, deliberately quiet.
+    case tertiary
+    /// Irreversible, or expensive. Never the visually loudest thing on screen
+    /// — a destructive action should be findable, not inviting.
+    case destructive
+}
+
+struct AEButtonStyle: ButtonStyle {
+    let role: AEButtonRole
+
+    func makeBody(configuration: Configuration) -> some View {
+        Surface(configuration: configuration, role: role)
+    }
+
+    private struct Surface: View {
+        let configuration: ButtonStyleConfiguration
+        let role: AEButtonRole
+        @Environment(\.isEnabled) private var isEnabled
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+        var body: some View {
+            configuration.label
+                .font(AEType.body.weight(role == .tertiary ? .regular : .semibold))
+                .foregroundStyle(foreground)
+                .padding(.horizontal, AETheme.spacingM)
+                .padding(.vertical, AETheme.spacingS + 2)
+                .frame(minHeight: 44)
+                .background(background, in: Capsule())
+                .overlay {
+                    if role == .secondary || role == .destructive {
+                        Capsule().strokeBorder(accent.opacity(0.45), lineWidth: 1)
+                    }
+                }
+                .opacity(isEnabled ? (configuration.isPressed ? 0.82 : 1) : 0.45)
+                .scaleEffect(reduceMotion || !configuration.isPressed ? 1 : 0.972)
+                .animation(reduceMotion ? .easeOut(duration: 0.12) : AEMotion.selection,
+                           value: configuration.isPressed)
+        }
+
+        private var accent: Color {
+            role == .destructive ? AETheme.negative : AETheme.accent
+        }
+
+        private var foreground: Color {
+            switch role {
+            case .primary: .white
+            case .secondary: AETheme.accent
+            case .tertiary: AETheme.accent
+            case .destructive: AETheme.negative
+            }
+        }
+
+        @ViewBuilder private var background: some View {
+            switch role {
+            case .primary: AETheme.accent
+            case .secondary, .destructive: Color.clear
+            case .tertiary: Color.clear
+            }
+        }
+    }
+}
+
+extension ButtonStyle where Self == AEButtonStyle {
+    /// The action a screen exists for.
+    static var aePrimary: AEButtonStyle { AEButtonStyle(role: .primary) }
+    /// A supporting action.
+    static var aeSecondary: AEButtonStyle { AEButtonStyle(role: .secondary) }
+    /// Available, quiet.
+    static var aeTertiary: AEButtonStyle { AEButtonStyle(role: .tertiary) }
+    /// Irreversible or expensive.
+    static var aeDestructive: AEButtonStyle { AEButtonStyle(role: .destructive) }
 }

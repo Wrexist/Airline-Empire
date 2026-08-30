@@ -185,3 +185,36 @@ speaker.
 **Resolution path:** task AE-026. The numbers are all constants in one function
 and are meant to be tuned there; the tests assert relationships rather than
 values precisely so that tuning does not break them.
+
+---
+
+## TD-011 — The type scale exists; most call sites have not adopted it
+**Severity:** P3 (a half-migrated token set is still better than none, but it
+is not yet the single source of truth it claims to be).
+**Introduced:** AE-028, 2026-08-30.
+**Description:** `AEType` names eleven roles and the shared components
+(`StatTile`, `AESectionHeader`, `AEBadge`, `AECompactMetric`, the button
+styles) use it. Several hundred `.font(...)` call sites in feature screens
+still name system sizes directly, so "restyle every metric label" remains only
+partly a change one can make.
+**Why it was not finished in one pass:** a mechanical sweep would have to guess
+which `.caption` is a metric label, which is supporting prose and which is a
+timestamp — they are indistinguishable at the call site, which is the whole
+reason the tokens exist. Guessing wrong changes the proportions of every
+screen, and there is no simulator here to look at the result. Converting a
+screen at a time, while reworking it, is slower and correct.
+**Resolution path:** convert with each screen's rework. The count of raw
+`.font(` calls in `AirlineEmpireApp/Sources` is the progress metric; it was 291
+when the scale was introduced.
+
+---
+
+## TD-012 — The summary read models are not wired into every screen that wants them
+**Severity:** P3.
+**Introduced:** AE-028, 2026-08-30.
+**Description:** `NetworkSummary` and `FleetSummary` back Home's pulse, the
+Fleet board header and the Routes board header. The map's own chrome and the
+Finance screen still derive comparable figures locally. They do not currently
+disagree, but nothing stops them.
+**Resolution path:** route those two through the same summaries when each is
+next touched.

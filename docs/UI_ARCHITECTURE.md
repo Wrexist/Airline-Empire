@@ -214,6 +214,11 @@ What changed, against the rules above:
 **Still not built:** a bound `NavigationPath` for external deep links;
 localization of the strings themselves.
 
+The visual contract moved to its own document in AE-028 —
+`docs/DESIGN_SYSTEM.md` — which records the type scale, the container ladder
+(card / panel / nothing), the button roles, and the rule that derived numbers
+live in Core rather than in view bodies.
+
 Audio and haptics *are* built — see §9. Feedback is centralized through
 `Feedback.emit` rather than inline `sensoryFeedback`, so a screen cannot bypass
 the player's haptics setting by forgetting to check it (BUG-014). What remains

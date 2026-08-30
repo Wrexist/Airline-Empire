@@ -17,6 +17,12 @@ public struct DashboardModel: Equatable, Sendable {
     public let fuelPricePerTon: Money
     public let economicIndex: Double
     public let activeEventCount: Int
+    /// The player's own aeroplanes in the air right now.
+    ///
+    /// This was `flights.count` — every flight in the world dictionary, which
+    /// is every airline's, in every phase including scheduled and boarding.
+    /// It reported 34 for a player with nothing airborne (tasks/BUGS.md
+    /// BUG-027).
     public let liveFlightCount: Int
     public let gameOver: Bool
 }
@@ -118,7 +124,7 @@ extension GameState {
             activeEventCount: world.activeEvents.filter {
                 $0.isActive(at: clock.now)
             }.count,
-            liveFlightCount: flights.count,
+            liveFlightCount: airborneFlightCount(for: player.id),
             gameOver: progression.gameOver)
     }
 
@@ -193,5 +199,190 @@ extension GameState {
             monthlySeries: series,
             loans: a.loans,
             lifetimeNetProfit: history?.lifetimeNetProfit ?? .zero)
+    }
+}
+
+// MARK: - Summaries
+
+/// What the whole route network is doing, in one value.
+///
+/// Every screen that wanted this was deriving it from `routeCards` in a view
+/// body — which is O(routes) per render on a pump that publishes four
+/// snapshots a second, and which meant Home, the Routes board and the map
+/// could each answer "how is the network doing" slightly differently. It is
+/// computed once, here, from the same routes the simulation ran.
+public struct NetworkSummary: Equatable, Sendable {
+    public let routeCount: Int
+    /// Routes whose month to date is in profit.
+    public let profitableRoutes: Int
+    /// Routes losing money right now. Not the inverse of profitable: a route
+    /// that has flown nothing yet is neither.
+    public let losingRoutes: Int
+    /// Open routes with no aircraft on them — capacity the player has paid
+    /// slots for and is not using.
+    public let idleRoutes: Int
+    /// Seats sold over seats flown, across the network, over the routes'
+    /// lifetimes — the same basis `RouteCardModel.loadFactor` reports, so the
+    /// board and its rows cannot disagree. Nil before anything has flown,
+    /// because zero would read as "empty aeroplanes" rather than "no
+    /// aeroplanes".
+    public let averageLoadFactor: Double?
+    public let liveFlights: Int
+    public let monthToDateProfit: Money
+    public let destinations: Int
+
+    public init(routeCount: Int, profitableRoutes: Int, losingRoutes: Int,
+                idleRoutes: Int, averageLoadFactor: Double?, liveFlights: Int,
+                monthToDateProfit: Money, destinations: Int) {
+        self.routeCount = routeCount
+        self.profitableRoutes = profitableRoutes
+        self.losingRoutes = losingRoutes
+        self.idleRoutes = idleRoutes
+        self.averageLoadFactor = averageLoadFactor
+        self.liveFlights = liveFlights
+        self.monthToDateProfit = monthToDateProfit
+        self.destinations = destinations
+    }
+}
+
+/// What the fleet is doing, in one value.
+public struct FleetSummary: Equatable, Sendable {
+    public let total: Int
+    /// Flying a route today.
+    public let assigned: Int
+    /// Active, airworthy and doing nothing — the number that costs money.
+    public let idle: Int
+    public let inMaintenance: Int
+    public let onOrder: Int
+    /// Assigned over airworthy. Nil with no airworthy aircraft, so a fleet of
+    /// nothing does not report 0% utilisation as though it were a failure.
+    public let utilization: Double?
+    public let averageAgeYears: Double?
+    public let averageCondition: Double?
+    /// Book value of owned aircraft. Leased aircraft are not an asset.
+    public let ownedValue: Money
+    public let leasedCount: Int
+    /// Monthly lease bill, which is the fleet cost a player can actually act on.
+    public let monthlyLeaseCost: Money
+
+    public init(total: Int, assigned: Int, idle: Int, inMaintenance: Int,
+                onOrder: Int, utilization: Double?, averageAgeYears: Double?,
+                averageCondition: Double?, ownedValue: Money, leasedCount: Int,
+                monthlyLeaseCost: Money) {
+        self.total = total
+        self.assigned = assigned
+        self.idle = idle
+        self.inMaintenance = inMaintenance
+        self.onOrder = onOrder
+        self.utilization = utilization
+        self.averageAgeYears = averageAgeYears
+        self.averageCondition = averageCondition
+        self.ownedValue = ownedValue
+        self.leasedCount = leasedCount
+        self.monthlyLeaseCost = monthlyLeaseCost
+    }
+}
+
+extension GameState {
+    /// Aeroplanes of `airline` currently in the air.
+    ///
+    /// Airborne means airborne: a flight that is boarding, turning round or
+    /// merely scheduled is not traffic the player can watch move. Shared by
+    /// `dashboardModel` and `networkSummary` so the two cannot disagree.
+    public func airborneFlightCount(for airline: AirlineID) -> Int {
+        // A flight carries no airline of its own; it belongs to whoever owns
+        // its route.
+        let ownRoutes = Set(routes(of: airline).map(\.id))
+        var live = 0
+        for id in orderedFlightIDs {
+            guard let flight = flights[id], ownRoutes.contains(flight.route) else { continue }
+            if case .enRoute = flight.phase { live += 1 }
+        }
+        return live
+    }
+
+    /// The network at a glance. Deterministic; derived from the same routes
+    /// and flights the simulation stepped.
+    public func networkSummary(for airline: AirlineID) -> NetworkSummary {
+        let routes = self.routes(of: airline)
+        var profitable = 0, losing = 0, idle = 0
+        var monthToDate = Money.zero
+        var destinations = Set<AirportCode>()
+
+        // Load factor is weighted by seats flown rather than averaged over
+        // routes: one daily widebody and one weekly turboprop are not two
+        // equal opinions about how full the airline is.
+        var seatsSold: Int64 = 0
+        var seatsFlown: Int64 = 0
+
+        for route in routes {
+            let profit = route.economicsThisMonth.directOperatingProfit
+            monthToDate = monthToDate + profit
+            if profit.isNegative {
+                losing += 1
+            } else if profit.cents > 0 {
+                profitable += 1
+            }
+            if route.assignedAircraft.isEmpty { idle += 1 }
+            destinations.insert(route.origin)
+            destinations.insert(route.destination)
+
+            if route.stats.seatsFlown > 0 {
+                seatsFlown += route.stats.seatsFlown
+                seatsSold += route.stats.passengersCarried
+            }
+        }
+
+        let live = airborneFlightCount(for: airline)
+
+        return NetworkSummary(
+            routeCount: routes.count, profitableRoutes: profitable,
+            losingRoutes: losing, idleRoutes: idle,
+            averageLoadFactor: seatsFlown > 0
+                ? Double(seatsSold) / Double(seatsFlown) : nil,
+            liveFlights: live, monthToDateProfit: monthToDate,
+            destinations: destinations.count)
+    }
+
+    /// The fleet at a glance.
+    public func fleetSummary(for airline: AirlineID) -> FleetSummary {
+        let aircraft = fleet(of: airline)
+        var assigned = 0, idle = 0, maintenance = 0, onOrder = 0, leased = 0
+        var ageTotal = 0.0, conditionTotal = 0.0, airworthy = 0
+        var owned = Money.zero
+        var leaseBill = Money.zero
+
+        for unit in aircraft {
+            switch unit.status {
+            case .ordered: onOrder += 1
+            case .inMaintenance: maintenance += 1
+            case .active:
+                airworthy += 1
+                if unit.assignedRoute == nil { idle += 1 } else { assigned += 1 }
+            }
+            // Age and condition describe every aircraft the airline owns,
+            // including one waiting for its check — that is exactly when its
+            // condition matters most.
+            if !unit.status.isOnOrder {
+                ageTotal += unit.ageYears
+                conditionTotal += unit.condition
+            }
+            switch unit.ownership {
+            case .owned(let book): owned = owned + book
+            case .leased(let rate, _):
+                leased += 1
+                leaseBill = leaseBill + rate
+            }
+        }
+
+        let delivered = aircraft.count - onOrder
+        return FleetSummary(
+            total: aircraft.count, assigned: assigned, idle: idle,
+            inMaintenance: maintenance, onOrder: onOrder,
+            utilization: airworthy > 0
+                ? Double(assigned) / Double(airworthy) : nil,
+            averageAgeYears: delivered > 0 ? ageTotal / Double(delivered) : nil,
+            averageCondition: delivered > 0 ? conditionTotal / Double(delivered) : nil,
+            ownedValue: owned, leasedCount: leased, monthlyLeaseCost: leaseBill)
     }
 }

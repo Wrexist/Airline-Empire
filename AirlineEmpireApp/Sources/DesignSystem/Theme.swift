@@ -153,6 +153,72 @@ extension ButtonStyle where Self == AEPressStyle {
     static var aePress: AEPressStyle { AEPressStyle() }
 }
 
+// MARK: - Typography
+
+/// The type scale, by role (docs/DESIGN_SYSTEM.md §2).
+///
+/// The app had 291 `.font(...)` call sites and no type tokens at all. Every
+/// one named a *system size* — `.caption`, `.subheadline` — which says how big
+/// the text is and nothing about what it is for. So `.caption` was
+/// simultaneously the metric label, the supporting sentence, the badge and the
+/// timestamp, and there was no way to restyle "every metric label" or even to
+/// find them. That is the actual cause of the weak hierarchy this phase was
+/// asked to fix: not that the sizes were wrong, but that nothing recorded
+/// which of them meant what.
+///
+/// These are roles. Pick by what the text *is*; the size follows.
+///
+/// The ladder, loosely: `screenTitle` > `sectionTitle` > `metric` > `body` >
+/// `secondary` > `caption`. Weight carries hierarchy far more cheaply than
+/// size on a phone, so the sizes stay close together and the weights do the
+/// work — which is also what keeps Dynamic Type from tearing layouts apart.
+enum AEType {
+    /// The one number a screen exists to show. Rare, by design.
+    static let hero = Font.system(.largeTitle, design: .rounded, weight: .semibold)
+        .monospacedDigit()
+
+    /// A screen's own title, where the navigation bar is not carrying it.
+    static let screenTitle = Font.title3.weight(.semibold)
+
+    /// The heading over a group of related rows, where the heading is a
+    /// sentence rather than a label.
+    static let sectionTitle = Font.subheadline.weight(.semibold)
+
+    /// The small uppercase, letter-spaced heading `AESectionHeader` draws.
+    ///
+    /// Kept at caption size deliberately: uppercase with tracking already
+    /// reads as a heading, so size would be a second signal doing the same
+    /// job, and at subheadline it starts competing with the content beneath
+    /// it. This is the size iOS itself uses for grouped-list headers.
+    static let eyebrow = Font.caption.weight(.semibold)
+
+    /// A figure the player reads as a number: cash, load factor, a count.
+    /// Monospaced digits, so a value that ticks does not jitter its neighbours.
+    static let metric = Font.title3.weight(.semibold).monospacedDigit()
+
+    /// A figure in a dense row or tile, where `metric` would dominate.
+    static let metricCompact = Font.subheadline.weight(.semibold).monospacedDigit()
+
+    /// The label naming a metric. Deliberately quiet: the number is the point.
+    static let metricLabel = Font.caption
+
+    /// Ordinary prose and list rows.
+    static let body = Font.subheadline
+
+    /// The same weight of content, one step back — a row's supporting detail.
+    static let secondary = Font.caption
+
+    /// Timestamps, footnotes, units. The smallest thing the app should ask
+    /// anyone to read.
+    static let caption = Font.caption2
+
+    /// Text inside a badge or pill.
+    static let badge = Font.caption2.weight(.semibold)
+
+    /// An airport or aircraft code, where the fixed width is the meaning.
+    static let code = Font.subheadline.weight(.semibold).monospaced()
+}
+
 /// Reduce Motion, honoured on purpose rather than by luck.
 ///
 /// The audit found the app relying entirely on SwiftUI's own defaults, which

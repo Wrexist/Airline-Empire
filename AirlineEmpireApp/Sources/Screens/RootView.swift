@@ -25,11 +25,11 @@ struct RootView: View {
         // could not appear over a sheet, and could not appear on the menu at
         // all, which is how "could not open that save" reached nobody
         // (UIUX_FORENSIC_AUDIT UI-004).
-        .alert("Not possible", isPresented: rejectionPresented,
-               presenting: controller.lastRejection) { _ in
+        .alert(rejectionTitle, isPresented: rejectionPresented,
+               presenting: controller.lastRejection.map(Rejections.present)) { _ in
             Button("OK", role: .cancel) { controller.clearRejection() }
-        } message: { rejection in
-            Text(rejection.message)
+        } message: { presentation in
+            Text(presentation.body)
         }
         .alert("Could not start", isPresented: startupFailurePresented,
                presenting: controller.startupFailure) { _ in
@@ -45,6 +45,13 @@ struct RootView: View {
         if !controller.hasGame { return .newGame }
         if controller.snapshot?.progression.gameOver == true { return .gameOver }
         return .playing
+    }
+
+    /// The refusal's own title, so the alert names what was refused rather
+    /// than announcing "Not possible" for everything from an empty wallet to a
+    /// runway that is too short.
+    private var rejectionTitle: String {
+        controller.lastRejection.map { Rejections.present($0).title } ?? "Not possible"
     }
 
     private var rejectionPresented: Binding<Bool> {

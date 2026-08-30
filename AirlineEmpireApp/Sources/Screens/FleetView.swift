@@ -27,8 +27,10 @@ struct FleetList: View {
                         .padding(.horizontal, AETheme.spacingM)
                 } else {
                     List {
-                        FleetSummaryRow(cards: cards)
-                            .aeListRow()
+                        if let summary = controller.fleetSummary {
+                            FleetSummaryRow(summary: summary)
+                                .aeListRow()
+                        }
                         ForEach(cards, id: \.id) { card in
                             NavigationLink(value: card.id) {
                                 FleetRow(card: card, catalog: catalog)
@@ -87,51 +89,51 @@ struct FleetList: View {
 
 /// What the fleet costs and what it is, before the individual rows — the
 /// question "am I over-fleeted?" had no answer anywhere in the app.
+/// The fleet in one strip (MASTER PROMPT 4 §9).
+///
+/// This used to derive its own aggregates from the card array in a view body.
+/// Two problems: the same arithmetic also lived on Home and the Routes board,
+/// free to disagree; and `averageAge` divided by *every* card including
+/// aircraft still on order, whose age is near zero — so ordering a new
+/// aeroplane made the fleet look younger than it was. The numbers now come
+/// from `FleetSummary` in Core, which counts delivered aircraft for age and
+/// condition and is tested against the cards it summarises.
 struct FleetSummaryRow: View {
-    let cards: [FleetCardModel]
+    let summary: FleetSummary
 
     var body: some View {
-        HStack(spacing: AETheme.spacingM) {
-            summary("\(cards.count)", "aircraft")
-            summary("\(idleCount)", "idle", tint: idleCount > 0 ? AETheme.caution : nil)
-            summary(Format.money(monthlyLeases), "leases/mo")
-            summary("\(Format.decimal(averageAge, places: 0)) y", "avg age")
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, AETheme.spacingXS)
-        .accessibilityElement(children: .combine)
-    }
-
-    private var idleCount: Int {
-        cards.filter { $0.assignedRoute == nil && $0.status.isActive }.count
-    }
-
-    private var monthlyLeases: Money {
-        cards.reduce(Money.zero) { total, card in
-            if case .leased(let rate, _) = card.ownershipDescription {
-                return total + rate
+        AEMetricStrip {
+            AECompactMetric(label: "aircraft", value: "\(summary.total)")
+            AECompactMetric(label: "flying", value: "\(summary.assigned)",
+                            tint: summary.assigned > 0 ? AETheme.positive : nil)
+            // Idle aircraft are the number a player can act on: they cost the
+            // same as flying ones and earn nothing.
+            AECompactMetric(label: "idle", value: "\(summary.idle)",
+                            tint: summary.idle > 0 ? AETheme.caution : nil)
+            AECompactMetric(label: "in use",
+                            value: summary.utilization.map(Format.percent) ?? "—")
+            AECompactMetric(label: "avg age",
+                            value: summary.averageAgeYears
+                                .map { "\(Format.decimal($0, places: 0)) y" } ?? "—")
+            AECompactMetric(label: "condition",
+                            value: summary.averageCondition.map(Format.percent) ?? "—",
+                            tint: (summary.averageCondition ?? 1) < 0.6
+                                ? AETheme.caution : nil)
+            if summary.inMaintenance > 0 {
+                AECompactMetric(label: "in check",
+                                value: "\(summary.inMaintenance)",
+                                tint: AETheme.caution)
             }
-            return total
+            if summary.onOrder > 0 {
+                AECompactMetric(label: "on order", value: "\(summary.onOrder)")
+            }
+            if summary.leasedCount > 0 {
+                AECompactMetric(label: "leases/mo",
+                                value: Format.money(summary.monthlyLeaseCost))
+            }
         }
-    }
-
-    private var averageAge: Double {
-        guard !cards.isEmpty else { return 0 }
-        return cards.reduce(0) { $0 + $1.ageYears } / Double(cards.count)
-    }
-
-    private func summary(_ value: String, _ label: String,
-                         tint: Color? = nil) -> some View {
-        VStack(spacing: 1) {
-            Text(value)
-                .font(.subheadline.weight(.semibold))
-                .monospacedDigit()
-                .foregroundStyle(tint ?? .primary)
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(AETheme.mutedText)
-        }
-        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Fleet summary")
     }
 }
 

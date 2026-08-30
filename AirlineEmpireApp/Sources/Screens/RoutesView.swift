@@ -38,6 +38,15 @@ struct RoutesList: View {
                         .padding(.horizontal, AETheme.spacingM)
                 } else {
                     List {
+                        // The board had no header at all: a player with forty
+                        // routes had to read forty rows to learn whether the
+                        // network was making money (MASTER PROMPT 4 §12).
+                        // Hidden while searching, when a summary of everything
+                        // would describe rows that are not on screen.
+                        if let network = controller.networkSummary, search.isEmpty {
+                            NetworkSummaryRow(summary: network)
+                                .aeListRow()
+                        }
                         ForEach(cards, id: \.id) { card in
                             NavigationLink(value: card.id) {
                                 RouteRow(card: card)
@@ -112,6 +121,40 @@ struct RoutesList: View {
         if card.thisMonthProfit.isNegative { return 1 }
         if card.loadFactor < 0.5 { return 2 }
         return 3
+    }
+}
+
+/// The network in one strip (MASTER PROMPT 4 §12).
+///
+/// Answers, above the list rather than inside it: how many routes, how many
+/// are earning, how many are bleeding, how full the aeroplanes are, and what
+/// the month has made so far.
+struct NetworkSummaryRow: View {
+    let summary: NetworkSummary
+
+    var body: some View {
+        AEMetricStrip {
+            AECompactMetric(label: "routes", value: "\(summary.routeCount)")
+            AECompactMetric(label: "earning", value: "\(summary.profitableRoutes)",
+                            tint: summary.profitableRoutes > 0 ? AETheme.positive : nil)
+            // Losing and earning do not sum to the total: a route that has not
+            // flown yet is neither, and calling it a loss would be a lie.
+            AECompactMetric(label: "losing", value: "\(summary.losingRoutes)",
+                            tint: summary.losingRoutes > 0 ? AETheme.negative : nil)
+            if summary.idleRoutes > 0 {
+                AECompactMetric(label: "no aircraft", value: "\(summary.idleRoutes)",
+                                tint: AETheme.caution)
+            }
+            AECompactMetric(label: "load factor",
+                            value: summary.averageLoadFactor.map(Format.percent) ?? "—")
+            AECompactMetric(label: "in the air", value: "\(summary.liveFlights)")
+            AECompactMetric(label: "month to date",
+                            value: Format.money(summary.monthToDateProfit),
+                            tint: summary.monthToDateProfit.isNegative
+                                ? AETheme.negative : AETheme.positive)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Network summary")
     }
 }
 

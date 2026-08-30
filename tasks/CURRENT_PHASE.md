@@ -1,5 +1,13 @@
 # Current Phase
 
+**AE-028 — UI/UX polish, information density, design system (MASTER PROMPT 4).**
+In progress 2026-08-30. Foundation laid: a type scale by role, containers below
+a card, a button ladder, and — the load-bearing change — network and fleet
+aggregates moved into Core so Home, the Routes board and the Fleet board cannot
+answer the same question differently. Two bugs found and fixed (BUG-027,
+BUG-028). **Nothing in this phase has been seen rendered**; see the ladder
+below.
+
 **AE-023 — Linux-first continuation (V3 prompt).** No Mac is available;
 Apple-layer work is prepared, never claimed.
 

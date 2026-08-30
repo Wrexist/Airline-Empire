@@ -94,6 +94,8 @@ final class GameController {
     /// should observe — the snapshot it derives from already is.
     @ObservationIgnored private var cachedTick: Int64 = -1
     @ObservationIgnored private var cachedMap: MapModel?
+    @ObservationIgnored private var cachedNetwork: NetworkSummary?
+    @ObservationIgnored private var cachedFleetSummary: FleetSummary?
     @ObservationIgnored private var cachedRouteCards: [RouteCardModel]?
     @ObservationIgnored private var cachedFleetCards: [FleetCardModel]?
 
@@ -103,6 +105,32 @@ final class GameController {
         cachedMap = nil
         cachedRouteCards = nil
         cachedFleetCards = nil
+        cachedNetwork = nil
+        cachedFleetSummary = nil
+    }
+
+    /// The network at a glance — Home's pulse, the Routes board's header.
+    var networkSummary: NetworkSummary? {
+        guard let snapshot, let player = snapshot.playerAirline else { return nil }
+        if let cachedNetwork, snapshot.clock.tickCount == cachedTick {
+            return cachedNetwork
+        }
+        let summary = snapshot.networkSummary(for: player.id)
+        cachedTick = snapshot.clock.tickCount
+        cachedNetwork = summary
+        return summary
+    }
+
+    /// The fleet at a glance — the Fleet board's header.
+    var fleetSummary: FleetSummary? {
+        guard let snapshot, let player = snapshot.playerAirline else { return nil }
+        if let cachedFleetSummary, snapshot.clock.tickCount == cachedTick {
+            return cachedFleetSummary
+        }
+        let summary = snapshot.fleetSummary(for: player.id)
+        cachedTick = snapshot.clock.tickCount
+        cachedFleetSummary = summary
+        return summary
     }
 
     var mapModel: MapModel? {
@@ -356,6 +384,10 @@ final class GameController {
         lastSaveOutcome = nil
         autoPauseReason = nil
         celebration = nil
+        // Per-game, like everything else here. Without this the next airline
+        // opens Settings to a warning that *this* one's autosave failed
+        // (tasks/BUGS.md BUG-028) — the same leak class as BUG-013.
+        quietSaveFailure = nil
         lastSolvencyStage = .healthy
         pendingAudioEvents = []
         // The director goes with the game. Without this the next airline
@@ -366,6 +398,8 @@ final class GameController {
         cachedMap = nil
         cachedRouteCards = nil
         cachedFleetCards = nil
+        cachedNetwork = nil
+        cachedFleetSummary = nil
     }
 
     // MARK: Time control
