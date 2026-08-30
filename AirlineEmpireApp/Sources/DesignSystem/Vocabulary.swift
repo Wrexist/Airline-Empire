@@ -376,6 +376,16 @@ extension Vocab {
         }
     }
 
+    /// One driver as a clause, to be read after "Earning" or "Losing money".
+    ///
+    /// Each clause states a figure and no judgement, because the lead word
+    /// already carries the polarity. That is why `.loadFactor` and
+    /// `.strongDemand` produce the same words: 80% full is 80% full, and
+    /// whether it reads as the cause of a profit or of a loss is settled by
+    /// the sentence it lands in, not by this function. Core decided which
+    /// driver dominates (`RouteVerdict`); this only chooses the wording, so
+    /// the phrasing can be rewritten without anyone re-deriving what causes
+    /// what.
     private static func driver(_ driver: RouteVerdict.Driver) -> String {
         switch driver {
         case .loadFactor(let value):

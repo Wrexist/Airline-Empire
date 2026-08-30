@@ -748,6 +748,15 @@ enum AEButtonRole {
     case destructive
 }
 
+/// Renders an `AEButtonRole` as chrome.
+///
+/// `makeBody` delegates to a nested `View` rather than building the button
+/// inline, which looks like indirection and is not. A `ButtonStyle` is not a
+/// `View`, so `@Environment` cannot be read inside `makeBody` — the property
+/// wrapper needs a view's update cycle to observe. This style needs two
+/// environment values (`isEnabled` to dim, `accessibilityReduceMotion` to
+/// decide whether the press even animates), so the work has to happen one
+/// level down in something that really is a `View`.
 struct AEButtonStyle: ButtonStyle {
     let role: AEButtonRole
 
@@ -755,6 +764,7 @@ struct AEButtonStyle: ButtonStyle {
         Surface(configuration: configuration, role: role)
     }
 
+    /// The actual chrome. A `View`, so it can read the environment.
     private struct Surface: View {
         let configuration: ButtonStyleConfiguration
         let role: AEButtonRole

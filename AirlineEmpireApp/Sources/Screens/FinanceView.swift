@@ -87,6 +87,15 @@ struct FinanceContent: View {
         }
     }
 
+    /// Whether the airline is making money flying aeroplanes, before
+    /// financing (MASTER PROMPT 4 §15).
+    ///
+    /// The tiles above answer "what is the airline worth"; this answers "is it
+    /// working", which is a different question and the one an operator asks
+    /// first. Absent rather than zeroed when there are no routes — an
+    /// operating profit of nothing is not the same claim as an airline that
+    /// has not started, and `NetworkSummary` draws that distinction
+    /// deliberately.
     @ViewBuilder
     private func operatingStrip() -> some View {
         if let network = controller.networkSummary, network.routeCount > 0 {
@@ -131,6 +140,14 @@ struct FinanceContent: View {
         }
     }
 
+    /// One end of the ranking, as a row that pushes to the route it names.
+    ///
+    /// `tint` colours the city pair, not the money: `MoneyText` sets its own
+    /// foreground from the sign of the figure and so overrides anything
+    /// inherited. That is deliberate — the profit's colour must follow the
+    /// number, never the row it happens to sit in, or a "best" route that is
+    /// losing money would be shown in green. The sign is in the text either
+    /// way, so the colour only ever confirms what the row already says.
     private func extremeRow(_ label: String, _ card: RouteCardModel,
                             tint: Color) -> some View {
         NavigationLink(value: card.id) {
