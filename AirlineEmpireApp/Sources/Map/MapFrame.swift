@@ -110,6 +110,19 @@ struct MapFrame {
                 context.fill(path, with: .color(AETheme.mapLand))
                 context.stroke(path, with: .color(AETheme.mapCoast), lineWidth: 0.7)
             }
+            // Inland water, over the land it sits in. Drawn in the ocean's
+            // own colour rather than a third tone: a lake is the same
+            // substance as the sea, and giving it its own value would add a
+            // band to a palette deliberately kept narrow
+            // (docs/MAP_ARCHITECTURE.md §2).
+            for lake in WorldGeometry.lakes {
+                var path = Path()
+                appendPolyline(lake, offset: offset, to: &path)
+                path.closeSubpath()
+                context.fill(path, with: .color(AETheme.mapBackground))
+                context.stroke(path, with: .color(AETheme.mapCoast.opacity(0.6)),
+                               lineWidth: 0.5)
+            }
         }
     }
 
