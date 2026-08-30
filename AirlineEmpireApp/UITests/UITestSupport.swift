@@ -30,14 +30,32 @@ class AEUITestCase: XCTestCase {
         super.tearDown()
     }
 
+    /// The appearance the simulator is currently in, across tests in a run.
+    ///
+    /// Static on purpose. `XCUIDevice.appearance` drives the *simulator*, and
+    /// switching it is a system-wide animation, not a per-process flag —
+    /// setting it before every launch made two of six tests fail on the first
+    /// run with "Timed out while launching application via Xcode" and "Failed
+    /// to get background assertion for target app with pid 0". Neither was an
+    /// app defect; both were the harness fighting the simulator.
+    ///
+    /// Tracking the current value turns six switches into at most two.
+    private static var currentAppearance: XCUIDevice.Appearance?
+
     /// Launch in a named appearance.
     ///
-    /// `XCUIDevice.appearance` drives the simulator itself rather than
-    /// overriding a trait inside the process, so what is captured is what a
-    /// player switching Appearance in Settings would actually get — including
-    /// the parts of the interface the app does not draw, like the tab bar.
+    /// The simulator rather than a trait override inside the process, so what
+    /// is captured is what a player changing Appearance in Settings would get,
+    /// including the chrome the app does not draw.
     func launch(appearance: XCUIDevice.Appearance) {
-        XCUIDevice.shared.appearance = appearance
+        if Self.currentAppearance != appearance {
+            XCUIDevice.shared.appearance = appearance
+            Self.currentAppearance = appearance
+            // Let the switch finish. Launching into a system-wide appearance
+            // animation is what produced the two failures above; this is a
+            // settle, not a guess at a race.
+            Thread.sleep(forTimeInterval: 3)
+        }
         app.launch()
     }
 
