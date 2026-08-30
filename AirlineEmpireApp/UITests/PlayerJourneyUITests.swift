@@ -184,6 +184,127 @@ final class PlayerJourneyUITests: AEUITestCase {
         checkpoint("07-routes-with-route")
     }
 
+    /// An aircraft actually in the air, on an actual route, photographed.
+    ///
+    /// The longest journey in this file, and the only one that reaches the
+    /// state the game is *for*. Every earlier test stops at a static board:
+    /// a fleet with one aircraft in it, a route with no aircraft on it, a
+    /// paused clock. None of them has ever seen the simulation run.
+    ///
+    /// Five steps, each of which can fail on its own terms:
+    /// lease → open a route → assign the aircraft → start the clock → wait.
+    ///
+    /// The wait is the interesting part. `MapScreen` publishes "N aircraft in
+    /// the air" as the canvas's accessibility value, straight from the model,
+    /// so the test can poll for the simulation's own count rather than
+    /// guessing at a duration and hoping. That also makes this the one place
+    /// that checks the agreement the whole map rests on: the simulation says
+    /// an aircraft is flying, and the map says the same.
+    func testAnAircraftFliesItsRouteOnTheMap() throws {
+        launch(appearance: .light)
+        guard foundAirline() else { return }
+
+        // ── Lease ──────────────────────────────────────────────────────────
+        openTab("Network")
+        app.buttons["Fleet"].tap()
+        let browse = app.buttons["Browse the market"]
+        require(browse, "the market entry point")
+        browse.tap()
+
+        let eraFilter = app.switches["Hide what this era cannot buy"]
+        if eraFilter.waitForExistence(timeout: 5), eraFilter.value as? String == "0" {
+            eraFilter.tap()
+        }
+        let lease = app.buttons.matching(identifier: "ae-market-lease").firstMatch
+        require(lease, "a Lease action")
+        lease.tap()
+        let confirmLease = app.buttons["Lease"]
+        if confirmLease.waitForExistence(timeout: 5) { confirmLease.tap() }
+        let done = app.buttons["Done"]
+        if done.waitForExistence(timeout: 3) { done.tap() }
+
+        // ── Open a route ───────────────────────────────────────────────────
+        app.buttons["Routes"].tap()
+        let openRoute = app.buttons["Open a route"]
+        require(openRoute, "the route entry point")
+        openRoute.tap()
+        let firstMarket = app.cells.firstMatch
+        if firstMarket.waitForExistence(timeout: 8) { firstMarket.tap() }
+        let openAction = app.buttons["Open"]
+        if openAction.waitForExistence(timeout: 5), openAction.isEnabled {
+            openAction.tap()
+        }
+
+        // ── Assign ─────────────────────────────────────────────────────────
+        // Into the route's own screen, where the assignment lives.
+        let routeRow = app.cells.firstMatch
+        require(routeRow, "the new route on the board")
+        routeRow.tap()
+
+        let assign = app.buttons["Assign an aircraft"]
+        guard assign.waitForExistence(timeout: 10) else {
+            // Not a silent skip. If no aircraft can fly this route the
+            // assignment card says why, and that reason is the finding.
+            capture(Self.logPrefix + "NO-ASSIGNABLE-AIRCRAFT")
+            XCTFail("""
+                No aircraft could be assigned to the route just opened. The \
+                leased aircraft cannot fly it — most likely range — which \
+                means the guided path a new player is offered (lease the \
+                first aircraft, open the first suggested route) does not \
+                connect. Screenshot attached.
+                """)
+            return
+        }
+        assign.tap()
+        // The menu lists one row per eligible aircraft; the first is the one
+        // just leased, since it is the only one owned.
+        let candidate = app.buttons.element(boundBy: 0)
+        if candidate.waitForExistence(timeout: 5) { candidate.tap() }
+        checkpoint("80-route-with-aircraft")
+
+        // ── Run the clock ──────────────────────────────────────────────────
+        openTab("Map")
+        let frameNetwork = app.buttons["Frame my network"]
+        if frameNetwork.waitForExistence(timeout: 5) { frameNetwork.tap() }
+
+        let fast = app.buttons["Sixteen times speed"]
+        require(fast, "the 16x speed control")
+        fast.tap()
+
+        // At 16x the world runs 64 game-minutes a real second, so a game day
+        // costs about 22 seconds. Two minutes is roughly five game days —
+        // long enough that a schedule with no departure in it is a finding
+        // rather than impatience.
+        let map = app.descendants(matching: .any)["ae-map-canvas"]
+        var airborne = false
+        let deadline = Date().addingTimeInterval(120)
+        while Date() < deadline {
+            if let value = map.value as? String,
+               value.contains("aircraft in the air"),
+               !value.contains("0 aircraft in the air") {
+                airborne = true
+                break
+            }
+            Thread.sleep(forTimeInterval: 2)
+        }
+
+        // The photograph, taken whether or not anything took off: a map with
+        // nothing flying on it after five game days is the more interesting
+        // image of the two.
+        checkpoint("81-flight-in-progress")
+        app.buttons["Zoom in"].tap()
+        app.buttons["Zoom in"].tap()
+        checkpoint("82-flight-close-up")
+
+        XCTAssertTrue(airborne, """
+            No aircraft reached the air in roughly five game days, on a route \
+            with an aircraft assigned to it. Either nothing was scheduled or \
+            the map is not reporting what the simulation is doing — and the \
+            map's own accessibility value is what this polled, so the two \
+            disagreeing is itself the defect.
+            """)
+    }
+
     /// The map at two zoom levels, and a pinch that does not fall over.
     ///
     /// Two things this can honestly check, and one it cannot. It can prove the
