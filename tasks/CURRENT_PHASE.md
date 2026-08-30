@@ -5,42 +5,54 @@ observed.)**
 2026-08-30.
 
 The brief: close the gap between what the project claims works and what has
-been seen working. The first act was to distrust the previous phase's own
-evidence — decode run 59's twenty screenshots and look — and that is where
-the biggest findings were:
+been seen working. Method: decode every CI run's screenshots (the full logs
+are downloadable without a credential — `scripts/decode-ci-screenshots.py`),
+look at them, fix what the frames show, and label every claim OBSERVED /
+ASSERTED / READ / NOT VERIFIED. Eight CI runs (59–66+) each taught something.
 
-- **BUG-039**: the map zoom test had manufactured its evidence. Its three
-  "zoom levels" were byte-identical images, and its "zoomed back out" frame
-  was the Finance screen (a synthetic pinch finger pressed the tab bar). The
-  camera's zoom is now published in the canvas's accessibility value and
-  asserted at every step; a pinch that moves nothing is an explicit skip.
-- **BUG-038**: the route-opening journey tapped the From picker as if it
-  were a destination, then a button that has never existed. Under the broken
-  proof, a real flaw: the "Open this route" commit sat below ~40 candidate
-  rows. It now rides the sheet's bottom edge.
-- **BUG-037**: Core's insufficient-funds messages printed raw cents — "Need
-  110000000 for this offer", on screen, in a screenshot. `Money.compact`
-  now formats all five sites; `MoneyFormattingTests` pins it.
-- The lease mis-tap was photographed (a "Buy used (8y)?" dialog after a tap
-  aimed at Lease): the harness now settles scroll inertia and refuses to
-  confirm a dialog not titled "Lease?".
-- BUG-036 (map chrome in light) is now **visually confirmed fixed** — run
-  59's light-map frame, looked at.
+**The defining finding — BUG-040, P0: the game has never run.** The
+simulation pump was armed only by a scene-phase *change*, which fires at
+launch on the menu — where no session exists, so the guard returned — and
+nothing armed it again when a game was founded or loaded. Selecting 16×
+highlighted the control and moved nothing; runs 64 and 65 photographed an
+aircraft assigned to a route with the clock still at day one, 00:00, minutes
+later. Every screenshot of every phase before this was of a frozen world
+that looked correct. Fixed at the source (`startNewGame`/`loadGame` call
+`setPumping(true)`; the scene handler keeps suspend/resume and gains
+`initial: true`); `testTheClockActuallyRuns` is the dedicated guard.
 
-Also genuinely observed for the first time, run 59: Home light+dark, market,
-route sheet, both empty states light+dark, Finance/World dark, the map with
-Natural Earth coastlines, borders, flags, country and city labels. All render
-well; the two journey-test failures on main were test defects, not app ones.
+**The evidence system had been lying, and was fixed first (BUG-038/039):**
+the zoom test's three "levels" were byte-identical frames and its zoom-out
+frame was the Finance screen; the route journey tapped the From picker as a
+destination and a button that never existed. The camera now publishes its
+zoom for assertion; every journey step proves causality before the next.
 
-New coverage authored this phase (asserted on the branch CI run): aircraft
-detail, route detail, Settings, an audio-engine probe (the pipeline starts
-and all ~54 cues decode — not a claim anything was heard), Dynamic Type at
-accessibility size, a cold-launch metric, an opt-in iPad job at regular
-width. Core: 412/412 green on Linux after the Money change; `ae-bench`
-release baseline recorded (1 game-year: 1.65 s small / 13.6 s large world).
+**Product fixes, each confirmed against rendered frames:** BUG-037 (Core
+rejections printed raw cents — `Money.compact`), BUG-038's UX half (the
+route commit sat below ~40 candidate rows; now a bottom bar), BUG-036
+visually confirmed fixed, chips/Home header/metric strip at accessibility
+type sizes, the market sort segment truncation, and airports said the way
+people say them — "Sjövik (Stockholm)" — on the map, route sheet and
+browser, with graceful city/code fallback (observed on iPhone and iPad).
 
-Honest residue: pinch-on-hardware, VoiceOver order, rendered contrast, game
-over, audio *audibility* — still NOT VERIFIED. See docs/UI_RUNTIME_VALIDATION.md §7.
+**Observed for the first time:** aircraft detail, route detail, Settings,
+all five tabs dark and light, six genuinely distinct map zoom/pinch frames,
+Dynamic Type at AccessibilityL, and the iPad regular-width shell (sidebar +
+map, five tabs green in runs 63/66). **Asserted:** the audio pipeline starts
+with all ~54 cues decoded; cold launch 2.61 s median; camera zoom via
+buttons, double-tap and pinch; the full lease→route→assign chain (each step
+green in at least one run). **Honest residue:** the iOS 26 runner's tap
+synthesis is unstable in the market sheet — runs 61–66 each saw a different
+journey leg flake (one failure frame is the iOS Settings app); no run has
+yet strung every leg together with the clock running, so "an aircraft
+observed in the air" remains NOT VERIFIED, with `testTheClockActuallyRuns`
+and the flight journey as the standing guards. Also still not verified:
+system-appearance following, game over, VoiceOver order, audio audibility,
+hardware anything, antimeridian routes (TD-021).
+
+Core: 414/414 on Linux, release clean. Benchmarks: 1 game-year 1.65 s
+(small) / 13.6 s (large); map model 2.2 ms/call on a 200-route world; saves
+≤ 605 KiB. See docs/UI_RUNTIME_VALIDATION.md §7 and docs/UI_FULL_AUDIT.md §5.
 
 ---
 

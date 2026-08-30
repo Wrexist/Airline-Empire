@@ -178,3 +178,32 @@ reach. `get_workflow_run_logs_url` hands back a signed URL that downloads the
 full log zip with no credential, so every screenshot of a run is decodable —
 the 2.6 MB log-tail cap that ate the early checkpoints (TD-020) has a
 workaround, and AE-032 read all twenty frames of run 59 with it.
+
+## 8. AE-032, closed: the frozen world, and what the runner cannot do
+
+**BUG-040.** The deepest finding of the phase, found only because the
+journey finally reached the state the game is for. The simulation pump was
+armed solely by a scene-phase change — which fires at launch, on the menu,
+where no session exists — and nothing armed it when a game was founded or
+loaded. The clock therefore never ran: runs 64 and 65 both photographed an
+aircraft assigned to a route, 16× selected, and the date still at day one,
+00:00. Every screenshot in this document taken before that fix shows a
+frozen world that happened to look correct. Fixed where sessions are born;
+`testTheClockActuallyRuns` (found → 16× → the Home date must change inside
+a real minute) is the dedicated guard, deliberately independent of the
+market sheet.
+
+**The runner's tap synthesis is the flakiest thing in this project now.**
+Across runs 61–66 every leg of the economic journey went green at least
+once — lease (61, 64, 66), route open (61, 64), assignment with its
+Unassign proof (64), detail screens (61, 65) — and a different leg failed
+each time: a tap one row off, a row reported un-hittable, one run's failure
+frame showing the **iOS Settings app** where ours should be. These are
+recorded as automation limitations, not app defects: each failure's frame
+shows a healthy app. The consequence is stated plainly: **no single run has
+yet strung every leg together with the clock running, so "an aircraft
+observed in the air" is still NOT VERIFIED** — the flight journey and the
+clock test stand guard, and the first green flight run upgrades it.
+
+The iPad job's five-tab shell journey is green (runs 63, 66); its detail
+journey shares the market-sheet flakiness above and is not yet green.
