@@ -103,6 +103,32 @@ targets:
         # the profile explicitly. Pinning a team id in the manifest would make
         # the project unbuildable for anyone else.
 
+  # The first target in this project that runs the app rather than compiling
+  # it. Four phases of interface work have been reported as "authored, not
+  # observed" because nothing existed to observe them with, and three defects
+  # of the same shape — a control that exists, compiles and does nothing —
+  # were found by hand instead (BUG-029, BUG-030, BUG-032). A
+  # `NavigationLink(value:)` with no matching destination is silently inert;
+  # only tapping it finds that out.
+  #
+  # UI tests, not unit tests: the untested seam is the app talking to itself
+  # through SwiftUI's navigation and presentation, which a unit test cannot
+  # reach. `tasks/TECH_DEBT.md` TD-016 asks for both; this is the half that
+  # catches the bugs actually being found.
+  AirlineEmpireUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: AirlineEmpire
+    settings:
+      base:
+        TEST_TARGET_NAME: AirlineEmpire
+        # A UI test bundle is code-signed even on a simulator unless told
+        # otherwise, and the runner has no team.
+        CODE_SIGNING_ALLOWED: NO
+
 # XcodeGen does not generate a shared scheme unless one is declared, and Xcode
 # only autocreates schemes when a human opens the project. `xcodebuild -scheme
 # AirlineEmpire` on a runner would fail with "scheme not found" — which is a
@@ -113,10 +139,16 @@ schemes:
     build:
       targets:
         AirlineEmpire: all
+        AirlineEmpireUITests: [test]
     run:
       config: Debug
     test:
       config: Debug
+      # Screenshots are attached on every step, not only on failure — the
+      # question this target was added to answer is "what does it look like",
+      # and a failure-only attachment never answers it.
+      targets:
+        - AirlineEmpireUITests
     profile:
       config: Release
     analyze:

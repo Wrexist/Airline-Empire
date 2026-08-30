@@ -238,3 +238,77 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+      # The step that actually runs the app.
+      #
+      # `generic/platform=iOS Simulator` above compiles without booting
+      # anything, which is why four phases of interface work reached "it
+      # compiles" and stopped there. This boots a concrete device and drives
+      # the first minute of the game: found an airline, reach every tab, open
+      # the market. It is the only check in the project that would catch a
+      # control that exists, compiles, and does nothing — the shape of
+      # BUG-029, BUG-030 and BUG-032, all three found by hand.
+      #
+      # The device is resolved rather than named. Runner images change their
+      # installed simulators without warning, and a hardcoded 'iPhone 16'
+      # turns that into a red build with a confusing message.
+      - name: Pick a simulator
+        if: steps.changes.outputs.build == 'true'
+        id: sim
+        run: |
+          set -euo pipefail
+          NAME=$(xcrun simctl list devices available --json \
+            | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)['devices']
+          best = None
+          for runtime, devices in data.items():
+              if 'iOS' not in runtime:
+                  continue
+              for device in devices:
+                  if not device.get('isAvailable'):
+                      continue
+                  name = device['name']
+                  if name.startswith('iPhone'):
+                      # Prefer a plain iPhone over Pro/Max/mini: the smallest
+                      # common phone is the layout most likely to reveal a
+                      # cramped row, and this project has never seen one.
+                      score = (0 if 'Pro' in name or 'Max' in name else 1, name)
+                      if best is None or score > best[0]:
+                          best = (score, name)
+          print(best[1] if best else '')
+          ")
+          if [ -z "$NAME" ]; then
+            echo 'No available iOS simulator on this runner.' >&2
+            xcrun simctl list devices available >&2
+            exit 1
+          fi
+          echo "Using simulator: $NAME"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Run the UI tests
+        if: steps.changes.outputs.build == 'true'
+        working-directory: AirlineEmpireApp
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project AirlineEmpire.xcodeproj \
+            -scheme AirlineEmpire \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
+            -resultBundlePath UITestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            test
+
+      # The screenshots. These are the only visual evidence this project has
+      # ever produced, so they are kept whether the run passed or failed —
+      # a green run whose screens are wrong is precisely the case that needs
+      # looking at.
+      - name: Keep the screenshots
+        if: always() && steps.changes.outputs.build == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-screenshots
+          path: AirlineEmpireApp/UITestResults.xcresult
+          retention-days: 14
+          if-no-files-found: warn
