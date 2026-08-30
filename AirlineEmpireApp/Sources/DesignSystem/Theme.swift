@@ -250,9 +250,20 @@ extension View {
 /// `3.5` to a player in Paris who writes `3,5`, and it did so on every screen
 /// in this app. Two things stay deliberately fixed:
 ///
-/// - **`¤`**, the generic currency sign. The world is fictional and its money
-///   is not any real currency; picking one would be a lie, and localizing an
-///   invented currency into euros would be a bigger one.
+/// - **`$`**, as a money mark rather than as a currency.
+///
+///   This was `¤` (U+00A4, the generic currency sign), on the reasoning that
+///   the world is fictional and naming a real currency would be a lie. Sound
+///   intent, failed execution: `¤` is drawn as a hollow box with legs in most
+///   system faces, so on a screen it reads as a font-fallback error rather
+///   than as money — "is this build broken?", not "this is a neutral unit".
+///   That was invisible until AE-032 put actual screenshots in front of a
+///   human, who pointed at it immediately.
+///
+///   `$` is read in a management game as "money", not as US dollars — the
+///   genre has used it that way for thirty years. It renders in every font at
+///   every size, which the symbol it replaces does not. The fiction is carried
+///   by the world, not by the glyph.
 /// - **The ISO game date.** `2031-03-14` is unambiguous everywhere, which a
 ///   date in a game about global schedules should be.
 enum Format {
@@ -262,15 +273,15 @@ enum Format {
         let sign = dollars < 0 ? "−" : ""
         switch magnitude {
         case 1_000_000_000...:
-            return "\(sign)¤\(decimal(magnitude / 1_000_000_000, places: 2))B"
+            return "\(sign)$\(decimal(magnitude / 1_000_000_000, places: 2))B"
         case 1_000_000...:
-            return "\(sign)¤\(decimal(magnitude / 1_000_000, places: 1))M"
+            return "\(sign)$\(decimal(magnitude / 1_000_000, places: 1))M"
         case 10_000...:
-            return "\(sign)¤\(decimal(magnitude / 1_000, places: 0))k"
+            return "\(sign)$\(decimal(magnitude / 1_000, places: 0))k"
         default:
-            // Grouped, so ¤9999 does not read as a serial number
+            // Grouped, so $9999 does not read as a serial number
             // (UIUX_FORENSIC_AUDIT UI-031).
-            return "\(sign)¤\(grouped(Int64(magnitude.rounded())))"
+            return "\(sign)$\(grouped(Int64(magnitude.rounded())))"
         }
     }
 
@@ -318,6 +329,6 @@ enum Format {
     }
 
     /// Whole numbers with thousands separators — `Format.money` compresses
-    /// above ¤10k, but a passenger count should read exactly.
+    /// above $10k, but a passenger count should read exactly.
     static func count(_ value: Int64) -> String { grouped(value) }
 }

@@ -7,7 +7,7 @@ import AirlineEmpireCore
 /// order stops working somewhere around the tenth route; and it leads with the
 /// **month in progress** rather than the last closed month, because a route
 /// opened three days ago had a last month of exactly zero and the board read
-/// as a column of ¤0 through the whole window in which a new player is
+/// as a column of $0 through the whole window in which a new player is
 /// deciding whether this game rewards attention (UIUX_FORENSIC_AUDIT UI-002).
 struct RoutesList: View {
     @Environment(GameController.self) private var controller

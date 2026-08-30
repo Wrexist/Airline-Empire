@@ -166,6 +166,38 @@ final class PlayerJourneyUITests: AEUITestCase {
         checkpoint("07-routes-with-route")
     }
 
+    /// No screen shows the old generic currency sign.
+    ///
+    /// `¤` (U+00A4) was chosen deliberately — the world is fictional, so
+    /// naming a real currency was judged a lie. The intent was sound and the
+    /// execution was not: most system faces draw it as a hollow box with
+    /// legs, so every cash figure in the game read as a font-fallback error.
+    ///
+    /// Nothing could have caught that except looking. It compiled, it was
+    /// centralised, it was documented, and it survived four phases of UI work
+    /// — until AE-032 put a screenshot in front of a person, who spotted it in
+    /// seconds. This is the cheap guard that stops it coming back: money is
+    /// on almost every screen, so one sweep is enough.
+    func testNoScreenShowsTheOldCurrencyGlyph() throws {
+        launch(appearance: .light)
+        guard foundAirline() else { return }
+
+        for tab in ["Home", "Map", "Network", "Finance", "World"] {
+            openTab(tab)
+            let offending = app.staticTexts.matching(
+                NSPredicate(format: "label CONTAINS %@", "\u{00A4}"))
+            if offending.count > 0 {
+                capture(Self.logPrefix + "CURRENCY-\(tab)")
+                XCTFail("""
+                    \(tab) shows \(offending.count) label(s) containing ¤, the \
+                    generic currency sign, which renders as a hollow box and \
+                    reads as a broken glyph. Money should use $.
+                    """)
+                return
+            }
+        }
+    }
+
     /// Every tab reachable, and each renders something.
     func testFoundingAnAirlineReachesEveryTab() throws {
         launch(appearance: .light)
