@@ -669,10 +669,13 @@ struct MapFrame {
         let topLeft = projector.unproject(.zero)
         let bottomRight = projector.unproject(
             CGPoint(x: projector.size.width, y: projector.size.height))
-        return (min(topLeft.x, bottomRight.x) - margin,
-                max(topLeft.x, bottomRight.x) + margin,
-                min(topLeft.y, bottomRight.y) - margin,
-                max(topLeft.y, bottomRight.y) + margin)
+        // Converted rather than left to the implicit CGFloat/Double bridge:
+        // map space is Double everywhere it is stored, and mixing the two
+        // silently is how a geometry bug becomes a platform-specific one.
+        let x0 = Double(topLeft.x), x1 = Double(bottomRight.x)
+        let y0 = Double(topLeft.y), y1 = Double(bottomRight.y)
+        return (min(x0, x1) - margin, max(x0, x1) + margin,
+                min(y0, y1) - margin, max(y0, y1) + margin)
     }
 
     private func appendPolyline(_ points: [MapPoint], offset: Double = 0,
