@@ -223,13 +223,28 @@ struct AircraftDetailView: View {
         .aeTimeToolbar()
     }
 
+    /// The airline's livery, falling back to the accent before an airline
+    /// exists — this view is reachable only inside a game, but a colour that
+    /// resolves through an optional should say what it does when it cannot.
+    private var livery: Color {
+        // `Airline.livery` is non-optional, so `?.livery.map(_:)` would bind
+        // `map` inside the optional chain and not compile. Bind, then convert.
+        guard let livery = controller.snapshot?.playerAirline?.livery else {
+            return AETheme.accent
+        }
+        return Vocab.liveryColor(livery)
+    }
+
     private func identity(_ card: FleetCardModel, spec: AircraftTypeSpec) -> some View {
         AECard {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 HStack(spacing: AETheme.spacingS) {
-                    Image(systemName: Vocab.categoryIcon(card.category))
-                        .font(.title2)
-                        .foregroundStyle(AETheme.accent)
+                    // §10 asks for an aircraft visual here. The silhouette is
+                    // the airline's own livery colour, so a player's fleet
+                    // reads as theirs rather than as generic stock.
+                    AircraftShape(category: card.category)
+                        .fill(livery)
+                        .frame(width: 44, height: 44)
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 1) {
                         Text("\(spec.manufacturer) \(spec.model)").font(.headline)
@@ -569,14 +584,22 @@ struct AircraftShopSheet: View {
             tuning: catalog.tuning.fleet)
         return VStack(alignment: .leading, spacing: AETheme.spacingS) {
             HStack(spacing: AETheme.spacingS) {
-                Image(systemName: Vocab.categoryIcon(spec.category))
-                    .foregroundStyle(locked ? AETheme.mutedText : AETheme.accent)
+                // The silhouette, not a generic glyph. `AircraftShape` was
+                // written for exactly this — its own doc comment says "a fleet
+                // row, a detail header" — and until now only the map used the
+                // underlying path. A regional jet and a widebody looked
+                // identical in the one screen where telling them apart is the
+                // entire decision (MASTER PROMPT 4 §11).
+                AircraftShape(category: spec.category)
+                    .fill(locked ? AnyShapeStyle(AETheme.mutedText)
+                                 : AnyShapeStyle(AETheme.accent))
+                    .frame(width: 34, height: 34)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 1) {
                     Text("\(spec.manufacturer) \(spec.model)")
-                        .font(.body.weight(.semibold))
+                        .font(AEType.body.weight(.semibold))
                     Text(Vocab.category(spec.category))
-                        .font(.caption).foregroundStyle(AETheme.mutedText)
+                        .font(AEType.secondary).foregroundStyle(AETheme.mutedText)
                 }
                 Spacer()
                 if locked {
@@ -598,10 +621,19 @@ struct AircraftShopSheet: View {
                     .foregroundStyle(AETheme.mutedText)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
-                Text("New aircraft arrive after \(Format.days(spec.deliveryLeadDays)); used and leased fly immediately.")
-                    .font(.caption2)
-                    .foregroundStyle(AETheme.mutedText)
-                    .fixedSize(horizontal: false, vertical: true)
+                // The three options side by side, as prices to compare
+                // rather than three sentences to read in sequence. The
+                // tradeoff *is* the decision: cash now against cash monthly,
+                // and condition against waiting (MASTER PROMPT 4 §11).
+                AEMetricStrip {
+                    AECompactMetric(label: "new · in \(Format.days(spec.deliveryLeadDays))",
+                                    value: Format.money(spec.listPrice))
+                    AECompactMetric(label: "used \(usedAge)y · flies now",
+                                    value: Format.money(usedPrice))
+                    AECompactMetric(label: "lease · per month",
+                                    value: Format.money(spec.leaseMonthly),
+                                    tint: AETheme.leased)
+                }
                 purchase("Buy new", price: spec.listPrice, snapshot: snapshot,
                          player: player, detail: "Delivered in \(Format.days(spec.deliveryLeadDays))",
                          command: BuyNewAircraftCommand(buyer: player, type: spec.code))
