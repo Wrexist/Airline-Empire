@@ -32,6 +32,7 @@ struct FleetList: View {
                                    actionTitle: acquireAircraft == nil ? nil : "Browse the market",
                                    action: acquireAircraft)
                         .padding(.horizontal, AETheme.spacingM)
+                        .aeEmptyStatePlacement()
                 } else {
                     List {
                         if let summary = controller.fleetSummary {

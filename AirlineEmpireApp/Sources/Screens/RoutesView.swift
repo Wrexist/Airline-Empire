@@ -31,6 +31,7 @@ struct RoutesList: View {
                                    actionTitle: openRoute == nil ? nil : "Open a route",
                                    action: openRoute)
                         .padding(.horizontal, AETheme.spacingM)
+                        .aeEmptyStatePlacement()
                 } else if cards.isEmpty {
                     EmptyStateView(icon: "magnifyingglass",
                                    title: "No matches",
