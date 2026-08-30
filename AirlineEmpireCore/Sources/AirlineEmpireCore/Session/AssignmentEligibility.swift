@@ -218,3 +218,89 @@ extension GameState {
         return nil
     }
 }
+
+/// Narrowing a fleet down to the aircraft a player is looking for
+/// (MASTER PROMPT 5 §17, §37).
+///
+/// Fleet had sorting and nothing else. That is workable at five aircraft and
+/// useless at two hundred, which the brief asks the screen to survive: the
+/// question is never "show me everything ordered by age", it is "which of my
+/// aeroplanes are sitting idle" or "how many widebodies do I have".
+///
+/// The filter lives in Core with the read models it filters so that the
+/// counts a screen shows and the rows it lists cannot disagree — the same
+/// reasoning as `NetworkSummary`. It is a pure function of the cards, so it
+/// needs no state and can be tested without a view.
+public struct FleetFilter: Equatable, Sendable {
+    public enum Status: String, Equatable, Sendable, CaseIterable {
+        case all
+        /// Flying a route.
+        case assigned
+        /// Airworthy, unassigned, and costing money to own.
+        case idle
+        case inMaintenance
+        case onOrder
+    }
+
+    public enum Ownership: String, Equatable, Sendable, CaseIterable {
+        case all, owned, leased
+    }
+
+    public var status: Status
+    public var ownership: Ownership
+    /// Nil means every category.
+    public var category: AircraftCategory?
+
+    public init(status: Status = .all, ownership: Ownership = .all,
+                category: AircraftCategory? = nil) {
+        self.status = status
+        self.ownership = ownership
+        self.category = category
+    }
+
+    public var isNarrowed: Bool {
+        status != .all || ownership != .all || category != nil
+    }
+
+    public func matches(_ card: FleetCardModel) -> Bool {
+        switch status {
+        case .all: break
+        case .assigned:
+            guard card.assignedRoute != nil else { return false }
+        case .idle:
+            // Idle means "could be flying and is not". An aircraft in a check
+            // or still on order is not idle — the player cannot act on it,
+            // and lumping them together is what makes an idle count useless
+            // as a to-do list.
+            guard card.assignedRoute == nil, card.status.isActive else { return false }
+        case .inMaintenance:
+            guard card.status.isInMaintenance else { return false }
+        case .onOrder:
+            guard card.status.isOnOrder else { return false }
+        }
+        switch ownership {
+        case .all: break
+        case .owned:
+            guard case .owned = card.ownershipDescription else { return false }
+        case .leased:
+            guard case .leased = card.ownershipDescription else { return false }
+        }
+        if let category, card.category != category { return false }
+        return true
+    }
+}
+
+extension Array where Element == FleetCardModel {
+    /// The cards matching a filter, in the order they were already in.
+    public func matching(_ filter: FleetFilter) -> [FleetCardModel] {
+        filter.isNarrowed ? self.filter(filter.matches) : self
+    }
+
+    /// The categories actually present, in catalog order of size. A filter
+    /// offering "widebody" to a player who owns two turboprops is a control
+    /// that can only ever return nothing.
+    public var presentCategories: [AircraftCategory] {
+        let present = Set(map(\.category))
+        return AircraftCategory.allCases.filter(present.contains)
+    }
+}

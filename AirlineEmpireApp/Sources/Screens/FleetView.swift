@@ -11,14 +11,21 @@ import AirlineEmpireCore
 struct FleetList: View {
     @Environment(GameController.self) private var controller
     @State private var sort: FleetSort = .status
+    @State private var filter = FleetFilter()
     /// See `RoutesList.openRoute` — the same reasoning.
     var acquireAircraft: (() -> Void)?
 
     var body: some View {
         Group {
             if let catalog = controller.catalog {
-                let cards = sorted(controller.fleetCards)
-                if cards.isEmpty {
+                // Sort first, then filter: `matching` preserves order, so the
+                // rows a filter leaves are in the same sequence they had in
+                // the full list. Filtering first and sorting after would give
+                // the same set in the same order here, but only by accident —
+                // this way the property is the filter's, and it is tested.
+                let all = sorted(controller.fleetCards)
+                let cards = all.matching(filter)
+                if all.isEmpty {
                     EmptyStateView(icon: "airplane",
                                    title: "No aircraft",
                                    message: "Buy or lease your first aircraft to start flying. Leasing keeps cash free while you learn a market.",
@@ -30,6 +37,31 @@ struct FleetList: View {
                         if let summary = controller.fleetSummary {
                             FleetSummaryRow(summary: summary)
                                 .aeListRow()
+                        }
+                        // The bar only appears once there are enough aircraft
+                        // for scanning to be work. At four aeroplanes a filter
+                        // is a control that costs a row and saves nothing.
+                        if all.count >= 8 {
+                            FleetFilterBar(filter: $filter,
+                                           categories: all.presentCategories)
+                                .aeListRow()
+                        }
+                        if cards.isEmpty {
+                            // A filter that matches nothing must say so and
+                            // offer the way back. An empty list under an
+                            // active filter is otherwise indistinguishable
+                            // from a fleet that has vanished.
+                            VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                                Text("No aircraft match this filter.")
+                                    .font(AEType.body)
+                                Button("Show all \(all.count)") {
+                                    filter = FleetFilter()
+                                }
+                                .buttonStyle(.aeSecondary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, AETheme.spacingM)
+                            .aeListRow()
                         }
                         ForEach(cards, id: \.id) { card in
                             NavigationLink(value: card.id) {
@@ -84,6 +116,90 @@ struct FleetList: View {
         if card.status.isInMaintenance { return 1 }
         if card.status.isOnOrder { return 2 }
         return 3
+    }
+}
+
+/// The filter bar (MASTER PROMPT 5 §17).
+///
+/// Three controls, each showing what it would leave. The counts are the point:
+/// "Idle" beside a number tells the player whether the filter is worth tapping
+/// before they tap it, and an option that would return nothing is disabled
+/// rather than hidden — a control that silently disappears is harder to
+/// understand than one that is visibly empty.
+///
+/// It filters; it does not compute. `FleetFilter` in Core decides what matches
+/// what, and `FleetFilterTests` holds it to partitioning the fleet exactly
+/// once, so the counts here and the rows below cannot disagree.
+struct FleetFilterBar: View {
+    @Binding var filter: FleetFilter
+    let categories: [AircraftCategory]
+    @Environment(GameController.self) private var controller
+
+    private var cards: [FleetCardModel] { controller.fleetCards }
+
+    private func count(status: FleetFilter.Status) -> Int {
+        cards.matching(FleetFilter(status: status,
+                                   ownership: filter.ownership,
+                                   category: filter.category)).count
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AETheme.spacingS) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: AETheme.spacingXS) {
+                    ForEach(FleetFilter.Status.allCases, id: \.self) { status in
+                        let hits = count(status: status)
+                        Button {
+                            filter.status = status
+                        } label: {
+                            Text("\(Vocab.fleetStatus(status)) \(hits)")
+                                .font(AEType.badge)
+                        }
+                        .buttonStyle(.aeTertiary)
+                        .disabled(hits == 0 && status != .all)
+                        .opacity(hits == 0 && status != .all ? 0.4 : 1)
+                        .overlay(alignment: .bottom) {
+                            // Selection is carried by a rule as well as by
+                            // the button's own tint, so it does not depend on
+                            // colour alone.
+                            if filter.status == status {
+                                Capsule().fill(AETheme.accent).frame(height: 2)
+                            }
+                        }
+                        .accessibilityLabel("\(Vocab.fleetStatus(status)), \(hits) aircraft")
+                        .accessibilityAddTraits(filter.status == status
+                                                ? .isSelected : [])
+                    }
+                }
+                .padding(.horizontal, 2)
+            }
+            HStack(spacing: AETheme.spacingS) {
+                Picker("Ownership", selection: $filter.ownership) {
+                    ForEach(FleetFilter.Ownership.allCases, id: \.self) { option in
+                        Text(Vocab.fleetOwnership(option)).tag(option)
+                    }
+                }
+                .pickerStyle(.segmented)
+                if categories.count > 1 {
+                    Menu {
+                        Button("All types") { filter.category = nil }
+                        ForEach(categories, id: \.self) { category in
+                            Button(Vocab.category(category)) {
+                                filter.category = category
+                            }
+                        }
+                    } label: {
+                        Label(filter.category.map(Vocab.category) ?? "All types",
+                              systemImage: "line.3.horizontal.decrease")
+                            .font(AEType.caption)
+                            .frame(minHeight: 44)
+                    }
+                    .accessibilityLabel("Filter by aircraft type")
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Fleet filters")
     }
 }
 
@@ -674,7 +790,11 @@ struct AircraftShopSheet: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("\(spec.manufacturer) \(spec.model)")
                         .font(AEType.body.weight(.semibold))
-                    Text(Vocab.category(spec.category))
+                    // The role, not the category. "Regional jet" is a
+                    // taxonomy a player has to already know; "Regional
+                    // connector" is what the aeroplane is bought to do
+                    // (MASTER PROMPT 5 §10).
+                    Text(Vocab.role(spec.role))
                         .font(AEType.secondary).foregroundStyle(AETheme.mutedText)
                 }
                 Spacer()
@@ -685,9 +805,20 @@ struct AircraftShopSheet: View {
             HStack(spacing: AETheme.spacingXS) {
                 AEChip(icon: "person.2.fill", text: "\(spec.seats) seats")
                 AEChip(icon: "arrow.left.and.right", text: "\(spec.rangeKm) km")
-                AEChip(icon: "fuelpump.fill",
-                       text: "\(Format.decimal(spec.fuelBurnKgPerKm / Double(max(1, spec.seats)), places: 3)) kg/km per seat")
+                // Banded rather than the raw figure. "0.030 kg/km per seat"
+                // is not a number anyone can rank without the other thirteen
+                // beside it, and the ranking is the only thing it was for.
+                if let band = catalog.seatEfficiency(of: spec) {
+                    AEChip(icon: "fuelpump.fill",
+                           text: Vocab.seatEfficiency(band))
+                }
             }
+            // What it is for, and what that costs — the question a market
+            // card exists to answer and the one the spec sheet never did.
+            Text(Vocab.roleDetail(spec.role))
+                .font(AEType.caption)
+                .foregroundStyle(AETheme.mutedText)
+                .fixedSize(horizontal: false, vertical: true)
 
             if locked {
                 // A locked row used to show nothing at all, so the player

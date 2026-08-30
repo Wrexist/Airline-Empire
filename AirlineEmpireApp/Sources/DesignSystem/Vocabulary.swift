@@ -488,3 +488,90 @@ extension Vocab {
         }
     }
 }
+
+extension Vocab {
+    /// What an aircraft type is bought to do (MASTER PROMPT 5 §10).
+    ///
+    /// `Vocab.category` gives the taxonomy ("Regional jet"); this gives the
+    /// use. A new player reading "Regional jet · 88 seats · 2,750 km" has to
+    /// already know the industry to turn that into a decision.
+    static func role(_ role: AircraftRole) -> String {
+        switch role {
+        case .shortFieldRegional: "Short-field regional"
+        case .regionalConnector: "Regional connector"
+        case .shortHaulWorkhorse: "Short-haul workhorse"
+        case .highCapacityNarrowbody: "High-capacity narrowbody"
+        case .longHaulWidebody: "Long-haul widebody"
+        case .flagshipLongHaul: "Flagship long-haul"
+        }
+    }
+
+    /// One sentence on what the role is good for, and what it costs you.
+    ///
+    /// Every line names a genuine trade rather than selling the aeroplane.
+    /// The regional entries say the quiet part — small aircraft are not cheap
+    /// aircraft, they are expensive per passenger and you buy them for reach,
+    /// not for economy (see `SeatEfficiencyBand`).
+    static func roleDetail(_ role: AircraftRole) -> String {
+        switch role {
+        case .shortFieldRegional:
+            "Reaches small airports nothing else can use. Costs the most fuel per passenger of anything you can buy."
+        case .regionalConnector:
+            "Jet speed on thin routes that would leave a narrowbody half empty — and the thirstiest per seat in the catalogue."
+        case .shortHaulWorkhorse:
+            "Dense short and medium routes. The best fuel per passenger in the game, which is why airlines are built on these."
+        case .highCapacityNarrowbody:
+            "The same routes with more seats, for when demand has outgrown a narrowbody."
+        case .longHaulWidebody:
+            "Intercontinental reach, at a fuel cost per seat between a narrowbody and a regional jet."
+        case .flagshipLongHaul:
+            "The most seats and the most range you can field. Only pays on dense long routes."
+        }
+    }
+
+    /// Fuel per passenger, as a band rather than a ratio.
+    static func seatEfficiency(_ band: SeatEfficiencyBand) -> String {
+        switch band {
+        case .best: "Excellent fuel per seat"
+        case .strong: "Good fuel per seat"
+        case .moderate: "Average fuel per seat"
+        case .thirsty: "Thirsty per seat"
+        }
+    }
+
+    /// The tint for an efficiency band. The words above always accompany it.
+    static func seatEfficiencyColor(_ band: SeatEfficiencyBand) -> Color {
+        switch band {
+        case .best: AETheme.positive
+        case .strong: AETheme.positive.opacity(0.8)
+        case .moderate: AETheme.mutedText
+        case .thirsty: AETheme.caution
+        }
+    }
+}
+
+extension Vocab {
+    /// Fleet filter labels (MASTER PROMPT 5 §17).
+    ///
+    /// "Idle" is the load-bearing one: it means airworthy, unassigned and
+    /// costing money — not "in a check" and not "still on order", neither of
+    /// which the player can do anything about today. Lumping those in is what
+    /// turns an idle count from a to-do list into a number.
+    static func fleetStatus(_ status: FleetFilter.Status) -> String {
+        switch status {
+        case .all: "All"
+        case .assigned: "Flying"
+        case .idle: "Idle"
+        case .inMaintenance: "In check"
+        case .onOrder: "On order"
+        }
+    }
+
+    static func fleetOwnership(_ ownership: FleetFilter.Ownership) -> String {
+        switch ownership {
+        case .all: "All"
+        case .owned: "Owned"
+        case .leased: "Leased"
+        }
+    }
+}
