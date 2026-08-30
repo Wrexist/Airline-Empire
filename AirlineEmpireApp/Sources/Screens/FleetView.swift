@@ -366,8 +366,8 @@ struct AircraftDetailView: View {
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 1) {
                         Text("\(spec.manufacturer) \(spec.model)").font(.headline)
-                        Text(Vocab.category(card.category))
-                            .font(.caption)
+                        Text(Vocab.role(spec.role))
+                            .font(AEType.secondary)
                             .foregroundStyle(AETheme.mutedText)
                     }
                     Spacer()
@@ -375,8 +375,15 @@ struct AircraftDetailView: View {
                 HStack(spacing: AETheme.spacingXS) {
                     AEChip(icon: "person.2.fill", text: "\(spec.seats) seats")
                     AEChip(icon: "arrow.left.and.right", text: "\(spec.rangeKm) km")
-                    AEChip(icon: "fuelpump.fill",
-                           text: "\(Format.decimal(spec.fuelBurnKgPerKm, places: 1)) kg/km")
+                    // Was `fuelBurnKgPerKm` whole — which says a widebody is
+                    // thirsty, which is true and useless, because it is also
+                    // carrying three times the passengers. The band compares
+                    // per seat, against the best in the catalogue, which is
+                    // the comparison a fleet decision actually turns on.
+                    if let band = controller.catalog?.seatEfficiency(of: spec) {
+                        AEChip(icon: "fuelpump.fill",
+                               text: Vocab.seatEfficiency(band))
+                    }
                 }
                 Text("Needs a \(Vocab.runway(spec.runwayRequirement).lowercased()) · cruises at \(spec.cruiseSpeedKmh) km/h · \(spec.turnaroundMinutes) min turnaround")
                     .font(.caption)
