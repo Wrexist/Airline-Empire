@@ -134,12 +134,39 @@ final class PlayerJourneyUITests: XCTestCase {
         }
     }
 
-    /// The market opens, lists aircraft, and closes.
+    /// The onboarding card is on Home for a brand-new airline, and it names
+    /// the path to the first aircraft.
     ///
-    /// Buying is not attempted here. The purchase confirmation is a two-step
-    /// alert and driving it blind is how a smoke test becomes flaky; what is
-    /// worth pinning first is that the market is reachable at all, since that
-    /// is the screen a new player must find to do anything.
+    /// This is the first thing a new player sees, and it is the only thing
+    /// telling them where the market is — the Network tab opens on Routes,
+    /// whose empty state says "put an aircraft on it" to a player who has
+    /// none. That is survivable *because* this card exists, which makes the
+    /// card load-bearing rather than decorative, and worth pinning.
+    func testHomeGuidesANewPlayerToTheirFirstAircraft() throws {
+        let found = app.buttons["Found Skyline Air"]
+        require(found, "the Found button")
+        found.tap()
+        require(app.tabBars.buttons["Home"], "the tab bar")
+        capture("20-home-first-run")
+
+        // The step list is rendered as static text; any of the five titles
+        // proves the card is mounted.
+        let step = app.staticTexts["Get an aircraft"]
+        XCTAssertTrue(step.waitForExistence(timeout: 15), """
+            Home shows no onboarding step for a brand-new airline. This card \
+            is the only signpost to the aircraft market — the Network tab \
+            opens on Routes, and its empty state tells a player with no \
+            aircraft to put one on a route.
+            """)
+    }
+
+    /// The aircraft market is reachable by the path onboarding actually names.
+    ///
+    /// The first version of this test looked for the Fleet empty state's
+    /// "Browse the market" straight after tapping Network, and failed —
+    /// correctly. `NetworkView` opens on `.routes`, so that button is not on
+    /// screen. The app was right and the test was wrong, which is the whole
+    /// argument for running one.
     func testAircraftMarketIsReachable() throws {
         let found = app.buttons["Found Skyline Air"]
         require(found, "the Found button")
@@ -148,31 +175,34 @@ final class PlayerJourneyUITests: XCTestCase {
         let network = app.tabBars.buttons["Network"]
         require(network, "the Network tab")
         network.tap()
-        capture("10-network")
+        capture("30-network-routes")
 
-        // The fleet is empty at founding, so the empty state's own action is
-        // the route to the market — which is exactly the path a first-time
-        // player takes, and therefore the one worth testing.
+        // Onboarding's hint is "Network tab → Fleet → Acquire", so that is
+        // the path tested: a segmented control, then the toolbar action.
+        let fleetSegment = app.buttons["Fleet"]
+        require(fleetSegment, "the Fleet segment of the Network picker")
+        fleetSegment.tap()
+        capture("31-network-fleet-empty")
+
+        // Two ways in, both legitimate: the toolbar's Acquire and the empty
+        // state's own call to action. A new player has both, and either
+        // failing is worth knowing about.
+        let acquire = app.buttons["Acquire"]
         let browse = app.buttons["Browse the market"]
-        if browse.waitForExistence(timeout: 10) {
-            browse.tap()
-            capture("11-market")
-            // Fourteen types ship in the catalogue; any list at all is the
-            // claim being made, not the count, which is content that may
-            // legitimately change.
-            XCTAssertTrue(app.staticTexts.count > 3,
-                          "the market opened but listed nothing")
-        } else {
-            // Not a failure: the empty state may present its action
-            // differently on this size class. Record what was actually on
-            // screen so the next run has evidence rather than a guess.
-            capture("11-market-entry-not-found")
-            XCTFail("""
-                No 'Browse the market' action on the Network tab with an empty \
-                fleet. This is the first-run path to acquiring an aircraft; if \
-                the label changed, update this test — if it disappeared, that \
-                is the bug.
-                """)
-        }
+        XCTAssertTrue(browse.waitForExistence(timeout: 10),
+                      "the empty fleet offers no way to reach the market")
+        XCTAssertTrue(acquire.exists,
+                      "the Fleet toolbar has no Acquire action")
+
+        browse.tap()
+        capture("32-market")
+
+        // The catalogue ships fourteen types. Asserting on a known model name
+        // rather than a count: the count is content and may change, but a
+        // market listing nothing at all is the failure worth catching.
+        let anyType = app.staticTexts.containing(
+            NSPredicate(format: "label CONTAINS[c] %@", "seats")).firstMatch
+        XCTAssertTrue(anyType.waitForExistence(timeout: 10),
+                      "the market opened but listed no aircraft")
     }
 }
