@@ -35,6 +35,14 @@ final class Feedback {
     /// otherwise indistinguishable from a working one.
     var missingAssets: [AudioCue] { audio.unavailable.sorted { $0.rawValue < $1.rawValue } }
 
+    /// Whether the `AVAudioEngine` is actually running.
+    ///
+    /// A UI test on a booted simulator can prove the pipeline *starts* — the
+    /// session activates, the graph wires, every buffer decodes — which is
+    /// the strongest audio claim CI can make. It cannot prove anything was
+    /// heard; that still needs a person and a device.
+    var engineIsRunning: Bool { audio.isRunning }
+
     init(preferences: Preferences) {
         self.preferences = preferences
     }

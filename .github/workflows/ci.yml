@@ -21,6 +21,14 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      ipad:
+        description: >-
+          Also run the shell journey on an iPad simulator (regular width).
+          Off by default: it is a second macOS job at 10x billing, and the
+          layout it photographs changes far less often than the code does.
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -394,6 +402,150 @@ jobs:
       # looks first.
       - name: What failed
         if: always() && steps.changes.outputs.build == 'true'
+        working-directory: AirlineEmpireApp
+        continue-on-error: true
+        run: |
+          if [ ! -f ui-test-output.txt ]; then
+            echo "No UI test output captured."
+            exit 0
+          fi
+          echo "=== UI TEST RESULTS ==="
+          grep -E "Test Case .* (passed|failed) \(" ui-test-output.txt || true
+          echo "=== FAILURES ==="
+          grep -E "^.*: error: -\[" ui-test-output.txt | head -40 || true
+          grep -E "Executed [0-9]+ tests?," ui-test-output.txt | tail -1 || true
+
+  # ── 4 · The same shell, at regular width ───────────────────────────────────
+  #
+  # Opt-in via the workflow_dispatch input above. The iPhone job answers "does
+  # the game work"; this one answers only "what does the shell look like when
+  # the width class is regular" — a question that had literally never been
+  # answered before this job existed. Two tests, not the suite: the five tabs
+  # and the detail screens are the whole of what regular width can change.
+  app-ipad:
+    name: iPad shell (regular width)
+    if: github.event_name == 'workflow_dispatch' && inputs.ipad
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Generate the Xcode project
+        working-directory: AirlineEmpireApp
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Pick an iPad simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          NAME=$(xcrun simctl list devices available --json \
+            | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)['devices']
+          best = None
+          for runtime, devices in data.items():
+              if 'iOS' not in runtime:
+                  continue
+              for device in devices:
+                  if not device.get('isAvailable'):
+                      continue
+                  name = device['name']
+                  if name.startswith('iPad'):
+                      # Prefer a plain iPad; any regular-width canvas answers
+                      # the question this job asks.
+                      score = (0 if 'Pro' in name or 'mini' in name else 1, name)
+                      if best is None or score > best[0]:
+                          best = (score, name)
+          print(best[1] if best else '')
+          ")
+          if [ -z "$NAME" ]; then
+            echo 'No available iPad simulator on this runner.' >&2
+            xcrun simctl list devices available >&2
+            exit 1
+          fi
+          echo "Using simulator: $NAME"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Run the shell journey on the iPad
+        working-directory: AirlineEmpireApp
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project AirlineEmpire.xcodeproj \
+            -scheme AirlineEmpire \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
+            -resultBundlePath UITestResults.xcresult \
+            -only-testing:AirlineEmpireUITests/PlayerJourneyUITests/testFoundingAnAirlineReachesEveryTab \
+            -only-testing:AirlineEmpireUITests/PlayerJourneyUITests/testDetailScreensAndSettingsRender \
+            CODE_SIGNING_ALLOWED=NO \
+            test 2>&1 | tee ui-test-output.txt
+
+      - name: Keep the screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-screenshots-ipad
+          path: AirlineEmpireApp/UITestResults.xcresult
+          retention-days: 14
+          if-no-files-found: warn
+
+      # Identical to the iPhone job's step, for the identical reason: the
+      # agent that needs these images can read logs and cannot fetch
+      # artifacts.
+      - name: Screenshots into the log
+        if: always()
+        working-directory: AirlineEmpireApp
+        continue-on-error: true
+        run: |
+          set +e
+          OUT=$(mktemp -d)
+          xcrun xcresulttool export attachments \
+            --path UITestResults.xcresult --output-path "$OUT" >/dev/null 2>&1
+          python3 - "$OUT" <<'PYEOF'
+          import base64, json, os, subprocess, sys
+          out = sys.argv[1]
+          manifest = os.path.join(out, "manifest.json")
+          pairs = []
+          if os.path.exists(manifest):
+              for suite in json.load(open(manifest)):
+                  for a in suite.get("attachments", []):
+                      name = a.get("suggestedHumanReadableName") or a.get("exportedFileName")
+                      path = os.path.join(out, a.get("exportedFileName", ""))
+                      if name and os.path.exists(path):
+                          pairs.append((name, path))
+          if not pairs:
+              print("NO-ATTACHMENTS-EXPORTED")
+              sys.exit(0)
+          pairs = [(n, p) for n, p in pairs if n.startswith("KEY-")]
+          if not pairs:
+              print("NO-CHECKPOINT-ATTACHMENTS (nothing named KEY-*)")
+              sys.exit(0)
+          print(f"CHECKPOINTS: {len(pairs)}")
+          seen = set()
+          for name, path in sorted(pairs):
+              if name in seen:
+                  continue
+              seen.add(name)
+              small = path + ".small.png"
+              subprocess.run(["sips", "--resampleWidth", "360", path,
+                              "--out", small],
+                             capture_output=True)
+              use = small if os.path.exists(small) else path
+              data = base64.b64encode(open(use, "rb").read()).decode()
+              print(f"===SHOT {name} {len(data)}")
+              for i in range(0, len(data), 500):
+                  print(data[i:i+500])
+              print("===ENDSHOT")
+          PYEOF
+          exit 0
+
+      - name: What failed
+        if: always()
         working-directory: AirlineEmpireApp
         continue-on-error: true
         run: |

@@ -54,9 +54,12 @@ class AEUITestCase: XCTestCase {
         Thread.sleep(forTimeInterval: settle)
     }
 
-    /// Launch in a named appearance.
-    func launch(appearance: XCUIDevice.Appearance) {
+    /// Launch in a named appearance, optionally with extra launch arguments
+    /// (a Dynamic Type override, the test probes).
+    func launch(appearance: XCUIDevice.Appearance,
+                arguments: [String] = []) {
         applyAppearance(appearance, settle: 3)
+        app.launchArguments.append(contentsOf: arguments)
         app.launch()
     }
 
@@ -369,6 +372,37 @@ class AEUITestCase: XCTestCase {
             confirmed. The command was refused without saying so, or the \
             confirmation was never tapped — either way nothing after this \
             point would be testing what it claims to. Screenshot attached.
+            """)
+        return false
+    }
+
+    /// Open a route from the empty routes board, taking the guided first
+    /// suggestion. One implementation for every journey that needs a route,
+    /// for the same reason `leaseAnAircraft` is: two copies drifted once
+    /// already.
+    @discardableResult
+    func openARoute() -> Bool {
+        app.buttons["Routes"].tap()
+        let openRoute = app.buttons["Open a route"]
+        guard require(openRoute, "the route entry point on an empty board")
+        else { return false }
+        openRoute.tap()
+
+        let firstMarket = app.cells.firstMatch
+        if firstMarket.waitForExistence(timeout: 8) { firstMarket.tap() }
+        let openAction = app.buttons["Open"]
+        if openAction.waitForExistence(timeout: 5), openAction.isEnabled {
+            openAction.tap()
+        }
+
+        // AGREEMENT: opening a route must put one on the board.
+        let emptyRoutes = app.staticTexts["No routes yet"]
+        if !emptyRoutes.waitForExistence(timeout: 8) { return true }
+        capture(Self.logPrefix + "ROUTE-DID-NOT-OPEN")
+        XCTFail("""
+            The routes board still reports "No routes yet" after Open was \
+            tapped. The sheet may have dismissed without the command being \
+            accepted. Screenshot attached.
             """)
         return false
     }
