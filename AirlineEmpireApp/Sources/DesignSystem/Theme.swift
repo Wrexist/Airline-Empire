@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 import AirlineEmpireCore
 
@@ -10,17 +11,55 @@ enum AETheme {
     static let spacingM: CGFloat = 16
     static let spacingL: CGFloat = 24
 
-    static let cornerRadius: CGFloat = 14
+    /// The card radius, as the number cards actually use.
+    ///
+    /// Nine call sites wrote `AETheme.cornerRadius + 4`, which meant the token
+    /// said 14 and the app drew 18 — a token that is not the source of truth
+    /// is worse than no token (UIUX_FORENSIC_AUDIT UI-028).
+    static let cornerRadius: CGFloat = 18
+    /// The tighter radius, for capsule-adjacent controls and small chips.
+    static let cornerRadiusSmall: CGFloat = 12
+
+    /// The standard card shape, so nobody writes the radius out again.
+    static var cardShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+    }
 
     // Semantic colors (asset-catalog free v1; Phase 17 refines).
-    static let accent = Color.blue
+    //
+    // The accent used to be the system blue — the accent of a utility, on a
+    // game whose own identity is a dusk sky and an ember horizon
+    // (UIUX_FORENSIC_AUDIT §9). This is that palette's blue: deep enough to
+    // sit under white text, bright enough to read on the dusk backdrop, and
+    // distinct from the cyan the map already spends on the player's routes.
+    static let accent = Color(red: 0.24, green: 0.51, blue: 0.92)
     static let positive = Color.green
     static let negative = Color.red
     static let caution = Color.orange
     static let mutedText = Color.secondary
+
+    // Badge hues. Five call sites reached past the tokens for `.purple`,
+    // `.indigo` and `.teal`, which is exactly the drift a token set exists to
+    // prevent (UIUX_FORENSIC_AUDIT UI-029).
+    /// Fares and pricing.
+    static let fare = Color(red: 0.55, green: 0.36, blue: 0.86)
+    /// Assets the airline owns outright.
+    static let owned = Color(red: 0.31, green: 0.35, blue: 0.76)
+    /// Assets the airline rents.
+    static let leased = Color(red: 0.17, green: 0.56, blue: 0.60)
     static let cardBackground = Color(.secondarySystemBackground)
-    static let mapBackground = Color(red: 0.07, green: 0.10, blue: 0.16)
-    static let mapLand = Color(red: 0.13, green: 0.17, blue: 0.24)
+    // The map's own palette (docs/MAP_ARCHITECTURE.md §2). Near-black ocean,
+    // land a few points above it, coast a few points above that — the whole
+    // geography sits inside a narrow value range so it can never compete with
+    // the network drawn over it.
+    static let mapBackground = Color(red: 0.043, green: 0.063, blue: 0.106)
+    /// Deep water, for the vertical gradient that gives the plane depth.
+    static let mapDeep = Color(red: 0.024, green: 0.039, blue: 0.075)
+    static let mapLand = Color(red: 0.098, green: 0.129, blue: 0.184)
+    /// The coastline itself, a shade up from the land so the silhouette reads.
+    static let mapCoast = Color(red: 0.169, green: 0.220, blue: 0.298)
+    /// Meridians and parallels: present, never read as data.
+    static let mapGraticule = Color(red: 0.35, green: 0.45, blue: 0.60).opacity(0.10)
     static let playerRoute = Color.cyan
     static let rivalRoute = Color.gray.opacity(0.55)
 
@@ -61,8 +100,95 @@ enum AEMotion {
     static let screen: Animation = .smooth(duration: 0.42)
 }
 
+/// A press state for the app's own tappable surfaces.
+///
+/// SwiftUI's `.plain` button style on iOS gives no press feedback whatsoever:
+/// the label simply sits there while the finger is down, and the first
+/// evidence that a tap registered is whatever happens after it. Twenty-two
+/// call sites across this app used it — every card, row and pill the player
+/// touches — which is most of why the interface felt weightless to press
+/// (MASTER PROMPT 3 §24).
+///
+/// This keeps `.plain`'s complete absence of chrome, which is why it was
+/// chosen, and adds the one thing it was missing: the surface acknowledges the
+/// finger. The scale is small on purpose — a game about running an airline
+/// should not bounce.
+///
+/// Reduce Motion drops the scale and keeps the dim, because a fade is not
+/// motion and removing the acknowledgement entirely would make the setting
+/// cost the player their feedback.
+struct AEPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Surface(configuration: configuration)
+    }
+
+    /// `isEnabled` is read here rather than on the style itself.
+    ///
+    /// A `ButtonStyle` is not a `View`; its environment is captured when the
+    /// style is created and does not track later changes, so a button that
+    /// became disabled kept full opacity. A nested `View` re-reads it.
+    private struct Surface: View {
+        let configuration: ButtonStyleConfiguration
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
+        @Environment(\.isEnabled) private var isEnabled
+
+        var body: some View {
+            configuration.label
+                .scaleEffect(reduceMotion || !configuration.isPressed ? 1 : 0.972)
+                .opacity(opacity)
+                .animation(reduceMotion ? .easeOut(duration: 0.12) : AEMotion.selection,
+                           value: configuration.isPressed)
+        }
+
+        private var opacity: Double {
+            if !isEnabled { return 0.45 }
+            return configuration.isPressed ? 0.78 : 1
+        }
+    }
+}
+
+extension ButtonStyle where Self == AEPressStyle {
+    /// The app's tappable-surface style. Use instead of `.plain` anywhere the
+    /// player is meant to feel that they hit something.
+    static var aePress: AEPressStyle { AEPressStyle() }
+}
+
+/// Reduce Motion, honoured on purpose rather than by luck.
+///
+/// The audit found the app relying entirely on SwiftUI's own defaults, which
+/// soften some animations and leave others alone. A simulation whose screens
+/// slide, roll digits and crossfade should ask the system directly and mean it.
+struct AEMotionModifier: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let animation: Animation
+    let value: AnyHashable
+
+    func body(content: Content) -> some View {
+        content.animation(reduceMotion ? nil : animation, value: value)
+    }
+}
+
+extension View {
+    /// Animate with one of the motion tokens, unless the player has asked the
+    /// system for less movement.
+    func aeAnimation(_ animation: Animation, value: some Hashable) -> some View {
+        modifier(AEMotionModifier(animation: animation, value: AnyHashable(value)))
+    }
+}
+
 /// Centralized formatting (docs/UI_ARCHITECTURE.md §2): views never invent
 /// number formats.
+///
+/// Everything numeric goes through `FormatStyle`, which reads the reader's
+/// locale. That is not a localization nicety — `String(format: "%.1f")` prints
+/// `3.5` to a player in Paris who writes `3,5`, and it did so on every screen
+/// in this app. Two things stay deliberately fixed:
+///
+/// - **`¤`**, the generic currency sign. The world is fictional and its money
+///   is not any real currency; picking one would be a lie, and localizing an
+///   invented currency into euros would be a bigger one.
+/// - **The ISO game date.** `2031-03-14` is unambiguous everywhere, which a
+///   date in a game about global schedules should be.
 enum Format {
     static func money(_ money: Money) -> String {
         let dollars = Double(money.cents) / 100
@@ -70,20 +196,35 @@ enum Format {
         let sign = dollars < 0 ? "−" : ""
         switch magnitude {
         case 1_000_000_000...:
-            return "\(sign)¤\(String(format: "%.2f", magnitude / 1_000_000_000))B"
+            return "\(sign)¤\(decimal(magnitude / 1_000_000_000, places: 2))B"
         case 1_000_000...:
-            return "\(sign)¤\(String(format: "%.1f", magnitude / 1_000_000))M"
+            return "\(sign)¤\(decimal(magnitude / 1_000_000, places: 1))M"
         case 10_000...:
-            return "\(sign)¤\(String(format: "%.0f", magnitude / 1_000))k"
+            return "\(sign)¤\(decimal(magnitude / 1_000, places: 0))k"
         default:
-            return "\(sign)¤\(String(format: "%.0f", magnitude))"
+            // Grouped, so ¤9999 does not read as a serial number
+            // (UIUX_FORENSIC_AUDIT UI-031).
+            return "\(sign)¤\(grouped(Int64(magnitude.rounded())))"
         }
     }
 
+    /// A fraction as a whole-number percentage, in the reader's locale.
     static func percent(_ value: Double) -> String {
-        String(format: "%.0f%%", value * 100)
+        value.formatted(.percent.precision(.fractionLength(0)))
     }
 
+    /// A decimal with a fixed number of places, in the reader's locale.
+    static func decimal(_ value: Double, places: Int) -> String {
+        value.formatted(.number.precision(.fractionLength(places))
+            .grouping(.automatic))
+    }
+
+    /// Thousands separators for the reader's locale.
+    static func grouped(_ value: Int64) -> String {
+        value.formatted(.number)
+    }
+
+    /// Deliberately ISO, and deliberately not localized — see the note above.
     static func date(_ date: GameDate) -> String {
         String(format: "%04d-%02d-%02d", date.year, date.month, date.day)
     }
@@ -91,4 +232,26 @@ enum Format {
     static func clock(_ date: GameDate) -> String {
         String(format: "%02d:%02d", date.hour, date.minute)
     }
+
+    /// "14 Mar" — the form that fits in a navigation bar beside a control.
+    static func shortDate(_ date: GameDate) -> String {
+        "\(date.day) \(monthAbbreviation(date.month))"
+    }
+
+    static func monthAbbreviation(_ month: Int) -> String {
+        let names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        guard (1...12).contains(month) else { return "—" }
+        return names[month - 1]
+    }
+
+    /// A count of days as a phrase, because "1 days" is how a game loses a
+    /// player's trust in everything else it says.
+    static func days(_ count: Int) -> String {
+        count == 1 ? "1 day" : "\(grouped(Int64(count))) days"
+    }
+
+    /// Whole numbers with thousands separators — `Format.money` compresses
+    /// above ¤10k, but a passenger count should read exactly.
+    static func count(_ value: Int64) -> String { grouped(value) }
 }

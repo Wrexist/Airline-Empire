@@ -34,6 +34,12 @@ struct NewGameView: View {
     @Environment(GameController.self) private var controller
     @State private var airlineName = ""
     @State private var selectedStart = CuratedStart.all[0]
+    /// A home chosen from the whole world rather than the three curated ones.
+    @State private var customHome: AirportCode?
+    @State private var showingAllAirports = false
+    @State private var pendingDeletion: String?
+    @State private var deletionFailure: String?
+    @State private var livery: Livery = .default
     @State private var scenario: ScenarioCode = "entrepreneur"
     @State private var seedText = ""
     @State private var showsSeed = false
@@ -42,6 +48,16 @@ struct NewGameView: View {
     @State private var catalog: ContentCatalog?
     @State private var slots: [(slot: String, meta: SlotMeta?)] = []
     @FocusState private var nameFocused: Bool
+
+    private var deletionPresented: Binding<Bool> {
+        Binding(get: { pendingDeletion != nil },
+                set: { presented in if !presented { pendingDeletion = nil } })
+    }
+
+    private var deletionFailurePresented: Binding<Bool> {
+        Binding(get: { deletionFailure != nil },
+                set: { presented in if !presented { deletionFailure = nil } })
+    }
 
     private var trimmedName: String {
         airlineName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -61,6 +77,7 @@ struct NewGameView: View {
                 VStack(alignment: .leading, spacing: AETheme.spacingL) {
                     masthead
                     nameField
+                    liverySection
                     if !slots.isEmpty { continueSection }
                     homeSection
                     difficultySection
@@ -76,6 +93,32 @@ struct NewGameView: View {
         }
         .safeAreaInset(edge: .bottom) { foundBar }
         .preferredColorScheme(.dark)
+        .confirmationDialog("Delete this save?",
+                            isPresented: deletionPresented,
+                            titleVisibility: .visible,
+                            presenting: pendingDeletion) { slot in
+            Button("Delete", role: .destructive) {
+                // `deleteSlot` records its failure in `lastSaveOutcome`, which
+                // only the playing shell presents — so on this screen a failed
+                // deletion set state nobody shows and the row simply stayed,
+                // looking as though nothing had happened (the UI-004 defect
+                // class again). Report it here instead.
+                if !controller.deleteSlot(slot) {
+                    deletionFailure = "That save could not be deleted."
+                }
+                slots = controller.availableSlots()
+                pendingDeletion = nil
+            }
+            Button("Cancel", role: .cancel) { pendingDeletion = nil }
+        } message: { _ in
+            Text("That airline and its history are gone for good.")
+        }
+        .alert("Delete failed", isPresented: deletionFailurePresented,
+               presenting: deletionFailure) { _ in
+            Button("OK", role: .cancel) { deletionFailure = nil }
+        } message: { message in
+            Text(message)
+        }
         .onAppear {
             if catalog == nil { catalog = try? ContentCatalog.loadBundled() }
             slots = controller.availableSlots()
@@ -117,11 +160,59 @@ struct NewGameView: View {
                 .foregroundStyle(.white)
                 .padding(AETheme.spacingM)
                 .frame(minHeight: 56)
-                .aeGlass(in: RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4,
-                                              style: .continuous))
+                .aeGlass(in: AETheme.cardShape)
                 .accessibilityLabel("Airline name")
                 .accessibilityHint("Leave empty to be called Skyline Air")
         }
+    }
+
+    // MARK: - 1b · Colours
+    //
+    // `GAME_DESIGN` §4.1 lists "name/livery color" as the first decision a
+    // player makes, and the app never had it (UIUX_FORENSIC_AUDIT UI-026). It
+    // sits with the name because it is the same decision — who are you — and
+    // it is one row, because it is not a decision with consequences.
+
+    private var liverySection: some View {
+        VStack(alignment: .leading, spacing: AETheme.spacingS) {
+            SectionLabel("Your colours")
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: AETheme.spacingS) {
+                    ForEach(Livery.allCases, id: \.self) { option in
+                        Button {
+                            withAnimation(.snappy(duration: 0.22)) { livery = option }
+                        } label: {
+                            Circle()
+                                .fill(Vocab.liveryColor(option))
+                                .frame(width: 34, height: 34)
+                                .overlay {
+                                    if livery == option {
+                                        Image(systemName: "checkmark")
+                                            .font(.caption.weight(.bold))
+                                            .foregroundStyle(.white)
+                                    }
+                                }
+                                .overlay {
+                                    Circle().stroke(.white.opacity(livery == option ? 0.9 : 0.2),
+                                                    lineWidth: livery == option ? 2 : 1)
+                                }
+                                .frame(width: 44, height: 44)
+                                .contentShape(Circle())
+                        }
+                        .buttonStyle(.aePress)
+                        .accessibilityLabel(Vocab.livery(option))
+                        .accessibilityAddTraits(livery == option
+                                                ? [.isButton, .isSelected] : .isButton)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            Text("\(Vocab.livery(livery)) — your routes and aircraft fly in this colour on the map.")
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.55))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .aeFeedback(.uiSelect, on: livery)
     }
 
     // MARK: - 2 · Home airport
@@ -130,14 +221,73 @@ struct NewGameView: View {
         VStack(alignment: .leading, spacing: AETheme.spacingS) {
             SectionLabel("Where you start")
             ForEach(CuratedStart.all) { start in
-                AEChoiceCard(isSelected: start.id == selectedStart.id) {
-                    withAnimation(.snappy(duration: 0.22)) { selectedStart = start }
+                AEChoiceCard(isSelected: customHome == nil && start.id == selectedStart.id) {
+                    withAnimation(.snappy(duration: 0.22)) {
+                        selectedStart = start
+                        customHome = nil
+                    }
                 } content: {
                     startCardBody(start)
                 }
             }
+            // Three curated openings on a world of eighty airports capped
+            // replayability at three (UIUX_FORENSIC_AUDIT UI-025). The curated
+            // three stay first because they are the ones tuned to teach.
+            AEChoiceCard(isSelected: customHome != nil) {
+                showingAllAirports = true
+            } content: {
+                anywhereCardBody
+            }
         }
-        .sensoryFeedback(.selection, trigger: selectedStart.id)
+        // Keyed on the resolved home rather than on `selectedStart.id`,
+        // which does not change when the player picks from the full airport
+        // list — so choosing a curated start made a sound and choosing any of
+        // the other seventy-odd made none.
+        .aeFeedback(.uiSelect, on: customHome?.raw ?? selectedStart.id)
+        .sheet(isPresented: $showingAllAirports) {
+            HomeAirportPicker(catalog: catalog) { code in
+                withAnimation(.snappy(duration: 0.22)) { customHome = code }
+            }
+        }
+    }
+
+    /// The chosen home, curated or not.
+    private var home: AirportCode {
+        customHome ?? selectedStart.home
+    }
+
+    @ViewBuilder
+    private var anywhereCardBody: some View {
+        VStack(alignment: .leading, spacing: AETheme.spacingS) {
+            HStack(spacing: AETheme.spacingS) {
+                Text(customHome.flatMap { catalog?.airport($0)?.city } ?? "Somewhere else")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                if let customHome {
+                    Text(customHome.raw)
+                        .font(.caption.weight(.semibold))
+                        .monospaced()
+                        .foregroundStyle(AETheme.ember)
+                }
+            }
+            Text(customHome.flatMap { home in
+                catalog?.airport(home).map {
+                    "\($0.country) · \(Vocab.runwayDetail($0.runwayClass))"
+                }
+            } ?? (customHome == nil
+                  ? "Choose any of the world's airports. Some of them are very hard openings — that is the point."
+                  : ""))
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.62))
+                .fixedSize(horizontal: false, vertical: true)
+            if let customHome, let spec = catalog?.airport(customHome) {
+                HStack(spacing: AETheme.spacingXS) {
+                    AEChip(icon: "person.2.fill", text: Self.market(spec))
+                    AEChip(icon: "briefcase.fill", text: Self.lean(spec))
+                    AEChip(icon: "cloud.rain.fill", text: Vocab.weatherRisk(spec.weatherRisk))
+                }
+            }
+        }
     }
 
     @ViewBuilder
@@ -165,7 +315,7 @@ struct NewGameView: View {
                 HStack(spacing: AETheme.spacingXS) {
                     AEChip(icon: "person.2.fill", text: Self.market(spec))
                     AEChip(icon: "briefcase.fill", text: Self.lean(spec))
-                    AEChip(icon: "cloud.rain.fill", text: spec.weatherRisk.label)
+                    AEChip(icon: "cloud.rain.fill", text: Vocab.weatherRisk(spec.weatherRisk))
                 }
             }
         }
@@ -175,8 +325,8 @@ struct NewGameView: View {
     private static func market(_ spec: AirportSpec) -> String {
         let millions = Double(spec.demographics.populationThousands) / 1_000
         return millions >= 10
-            ? String(format: "%.0fM catchment", millions)
-            : String(format: "%.1fM catchment", millions)
+            ? "\(Format.decimal(millions, places: 0))M catchment"
+            : "\(Format.decimal(millions, places: 1))M catchment"
     }
 
     /// Which half of the market is the bigger prize here.
@@ -203,9 +353,10 @@ struct NewGameView: View {
                 }
             } else {
                 ProgressView().tint(.white)
+                    .accessibilityLabel("Loading scenarios")
             }
         }
-        .sensoryFeedback(.selection, trigger: scenario)
+        .aeFeedback(.uiSelect, on: scenario)
     }
 
     private func difficultyPill(code: ScenarioCode, spec: ScenarioSpec) -> some View {
@@ -226,7 +377,7 @@ struct NewGameView: View {
                 .overlay(shape.stroke(isSelected ? AETheme.accent.opacity(0.75) : .clear,
                                       lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.aePress)
         .accessibilityLabel(spec.name)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
@@ -246,8 +397,7 @@ struct NewGameView: View {
         }
         .padding(AETheme.spacingM)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .aeGlass(in: RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4,
-                                      style: .continuous))
+        .aeGlass(in: AETheme.cardShape)
         .accessibilityElement(children: .combine)
     }
 
@@ -273,7 +423,7 @@ struct NewGameView: View {
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.aePress)
             .accessibilityLabel("World seed")
             .accessibilityHint(showsSeed ? "Collapse" : "Expand to set a seed")
 
@@ -293,8 +443,7 @@ struct NewGameView: View {
                 }
                 .padding(AETheme.spacingM)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .aeGlass(in: RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4,
-                                              style: .continuous))
+                .aeGlass(in: AETheme.cardShape)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
@@ -315,7 +464,7 @@ struct NewGameView: View {
                                 .font(.headline)
                                 .foregroundStyle(.white)
                             if let meta = entry.meta {
-                                Text("\(meta.gameDateDescription) · \(meta.era)")
+                                Text("\(meta.gameDateDescription) · \(meta.era) · \(GameController.slotLabel(entry.slot))")
                                     .font(.caption)
                                     .foregroundStyle(.white.opacity(0.6))
                             }
@@ -328,16 +477,19 @@ struct NewGameView: View {
                     }
                     .padding(AETheme.spacingM)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4,
-                                                   style: .continuous))
-                    .aeGlass(in: RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4,
-                                                  style: .continuous),
+                    .contentShape(AETheme.cardShape)
+                    .aeGlass(in: AETheme.cardShape,
                              tint: AETheme.ember.opacity(0.16),
                              interactive: true)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.aePress)
                 .accessibilityElement(children: .combine)
                 .accessibilityHint("Resumes this airline")
+                .contextMenu {
+                    Button("Delete this save", role: .destructive) {
+                        pendingDeletion = entry.slot
+                    }
+                }
             }
         }
     }
@@ -349,9 +501,10 @@ struct NewGameView: View {
             nameFocused = false
             let seed = UInt64(seedText) ?? UInt64.random(in: 1...UInt64.max / 2)
             controller.startNewGame(airlineName: effectiveName,
-                                    home: selectedStart.home,
+                                    home: home,
                                     seed: seed,
-                                    scenario: scenario)
+                                    scenario: scenario,
+                                    livery: livery)
         } label: {
             HStack(spacing: AETheme.spacingS) {
                 Text("Found \(effectiveName)")
@@ -369,11 +522,11 @@ struct NewGameView: View {
                      tint: AETheme.accent.opacity(0.55),
                      interactive: true)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.aePress)
         .padding(.horizontal, AETheme.spacingM)
         .padding(.bottom, AETheme.spacingS)
         .accessibilityLabel("Found \(effectiveName)")
-        .accessibilityHint("Starts a new game at \(selectedStart.city)")
+        .accessibilityHint("Starts a new game at \(homeCityName)")
     }
 }
 
@@ -392,14 +545,66 @@ private struct SectionLabel: View {
     }
 }
 
-private extension WeatherRisk {
-    /// Player-facing wording. The enum's own names are model vocabulary.
-    var label: String {
-        switch self {
-        case .low: "Calm skies"
-        case .moderate: "Some storms"
-        case .high: "Rough weather"
-        case .severe: "Storm belt"
+private extension NewGameView {
+    var homeCityName: String {
+        customHome.flatMap { catalog?.airport($0)?.city } ?? selectedStart.city
+    }
+}
+
+/// Any airport in the world as a home, searchable — the alternative to three
+/// hardcoded openings.
+struct HomeAirportPicker: View {
+    @Environment(\.dismiss) private var dismiss
+    let catalog: ContentCatalog?
+    let select: (AirportCode) -> Void
+    @State private var search = ""
+
+    var body: some View {
+        NavigationStack {
+            List(rows, id: \.self) { code in
+                if let spec = catalog?.airport(code) {
+                    Button {
+                        select(code)
+                        dismiss()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: AETheme.spacingS) {
+                                Text(code.raw)
+                                    .font(.subheadline.weight(.semibold)).monospaced()
+                                Text(spec.city).font(.subheadline)
+                            }
+                            Text("\(spec.country) · \(Vocab.runwayDetail(spec.runwayClass)) · \(Vocab.weatherRisk(spec.weatherRisk))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.aePress)
+                }
+            }
+            .searchable(text: $search, prompt: "City, country or code")
+            .navigationTitle("Choose a home")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private var rows: [AirportCode] {
+        guard let catalog else { return [] }
+        let needle = search.uppercased()
+        return catalog.orderedAirportCodes.filter { code in
+            guard needle.isEmpty else {
+                guard let spec = catalog.airport(code) else { return false }
+                return code.raw.uppercased().contains(needle)
+                    || spec.city.uppercased().contains(needle)
+                    || spec.country.uppercased().contains(needle)
+            }
+            return true
         }
     }
 }

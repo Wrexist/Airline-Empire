@@ -46,70 +46,24 @@ public struct ProgressionSystem: SimulationSystem {
 
     private func advanceEra(player: Airline, state: inout GameState,
                             context: SimContext, tuning: ProgressionTuning) {
-        let next: Era? = switch state.progression.era {
-        case .startup: .regional
-        case .regional: .national
-        case .national: .international
-        case .international: .empire
-        case .empire: nil
-        }
-        guard let next, gatePassed(next, player: player, state: state,
-                                   catalog: context.catalog, tuning: tuning)
+        guard let next = EraGate.next(after: state.progression.era),
+              EraGate.isPassed(next, player: player, state: state,
+                               catalog: context.catalog, tuning: tuning)
         else { return }
         state.progression.era = next
         context.emit(.eraAdvanced(era: next))
     }
 
-    private func gatePassed(_ era: Era, player: Airline, state: GameState,
-                            catalog: ContentCatalog,
-                            tuning: ProgressionTuning) -> Bool {
-        let routes = state.routes(of: player.id)
-        let fleet = state.fleet(of: player.id)
-        switch era {
-        case .startup:
-            return true
-        case .regional:
-            // Demonstrated route competence + first owned airframe.
-            let profitable = routes.filter {
-                $0.economicsLastMonth.directOperatingProfit > .zero
-            }.count
-            let ownsOne = fleet.contains { if case .owned = $0.ownership { true } else { false } }
-            return profitable >= tuning.regionalProfitableRoutes && ownsOne
-        case .national:
-            let trailing = trailingNetProfit(player.id, state: state, months: 12)
-            return trailing > .zero
-                && destinations(routes).count >= tuning.nationalDestinations
-                && player.reputation.score >= tuning.nationalReputationFloor
-        case .international:
-            // Serving two world regions IS going international.
-            let regions = Set(routes.flatMap { route -> [WorldRegion] in
-                [route.origin, route.destination].compactMap {
-                    catalog.airport($0)?.region
-                }
-            })
-            let trailing = trailingNetProfit(player.id, state: state, months: 12)
-            return trailing > .zero && fleet.count >= tuning.internationalFleet
-                && regions.count >= 2
-        case .empire:
-            return destinations(routes).count >= tuning.empireDestinations
-                && fleet.count >= tuning.empireFleet
-        }
-    }
-
+    // The era gate owns both of these now (EraGate.swift); milestones and
+    // achievements below still ask the same questions, so they forward rather
+    // than keep a second copy that could drift from the gate's.
     private func destinations(_ routes: [Route]) -> Set<AirportCode> {
-        var set = Set<AirportCode>()
-        for route in routes {
-            set.insert(route.origin)
-            set.insert(route.destination)
-        }
-        return set
+        EraGate.destinations(routes)
     }
 
     private func trailingNetProfit(_ airline: AirlineID, state: GameState,
                                    months: Int) -> Money {
-        guard let finance = state.finance.byAirline[airline] else { return .zero }
-        return finance.statements.suffix(months)
-            .reduce(Money.zero) { $0 + $1.netProfit }
+        EraGate.trailingNetProfit(airline, state: state, months: months)
     }
 
     // MARK: Milestones
@@ -279,28 +233,22 @@ public struct ProgressionSystem: SimulationSystem {
         state.world.eventCooldowns["mission.\(eventID)"] != nil
     }
 
+    // The measurement lives in MissionMath so the progression screen's bar and
+    // this resolution can never disagree about how a mission is going.
     private func missionProgress(_ mission: Mission, player: Airline,
                                  state: GameState, catalog: ContentCatalog) -> Int64 {
-        switch mission.kind {
-        case .boomRush(let region, _):
-            // Pax carried on region-touching routes since the baseline.
-            let current = regionPassengers(region, player: player, state: state,
-                                           catalog: catalog)
-            return max(0, current - mission.baseline)
-        }
+        MissionMath.progress(of: mission, player: player, state: state,
+                             catalog: catalog)
     }
 
     private func regionPassengers(_ region: WorldRegion, player: Airline,
                                   state: GameState, catalog: ContentCatalog) -> Int64 {
-        state.routes(of: player.id)
-            .filter { touchesRegion($0, region, catalog: catalog) }
-            .reduce(Int64(0)) { $0 + $1.stats.passengersCarried }
+        MissionMath.regionPassengers(region, player: player, state: state,
+                                     catalog: catalog)
     }
 
     private func touchesRegion(_ route: Route, _ region: WorldRegion,
                                catalog: ContentCatalog) -> Bool {
-        [route.origin, route.destination].contains { code in
-            catalog.airport(code)?.region == region
-        }
+        MissionMath.touchesRegion(route, region, catalog: catalog)
     }
 }

@@ -14,7 +14,8 @@ against the live Core, then execute phases 16, 17, 19b, 20b, 21, the final
 2026-08-26).
 **Dependencies:** A macOS session with Xcode + xcodegen (blocker B-002).
 Everything Linux-executable is done — Core is complete (212 tests green,
-save v10) and the static integration audit below has already cleared the
+save v10 — the baseline **as of 2026-08-26**; see AE-025 below for the
+current one) and the static integration audit below has already cleared the
 known compile blockers.
 **Implementation notes:**
 - `cd AirlineEmpireApp && xcodegen generate`, open the project, build.
@@ -59,10 +60,21 @@ manual walkthrough + Instruments evidence recorded in docs/.
   `ContentQualityTests`. `docs/APPLE_VALIDATION.md` written as the Xcode
   handoff. Content audited (no dead SKUs; F-004 runway-ladder finding
   documented, not unilaterally changed). Offline-first re-verified.
-**Status:** LINUX SCOPE COMPLETE — no known Linux-side P0/P1 remains.
-Apple-runtime steps (compile, simulator, rendering, gestures,
-accessibility, Instruments, signing) are blocked on macOS (B-002) and
-fully enumerated in `docs/APPLE_VALIDATION.md`.
+- 2026-08-29 UI/UX forensic audit + remediation: `docs/UIUX_FORENSIC_AUDIT.md`
+  is the new baseline. It found the screen set complete and the *product* thin
+  — five P0s, nine P1s, 22 P2/P3s — and the list has been worked. Three more
+  defects surfaced while fixing (BUG-009 tab overflow, BUG-010 a Start button
+  that could only refuse, BUG-011 a chart whose zero line moved per bar), and
+  five more that only a real compiler could see. Core gained `EraGate`,
+  `MissionMath`, `AdvisoryModels`, month-to-date route economics and
+  `Airline.livery` (save v11, D-015). 285 tests.
+**Status:** LINUX SCOPE COMPLETE, AND THE COMPILE QUESTION IS ANSWERED.
+`xcodebuild` runs on every dispatch (D-014) and run 33244671402 is green on
+`macos-26`. What remains is genuinely device-only — rendering, gestures, size
+classes, `@Observable` behaviour, scene-phase autosave, accessibility,
+Instruments and signing. `docs/APPLE_VALIDATION.md` §4 and §4b are the script;
+§4b lists the nine things this UI pass added to it, starting with the one that
+matters most: that five tabs render as five, with no *More* item.
 
 ---
 
@@ -122,6 +134,114 @@ Everything not requiring them is done.
 **Owner's runbook:** `docs/GO_LIVE.md` — the twelve stages from here to a
 released app, in dependency order, marked by who does each one.
 **Status:** LINUX SCOPE COMPLETE.
+
+---
+
+## AE-025
+**Title:** Map runtime validation
+**Purpose:** The world map (MASTER PROMPT 2, `docs/MAP_ARCHITECTURE.md`) is
+authored and — once CI is green — compiled. Nothing about how it *renders*
+is known. This task is the list of questions only a screen can answer.
+**Dependencies:** macOS + Xcode + a device or simulator (blocker B-002).
+**Implementation notes:** none — this is validation, not construction. If it
+finds defects they become their own tasks.
+**Acceptance criteria:**
+- The world reads as a world at each zoom level (world / regional / local),
+  and the label layout genuinely avoids collisions on a 393pt-wide screen.
+- Pan and pinch behave as one gesture; a tap selects the thing under the
+  finger, aircraft before airports before routes; selection cards do not
+  cover what was selected.
+- A route crossing the antimeridian draws as two segments leaving and
+  re-entering the edges, and its aircraft crosses without a jump (BUG-012
+  is fixed and unit-tested; this is the visual confirmation).
+- 60fps held at 16x on a late-game save with hundreds of live flights,
+  measured in Instruments — not inferred from `ae-map-bench`, which times the
+  model on Linux and says nothing about drawing (TD-003).
+- Paused really stops the timeline (no CPU, no battery). Reduce Motion stops
+  interpolation without stopping updates.
+- VoiceOver over the canvas reads a useful summary and the current selection.
+- Route health is distinguishable in greyscale and with a colour-blindness
+  simulation, per the dash/weight encoding.
+**Tests:** manual walkthrough + Instruments evidence recorded in `docs/`.
+**Status:** BLOCKED on B-002.
+
+---
+
+## AE-026
+**Title:** Audio and haptics listening pass
+**Purpose:** The audio system (MASTER PROMPT 3, `docs/AUDIO_ARCHITECTURE.md`)
+is tested as policy and compiled as code. Nobody has heard a single sound.
+This is the list of questions only ears and a device can answer.
+**Dependencies:** macOS + Xcode + a physical device (blocker B-002). A
+simulator answers most of the audio questions but **not** the haptic ones.
+**Implementation notes:** none — this is validation. Defects it finds become
+their own tasks. `docs/AUDIO_ASSET_MANIFEST.md` §4 is the brief for anything that
+needs re-voicing rather than fixing.
+**Acceptance criteria:**
+- Every one of the 52 non-ambience cues triggered at least once, audibly
+  (`AudioCue` has 54 cases; the other two are the looping ambience beds, which
+  are not triggered but held), with the palette
+  judged as a set rather than one sound at a time: does it sound like one
+  product, and does it sound expensive?
+- The loudness hierarchy holds by ear, not only by peak measurement — a tap
+  must disappear next to an era change.
+- A tap's sound arrives with the tap. Latency on a pooled `AVAudioPlayerNode`
+  is the first thing that would make this feel cheap.
+- 16x on a large save: the flurries carry a busy minute and nothing spams.
+- BUG-013 confirmed on device: save a flying airline, quit, load — silence,
+  not four first-time sounds.
+- Background and foreground: audio stops, the route is released, nothing is
+  left sounding, and it comes back.
+- Playing next to a podcast: the game mixes and never interrupts. Silent
+  switch silences it.
+- Haptics read as weight rather than noise across an hour, and turning them
+  off genuinely stops all of them (the regression BUG-014 fixed).
+- Ambience on for an hour without becoming irritating — the test TD-007
+  expects it to fail.
+- Instruments: no player-node churn, no growth in audio memory over a long
+  session, no CPU cost while muted.
+
+**Added by AE-AUDIO-01** — the continuous layer, none of which has been heard:
+- Every music transition heard at least once: menu → planning → operating →
+  crisis and back. The crossfade must sound like a crossfade, not a cut and
+  not a dip (BUG-018 was fixed blind; this is where it is confirmed).
+- The four beds judged for an hour each. TD-009 expects them to be the first
+  thing a composer replaces.
+- The ambience response curves tuned against a real speaker (TD-010): the
+  three zoom levels, saturation at 24 airborne, the pause thinning and the
+  solvency recession are all plausible-on-paper numbers.
+- Growth actually reads as *richer and not louder* — the property the whole
+  design rests on, and the one only ears can confirm.
+- Mute everything, then unmute: the mix the player built comes back.
+**Tests:** manual listening + Instruments evidence recorded in `docs/`.
+**Status:** BLOCKED on B-002.
+
+---
+
+## AE-027
+**Title:** Density and hierarchy pass on the management screens
+**Purpose:** The moment-to-moment audit (`docs/UIUX_FORENSIC_AUDIT.md` §18)
+found ten issues that are redesign rather than defect — empty states that are
+structurally present and semantically blank, rows that read as spreadsheet
+lines, a hub that is four cards and space. They are listed there as D-01
+through D-10.
+**Dependencies:** Best done where the result can be seen (blocker B-002), and
+after AE-025/AE-026 have put eyes on the map and ears on the audio.
+**Implementation notes:** §18 of MASTER PROMPT AE-AUDIO-01 is explicit that
+these must not be redesigned blindly, which is why they were recorded rather
+than done. Two of the ten (D-06, D-08) are closer to defects than to taste and
+could go first.
+**Acceptance criteria:**
+- Finance reads as a screen with nothing *yet* rather than a screen that is
+  broken, in all four of its empty cards.
+- A statement is scannable: revenue and cost are visually distinct, and the
+  largest lines are findable without reading all seventeen.
+- A brand-new route does not present as three warnings.
+- The ops feed inserts rows rather than re-binding all of them.
+- The World hub shows something live, not only links to it.
+**Tests:** Core read-model tests where a finding turns out to need one;
+otherwise a walkthrough on a device.
+**Status:** OPEN.
 
 ---
 

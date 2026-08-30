@@ -79,6 +79,31 @@ public enum AircraftStatus: Equatable, Codable, Sendable {
     case active
     /// Grounded for a maintenance check until the given time.
     case inMaintenance(until: SimTime)
+
+    // Two of the three cases carry a date, so `status == .ordered` does not
+    // compile and a screen that only wants to know *which* case this is had
+    // to pattern-match. These say it once.
+    public var isActive: Bool {
+        if case .active = self { true } else { false }
+    }
+
+    public var isOnOrder: Bool {
+        if case .ordered = self { true } else { false }
+    }
+
+    public var isInMaintenance: Bool {
+        if case .inMaintenance = self { true } else { false }
+    }
+
+    /// When the aircraft becomes available, for the statuses that are waiting
+    /// on a date. Nil for one that is already flying.
+    public var availableAt: SimTime? {
+        switch self {
+        case .ordered(let at): at
+        case .inMaintenance(let until): until
+        case .active: nil
+        }
+    }
 }
 
 /// Fleet pricing/wear math — pure functions over spec + tuning so tests and

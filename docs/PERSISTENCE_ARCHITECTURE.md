@@ -114,8 +114,9 @@ player's own data; obfuscation adds support cost, not value).
 - **Migrations**: `MigrationChain` of `SaveMigration` steps over the
   decoded JSON tree, wired into `JSONSaveCodec.decode`; contiguity
   determines `minimumSupportedVersion` automatically; future versions
-  (newer app) refuse. Shipping chain: **v9→v10** (adds the fresh
-  progression slice) — a real migration with a fixture-based test that
+  (newer app) refuse. Shipping chain at the time of writing: **v9→v10**
+  (adds the fresh progression slice); the addendum below extends it to
+  **v9→v10→v11**. Each is a real migration with a fixture-based test that
   migrates, verifies, and *runs* the migrated world. Formats below v9 are
   pre-release and refuse honestly. Fixture note: v9 fixtures are
   synthesized in-test (no public release shipped v9 bytes); from the first
@@ -129,3 +130,32 @@ player's own data; obfuscation adds support cost, not value).
   corrupted-current → backup recovery → all-corrupt failure, stray tmp,
   10× disk save/load cycling equality, v9 migration lifecycle, pre-chain
   refusal, chain contiguity, session autosave + manual save equality.
+
+
+---
+
+## Addendum — v11 (2026-08-29)
+
+`Airline.livery` (docs/GAME_DESIGN.md §4.1) took the format to **v11**, with
+`MigrationV10AddLivery` in the shipping chain.
+
+This is the first migration here that runs on data the project did not
+create. v10 is the format TestFlight build 1.0.0 wrote to a real phone, so
+"the chain is tested" stopped being a hygiene statement and started being
+somebody's saved game. What the tests assert, in `LiveryMigrationTests`:
+
+- a v10 save decodes with **every airline, balance, route and aircraft
+  intact**, and the clock where it was left;
+- the **player keeps the default livery** — it is the colour their whole game
+  has been painted in, and a bug-fix build repainting it would be a strange
+  thing to do to someone;
+- **rivals get distinct liveries, deterministically**, assigned over
+  `airlines.keys.sorted()` rather than dictionary order, so reopening the same
+  save does not reshuffle the world's colours;
+- the step is **idempotent**, and a payload with no airlines passes through
+  rather than trapping;
+- a 120-day run is **bit-identical** whichever livery it was played in, which
+  is what makes this identity rather than a balance change wearing a hat.
+
+The general rule this reinforces (§5): a migration's job is not to produce a
+decodable tree. It is to hand the player back the game they left.

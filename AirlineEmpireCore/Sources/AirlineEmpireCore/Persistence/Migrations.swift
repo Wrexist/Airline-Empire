@@ -34,6 +34,7 @@ public struct MigrationChain: Sendable {
     /// them; committed fixtures start at the first supported version).
     public static let standard = MigrationChain([
         MigrationV9AddProgression(),
+        MigrationV10AddLivery(),
     ])
 
     public func migrate(payload: [String: Any], from version: Int) throws -> [String: Any] {
@@ -66,5 +67,40 @@ public struct MigrationV9AddProgression: SaveMigration {
         encoder.outputFormatting = [.sortedKeys]
         let data = try encoder.encode(ProgressionState())
         payload["progression"] = try JSONSerialization.jsonObject(with: data)
+    }
+}
+
+/// v10 → v11: airlines gained a `livery`. v10 is the first format that
+/// reached a real device (TestFlight 1.0.0), so this one genuinely runs on
+/// somebody's save rather than being a formality.
+///
+/// The player keeps the default colour — it is the accent their whole game so
+/// far has been painted in, and changing it under them would be a strange
+/// thing for a bug-fix build to do. Rivals are coloured deterministically by
+/// their position in the airline table, so the same save reopens the same
+/// world rather than reshuffling every carrier's colour on each load.
+public struct MigrationV10AddLivery: SaveMigration {
+    public let fromVersion = 10
+
+    public init() {}
+
+    public func migrate(_ payload: inout [String: Any]) throws {
+        guard var airlines = payload["airlines"] as? [String: Any] else { return }
+        // Sorted so the assignment is a function of the save, not of
+        // dictionary iteration order, which is not stable across runs.
+        var competitorIndex = 0
+        for key in airlines.keys.sorted() {
+            guard var airline = airlines[key] as? [String: Any],
+                  airline["livery"] == nil else { continue }
+            let isPlayer = (airline["kind"] as? String) == "player"
+            if isPlayer {
+                airline["livery"] = Livery.default.rawValue
+            } else {
+                airline["livery"] = Livery.forCompetitor(index: competitorIndex).rawValue
+                competitorIndex += 1
+            }
+            airlines[key] = airline
+        }
+        payload["airlines"] = airlines
     }
 }

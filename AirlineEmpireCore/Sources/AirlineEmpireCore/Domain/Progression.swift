@@ -88,6 +88,13 @@ public enum CapabilityCode: String, Codable, Sendable, CaseIterable {
 }
 
 public struct CapabilityProgram: Equatable, Codable, Sendable {
+    /// Capability programs open in the National era
+    /// (docs/PROGRESSION.md §4). Named here rather than written into
+    /// `StartCapabilityProgramCommand.validate` alone, so the progression
+    /// screen can show "opens in the National era" instead of offering a
+    /// button whose only outcome is a refusal.
+    public static let unlockEra: Era = .national
+
     public let code: CapabilityCode
     public let startedAt: SimTime
     public let completesAt: SimTime

@@ -14,9 +14,12 @@ public enum SaveFormat {
     /// v6 added loans/status, finance statements, route economics, world
     /// cycle fields (Phase 8); v7 added reputation/serviceTier/opsToday
     /// (Phase 9).
+    /// v8–v10 added progression; v11 added `Airline.livery` (the identity
+    /// beat GAME_DESIGN §4.1 always specified and the client never had).
     /// Pre-release policy (docs/PERSISTENCE_ARCHITECTURE.md §5): superseded
     /// pre-release versions are refused, not migrated, until first TestFlight.
-    public static let currentVersion = 10
+    /// v10 shipped to TestFlight, so it migrates rather than refuses.
+    public static let currentVersion = 11
 }
 
 public struct SaveEnvelope: Codable, Sendable {

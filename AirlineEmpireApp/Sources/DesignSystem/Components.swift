@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 import AirlineEmpireCore
 
 /// Reusable component library (Phase 14). Touch-first: every interactive
@@ -17,7 +18,7 @@ struct AECard<Content: View>: View {
     @ViewBuilder var content: Content
 
     private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4, style: .continuous)
+        AETheme.cardShape
     }
 
     var body: some View {
@@ -70,8 +71,7 @@ extension View {
                                       bottom: 5, trailing: AETheme.spacingM))
             .listRowBackground(
                 Color.clear
-                    .aeGlass(in: RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4,
-                                                  style: .continuous))
+                    .aeGlass(in: AETheme.cardShape)
                     .padding(.vertical, 4)
             )
     }
@@ -130,14 +130,13 @@ struct StatTile: View {
         }
         .padding(AETheme.spacingM)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .aeGlass(in: RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4,
-                                      style: .continuous))
+        .aeGlass(in: AETheme.cardShape)
         // The simulation changes these while you watch. Rolling the digits
         // instead of swapping them is the difference between a dashboard that
         // is alive and one that flickers — and at 16× speed it is the only
         // way the numbers stay readable at all.
         .contentTransition(.numericText())
-        .animation(AEMotion.content, value: value)
+        .aeAnimation(AEMotion.content, value: value)
     }
 }
 
@@ -169,38 +168,93 @@ struct MoneyText: View {
         Text(Format.money(money))
             .monospacedDigit()
             .contentTransition(.numericText())
-            .animation(AEMotion.content, value: money.cents)
+            .aeAnimation(AEMotion.content, value: money.cents)
             .foregroundStyle(money.isNegative ? AETheme.negative
                              : money == .zero ? .primary : AETheme.positive)
     }
 }
 
-/// Minimal monthly bar chart (net profit); Phase 17 may upgrade to Swift
-/// Charts once macOS validation is running.
+/// Monthly net profit.
+///
+/// This was hand-rolled, and it was wrong: every column was a centred `VStack`
+/// of `Spacer / bar / rule / bar / Spacer`, so the column's content height
+/// varied with the bar and **the zero line sat at a different y for every
+/// month**. A chart on the finance screen that misplaces its own baseline is
+/// worse than no chart. It also carried no axis, no month labels and no
+/// values, so a reader could not tell which bar was which month.
+///
+/// Swift Charts, which `docs/UI_ARCHITECTURE.md` §2 specified from the start:
+/// one baseline by construction, real axes, and accessible values for free.
 struct MonthlyBars: View {
     let points: [FinanceModel.MonthPoint]
 
+    private struct Point: Identifiable {
+        let id: Int
+        let label: String
+        let shortLabel: String
+        let dollars: Double
+        let money: Money
+    }
+
+    private var series: [Point] {
+        points.enumerated().map { index, point in
+            Point(id: index,
+                  label: String(format: "%04d-%02d", point.year, point.month),
+                  shortLabel: Format.monthAbbreviation(point.month),
+                  dollars: Double(point.netProfit.cents) / 100,
+                  money: point.netProfit)
+        }
+    }
+
+    /// About six evenly spaced months, chosen rather than requested.
+    private var axisLabels: [String] {
+        let all = series
+        guard !all.isEmpty else { return [] }
+        let stride = max(1, (all.count + 5) / 6)
+        return all.enumerated()
+            .filter { $0.offset % stride == 0 }
+            .map(\.element.label)
+    }
+
+    private var shortLabels: [String: String] {
+        Dictionary(series.map { ($0.label, $0.shortLabel) },
+                   uniquingKeysWith: { first, _ in first })
+    }
+
     var body: some View {
-        GeometryReader { geometry in
-            let maxAbs = max(1, points.map { abs($0.netProfit.cents) }.max() ?? 1)
-            let barWidth = max(3, geometry.size.width / CGFloat(max(1, points.count)) - 3)
-            HStack(alignment: .center, spacing: 3) {
-                ForEach(Array(points.enumerated()), id: \.offset) { _, point in
-                    let height = CGFloat(abs(point.netProfit.cents))
-                        / CGFloat(maxAbs) * geometry.size.height / 2
-                    VStack(spacing: 0) {
-                        Spacer(minLength: 0)
-                        if !point.netProfit.isNegative {
-                            Rectangle().fill(AETheme.positive)
-                                .frame(width: barWidth, height: max(2, height))
-                        }
-                        Rectangle().fill(AETheme.mutedText.opacity(0.4))
-                            .frame(width: barWidth, height: 1)
-                        if point.netProfit.isNegative {
-                            Rectangle().fill(AETheme.negative)
-                                .frame(width: barWidth, height: max(2, height))
-                        }
-                        Spacer(minLength: 0)
+        Chart(series) { point in
+            BarMark(
+                x: .value("Month", point.label),
+                y: .value("Net profit", point.dollars)
+            )
+            .foregroundStyle(point.dollars < 0 ? AETheme.negative : AETheme.positive)
+            .accessibilityLabel(point.label)
+            .accessibilityValue(Format.money(point.money))
+        }
+        // A zero rule that is actually at zero, once, for the whole chart.
+        .chartYAxis {
+            AxisMarks { value in
+                AxisGridLine()
+                AxisValueLabel {
+                    if let dollars = value.as(Double.self) {
+                        Text(Format.money(Money(cents: Int64(dollars * 100))))
+                            .font(.caption2)
+                    }
+                }
+            }
+        }
+        .chartXAxis {
+            // Twenty-four labels do not fit on a phone, so about six are
+            // chosen here. `.automatic(desiredCount:)` is a hint the
+            // categorical axis is free to ignore, and it was — while the
+            // label itself rendered the last two characters of "2031-04",
+            // which is the month *number*. `shortLabel` was computed for this
+            // and never reached the chart.
+            AxisMarks(values: axisLabels) { value in
+                AxisValueLabel {
+                    if let label = value.as(String.self) {
+                        Text(shortLabels[label] ?? label)
+                            .font(.caption2)
                     }
                 }
             }
@@ -209,12 +263,40 @@ struct MonthlyBars: View {
     }
 }
 
+/// A loading state that says what it is loading. Five screens used to show a
+/// bare, unlabelled `ProgressView` (UIUX_FORENSIC_AUDIT UI-022).
+struct LoadingState: View {
+    let message: String
+
+    var body: some View {
+        VStack(spacing: AETheme.spacingS) {
+            ProgressView()
+            Text(message)
+                .font(.subheadline)
+                .foregroundStyle(AETheme.mutedText)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(message)
+    }
+}
+
 /// An empty state is a screen the player reached on purpose, so it gets the
 /// same surface as a full one — never a bare label floating on the background.
+/// The screen has nothing to show yet — and, where there is something the
+/// player could do about that, the button to do it.
+///
+/// The action is the point. Both of the app's largest empty states told the
+/// player to open a route or buy an aircraft and offered no way to do either:
+/// the only entry point was an icon-only `+` in the navigation bar, which is
+/// the least discoverable control on the screen. An empty state that issues an
+/// instruction it cannot help you follow is worse than one that says nothing.
 struct EmptyStateView: View {
     let icon: String
     let title: String
     let message: String
+    var actionTitle: String?
+    var action: (() -> Void)?
 
     var body: some View {
         VStack(spacing: AETheme.spacingS) {
@@ -228,13 +310,27 @@ struct EmptyStateView: View {
                 .foregroundStyle(AETheme.mutedText)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
+            if let actionTitle, let action {
+                Button(action: action) {
+                    Text(actionTitle)
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, AETheme.spacingL)
+                        .frame(minHeight: 44)
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.aePress)
+                .aeGlass(in: Capsule(style: .continuous),
+                         tint: AETheme.accent.opacity(0.28))
+                .padding(.top, AETheme.spacingXS)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, AETheme.spacingL)
         .padding(.horizontal, AETheme.spacingM)
-        .aeGlass(in: RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4,
-                                      style: .continuous))
-        .accessibilityElement(children: .combine)
+        .aeGlass(in: AETheme.cardShape)
+        // Combined only when there is nothing to press; a button inside a
+        // combined element is unreachable to VoiceOver.
+        .accessibilityElement(children: action == nil ? .combine : .contain)
     }
 }
 
@@ -273,7 +369,7 @@ struct SpeedControl: View {
                         }
                         .contentShape(Capsule(style: .continuous))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.aePress)
                 .accessibilityLabel(voiceOverLabel(for: speed))
                 .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
             }
@@ -289,13 +385,13 @@ struct SpeedControl: View {
                     .frame(minWidth: 44, minHeight: 38)
                     .contentShape(Capsule(style: .continuous))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.aePress)
             .accessibilityLabel("Advance to next morning")
         }
         .padding(3)
         .aeGlass(in: Capsule(style: .continuous))
-        .animation(AEMotion.selection, value: controller.speed)
-        .sensoryFeedback(.selection, trigger: controller.speed)
+        .aeAnimation(AEMotion.selection, value: controller.speed)
+        .aeFeedback(.uiSelect, on: controller.speed)
     }
 
     private func label(for speed: SimSpeed) -> String {
@@ -313,6 +409,96 @@ struct SpeedControl: View {
         case .x1: "Normal speed"
         case .x4: "Four times speed"
         case .x16: "Sixteen times speed"
+        }
+    }
+}
+
+/// The compact time control, for every screen that is not Home or the Map.
+///
+/// Time control lived on two of six screens, and no other screen showed the
+/// date — so from Routes, Fleet, Finance or World a player could not pause,
+/// could not change speed, and could not tell whether the world was even
+/// running (UIUX_FORENSIC_AUDIT UI-010). The full `SpeedControl` capsule is
+/// ~240pt wide and does not belong in a navigation bar beside a title, so
+/// secondary screens get this: the date, the current speed, and a menu with
+/// every speed and the jump to morning.
+struct TimeMenuButton: View {
+    @Environment(GameController.self) private var controller
+
+    private static let speeds: [SimSpeed] = [.paused, .x1, .x4, .x16]
+
+    var body: some View {
+        Menu {
+            Picker("Speed", selection: speedBinding) {
+                ForEach(Self.speeds, id: \.self) { speed in
+                    Label(Self.name(for: speed), systemImage: Self.icon(for: speed))
+                        .tag(speed)
+                }
+            }
+            .pickerStyle(.inline)
+            Divider()
+            Button {
+                controller.advanceToNextMorning()
+            } label: {
+                Label("Advance to next morning", systemImage: "sunrise")
+            }
+        } label: {
+            HStack(spacing: AETheme.spacingXS) {
+                Image(systemName: Self.icon(for: controller.speed))
+                    .font(.caption)
+                    .foregroundStyle(controller.speed == .paused
+                                     ? AETheme.caution : AETheme.accent)
+                if let date = controller.snapshot?.currentDate {
+                    Text(Format.shortDate(date))
+                        .font(.caption.weight(.medium))
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .aeAnimation(AEMotion.content, value: date.day)
+                }
+            }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .accessibilityLabel("Time controls")
+        .accessibilityValue(accessibilityValue)
+    }
+
+    private var speedBinding: Binding<SimSpeed> {
+        Binding(get: { controller.speed },
+                set: { controller.setSpeed($0) })
+    }
+
+    private var accessibilityValue: String {
+        guard let date = controller.snapshot?.currentDate else {
+            return Self.name(for: controller.speed)
+        }
+        return "\(Format.date(date)), \(Self.name(for: controller.speed))"
+    }
+
+    static func name(for speed: SimSpeed) -> String {
+        switch speed {
+        case .paused: "Paused"
+        case .x1: "Normal speed"
+        case .x4: "Four times speed"
+        case .x16: "Sixteen times speed"
+        }
+    }
+
+    static func icon(for speed: SimSpeed) -> String {
+        switch speed {
+        case .paused: "pause.fill"
+        case .x1: "play.fill"
+        case .x4: "forward.fill"
+        case .x16: "forward.end.fill"
+        }
+    }
+}
+
+extension View {
+    /// The toolbar every secondary game screen carries: time, always reachable.
+    func aeTimeToolbar() -> some View {
+        toolbar {
+            ToolbarItem(placement: .topBarLeading) { TimeMenuButton() }
         }
     }
 }
@@ -407,7 +593,7 @@ struct AEChoiceCard<Content: View>: View {
     @ViewBuilder var content: Content
 
     private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: AETheme.cornerRadius + 4, style: .continuous)
+        AETheme.cardShape
     }
 
     var body: some View {
@@ -429,7 +615,7 @@ struct AEChoiceCard<Content: View>: View {
             .overlay(shape.stroke(isSelected ? AETheme.accent.opacity(0.75) : .clear,
                                   lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.aePress)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }

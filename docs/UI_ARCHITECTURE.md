@@ -165,3 +165,94 @@ and are reused by the Finance statement rows.
 (`xcodegen`), compiles, fixes view-layer syntax issues, and validates the
 new-game → route → fast-forward flow on simulator. Until then these phases
 are *authored*, not done.
+
+
+---
+
+## 8. As-built after the forensic audit (2026-08-29)
+
+`docs/UIUX_FORENSIC_AUDIT.md` measured the client against this document and
+found the structural rules honoured and several of the *product* rules not.
+What changed, against the rules above:
+
+- **§2 adaptive shell — now built.** `NavigationSplitView` at regular width,
+  a five-item `TabView` at compact. Six tabs overflowed into the system *More*
+  list (BUG-009); Routes and Fleet merged into **Network**.
+- **§2 navigation state as a value — mostly.** Typed destinations
+  (`RouteID`, `AircraftID`, `AirportCode`, `DashboardRoute`) are values, every
+  screen links by value, and **a feed line about something you own opens it** —
+  §2's "tap → the delayed flight", with dead subjects (a closed route, a sold
+  aircraft) resolving to no link rather than a dead end. What is still not
+  built is a single app-wide route tree with a *bound* `NavigationPath`, which
+  is what an external deep link — a notification, a URL — would need to push a
+  screen from outside the view hierarchy.
+- **§2 charts on Swift Charts — now true.** The hand-rolled `MonthlyBars`
+  misplaced its own baseline (BUG-011).
+- **§4 rejections surface as human-readable reasons — now reachable.** They
+  are presented at `RootView`, and every sheet additionally pre-checks through
+  `Command.validate`, which is what turns a rejection into a disabled control
+  with a reason instead of an alert nobody sees.
+- **§5 O(visible), not O(world) — now honoured.** `GameController` caches the
+  map model and the route/fleet cards per simulation tick; screens previously
+  rebuilt them inside `body`, four times a second.
+- **§5 Reduce Motion honoured centrally — now explicit.** `aeAnimation`
+  consults `accessibilityReduceMotion` rather than relying on SwiftUI's
+  defaults.
+- **§6 every number tappable to its explanation — now true on the
+  dashboard.** Fleet, Routes, Reputation, Last month and Economy each open the
+  screen that explains them.
+- **Presentation vocabulary.** `Vocabulary.swift` is the single place model
+  enums and progression codes become English. No screen calls
+  `String(describing:)` or `rawValue` on a model type.
+
+- **Formatting is locale-correct.** Every number goes through `FormatStyle`.
+  It previously went through `String(format: "%.1f")`, which prints `3.5` to a
+  reader who writes `3,5` — a defect for a French or German player in an
+  English app, and unrelated to translating anything. The `¤` sign and the ISO
+  game date stay fixed deliberately; `Format` says why.
+
+**Still not built:** a bound `NavigationPath` for external deep links;
+localization of the strings themselves.
+
+Audio and haptics *are* built — see §9. Feedback is centralized through
+`Feedback.emit` rather than inline `sensoryFeedback`, so a screen cannot bypass
+the player's haptics setting by forgetting to check it (BUG-014). What remains
+is validation, not architecture: nothing in this system has been heard or felt
+on a device (`tasks/TECH_DEBT.md` TD-006).
+
+
+---
+
+## 9. Feedback (AE-AUDIO-01, 2026-08-29)
+
+The client gained a fourth output alongside layout, colour and motion: **sound
+and haptics**. Two rules bind it to the rest of this document.
+
+**Views express intent, never mechanism.** A view says
+`feedback.play(.routeOpened)`. It never names a file, a volume, a duration, or
+whether the cue is also a haptic. This is the same seam as
+`Format`/`Vocab`/`AETheme`: the screen states *what*, the design system decides
+*how*.
+
+**The decisions live in Core.** Which sounds a moment deserves, how a busy
+quarter-second is thinned, what the world bed does at each zoom, which music
+state the airline is in, and which settings switch wins are all pure policy in
+`AudioDirection.swift`, `SoundscapeDirection.swift` and `AudioSettings.swift`.
+The app layer is the hands. That placement is what makes 50 tests possible on
+a machine with no speaker, and it is the same reasoning that put `MapModel` in
+Core rather than in the renderer.
+
+`docs/AUDIO_ARCHITECTURE.md` is the full account.
+
+### Consequences for anything new
+
+- A new screen gets press feedback for free: use `.buttonStyle(.aePress)`
+  rather than `.plain`, which on iOS gives no press state at all.
+- A new action that emits a `SimEvent` needs no view-side cue — the director
+  voices it. An action that emits *no* event (there are three:
+  fare, frequency, service tier) must confirm at the call site.
+- `.sensoryFeedback` is not used anywhere and should not be reintroduced: it
+  bypasses the player's haptics setting, which is how that setting came to be
+  dead on five of seven screens (BUG-014).
+- An empty state that instructs the player should carry the action —
+  `EmptyStateView` takes one.

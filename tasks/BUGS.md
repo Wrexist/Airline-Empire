@@ -227,3 +227,412 @@ crash with the same trap, and with it they pass.
 **Status:** FIXED 2026-08-29, awaiting a device run of the next build to
 confirm on hardware.
 
+
+
+---
+
+## BUG-009 — Six tabs overflow into the system *More* list on iPhone
+**Severity:** P0 (two of six top-level areas demoted, and the only path to
+saving or quitting among them) · **Phase found:** UI/UX forensic audit,
+2026-08-29.
+**Repro:** Launch on any iPhone. `GameTabs` declared six `tabItem`s — Home,
+Map, Routes, Fleet, Finance, World. iOS shows four plus an automatic *More*
+tab once a tab bar passes five, so Finance (the survival system) and the whole
+World hub (events, competitors, progression, missions, service tier,
+reputation, **save and quit**) sat one level deeper than everything else,
+inside a system-styled list that ignores the app's design language.
+**Root cause:** the tab set grew a screen at a time across phases 14–17 and
+nobody counted it against the platform's limit. Invisible on Linux; invisible
+to a compiler; visible the first second the app renders.
+**Fix layer:** App. Five tabs: Routes and Fleet merge into **Network** behind
+a segmented switch (they are the two halves of one question and a player
+crosses between them constantly), and Settings moves to the Home toolbar,
+where a player looks for settings and where saving and quitting belong.
+**Status:** FIXED (authored) 2026-08-29 — needs a device to confirm, like
+every rendering claim in this project.
+
+---
+
+## BUG-010 — Capability programs offered a Start button that could only refuse
+**Severity:** P2 (a control whose sole outcome is an error) · **Phase found:**
+while implementing the audit's UI-008, 2026-08-29.
+**Repro:** Start any game and open World → Progression. Every capability shows
+an enabled "Start" button. Tap one: `StartCapabilityProgramCommand.validate`
+rejects with "Capability programs open in the National era" — three eras away.
+**Root cause:** the era gate lived only inside the command's `validate`, so
+the view had no way to know about it and rendered the same affordance in every
+state. The same hole hid the program limit and affordability.
+**Fix layer:** Core (additive) + App. `CapabilityProgram.unlockEra` names the
+gate once and the command defers to it; `ProgressionModel.CapabilityStatus`
+models `.eraLocked`, `.blockedBySlots` and `.unaffordable` alongside
+`.available`, and its `isStartable` is asserted by test to agree with the
+command's own validation in every state.
+**Tests:** `AdvisoryModelTests.startableAgreesWithTheCommand`,
+`capabilitiesAreEraLockedEarly`, `programLimitIsVisible`.
+**Status:** FIXED 2026-08-29.
+
+---
+
+## BUG-011 — The monthly profit chart drew its zero line in a different place for every bar
+**Severity:** P1 (the finance screen misrepresented its own data) ·
+**Phase found:** UI/UX forensic audit, 2026-08-29.
+**Repro:** Play to two closed months with one profit and one loss, then open
+Finance. `MonthlyBars` built each column as a centred
+`VStack { Spacer; +bar; 1pt rule; -bar; Spacer }`. The column's content height
+is `barHeight + 1`, and the `HStack` centres each column independently — so
+the rule that represents zero sat at a different y for every month. Bars could
+not be compared against each other or against zero.
+**Root cause:** a hand-rolled chart that encoded the baseline as *layout*
+rather than as a scale. `docs/UI_ARCHITECTURE.md` §2 specified Swift Charts
+from the start; the hand-rolled version was a placeholder that outlived its
+note.
+**Fix layer:** App. Swift Charts `BarMark` on a shared y-scale, with axes,
+month labels and per-bar accessibility values.
+**Status:** FIXED (authored) 2026-08-29.
+
+---
+
+## BUG-012 — Great-circle arcs crossing the date line drew a line back across the whole world
+**Severity:** P1 (the map's central visual, wrong on exactly the routes a
+player is proudest of) · **Phase found:** map overhaul adversarial bug hunt
+(MASTER PROMPT 2 §27), 2026-08-29, in code written earlier the same session.
+**Repro:** Open a route from Tokyo (HND) to Los Angeles (LAX) and look at the
+map. The slerp waypoints are correct in latitude/longitude, but projected to
+normalised x they run ~0.94 → 0.99 → **0.01** → 0.06. A path stroked through
+those points draws a near-full-width horizontal streak across the Atlantic,
+Africa and Eurasia between the two Pacific segments — and the aircraft marker
+teleports along it.
+**Root cause:** `MapMath` projected each waypoint independently and the
+renderer stroked them in order. Projection is per-point correct; a *polyline*
+through an equirectangular projection is not, because the seam at ±180° is a
+discontinuity in x that a straight segment interpolates straight through.
+Core's own comment claimed the date line was handled — true of the points,
+false of the line between them, which is the kind of half-truth a comment can
+carry for a long time.
+**Fix layer:** Core. `MapMath.unwrap(_:)` walks the projected points and
+carries a whole-world offset whenever consecutive x jump more than half a
+world, so the arc becomes monotone and may legitimately run past x=1 or below
+x=0; `MapMath.worldOffsets(for:)` then reports which ±1 world copies a shape
+touches, and the renderer draws it once per copy so the arc leaves one edge
+and re-enters the other. Fixed in Core rather than in the drawing code because
+the guarantee belongs to the projection, and the same unwrap is what makes
+flight-marker interpolation continuous across the seam.
+**Tests:** `AntimeridianTests` (7) — an eastward Pacific crossing, a westward
+one, a route that does not cross (offset never moves), monotonicity of the
+unwrapped sequence, offsets for a shape straddling the seam, and that unwrap
+preserves y exactly.
+**Status:** FIXED 2026-08-29 (Core; covered by tests, so this one is *tested*,
+not merely authored).
+
+---
+
+## BUG-013 — Loading a played save would have replayed the whole first hour
+**Severity:** P1 (a design defect caught before it shipped, in a system that
+did not exist yet) · **Phase found:** audio architecture, MASTER PROMPT 3 §26,
+2026-08-29.
+**Repro (of the naive design):** play until aircraft are flying and money is
+coming in, save, quit, load. A presentation layer that remembers "has the
+player seen their first departure?" in its own memory starts that memory
+empty on load — so the game announces the first route, the first departure,
+the first arrival and the first revenue, all four, at somebody who has been
+running an airline for a season.
+**Root cause:** the once-per-campaign moments are not events. They are facts
+about the world that become true once, and the batch that contained the
+arrival is long gone by the time anyone reloads. Any memory of them held
+outside the save is wrong after a restore.
+**Fix layer:** Core. `AudioDirector.Milestones(state:)` reads the airline's
+own persisted books — `RouteStats.flightsCompleted` and `passengersCarried`,
+which travel with the save — and the director is constructed from the state
+at session start. A mature airline therefore begins with all four already
+true. They also latch forward only, so closing every route cannot re-arm
+"your first route".
+**Tests:** `loadedGameDoesNotReplayMilestones`,
+`firstTimesFireOnceForANewAirline`, `milestonesLatchForward`,
+`loadingPublishesNoBacklog`. Both directions were verified by sabotage:
+seeding from an empty `Milestones()` fires all four at a loaded save, and
+making the state check always return false silences them for a new one.
+**Also checked and found already correct:** `GameSession` seeds
+`deliveredEventCount` from `state.eventLog.totalCount` at init and `events()`
+yields no backlog, so the *stream* never republished history. That was
+existing good design, not something this phase added, and it is now covered
+by a test so it stays that way.
+**Status:** FIXED 2026-08-29 (Core, tested).
+
+---
+
+## BUG-014 — The haptics setting only worked on two screens
+**Severity:** P2 (a preference the player sets and the app ignores) ·
+**Phase found:** audio architecture audit, MASTER PROMPT 3 §2, 2026-08-29.
+**Repro:** Settings → turn Haptics off. Open the map and change the overlay:
+the phone still buzzes. Same in the network Routes/Fleet switcher, and three
+times over in new-game (livery, start airport, difficulty).
+**Root cause:** haptics had grown one `.sensoryFeedback` call at a time as
+screens were built. Seven call sites existed; only two — the celebration
+banner and the speed control — passed the `preferences.haptics` condition.
+The other five simply fired. Nothing enforced the check because nothing named
+it: the condition was a closure each site had to remember to write.
+**Fix layer:** App, structurally rather than by adding five conditions. All
+feedback now goes through one path (`Feedback.emit`), which consults the
+preference once; views ask for a semantic cue and never touch
+`.sensoryFeedback` directly. `grep -rn sensoryFeedback AirlineEmpireApp`
+returns nothing, which is what stops the sixth site from reintroducing it.
+**Status:** FIXED 2026-08-29.
+
+---
+
+## BUG-015 — The celebration banner was about to fire two haptics for one moment
+**Severity:** P2 (found while building, fixed before it shipped) ·
+**Phase found:** MASTER PROMPT 3 §29 bug hunt, 2026-08-29.
+**Repro (of the state mid-phase):** advance to a new era. `CelebrationOverlay`
+carried its own `.sensoryFeedback(.success, trigger: celebration.id)`, and the
+new audio director independently gives `eraAdvanced` a `.heavy` haptic — as it
+does for milestones, achievements, finished capability programmes and
+completed missions, which are the other four things that raise a celebration.
+Every one of them would have buzzed twice.
+**Root cause:** two systems acquiring responsibility for the same moment, one
+of them newly. Exactly the "haptics triggering repeatedly" failure the phase
+brief names.
+**Fix layer:** App. The banner's own feedback is removed, with a comment
+saying why, because the next person to look at that view will notice it is the
+only celebration in the app that does not announce itself and wonder.
+**Status:** FIXED 2026-08-29.
+
+---
+
+## BUG-016 — Per-play volume would have ducked a long sound under a later tap
+**Severity:** P2 (a real defect in new code, found by reading it) ·
+**Phase found:** MASTER PROMPT 3 §29 bug hunt, 2026-08-29.
+**Repro (of the first implementation):** trigger an era change (a 2.6-second
+swell) and tap eight things while it plays. The eighth tap lands on the same
+pooled `AVAudioPlayerNode` and sets its volume to the UI level — and an
+`AVAudioPlayerNode`'s volume applies to what it is *currently sounding*, not
+to the buffer being scheduled. The swell ducks to a tap's loudness mid-note.
+Eight sounds inside one tail is not a stretch: a 16x flurry reaches it.
+**Root cause:** treating a node property as if it were a per-buffer parameter.
+**Fix layer:** App. The per-category trim is scaled into the samples once, at
+load; node volume is a constant 1; and the mixer carries the player's master
+setting, which is uniform across every sound at any instant so re-levelling a
+sounding node is harmless. A play now costs one `scheduleBuffer` and nothing
+else, which also serves §28.
+**Status:** FIXED 2026-08-29 (not runtime validated — see TD-006).
+
+---
+
+## BUG-017 — The audio graph was wired to guess its own format, and would have crashed
+**Severity:** P0 had it shipped (a crash on the first sound of every session) ·
+**Phase found:** MASTER PROMPT 3 §29 bug hunt, 2026-08-29, in code written the
+same day.
+**Repro (of the first implementation):** launch the app and trigger any cue.
+`AudioEngine.prepare()` connected the eight player nodes with `format: nil`
+and only *then* decoded the buffers. With a nil format the engine infers one
+from the destination, which resolves to the hardware's — stereo. Every asset
+in this game is mono. `AVAudioPlayerNode.scheduleBuffer` with a buffer whose
+format does not match the node's output connection raises an Objective-C
+exception, and Swift cannot catch that: it is a crash, not a failure.
+**Root cause:** ordering. The graph was built before there was anything to
+measure, so the only format available to build it with was a guess. Nothing in
+a compile can see this — the code is perfectly well-typed — and no Linux test
+can reach it, which is exactly the class of defect that survives to a device.
+**Fix layer:** App. Buffers are decoded first, the voices are wired with the
+real format of a real decoded buffer, and `play` additionally refuses a buffer
+whose format does not match the node it would go to — turning any future
+mismatch into silence rather than a crash. `scripts/audio/check-assets.py`
+already enforces that all 52 assets share one format, which is what makes
+"any buffer's format" a safe choice.
+**Status:** FIXED 2026-08-29 (authored; the crash it prevents has never been
+observed, because nothing has run — see TD-006).
+
+---
+
+## BUG-018 — Every music transition died a quarter-second in
+**Severity:** P1 (the music system's central feature, broken in its first
+implementation) · **Phase found:** AE-AUDIO-01 §23 bug hunt, 2026-08-29, in
+code written the same day.
+**Repro (of the first implementation):** pause a running game. The music state
+moves `operating → planning`, a four-second equal-power crossfade starts, and
+250 ms later the next snapshot arrives. `applyMusic` re-derives the state,
+finds it unchanged, and calls `setMusic(sameTrack, fade: 0)` to re-level —
+which took the "same bed" branch, and that branch **cancelled the fade in
+flight**. The two decks are left stranded wherever the ramp had reached: the
+outgoing track at about 0.98, the incoming at about 0.08. The game stays on
+the *previous* bed at nearly full volume, permanently, and every subsequent
+transition does the same thing.
+**Root cause:** a re-levelling path and a transition path sharing one entry
+point, in a system whose caller runs four times a second. The doc comment on
+`setMusic` even claimed it was "safe to call from an observation that fires on
+every snapshot" — which was true of the duplicate-track case it was written
+for and false of the fade it also cancelled.
+**Fix layer:** App, in three places, because one would not have been enough:
+1. The same-track branch no longer touches a running fade — it re-levels only
+   when `musicFade == nil`. A running fade reads `musicTarget` itself.
+2. The crossfade reads `musicTarget` on **every step** rather than capturing
+   it once, so a slider moved mid-transition is obeyed instead of ignored for
+   four seconds.
+3. `applyMusic` only calls into the engine when the state or the gain actually
+   changed, so the hot path is not in the fade machinery at all.
+**Also removed:** `duckContinuous`, an unused helper that multiplied the
+ambience mixer by a factor *cumulatively* and never restored it — repeated
+calls would have driven the bed to zero and left it there. Dead code with a
+latent bug in it; deleting beat fixing.
+**Status:** FIXED 2026-08-29 (authored; not runtime validated — no crossfade
+has ever been heard, TD-006).
+
+---
+
+## BUG-019 — The audio session category was silently never applied
+**Severity:** P1 (the game would have interrupted whatever the player was
+listening to) · **Phase found:** CodeRabbit review of PR #6, 2026-08-29.
+**Repro:** launch the app with a podcast playing. The podcast stops.
+**Root cause:** `setCategory(.ambient, mode: .default, options: [.mixWithOthers])`.
+`.mixWithOthers` is only valid with `.playback`, `.playAndRecord` and
+`.multiRoute`; passing it with `.ambient` makes `setCategory` throw. The call
+site used `try?`, so the throw was swallowed and the session stayed on its
+default **`.soloAmbient`** — which does not mix and does interrupt.
+`.ambient` already mixes by definition, so the option was not merely
+unnecessary, it was the thing that stopped the category from being set at all.
+**Why it survived review here:** the line is one call with a plausible comment
+above it explaining behaviour that the line prevented. Nothing in a compile or
+a Linux test can reach it, and `docs/AUDIO_ARCHITECTURE.md` §10 asserted the
+correct behaviour confidently enough that re-reading the file did not question
+it. A confident comment is not a mechanism.
+**Fix layer:** App. `setCategory(.ambient, mode: .default)`.
+**Status:** FIXED 2026-08-29 (authored; not runtime validated — no audio
+session has ever been configured on a device, TD-006).
+
+---
+
+## BUG-020 — A parked aircraft made its airport permanently untappable
+**Severity:** P1 (the map's most-used target, unreachable) · **Phase found:**
+CodeRabbit review of PR #6, 2026-08-29.
+**Repro:** open the map with any aircraft on the ground at home — the normal
+state — and tap the home airport. The parked aircraft is selected instead.
+The airport can never be selected while anything is parked there.
+**Root cause:** `MapFrame.drawFlights` appended **every** drawn flight to the
+hit geometry, airborne or not. A parked flight projects to its airport's own
+position, and `MapHitTester.hit` tests flights first, with a 26pt tolerance,
+returning on the first hit. So a 2pt dot with a 26pt target sat on top of the
+airport and won every tap.
+**The reasoning that allowed it:** `MapHitTester`'s ordering comment argues
+that "an aircraft is the smallest and most transient thing on the map, so it
+must win where it overlaps". That is a sound argument about an aircraft *in
+flight*. It is not an argument for a stationary dot outranking the airport it
+is drawn on top of, and the code applied it to both because the distinction
+was never made.
+**Fix layer:** App. Only airborne flights enter the hit geometry. Parked
+aircraft remain reachable through the airport card, which is the better route
+to them regardless.
+**Status:** FIXED 2026-08-29 (authored; the map has still never been tapped —
+TD-003).
+
+---
+
+## BUG-021 — "Save and quit to menu" threw the save away
+**Severity:** P0 (silent, unrecoverable loss of player progress, on the button
+whose entire purpose is not losing it) · **Phase found:** CodeRabbit review of
+PR #6, 2026-08-29, and independently while tracing it.
+**Repro:** play past the last autosave, open Settings, tap "Save and quit to
+menu", reload the save. Everything since the last autosave is gone, and
+nothing said so.
+**Root cause:** ordering across an async boundary.
+
+    controller.saveNow()      // starts a Task
+    controller.quitToMenu()   // runs now; sets session = nil
+
+Both the button body and `saveNow` are on the main actor, so the queued task
+cannot begin until the button's closure returns. By then `quitToMenu` has
+released the session, and `save(slot:announce:)` opens with
+`guard let session else { return }` — so it returns having written nothing.
+The failure is silent twice over: no file is written, and the code path that
+sets `lastSaveOutcome = .failed` is never reached, so the existing "say what
+happened when a save fails" machinery (UI-012) reports success by omission.
+**Fix layer:** App, in the controller rather than the screen.
+`saveAndQuit(slot:)` awaits the save and only then quits, and it carries
+`lastSaveOutcome` across the transition so a failed save is still reported on
+the menu — `quitToMenu` clears it.
+**Status:** FIXED 2026-08-29.
+
+---
+
+## BUG-022 — A rival's strike was reported as disrupting the player's routes
+**Severity:** P2 (a false alarm on the map's disruption overlay, contradicting
+the game's own wording of what a strike does) · **Phase found:** CodeRabbit
+review of PR #6, 2026-08-29.
+**Repro:** fly out of any large airport a competitor also serves, wait for that
+competitor to strike. The overlay reports "1 world event touching your routes"
+and names routes that are flying normally.
+**Root cause:** for `.strike(airline)`, `affected` collects every airport the
+striking airline's routes touch, and `touched` then names every *player* route
+sharing one of those airports. Sharing a hub with a rival is the normal case at
+a large airport, so the two carriers meeting was enough to manufacture the
+claim. `Vocab.worldEventEffect` describes a strike as affecting that airline's
+own flights, so the overlay contradicted the text beside it.
+**Fix layer:** Core (`MapModel.mapModel`). A strike names player routes only
+when the striking airline *is* the player. The affected airports are still
+listed — the strike is real, it is simply not the player's.
+**Status:** FIXED 2026-08-30. Covered by a test that fails on the old
+behaviour (all three player routes claimed).
+
+---
+
+## BUG-023 — An arriving aircraft snapped to due north
+**Severity:** P3 (cosmetic, but the map is the screen where a wrong picture is
+indistinguishable from a right one) · **Phase found:** CodeRabbit review of
+PR #6, 2026-08-29 (app side); the identical defect in Core was found while
+fixing it.
+**Repro:** watch any flight reach its destination at x4 or x16.
+**Root cause:** heading was sampled as the bearing from the current point to
+one 2% further along the arc. Progress is clamped to 1 so a flight waiting for
+the next snapshot has `advanced == 1` and `min(1, advanced + 0.02) == 1` — two
+identical coordinates. `MapMath.heading` computes `atan2(0, 0)` for those and
+returns 0, so the symbol rotated to north and stayed there until the snapshot
+changed.
+**Fix layer:** Core. `MapMath.heading(alongRouteFrom:to:at:)` measures the leg
+just travelled once the fraction reaches 1, and both call sites — the app's
+interpolator and Core's own `mapModel` — now use it, so the two cannot drift
+apart again.
+**Status:** FIXED 2026-08-30.
+
+---
+
+## BUG-024 — A milestone silenced the music instead of ducking it
+**Severity:** P2 · **Phase found:** CodeRabbit review of PR #6, 2026-08-29.
+**Repro:** complete a mission. The music stops for twelve seconds and fades
+back in.
+**Root cause:** `MusicDirector.asset(for: .milestone)` returns nil on purpose —
+a milestone is marked by its own cue, not by a track — and the comment beside
+it says the state exists "so the *bed* can duck under the cue and return".
+`applyMusic` handed that nil straight to `setMusic`, which fades out and stops
+the deck. `MusicDirector.duck(for: .milestone)`, the 0.55 that was written for
+exactly this, was applied to nothing.
+**Fix layer:** App (`Feedback.applyMusic`). The bed is derived from the state
+*without* the celebration, and the celebration decides only the level.
+**Status:** FIXED 2026-08-30 (not runtime validated — TD-006).
+
+---
+
+## BUG-025 — Turning sound effects off silenced the music for the session
+**Severity:** P2 · **Phase found:** CodeRabbit review of PR #6, 2026-08-29.
+**Repro:** with music on, turn Sound Effects off. The music stops and never
+comes back, whatever you do to the music controls.
+**Root cause:** `settingsChanged` called `audio.stopAll()` when the effects
+gain reached zero, and `stopAll` also stopped the ambience and the music decks.
+Because `musicState` and `lastMusicGain` were left untouched, the next refresh
+saw no change and took the early-out, so nothing ever restarted it.
+**Fix layer:** App. `AudioEngine.stopEffects()` stops the one-shot voices only;
+`stopAll` is now composed from the three layer stops.
+**Status:** FIXED 2026-08-30 (not runtime validated — TD-006).
+
+---
+
+## BUG-026 — A failed autosave raised a modal the player had not asked for
+**Severity:** P3 · **Phase found:** CodeRabbit review of PR #6, 2026-08-29.
+**Repro:** background the app with the disk full, come back. A modal "Save"
+alert is waiting, attached to nothing the player did.
+**Root cause:** `saveOnBackground` passes `announce: false` precisely so it
+never interrupts, and the doc comment says a failure is "recorded but never
+interrupts". The catch block set `lastSaveOutcome` regardless, and that is the
+one piece of state `GameShell` raises an alert from.
+**Fix layer:** App. The announced path keeps the alert; the quiet path records
+`quietSaveFailure`, which Settings' Save section reports in place — quiet, but
+not silent, which was the whole point of UI-012.
+**Status:** FIXED 2026-08-30.

@@ -22,7 +22,7 @@ public struct StartCapabilityProgramCommand: Command, Equatable {
                                     message: "Capability programs are player decisions")
         }
         let tuning = catalog.tuning.progression
-        if state.progression.era < .national {
+        if state.progression.era < CapabilityProgram.unlockEra {
             return CommandRejection(code: "progression.eraLocked",
                                     message: "Capability programs open in the National era")
         }
