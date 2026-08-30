@@ -332,11 +332,9 @@ struct LoanSheet: View {
                 }
             } label: {
                 Text("Take this loan")
-                    .font(.headline)
                     .frame(maxWidth: .infinity)
-                    .frame(minHeight: 44)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.aePrimary)
             .disabled(blocked != nil)
         }
     }

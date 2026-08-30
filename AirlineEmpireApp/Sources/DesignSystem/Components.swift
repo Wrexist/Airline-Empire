@@ -731,7 +731,13 @@ struct AEButtonStyle: ButtonStyle {
 
         var body: some View {
             configuration.label
-                .font(AEType.body.weight(role == .tertiary ? .regular : .semibold))
+                // A primary call to action carries more weight than a
+                // supporting one. The three places that hand-rolled a primary
+                // button before this style existed each independently reached
+                // for `.headline`, which is decent evidence of the right size.
+                .font(role == .primary
+                      ? Font.headline
+                      : AEType.body.weight(role == .tertiary ? .regular : .semibold))
                 .foregroundStyle(foreground)
                 .padding(.horizontal, AETheme.spacingM)
                 .padding(.vertical, AETheme.spacingS + 2)
@@ -761,11 +767,15 @@ struct AEButtonStyle: ButtonStyle {
             }
         }
 
-        @ViewBuilder private var background: some View {
+        /// `AnyShapeStyle`, not `some View`: `background(_:in:)` takes a
+        /// `ShapeStyle`, and a `@ViewBuilder` returning `Color` satisfies
+        /// `View` without satisfying that. `swiftc -parse` cannot tell the
+        /// difference — it resolves no names and checks no conformances — so
+        /// this only failed on the macOS compile.
+        private var background: AnyShapeStyle {
             switch role {
-            case .primary: AETheme.accent
-            case .secondary, .destructive: Color.clear
-            case .tertiary: Color.clear
+            case .primary: AnyShapeStyle(AETheme.accent)
+            case .secondary, .destructive, .tertiary: AnyShapeStyle(Color.clear)
             }
         }
     }

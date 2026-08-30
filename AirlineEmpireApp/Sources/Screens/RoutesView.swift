@@ -911,11 +911,9 @@ struct OpenRouteSheet: View {
                 }
             } label: {
                 Label("Open this route", systemImage: "airplane.departure")
-                    .font(.headline)
                     .frame(maxWidth: .infinity)
-                    .frame(minHeight: 44)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.aePrimary)
             .disabled(blocked != nil)
         }
     }

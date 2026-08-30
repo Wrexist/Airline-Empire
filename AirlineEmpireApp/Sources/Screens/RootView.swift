@@ -214,8 +214,7 @@ struct GameOverView: View {
                 Button("Start a new airline") {
                     controller.quitToMenu()
                 }
-                .font(.headline)
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.aePrimary)
                 .padding(.top, AETheme.spacingS)
             }
             .frame(maxWidth: 560)
