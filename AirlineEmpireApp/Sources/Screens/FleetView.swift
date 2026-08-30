@@ -850,18 +850,18 @@ struct AircraftShopSheet: View {
                              tint: AETheme.leased),
                 ])
                 purchase("Buy new", price: spec.listPrice, snapshot: snapshot,
-                         player: player, detail: "Delivered in \(Format.days(spec.deliveryLeadDays))",
-                         identifier: "ae-market-buy-new",
+                         player: player, identifier: "ae-market-buy-new",
+                         detail: "Delivered in \(Format.days(spec.deliveryLeadDays))",
                          command: BuyNewAircraftCommand(buyer: player, type: spec.code))
                 purchase("Buy used (\(usedAge)y)", price: usedPrice, snapshot: snapshot,
-                         player: player, detail: "Flies immediately, in used condition",
-                         identifier: "ae-market-buy-used",
+                         player: player, identifier: "ae-market-buy-used",
+                         detail: "Flies immediately, in used condition",
                          command: BuyUsedAircraftCommand(buyer: player, type: spec.code,
                                                          ageYears: usedAge))
                 purchase("Lease", price: spec.leaseMonthly, snapshot: snapshot,
                          player: player, isMonthly: true,
-                         detail: "\(Format.money(spec.leaseMonthly * Int64(leaseTermMonths))) over \(leaseTermMonths) months",
                          identifier: "ae-market-lease",
+                         detail: "\(Format.money(spec.leaseMonthly * Int64(leaseTermMonths))) over \(leaseTermMonths) months",
                          command: LeaseAircraftCommand(lessee: player, type: spec.code,
                                                        termMonths: leaseTermMonths))
             }
