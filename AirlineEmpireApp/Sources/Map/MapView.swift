@@ -132,6 +132,7 @@ struct MapScreen: View {
             }
             .onTapGesture { location in handleTap(at: location, model: model) }
             .accessibilityElement()
+            .accessibilityIdentifier("ae-map-canvas")
             .accessibilityLabel("World map")
             .accessibilityValue(accessibilitySummary(model))
             .accessibilityHint("Double tap an airport, route or aircraft to select it")

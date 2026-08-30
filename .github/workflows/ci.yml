@@ -298,7 +298,7 @@ jobs:
             -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
             -resultBundlePath UITestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO \
-            test
+            test 2>&1 | tee ui-test-output.txt
 
       # The screenshots. These are the only visual evidence this project has
       # ever produced, so they are kept whether the run passed or failed —
@@ -382,3 +382,27 @@ jobs:
               print("===ENDSHOT")
           PYEOF
           exit 0
+
+      # The same failures again, at the very bottom of the log.
+      #
+      # Not redundancy — ordering. The step above prints roughly 200 lines per
+      # screenshot, so on a run with a dozen checkpoints the test results are
+      # thousands of lines above the end of the log, and a `tail` large enough
+      # to reach them returns megabytes of base64 with the answer buried in it.
+      # That is how AE-032's two failures took four log fetches to identify.
+      # Fifteen lines here puts the verdict where anyone, human or agent,
+      # looks first.
+      - name: What failed
+        if: always() && steps.changes.outputs.build == 'true'
+        working-directory: AirlineEmpireApp
+        continue-on-error: true
+        run: |
+          if [ ! -f ui-test-output.txt ]; then
+            echo "No UI test output captured."
+            exit 0
+          fi
+          echo "=== UI TEST RESULTS ==="
+          grep -E "Test Case .* (passed|failed) \(" ui-test-output.txt || true
+          echo "=== FAILURES ==="
+          grep -E "^.*: error: -\[" ui-test-output.txt | head -40 || true
+          grep -E "Executed [0-9]+ tests?," ui-test-output.txt | tail -1 || true

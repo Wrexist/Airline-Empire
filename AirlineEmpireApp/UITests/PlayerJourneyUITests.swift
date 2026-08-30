@@ -184,6 +184,44 @@ final class PlayerJourneyUITests: AEUITestCase {
         checkpoint("07-routes-with-route")
     }
 
+    /// The map at two zoom levels, and a pinch that does not fall over.
+    ///
+    /// Two things this can honestly check, and one it cannot. It can prove the
+    /// pinch gesture is accepted and the map survives it — a `Canvas` that
+    /// throws away its projection under a gesture would fail here. And it
+    /// captures the world and regional levels, which is the only way anyone
+    /// finds out whether the country labels crowd the airport codes.
+    ///
+    /// What it cannot check is whether any of it *looks* right. There is no
+    /// assertion in XCUITest for "the coastline reads as geography" or "the
+    /// flag rendered in colour". Those need a person and a screenshot, which
+    /// is why both are captured rather than merely visited.
+    func testZoomingTheMapRevealsCountryLabels() throws {
+        launch(appearance: .light)
+        guard foundAirline() else { return }
+        openTab("Map")
+
+        let map = app.descendants(matching: .any)["ae-map-canvas"]
+        require(map, "the map canvas")
+        checkpoint("70-map-world-zoom")
+
+        // Two pinches rather than one large one: the camera clamps at 16x, and
+        // a single huge scale would jump straight past the regional level that
+        // is the interesting one for labels.
+        map.pinch(withScale: 2.4, velocity: 1.2)
+        checkpoint("71-map-regional-zoom")
+        map.pinch(withScale: 2.4, velocity: 1.2)
+        checkpoint("72-map-local-zoom")
+
+        // The map must still be there and still be interactive; a gesture that
+        // wedged the canvas would show up as the element going away.
+        XCTAssertTrue(map.exists,
+                      "The map canvas did not survive being pinched")
+
+        map.pinch(withScale: 0.3, velocity: -1.5)
+        checkpoint("73-map-zoomed-back-out")
+    }
+
     /// No screen shows the old generic currency sign.
     ///
     /// `¤` (U+00A4) was chosen deliberately — the world is fictional, so
