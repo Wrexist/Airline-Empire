@@ -642,27 +642,41 @@ struct AEPanel<Content: View>: View {
     }
 }
 
-/// One metric in a dense row: a small number over its label.
+/// One metric: a small number over its label.
 ///
 /// `StatTile` gives each metric its own glass card, which is right for six
 /// tappable headline figures and wrong for the eight supporting numbers a
 /// summary header wants — as eight cards those cost most of a screen and read
 /// as eight separate claims rather than one picture.
-struct AECompactMetric: View {
+struct AEMetric: Identifiable, Equatable {
+    /// The label is the identity: a strip never shows the same metric twice.
+    var id: String { label }
     let label: String
     let value: String
     var tint: Color? = nil
-    /// A metric the player should notice — used sparingly, or it stops working.
+    /// A metric the player should notice. Used sparingly, or it stops working.
     var emphasised = false
+
+    init(_ label: String, _ value: String, tint: Color? = nil,
+         emphasised: Bool = false) {
+        self.label = label
+        self.value = value
+        self.tint = tint
+        self.emphasised = emphasised
+    }
+}
+
+struct AECompactMetric: View {
+    let metric: AEMetric
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(value)
-                .font(emphasised ? AEType.metric : AEType.metricCompact)
-                .foregroundStyle(tint ?? .primary)
+            Text(metric.value)
+                .font(metric.emphasised ? AEType.metric : AEType.metricCompact)
+                .foregroundStyle(metric.tint ?? .primary)
                 .contentTransition(.numericText())
-                .aeAnimation(AEMotion.content, value: value)
-            Text(label)
+                .aeAnimation(AEMotion.content, value: metric.value)
+            Text(metric.label)
                 .font(AEType.caption)
                 .foregroundStyle(AETheme.mutedText)
                 .lineLimit(1)
@@ -670,26 +684,37 @@ struct AECompactMetric: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(label): \(value)")
+        .accessibilityLabel("\(metric.label): \(metric.value)")
     }
 }
 
-/// A row of `AECompactMetric`s sharing one container.
+/// Several metrics sharing one panel, wrapping onto as many lines as they need.
 ///
-/// Wraps rather than scrolls, so nothing is hidden off the right edge on a
-/// small phone, and so the same strip serves three metrics or eight.
-struct AEMetricStrip<Content: View>: View {
-    @ViewBuilder var content: Content
+/// This takes data rather than a `@ViewBuilder` on purpose, and the first
+/// version did not — which made it wrong. A builder hands over one opaque
+/// child, so the only available fallback was `ViewThatFits` between an `HStack`
+/// and a `Grid` holding a single `GridRow`. Those two lay out identically, so
+/// the "fallback" was the same width as the thing it was meant to rescue and
+/// nothing ever wrapped. A strip of nine fleet metrics would simply have run
+/// off the edge of a phone.
+///
+/// With an array it can use a real adaptive grid. `minimum: 88` fits about
+/// three columns on the narrowest iPhone and more as the width allows, so the
+/// same strip serves three metrics or nine without a decision at the call site.
+struct AEMetricStrip: View {
+    let metrics: [AEMetric]
+
+    init(_ metrics: [AEMetric]) { self.metrics = metrics }
 
     var body: some View {
         AEPanel {
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .top, spacing: AETheme.spacingM) { content }
-                Grid(alignment: .leading,
-                     horizontalSpacing: AETheme.spacingM,
-                     verticalSpacing: AETheme.spacingS) {
-                    GridRow { content }
-                }
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 88), spacing: AETheme.spacingM,
+                                   alignment: .leading)],
+                alignment: .leading,
+                spacing: AETheme.spacingS
+            ) {
+                ForEach(metrics) { AECompactMetric(metric: $0) }
             }
         }
     }

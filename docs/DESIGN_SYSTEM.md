@@ -85,12 +85,21 @@ Three weights, in descending order:
 - **Nothing** — a `VStack` with a `AESectionHeader`. The default. Most groups
   need a heading and spacing, not a container.
 
-**`AEMetricStrip`** is the dense case: several `AECompactMetric`s sharing one
-panel. `StatTile` gives each metric its own glass card, which is right for six
+**`AEMetricStrip`** is the dense case: several metrics sharing one panel.
+`StatTile` gives each metric its own glass card, which is right for six
 tappable headline figures and wrong for the eight supporting numbers in a
 summary header — as eight cards those cost most of a screen and read as eight
-separate claims rather than one picture. The strip uses `ViewThatFits` so it
-wraps to a grid rather than scrolling off the right edge of a small phone.
+separate claims rather than one picture.
+
+It takes an **array of `AEMetric`**, not a `@ViewBuilder`, and that is the
+whole design. The first version took a builder, which hands over one opaque
+child; the only fallback available was `ViewThatFits` between an `HStack` and a
+`Grid` holding a single `GridRow`. Those two lay out identically, so the
+"fallback" was exactly as wide as the thing it was meant to rescue and nothing
+ever wrapped — a nine-metric fleet strip would have run off the edge of a
+phone. With an array it uses a real adaptive `LazyVGrid`: about three columns
+on the narrowest iPhone, more as width allows, and the same strip serves three
+metrics or nine with no decision at the call site.
 
 ---
 

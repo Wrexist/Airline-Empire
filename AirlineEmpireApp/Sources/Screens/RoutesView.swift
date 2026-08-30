@@ -132,27 +132,32 @@ struct RoutesList: View {
 struct NetworkSummaryRow: View {
     let summary: NetworkSummary
 
-    var body: some View {
-        AEMetricStrip {
-            AECompactMetric(label: "routes", value: "\(summary.routeCount)")
-            AECompactMetric(label: "earning", value: "\(summary.profitableRoutes)",
-                            tint: summary.profitableRoutes > 0 ? AETheme.positive : nil)
+    private var metrics: [AEMetric] {
+        var list: [AEMetric] = [
+            AEMetric("routes", "\(summary.routeCount)"),
+            AEMetric("earning", "\(summary.profitableRoutes)",
+                     tint: summary.profitableRoutes > 0 ? AETheme.positive : nil),
             // Losing and earning do not sum to the total: a route that has not
             // flown yet is neither, and calling it a loss would be a lie.
-            AECompactMetric(label: "losing", value: "\(summary.losingRoutes)",
-                            tint: summary.losingRoutes > 0 ? AETheme.negative : nil)
-            if summary.idleRoutes > 0 {
-                AECompactMetric(label: "no aircraft", value: "\(summary.idleRoutes)",
-                                tint: AETheme.caution)
-            }
-            AECompactMetric(label: "load factor",
-                            value: summary.averageLoadFactor.map(Format.percent) ?? "—")
-            AECompactMetric(label: "in the air", value: "\(summary.liveFlights)")
-            AECompactMetric(label: "month to date",
-                            value: Format.money(summary.monthToDateProfit),
-                            tint: summary.monthToDateProfit.isNegative
-                                ? AETheme.negative : AETheme.positive)
+            AEMetric("losing", "\(summary.losingRoutes)",
+                     tint: summary.losingRoutes > 0 ? AETheme.negative : nil),
+        ]
+        if summary.idleRoutes > 0 {
+            list.append(AEMetric("no aircraft", "\(summary.idleRoutes)",
+                                 tint: AETheme.caution))
         }
+        list.append(AEMetric("load factor",
+                             summary.averageLoadFactor.map(Format.percent) ?? "—"))
+        list.append(AEMetric("in the air", "\(summary.liveFlights)"))
+        list.append(AEMetric("month to date",
+                             Format.money(summary.monthToDateProfit),
+                             tint: summary.monthToDateProfit.isNegative
+                                 ? AETheme.negative : AETheme.positive))
+        return list
+    }
+
+    var body: some View {
+        AEMetricStrip(metrics)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Network summary")
     }

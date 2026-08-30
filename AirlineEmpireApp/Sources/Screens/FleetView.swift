@@ -101,37 +101,39 @@ struct FleetList: View {
 struct FleetSummaryRow: View {
     let summary: FleetSummary
 
-    var body: some View {
-        AEMetricStrip {
-            AECompactMetric(label: "aircraft", value: "\(summary.total)")
-            AECompactMetric(label: "flying", value: "\(summary.assigned)",
-                            tint: summary.assigned > 0 ? AETheme.positive : nil)
+    private var metrics: [AEMetric] {
+        var list: [AEMetric] = [
+            AEMetric("aircraft", "\(summary.total)"),
+            AEMetric("flying", "\(summary.assigned)",
+                     tint: summary.assigned > 0 ? AETheme.positive : nil),
             // Idle aircraft are the number a player can act on: they cost the
             // same as flying ones and earn nothing.
-            AECompactMetric(label: "idle", value: "\(summary.idle)",
-                            tint: summary.idle > 0 ? AETheme.caution : nil)
-            AECompactMetric(label: "in use",
-                            value: summary.utilization.map(Format.percent) ?? "—")
-            AECompactMetric(label: "avg age",
-                            value: summary.averageAgeYears
-                                .map { "\(Format.decimal($0, places: 0)) y" } ?? "—")
-            AECompactMetric(label: "condition",
-                            value: summary.averageCondition.map(Format.percent) ?? "—",
-                            tint: (summary.averageCondition ?? 1) < 0.6
-                                ? AETheme.caution : nil)
-            if summary.inMaintenance > 0 {
-                AECompactMetric(label: "in check",
-                                value: "\(summary.inMaintenance)",
-                                tint: AETheme.caution)
-            }
-            if summary.onOrder > 0 {
-                AECompactMetric(label: "on order", value: "\(summary.onOrder)")
-            }
-            if summary.leasedCount > 0 {
-                AECompactMetric(label: "leases/mo",
-                                value: Format.money(summary.monthlyLeaseCost))
-            }
+            AEMetric("idle", "\(summary.idle)",
+                     tint: summary.idle > 0 ? AETheme.caution : nil),
+            AEMetric("in use", summary.utilization.map(Format.percent) ?? "—"),
+            AEMetric("avg age", summary.averageAgeYears
+                        .map { "\(Format.decimal($0, places: 0)) y" } ?? "—"),
+            AEMetric("condition",
+                     summary.averageCondition.map(Format.percent) ?? "—",
+                     tint: (summary.averageCondition ?? 1) < 0.6
+                         ? AETheme.caution : nil),
+        ]
+        if summary.inMaintenance > 0 {
+            list.append(AEMetric("in check", "\(summary.inMaintenance)",
+                                 tint: AETheme.caution))
         }
+        if summary.onOrder > 0 {
+            list.append(AEMetric("on order", "\(summary.onOrder)"))
+        }
+        if summary.leasedCount > 0 {
+            list.append(AEMetric("leases/mo",
+                                 Format.money(summary.monthlyLeaseCost)))
+        }
+        return list
+    }
+
+    var body: some View {
+        AEMetricStrip(metrics)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Fleet summary")
     }
@@ -625,15 +627,15 @@ struct AircraftShopSheet: View {
                 // rather than three sentences to read in sequence. The
                 // tradeoff *is* the decision: cash now against cash monthly,
                 // and condition against waiting (MASTER PROMPT 4 §11).
-                AEMetricStrip {
-                    AECompactMetric(label: "new · in \(Format.days(spec.deliveryLeadDays))",
-                                    value: Format.money(spec.listPrice))
-                    AECompactMetric(label: "used \(usedAge)y · flies now",
-                                    value: Format.money(usedPrice))
-                    AECompactMetric(label: "lease · per month",
-                                    value: Format.money(spec.leaseMonthly),
-                                    tint: AETheme.leased)
-                }
+                AEMetricStrip([
+                    AEMetric("new · in \(Format.days(spec.deliveryLeadDays))",
+                             Format.money(spec.listPrice)),
+                    AEMetric("used \(usedAge)y · flies now",
+                             Format.money(usedPrice)),
+                    AEMetric("lease · per month",
+                             Format.money(spec.leaseMonthly),
+                             tint: AETheme.leased),
+                ])
                 purchase("Buy new", price: spec.listPrice, snapshot: snapshot,
                          player: player, detail: "Delivered in \(Format.days(spec.deliveryLeadDays))",
                          command: BuyNewAircraftCommand(buyer: player, type: spec.code))

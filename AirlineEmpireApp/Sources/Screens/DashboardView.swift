@@ -136,25 +136,20 @@ struct DashboardView: View {
     private func pulse(_ dashboard: DashboardModel) -> some View {
         if let network = controller.networkSummary,
            let fleet = controller.fleetSummary {
-            AEMetricStrip {
-                AECompactMetric(
-                    label: "in the air",
-                    value: "\(network.liveFlights)",
-                    tint: network.liveFlights > 0 ? AETheme.positive : nil,
-                    emphasised: true)
-                AECompactMetric(
-                    label: "load factor",
-                    value: network.averageLoadFactor.map(Format.percent) ?? "—")
-                AECompactMetric(
-                    label: "aircraft used",
-                    value: fleet.utilization.map(Format.percent) ?? "—",
-                    tint: fleet.idle > 0 ? AETheme.caution : nil)
-                AECompactMetric(
-                    label: "month to date",
-                    value: Format.money(network.monthToDateProfit),
-                    tint: network.monthToDateProfit.isNegative
-                        ? AETheme.negative : AETheme.positive)
-            }
+            AEMetricStrip([
+                AEMetric("in the air", "\(network.liveFlights)",
+                         tint: network.liveFlights > 0 ? AETheme.positive : nil,
+                         emphasised: true),
+                AEMetric("load factor",
+                         network.averageLoadFactor.map(Format.percent) ?? "—"),
+                AEMetric("aircraft used",
+                         fleet.utilization.map(Format.percent) ?? "—",
+                         tint: fleet.idle > 0 ? AETheme.caution : nil),
+                AEMetric("month to date",
+                         Format.money(network.monthToDateProfit),
+                         tint: network.monthToDateProfit.isNegative
+                             ? AETheme.negative : AETheme.positive),
+            ])
             .accessibilityElement(children: .contain)
             .accessibilityLabel("Operations right now")
         }
