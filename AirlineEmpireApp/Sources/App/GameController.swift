@@ -92,24 +92,58 @@ final class GameController {
     /// The cache key is the tick count, which is exactly when the answers can
     /// change. `@ObservationIgnored` because the cache is not state a view
     /// should observe — the snapshot it derives from already is.
-    @ObservationIgnored private var cachedTick: Int64 = -1
     @ObservationIgnored private var cachedMap: MapModel?
+    @ObservationIgnored private var cachedNetwork: NetworkSummary?
+    @ObservationIgnored private var cachedFleetSummary: FleetSummary?
     @ObservationIgnored private var cachedRouteCards: [RouteCardModel]?
     @ObservationIgnored private var cachedFleetCards: [FleetCardModel]?
 
-    private func invalidateCachesIfNeeded(_ state: GameState) {
-        guard state.clock.tickCount != cachedTick else { return }
-        cachedTick = state.clock.tickCount
+    /// Drops every derived cache. Called on each published snapshot.
+    ///
+    /// This used to be `invalidateCachesIfNeeded` and skip the work when
+    /// `clock.tickCount` had not moved. The tick is the wrong key. While the
+    /// game is paused, `GameSession.submit` applies the command with
+    /// `engine.applyNow` — which builds its context with
+    /// `tick: SimDuration(minutes: 0)` and never touches the clock — and then
+    /// publishes. So a paused player who opened a route, bought an aircraft or
+    /// changed a fare got a genuinely new `GameState` with an unchanged tick,
+    /// the guard returned early, and every screen kept showing the figures
+    /// from before their own command (tasks/BUGS.md BUG-031).
+    ///
+    /// Clearing unconditionally costs one recomputation per published
+    /// snapshot, which is what already happened on every tick while running.
+    /// The cache's actual job is to stop repeated `body` evaluations between
+    /// snapshots from each rebuilding the map, and it still does that.
+    private func invalidateCaches() {
         cachedMap = nil
         cachedRouteCards = nil
         cachedFleetCards = nil
+        cachedNetwork = nil
+        cachedFleetSummary = nil
+    }
+
+    /// The network at a glance — Home's pulse, the Routes board's header.
+    var networkSummary: NetworkSummary? {
+        guard let snapshot, let player = snapshot.playerAirline else { return nil }
+        if let cachedNetwork { return cachedNetwork }
+        let summary = snapshot.networkSummary(for: player.id)
+        cachedNetwork = summary
+        return summary
+    }
+
+    /// The fleet at a glance — the Fleet board's header.
+    var fleetSummary: FleetSummary? {
+        guard let snapshot, let player = snapshot.playerAirline else { return nil }
+        if let cachedFleetSummary { return cachedFleetSummary }
+        let summary = snapshot.fleetSummary(for: player.id)
+        cachedFleetSummary = summary
+        return summary
     }
 
     var mapModel: MapModel? {
         guard let snapshot, let catalog else { return nil }
-        if let cachedMap, snapshot.clock.tickCount == cachedTick { return cachedMap }
+        if let cachedMap { return cachedMap }
         let model = snapshot.mapModel(catalog: catalog)
-        cachedTick = snapshot.clock.tickCount
         cachedMap = model
         return model
     }
@@ -117,11 +151,8 @@ final class GameController {
     var routeCards: [RouteCardModel] {
         guard let snapshot, let catalog, let player = snapshot.playerAirline
         else { return [] }
-        if let cachedRouteCards, snapshot.clock.tickCount == cachedTick {
-            return cachedRouteCards
-        }
+        if let cachedRouteCards { return cachedRouteCards }
         let cards = snapshot.routeCards(for: player.id, catalog: catalog)
-        cachedTick = snapshot.clock.tickCount
         cachedRouteCards = cards
         return cards
     }
@@ -129,11 +160,8 @@ final class GameController {
     var fleetCards: [FleetCardModel] {
         guard let snapshot, let catalog, let player = snapshot.playerAirline
         else { return [] }
-        if let cachedFleetCards, snapshot.clock.tickCount == cachedTick {
-            return cachedFleetCards
-        }
+        if let cachedFleetCards { return cachedFleetCards }
         let cards = snapshot.fleetCards(for: player.id, catalog: catalog)
-        cachedTick = snapshot.clock.tickCount
         cachedFleetCards = cards
         return cards
     }
@@ -356,16 +384,21 @@ final class GameController {
         lastSaveOutcome = nil
         autoPauseReason = nil
         celebration = nil
+        // Per-game, like everything else here. Without this the next airline
+        // opens Settings to a warning that *this* one's autosave failed
+        // (tasks/BUGS.md BUG-028) — the same leak class as BUG-013.
+        quietSaveFailure = nil
         lastSolvencyStage = .healthy
         pendingAudioEvents = []
         // The director goes with the game. Without this the next airline
         // inherits the last one's history and never hears its own first route
         // (tasks/BUGS.md BUG-013).
         feedback.endSession()
-        cachedTick = -1
         cachedMap = nil
         cachedRouteCards = nil
         cachedFleetCards = nil
+        cachedNetwork = nil
+        cachedFleetSummary = nil
     }
 
     // MARK: Time control
@@ -567,7 +600,7 @@ final class GameController {
         if state.clock.tickCount != snapshot?.clock.tickCount {
             snapshotReceivedAt = Date()
         }
-        invalidateCachesIfNeeded(state)
+        invalidateCaches()
         snapshot = state
         speed = await session.speed
         checkSolvency(state)

@@ -636,3 +636,131 @@ one piece of state `GameShell` raises an alert from.
 `quietSaveFailure`, which Settings' Save section reports in place — quiet, but
 not silent, which was the whole point of UI-012.
 **Status:** FIXED 2026-08-30.
+
+---
+
+## BUG-027 — "Live flights" counted every aeroplane in the world
+**Severity:** P2 (a headline metric that was simply wrong; it escaped notice
+only because no screen rendered it) · **Phase found:** MASTER PROMPT 4, while
+adding the network summary, 2026-08-30.
+**Repro:** any save. `DashboardModel.liveFlightCount` reported 34 for a player
+with nothing in the air.
+**Root cause:** `liveFlightCount: flights.count`. Every other field on that
+model is scoped to the player; this one was the raw size of the world's flight
+dictionary — every airline's aeroplanes, in every phase, including `scheduled`
+and `boarding`. So the number was neither live nor the player's.
+**How it survived:** `dashboardModel()` is one long initialiser call. Each
+argument is a short expression and `flights.count` reads perfectly plausibly in
+a list of `fleet(of:).count` and `routes.count` — the mistake is only visible
+if you notice that the two neighbours are scoped and this one is not. Nothing
+displayed it, so no screen ever looked wrong.
+**Fix layer:** Core. `airborneFlightCount(for:)` resolves ownership through the
+route (a flight carries no airline of its own) and counts only `.enRoute`.
+`dashboardModel` and `networkSummary` both call it, so they cannot drift.
+**Status:** FIXED 2026-08-30. Covered by a test asserting the two agree, and
+that both equal an independently spelled-out count.
+
+---
+
+## BUG-028 — A failed autosave warning followed the player into the next game
+**Severity:** P3 · **Phase found:** MASTER PROMPT 4 §34 bug hunt, 2026-08-30.
+**Repro:** let a background autosave fail, quit to the menu, start a different
+airline, open Settings. The Save section warns that the last automatic save did
+not complete — describing a game that is no longer loaded.
+**Root cause:** `quietSaveFailure` was added in the previous phase (BUG-026) and
+not added to `quitToMenu`, which clears every other piece of per-game state.
+The same leak class as BUG-013, and introduced by the fix for the bug two
+entries above it — which is the honest reason to keep both recorded.
+**Fix layer:** App. `quitToMenu` clears it with the rest.
+**Status:** FIXED 2026-08-30.
+
+---
+
+## BUG-029 — Finance's route links were inert on the Finance tab
+**Severity:** P3 (a dead link, and only on one of the two paths to the same
+screen) · **Phase found:** AE-028 §15, while adding the best/weakest route
+panel, 2026-08-30.
+**Repro:** open Finance from the tab bar and tap a route it names. Nothing
+happens. Reach the same content from Home's "Last month" tile and the identical
+link works.
+**Root cause:** `FinanceContent` has no navigation stack of its own — by
+design, so Home can push it as the explanation behind a stat tile. It therefore
+inherits whatever destinations its host declares. Home's stack declares
+`RouteID` and `AircraftID`; `FinanceView`, which wraps the same content for the
+tab, declared neither. A `NavigationLink(value:)` with no matching
+`navigationDestination` is silently inert — no warning, no crash, nothing to
+see in a diff.
+**Why it is worth recording:** the defect is invisible in the file that
+contains the bug. `FinanceView` looks complete; the missing declaration is only
+wrong in the light of a link added elsewhere. This is the failure mode of
+value-based navigation, and the reason to check both hosts whenever a shared
+content view gains a link.
+**Fix layer:** App. `FinanceView` declares both destinations, matching
+`NetworkView` and the Dashboard.
+**Status:** FIXED 2026-08-30.
+
+---
+
+## BUG-030 — Route Detail's aircraft link was dead on two of its five entry paths
+**Severity:** P3 · **Phase found:** AE-028, auditing every `NavigationLink(value:)`
+against its host stack rather than waiting for a review bot, 2026-08-30.
+**Repro:** open World events → tap an affected route → tap the assigned
+aircraft. Nothing happens. Same from the airport browser: an airport → one of
+its routes → the aircraft. The identical tap works when Route Detail is reached
+from Network, Home, the map or Finance.
+**Root cause:** the same class as BUG-029, which is why it is worth its own
+entry. `RouteDetailView` links onward to its assigned aircraft with
+`NavigationLink(value: aircraft.id)`. A value-based link resolves against
+whatever `navigationDestination`s its *host stack* declares, and
+`WorldEventsView` and `AirportDetailView` each declared `RouteID` only. Pushing
+Route Detail therefore worked; the screen behind it was half-wired.
+**The systemic part.** Three occurrences now (BUG-029, and these two). The
+defect is never visible in the file that contains it: every one of these hosts
+looks complete on its own, and only becomes wrong in the light of a link
+declared two screens away. A `NavigationLink(value:)` with no matching
+destination is silently inert — no warning, no crash, nothing in a diff, and
+nothing a compile or `swiftc -parse` can see.
+
+The check that actually finds them is mechanical: for every
+`NavigationLink(value:)`, list the value's type, then confirm every stack that
+can host that view declares it. Doing that across the app is what found these
+two. It is a five-line grep and should be a CI script.
+**Fix layer:** App. Both stacks now declare `AircraftID` alongside `RouteID`.
+**Status:** FIXED 2026-08-30.
+
+---
+
+## BUG-031 — Derived caches were keyed on the tick, so a paused player's own command changed nothing on screen
+**Severity:** P2 (a stale headline figure the player caused themselves) ·
+**Phase found:** CodeRabbit review of PR #7, 2026-08-30. **Predates AE-028.**
+**Repro:** pause the game. Buy an aircraft. The Fleet board still shows the old
+count. Open a route: the Routes board header still shows the old one. Nothing
+updates until the player unpauses and a tick lands.
+**Root cause:** `GameController.invalidateCachesIfNeeded` opened with
+`guard state.clock.tickCount != cachedTick else { return }`. That is the wrong
+key. While paused, `GameSession.submit` takes the `engine.applyNow` branch,
+which builds its context with `tick: SimDuration(minutes: 0)` and never touches
+`state.clock.tickCount`; only `advance` increments it. So the command produced
+a genuinely new `GameState` at an unchanged tick, the guard returned early, and
+every tick-keyed cache kept serving pre-command values.
+**Scope.** Five caches: `cachedMap`, `cachedRouteCards`, `cachedFleetCards`
+(all three since UI-016) and the two summaries added in AE-028. The bug is
+older than this phase; AE-028 only widened it.
+**Why it survived:** the tick is an *almost* correct key. It is right for every
+running-game path, which is nearly all of them, and the pause path is the one
+case where state advances without the clock. A cache invalidated on "the
+simulation moved" reads as obviously correct until you notice the player can
+move the simulation without moving the clock.
+**Fix layer:** App. `invalidateCaches()` clears unconditionally on every
+published snapshot; the accessors ask only whether a value is present.
+`cachedTick` is gone. This costs one recomputation per published snapshot,
+which is what already happened on every tick while running — the cache's real
+job is stopping repeated `body` evaluations between snapshots from each
+rebuilding the map, and it still does that.
+**Regression cover:** there is no app test target that runs on Linux, so the
+Core *precondition* is pinned instead:
+`SummaryModelTests.pausedCommandChangesStateAtTheSameTick` asserts that a
+command applied while paused changes the state without advancing the tick.
+Anything that caches on the tick alone is broken by that fact, and the test is
+where it is written down.
+**Status:** FIXED 2026-08-30.

@@ -94,13 +94,19 @@ dimensions are assessed on authored code + Core read models and flagged.
 
 ### Added by the 2026-08-29 audit and still open
 14. **No starter aircraft.** `PLAYER_JOURNEY` §1 opens with one on the apron.
-15. **Localization: zero.** ~700 string literals; numeric formatting is now
+15. **The type scale is applied, not yet adopted everywhere.** `AEType` names
+    eleven roles and the shared components use it; several hundred original
+    `.font(...)` call sites in feature screens still name system sizes. They
+    are being converted as each screen is reworked rather than mechanically,
+    because a blind sweep would change every screen's proportions with nobody
+    able to look at the result (`docs/DESIGN_SYSTEM.md` §10).
+16. **Localization: zero.** ~700 string literals; numeric formatting is now
     locale-correct, the strings are not (audit UI-036).
-16. **Audio is built but unheard.** The cue vocabulary, the director, the
+17. **Audio is built but unheard.** The cue vocabulary, the director, the
     engine and 58 generated assets all exist (`docs/AUDIO_ARCHITECTURE.md`);
     what is missing is a device it has ever been played on, and an authored
     score behind the four generated beds (TD-006, TD-009).
-17. **Hub connections** — still descoped to the first content update (D-010),
+18. **Hub connections** — still descoped to the first content update (D-010),
     and still the missing mid-game transformation.
 
 ## Release-blocking list (consolidated macOS queue)

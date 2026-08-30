@@ -185,3 +185,75 @@ speaker.
 **Resolution path:** task AE-026. The numbers are all constants in one function
 and are meant to be tuned there; the tests assert relationships rather than
 values precisely so that tuning does not break them.
+
+---
+
+## TD-011 — The type scale exists; most call sites have not adopted it
+**Severity:** P3 (a half-migrated token set is still better than none, but it
+is not yet the single source of truth it claims to be).
+**Introduced:** AE-028, 2026-08-30.
+**Description:** `AEType` names eleven roles and the shared components
+(`StatTile`, `AESectionHeader`, `AEBadge`, `AECompactMetric`, the button
+styles) use it. Several hundred `.font(...)` call sites in feature screens
+still name system sizes directly, so "restyle every metric label" remains only
+partly a change one can make.
+**Why it was not finished in one pass:** a mechanical sweep would have to guess
+which `.caption` is a metric label, which is supporting prose and which is a
+timestamp — they are indistinguishable at the call site, which is the whole
+reason the tokens exist. Guessing wrong changes the proportions of every
+screen, and there is no simulator here to look at the result. Converting a
+screen at a time, while reworking it, is slower and correct.
+**Resolution path:** convert with each screen's rework. The count of raw
+`.font(` calls in `AirlineEmpireApp/Sources` is the progress metric; it was 291
+when the scale was introduced.
+
+---
+
+## TD-012 — The summary read models are not wired into every screen that wants them
+**Severity:** P3.
+**Introduced:** AE-028, 2026-08-30.
+**Description:** `NetworkSummary` and `FleetSummary` back Home's pulse, the
+Fleet board header, the Routes board header and Finance's operating strip. What
+remains is subtler than "the view does its own maths": the map's overlay hints
+count `MapModel`'s *per-route health classification*, which is Core-computed, so
+those views are counting Core's answers rather than inventing their own. That is
+architecturally fine, and an earlier draft of this entry overstated it.
+
+The real risk is narrower and was worth pinning down. `MapModel.health(of:)`
+returns `.grounded` for `assignedAircraft.isEmpty`, and
+`NetworkSummary.idleRoutes` counts exactly that population. Two Core functions,
+one meaning, nothing connecting them — so the map's "N of your routes have no
+aircraft" and the Routes board's "no aircraft: N" were two independent answers
+to one question, free to drift the moment either definition was edited, with a
+player having no way to tell which was wrong.
+
+**Partly resolved 2026-08-30.** `SummaryModelTests.groundedAgreesWithIdle`
+grounds a route and asserts the two agree; sabotaging either definition fails it
+on both assertions. That is deliberately the cheap half — a test rather than a
+refactor of view code nobody can see rendered. The duplication still exists; it
+can no longer drift silently.
+**Resolution path:** when the map chrome is next touched with a device
+available, have the hints read the summary directly.
+
+---
+
+## TD-013 — Nothing checks that a value-based navigation link can resolve
+**Severity:** P2 (three occurrences already: BUG-029, BUG-030 twice).
+**Introduced:** pre-existing; named 2026-08-30.
+**Description:** SwiftUI resolves `NavigationLink(value:)` against the
+`navigationDestination`s declared by its host stack. A link whose type nothing
+declares is silently inert — no warning, no crash, nothing visible in the file
+that contains the link, and nothing a compile or a parse can catch. A shared
+content view that gains a link therefore breaks every host that has not been
+updated, and the breakage is invisible until somebody taps it.
+
+Three have been found by hand so far. The audit that finds them is mechanical:
+collect every `NavigationLink(value:)` and the type of its value, collect every
+`navigationDestination(for:)`, and confirm each link type is declared by every
+stack that can host that view.
+**Resolution path:** a script in `scripts/` doing exactly that, wired into the
+"App symbols resolve" CI job that already parses these files for AE types. The
+hard part is the host graph — which stacks can push which views — so a first
+version could simply require that any file containing a value link also
+declares that type, or is documented as always hosted.
+

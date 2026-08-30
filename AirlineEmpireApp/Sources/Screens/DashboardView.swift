@@ -36,22 +36,15 @@ struct DashboardView: View {
                                 showingGuidedSheet = true
                             }
                         }
-                        // The evening digest (docs/CORE_LOOP.md §3): yesterday
-                        // closed, with its reasons. Rendered from the snapshot
-                        // so fast-forward updates it instead of queueing modals.
-                        //
-                        // `yesterday` is nil on the first day, because there is
-                        // no yesterday to summarize. Core also refuses a
-                        // negative day now (BUG-008) — this states the intent
-                        // at the call site rather than leaning on that.
-                        if let player = snapshot.playerAirline?.id,
-                           let yesterday = snapshot.clock.now.previousDayIndex,
-                           let digest = snapshot.dailyDigest(for: player, day: yesterday),
-                           digest.hasContent {
-                            DigestCard(digest: digest, player: player, snapshot: snapshot)
-                        }
-                        UpcomingCard(snapshot: snapshot, catalog: controller.catalog)
+                        // The pulse comes before the history. This block
+                        // used to sit fifth, below yesterday's digest and next
+                        // week's calendar — so "how is my airline doing right
+                        // now" was two scrolls under "how did it do yesterday"
+                        // (MASTER PROMPT 4 §6).
+                        pulse(dashboard)
                         statGrid(dashboard)
+                        DigestSlot(snapshot: snapshot)
+                        UpcomingCard(snapshot: snapshot, catalog: controller.catalog)
                         eventsFeed(snapshot: snapshot)
                     } else {
                         LoadingState(message: "Preparing your airline")
@@ -130,6 +123,38 @@ struct DashboardView: View {
         }
     }
 
+    /// What the airline is doing *right now*, in one strip.
+    ///
+    /// Home had no live number at all. `liveFlightCount` was published by Core
+    /// and rendered nowhere — the single most alive figure the game has, and
+    /// the screen showed fleet size and route count instead, which are the two
+    /// numbers that change least. (It was also wrong; see BUG-027.)
+    ///
+    /// One panel rather than four tiles: these are one picture of one moment,
+    /// and four glass cards would read as four separate claims.
+    @ViewBuilder
+    private func pulse(_ dashboard: DashboardModel) -> some View {
+        if let network = controller.networkSummary,
+           let fleet = controller.fleetSummary {
+            AEMetricStrip([
+                AEMetric("in the air", "\(network.liveFlights)",
+                         tint: network.liveFlights > 0 ? AETheme.positive : nil,
+                         emphasised: true),
+                AEMetric("load factor",
+                         network.averageLoadFactor.map(Format.percent) ?? "—"),
+                AEMetric("aircraft used",
+                         fleet.utilization.map(Format.percent) ?? "—",
+                         tint: fleet.idle > 0 ? AETheme.caution : nil),
+                AEMetric("month to date",
+                         Format.money(network.monthToDateProfit),
+                         tint: network.monthToDateProfit.isNegative
+                             ? AETheme.negative : AETheme.positive),
+            ])
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Operations right now")
+        }
+    }
+
     /// Six numbers, each of which opens the screen that explains it.
     ///
     /// `docs/UI_ARCHITECTURE.md` §6 asks for "every number tappable to its
@@ -189,7 +214,7 @@ struct DashboardView: View {
     }
 
     private func eventsFeed(snapshot: GameState) -> some View {
-        AECard {
+        AEPanel {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "Operations feed", systemImage: "dot.radiowaves.left.and.right")
                 if controller.recentEvents.isEmpty {
@@ -251,7 +276,7 @@ struct UpcomingCard: View {
     var body: some View {
         let items = upcoming
         if items.isEmpty, hasOperations {
-            AECard {
+            AEPanel {
                 VStack(alignment: .leading, spacing: AETheme.spacingS) {
                     AESectionHeader(text: "Coming up", systemImage: "calendar")
                     Text("Nothing scheduled. Deliveries, maintenance and lease expiries appear here.")
@@ -261,7 +286,7 @@ struct UpcomingCard: View {
                 }
             }
         } else if !items.isEmpty {
-            AECard {
+            AEPanel {
                 VStack(alignment: .leading, spacing: AETheme.spacingS) {
                     AESectionHeader(text: "Coming up", systemImage: "calendar")
                     ForEach(items) { item in
@@ -347,6 +372,25 @@ struct UpcomingCard: View {
 /// step 4): yesterday's profit or loss *with its why* — the beat that
 /// closes decide → watch → understand. Every number comes from
 /// `DailyDigestModel`; this view only formats.
+/// Yesterday's close, when there is a yesterday and it had content.
+///
+/// The condition lived inline in `DashboardView.body` as a four-clause `if
+/// let`, which is most of why the body was hard to read as an ordering.
+struct DigestSlot: View {
+    let snapshot: GameState
+
+    var body: some View {
+        // `previousDayIndex` is nil on the first day, because there is no
+        // yesterday to summarize (Core also refuses a negative day — BUG-008).
+        if let player = snapshot.playerAirline?.id,
+           let yesterday = snapshot.clock.now.previousDayIndex,
+           let digest = snapshot.dailyDigest(for: player, day: yesterday),
+           digest.hasContent {
+            DigestCard(digest: digest, player: player, snapshot: snapshot)
+        }
+    }
+}
+
 struct DigestCard: View {
     let digest: DailyDigestModel
     /// Needed so the player's own administration or collapse is not rendered
@@ -356,7 +400,7 @@ struct DigestCard: View {
     @State private var expanded = false
 
     var body: some View {
-        AECard {
+        AEPanel {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 HStack {
                     VStack(alignment: .leading, spacing: 1) {

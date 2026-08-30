@@ -27,8 +27,10 @@ struct FleetList: View {
                         .padding(.horizontal, AETheme.spacingM)
                 } else {
                     List {
-                        FleetSummaryRow(cards: cards)
-                            .aeListRow()
+                        if let summary = controller.fleetSummary {
+                            FleetSummaryRow(summary: summary)
+                                .aeListRow()
+                        }
                         ForEach(cards, id: \.id) { card in
                             NavigationLink(value: card.id) {
                                 FleetRow(card: card, catalog: catalog)
@@ -87,51 +89,53 @@ struct FleetList: View {
 
 /// What the fleet costs and what it is, before the individual rows — the
 /// question "am I over-fleeted?" had no answer anywhere in the app.
+/// The fleet in one strip (MASTER PROMPT 4 §9).
+///
+/// This used to derive its own aggregates from the card array in a view body.
+/// Two problems: the same arithmetic also lived on Home and the Routes board,
+/// free to disagree; and `averageAge` divided by *every* card including
+/// aircraft still on order, whose age is near zero — so ordering a new
+/// aeroplane made the fleet look younger than it was. The numbers now come
+/// from `FleetSummary` in Core, which counts delivered aircraft for age and
+/// condition and is tested against the cards it summarises.
 struct FleetSummaryRow: View {
-    let cards: [FleetCardModel]
+    let summary: FleetSummary
+
+    private var metrics: [AEMetric] {
+        var list: [AEMetric] = [
+            AEMetric("aircraft", "\(summary.total)"),
+            AEMetric("flying", "\(summary.assigned)",
+                     tint: summary.assigned > 0 ? AETheme.positive : nil),
+            // Idle aircraft are the number a player can act on: they cost the
+            // same as flying ones and earn nothing.
+            AEMetric("idle", "\(summary.idle)",
+                     tint: summary.idle > 0 ? AETheme.caution : nil),
+            AEMetric("in use", summary.utilization.map(Format.percent) ?? "—"),
+            AEMetric("avg age", summary.averageAgeYears
+                        .map { "\(Format.decimal($0, places: 0)) y" } ?? "—"),
+            AEMetric("condition",
+                     summary.averageCondition.map(Format.percent) ?? "—",
+                     tint: (summary.averageCondition ?? 1) < 0.6
+                         ? AETheme.caution : nil),
+        ]
+        if summary.inMaintenance > 0 {
+            list.append(AEMetric("in check", "\(summary.inMaintenance)",
+                                 tint: AETheme.caution))
+        }
+        if summary.onOrder > 0 {
+            list.append(AEMetric("on order", "\(summary.onOrder)"))
+        }
+        if summary.leasedCount > 0 {
+            list.append(AEMetric("leases/mo",
+                                 Format.money(summary.monthlyLeaseCost)))
+        }
+        return list
+    }
 
     var body: some View {
-        HStack(spacing: AETheme.spacingM) {
-            summary("\(cards.count)", "aircraft")
-            summary("\(idleCount)", "idle", tint: idleCount > 0 ? AETheme.caution : nil)
-            summary(Format.money(monthlyLeases), "leases/mo")
-            summary("\(Format.decimal(averageAge, places: 0)) y", "avg age")
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, AETheme.spacingXS)
-        .accessibilityElement(children: .combine)
-    }
-
-    private var idleCount: Int {
-        cards.filter { $0.assignedRoute == nil && $0.status.isActive }.count
-    }
-
-    private var monthlyLeases: Money {
-        cards.reduce(Money.zero) { total, card in
-            if case .leased(let rate, _) = card.ownershipDescription {
-                return total + rate
-            }
-            return total
-        }
-    }
-
-    private var averageAge: Double {
-        guard !cards.isEmpty else { return 0 }
-        return cards.reduce(0) { $0 + $1.ageYears } / Double(cards.count)
-    }
-
-    private func summary(_ value: String, _ label: String,
-                         tint: Color? = nil) -> some View {
-        VStack(spacing: 1) {
-            Text(value)
-                .font(.subheadline.weight(.semibold))
-                .monospacedDigit()
-                .foregroundStyle(tint ?? .primary)
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(AETheme.mutedText)
-        }
-        .frame(maxWidth: .infinity)
+        AEMetricStrip(metrics)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Fleet summary")
     }
 }
 
@@ -221,13 +225,28 @@ struct AircraftDetailView: View {
         .aeTimeToolbar()
     }
 
+    /// The airline's livery, falling back to the accent before an airline
+    /// exists — this view is reachable only inside a game, but a colour that
+    /// resolves through an optional should say what it does when it cannot.
+    private var livery: Color {
+        // `Airline.livery` is non-optional, so `?.livery.map(_:)` would bind
+        // `map` inside the optional chain and not compile. Bind, then convert.
+        guard let livery = controller.snapshot?.playerAirline?.livery else {
+            return AETheme.accent
+        }
+        return Vocab.liveryColor(livery)
+    }
+
     private func identity(_ card: FleetCardModel, spec: AircraftTypeSpec) -> some View {
         AECard {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 HStack(spacing: AETheme.spacingS) {
-                    Image(systemName: Vocab.categoryIcon(card.category))
-                        .font(.title2)
-                        .foregroundStyle(AETheme.accent)
+                    // §10 asks for an aircraft visual here. The silhouette is
+                    // the airline's own livery colour, so a player's fleet
+                    // reads as theirs rather than as generic stock.
+                    AircraftShape(category: card.category)
+                        .fill(livery)
+                        .frame(width: 44, height: 44)
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 1) {
                         Text("\(spec.manufacturer) \(spec.model)").font(.headline)
@@ -567,14 +586,22 @@ struct AircraftShopSheet: View {
             tuning: catalog.tuning.fleet)
         return VStack(alignment: .leading, spacing: AETheme.spacingS) {
             HStack(spacing: AETheme.spacingS) {
-                Image(systemName: Vocab.categoryIcon(spec.category))
-                    .foregroundStyle(locked ? AETheme.mutedText : AETheme.accent)
+                // The silhouette, not a generic glyph. `AircraftShape` was
+                // written for exactly this — its own doc comment says "a fleet
+                // row, a detail header" — and until now only the map used the
+                // underlying path. A regional jet and a widebody looked
+                // identical in the one screen where telling them apart is the
+                // entire decision (MASTER PROMPT 4 §11).
+                AircraftShape(category: spec.category)
+                    .fill(locked ? AnyShapeStyle(AETheme.mutedText)
+                                 : AnyShapeStyle(AETheme.accent))
+                    .frame(width: 34, height: 34)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 1) {
                     Text("\(spec.manufacturer) \(spec.model)")
-                        .font(.body.weight(.semibold))
+                        .font(AEType.body.weight(.semibold))
                     Text(Vocab.category(spec.category))
-                        .font(.caption).foregroundStyle(AETheme.mutedText)
+                        .font(AEType.secondary).foregroundStyle(AETheme.mutedText)
                 }
                 Spacer()
                 if locked {
@@ -596,10 +623,19 @@ struct AircraftShopSheet: View {
                     .foregroundStyle(AETheme.mutedText)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
-                Text("New aircraft arrive after \(Format.days(spec.deliveryLeadDays)); used and leased fly immediately.")
-                    .font(.caption2)
-                    .foregroundStyle(AETheme.mutedText)
-                    .fixedSize(horizontal: false, vertical: true)
+                // The three options side by side, as prices to compare
+                // rather than three sentences to read in sequence. The
+                // tradeoff *is* the decision: cash now against cash monthly,
+                // and condition against waiting (MASTER PROMPT 4 §11).
+                AEMetricStrip([
+                    AEMetric("new · in \(Format.days(spec.deliveryLeadDays))",
+                             Format.money(spec.listPrice)),
+                    AEMetric("used \(usedAge)y · flies now",
+                             Format.money(usedPrice)),
+                    AEMetric("lease · per month",
+                             Format.money(spec.leaseMonthly),
+                             tint: AETheme.leased),
+                ])
                 purchase("Buy new", price: spec.listPrice, snapshot: snapshot,
                          player: player, detail: "Delivered in \(Format.days(spec.deliveryLeadDays))",
                          command: BuyNewAircraftCommand(buyer: player, type: spec.code))

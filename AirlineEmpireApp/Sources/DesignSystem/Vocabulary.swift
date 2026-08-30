@@ -340,3 +340,95 @@ enum Vocab {
         state?.airlines[id]?.name ?? "a rival airline"
     }
 }
+
+// MARK: - Route verdicts
+
+extension Vocab {
+    /// A route's economics as one sentence (MASTER PROMPT 4 §13).
+    ///
+    /// The standing and the drivers are decided in Core, from the route's own
+    /// recorded figures; this only chooses words for them. That split is the
+    /// point — the claim is testable on Linux, and the phrasing can be
+    /// rewritten without anyone re-deriving what causes what.
+    ///
+    /// Nil when Core declined to attribute a cause. A screen that always shows
+    /// a reason trains the player to ignore reasons.
+    static func routeVerdict(_ verdict: RouteVerdict) -> String? {
+        switch verdict.standing {
+        case .idle:
+            return "No aircraft assigned, so this route is not flying."
+        case .tooEarly:
+            return "Too new to judge — the first flights have not landed yet."
+        case .earning, .losing:
+            guard let primary = verdict.primary else {
+                // Losing with nothing out of the ordinary is a real state and
+                // deserves an honest answer rather than an invented culprit.
+                return verdict.standing == .losing
+                    ? "Losing money, with no single cause standing out."
+                    : nil
+            }
+            let lead = verdict.standing == .earning ? "Earning" : "Losing money"
+            let because = driver(primary)
+            guard let second = verdict.secondary else {
+                return "\(lead) — \(because)."
+            }
+            return "\(lead) — \(because), and \(driver(second))."
+        }
+    }
+
+    /// One driver as a clause, to be read after "Earning" or "Losing money".
+    ///
+    /// Each clause states a figure and no judgement, because the lead word
+    /// already carries the polarity. That is why `.loadFactor` and
+    /// `.strongDemand` produce the same words: 80% full is 80% full, and
+    /// whether it reads as the cause of a profit or of a loss is settled by
+    /// the sentence it lands in, not by this function. Core decided which
+    /// driver dominates (`RouteVerdict`); this only chooses the wording, so
+    /// the phrasing can be rewritten without anyone re-deriving what causes
+    /// what.
+    private static func driver(_ driver: RouteVerdict.Driver) -> String {
+        switch driver {
+        case .loadFactor(let value):
+            return "aircraft are flying \(Format.percent(value)) full"
+        case .fareBelowMarket(let position):
+            return "the fare is \(Format.percent(1 - position)) below the market"
+        case .fareAboveMarket(let position):
+            return "the fare is \(Format.percent(position - 1)) above the market"
+        case .fees(let share):
+            return "airport fees take \(Format.percent(share)) of the revenue"
+        case .fuel(let share):
+            return "fuel takes \(Format.percent(share)) of the revenue"
+        case .cancellations(let rate):
+            return "only \(Format.percent(rate)) of flights are completing"
+        case .strongDemand(let value):
+            return "aircraft are flying \(Format.percent(value)) full"
+        }
+    }
+}
+
+extension Vocab {
+    /// A world event's severity as a word (MASTER PROMPT 4 §16).
+    ///
+    /// `WorldEvent.severity` is 0…1 "within the kind's semantics" — so it is
+    /// not comparable across kinds, and rendering it as a percentage would
+    /// invite exactly the comparison it cannot support ("this storm is 70%,
+    /// that strike is 40%, so the storm is worse"). Bands say what a player
+    /// can actually use: how hard this one is going to bite.
+    static func severity(_ value: Double) -> String {
+        switch value {
+        case ..<0.34: "Mild"
+        case ..<0.67: "Moderate"
+        default: "Severe"
+        }
+    }
+
+    /// The colour for a severity band. Never the only carrier — the word is
+    /// always shown beside it.
+    static func severityColor(_ value: Double) -> Color {
+        switch value {
+        case ..<0.34: AETheme.mutedText
+        case ..<0.67: AETheme.caution
+        default: AETheme.negative
+        }
+    }
+}

@@ -251,3 +251,67 @@ otherwise a walkthrough on a device.
 - **Hub connections** — first content update (decision D-010).
 - **AI market-entry lever** — post-playtest (BALANCING F-001).
 - Everything else: `docs/EXPANSION_ROADMAP.md`, `tasks/POST_LAUNCH.md`.
+
+---
+
+## AE-028 — UI/UX polish, density, design system (MASTER PROMPT 4)
+**Status:** IN PROGRESS 2026-08-30. Foundation complete; screen-by-screen
+rework continuing.
+
+**Done:**
+
+*Design system*
+- `AEType` — twelve type roles, replacing "pick a system size and hope"
+  (`docs/DESIGN_SYSTEM.md` §2).
+- `AEPanel` / `AEMetric` / `AECompactMetric` / `AEMetricStrip` — containers
+  below a card, so a screen is not 40 equal rounded rectangles (§3).
+- `AEButtonRole` — primary / secondary / tertiary / destructive (§4), adopted
+  on the three genuine primary actions.
+- `Rejections` — refusals answer what happened, why, and what to do next (§8).
+
+*Core read models*
+- `NetworkSummary` + `FleetSummary`, with tests holding each against the
+  per-row models it summarises (§5). 17 new tests this phase, 381 total.
+- `RouteVerdict` + `Vocab.routeVerdict` — Route Detail says *why* a route earns
+  or loses, attributed to the dominant term in its own recorded month, and
+  stays silent when nothing stands out (§13).
+
+*Screens*
+- **§6 Home** leads with the pulse — in the air, load factor, aircraft used,
+  month to date — above yesterday's digest and next week's calendar, and shows
+  the live-flight number Core was already computing and no screen rendered.
+- **§9/§12** Fleet and Routes boards gained summary headers fed by those models.
+- **§10/§11** aircraft silhouettes in the market and detail header; new / used /
+  lease as one price comparison.
+- **§13 Route Detail** reordered to the decision hierarchy; operations gained
+  frequency and distance.
+- **§14 Route Creation** shows competition (`incumbents`), which Core computed
+  and the sheet discarded.
+- **§15 Finance** gained month-to-date revenue / costs / operating profit and a
+  best-and-weakest-route panel.
+- **§16 World** events show severity as a band.
+- **§22** card fatigue: Home 6→2, Route Detail 8→4, Progression / Reputation /
+  Economy 9→3.
+
+*Bugs*
+- BUG-027 live flights counted every aeroplane in the world.
+- BUG-028 a save warning followed the player into the next game.
+- BUG-029 / BUG-030 dead navigation links on three entry paths.
+- BUG-031 derived caches keyed on the tick, so a paused player's own command
+  changed nothing on screen. Found by review; older than this phase.
+
+**Still not done:**
+- The type scale reaches shared components and reworked screens only; several
+  hundred call sites still name system sizes (TD-011).
+- `MapModel.health`'s `.grounded` and `NetworkSummary.idleRoutes` describe one
+  population through two Core functions. A test now fails if they disagree, but
+  the duplication remains (TD-012).
+- Nothing checks that a value-based navigation link can resolve (TD-013) —
+  three instances found by hand is the argument for the script.
+- §14's estimated economics: projecting revenue before an aircraft is assigned
+  would be fabrication, so the inputs are shown instead.
+- iPad screens are phone layouts in a wider column (§31); §18's era-scaled
+  visual storytelling is untouched.
+- **Nothing has been visually validated.** There is no simulator and no device
+  in this environment, so every claim above is "compiles, and is tested where
+  testable" — never "looks right" (TD-003, TD-006).

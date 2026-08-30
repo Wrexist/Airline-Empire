@@ -1,5 +1,31 @@
 # Current Phase
 
+**AE-028 — UI/UX polish, information density, design system (MASTER PROMPT 4).**
+2026-08-30.
+
+Foundation: a type scale by role (`AEType`), containers below a card
+(`AEPanel`, `AEMetricStrip`), a button ladder (`AEButtonRole`), and — the
+load-bearing change — network and fleet aggregates moved into Core so Home, the
+Routes board and the Fleet board cannot answer the same question differently.
+
+Screens: Home leads with the pulse rather than yesterday; Route Detail follows
+§13's decision hierarchy and explains *why* a route earns or loses; Route
+Creation shows competition; Finance answers the operating question and names
+its best and weakest route; World events show severity. Card fatigue reduced
+across five screens.
+
+Five bugs found and fixed: BUG-027 (live flights counted the whole world),
+BUG-028 (a save warning followed the player into the next game), BUG-029 and
+BUG-030 (dead navigation links on three entry paths), and BUG-031 (derived
+caches keyed on the tick, so a paused player's own command changed nothing on
+screen — found by CodeRabbit, and older than this phase). One component defect
+found by reading the code against its own documentation: `AEMetricStrip` could
+not wrap.
+
+**Nothing in this phase has been seen rendered.** Core is tested and the app
+compiles on macOS CI; layout, contrast, Dynamic Type and whether any of it
+looks right are unverified. See the ladder below.
+
 **AE-023 — Linux-first continuation (V3 prompt).** No Mac is available;
 Apple-layer work is prepared, never claimed.
 

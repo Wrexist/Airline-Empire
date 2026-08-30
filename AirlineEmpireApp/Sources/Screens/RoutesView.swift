@@ -38,6 +38,15 @@ struct RoutesList: View {
                         .padding(.horizontal, AETheme.spacingM)
                 } else {
                     List {
+                        // The board had no header at all: a player with forty
+                        // routes had to read forty rows to learn whether the
+                        // network was making money (MASTER PROMPT 4 §12).
+                        // Hidden while searching, when a summary of everything
+                        // would describe rows that are not on screen.
+                        if let network = controller.networkSummary, search.isEmpty {
+                            NetworkSummaryRow(summary: network)
+                                .aeListRow()
+                        }
                         ForEach(cards, id: \.id) { card in
                             NavigationLink(value: card.id) {
                                 RouteRow(card: card)
@@ -115,6 +124,45 @@ struct RoutesList: View {
     }
 }
 
+/// The network in one strip (MASTER PROMPT 4 §12).
+///
+/// Answers, above the list rather than inside it: how many routes, how many
+/// are earning, how many are bleeding, how full the aeroplanes are, and what
+/// the month has made so far.
+struct NetworkSummaryRow: View {
+    let summary: NetworkSummary
+
+    private var metrics: [AEMetric] {
+        var list: [AEMetric] = [
+            AEMetric("routes", "\(summary.routeCount)"),
+            AEMetric("earning", "\(summary.profitableRoutes)",
+                     tint: summary.profitableRoutes > 0 ? AETheme.positive : nil),
+            // Losing and earning do not sum to the total: a route that has not
+            // flown yet is neither, and calling it a loss would be a lie.
+            AEMetric("losing", "\(summary.losingRoutes)",
+                     tint: summary.losingRoutes > 0 ? AETheme.negative : nil),
+        ]
+        if summary.idleRoutes > 0 {
+            list.append(AEMetric("no aircraft", "\(summary.idleRoutes)",
+                                 tint: AETheme.caution))
+        }
+        list.append(AEMetric("load factor",
+                             summary.averageLoadFactor.map(Format.percent) ?? "—"))
+        list.append(AEMetric("in the air", "\(summary.liveFlights)"))
+        list.append(AEMetric("month to date",
+                             Format.money(summary.monthToDateProfit),
+                             tint: summary.monthToDateProfit.isNegative
+                                 ? AETheme.negative : AETheme.positive))
+        return list
+    }
+
+    var body: some View {
+        AEMetricStrip(metrics)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Network summary")
+    }
+}
+
 struct RouteRow: View {
     let card: RouteCardModel
 
@@ -167,13 +215,19 @@ struct RouteDetailView: View {
         ScrollView {
             if let (snapshot, player, catalog, card) = context {
                 VStack(spacing: AETheme.spacingM) {
+                    // §13's decision hierarchy: what is happening, then what
+                    // is driving it commercially, then the money, then the
+                    // aircraft, then the controls. The old order put the cost
+                    // breakdown second and operations fifth — so a player
+                    // asking "is this route working" read an expense table
+                    // before they reached the load factor.
                     headline(card, snapshot: snapshot, catalog: catalog)
-                    aircraftSection(card, player: player.id, catalog: catalog)
-                    breakdown(card)
-                    demandSection(card, snapshot: snapshot)
                     operations(card)
-                    fareControls(card, player: player.id)
+                    demandSection(card, snapshot: snapshot)
                     competitorSection(card, snapshot: snapshot, player: player.id)
+                    breakdown(card)
+                    aircraftSection(card, player: player.id, catalog: catalog)
+                    fareControls(card, player: player.id)
                     dangerZone(player: player.id)
                 }
                 .padding(.horizontal)
@@ -196,6 +250,17 @@ struct RouteDetailView: View {
         return "\(route.origin.raw) – \(route.destination.raw)"
     }
 
+    /// Colour follows the standing, never carries it: the sentence already
+    /// says which way the route is going.
+    private func verdictTint(_ verdict: RouteVerdict) -> Color {
+        switch verdict.standing {
+        case .earning: AETheme.positive
+        case .losing: AETheme.negative
+        case .idle: AETheme.caution
+        case .tooEarly: AETheme.mutedText
+        }
+    }
+
     /// The money story, month to date, before anything else — this is the
     /// question a player opens a route to answer.
     private func headline(_ card: RouteCardModel, snapshot: GameState,
@@ -212,11 +277,23 @@ struct RouteDetailView: View {
                     Spacer()
                     VStack(alignment: .trailing, spacing: 1) {
                         MoneyText(money: card.thisMonthProfit)
-                            .font(.title3.weight(.semibold))
+                            .font(AEType.metric)
                         Text("this month so far")
-                            .font(.caption2)
+                            .font(AEType.caption)
                             .foregroundStyle(AETheme.mutedText)
                     }
+                }
+                // Why, not just how much. The screen listed every term that
+                // goes into the profit and left the player to work out which
+                // one was responsible; Core knows which term dominates, so it
+                // says so (MASTER PROMPT 4 §13). Nil when no single cause
+                // stands out — a reason shown every time is a reason nobody
+                // reads.
+                if let verdict = Vocab.routeVerdict(card.verdict) {
+                    Text(verdict)
+                        .font(AEType.body)
+                        .foregroundStyle(verdictTint(card.verdict))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 if card.hasClosedMonth {
                     HStack {
@@ -246,7 +323,7 @@ struct RouteDetailView: View {
     /// Where the money went. Month to date is what a young route has; the
     /// closed month sits beside it once there is one.
     private func breakdown(_ card: RouteCardModel) -> some View {
-        AECard {
+        AEPanel {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "Where the money went", systemImage: "chart.pie")
                 HStack {
@@ -290,7 +367,7 @@ struct RouteDetailView: View {
 
     /// Today's market, which the route has always known and never showed.
     private func demandSection(_ card: RouteCardModel, snapshot: GameState) -> some View {
-        AECard {
+        AEPanel {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "Today's market", systemImage: "person.3")
                 if let route = snapshot.routes[card.id] {
@@ -315,10 +392,15 @@ struct RouteDetailView: View {
     }
 
     private func operations(_ card: RouteCardModel) -> some View {
-        AECard {
+        AEPanel {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "Operations", systemImage: "gauge")
                 labelled("Load factor", Format.percent(card.loadFactor))
+                // Frequency and distance were on the screen nowhere except the
+                // headline's subtitle, though both are operations figures a
+                // player compares against the load factor.
+                labelled("Frequency", "\(card.dailyRoundTrips)× round trips a day")
+                labelled("Distance", "\(Format.count(Int64(card.distanceKm))) km")
                 labelled("Punctuality", Format.percent(card.punctuality))
                 labelled("Completion", Format.percent(card.completionRate))
                 labelled("Aircraft assigned", "\(card.assignedAircraftCount)")
@@ -508,7 +590,7 @@ struct RouteDetailView: View {
     }
 
     private func dangerZone(player: AirlineID) -> some View {
-        AECard {
+        AEPanel {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "Close this route", systemImage: "xmark.circle")
                 Text("Closing frees the slots at both airports and unassigns its aircraft. It cannot be undone; reopening starts the route's history from nothing.")
@@ -732,6 +814,11 @@ struct OpenRouteSheet: View {
         /// across both directions — the same figure the onboarding card
         /// shows, so the guided path and the manual one agree.
         let expectedDailyPassengers: Int
+        /// Airlines already flying this city pair. Core computes this for
+        /// every candidate and the sheet used to discard it, so the one thing
+        /// §14 asks for that a player cannot see for themselves — who else is
+        /// already there — was the one thing missing.
+        let incumbents: Int
     }
 
     /// Every airport the player could fly to from `from`, ranked by
@@ -757,7 +844,8 @@ struct OpenRouteSheet: View {
                     country: spec.country, distanceKm: market.distanceKm,
                     referenceFare: market.referenceFare,
                     servable: market.servableNow,
-                    expectedDailyPassengers: market.expectedDailyPassengers)
+                    expectedDailyPassengers: market.expectedDailyPassengers,
+                    incumbents: market.incumbents)
             }
             .prefix(40)
             .map { $0 }
@@ -775,9 +863,19 @@ struct OpenRouteSheet: View {
                             .font(.subheadline.weight(.semibold)).monospaced()
                         Text(candidate.city).font(.subheadline)
                     }
-                    Text("≈\(Format.count(Int64(candidate.expectedDailyPassengers))) passengers/day · \(candidate.distanceKm) km · fare ≈ \(Format.money(candidate.referenceFare))")
-                        .font(.caption)
+                    Text("≈\(Format.count(Int64(candidate.expectedDailyPassengers))) passengers/day · \(Format.count(Int64(candidate.distanceKm))) km · fare ≈ \(Format.money(candidate.referenceFare))")
+                        .font(AEType.secondary)
                         .foregroundStyle(AETheme.mutedText)
+                    // Who is already there. An open market and a contested one
+                    // are different decisions at the same demand.
+                    Text(candidate.incumbents == 0
+                         ? "Nobody flies this yet"
+                         : candidate.incumbents == 1
+                           ? "1 airline already flies it"
+                           : "\(candidate.incumbents) airlines already fly it")
+                        .font(AEType.caption)
+                        .foregroundStyle(candidate.incumbents == 0
+                                         ? AETheme.positive : AETheme.mutedText)
                     if !candidate.servable {
                         Text("No aircraft you own can serve it — range or runway")
                             .font(.caption2)
@@ -868,11 +966,9 @@ struct OpenRouteSheet: View {
                 }
             } label: {
                 Label("Open this route", systemImage: "airplane.departure")
-                    .font(.headline)
                     .frame(maxWidth: .infinity)
-                    .frame(minHeight: 44)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.aePrimary)
             .disabled(blocked != nil)
         }
     }
