@@ -356,63 +356,56 @@ class AEUITestCase: XCTestCase {
 
         let lease = app.buttons.matching(identifier: "ae-market-lease").firstMatch
         guard scrollUntil(lease, "a Lease action in the market") else { return false }
-        lease.tap()
 
-        // The dialog must be the LEASE dialog before anything is confirmed.
+        // The dialog must be the LEASE dialog before anything is confirmed,
+        // and a wrong dialog must be dismissed and the tap retried.
         //
-        // Run 59 on main photographed why: the tap above landed on the
-        // Buy-used row and a "Buy used (8y)?" dialog opened; the old code
-        // then looked for a Lease button, found none, and blundered on. A
-        // confirmation for the wrong action must be cancelled, not confirmed
-        // and not ignored. The title is asked for by name — ConfirmableButton
-        // titles the dialog "<action>?" — because on this runner's iOS 26 the
-        // dialog presents as an anchored popover that `app.sheets` does not
-        // reliably match.
-        let leaseDialogTitle = app.staticTexts["Lease?"]
-        if !leaseDialogTitle.waitForExistence(timeout: 4) {
-            capture(Self.logPrefix + "WRONG-OR-NO-DIALOG")
-            tapIfPresent(app.buttons["Cancel"])
-            Thread.sleep(forTimeInterval: 1)
-            lease.tap()
-            guard leaseDialogTitle.waitForExistence(timeout: 4) else {
-                XCTFail("""
-                    Tapping the lease action never produced the "Lease?" \
-                    confirmation, twice. Either the tap keeps landing on a \
-                    different control or the dialog is not presenting. \
-                    Screenshot of the first attempt attached.
-                    """)
-                return false
-            }
-        }
-        // The dialog's confirm button and the market row are both labelled
-        // "Lease"; the row is behind the presented dialog and not hittable,
-        // so the hittable match — searched from the most recently added — is
-        // the dialog's.
-        let confirms = app.buttons.matching(NSPredicate(format: "label == %@", "Lease"))
-        var confirmed = false
-        for index in stride(from: confirms.count - 1, through: 0, by: -1) {
-            let candidate = confirms.element(boundBy: index)
-            if candidate.isHittable {
-                candidate.tap()
-                confirmed = true
-                break
-            }
-        }
-        if !confirmed { tapIfPresent(app.buttons["Lease"], settle: 0.3) }
-
-        // The sheet dismisses itself on success. Done is the fallback for the
-        // case where it did not — and if it is still there afterwards, the
-        // lease did not happen and everything downstream would be nonsense.
-        tapIfPresent(app.buttons["Done"])
+        // Both halves are earned. Run 59 photographed a tap aimed at the
+        // lease row opening a "Buy used (8y)?" dialog — a synthetic-tap miss
+        // that run 61 reproduced twice even after a scroll settle, while the
+        // very same helper succeeded later in the same run, so retrying is
+        // sound. And on this runner's iOS 26 the dialog is an anchored
+        // popover with NO Cancel button, so the only way out of a wrong one
+        // is a tap outside it. The dialog is also why confirmations stay ON
+        // in tests: a mis-tap with confirmations off would silently buy the
+        // wrong aircraft and pass.
         let market = app.staticTexts["Aircraft market"]
-        if market.waitForNonExistence(timeout: 8) { return true }
+        let leaseDialogTitle = app.staticTexts["Lease?"]
+        for attempt in 1...3 {
+            if lease.exists, lease.isHittable { lease.tap() }
+
+            if leaseDialogTitle.waitForExistence(timeout: 3) {
+                // The dialog's confirm button and the market row are both
+                // labelled "Lease"; the row is behind the dialog and not
+                // hittable, so the hittable match — searched from the most
+                // recently added — is the dialog's.
+                let confirms = app.buttons.matching(
+                    NSPredicate(format: "label == %@", "Lease"))
+                for index in stride(from: confirms.count - 1, through: 0, by: -1) {
+                    let candidate = confirms.element(boundBy: index)
+                    if candidate.isHittable { candidate.tap(); break }
+                }
+            }
+
+            // The sheet dismisses itself on a successful lease; Done is the
+            // fallback for a build where it does not.
+            tapIfPresent(app.buttons["Done"])
+            if market.waitForNonExistence(timeout: 6) { return true }
+
+            // Still here: the wrong dialog is open, or nothing happened.
+            // Photograph it, tap outside any popover, go again.
+            capture(Self.logPrefix + "LEASE-ATTEMPT-\(attempt)")
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.07)).tap()
+            Thread.sleep(forTimeInterval: 1)
+        }
 
         capture(Self.logPrefix + "MARKET-DID-NOT-CLOSE")
         XCTFail("""
-            The aircraft market is still on screen after a lease was \
-            confirmed. The command was refused without saying so, or the \
-            confirmation was never tapped — either way nothing after this \
-            point would be testing what it claims to. Screenshot attached.
+            The aircraft market is still on screen after three attempts to \
+            lease. Either the lease row cannot be hit on this runner or the \
+            command is being refused without saying so — the attempt \
+            screenshots show which. Nothing after this point would be \
+            testing what it claims to.
             """)
         return false
     }
