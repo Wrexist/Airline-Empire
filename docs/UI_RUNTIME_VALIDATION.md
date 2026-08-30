@@ -55,9 +55,10 @@ not overstating.
 | Aircraft market | 👁 observed |
 | Finance | 👁 observed, 🧪 renders |
 | World | 👁 observed, 🧪 renders |
-| Route detail, aircraft detail, sheets, game over, settings | 📖 only |
-| iPad regular-width shell | 📖 only — never run |
-| Dynamic Type at accessibility sizes | 📖 only — never run |
+| Route detail, aircraft detail, Settings, route sheet | 👁 observed + 🧪 (AE-032, runs 61–66) |
+| Game over | 📖 only — needs a bankruptcy path or a debug hook |
+| iPad regular-width shell | 👁 all five tabs + 🧪 (AE-032, runs 63/66); detail journey blocked by market-sheet tap flakiness |
+| Dynamic Type at AccessibilityL | 👁 Home, Network, market + 🧪 tabs tappable (AE-032) |
 | VoiceOver order, contrast ratios | 📖 only — never measured |
 
 ## 4. Appearance: the guard that did not guard
