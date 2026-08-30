@@ -312,3 +312,63 @@ jobs:
           path: AirlineEmpireApp/UITestResults.xcresult
           retention-days: 14
           if-no-files-found: warn
+
+      # Print the screenshots into the log, small, as base64.
+      #
+      # This looks eccentric and is deliberate. The artifact above is the
+      # right home for full-resolution screens and is what a human should
+      # open. But an artifact can only be fetched by something holding a
+      # GitHub credential, and the agent doing the UI work in this repository
+      # reads job logs and cannot download artifacts — so without this step
+      # the screens remain, once again, unobserved by whoever is changing
+      # them. Four phases of "authored, not observed" were caused by exactly
+      # that kind of gap between where evidence lands and who needs it.
+      #
+      # Downscaled hard (360 px wide) because the question being answered is
+      # "is the hierarchy right, is anything clipped, does it look like one
+      # app" — all legible at thumbnail size — and a full-resolution frame
+      # would flood the log. `|| true` throughout: this is evidence, not a
+      # gate, and it must never be the reason a green run reports red.
+      - name: Screenshots into the log
+        if: always() && steps.changes.outputs.build == 'true'
+        working-directory: AirlineEmpireApp
+        continue-on-error: true
+        run: |
+          set +e
+          OUT=$(mktemp -d)
+          xcrun xcresulttool export attachments \
+            --path UITestResults.xcresult --output-path "$OUT" >/dev/null 2>&1
+          # The exporter writes a manifest plus files whose names are uuids;
+          # the manifest carries the human name each attachment was given.
+          python3 - "$OUT" <<'PYEOF'
+          import base64, json, os, subprocess, sys
+          out = sys.argv[1]
+          manifest = os.path.join(out, "manifest.json")
+          pairs = []
+          if os.path.exists(manifest):
+              for suite in json.load(open(manifest)):
+                  for a in suite.get("attachments", []):
+                      name = a.get("suggestedHumanReadableName") or a.get("exportedFileName")
+                      path = os.path.join(out, a.get("exportedFileName", ""))
+                      if name and os.path.exists(path):
+                          pairs.append((name, path))
+          if not pairs:
+              print("NO-ATTACHMENTS-EXPORTED")
+              sys.exit(0)
+          seen = set()
+          for name, path in sorted(pairs):
+              if name in seen:
+                  continue
+              seen.add(name)
+              small = path + ".small.png"
+              subprocess.run(["sips", "--resampleWidth", "360", path,
+                              "--out", small],
+                             capture_output=True)
+              use = small if os.path.exists(small) else path
+              data = base64.b64encode(open(use, "rb").read()).decode()
+              print(f"===SHOT {name} {len(data)}")
+              for i in range(0, len(data), 500):
+                  print(data[i:i+500])
+              print("===ENDSHOT")
+          PYEOF
+          exit 0
