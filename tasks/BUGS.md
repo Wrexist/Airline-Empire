@@ -1027,4 +1027,9 @@ a session finally exists to pump.
 **Regression cover:** `testAnAircraftFliesItsRouteOnTheMap` is the guard —
 it polls the map's own airborne count at 16× and fails if nothing flies in
 five game days, which is exactly how this was caught.
-**Status:** FIXED IN SOURCE (both halves); asserted when the flight journey goes green.
+**Status:** FIXED — **asserted and observed.** Run 67's
+`testTheClockActuallyRuns` passed, and its frame shows Home at
+**2030-01-03** with 16× selected, the fuel price moved and the economy
+trending — the first photograph of a running world in this project's
+history. The flight journey (an aircraft observed in the air) remains
+gated on the runner's flaky market-sheet taps, not on this bug.

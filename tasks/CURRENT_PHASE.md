@@ -19,7 +19,9 @@ aircraft assigned to a route with the clock still at day one, 00:00, minutes
 later. Every screenshot of every phase before this was of a frozen world
 that looked correct. Fixed at the source (`startNewGame`/`loadGame` call
 `setPumping(true)`; the scene handler keeps suspend/resume and gains
-`initial: true`); `testTheClockActuallyRuns` is the dedicated guard.
+`initial: true`); `testTheClockActuallyRuns` is the dedicated guard, and it
+passed in run 67 — the closing frame shows Home at **2030-01-03**, the first
+photograph of a running world in this project's history.
 
 **The evidence system had been lying, and was fixed first (BUG-038/039):**
 the zoom test's three "levels" were byte-identical frames and its zoom-out
