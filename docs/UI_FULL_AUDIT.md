@@ -154,3 +154,35 @@ copy, a view and its container — and Swift checks none of them. The project's
 
 The correction is not more Core tests. It is that **the app must be run**, and
 as of AE-031 it is.
+
+---
+
+## 5. AE-032 — the screen-by-screen record, updated against real frames
+
+Every row below names its evidence. Frames come from CI runs 59 (main,
+c387dde) and 60 (branch, e135c3a), decoded from the job logs with
+`scripts/decode-ci-screenshots.py` and looked at; "next run" marks coverage
+authored in AE-032 whose frames land with the branch's fixed run.
+
+| Screen | Reached | Observed | Interactions | Known issues / uncertainty |
+| --- | --- | --- | --- | --- |
+| New game | 🧪 | 👁 (pinned dark) | Found button 🧪 | — |
+| Home | 🧪 | 👁 light + darkforced + AccessibilityL | onboarding card 🧪 | date reads "2030-01-01 00:00 · Winter" — terse, deliberate |
+| Map | 🧪 | 👁 world frame, light + darkforced | zoom buttons/double-tap 🧪 next run; pinch NOT VERIFIED (hardware) | zoom levels re-photographed next run (BUG-039) |
+| Network — Routes empty | 🧪 layout | 👁 light + dark | Open a route 🧪 | — |
+| Network — Fleet empty | 🧪 layout | 👁 light + dark | Browse the market 🧪 | — |
+| Fleet with aircraft | 🧪 | 👁 | row → detail 🧪 next run | — |
+| Aircraft market | 🧪 | 👁 light + AccessibilityL | lease 🧪 (dialog-verified) | sort segment truncates "Fuel per s…"; chips fixed for accessibility sizes (AEChipRow) |
+| Route sheet | 🧪 | 👁 | destination select + commit 🧪 next run | commit moved to bottom bar (BUG-038) |
+| Route detail | 🧪 next run | next run | assign 🧪 next run | — |
+| Aircraft detail | 🧪 next run | next run | — | run 60's "aircraft-detail" frame was the board; predicate fixed |
+| Finance | 🧪 | 👁 light + darkforced | — | — |
+| World | 🧪 | 👁 darkforced | — | — |
+| Settings | 🧪 next run | next run | mute toggle asserted | — |
+| Game over | 📖 only | — | — | needs a bankruptcy path or a debug hook — NOT VERIFIED |
+| iPad shell | 🧪 (sidebar found) | 👁 one frame | failed on tab-bar assumption; harness fixed | sidebar layout looks sane in the one frame; full pass next run |
+
+Dark appearance remains the **forced** route (`darkforced`): the CI simulator
+will not switch system appearance, so "the app follows the system setting"
+stays 📖. Audio: the engine running and all cues decoding is 🧪 (run 60);
+audibility is NOT VERIFIED and cannot be from CI.
