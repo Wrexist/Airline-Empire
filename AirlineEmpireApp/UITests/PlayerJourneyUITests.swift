@@ -414,8 +414,11 @@ final class PlayerJourneyUITests: AEUITestCase {
         // "condition", which the fleet board's own summary also says — so
         // run 60 photographed the board under the name "aircraft-detail" and
         // the assertion passed anyway. "Ownership" is a section header that
-        // exists nowhere else.
-        let detailRendered = app.staticTexts["Ownership"]
+        // exists nowhere else — matched case-insensitively, because
+        // AESectionHeader uppercases its text and run 64 failed this over a
+        // perfectly rendered screen whose header read "OWNERSHIP".
+        let detailRendered = app.staticTexts.matching(
+            NSPredicate(format: "label ==[c] %@", "Ownership")).firstMatch
             .waitForExistence(timeout: 10)
         checkpoint("90-aircraft-detail")
         XCTAssertTrue(detailRendered, """

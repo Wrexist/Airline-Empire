@@ -997,3 +997,30 @@ and local (buttons), double-tap, and the synthetic pinch itself moved the
 camera this time, so pinch is asserted on the simulator. On *hardware* a real
 two-finger pinch remains untested, as does everything else — that is
 docs/APPLE_VALIDATION.md's list, not this bug's.
+
+## BUG-040 — the game can launch permanently frozen
+
+**Severity:** P0. The core loop — time passing — silently never starts, on a
+race the player cannot see or influence.
+**Found:** 2026-08-30, AE-032 — by run 64's flight journey, the first time
+any automation reached the state the game is *for*: an aircraft assigned to
+a route with the clock running. Frame `81-flight-in-progress` shows 16×
+selected and the clock still at day one, 00:00, after two real minutes.
+**Root cause:** `setPumping` — the loop that feeds elapsed real time to the
+simulation — was called only inside `.onChange(of: scenePhase)`, and
+`onChange` does not fire for the value already present. When the scene
+attaches already `.active`, no change ever arrives, the pump never starts,
+and every speed selection updates the UI while moving nothing. Whether a
+given launch freezes depends on whether `.active` lands before or after the
+modifier attaches.
+**Why nothing caught it:** every earlier journey ended before running the
+clock; Core's 414 tests drive time directly and never meet SwiftUI's scene
+machinery; and a frozen game *renders perfectly* — every screen this phase
+photographed before run 64 was of a world at day one, 00:00, and looked
+right.
+**Fix layer:** App, one argument: `.onChange(of: scenePhase, initial: true)`
+(iOS 17+), so the current phase is delivered on attach.
+**Regression cover:** `testAnAircraftFliesItsRouteOnTheMap` is the guard —
+it polls the map's own airborne count at 16× and fails if nothing flies in
+five game days, which is exactly how this was caught.
+**Status:** FIXED IN SOURCE; asserted on the next green flight-journey run.

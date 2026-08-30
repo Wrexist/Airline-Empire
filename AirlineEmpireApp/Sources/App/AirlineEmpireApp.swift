@@ -20,7 +20,18 @@ struct AirlineEmpireApp: App {
                     // not work to do while the player waits for a screen.
                     controller.feedback.prepare()
                 }
-                .onChange(of: scenePhase) { _, phase in
+                // `initial: true` is load-bearing, and it is BUG-040's fix.
+                // `onChange` does not fire for the value that is already
+                // there: when the scene attaches already `.active`, the
+                // change never comes, `setPumping` is never called, and the
+                // game launches frozen — the speed control responds, the
+                // world does not. Run 64 photographed it: an aircraft
+                // assigned to a route, 16× selected, and the clock still at
+                // day one, 00:00, two real minutes later. Whether a launch
+                // hits it depends on whether `.active` lands before or after
+                // this modifier attaches, which is a race no player should
+                // be on the wrong side of.
+                .onChange(of: scenePhase, initial: true) { _, phase in
                     // Scene-phase autosave (docs/PERSISTENCE_ARCHITECTURE §4).
                     if phase == .background || phase == .inactive {
                         controller.saveOnBackground()
