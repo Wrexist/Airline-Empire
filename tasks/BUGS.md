@@ -673,3 +673,28 @@ The same leak class as BUG-013, and introduced by the fix for the bug two
 entries above it — which is the honest reason to keep both recorded.
 **Fix layer:** App. `quitToMenu` clears it with the rest.
 **Status:** FIXED 2026-08-30.
+
+---
+
+## BUG-029 — Finance's route links were inert on the Finance tab
+**Severity:** P3 (a dead link, and only on one of the two paths to the same
+screen) · **Phase found:** AE-028 §15, while adding the best/weakest route
+panel, 2026-08-30.
+**Repro:** open Finance from the tab bar and tap a route it names. Nothing
+happens. Reach the same content from Home's "Last month" tile and the identical
+link works.
+**Root cause:** `FinanceContent` has no navigation stack of its own — by
+design, so Home can push it as the explanation behind a stat tile. It therefore
+inherits whatever destinations its host declares. Home's stack declares
+`RouteID` and `AircraftID`; `FinanceView`, which wraps the same content for the
+tab, declared neither. A `NavigationLink(value:)` with no matching
+`navigationDestination` is silently inert — no warning, no crash, nothing to
+see in a diff.
+**Why it is worth recording:** the defect is invisible in the file that
+contains the bug. `FinanceView` looks complete; the missing declaration is only
+wrong in the light of a link added elsewhere. This is the failure mode of
+value-based navigation, and the reason to check both hosts whenever a shared
+content view gains a link.
+**Fix layer:** App. `FinanceView` declares both destinations, matching
+`NetworkView` and the Dashboard.
+**Status:** FIXED 2026-08-30.

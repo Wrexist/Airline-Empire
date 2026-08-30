@@ -278,9 +278,25 @@ rework continuing.
   followed the player into the next game).
 
 **Not done, and why:**
-- Route Creation, Finance and the World hub have not been reworked. The
-  Aircraft Market gained silhouettes and a price comparison; Route Detail
-  gained its verdict, but its section ordering is untouched. The foundation they would be built on is in place; the
+- **§13 Route Detail** reordered to the decision hierarchy; operations gained
+  frequency and distance.
+- **§14 Route Creation** now shows competition (`incumbents`), which Core
+  computed and the sheet discarded.
+- **§15 Finance** gained month-to-date revenue / costs / operating profit, and
+  a best-and-weakest-route panel. `NetworkSummary` extended and tested.
+- **§16 World** events now show severity as a band.
+- **§22** card fatigue reduced: Home 6→2, Route Detail 8→4, Progression /
+  Reputation / Economy 9→3.
+- BUG-029: `FinanceView`'s stack declared no `RouteID` destination, so links
+  there were inert on the Finance tab.
+
+**Still not done:**
+- The type scale is applied to shared components and reworked screens only
+  (TD-011).
+- The map chrome and Finance still derive some figures locally rather than from
+  the summaries (TD-012).
+- iPad screens are phone layouts in a wider column (§31).
+- **Nothing has been visually validated.** No simulator, no device. The foundation they would be built on is in place; the
   work is not.
 - Nothing has been visually validated. There is no simulator in this
   environment, so every claim above is "compiles and is tested where testable",

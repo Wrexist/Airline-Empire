@@ -85,6 +85,12 @@ Three weights, in descending order:
 - **Nothing** — a `VStack` with a `AESectionHeader`. The default. Most groups
   need a heading and spacing, not a container.
 
+Applied in AE-028: Home 6 cards → 2, Route Detail 8 → 4, and the Progression,
+Reputation and Economy screens 9 → 3. In each case the surviving card marks the
+screen's hero — the airline header, the route's money, the era — and everything
+supporting it became a panel. Per-item cards in a list (an event, a rival) are
+not sections and kept their weight.
+
 **`AEMetricStrip`** is the dense case: several metrics sharing one panel.
 `StatTile` gives each metric its own glass card, which is right for six
 tappable headline figures and wrong for the eight supporting numbers in a
@@ -229,6 +235,19 @@ found nothing — the most useful place in the app to put a button.
 `EmptyStateView` takes an optional action for exactly this. Where a screen has
 no sheet of its own to raise, the action is `nil` and the message still has to
 carry its own weight.
+
+---
+
+## 9a. Severity, and numbers that are not comparable
+
+`WorldEvent.severity` is 0…1 *within a kind*. Rendering it as a percentage
+invites exactly the comparison it cannot support — "this storm is 70%, that
+strike is 40%, so the storm is worse" — when the two scales have nothing to do
+with each other. `Vocab.severity` therefore returns a band (Mild / Moderate /
+Severe), which is what a player can actually act on.
+
+The general rule: **a number that cannot be compared should not be displayed as
+one.** Where a figure is only meaningful inside its own category, name the band.
 
 ---
 
