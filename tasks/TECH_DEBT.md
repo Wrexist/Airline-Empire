@@ -234,3 +234,26 @@ refactor of view code nobody can see rendered. The duplication still exists; it
 can no longer drift silently.
 **Resolution path:** when the map chrome is next touched with a device
 available, have the hints read the summary directly.
+
+---
+
+## TD-013 — Nothing checks that a value-based navigation link can resolve
+**Severity:** P2 (three occurrences already: BUG-029, BUG-030 twice).
+**Introduced:** pre-existing; named 2026-08-30.
+**Description:** SwiftUI resolves `NavigationLink(value:)` against the
+`navigationDestination`s declared by its host stack. A link whose type nothing
+declares is silently inert — no warning, no crash, nothing visible in the file
+that contains the link, and nothing a compile or a parse can catch. A shared
+content view that gains a link therefore breaks every host that has not been
+updated, and the breakage is invisible until somebody taps it.
+
+Three have been found by hand so far. The audit that finds them is mechanical:
+collect every `NavigationLink(value:)` and the type of its value, collect every
+`navigationDestination(for:)`, and confirm each link type is declared by every
+stack that can host that view.
+**Resolution path:** a script in `scripts/` doing exactly that, wired into the
+"App symbols resolve" CI job that already parses these files for AE types. The
+hard part is the host graph — which stacks can push which views — so a first
+version could simply require that any file containing a value link also
+declares that type, or is documented as always hosted.
+

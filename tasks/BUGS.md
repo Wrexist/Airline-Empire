@@ -698,3 +698,32 @@ content view gains a link.
 **Fix layer:** App. `FinanceView` declares both destinations, matching
 `NetworkView` and the Dashboard.
 **Status:** FIXED 2026-08-30.
+
+---
+
+## BUG-030 — Route Detail's aircraft link was dead on two of its five entry paths
+**Severity:** P3 · **Phase found:** AE-028, auditing every `NavigationLink(value:)`
+against its host stack rather than waiting for a review bot, 2026-08-30.
+**Repro:** open World events → tap an affected route → tap the assigned
+aircraft. Nothing happens. Same from the airport browser: an airport → one of
+its routes → the aircraft. The identical tap works when Route Detail is reached
+from Network, Home, the map or Finance.
+**Root cause:** the same class as BUG-029, which is why it is worth its own
+entry. `RouteDetailView` links onward to its assigned aircraft with
+`NavigationLink(value: aircraft.id)`. A value-based link resolves against
+whatever `navigationDestination`s its *host stack* declares, and
+`WorldEventsView` and `AirportDetailView` each declared `RouteID` only. Pushing
+Route Detail therefore worked; the screen behind it was half-wired.
+**The systemic part.** Three occurrences now (BUG-029, and these two). The
+defect is never visible in the file that contains it: every one of these hosts
+looks complete on its own, and only becomes wrong in the light of a link
+declared two screens away. A `NavigationLink(value:)` with no matching
+destination is silently inert — no warning, no crash, nothing in a diff, and
+nothing a compile or `swiftc -parse` can see.
+
+The check that actually finds them is mechanical: for every
+`NavigationLink(value:)`, list the value's type, then confirm every stack that
+can host that view declares it. Doing that across the app is what found these
+two. It is a five-line grep and should be a CI script.
+**Fix layer:** App. Both stacks now declare `AircraftID` alongside `RouteID`.
+**Status:** FIXED 2026-08-30.

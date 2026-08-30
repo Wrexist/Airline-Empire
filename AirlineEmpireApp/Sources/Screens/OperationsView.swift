@@ -160,6 +160,12 @@ struct WorldEventsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .aeTimeToolbar()
         .navigationDestination(for: RouteID.self) { RouteDetailView(routeID: $0) }
+        // Route Detail links onward to its assigned aircraft, so a stack that
+        // can push it must be able to push that too — otherwise the link is
+        // silently inert two screens in (tasks/BUGS.md BUG-030).
+        .navigationDestination(for: AircraftID.self) {
+            AircraftDetailView(aircraftID: $0)
+        }
     }
 
     private func eventCard(_ event: WorldEvent, snapshot: GameState,

@@ -230,6 +230,10 @@ struct AirportDetailView: View {
             OpenRouteSheet(suggestion: draft.suggestion)
         }
         .navigationDestination(for: RouteID.self) { RouteDetailView(routeID: $0) }
+        // See BUG-030: Route Detail links onward to its aircraft.
+        .navigationDestination(for: AircraftID.self) {
+            AircraftDetailView(aircraftID: $0)
+        }
     }
 
     private func identity(_ spec: AirportSpec, snapshot: GameState) -> some View {
