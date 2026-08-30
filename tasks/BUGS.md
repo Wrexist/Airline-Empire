@@ -1006,21 +1006,25 @@ race the player cannot see or influence.
 any automation reached the state the game is *for*: an aircraft assigned to
 a route with the clock running. Frame `81-flight-in-progress` shows 16×
 selected and the clock still at day one, 00:00, after two real minutes.
-**Root cause:** `setPumping` — the loop that feeds elapsed real time to the
-simulation — was called only inside `.onChange(of: scenePhase)`, and
-`onChange` does not fire for the value already present. When the scene
-attaches already `.active`, no change ever arrives, the pump never starts,
-and every speed selection updates the UI while moving nothing. Whether a
-given launch freezes depends on whether `.active` lands before or after the
-modifier attaches.
+**Root cause:** two stacked halves, and the second is the one that matters.
+`setPumping` — the loop that feeds elapsed real time to the simulation — was
+called only from `.onChange(of: scenePhase)`, which (half one) does not fire
+for the value already present. But even when it fires (half two, proven by
+run 65 still freezing after `initial: true`), it fires at launch — on the
+menu — where `session` is nil and the guard returns without arming anything.
+Nothing called `setPumping` again when a session was finally created, so
+**founding or loading a game never started the clock at all**; the game only
+ever ran for a player who backgrounded the app and came back.
 **Why nothing caught it:** every earlier journey ended before running the
 clock; Core's 414 tests drive time directly and never meet SwiftUI's scene
 machinery; and a frozen game *renders perfectly* — every screen this phase
 photographed before run 64 was of a world at day one, 00:00, and looked
 right.
-**Fix layer:** App, one argument: `.onChange(of: scenePhase, initial: true)`
-(iOS 17+), so the current phase is delivered on attach.
+**Fix layer:** App, both halves: `.onChange(of: scenePhase, initial: true)`
+(iOS 17+) so the current phase is delivered on attach, and — the load-bearing
+line — `setPumping(true)` at the end of `startNewGame` and `loadGame`, where
+a session finally exists to pump.
 **Regression cover:** `testAnAircraftFliesItsRouteOnTheMap` is the guard —
 it polls the map's own airborne count at 16× and fails if nothing flies in
 five game days, which is exactly how this was caught.
-**Status:** FIXED IN SOURCE; asserted on the next green flight-journey run.
+**Status:** FIXED IN SOURCE (both halves); asserted when the flight journey goes green.

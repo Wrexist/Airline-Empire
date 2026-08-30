@@ -234,6 +234,14 @@ final class GameController {
             await self.attachPersistence()
             await self.subscribe()
             await self.refresh()
+            // The clock's ignition, and the other half of BUG-040. The
+            // scene-phase handler calls setPumping when the phase changes —
+            // but at every launch the phase settles on .active while the
+            // player is still on the menu, where `session` is nil and the
+            // guard returns. Founding is when a session finally exists, so
+            // founding must start the pump; without this line the game only
+            // ever ran for a player who left the app and came back.
+            self.setPumping(true)
         }
     }
 
@@ -254,6 +262,9 @@ final class GameController {
                 await session.attachSaveManager(manager)
                 await self.subscribe()
                 await self.refresh()
+                // Same as founding: a loaded game needs its clock started
+                // (BUG-040).
+                self.setPumping(true)
             }
         } catch {
             // Reported on the menu, which has no rejection alert of its own —
