@@ -168,7 +168,7 @@ authored in AE-032 whose frames land with the branch's fixed run.
 | --- | --- | --- | --- | --- |
 | New game | 🧪 | 👁 (pinned dark) | Found button 🧪 | — |
 | Home | 🧪 | 👁 light + darkforced + AccessibilityL | onboarding card 🧪 | date reads "2030-01-01 00:00 · Winter" — terse, deliberate |
-| Map | 🧪 | 👁 world, regional, local, post-pinch — six distinct frames (run 61) | zoom buttons, double-tap and pinch all 🧪 against the published camera | pinch on hardware still needs a person |
+| Map | 🧪 | 👁 six distinct zoom/pinch frames (run 61); airport labels in the "Sjövik (Stockholm)" form with graceful city/code fallback (run 63, iPhone + iPad) | zoom buttons, double-tap and pinch all 🧪 against the published camera | pinch on hardware still needs a person |
 | Network — Routes empty | 🧪 layout | 👁 light + dark | Open a route 🧪 | — |
 | Network — Fleet empty | 🧪 layout | 👁 light + dark | Browse the market 🧪 | — |
 | Fleet with aircraft | 🧪 | 👁 | row → detail 🧪 next run | — |
@@ -180,7 +180,7 @@ authored in AE-032 whose frames land with the branch's fixed run.
 | World | 🧪 | 👁 darkforced | — | — |
 | Settings | 🧪 | 👁 (run 61) | mute toggle asserted | — |
 | Game over | 📖 only | — | — | needs a bankruptcy path or a debug hook — NOT VERIFIED |
-| iPad shell | 🧪 (sidebar found) | 👁 one frame | failed on tab-bar assumption; harness fixed | sidebar layout looks sane in the one frame; full pass next run |
+| iPad shell | 🧪 full five-tab pass (run 63) | 👁 all five tabs at regular width | sidebar navigation driven by the tab ladder | detail screens on iPad still blocked by the market-sheet lease step |
 
 Dark appearance remains the **forced** route (`darkforced`): the CI simulator
 will not switch system appearance, so "the app follows the system setting"
