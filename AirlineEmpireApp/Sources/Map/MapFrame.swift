@@ -59,12 +59,26 @@ struct MapFrame {
         drawOcean(&context, size: size)
         drawGraticule(&context)
         drawLand(&context)
+        // Airports are projected first, chosen second, drawn last.
+        //
+        // Three separate steps because they answer to three different needs,
+        // and collapsing any two breaks something. The projection has to come
+        // first because the label placer reads it — folding it into
+        // `drawAirports` (where it used to live) meant the placer ran against
+        // an empty list and **every airport label silently disappeared from
+        // the map**, which a screenshot caught and nothing else could have.
+        // Choosing before the country names is what lets them yield. Drawing
+        // last is what keeps the codes on top of everything.
+        projectAirports()
+        let airportLabels = placeAirportLabels()
+        drawCountryLabels(&context, avoiding: airportLabels.map(\.box))
         drawEventRegions(&context)
         drawOpportunities(&context)
         drawRoutes(&context)
+        drawFlightTrails(&context)
         drawAirports(&context)
         drawFlights(&context)
-        drawLabels(&context)
+        draw(airportLabels, into: &context)
     }
 
     // MARK: - Geography
@@ -102,13 +116,67 @@ struct MapFrame {
     }
 
     private func drawLand(_ context: inout GraphicsContext) {
+        // Everything here is chosen by zoom. Detail that helps at one level
+        // hurts at another: 29,000 points at world zoom is a grey fringe on
+        // every coast, competing with the routes the map exists to show
+        // (docs/MAP_ARCHITECTURE.md §2), and 2,000 points at local zoom is a
+        // polygon rather than a coastline.
+        let level = policy.level
+        let land = WorldGeometry.landmasses(for: level)
+        let lakes = WorldGeometry.lakes(for: level)
+        let borders = WorldGeometry.borders(for: level)
+
+        // The viewport in map space, with a margin so a shape straddling the
+        // edge still draws its part. Computed once, then four comparisons per
+        // polygon — against a projection per point, which at the local tier is
+        // 28,937 of them per world copy per frame, nearly all off screen.
+        let view = visibleMapRect(margin: 0.02)
+
         for offset in projector.visibleWorldOffsets {
-            for landmass in WorldGeometry.landmasses {
+            for landmass in land {
+                guard landmass.intersects(minX: view.minX, maxX: view.maxX,
+                                          minY: view.minY, maxY: view.maxY,
+                                          offset: offset) else { continue }
                 var path = Path()
-                appendPolyline(landmass, offset: offset, to: &path)
+                appendPolyline(landmass.points, offset: offset, to: &path)
                 path.closeSubpath()
                 context.fill(path, with: .color(AETheme.mapLand))
-                context.stroke(path, with: .color(AETheme.mapCoast), lineWidth: 0.7)
+                context.stroke(path, with: .color(AETheme.mapCoast),
+                               lineWidth: level == .local ? 0.5 : 0.7)
+            }
+            // Inland water in the ocean's own colour: a lake is the same
+            // substance as the sea, and a third value would widen a palette
+            // deliberately kept narrow.
+            for lake in lakes {
+                guard lake.intersects(minX: view.minX, maxX: view.maxX,
+                                      minY: view.minY, maxY: view.maxY,
+                                      offset: offset) else { continue }
+                var path = Path()
+                appendPolyline(lake.points, offset: offset, to: &path)
+                path.closeSubpath()
+                context.fill(path, with: .color(AETheme.mapBackground))
+                context.stroke(path, with: .color(AETheme.mapCoast.opacity(0.6)),
+                               lineWidth: 0.5)
+            }
+            // Borders last. They are what makes a dark field read as Earth
+            // rather than as shapes, and they were previously drawn so faintly
+            // — 45% of the coast colour at 0.4pt, and not at all at world zoom
+            // — that the answer to "which country is that" was still nowhere
+            // on the map. Now they have their own value and appear at every
+            // level, dashed at world zoom so a political line never reads as a
+            // route at the scale where routes are longest.
+            let hairline = level == .world
+            for border in borders {
+                guard border.intersects(minX: view.minX, maxX: view.maxX,
+                                        minY: view.minY, maxY: view.maxY,
+                                        offset: offset) else { continue }
+                var path = Path()
+                appendPolyline(border.points, offset: offset, to: &path)
+                context.stroke(
+                    path, with: .color(AETheme.mapBorder),
+                    style: hairline
+                        ? StrokeStyle(lineWidth: 0.5, dash: [2.5, 2.5])
+                        : StrokeStyle(lineWidth: level == .local ? 0.9 : 0.7))
             }
         }
     }
@@ -298,13 +366,19 @@ struct MapFrame {
 
     // MARK: - Airports
 
-    private mutating func drawAirports(_ context: inout GraphicsContext) {
+    /// Which airports are on screen, and where. Separate from drawing them
+    /// because the label placer needs the answer before anything is drawn.
+    private mutating func projectAirports() {
         for airport in model.airports {
             guard policy.shows(airport) else { continue }
             let point = projector.project(airport.position)
             guard projector.isVisible(point) else { continue }
             geometry.airports.append((airport, point))
+        }
+    }
 
+    private func drawAirports(_ context: inout GraphicsContext) {
+        for (airport, point) in geometry.airports {
             let radius = policy.radius(airport)
             let isSelected = selection == .airport(airport.code)
 
@@ -391,6 +465,74 @@ struct MapFrame {
 
     // MARK: - Flights
 
+    /// The part of each flight already flown, drawn over its route.
+    ///
+    /// The aircraft themselves have moved along their great circles since this
+    /// map was built, and a player watching one cross the Atlantic could see
+    /// *where* it was but not *how far along* — the route beneath it is one
+    /// uniform line from end to end, so a flight an hour out and a flight an
+    /// hour from landing look identical until you tap one. Every flight
+    /// tracker made in the last decade answers this the same way, and it is
+    /// the right answer: brighten the arc behind the aircraft.
+    ///
+    /// Player flights only. A rival trail would be the map's single most
+    /// numerous element and would say nothing a player can act on; rivals
+    /// keep their faint silhouettes.
+    private func drawFlightTrails(_ context: inout GraphicsContext) {
+        guard overlay != .opportunity else { return }
+        let width: CGFloat = policy.level == .world ? 1.6 : 2.2
+
+        for flight in model.flights where flight.isPlayer && flight.airborne {
+            guard let (origin, destination) = catalogAirports(flight) else { continue }
+            let progress = interpolate(flight).progress
+            guard progress > 0.01 else { continue }
+
+            // Sampled rather than clipped from the route's own arc: the route
+            // polyline is shared by every flight on it, and slicing it at a
+            // per-flight fraction would land between vertices. Twenty steps is
+            // enough that a great circle reads as a curve at any zoom this map
+            // reaches, and cheap enough to do per airborne aircraft per frame.
+            let steps = 20
+            let flown = (0...steps).map { step -> MapPoint in
+                let fraction = progress * Double(step) / Double(steps)
+                return MapPoint(coordinate: MapMath.greatCirclePoint(
+                    from: origin, to: destination, fraction: fraction))
+            }
+            let unwrapped = MapGeodesy.unwrap(flown)
+            guard unwrapped.count > 1 else { continue }
+
+            let color = Vocab.liveryColor(flight.livery)
+            for offset in MapGeodesy.worldOffsets(for: unwrapped) {
+                let points = unwrapped.map {
+                    projector.project(MapPoint(x: $0.x + offset, y: $0.y))
+                }
+                guard points.contains(where: { projector.isVisible($0, margin: 120) })
+                else { continue }
+
+                var path = Path()
+                for (index, point) in points.enumerated() {
+                    if index == 0 { path.move(to: point) } else { path.addLine(to: point) }
+                }
+                context.stroke(path, with: .color(color.opacity(0.5)),
+                               style: StrokeStyle(lineWidth: width, lineCap: .round,
+                                                  lineJoin: .round))
+
+                // The last fifth again, brighter. A single flat trail says
+                // "this much is done"; a trail that intensifies toward the
+                // aircraft also says which way it is going, which is the
+                // difference between a progress bar and a moving thing.
+                let tailStart = max(0, points.count - 1 - steps / 5)
+                var tail = Path()
+                for (index, point) in points[tailStart...].enumerated() {
+                    if index == 0 { tail.move(to: point) } else { tail.addLine(to: point) }
+                }
+                context.stroke(tail, with: .color(color.opacity(0.95)),
+                               style: StrokeStyle(lineWidth: width + 0.6,
+                                                  lineCap: .round, lineJoin: .round))
+            }
+        }
+    }
+
     private mutating func drawFlights(_ context: inout GraphicsContext) {
         for flight in model.flights {
             guard flight.isPlayer || policy.showsRivalAircraft(speed: speed) else {
@@ -471,30 +613,99 @@ struct MapFrame {
 
     // MARK: - Labels
 
-    private func drawLabels(_ context: inout GraphicsContext) {
+    /// Which country names fit, and where.
+    ///
+    /// Deliberately subordinate: smaller than an airport code, dimmer than
+    /// one, and yielding to every box an airport label already claimed. A
+    /// player reads this map for airports and routes; the country name is
+    /// there to answer "where am I", once, and then get out of the way.
+    private func drawCountryLabels(_ context: inout GraphicsContext,
+                                   avoiding blocked: [CGRect]) {
+        let candidates = CountryLabels.visible(atZoom: policy.zoom)
+        guard !candidates.isEmpty else { return }
+
+        var projected: [(CountryLabel, CGPoint)] = []
+        for offset in projector.visibleWorldOffsets {
+            for country in candidates {
+                let point = projector.project(
+                    MapPoint(x: country.point.x + offset, y: country.point.y))
+                guard projector.isVisible(point, margin: 60) else { continue }
+                projected.append((country, point))
+            }
+        }
+        guard !projected.isEmpty else { return }
+
+        let labels = MapLabelLayout.placeCountries(
+            projected, blocked: blocked,
+            limit: policy.level == .world ? 10 : 18)
+        for label in labels {
+            // Uppercase and letterspaced, which is how an atlas says "this is
+            // a region, not a place". It matters more now that airports carry
+            // city names: two labels in the same case at the same weight read
+            // as the same kind of thing, and a player scanning for Stockholm
+            // should never stop on Sweden.
+            context.draw(
+                Text(label.text.uppercased())
+                    .font(.system(size: policy.level == .local ? 10 : 9,
+                                  weight: .semibold))
+                    .tracking(1.4)
+                    .foregroundStyle(AETheme.mapCountryLabel),
+                at: label.point)
+        }
+    }
+
+    private func placeAirportLabels() -> [MapLabel] {
         // A statement rather than an `if case` expression: pattern-matching
         // conditions in expression position are the kind of thing that either
         // compiles or teaches you something, and this file has no business
         // finding out.
         var selectedCode: AirportCode?
         if case .airport(let code) = selection { selectedCode = code }
-        let labels = MapLabelLayout.place(
+        return MapLabelLayout.place(
             geometry.airports, level: policy.level, selected: selectedCode,
             limit: policy.level == .world ? 14 : 28)
+    }
+
+    private func draw(_ labels: [MapLabel], into context: inout GraphicsContext) {
         for label in labels {
             let color: Color = label.emphasis ? AETheme.ember
                 : label.isPlayer ? playerColor.opacity(0.95)
                 : .white.opacity(0.72)
-            context.draw(
-                Text(label.text)
-                    .font(.system(size: label.emphasis ? 11 : 10,
-                                  weight: label.isPlayer ? .semibold : .medium))
-                    .foregroundStyle(color),
-                at: label.point)
+            let text = Text(label.text)
+                .font(.system(size: label.emphasis ? 11 : 10,
+                              weight: label.isPlayer ? .semibold : .medium))
+
+            // A hairline of the ocean colour underneath, offset a point.
+            //
+            // Cheap insurance that became necessary when these became city
+            // names: "STV" is three characters over one patch of ground, and
+            // "Stockholm" is nine that can cross a coastline, a border and a
+            // route on its way across. A shadow rather than a plate, because a
+            // filled background behind every label is what makes a map look
+            // like a diagram.
+            context.draw(text.foregroundStyle(AETheme.mapDeep.opacity(0.9)),
+                         at: CGPoint(x: label.point.x + 0.7,
+                                     y: label.point.y + 0.7))
+            context.draw(text.foregroundStyle(color), at: label.point)
         }
     }
 
     // MARK: - Primitives
+
+    /// The viewport as a rectangle in normalised map space.
+    private func visibleMapRect(margin: Double)
+        -> (minX: Double, maxX: Double, minY: Double, maxY: Double) {
+        let topLeft = projector.unproject(.zero)
+        let bottomRight = projector.unproject(
+            CGPoint(x: projector.size.width, y: projector.size.height))
+        // Converted rather than left to the implicit CGFloat/Double bridge:
+        // map space is Double everywhere it is stored, and mixing the two
+        // silently is how a geometry bug becomes a platform-specific one.
+        let x0 = Double(topLeft.x), x1 = Double(bottomRight.x)
+        let y0 = Double(topLeft.y), y1 = Double(bottomRight.y)
+        return (min(x0, x1) - margin, max(x0, x1) + margin,
+                min(y0, y1) - margin, max(y0, y1) + margin)
+    }
 
     private func appendPolyline(_ points: [MapPoint], offset: Double = 0,
                                 to path: inout Path) {

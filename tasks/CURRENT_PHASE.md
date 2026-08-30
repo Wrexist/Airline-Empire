@@ -1,5 +1,87 @@
 # Current Phase
 
+**AE-031 — The app runs. (Premium game feel, phase 1.)**
+2026-08-30.
+
+The brief asked for immersion and polish. The audit said the binding
+constraint was not design: four consecutive phases had shipped interface work
+and every one ended "authored, not observed", because `project.yml` declared a
+single target and CI built against `generic/platform=iOS Simulator`, which
+never boots anything.
+
+So this phase built the missing thing. `AirlineEmpireUITests` is the first
+target that runs the app rather than compiling it; CI boots a real simulator,
+drives the first minute of the game, and keeps a screenshot of every step.
+Because artifacts need a credential the agent doing the work does not have,
+the screenshots are also base64'd into the job log, downscaled.
+
+**It paid for itself immediately.** The first screenshot showed BUG-035: a
+third of the Network tab was dead space and the Routes/Fleet picker floated
+40% down the screen, in the state every new game starts in. One SwiftUI
+default caused both gaps — a compact empty state centres in a parent it does
+not fill, and `safeAreaInset` then anchors to the content's top edge rather
+than the container's. Fixed and re-confirmed by screenshot.
+
+It survived four UI phases because it appears *only* in the empty state: a
+list fills its parent and has nowhere to float to, so every screen anybody
+would think to check looked right.
+
+Also now visually validated: AE-029's market work renders as intended —
+aircraft roles, seat-efficiency bands, the trade sentence, the era-lock
+explanation.
+
+**Not done, and owed:** the full screen-by-screen audit covers only what has
+been seen. Home, Map, Finance and World are proven to load and render content
+but have not been looked at. The app has been observed in exactly one
+appearance — light — which is not the one `DESIGN_SYSTEM.md` is written about.
+See `docs/UI_FULL_AUDIT.md`, which marks every finding by whether it was
+observed, asserted, or merely read.
+
+---
+
+# Previous Phase
+
+**AE-029 — Fleet and aircraft experience (MASTER PROMPT 5).**
+2026-08-30.
+
+The audit found the phase's shape immediately: most of what §9–§15 asks for had
+landed in AE-028, and what was actually broken sat underneath it. Both
+assignment pickers — the one place the game's central loop is completed — were
+re-deriving Core's eligibility rules and getting them wrong in three separate
+directions at once (BUG-032). Three refusal mappings had been switching on
+strings Core has never emitted, so the copy for the two most confusing refusals
+in the fleet flow was unreachable (BUG-033).
+
+Load-bearing change: `AssignmentEligibility` in Core, mirroring
+`AssignAircraftToRouteCommand.validate` beside the validator itself, with a
+test that drives every aircraft against every route and asserts the two agree.
+Both screens render it; neither decides anything. Ineligible pairings are shown
+with their reason rather than omitted.
+
+Also: `AircraftRole` and `SeatEfficiencyBand` (§10) — the market printed fuel
+burn per seat to three decimals, a number nobody can rank, and banding it
+surfaced that a turboprop burns ~72% more fuel per seat-km than a large
+narrowbody. `FleetFilter` in Core (§17, §37), tested for partitioning the fleet
+rather than losing rows.
+
+**Content audit (§38, §39), not acted on deliberately.** `docs/AIRCRAFT.md`
+claimed "±15% per-type personality"; the catalog's largest within-category
+fuel-per-seat spread is 4.5% and most are under 2%. Types separate by size and
+reach, not by economic character. NA160 is beaten by MR180 on seats, range,
+cost per seat and burn per seat — its only remaining niche is a lower absolute
+price. Both pinned by characterization tests rather than rebalanced, per §38.
+
+Four bugs found and fixed: BUG-032, BUG-033, BUG-034 (an aircraft in a
+maintenance check described as idle). Three tech debt entries added: TD-014,
+TD-015, TD-016.
+
+**Nothing in this phase has been seen rendered.** 408 Core tests pass, up from
+381; the app compiles on macOS CI and has never been launched.
+
+---
+
+# Previous Phase
+
 **AE-028 — UI/UX polish, information density, design system (MASTER PROMPT 4).**
 2026-08-30.
 

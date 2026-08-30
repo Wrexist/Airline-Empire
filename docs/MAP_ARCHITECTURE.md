@@ -48,16 +48,47 @@ Premium strategy cartography, not a satellite image and not a road map.
 
 ---
 
-## 3. Geography (`WorldGeometry.swift`)
+## 3. Geography (`WorldGeometry.swift`, `WorldGeometryData.swift`)
 
-631 coordinate pairs across 24 landmasses, hand-traced at 2–6° along coasts
-and finer where a shape is recognisable — the Baltic, the Gulf, the Horn, the
-Malay peninsula, the Bering Strait. These are the shapes a player orients by.
+**Natural Earth, public domain**, imported in AE-032. Three levels of detail,
+chosen by zoom, because detail that helps at one level hurts at another:
 
-Hand-authored because the build environment has no network access to fetch
-Natural Earth, and a coarse trace that ships beats an accurate one that does
-not. Deliberately *not* finer than this: a coastline with every fjord competes
-with the routes over it.
+| Level | Source | Polygons | Points |
+|---|---|---|---|
+| World | `ne_110m_land` | 103 | 2,384 |
+| Regional | `ne_50m_land` | 314 | 6,950 |
+| Local | `ne_10m_land` | 1,084 | 28,937 |
+
+Plus lakes (`ne_50m`/`ne_10m_lakes`) and political borders
+(`ne_50m_admin_0_boundary_lines_land`, 393 lines) — boundary *lines* rather
+than country polygons, which would double every coastline for nothing.
+
+Encoded as multi-line string literals rather than array literals: 40,000 array
+elements is a Swift type-checker problem and a string is not.
+
+**This replaced 631 hand-traced pairs.** That trace existed because the build
+environment had no network access to fetch Natural Earth, which was true when
+it was written and is no longer (docs/MAP_REALISM_RESEARCH.md). The stated
+risk of importing real data was that 14× the detail would crowd the network;
+the first render showed the opposite, and the palette was widened rather than
+the geometry thinned.
+
+### Country labels (`CountryLabels.swift`, `CountryLabelData.swift`)
+
+175 countries from `ne_110m_admin_0_countries`: name, ISO 3166-1 alpha-2, and
+the anchor Natural Earth's cartographers chose (`LABEL_X`/`LABEL_Y`) — not the
+centroid, which is why Norway lands on Norway rather than in the sea off a
+fjord-shaped average.
+
+**Which countries appear at which zoom is Natural Earth's `MIN_LABEL` rank,
+used directly.** It is a scale rank rather than this map's zoom, but they run
+the same way over a similar range, so the question "what belongs on a world
+view" is answered by cartographers rather than by a rule invented here.
+
+Flags are **Unicode regional indicators** derived from the ISO code, so no
+imagery is bundled and none is licensed. The two Natural Earth entries with no
+ISO code (Northern Cyprus, Somaliland) are dropped: no flag, and a game has no
+business ruling on them.
 
 Presentation only. Airport positions come from `airports.json` through
 `MapModel`; nothing in this file reaches the simulation.
@@ -176,6 +207,35 @@ fleet legible when the world is moving fast.
 then size by zoom level — and refuses any label whose box overlaps one already
 placed. Greedy by priority, which is stable frame to frame because the ranking
 is.
+
+Country labels are placed **second**, by `placeCountries`, against the boxes
+the airports have already claimed. The ordering is the rule: the map is about
+airports, and a country name sitting on one has stopped being context and
+started being clutter (§2). They are chosen before the airports are drawn and
+drawn under them — two separate decisions that used to be the same statement.
+
+### Interaction
+
+Pinch zooms about the fingers, not the screen centre: `MapCamera` captures the
+world point under the gesture's start location and solves for the centre that
+holds it fixed. `MapProjector.unproject` exists for this. Past the zoom limits
+the gesture resists (`pow(overshoot, 0.30)`) rather than stopping dead, and
+springs back on release — a hard clamp reads as a dropped gesture. A flick
+coasts on `predictedEndTranslation` damped to 45%, off under Reduce Motion. A
+double tap zooms in by the same 1.7 step the on-screen buttons use, about the
+point tapped.
+
+### Flight trails
+
+Aircraft have always been drawn, interpolated between ticks and headed along
+their great circle — but the route beneath is one uniform line end to end, so
+a flight an hour out looked identical to one an hour from landing. The flown
+arc is now stroked in the livery colour over the route, with its last fifth
+brighter, which is what turns a progress reading into a direction. Sampled at
+20 points from `MapMath.greatCirclePoint` rather than sliced from the route
+polyline, because the route is shared by every flight on it and a per-flight
+fraction lands between vertices. Player flights only: rival trails would be
+the most numerous thing on screen and say nothing a player can act on.
 
 ---
 

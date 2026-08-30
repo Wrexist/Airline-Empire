@@ -833,3 +833,28 @@ extension ButtonStyle where Self == AEButtonStyle {
     /// Irreversible or expensive.
     static var aeDestructive: AEButtonStyle { AEButtonStyle(role: .destructive) }
 }
+
+extension View {
+    /// Pin an empty state below the screen's chrome instead of letting it
+    /// float in the middle.
+    ///
+    /// Found by looking at a screenshot — the first ones this project has
+    /// ever produced (BUG-035). On the Network tab, roughly the top third of
+    /// the screen was blank and the Routes/Fleet picker sat about 40% of the
+    /// way down, under nothing.
+    ///
+    /// The cause is a SwiftUI default doing exactly what it promises.
+    /// `EmptyStateView` is a compact card, and a view smaller than its parent
+    /// is centred in it. It was the only child of a `Group` filling the whole
+    /// screen, so it centred — and `safeAreaInset(edge: .top)` then placed the
+    /// section picker against the *content's* top edge, which by then was
+    /// halfway down. One default produced both gaps.
+    ///
+    /// A list-bearing screen never showed this, because a `List` fills its
+    /// parent and has nowhere to float to. It appeared only in the empty
+    /// state, which is the first thing a new player sees and the last thing
+    /// anybody looks at.
+    func aeEmptyStatePlacement() -> some View {
+        frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+}

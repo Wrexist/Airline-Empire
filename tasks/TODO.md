@@ -315,3 +315,72 @@ rework continuing.
 - **Nothing has been visually validated.** There is no simulator and no device
   in this environment, so every claim above is "compiles, and is tested where
   testable" — never "looks right" (TD-003, TD-006).
+
+---
+
+## AE-029 — Fleet and aircraft experience (MASTER PROMPT 5)
+
+### Done
+
+**Assignment (§23, §24)** — `AssignmentEligibility` in Core, mirroring
+`AssignAircraftToRouteCommand.validate` beside the validator, used by both
+pickers. Ineligible pairings shown with their reason. Fit notes derived from
+real data or omitted. BUG-032.
+
+**Refusals (§24)** — three dead mappings fixed, `progression.lockedCategory`
+and four fleet codes added, `RejectionCodeContractTests` pins each string
+against a real command. BUG-033.
+
+**Market and detail (§10, §11, §21)** — `AircraftRole` and
+`SeatEfficiencyBand`; the raw burn-per-seat figure replaced by a band against
+the catalog's best, on both the market card and the detail header.
+
+**Fleet at scale (§17, §37)** — `FleetFilter` in Core, tested for partitioning
+the fleet; bar appears past eight aircraft; empty results offer the way back.
+
+**Content audit (§38, §39)** — measured, documented, pinned, not rebalanced.
+`docs/AIRCRAFT.md` corrected.
+
+**Docs (§49)** — `docs/AIRCRAFT_UX.md`, `docs/AIRCRAFT_ASSET_BIBLE.md`.
+
+### Still not done
+
+- **§31 "Show on map"** — the map exposes no focus API at all. There is no
+  camera to ask; adding one is real work, not wiring, and it is the single
+  most valuable remaining item because it closes the last navigation loop.
+- **§14 acquisition moment** — no confirmation using the artwork. The sheet
+  dismisses and the feed announces it.
+- **§26 aircraft-level profitability** — Core attributes economics to routes,
+  not airframes. Splitting a route's P&L across the aeroplanes that flew it
+  would be an invented allocation, so route economics are shown instead.
+- **§18 grouping** — filtering shipped; grouping did not. Filters answered the
+  scale problem and grouping would have been a second control competing with
+  them for the same row.
+- **§22 registrations** — Core has no player-facing aircraft identifier and
+  §22 says not to add a persisted one for decoration. Not added.
+- **TD-014/TD-015** — artwork does not distinguish within a class, and the
+  fleet row still uses an SF Symbol rather than the silhouette. Both need a
+  device to judge.
+
+---
+
+## AE-031 — The app runs (MASTER PROMPT: premium game feel)
+
+### Done
+- `AirlineEmpireUITests`: first target that runs the app. Launch, found an
+  airline, all five tabs, market reachable. 3 tests.
+- CI boots a real simulator (resolved at runtime, not hardcoded), keeps the
+  result bundle, and prints downscaled screenshots into the job log.
+- BUG-035 found by screenshot, root-caused, fixed, re-confirmed by screenshot.
+- `docs/UI_FULL_AUDIT.md` — first audit here written against screens, with
+  every finding marked observed / asserted / read.
+
+### Next, in order
+1. **Dark appearance.** The app has been seen only in light. One line in the
+   UI test. Highest-value next observation, because the design system is
+   written about an appearance nobody has verified exists.
+2. **Frame assertions** (TD-019) so BUG-035's class fails CI rather than
+   waiting for someone to look.
+3. **Extend the journey**: buy an aircraft, open a route, assign it. That is
+   where BUG-032 lived and it is still undriven.
+4. Home, Map, Finance, World — observe, then audit.

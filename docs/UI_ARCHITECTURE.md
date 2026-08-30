@@ -261,3 +261,50 @@ Core rather than in the renderer.
   dead on five of seven screens (BUG-014).
 - An empty state that instructs the player should carry the action —
   `EmptyStateView` takes one.
+
+---
+
+## 10. Read models own the rules (AE-029, 2026-08-30)
+
+The App/Core seam described in §1 has one failure mode that has now produced
+four defects, and it is worth stating as a rule rather than rediscovering.
+
+**A screen that re-derives a rule Core owns will get it wrong, and quietly.**
+
+| Defect | What a screen re-derived | How it was wrong |
+| --- | --- | --- |
+| BUG-027 | live flight count | counted every airline, every phase |
+| AE-028 §9 | fleet average age | included aircraft still on order |
+| BUG-032 | assignment eligibility | no range check, no runway check, hid maintenance |
+| BUG-033 | refusal codes | switched on three strings Core never emits |
+
+None crashed. None warned. None failed a test, because no test existed on the
+seam. Each produced a game that disagreed with itself somewhere a player would
+eventually look.
+
+The pattern in all four is the same: **the app held a plausible-looking subset
+of a rule that lives elsewhere.** A subset compiles. A subset runs. A subset is
+right most of the time, which is what makes it survive review.
+
+So the rule for anything derived:
+
+1. **It lives in Core**, next to the authority it mirrors — the validator, the
+   entity, the system. Not in a view, not in the controller.
+2. **A test pins it to that authority.** Not a test that it returns sensible
+   values; a test that it and the thing it mirrors reach the same verdict.
+   `AssignmentEligibilityTests.blockersAgreeWithTheValidator` is the model:
+   every aircraft against every route, model verdict against validator verdict.
+3. **`Vocab` chooses the words, and only the words.** Phrasing can be rewritten
+   without anyone re-deriving what causes what.
+4. **The screen formats.** If a view body contains a comparison against a
+   threshold, that threshold belongs in Core.
+
+Established read models on this seam: `NetworkSummary`, `FleetSummary`,
+`RouteVerdict`, `MapModel`, `AssignmentCandidate`, `FleetFilter`,
+`AircraftRole`, `SeatEfficiencyBand`.
+
+**The gap this leaves.** These tests pin *Core's* half. The app's half — that a
+mapped code is a code Core emits, that a `NavigationLink(value:)` resolves,
+that `Vocab` is total over the enum it words — is guarded by review alone,
+because the App target has no test that runs anywhere we build. That is
+`TD-016`, and it is the common cause behind BUG-029, BUG-030 and BUG-033.

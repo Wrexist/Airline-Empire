@@ -124,3 +124,38 @@ dimensions are assessed on authored code + Core read models and flagged.
 Until that queue clears, the project is a **complete, hardened, tested
 game core with an authored-but-unproven client** — exactly what it claims
 to be in the task files, no more.
+
+
+---
+
+## AE-029 addendum — fleet and aircraft (2026-08-30)
+
+**The central loop had a dead end in it.** Opening a route and assigning an
+aircraft is the game's core action, and both pickers that complete it were
+offering pairings Core would refuse: no range check, no runway check. A player
+following the intended first-hour path — found airline, buy aircraft, open
+route, assign — could hit a refusal that reads as their mistake and is not.
+Fixed (BUG-032); it is the most player-visible thing in this phase.
+
+**Two refusals had unreachable copy.** "This airport cannot take your aircraft"
+and "wait for your flights to land" were both written and both unreachable,
+because the app switched on strings Core has never emitted (BUG-033). The
+market's most common refusal — trying to buy an aircraft class the era does not
+allow — had no mapping at all.
+
+**The market now says what an aircraft is for.** It showed a category and a
+fuel figure to three decimals. It now shows a role, a sentence naming the
+trade, and an efficiency band — which surfaced the fact the numbers were
+hiding: regional aircraft are the *most* expensive per passenger to fly, not
+the cheapest. That inverts what a new player would assume from the price tag,
+and it is the single most useful thing the screen now tells them.
+
+**Fleet scales.** Filtering by status, ownership and type, tested for
+partitioning rather than losing rows.
+
+**Unchanged, and still the top of the list:** nothing has been seen rendered.
+Four phases have now shipped a visual system, a map, audio and a fleet UI that
+no one has looked at. This phase's own asset audit found that at world zoom —
+the level a player spends most time in — aircraft do not use their category
+silhouettes at all, which nobody had noticed because nobody has watched the
+map. That is not a bug; it is evidence about how much is being taken on trust.

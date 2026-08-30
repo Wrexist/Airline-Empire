@@ -238,3 +238,171 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+      # The step that actually runs the app.
+      #
+      # `generic/platform=iOS Simulator` above compiles without booting
+      # anything, which is why four phases of interface work reached "it
+      # compiles" and stopped there. This boots a concrete device and drives
+      # the first minute of the game: found an airline, reach every tab, open
+      # the market. It is the only check in the project that would catch a
+      # control that exists, compiles, and does nothing — the shape of
+      # BUG-029, BUG-030 and BUG-032, all three found by hand.
+      #
+      # The device is resolved rather than named. Runner images change their
+      # installed simulators without warning, and a hardcoded 'iPhone 16'
+      # turns that into a red build with a confusing message.
+      - name: Pick a simulator
+        if: steps.changes.outputs.build == 'true'
+        id: sim
+        run: |
+          set -euo pipefail
+          NAME=$(xcrun simctl list devices available --json \
+            | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)['devices']
+          best = None
+          for runtime, devices in data.items():
+              if 'iOS' not in runtime:
+                  continue
+              for device in devices:
+                  if not device.get('isAvailable'):
+                      continue
+                  name = device['name']
+                  if name.startswith('iPhone'):
+                      # Prefer a plain iPhone over Pro/Max/mini: the smallest
+                      # common phone is the layout most likely to reveal a
+                      # cramped row, and this project has never seen one.
+                      score = (0 if 'Pro' in name or 'Max' in name else 1, name)
+                      if best is None or score > best[0]:
+                          best = (score, name)
+          print(best[1] if best else '')
+          ")
+          if [ -z "$NAME" ]; then
+            echo 'No available iOS simulator on this runner.' >&2
+            xcrun simctl list devices available >&2
+            exit 1
+          fi
+          echo "Using simulator: $NAME"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Run the UI tests
+        if: steps.changes.outputs.build == 'true'
+        working-directory: AirlineEmpireApp
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project AirlineEmpire.xcodeproj \
+            -scheme AirlineEmpire \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
+            -resultBundlePath UITestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            test 2>&1 | tee ui-test-output.txt
+
+      # The screenshots. These are the only visual evidence this project has
+      # ever produced, so they are kept whether the run passed or failed —
+      # a green run whose screens are wrong is precisely the case that needs
+      # looking at.
+      - name: Keep the screenshots
+        if: always() && steps.changes.outputs.build == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-screenshots
+          path: AirlineEmpireApp/UITestResults.xcresult
+          retention-days: 14
+          if-no-files-found: warn
+
+      # Print the screenshots into the log, small, as base64.
+      #
+      # This looks eccentric and is deliberate. The artifact above is the
+      # right home for full-resolution screens and is what a human should
+      # open. But an artifact can only be fetched by something holding a
+      # GitHub credential, and the agent doing the UI work in this repository
+      # reads job logs and cannot download artifacts — so without this step
+      # the screens remain, once again, unobserved by whoever is changing
+      # them. Four phases of "authored, not observed" were caused by exactly
+      # that kind of gap between where evidence lands and who needs it.
+      #
+      # Downscaled hard (360 px wide) because the question being answered is
+      # "is the hierarchy right, is anything clipped, does it look like one
+      # app" — all legible at thumbnail size — and a full-resolution frame
+      # would flood the log. `|| true` throughout: this is evidence, not a
+      # gate, and it must never be the reason a green run reports red.
+      - name: Screenshots into the log
+        if: always() && steps.changes.outputs.build == 'true'
+        working-directory: AirlineEmpireApp
+        continue-on-error: true
+        run: |
+          set +e
+          OUT=$(mktemp -d)
+          xcrun xcresulttool export attachments \
+            --path UITestResults.xcresult --output-path "$OUT" >/dev/null 2>&1
+          # The exporter writes a manifest plus files whose names are uuids;
+          # the manifest carries the human name each attachment was given.
+          python3 - "$OUT" <<'PYEOF'
+          import base64, json, os, subprocess, sys
+          out = sys.argv[1]
+          manifest = os.path.join(out, "manifest.json")
+          pairs = []
+          if os.path.exists(manifest):
+              for suite in json.load(open(manifest)):
+                  for a in suite.get("attachments", []):
+                      name = a.get("suggestedHumanReadableName") or a.get("exportedFileName")
+                      path = os.path.join(out, a.get("exportedFileName", ""))
+                      if name and os.path.exists(path):
+                          pairs.append((name, path))
+          if not pairs:
+              print("NO-ATTACHMENTS-EXPORTED")
+              sys.exit(0)
+          # Only checkpoints. The log carries ~200 lines per screen, so an
+          # unbounded set silently pushes the earliest images past any
+          # practical `tail` — and the earliest are the journey's opening
+          # steps, which are the ones worth seeing (TD-020). Everything is
+          # still in the artifact; this bounds only what is printed.
+          pairs = [(n, p) for n, p in pairs if n.startswith("KEY-")]
+          if not pairs:
+              print("NO-CHECKPOINT-ATTACHMENTS (nothing named KEY-*)")
+              sys.exit(0)
+          print(f"CHECKPOINTS: {len(pairs)}")
+          seen = set()
+          for name, path in sorted(pairs):
+              if name in seen:
+                  continue
+              seen.add(name)
+              small = path + ".small.png"
+              subprocess.run(["sips", "--resampleWidth", "360", path,
+                              "--out", small],
+                             capture_output=True)
+              use = small if os.path.exists(small) else path
+              data = base64.b64encode(open(use, "rb").read()).decode()
+              print(f"===SHOT {name} {len(data)}")
+              for i in range(0, len(data), 500):
+                  print(data[i:i+500])
+              print("===ENDSHOT")
+          PYEOF
+          exit 0
+
+      # The same failures again, at the very bottom of the log.
+      #
+      # Not redundancy — ordering. The step above prints roughly 200 lines per
+      # screenshot, so on a run with a dozen checkpoints the test results are
+      # thousands of lines above the end of the log, and a `tail` large enough
+      # to reach them returns megabytes of base64 with the answer buried in it.
+      # That is how AE-032's two failures took four log fetches to identify.
+      # Fifteen lines here puts the verdict where anyone, human or agent,
+      # looks first.
+      - name: What failed
+        if: always() && steps.changes.outputs.build == 'true'
+        working-directory: AirlineEmpireApp
+        continue-on-error: true
+        run: |
+          if [ ! -f ui-test-output.txt ]; then
+            echo "No UI test output captured."
+            exit 0
+          fi
+          echo "=== UI TEST RESULTS ==="
+          grep -E "Test Case .* (passed|failed) \(" ui-test-output.txt || true
+          echo "=== FAILURES ==="
+          grep -E "^.*: error: -\[" ui-test-output.txt | head -40 || true
+          grep -E "Executed [0-9]+ tests?," ui-test-output.txt | tail -1 || true

@@ -432,3 +432,146 @@ extension Vocab {
         }
     }
 }
+
+extension Vocab {
+    /// Why an aircraft cannot take a route (MASTER PROMPT 5 §23).
+    ///
+    /// Core's `AssignmentCandidate.Blocker` decides; this only chooses words.
+    /// Each reads as a fact about *this* pairing rather than a refusal, because
+    /// it is shown beside a disabled row the player has not tapped yet — "you
+    /// cannot do that" is the wrong tense for something nobody has tried.
+    static func blocker(_ blocker: AssignmentCandidate.Blocker) -> String {
+        switch blocker {
+        case .notDelivered:
+            return "Not delivered yet"
+        case .alreadyAssigned:
+            return "Already on a route"
+        case .beyondRange(let rangeKm, let distanceKm):
+            // The shortfall, not the two figures. "1,600 km range, 4,452 km
+            // route" makes the reader do the subtraction; "2,852 km short"
+            // is the same fact already used.
+            return "\(Format.grouped(Int64(distanceKm - rangeKm))) km beyond its range"
+        case .runwayTooSmall(let airport, _, _):
+            return "\(airport.raw) cannot take this aircraft"
+        }
+    }
+
+    /// What is worth knowing about an assignment Core would allow.
+    ///
+    /// Nil when Core had nothing to say — which is most of the time, and is
+    /// the point. A picker where every row carries a caption ranks nothing.
+    static func assignmentNote(_ note: AssignmentCandidate.Note?) -> String? {
+        switch note {
+        case nil:
+            return nil
+        case .inMaintenance:
+            return "In a maintenance check — it can be assigned now and will fly when the check finishes"
+        case .tightRange(let marginKm):
+            return "Only \(Format.grouped(Int64(marginKm))) km of range to spare"
+        case .seatsShortOfDemand(let seats, let demand):
+            return "\(Format.grouped(Int64(seats))) seats a day against \(Format.grouped(Int64(demand))) passengers wanting to fly"
+        case .seatsAboveDemand(let seats, let demand):
+            return "\(Format.grouped(Int64(seats))) seats a day for \(Format.grouped(Int64(demand))) passengers — it would fly light"
+        case .strongMatch:
+            return "Good fit for this route"
+        }
+    }
+
+    /// The tint for a note. Never the only carrier: the sentence above always
+    /// says the same thing in words.
+    static func assignmentNoteColor(_ note: AssignmentCandidate.Note?) -> Color {
+        switch note {
+        case nil: AETheme.mutedText
+        case .strongMatch: AETheme.positive
+        case .inMaintenance, .tightRange, .seatsAboveDemand: AETheme.caution
+        case .seatsShortOfDemand: AETheme.mutedText
+        }
+    }
+}
+
+extension Vocab {
+    /// What an aircraft type is bought to do (MASTER PROMPT 5 §10).
+    ///
+    /// `Vocab.category` gives the taxonomy ("Regional jet"); this gives the
+    /// use. A new player reading "Regional jet · 88 seats · 2,750 km" has to
+    /// already know the industry to turn that into a decision.
+    static func role(_ role: AircraftRole) -> String {
+        switch role {
+        case .shortFieldRegional: "Short-field regional"
+        case .regionalConnector: "Regional connector"
+        case .shortHaulWorkhorse: "Short-haul workhorse"
+        case .highCapacityNarrowbody: "High-capacity narrowbody"
+        case .longHaulWidebody: "Long-haul widebody"
+        case .flagshipLongHaul: "Flagship long-haul"
+        }
+    }
+
+    /// One sentence on what the role is good for, and what it costs you.
+    ///
+    /// Every line names a genuine trade rather than selling the aeroplane.
+    /// The regional entries say the quiet part — small aircraft are not cheap
+    /// aircraft, they are expensive per passenger and you buy them for reach,
+    /// not for economy (see `SeatEfficiencyBand`).
+    static func roleDetail(_ role: AircraftRole) -> String {
+        switch role {
+        case .shortFieldRegional:
+            "Reaches small airports nothing else can use. Costs the most fuel per passenger of anything you can buy."
+        case .regionalConnector:
+            "Jet speed on thin routes that would leave a narrowbody half empty — and the thirstiest per seat in the catalogue."
+        case .shortHaulWorkhorse:
+            "Dense short and medium routes. The best fuel per passenger in the game, which is why airlines are built on these."
+        case .highCapacityNarrowbody:
+            "The same routes with more seats, for when demand has outgrown a narrowbody."
+        case .longHaulWidebody:
+            "Intercontinental reach, at a fuel cost per seat between a narrowbody and a regional jet."
+        case .flagshipLongHaul:
+            "The most seats and the most range you can field. Only pays on dense long routes."
+        }
+    }
+
+    /// Fuel per passenger, as a band rather than a ratio.
+    static func seatEfficiency(_ band: SeatEfficiencyBand) -> String {
+        switch band {
+        case .best: "Excellent fuel per seat"
+        case .strong: "Good fuel per seat"
+        case .moderate: "Average fuel per seat"
+        case .thirsty: "Thirsty per seat"
+        }
+    }
+
+    /// The tint for an efficiency band. The words above always accompany it.
+    static func seatEfficiencyColor(_ band: SeatEfficiencyBand) -> Color {
+        switch band {
+        case .best: AETheme.positive
+        case .strong: AETheme.positive.opacity(0.8)
+        case .moderate: AETheme.mutedText
+        case .thirsty: AETheme.caution
+        }
+    }
+}
+
+extension Vocab {
+    /// Fleet filter labels (MASTER PROMPT 5 §17).
+    ///
+    /// "Idle" is the load-bearing one: it means airworthy, unassigned and
+    /// costing money — not "in a check" and not "still on order", neither of
+    /// which the player can do anything about today. Lumping those in is what
+    /// turns an idle count from a to-do list into a number.
+    static func fleetStatus(_ status: FleetFilter.Status) -> String {
+        switch status {
+        case .all: "All"
+        case .assigned: "Flying"
+        case .idle: "Idle"
+        case .inMaintenance: "In check"
+        case .onOrder: "On order"
+        }
+    }
+
+    static func fleetOwnership(_ ownership: FleetFilter.Ownership) -> String {
+        switch ownership {
+        case .all: "All"
+        case .owned: "Owned"
+        case .leased: "Leased"
+        }
+    }
+}

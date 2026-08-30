@@ -3,34 +3,154 @@ import AirlineEmpireCore
 
 /// The world the network is drawn on (docs/MAP_ARCHITECTURE.md §3).
 ///
-/// ## Why this file is a list of numbers
+/// ## Where this geography comes from
 ///
-/// The map read as empty for one measurable reason: its geography was 260
-/// coordinate pairs across 16 polygons. Europe was eight points. At world zoom
-/// that is a silhouette, not cartography, and no amount of colour work fixes a
-/// coastline that is not there. This is roughly four times the detail, traced
-/// at 2–6° along coasts and finer where a shape is recognisable (the Baltic,
-/// the Gulf, the Horn, the Bering Strait, the Malay peninsula), because those
-/// are the shapes a player uses to orient.
+/// **Natural Earth, public domain**, at three scales, chosen by zoom.
 ///
-/// It is hand-authored rather than imported: the environment has no network
-/// access to fetch Natural Earth, and a coarse hand trace that ships beats an
-/// accurate one that does not. It is deliberately *not* more detailed than
-/// this — the geography's job is to support the network, and a coastline with
-/// every fjord in it competes with the routes drawn over it.
+/// It replaces a hand trace, and that trace's own comment explained why it
+/// existed: *"the environment has no network access to fetch Natural Earth,
+/// and a coarse hand trace that ships beats an accurate one that does not."*
+/// The right call under that constraint. The constraint expired, so the
+/// decision was re-made rather than inherited.
+///
+/// | zoom | source | polygons | points |
+/// | --- | --- | --- | --- |
+/// | *(was)* | hand-traced | 16 | 631 |
+/// | world | 1:110m | 103 | 2,384 |
+/// | regional | 1:50m | 314 | 6,950 |
+/// | local | 1:10m | 1,084 | 28,937 |
+///
+/// ## Why three scales and not one good one
+///
+/// Detail that helps at one zoom hurts at another, and both directions are
+/// real. Twenty-nine thousand points at world zoom is a grey fringe along
+/// every coast that competes with the routes the map exists to show —
+/// `docs/MAP_ARCHITECTURE.md` §2 is explicit that geography must never do
+/// that. Two thousand points at local zoom is a polygon, not a coastline.
+///
+/// Picking by `MapZoomLevel` costs one switch and gets both: the world view
+/// stays clean, and zooming in resolves genuine coastline rather than
+/// magnifying the same corners. It is also cheaper — the expensive tier is
+/// only ever parsed if the player actually zooms to it, because a `static let`
+/// is lazy.
+///
+/// ## Why the airports made this worth doing
+///
+/// Not prettiness. The eighty airports sit at real coordinates — Arlanda,
+/// Heathrow, Charles de Gaulle, JFK, Haneda — and were being plotted onto a
+/// coastline where Europe was a few dozen points. Precise data on imprecise
+/// geography puts airports in the sea.
+///
+/// ## What is deliberately left out
+///
+/// - **Antarctica.** The hand trace omitted it and so does this: no airline in
+///   the game flies there, it is a 2,805-point polygon spanning every
+///   longitude, and the projection already clips at ±80°.
+/// - **Islands below the per-tier span threshold**, which are sub-pixel at
+///   their own zoom and would be a thousand polygons of noise.
+/// - **Rivers.** They are line work in the same weight as routes, on a map
+///   whose subject is routes.
+///
+/// One landmass legitimately spans 197° of longitude — Afro-Eurasia, West
+/// Africa to the Bering Strait — exactly as the hand-traced `africaEurasia`
+/// did. Verified as real geography rather than an antimeridian wrap; the
+/// renderer's existing `visibleWorldOffsets` handling covers it.
 ///
 /// Presentation only. Nothing here reaches the simulation; airport positions
 /// come from `airports.json` through `MapModel`, never from this file.
+///
+/// *Made with Natural Earth.*
 enum WorldGeometry {
 
-    /// Coastlines in map space, largest first so the renderer can fill them
-    /// back to front without sorting.
-    static let landmasses: [[MapPoint]] = outlines
-        .sorted { $0.count > $1.count }
-        .map { outline in
-            outline.map { MapPoint(coordinate: Coordinate(latitude: $0.0,
-                                                          longitude: $0.1)) }
+    /// Coastlines at the detail the current zoom can actually show.
+    static func landmasses(for level: MapZoomLevel) -> [Polygon] {
+        switch level {
+        case .world: coarseLand
+        case .regional: mediumLand
+        case .local: fineLand
         }
+    }
+
+    /// Inland water, drawn in the ocean's own colour over the land it sits in.
+    /// A lake is the same substance as the sea; giving it a third value would
+    /// widen a palette deliberately kept narrow.
+    static func lakes(for level: MapZoomLevel) -> [Polygon] {
+        level == .local ? fineLakes : mediumLakes
+    }
+
+    /// Land borders, and only from regional zoom in.
+    ///
+    /// At world zoom they are the difference between a map and a diagram, and
+    /// also the difference between a clean field and a mesh — 2,589 points of
+    /// hairline over a silhouette, under the routes that matter. Empty at
+    /// world zoom is a decision, not an omission.
+    /// Political borders, at every level.
+    ///
+    /// They used to be withheld at world zoom, on the reasoning that a border
+    /// is line work in the same weight as a route and world zoom is where
+    /// routes are longest. True of the weight, wrong about the need: world
+    /// zoom is precisely where a player cannot tell one country from another,
+    /// and a coastline alone does not say where France stops and Spain starts.
+    /// `MapFrame` dashes them there instead, which separates them from routes
+    /// by pattern rather than by absence.
+    static func borders(for level: MapZoomLevel) -> [Polygon] {
+        borderLines
+    }
+
+    private static let coarseLand = points(WorldGeometryData.coarseLand)
+    private static let mediumLand = points(WorldGeometryData.mediumLand)
+    private static let fineLand = points(WorldGeometryData.fineLand)
+    private static let mediumLakes = points(WorldGeometryData.mediumLakes)
+    private static let fineLakes = points(WorldGeometryData.fineLakes)
+    private static let borderLines = points(WorldGeometryData.borders)
+
+    /// One polygon or line per row; `lat,lon` pairs separated by spaces.
+    /// A polygon with its extent, so a frame can reject it without projecting
+    /// it.
+    ///
+    /// The extent is the whole point. At the map's *opening* zoom — which
+    /// `frameNetwork` sets to the maximum for an airline with one airport —
+    /// the local tier is 1,084 polygons and 28,937 points, and every one of
+    /// them was being projected every frame whether it was on screen or not.
+    /// Almost none of them are: at that magnification the viewport is a couple
+    /// of thousand kilometres across. Four comparisons in map space replace a
+    /// projection per point, and the coastline that survives is the same
+    /// coastline.
+    struct Polygon {
+        let points: [MapPoint]
+        let minX: Double, maxX: Double, minY: Double, maxY: Double
+
+        init(_ points: [MapPoint]) {
+            self.points = points
+            self.minX = points.map(\.x).min() ?? 0
+            self.maxX = points.map(\.x).max() ?? 0
+            self.minY = points.map(\.y).min() ?? 0
+            self.maxY = points.map(\.y).max() ?? 0
+        }
+
+        /// Whether this polygon, shifted into a world copy, can touch a
+        /// map-space rectangle. Conservative — a bounding box says "maybe",
+        /// never "definitely" — which is exactly what a cull needs.
+        func intersects(minX rectMinX: Double, maxX rectMaxX: Double,
+                        minY rectMinY: Double, maxY rectMaxY: Double,
+                        offset: Double) -> Bool {
+            maxX + offset >= rectMinX && minX + offset <= rectMaxX
+                && maxY >= rectMinY && minY <= rectMaxY
+        }
+    }
+
+    private static func points(_ data: String) -> [Polygon] {
+        data.split(separator: "\n").map { row in
+            Polygon(row.split(separator: " ").compactMap { pair -> MapPoint? in
+                let parts = pair.split(separator: ",")
+                guard parts.count == 2,
+                      let latitude = Double(parts[0]),
+                      let longitude = Double(parts[1]) else { return nil }
+                return MapPoint(coordinate: Coordinate(latitude: latitude,
+                                                       longitude: longitude))
+            })
+        }
+    }
 
     /// Meridians and parallels, as pre-projected line segments.
     ///
@@ -59,249 +179,4 @@ enum WorldGeometry {
 
     // MARK: - Coastlines, (latitude, longitude)
 
-    private static let outlines: [[(Double, Double)]] = [
-        africaEurasia, northAmerica, southAmerica, australia, greenland,
-        britishIsles, japan, madagascar, newZealand, iceland, sumatra, borneo,
-        newGuinea, philippines, sriLanka, java, cuba, hispaniola, ireland,
-        sulawesi, tasmania, hokkaidoSakhalin, novayaZemlya, svalbard,
-    ]
-
-    /// Africa, Europe and Asia as one polygon: they are one landmass, and
-    /// drawing them separately puts seams at Suez and the Urals that no map
-    /// should show. Traced clockwise from Gibraltar.
-    private static let africaEurasia: [(Double, Double)] = [
-        // Iberia, France, the Low Countries
-        (36.0, -5.6), (37.0, -8.9), (39.4, -9.5), (41.9, -8.9), (43.5, -8.3),
-        (43.4, -5.0), (43.4, -1.8), (46.0, -1.1), (47.3, -2.2), (48.6, -4.8),
-        (48.7, -1.6), (49.5, 0.1), (50.9, 1.6), (51.9, 4.1), (53.5, 6.8),
-        // Denmark, the Baltic, Scandinavia
-        (55.4, 8.1), (57.6, 8.6), (56.0, 10.6), (54.4, 11.0), (54.1, 13.4),
-        (54.7, 18.6), (55.7, 21.1), (57.8, 22.6), (59.4, 24.7), (59.9, 28.0),
-        (60.4, 22.2), (63.1, 21.4), (65.7, 24.1), (63.4, 18.6), (60.6, 17.9),
-        (58.7, 17.4), (57.3, 12.1), (59.0, 10.7), (62.5, 6.1), (65.5, 12.2),
-        (68.0, 14.5), (70.2, 19.5), (71.1, 25.8), (69.9, 30.6), (69.0, 36.5),
-        // Russian Arctic
-        (68.0, 44.5), (67.7, 53.0), (68.9, 60.0), (72.5, 69.0), (71.0, 73.5),
-        (73.5, 79.5), (75.8, 87.0), (73.4, 92.5), (75.5, 100.5), (77.5, 105.0),
-        (74.0, 112.0), (73.5, 118.5), (71.7, 128.9), (73.4, 137.0), (70.9, 145.0),
-        (69.7, 161.0), (68.0, 170.5), (66.1, 179.5), (64.3, 178.0), (62.5, 179.0),
-        // Kamchatka, the Russian Far East, Korea
-        (60.5, 173.5), (61.8, 166.0), (59.9, 163.0), (56.2, 162.5), (51.3, 156.7),
-        (54.5, 155.5), (59.4, 152.0), (59.5, 143.0), (54.4, 141.0), (52.3, 141.4),
-        (48.0, 140.0), (44.5, 135.0), (42.7, 133.1), (39.0, 127.5), (38.3, 128.6),
-        (35.5, 129.4), (34.7, 126.4), (37.5, 126.5), (39.8, 124.4), (40.9, 121.7),
-        // China, Indochina, the Malay peninsula
-        (38.9, 117.7), (37.4, 122.1), (34.5, 120.2), (31.4, 121.5), (28.6, 121.5),
-        (25.9, 119.6), (23.1, 116.7), (22.0, 113.5), (21.5, 108.1), (18.7, 105.7),
-        (16.1, 108.2), (12.2, 109.2), (10.4, 107.1), (9.5, 105.0), (10.5, 103.5),
-        (11.6, 102.6), (13.5, 100.9), (8.0, 100.0), (1.3, 103.8), (5.4, 100.3),
-        (10.0, 98.5), (16.0, 96.2), (16.5, 94.5), (21.0, 91.9), (22.5, 88.1),
-        // India, the Arabian Sea, the Gulf
-        (19.9, 85.9), (15.9, 80.3), (13.1, 80.3), (9.3, 79.2), (8.1, 77.5),
-        (10.0, 76.2), (15.0, 73.8), (19.1, 72.8), (22.5, 69.1), (24.7, 66.9),
-        (25.4, 62.3), (25.3, 57.6), (26.4, 56.4), (27.9, 51.5), (30.0, 48.6),
-        (29.4, 48.0), (26.0, 50.2), (24.5, 54.4), (22.6, 59.5), (17.0, 54.9),
-        // Arabia, the Red Sea, the Horn
-        (12.8, 45.0), (12.7, 43.4), (15.6, 42.0), (21.5, 39.1), (27.2, 35.0),
-        (29.5, 34.9), (31.3, 34.3), (33.9, 35.5), (36.2, 36.0), (36.8, 30.6),
-        (37.0, 27.0), (38.4, 26.4), (40.2, 26.2), (41.2, 29.0), (41.7, 33.5),
-        (41.0, 39.5), (43.0, 40.0), (45.3, 36.6), (46.6, 32.0), (44.6, 33.5),
-        (45.4, 29.7), (44.0, 28.6), (41.6, 26.6), (40.6, 22.9), (39.2, 23.0),
-        (38.0, 23.7), (36.7, 22.5), (38.9, 20.7), (41.3, 19.4), (42.6, 18.1),
-        (45.3, 13.6), (44.1, 12.6), (41.9, 12.4), (40.8, 14.2), (38.2, 15.6),
-        (39.2, 17.1), (40.6, 18.0), (42.0, 15.1), (44.0, 12.3), (44.7, 8.8),
-        (43.5, 7.5), (43.3, 5.4), (42.5, 3.2), (41.1, 1.2), (38.8, 0.2),
-        (36.7, -2.5), (36.1, -5.4), (35.9, -5.6),
-        // Africa: Mediterranean coast, Atlantic, Cape, Indian Ocean, Red Sea
-        (35.9, -5.9), (33.6, -7.6), (30.4, -9.7), (27.7, -13.2), (23.7, -16.0),
-        (20.9, -17.0), (17.0, -16.5), (14.7, -17.4), (12.5, -16.7), (10.6, -14.7),
-        (8.5, -13.2), (7.5, -11.4), (4.8, -7.5), (5.0, -3.0), (6.4, 1.2),
-        (6.4, 3.4), (4.3, 6.0), (4.5, 8.5), (3.5, 9.8), (0.5, 9.3),
-        (-3.0, 10.5), (-5.9, 12.2), (-9.0, 13.2), (-12.5, 13.5), (-15.5, 11.8),
-        (-19.0, 12.5), (-22.5, 14.5), (-26.6, 15.2), (-30.0, 17.2), (-33.0, 18.0),
-        (-34.4, 18.5), (-34.1, 22.0), (-33.0, 27.9), (-30.0, 30.9), (-26.9, 32.9),
-        (-24.0, 35.5), (-20.0, 34.8), (-17.9, 36.9), (-15.0, 40.7), (-11.7, 40.5),
-        (-8.9, 39.5), (-6.8, 39.3), (-4.0, 39.7), (-1.0, 41.5), (2.0, 45.4),
-        (5.0, 48.5), (10.4, 51.1), (11.5, 51.3), (11.0, 48.0), (12.0, 43.5),
-        (15.0, 39.5), (18.0, 38.0), (22.0, 36.5), (26.0, 34.3), (29.9, 32.6),
-        (31.2, 29.9), (32.9, 21.9), (32.4, 15.1), (36.9, 10.3), (37.1, 3.1),
-        (35.9, -1.2), (35.8, -5.3),
-    ]
-
-    private static let northAmerica: [(Double, Double)] = [
-        (71.4, -156.8), (70.3, -148.5), (69.6, -141.0), (69.4, -132.0),
-        (68.8, -124.0), (69.5, -119.0), (68.0, -113.0), (68.5, -105.0),
-        (67.5, -96.0), (64.5, -95.5), (63.7, -90.5), (61.0, -94.0),
-        (58.8, -94.2), (57.0, -92.0), (55.3, -87.5), (53.7, -82.5),
-        (51.5, -80.0), (55.0, -78.0), (58.0, -77.8), (60.0, -71.0),
-        (61.0, -64.8), (58.0, -63.0), (55.5, -60.5), (53.0, -55.8),
-        (51.4, -55.5), (49.6, -54.0), (47.5, -52.7), (46.8, -60.0),
-        (45.3, -61.0), (44.6, -66.0), (43.7, -70.0), (41.5, -70.0),
-        (40.7, -74.0), (38.0, -75.2), (35.2, -75.5), (32.8, -79.9),
-        (30.3, -81.4), (25.8, -80.1), (25.1, -81.1), (28.0, -82.8),
-        (29.7, -84.9), (29.2, -89.2), (29.7, -93.9), (27.8, -97.4),
-        (25.9, -97.2), (23.2, -97.8), (21.0, -97.0), (19.2, -96.1),
-        (18.6, -94.5), (18.6, -91.5), (21.0, -90.3), (21.5, -87.0),
-        (19.0, -87.5), (16.0, -88.5), (15.8, -83.2), (13.0, -83.5),
-        (9.6, -82.2), (9.0, -79.5), (8.0, -77.5), (9.4, -79.9),
-        (11.0, -83.9), (13.0, -87.6), (15.8, -93.5), (18.0, -102.0),
-        (20.5, -105.3), (23.2, -106.4), (23.6, -109.4), (26.0, -111.3),
-        (29.3, -113.6), (31.7, -114.7), (30.6, -116.0), (32.7, -117.2),
-        (35.4, -120.9), (37.8, -122.5), (40.4, -124.4), (44.0, -124.1),
-        (46.9, -124.1), (48.4, -124.8), (51.0, -127.5), (53.5, -132.5),
-        (56.0, -134.0), (58.4, -136.0), (59.9, -139.5), (60.5, -145.0),
-        (59.0, -151.5), (58.5, -155.0), (56.0, -158.5), (54.9, -163.5),
-        (58.0, -161.8), (60.5, -165.0), (63.0, -164.0), (64.6, -166.5),
-        (66.2, -164.5), (68.0, -166.5), (70.5, -160.0),
-    ]
-
-    private static let southAmerica: [(Double, Double)] = [
-        (12.5, -71.7), (11.5, -69.5), (10.6, -64.0), (10.0, -61.5),
-        (8.5, -60.0), (5.5, -54.0), (4.5, -51.5), (1.5, -49.5),
-        (-1.0, -47.0), (-2.5, -44.0), (-2.9, -40.0), (-5.2, -36.0),
-        (-7.9, -34.8), (-10.5, -36.5), (-13.0, -38.5), (-15.8, -38.9),
-        (-18.5, -39.7), (-21.0, -40.9), (-23.0, -43.2), (-25.0, -47.9),
-        (-27.6, -48.5), (-30.2, -50.5), (-32.2, -52.1), (-34.9, -54.9),
-        (-36.9, -56.7), (-38.9, -57.5), (-40.8, -62.3), (-42.8, -64.5),
-        (-45.8, -67.5), (-48.8, -67.7), (-51.6, -69.0), (-53.8, -68.0),
-        (-54.9, -67.3), (-54.0, -70.5), (-52.5, -75.0), (-49.0, -75.5),
-        (-46.0, -75.5), (-43.0, -74.0), (-41.5, -73.8), (-38.5, -73.6),
-        (-35.0, -72.5), (-30.0, -71.6), (-25.5, -70.5), (-21.5, -70.2),
-        (-18.3, -70.3), (-15.5, -75.2), (-12.0, -77.1), (-8.5, -79.0),
-        (-6.0, -81.2), (-3.4, -80.4), (-1.0, -80.9), (1.5, -79.0),
-        (4.0, -77.5), (6.5, -77.4), (8.5, -76.8), (10.4, -75.5),
-        (11.3, -72.5),
-    ]
-
-    private static let australia: [(Double, Double)] = [
-        (-10.7, 142.5), (-12.5, 143.2), (-14.5, 145.3), (-17.5, 146.1),
-        (-19.5, 147.4), (-22.5, 150.5), (-25.5, 153.1), (-28.5, 153.6),
-        (-31.5, 152.9), (-34.0, 151.3), (-37.0, 150.0), (-38.4, 145.0),
-        (-38.3, 141.6), (-37.0, 139.8), (-35.6, 138.1), (-34.0, 137.5),
-        (-32.5, 137.8), (-33.0, 135.0), (-31.6, 131.0), (-32.3, 126.0),
-        (-33.9, 121.9), (-35.1, 117.9), (-34.3, 115.1), (-31.9, 115.8),
-        (-28.8, 114.6), (-26.0, 113.4), (-23.0, 113.7), (-20.7, 117.2),
-        (-19.0, 121.0), (-17.3, 122.2), (-15.5, 124.5), (-14.0, 126.5),
-        (-12.4, 130.9), (-12.0, 133.5), (-13.9, 136.4), (-16.0, 137.9),
-        (-17.5, 140.8), (-15.0, 141.6), (-12.5, 141.8),
-    ]
-
-    private static let greenland: [(Double, Double)] = [
-        (83.6, -32.0), (82.0, -22.0), (79.5, -18.5), (76.0, -19.5),
-        (72.5, -22.0), (69.0, -24.0), (65.6, -37.0), (63.0, -41.5),
-        (60.0, -43.5), (61.5, -48.0), (64.0, -51.5), (67.0, -53.5),
-        (69.5, -54.0), (72.0, -55.5), (75.0, -58.5), (77.5, -66.5),
-        (79.5, -68.0), (81.5, -62.0), (82.5, -50.0), (83.4, -40.0),
-    ]
-
-    private static let britishIsles: [(Double, Double)] = [
-        (58.6, -3.1), (57.7, -2.0), (56.5, -2.6), (55.0, -1.5),
-        (53.6, 0.1), (52.9, 1.7), (51.4, 1.4), (50.8, -1.1),
-        (50.1, -5.7), (51.6, -5.1), (52.9, -4.7), (54.1, -3.0),
-        (54.9, -5.0), (55.9, -5.8), (57.4, -6.0), (58.5, -5.0),
-    ]
-
-    private static let ireland: [(Double, Double)] = [
-        (55.2, -7.3), (54.0, -6.0), (52.9, -6.0), (52.0, -6.4),
-        (51.5, -9.5), (52.9, -9.9), (54.3, -10.0), (55.2, -8.1),
-    ]
-
-    private static let japan: [(Double, Double)] = [
-        (41.5, 140.1), (40.5, 141.9), (38.3, 141.6), (36.0, 140.9),
-        (34.7, 139.8), (34.6, 138.2), (33.5, 135.8), (34.4, 133.0),
-        (34.0, 131.0), (33.6, 130.4), (31.6, 130.6), (31.4, 131.5),
-        (33.5, 132.5), (35.5, 133.2), (37.4, 137.0), (39.0, 139.9),
-        (40.8, 140.3),
-    ]
-
-    private static let hokkaidoSakhalin: [(Double, Double)] = [
-        (45.5, 141.9), (44.3, 145.3), (43.3, 145.8), (42.0, 143.2),
-        (41.8, 140.7), (43.4, 140.0), (45.3, 141.6),
-    ]
-
-    private static let madagascar: [(Double, Double)] = [
-        (-12.0, 49.3), (-14.0, 50.2), (-16.5, 49.9), (-19.5, 48.9),
-        (-22.5, 47.9), (-25.5, 46.9), (-24.5, 44.0), (-21.5, 43.4),
-        (-18.0, 44.0), (-15.5, 46.3), (-13.0, 48.5),
-    ]
-
-    private static let newZealand: [(Double, Double)] = [
-        (-34.4, 172.7), (-36.4, 174.8), (-37.6, 176.2), (-39.3, 177.0),
-        (-41.3, 174.9), (-41.7, 174.3), (-42.5, 173.6), (-44.0, 172.7),
-        (-45.9, 170.5), (-46.6, 169.0), (-45.9, 166.7), (-44.0, 168.4),
-        (-42.0, 171.0), (-40.5, 172.7), (-38.0, 174.6), (-36.0, 173.5),
-    ]
-
-    private static let iceland: [(Double, Double)] = [
-        (66.5, -18.0), (66.1, -15.2), (65.5, -13.6), (64.3, -14.5),
-        (63.4, -18.5), (63.5, -21.5), (64.0, -22.7), (65.4, -24.5),
-        (66.1, -22.0),
-    ]
-
-    private static let sumatra: [(Double, Double)] = [
-        (5.6, 95.3), (4.0, 98.0), (2.0, 100.3), (-1.0, 102.5),
-        (-3.5, 104.5), (-5.9, 105.8), (-5.2, 103.0), (-3.0, 100.3),
-        (0.0, 98.5), (3.0, 96.0),
-    ]
-
-    private static let java: [(Double, Double)] = [
-        (-6.0, 105.7), (-6.1, 107.0), (-6.9, 109.0), (-6.9, 112.7),
-        (-7.7, 114.4), (-8.7, 114.0), (-8.4, 111.0), (-7.7, 108.5),
-        (-7.0, 106.0),
-    ]
-
-    private static let borneo: [(Double, Double)] = [
-        (7.0, 117.0), (5.0, 119.2), (1.5, 118.8), (-1.0, 117.5),
-        (-3.5, 116.3), (-4.2, 114.5), (-3.0, 111.0), (-1.5, 109.3),
-        (1.5, 109.0), (3.0, 111.5), (5.0, 115.0), (6.5, 116.8),
-    ]
-
-    private static let sulawesi: [(Double, Double)] = [
-        (1.5, 125.0), (0.5, 123.0), (-1.5, 120.5), (-3.5, 119.5),
-        (-5.5, 119.4), (-5.0, 122.5), (-2.5, 121.5), (-0.5, 121.0),
-    ]
-
-    private static let newGuinea: [(Double, Double)] = [
-        (-0.4, 132.5), (-2.0, 135.5), (-2.6, 140.0), (-4.0, 144.0),
-        (-6.0, 147.0), (-8.0, 147.5), (-10.7, 150.7), (-8.5, 146.0),
-        (-8.0, 141.0), (-6.0, 138.0), (-4.5, 135.0), (-2.5, 133.0),
-    ]
-
-    private static let philippines: [(Double, Double)] = [
-        (18.6, 120.8), (17.5, 122.3), (14.5, 121.6), (13.0, 124.2),
-        (11.0, 125.5), (9.0, 126.2), (6.0, 126.2), (5.9, 124.0),
-        (7.5, 122.0), (9.8, 123.4), (11.5, 122.5), (13.5, 120.4),
-        (16.0, 119.8),
-    ]
-
-    private static let sriLanka: [(Double, Double)] = [
-        (9.8, 80.2), (8.5, 81.3), (6.4, 81.8), (5.9, 80.4),
-        (7.0, 79.8), (8.9, 79.9),
-    ]
-
-    private static let cuba: [(Double, Double)] = [
-        (23.2, -84.0), (23.1, -81.2), (22.4, -79.0), (21.6, -77.2),
-        (20.3, -74.2), (19.9, -75.7), (21.0, -77.5), (22.0, -80.5),
-        (22.5, -83.5),
-    ]
-
-    private static let hispaniola: [(Double, Double)] = [
-        (19.9, -71.7), (19.3, -69.3), (18.5, -68.4), (18.2, -71.6),
-        (18.0, -73.5), (19.7, -73.5),
-    ]
-
-    private static let tasmania: [(Double, Double)] = [
-        (-40.7, 144.7), (-41.0, 148.3), (-43.0, 147.9), (-43.5, 146.0),
-        (-41.5, 144.6),
-    ]
-
-    private static let novayaZemlya: [(Double, Double)] = [
-        (77.0, 68.0), (75.0, 62.0), (72.0, 54.5), (70.7, 57.5),
-        (73.5, 60.0), (76.0, 66.0),
-    ]
-
-    private static let svalbard: [(Double, Double)] = [
-        (80.0, 16.0), (78.5, 21.5), (77.0, 20.0), (77.5, 14.0),
-        (79.0, 11.0),
-    ]
 }

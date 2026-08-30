@@ -764,3 +764,155 @@ command applied while paused changes the state without advancing the tick.
 Anything that caches on the tick alone is broken by that fact, and the test is
 where it is written down.
 **Status:** FIXED 2026-08-30.
+
+---
+
+## BUG-032 — Both assignment pickers offered moves Core would refuse
+**Severity:** P1 (a dead-end in the game's central loop; no data loss).
+**Found:** 2026-08-30, AE-029 §23 audit.
+**Symptom:** the player picks an aircraft for a route from either direction,
+and the command is rejected. From Aircraft Detail, routes the aeroplane cannot
+reach were listed as targets; from Route Detail, aeroplanes that cannot reach
+the route were listed as candidates.
+**Root cause:** each screen re-derived eligibility. Both filtered on
+"unassigned and active" and stopped. `AssignAircraftToRouteCommand.validate`
+checks six things, and the two the UI missed — range and runway class — are
+precisely the two a player cannot work out by looking at a row.
+**Wrong in the other direction too.** Core permits assigning an aircraft that
+is in a maintenance check. The `isActive` filter hid those, so a grounded
+aeroplane could not be given its next job while it sat in the hangar. One
+picker, simultaneously too permissive and too restrictive.
+**And a third:** Fleet's picker listed only routes with *no* aircraft
+(`assignedAircraft.isEmpty`), although `apply` appends to `assignedAircraft`
+without complaint. Adding a second aircraft to a busy route was unreachable
+from the screen that owns the aircraft.
+**Why it survived:** nothing connected the two layers. The UI's filter was a
+plausible-looking subset of the real rules, it compiled, it ran, and the only
+symptom was a refusal that looked like the player's mistake.
+**Fix layer:** Core. `AssignmentEligibility` puts the rules beside the
+validator they mirror; both screens render it and neither decides anything.
+Ineligible pairings are now listed with their reason rather than omitted —
+an aeroplane silently missing from a picker is indistinguishable from a bug.
+**Regression cover:** `AssignmentEligibilityTests.blockersAgreeWithTheValidator`
+drives every aircraft against every route in a real world and asserts the model
+and the validator agree on each, with a guard that the fixture actually
+contains refusals. Sabotage-checked: disabling the range branch fails it on
+four pairings.
+**Status:** FIXED 2026-08-30.
+
+---
+
+## BUG-033 — Three refusal mappings could never fire
+**Severity:** P2 (player-facing copy that no player could reach).
+**Found:** 2026-08-30, by diffing every code Core emits against every code the
+app maps.
+**Symptom:** two of the most confusing refusals in the fleet flow — "this
+airport cannot take your aircraft" and "wait for your flights to land" —
+appeared under the generic "Not possible" title with no suggestion, despite
+tailored copy for both existing in `Rejections.swift`.
+**Root cause:** the strings did not match. The app mapped
+`route.hasAirborneFlights`; Core emits `route.flightsAirborne`. The app mapped
+`route.runway` and `route.runwayTooShort`; Core emits `route.runwayTooSmall`.
+`progression.lockedCategory` — the refusal a player meets whenever they try to
+buy an aircraft their era does not allow, and so the most common refusal in the
+market — had no mapping at all.
+**Why it survived:** this fails silently by construction. A `switch` case on a
+string that nothing produces compiles cleanly and is simply never taken. There
+is no warning, no crash, and the fallback is plausible enough that a reader
+would not know they were seeing it.
+**Fix layer:** App for the strings; Core tests for the guard.
+**Regression cover:** `RejectionCodeContractTests` provokes each refusal from a
+real command and pins its literal code, and names the three wrong strings
+explicitly so that reintroducing one meets a failing test rather than a no-op.
+The app's half cannot be tested here — that target does not build on Linux —
+which is the residual risk, recorded as part of TD-016.
+**Status:** FIXED 2026-08-30.
+
+---
+
+## BUG-034 — An aircraft in a maintenance check was described as idle
+**Severity:** P3 (misleading copy).
+**Found:** 2026-08-30, while fixing BUG-032.
+**Symptom:** Aircraft Detail told the player an aeroplane undergoing a
+maintenance check was "Idle at STV. It earns nothing here" — which reads as
+the player's oversight and as something they could fix by finding it a route.
+**Root cause:** the branch tested `assignedRoute == nil` and `isOnOrder`, and
+treated everything else as idle. `inMaintenance` fell through to the idle copy.
+**Fix layer:** App. The check is named, and the route picker still appears
+beneath it, because the aeroplane's *next* route can be chosen while it sits
+in the hangar — which is what Core allows and what BUG-032's fix exposed.
+**Status:** FIXED 2026-08-30.
+
+---
+
+## BUG-035 — A third of the Network tab was empty, and the picker floated in it
+**Severity:** P1 (the first screen a new player reaches, and the tab's primary
+control sat 40% of the way down under nothing).
+**Found:** 2026-08-30, AE-031 — **by looking at a screenshot**, which is the
+first time this project has been able to do that.
+**Symptom:** on the Network tab with no routes and no aircraft — the state
+every new game starts in — roughly the top third of the screen was blank, the
+Routes/Fleet segmented picker sat mid-screen, and another large gap ran from
+the empty-state card down to the tab bar.
+**Root cause:** a SwiftUI default doing exactly what it documents.
+`EmptyStateView` is a compact card, and a view smaller than its parent is
+centred in it. It was the only child of a `Group` filling the screen, so it
+centred vertically. `safeAreaInset(edge: .top)` then placed the section picker
+against the **content's** top edge — which by then was halfway down the
+screen. One default produced both gaps, which is why they looked like two
+separate problems.
+**Why nothing caught it:** it compiles, it parses, no test covers layout, and
+it appears *only* in the empty state — a list-bearing screen fills its parent
+and has nowhere to float to. So it was invisible on every screen anyone would
+think to check, and present on the one a new player meets first.
+**Why it took four phases:** nothing in this project had ever rendered the app.
+The UI test target and the screenshot pipeline added earlier in AE-031 are what
+made it findable; it was found within minutes of the first image.
+**Fix layer:** App. `aeEmptyStatePlacement()` — top alignment inside the
+available space — applied to the Routes and Fleet empty states.
+**Regression cover:** none yet, and worth being honest about. XCUITest can
+assert an element's frame, so "the picker sits in the top quarter of the
+screen" is expressible; it is not written. Recorded as TD-019.
+**Status:** FIXED 2026-08-30, **visually confirmed**. The re-run screenshot
+shows the picker directly under the navigation title with the card immediately
+below it. Both gaps closed with the one change, which corroborates the
+single-cause diagnosis — had they been two problems, the fix would have closed
+one.
+
+---
+
+## BUG-036 — map chrome is illegible in light appearance
+
+**Severity:** P1. It hits the one card that tells a new player what the map is
+showing them, in the appearance the simulator defaults to.
+**Found:** 2026-08-30, AE-032 — by looking at a map screenshot.
+**Symptom:** the "Your airline begins here" card over the map rendered as
+white text on a pale, near-white panel. The body line — *"The dashed lines are
+the strongest markets from your home airport"* — was effectively invisible.
+The same applies to every glass element over the map: the time controls, the
+overlay picker, the zoom cluster.
+**Root cause:** an agreement between two correct decisions that were never
+checked against each other. The canvas is fixed near-black in *both*
+appearances by design (docs/MAP_ARCHITECTURE.md §2), so its chrome is written
+with hardcoded `.white` text. But that chrome sits on `aeGlass` —
+`glassEffect` on iOS 26, `.ultraThinMaterial` before it — and both resolve
+against the **system** appearance. In light mode the panel goes pale and the
+text stays white.
+**Why nothing caught it:** the map's own palette is a constant, so it looks
+identical in every screenshot; the chrome is not, and until AE-032 no
+screenshot of the map existed at all. It compiles, and no test can read
+contrast.
+**Fix layer:** App. `.environment(\.colorScheme, .dark)` on the map's
+`ZStack`, so every material and semantic colour inside resolves against the
+surface it is actually drawn on. One statement at the level where the fact is
+true, rather than restyling each piece of chrome. Sheets and pushed
+destinations are attached outside that `ZStack` and keep the system
+appearance, which is correct — they are ordinary surfaces, not map chrome.
+**Regression cover:** partial and worth stating plainly. XCUITest cannot read
+contrast, so no assertion covers this. What exists is
+`testLightAppearanceMapForComparison`, which now proves the app is genuinely
+in light appearance and captures the map — turning this from invisible into
+observable at every run.
+**Status:** FIXED IN SOURCE, **not yet visually confirmed.** The claim that it
+now reads correctly is unverified until a light-appearance map screenshot from
+after this change has been looked at.

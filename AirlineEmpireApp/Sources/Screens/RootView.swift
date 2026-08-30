@@ -3,6 +3,26 @@ import AirlineEmpireCore
 
 struct RootView: View {
     @Environment(GameController.self) private var controller
+    /// Read only to publish it below, for the UI tests.
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// The appearance the app is *actually* rendering in, as something a UI
+    /// test can query.
+    ///
+    /// This exists because a UI test cannot otherwise tell. AE-032 set
+    /// `XCUIDevice.shared.appearance = .dark`, captured five screens, named
+    /// them "dark", and every one rendered light — the switch had not taken.
+    /// The test still passed, because it only asserted that content existed.
+    /// That is worse than no check: it manufactures evidence for a claim
+    /// nobody verified.
+    ///
+    /// An identifier rather than a launch flag, because the question is what
+    /// the app *did*, not what it was asked to do. Costs one identifier on a
+    /// container that has no other, changes no behaviour, and makes
+    /// "validated in dark mode" a statement a test can fail.
+    private var appearanceIdentifier: String {
+        colorScheme == .dark ? "ae-appearance-dark" : "ae-appearance-light"
+    }
 
     var body: some View {
         // Crossfaded rather than swapped. These three are the only whole-screen
@@ -20,6 +40,27 @@ struct RootView: View {
             }
         }
         .aeAnimation(AEMotion.screen, value: state)
+        // A UI-test affordance, and deliberately a narrow one.
+        //
+        // `XCUIDevice.shared.appearance = .dark` is the faithful way to test
+        // dark mode — it switches the simulator, so what is captured is what a
+        // player changing Appearance in Settings would get. On the CI runner
+        // it does not take: three launches with up to six seconds of settle
+        // each, and the shell still renders light.
+        //
+        // The choice was then between no dark coverage at all and coverage of
+        // a slightly weaker claim. This is the weaker claim: it proves the app
+        // *renders* correctly in dark, and says nothing about whether it
+        // follows the system setting. `AEUITestCase` names every screenshot
+        // taken this way `darkforced` rather than `dark`, so the weaker
+        // evidence can never be read as the stronger.
+        //
+        // Reads a launch argument, not a build flag: the shipping binary is
+        // the one under test, and no player will ever pass this.
+        .preferredColorScheme(
+            ProcessInfo.processInfo.arguments.contains("-AEUITestDarkAppearance")
+                ? .dark : nil)
+        .accessibilityIdentifier(appearanceIdentifier)
         // Every presentation the whole app can raise lives here, above the
         // three screen states — a rejection alert mounted on the tab view
         // could not appear over a sheet, and could not appear on the menu at

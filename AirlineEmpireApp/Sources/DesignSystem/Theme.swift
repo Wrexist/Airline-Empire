@@ -52,12 +52,32 @@ enum AETheme {
     // land a few points above it, coast a few points above that — the whole
     // geography sits inside a narrow value range so it can never compete with
     // the network drawn over it.
+    //
+    // Land and coast were lifted once, in AE-032, after the Natural Earth
+    // coastlines landed. The risk written down beforehand was that 14x the
+    // detail would crowd the routes; the screenshot showed the opposite —
+    // Scandinavia was there and barely legible, so the band was so narrow it
+    // was hiding geography the app had just paid 555 KB to carry. The lift is
+    // deliberately small: the delta between ocean and land roughly doubles,
+    // and coast and land both stay far below the route cyan, the opportunity
+    // green and the label white, so the rule the band exists to enforce still
+    // holds.
     static let mapBackground = Color(red: 0.043, green: 0.063, blue: 0.106)
     /// Deep water, for the vertical gradient that gives the plane depth.
     static let mapDeep = Color(red: 0.024, green: 0.039, blue: 0.075)
-    static let mapLand = Color(red: 0.098, green: 0.129, blue: 0.184)
+    static let mapLand = Color(red: 0.130, green: 0.169, blue: 0.235)
     /// The coastline itself, a shade up from the land so the silhouette reads.
-    static let mapCoast = Color(red: 0.169, green: 0.220, blue: 0.298)
+    static let mapCoast = Color(red: 0.255, green: 0.325, blue: 0.420)
+    /// Political borders. Their own value rather than a tint of the coast:
+    /// a border and a coastline mean different things, and drawing one as a
+    /// faded version of the other is how the map ended up unable to answer
+    /// "which country is that". Still below the coast, because a coastline is
+    /// the stronger fact.
+    static let mapBorder = Color(red: 0.290, green: 0.355, blue: 0.450)
+    /// Country names. Deliberately dim — well under the 0.72 white an airport
+    /// code gets, because the airport is the subject and the country is the
+    /// context it sits in.
+    static let mapCountryLabel = Color(red: 0.62, green: 0.69, blue: 0.80).opacity(0.55)
     /// Meridians and parallels: present, never read as data.
     static let mapGraticule = Color(red: 0.35, green: 0.45, blue: 0.60).opacity(0.10)
     static let playerRoute = Color.cyan
@@ -250,9 +270,20 @@ extension View {
 /// `3.5` to a player in Paris who writes `3,5`, and it did so on every screen
 /// in this app. Two things stay deliberately fixed:
 ///
-/// - **`¤`**, the generic currency sign. The world is fictional and its money
-///   is not any real currency; picking one would be a lie, and localizing an
-///   invented currency into euros would be a bigger one.
+/// - **`$`**, as a money mark rather than as a currency.
+///
+///   This was `¤` (U+00A4, the generic currency sign), on the reasoning that
+///   the world is fictional and naming a real currency would be a lie. Sound
+///   intent, failed execution: `¤` is drawn as a hollow box with legs in most
+///   system faces, so on a screen it reads as a font-fallback error rather
+///   than as money — "is this build broken?", not "this is a neutral unit".
+///   That was invisible until AE-032 put actual screenshots in front of a
+///   human, who pointed at it immediately.
+///
+///   `$` is read in a management game as "money", not as US dollars — the
+///   genre has used it that way for thirty years. It renders in every font at
+///   every size, which the symbol it replaces does not. The fiction is carried
+///   by the world, not by the glyph.
 /// - **The ISO game date.** `2031-03-14` is unambiguous everywhere, which a
 ///   date in a game about global schedules should be.
 enum Format {
@@ -262,15 +293,15 @@ enum Format {
         let sign = dollars < 0 ? "−" : ""
         switch magnitude {
         case 1_000_000_000...:
-            return "\(sign)¤\(decimal(magnitude / 1_000_000_000, places: 2))B"
+            return "\(sign)$\(decimal(magnitude / 1_000_000_000, places: 2))B"
         case 1_000_000...:
-            return "\(sign)¤\(decimal(magnitude / 1_000_000, places: 1))M"
+            return "\(sign)$\(decimal(magnitude / 1_000_000, places: 1))M"
         case 10_000...:
-            return "\(sign)¤\(decimal(magnitude / 1_000, places: 0))k"
+            return "\(sign)$\(decimal(magnitude / 1_000, places: 0))k"
         default:
-            // Grouped, so ¤9999 does not read as a serial number
+            // Grouped, so $9999 does not read as a serial number
             // (UIUX_FORENSIC_AUDIT UI-031).
-            return "\(sign)¤\(grouped(Int64(magnitude.rounded())))"
+            return "\(sign)$\(grouped(Int64(magnitude.rounded())))"
         }
     }
 
@@ -318,6 +349,6 @@ enum Format {
     }
 
     /// Whole numbers with thousands separators — `Format.money` compresses
-    /// above ¤10k, but a passenger count should read exactly.
+    /// above $10k, but a passenger count should read exactly.
     static func count(_ value: Int64) -> String { grouped(value) }
 }

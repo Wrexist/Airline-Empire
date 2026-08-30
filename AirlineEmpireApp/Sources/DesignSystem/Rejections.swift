@@ -78,7 +78,11 @@ enum Rejections {
                          suggestion: "Assign a longer-range aircraft, or open "
                             + "the route to a nearer airport.")
 
-        case "route.runway", "route.runwayTooShort":
+        // Core emits `route.runwayTooSmall`. This case used to read
+        // `route.runway`/`route.runwayTooShort` — neither of which any
+        // command has ever returned — so the copy below was unreachable and
+        // every runway refusal fell through to the generic branch.
+        case "route.runwayTooSmall":
             return .init(title: "Runway too short",
                          explanation: rejection.message,
                          suggestion: "Use a smaller aircraft, or choose an "
@@ -151,12 +155,49 @@ enum Rejections {
                          explanation: rejection.message,
                          suggestion: nil)
 
-        case "route.hasAirborneFlights":
+        // Likewise: Core emits `route.flightsAirborne`, not
+        // `route.hasAirborneFlights`.
+        case "route.flightsAirborne":
             return .init(title: "Flights still out",
                          explanation: "This route has aircraft in the air.",
                          suggestion: "Wait for them to land, then close it.")
 
+        case "fleet.notLeased":
+            return .init(title: "Not a leased aircraft",
+                         explanation: "You own this aircraft outright, so "
+                            + "there is no lessor to return it to.",
+                         suggestion: "Sell it instead.")
+
+        case "fleet.notAssigned":
+            return .init(title: "Not on a route",
+                         explanation: "This aircraft is not assigned to "
+                            + "anything, so there is nothing to unassign.",
+                         suggestion: nil)
+
+        case "fleet.badUsedAge":
+            return .init(title: "No aircraft at that age",
+                         explanation: rejection.message,
+                         suggestion: "Choose an age inside the range the used "
+                            + "market offers.")
+
+        case "fleet.badLeaseTerm":
+            return .init(title: "Lease term not valid",
+                         explanation: rejection.message,
+                         suggestion: "Pick a term inside the range the lessor "
+                            + "will write.")
+
         // MARK: Progression
+
+        case "progression.lockedCategory":
+            // The refusal a player meets most often in the aircraft market,
+            // and it had no mapping at all — so the one purchase they cannot
+            // yet make explained itself in the same voice as a broken
+            // invariant.
+            return .init(title: "Not available in this era",
+                         explanation: rejection.message,
+                         suggestion: "Grow the airline to reach the era that "
+                            + "unlocks this class of aircraft.")
+
 
         case "progression.eraLocked":
             return .init(title: "Not available yet",

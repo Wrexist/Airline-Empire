@@ -11,25 +11,58 @@ import AirlineEmpireCore
 struct FleetList: View {
     @Environment(GameController.self) private var controller
     @State private var sort: FleetSort = .status
+    @State private var filter = FleetFilter()
     /// See `RoutesList.openRoute` — the same reasoning.
     var acquireAircraft: (() -> Void)?
 
     var body: some View {
         Group {
             if let catalog = controller.catalog {
-                let cards = sorted(controller.fleetCards)
-                if cards.isEmpty {
+                // Sort first, then filter: `matching` preserves order, so the
+                // rows a filter leaves are in the same sequence they had in
+                // the full list. Filtering first and sorting after would give
+                // the same set in the same order here, but only by accident —
+                // this way the property is the filter's, and it is tested.
+                let all = sorted(controller.fleetCards)
+                let cards = all.matching(filter)
+                if all.isEmpty {
                     EmptyStateView(icon: "airplane",
                                    title: "No aircraft",
                                    message: "Buy or lease your first aircraft to start flying. Leasing keeps cash free while you learn a market.",
                                    actionTitle: acquireAircraft == nil ? nil : "Browse the market",
                                    action: acquireAircraft)
                         .padding(.horizontal, AETheme.spacingM)
+                        .aeEmptyStatePlacement()
                 } else {
                     List {
                         if let summary = controller.fleetSummary {
                             FleetSummaryRow(summary: summary)
                                 .aeListRow()
+                        }
+                        // The bar only appears once there are enough aircraft
+                        // for scanning to be work. At four aeroplanes a filter
+                        // is a control that costs a row and saves nothing.
+                        if all.count >= 8 {
+                            FleetFilterBar(filter: $filter,
+                                           categories: all.presentCategories)
+                                .aeListRow()
+                        }
+                        if cards.isEmpty {
+                            // A filter that matches nothing must say so and
+                            // offer the way back. An empty list under an
+                            // active filter is otherwise indistinguishable
+                            // from a fleet that has vanished.
+                            VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                                Text("No aircraft match this filter.")
+                                    .font(AEType.body)
+                                Button("Show all \(all.count)") {
+                                    filter = FleetFilter()
+                                }
+                                .buttonStyle(.aeSecondary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, AETheme.spacingM)
+                            .aeListRow()
                         }
                         ForEach(cards, id: \.id) { card in
                             NavigationLink(value: card.id) {
@@ -84,6 +117,90 @@ struct FleetList: View {
         if card.status.isInMaintenance { return 1 }
         if card.status.isOnOrder { return 2 }
         return 3
+    }
+}
+
+/// The filter bar (MASTER PROMPT 5 §17).
+///
+/// Three controls, each showing what it would leave. The counts are the point:
+/// "Idle" beside a number tells the player whether the filter is worth tapping
+/// before they tap it, and an option that would return nothing is disabled
+/// rather than hidden — a control that silently disappears is harder to
+/// understand than one that is visibly empty.
+///
+/// It filters; it does not compute. `FleetFilter` in Core decides what matches
+/// what, and `FleetFilterTests` holds it to partitioning the fleet exactly
+/// once, so the counts here and the rows below cannot disagree.
+struct FleetFilterBar: View {
+    @Binding var filter: FleetFilter
+    let categories: [AircraftCategory]
+    @Environment(GameController.self) private var controller
+
+    private var cards: [FleetCardModel] { controller.fleetCards }
+
+    private func count(status: FleetFilter.Status) -> Int {
+        cards.matching(FleetFilter(status: status,
+                                   ownership: filter.ownership,
+                                   category: filter.category)).count
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AETheme.spacingS) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: AETheme.spacingXS) {
+                    ForEach(FleetFilter.Status.allCases, id: \.self) { status in
+                        let hits = count(status: status)
+                        Button {
+                            filter.status = status
+                        } label: {
+                            Text("\(Vocab.fleetStatus(status)) \(hits)")
+                                .font(AEType.badge)
+                        }
+                        .buttonStyle(.aeTertiary)
+                        .disabled(hits == 0 && status != .all)
+                        .opacity(hits == 0 && status != .all ? 0.4 : 1)
+                        .overlay(alignment: .bottom) {
+                            // Selection is carried by a rule as well as by
+                            // the button's own tint, so it does not depend on
+                            // colour alone.
+                            if filter.status == status {
+                                Capsule().fill(AETheme.accent).frame(height: 2)
+                            }
+                        }
+                        .accessibilityLabel("\(Vocab.fleetStatus(status)), \(hits) aircraft")
+                        .accessibilityAddTraits(filter.status == status
+                                                ? .isSelected : [])
+                    }
+                }
+                .padding(.horizontal, 2)
+            }
+            HStack(spacing: AETheme.spacingS) {
+                Picker("Ownership", selection: $filter.ownership) {
+                    ForEach(FleetFilter.Ownership.allCases, id: \.self) { option in
+                        Text(Vocab.fleetOwnership(option)).tag(option)
+                    }
+                }
+                .pickerStyle(.segmented)
+                if categories.count > 1 {
+                    Menu {
+                        Button("All types") { filter.category = nil }
+                        ForEach(categories, id: \.self) { category in
+                            Button(Vocab.category(category)) {
+                                filter.category = category
+                            }
+                        }
+                    } label: {
+                        Label(filter.category.map(Vocab.category) ?? "All types",
+                              systemImage: "line.3.horizontal.decrease")
+                            .font(AEType.caption)
+                            .frame(minHeight: 44)
+                    }
+                    .accessibilityLabel("Filter by aircraft type")
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Fleet filters")
     }
 }
 
@@ -250,8 +367,8 @@ struct AircraftDetailView: View {
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 1) {
                         Text("\(spec.manufacturer) \(spec.model)").font(.headline)
-                        Text(Vocab.category(card.category))
-                            .font(.caption)
+                        Text(Vocab.role(spec.role))
+                            .font(AEType.secondary)
                             .foregroundStyle(AETheme.mutedText)
                     }
                     Spacer()
@@ -259,8 +376,15 @@ struct AircraftDetailView: View {
                 HStack(spacing: AETheme.spacingXS) {
                     AEChip(icon: "person.2.fill", text: "\(spec.seats) seats")
                     AEChip(icon: "arrow.left.and.right", text: "\(spec.rangeKm) km")
-                    AEChip(icon: "fuelpump.fill",
-                           text: "\(Format.decimal(spec.fuelBurnKgPerKm, places: 1)) kg/km")
+                    // Was `fuelBurnKgPerKm` whole — which says a widebody is
+                    // thirsty, which is true and useless, because it is also
+                    // carrying three times the passengers. The band compares
+                    // per seat, against the best in the catalogue, which is
+                    // the comparison a fleet decision actually turns on.
+                    if let band = controller.catalog?.seatEfficiency(of: spec) {
+                        AEChip(icon: "fuelpump.fill",
+                               text: Vocab.seatEfficiency(band))
+                    }
                 }
                 Text("Needs a \(Vocab.runway(spec.runwayRequirement).lowercased()) · cruises at \(spec.cruiseSpeedKmh) km/h · \(spec.turnaroundMinutes) min turnaround")
                     .font(.caption)
@@ -304,30 +428,104 @@ struct AircraftDetailView: View {
                         .font(.subheadline)
                         .foregroundStyle(AETheme.mutedText)
                 } else {
-                    Label("Idle at \(card.location.raw). It earns nothing here, and a leased aircraft still bills.",
-                          systemImage: "pause.circle")
-                        .font(.subheadline)
-                        .foregroundStyle(AETheme.caution)
-                        .fixedSize(horizontal: false, vertical: true)
-                    let open = snapshot.routes(of: player)
-                        .filter { $0.assignedAircraft.isEmpty }
-                    if !open.isEmpty {
-                        Menu {
-                            ForEach(open, id: \.id) { route in
-                                Button("\(route.origin.raw) – \(route.destination.raw)") {
-                                    controller.submit(AssignAircraftToRouteCommand(
-                                        airline: player, route: route.id,
-                                        aircraftID: card.id))
+                    // An unassigned aircraft in a check used to be described
+                    // as "idle", which reads as the player's fault and as
+                    // something they could fix by finding it a route. It is
+                    // neither: it is in the hangar because Core put it there.
+                    // The route it flies next can still be chosen now, which
+                    // is why the picker sits under both messages.
+                    if card.status.isInMaintenance {
+                        Label("In a maintenance check at \(card.location.raw). It can be given its next route now.",
+                              systemImage: "wrench")
+                            .font(AEType.body)
+                            .foregroundStyle(AETheme.caution)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        Label("Idle at \(card.location.raw). It earns nothing here, and a leased aircraft still bills.",
+                              systemImage: "pause.circle")
+                            .font(AEType.body)
+                            .foregroundStyle(AETheme.caution)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    routePicker(card, snapshot: snapshot, player: player,
+                                catalog: catalog)
+                }
+            }
+        }
+    }
+
+    /// Where this aeroplane could go next (MASTER PROMPT 5 §23, §24).
+    ///
+    /// The old picker listed routes with no aircraft at all and nothing else.
+    /// Two problems, in opposite directions. It offered routes this aircraft
+    /// could not reach — no range check, no runway check — so the player
+    /// picked one and Core refused the tap the app had just invited. And it
+    /// hid every route that already had an aeroplane, although Core appends
+    /// to `assignedAircraft` quite happily, so adding a second aircraft to a
+    /// busy route was unreachable from the screen that owns the aircraft.
+    ///
+    /// Both lists now come from `assignmentCandidates`, which mirrors the
+    /// command validator and is tested against it. Ineligible routes are
+    /// shown, disabled, with the reason — a picker that silently omits them
+    /// answers "why isn't my new route in this list?" with nothing.
+    @ViewBuilder
+    private func routePicker(_ card: FleetCardModel, snapshot: GameState,
+                             player: AirlineID,
+                             catalog: ContentCatalog) -> some View {
+        let candidates = snapshot.assignmentCandidates(forAircraft: card.id,
+                                                       catalog: catalog)
+        let eligible = candidates.filter(\.isEligible)
+        let blocked = candidates.filter { !$0.isEligible }
+        if candidates.isEmpty {
+            Text("You have no routes yet. Open one, and this aircraft can fly it.")
+                .font(AEType.secondary)
+                .foregroundStyle(AETheme.mutedText)
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            if !eligible.isEmpty {
+                Menu {
+                    ForEach(eligible, id: \.routeID) { candidate in
+                        if let route = snapshot.routes[candidate.routeID] {
+                            Button {
+                                controller.submit(AssignAircraftToRouteCommand(
+                                    airline: player, route: candidate.routeID,
+                                    aircraftID: card.id))
+                            } label: {
+                                // The note rides along in the menu label
+                                // because a Menu row has nowhere else to put
+                                // it, and the fit is the whole reason to
+                                // prefer one route over another.
+                                if let note = Vocab.assignmentNote(candidate.note) {
+                                    Text("\(route.origin.raw) – \(route.destination.raw) — \(note)")
+                                } else {
+                                    Text("\(route.origin.raw) – \(route.destination.raw)")
                                 }
                             }
-                        } label: {
-                            Label("Put it on a route that has none",
-                                  systemImage: "plus")
-                                .font(.subheadline.weight(.medium))
-                                .frame(minHeight: 44)
+                        }
+                    }
+                } label: {
+                    Label("Assign to a route", systemImage: "plus")
+                        .font(AEType.body.weight(.medium))
+                        .frame(minHeight: 44)
+                }
+            }
+            if !blocked.isEmpty {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(blocked, id: \.routeID) { candidate in
+                        if let route = snapshot.routes[candidate.routeID],
+                           let blocker = candidate.blocker {
+                            HStack(spacing: AETheme.spacingXS) {
+                                Text("\(route.origin.raw) – \(route.destination.raw)")
+                                    .font(AEType.caption)
+                                Text(Vocab.blocker(blocker))
+                                    .font(AEType.caption)
+                                    .foregroundStyle(AETheme.mutedText)
+                            }
+                            .accessibilityElement(children: .combine)
                         }
                     }
                 }
+                .padding(.top, 2)
             }
         }
     }
@@ -600,7 +798,11 @@ struct AircraftShopSheet: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("\(spec.manufacturer) \(spec.model)")
                         .font(AEType.body.weight(.semibold))
-                    Text(Vocab.category(spec.category))
+                    // The role, not the category. "Regional jet" is a
+                    // taxonomy a player has to already know; "Regional
+                    // connector" is what the aeroplane is bought to do
+                    // (MASTER PROMPT 5 §10).
+                    Text(Vocab.role(spec.role))
                         .font(AEType.secondary).foregroundStyle(AETheme.mutedText)
                 }
                 Spacer()
@@ -611,9 +813,20 @@ struct AircraftShopSheet: View {
             HStack(spacing: AETheme.spacingXS) {
                 AEChip(icon: "person.2.fill", text: "\(spec.seats) seats")
                 AEChip(icon: "arrow.left.and.right", text: "\(spec.rangeKm) km")
-                AEChip(icon: "fuelpump.fill",
-                       text: "\(Format.decimal(spec.fuelBurnKgPerKm / Double(max(1, spec.seats)), places: 3)) kg/km per seat")
+                // Banded rather than the raw figure. "0.030 kg/km per seat"
+                // is not a number anyone can rank without the other thirteen
+                // beside it, and the ranking is the only thing it was for.
+                if let band = catalog.seatEfficiency(of: spec) {
+                    AEChip(icon: "fuelpump.fill",
+                           text: Vocab.seatEfficiency(band))
+                }
             }
+            // What it is for, and what that costs — the question a market
+            // card exists to answer and the one the spec sheet never did.
+            Text(Vocab.roleDetail(spec.role))
+                .font(AEType.caption)
+                .foregroundStyle(AETheme.mutedText)
+                .fixedSize(horizontal: false, vertical: true)
 
             if locked {
                 // A locked row used to show nothing at all, so the player
@@ -637,14 +850,17 @@ struct AircraftShopSheet: View {
                              tint: AETheme.leased),
                 ])
                 purchase("Buy new", price: spec.listPrice, snapshot: snapshot,
-                         player: player, detail: "Delivered in \(Format.days(spec.deliveryLeadDays))",
+                         player: player, identifier: "ae-market-buy-new",
+                         detail: "Delivered in \(Format.days(spec.deliveryLeadDays))",
                          command: BuyNewAircraftCommand(buyer: player, type: spec.code))
                 purchase("Buy used (\(usedAge)y)", price: usedPrice, snapshot: snapshot,
-                         player: player, detail: "Flies immediately, in used condition",
+                         player: player, identifier: "ae-market-buy-used",
+                         detail: "Flies immediately, in used condition",
                          command: BuyUsedAircraftCommand(buyer: player, type: spec.code,
                                                          ageYears: usedAge))
                 purchase("Lease", price: spec.leaseMonthly, snapshot: snapshot,
                          player: player, isMonthly: true,
+                         identifier: "ae-market-lease",
                          detail: "\(Format.money(spec.leaseMonthly * Int64(leaseTermMonths))) over \(leaseTermMonths) months",
                          command: LeaseAircraftCommand(lessee: player, type: spec.code,
                                                        termMonths: leaseTermMonths))
@@ -657,6 +873,7 @@ struct AircraftShopSheet: View {
     /// verdict on whether it can be done — before the tap.
     private func purchase(_ title: String, price: Money, snapshot: GameState,
                           player: AirlineID, isMonthly: Bool = false,
+                          identifier: String,
                           detail: String, command: any Command) -> some View {
         let blocked = controller.precheck(command)
         let cash = snapshot.ledger.balance(of: player)
@@ -686,6 +903,12 @@ struct AircraftShopSheet: View {
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())
             }
+            // A stable name for the one control a UI test has to find. The
+            // visible label cannot serve: "Lease" is also the opening word of
+            // the "Lease term: 60 months" stepper a few rows above, and a
+            // label-prefix query picked the stepper, decremented the term and
+            // leased nothing (AE-032).
+            .accessibilityIdentifier(identifier)
             .disabled(blocked != nil)
             Text(blocked?.message ?? detail)
                 .font(.caption2)
