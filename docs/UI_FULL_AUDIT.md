@@ -168,17 +168,17 @@ authored in AE-032 whose frames land with the branch's fixed run.
 | --- | --- | --- | --- | --- |
 | New game | 🧪 | 👁 (pinned dark) | Found button 🧪 | — |
 | Home | 🧪 | 👁 light + darkforced + AccessibilityL | onboarding card 🧪 | date reads "2030-01-01 00:00 · Winter" — terse, deliberate |
-| Map | 🧪 | 👁 world frame, light + darkforced | zoom buttons/double-tap 🧪 next run; pinch NOT VERIFIED (hardware) | zoom levels re-photographed next run (BUG-039) |
+| Map | 🧪 | 👁 world, regional, local, post-pinch — six distinct frames (run 61) | zoom buttons, double-tap and pinch all 🧪 against the published camera | pinch on hardware still needs a person |
 | Network — Routes empty | 🧪 layout | 👁 light + dark | Open a route 🧪 | — |
 | Network — Fleet empty | 🧪 layout | 👁 light + dark | Browse the market 🧪 | — |
 | Fleet with aircraft | 🧪 | 👁 | row → detail 🧪 next run | — |
 | Aircraft market | 🧪 | 👁 light + AccessibilityL | lease 🧪 (dialog-verified) | sort segment truncates "Fuel per s…"; chips fixed for accessibility sizes (AEChipRow) |
-| Route sheet | 🧪 | 👁 | destination select + commit 🧪 next run | commit moved to bottom bar (BUG-038) |
-| Route detail | 🧪 next run | next run | assign 🧪 next run | — |
-| Aircraft detail | 🧪 next run | next run | — | run 60's "aircraft-detail" frame was the board; predicate fixed |
+| Route sheet | 🧪 | 👁 | destination select + commit 🧪 (run 61) | commit rides a bottom bar (BUG-038) |
+| Route detail | 🧪 | 👁 (run 61) | reached via the new commit bar 🧪 | assignment interaction asserted only in the flight journey |
+| Aircraft detail | 🧪 | 👁 (run 61) | Ownership section asserted | run 60's first frame was the board under this name — predicate now screen-unique |
 | Finance | 🧪 | 👁 light + darkforced | — | — |
 | World | 🧪 | 👁 darkforced | — | — |
-| Settings | 🧪 next run | next run | mute toggle asserted | — |
+| Settings | 🧪 | 👁 (run 61) | mute toggle asserted | — |
 | Game over | 📖 only | — | — | needs a bankruptcy path or a debug hook — NOT VERIFIED |
 | iPad shell | 🧪 (sidebar found) | 👁 one frame | failed on tab-bar assumption; harness fixed | sidebar layout looks sane in the one frame; full pass next run |
 

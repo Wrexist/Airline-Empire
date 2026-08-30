@@ -940,8 +940,8 @@ thresholds mirroring the app's `Format.money` — used by all five sites
 **Regression cover:** `MoneyFormattingTests` pins the format and drives the
 three blocked market commands, asserting no rejection message carries a
 digit-run long enough to be an unformatted balance.
-**Status:** FIXED, format asserted on Linux; the rendered caption awaits the
-next screenshot in which a blocked row appears.
+**Status:** FIXED — **visually confirmed.** Run 61's market frame shows the
+blocked Buy-new row captioned "Need $110.0M for this aircraft".
 
 ## BUG-038 — the route-opening journey drove controls that were not there
 
@@ -965,8 +965,11 @@ the sheet, always visible once a destination is chosen; stable identifiers
 Tests: `openARoute()` selects by identifier and treats the commit bar's
 appearance as proof the selection took; a disabled commit button fails with
 Core's printed reason in the screenshot.
-**Status:** FIXED IN SOURCE; asserted/observed on the next CI run of this
-branch.
+**Status:** FIXED — **asserted and observed.** Run 61's
+`testDetailScreensAndSettingsRender` drove the new path end to end: a
+destination selected by identifier, the bottom commit bar tapped, and the
+route photographed on its own detail screen (STV – LNW, "No aircraft
+assigned, so this route is not flying" — correct for the state).
 
 ## BUG-039 — the zoom test manufactured its own evidence
 
@@ -988,5 +991,9 @@ level; double tap is asserted to zoom; the pinch is attempted and, if the
 camera does not move, recorded as an explicit `XCTSkip` — NOT VERIFIED —
 because a broken recognizer and an unsynthesized gesture are
 indistinguishable from CI. A person with a device settles the pinch.
-**Status:** FIXED IN SOURCE; the honest residue is that real pinch-to-zoom
-remains unverified on hardware.
+**Status:** FIXED — **asserted and observed.** Run 61's rebuilt test passed
+with every level a genuinely different frame: world (six zoom-outs), regional
+and local (buttons), double-tap, and the synthetic pinch itself moved the
+camera this time, so pinch is asserted on the simulator. On *hardware* a real
+two-finger pinch remains untested, as does everything else — that is
+docs/APPLE_VALIDATION.md's list, not this bug's.
