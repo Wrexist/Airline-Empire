@@ -371,8 +371,29 @@ class AEUITestCase: XCTestCase {
         // wrong aircraft and pass.
         let market = app.staticTexts["Aircraft market"]
         let leaseDialogTitle = app.staticTexts["Lease?"]
-        for attempt in 1...3 {
-            if lease.exists, lease.isHittable { lease.tap() }
+        let fleetRow = app.descendants(matching: .any)
+            .matching(identifier: "ae-fleet-row").firstMatch
+        for attempt in 1...4 {
+            // Bring the row into the middle band before touching it. Every
+            // mis-hit this runner has produced — the Buy-used dialog of runs
+            // 59 and 61, the untappable row of run 63 — happened with the
+            // row hugging the sheet's bottom edge. Small drags rather than
+            // swipeUp: a full swipe is what overshot in the first place.
+            var hops = 0
+            while lease.exists, lease.frame.midY > window.height * 0.66,
+                  hops < 4 {
+                app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+                    .press(forDuration: 0.05,
+                           thenDragTo: app.coordinate(
+                               withNormalizedOffset: CGVector(dx: 0.5, dy: 0.42)))
+                hops += 1
+                Thread.sleep(forTimeInterval: 0.6)
+            }
+            guard lease.exists else { break }
+            // A coordinate tap at the element's own centre: fires at the
+            // frame wherever hit-testing disagrees, and the dialog check
+            // below decides whether it landed right.
+            lease.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
 
             if leaseDialogTitle.waitForExistence(timeout: 3) {
                 // The dialog's confirm button and the market row are both
@@ -385,49 +406,40 @@ class AEUITestCase: XCTestCase {
                     let candidate = confirms.element(boundBy: index)
                     if candidate.isHittable { candidate.tap(); break }
                 }
+                // The sheet dismisses itself on success — there is no Done
+                // fallback any more. Blind-tapping Done has never rescued a
+                // stuck sheet; in runs 62 and 63 it closed a healthy market
+                // over a lease that had not happened, three times each.
+                if market.waitForNonExistence(timeout: 8),
+                   fleetRow.waitForExistence(timeout: 6) {
+                    return true
+                }
             }
 
-            // The sheet dismisses itself on a successful lease; Done is the
-            // fallback for a build where it does not.
-            tapIfPresent(app.buttons["Done"])
-            if market.waitForNonExistence(timeout: 6) {
-                // A closed market is NOT the success signal — run 62 closed
-                // it empty-handed (the dismiss tap below used to aim at a
-                // screen coordinate and grazed Done) and three tests chased
-                // a lease that never happened. The agreement is an aircraft
-                // on the fleet board.
-                if app.descendants(matching: .any)
-                    .matching(identifier: "ae-fleet-row").firstMatch
-                    .waitForExistence(timeout: 5) { return true }
-                capture(Self.logPrefix + "MARKET-CLOSED-WITHOUT-LEASE-\(attempt)")
+            // Wrong dialog, no dialog, or a confirm that did not land.
+            // Photograph the state, dismiss any popover by tapping the
+            // sheet title's own coordinates (the scrim when one is up,
+            // inert otherwise), and reopen the market if something closed it.
+            capture(Self.logPrefix + "LEASE-ATTEMPT-\(attempt)")
+            if market.exists {
+                market.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+                Thread.sleep(forTimeInterval: 1)
+            }
+            if !market.exists {
                 let browse = app.buttons["Browse the market"]
                 guard browse.waitForExistence(timeout: 5) else { break }
                 browse.tap()
-                _ = scrollUntil(lease, "the Lease action, reopened market")
-                continue
+                _ = market.waitForExistence(timeout: 5)
+                guard scrollUntil(lease, "the Lease action, reopened market")
+                else { return false }
             }
-
-            // Still here: the wrong dialog is open, or nothing happened.
-            // Photograph it, then dismiss any popover by tapping the sheet's
-            // own title — inert when nothing is presented, and safely far
-            // from Done, which a coordinate tap near the top edge once hit.
-            capture(Self.logPrefix + "LEASE-ATTEMPT-\(attempt)")
-            if market.exists {
-                // A coordinate tap at the title's own centre: lands on the
-                // popover's scrim when one is up (dismissing it), and never
-                // throws over hittability the way element.tap() would.
-                market.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-            }
-            Thread.sleep(forTimeInterval: 1)
         }
 
         capture(Self.logPrefix + "MARKET-DID-NOT-CLOSE")
         XCTFail("""
-            The aircraft market is still on screen after three attempts to \
-            lease. Either the lease row cannot be hit on this runner or the \
-            command is being refused without saying so — the attempt \
-            screenshots show which. Nothing after this point would be \
-            testing what it claims to.
+            No lease completed after four attempts. The attempt screenshots \
+            show what each tap actually produced. Nothing after this point \
+            would be testing what it claims to.
             """)
         return false
     }
