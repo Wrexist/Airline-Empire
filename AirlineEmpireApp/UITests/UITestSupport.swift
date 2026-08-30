@@ -304,6 +304,75 @@ class AEUITestCase: XCTestCase {
         }
     }
 
+    /// Tap something only if it is still there and still tappable.
+    ///
+    /// `if element.exists { element.tap() }` is a race, and it lost: the
+    /// market sheet dismisses itself on a successful lease, so `Done` existed
+    /// when it was asked and was gone a frame later — "Failed to tap Done: No
+    /// matches found". The settle lets a dismissal finish before the question
+    /// is asked, and `isHittable` re-queries rather than trusting the earlier
+    /// answer.
+    @discardableResult
+    func tapIfPresent(_ element: XCUIElement,
+                      settle: TimeInterval = 0.6) -> Bool {
+        Thread.sleep(forTimeInterval: settle)
+        guard element.exists, element.isHittable else { return false }
+        element.tap()
+        return true
+    }
+
+    /// Lease the first aircraft the market will sell this airline, and prove
+    /// the sheet closed behind it.
+    ///
+    /// One implementation for both journeys that need an aircraft. It was two,
+    /// and they drifted: one failed on a `Done` that had already dismissed
+    /// itself, the other sailed past a sheet that had *not* dismissed and then
+    /// reported that the routes board was missing — from behind the market,
+    /// which was still covering it.
+    ///
+    /// The confirmation is a `confirmationDialog`, which is an action sheet on
+    /// a phone, so it is queried through `app.sheets` rather than by label
+    /// against the whole app — the market row is also called "Lease".
+    @discardableResult
+    func leaseAnAircraft() -> Bool {
+        // Hide what the era cannot buy, so the first lease action on screen
+        // belongs to an aircraft this airline is allowed to take.
+        let eraFilter = app.switches["Hide what this era cannot buy"]
+        if eraFilter.waitForExistence(timeout: 5),
+           eraFilter.value as? String == "0" {
+            eraFilter.tap()
+        }
+
+        let lease = app.buttons.matching(identifier: "ae-market-lease").firstMatch
+        guard scrollUntil(lease, "a Lease action in the market") else { return false }
+        lease.tap()
+
+        // The dialog's own button, not the row that opened it.
+        let dialog = app.sheets.firstMatch
+        if dialog.waitForExistence(timeout: 5) {
+            let confirm = dialog.buttons["Lease"]
+            if confirm.waitForExistence(timeout: 3) { confirm.tap() }
+        } else {
+            tapIfPresent(app.buttons["Lease"], settle: 0.3)
+        }
+
+        // The sheet dismisses itself on success. Done is the fallback for the
+        // case where it did not — and if it is still there afterwards, the
+        // lease did not happen and everything downstream would be nonsense.
+        tapIfPresent(app.buttons["Done"])
+        let market = app.staticTexts["Aircraft market"]
+        if market.waitForNonExistence(timeout: 8) { return true }
+
+        capture(Self.logPrefix + "MARKET-DID-NOT-CLOSE")
+        XCTFail("""
+            The aircraft market is still on screen after a lease was \
+            confirmed. The command was refused without saying so, or the \
+            confirmation was never tapped — either way nothing after this \
+            point would be testing what it claims to. Screenshot attached.
+            """)
+        return false
+    }
+
     // MARK: The journey's shared opening
 
     /// Found an airline and arrive in the shell. Every journey starts here.

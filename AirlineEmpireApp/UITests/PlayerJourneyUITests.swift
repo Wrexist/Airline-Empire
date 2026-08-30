@@ -114,38 +114,8 @@ final class PlayerJourneyUITests: AEUITestCase {
         browse.tap()
         checkpoint("02-market")
 
-        // Hide what the era cannot buy, so the first lease action on screen
-        // belongs to an aircraft this airline is actually allowed to take.
-        // Without this the market opens on two locked flagships and the first
-        // buyable row is well below the fold.
-        let eraFilter = app.switches["Hide what this era cannot buy"]
-        if eraFilter.waitForExistence(timeout: 5), eraFilter.value as? String == "0" {
-            eraFilter.tap()
-        }
-
-        // Lease rather than buy: a lease delivers immediately, where a new
-        // purchase stays `ordered` until its lead days pass. Leasing is also
-        // what the empty state itself recommends to a new player.
-        //
-        // By identifier, not by label. The first version of this matched
-        // `label BEGINSWITH "Lease"` and hit the *"Lease term: 60 months"*
-        // stepper instead, which silently decremented the term to 48 and
-        // leased nothing — a test that drove the wrong control and then
-        // reported the app had failed.
-        let leaseButton = app.buttons
-            .matching(identifier: "ae-market-lease").firstMatch
-        guard scrollUntil(leaseButton, "a Lease action in the market") else { return }
-        leaseButton.tap()
-
-        // Confirmed, because the sums involved should never move on one tap.
-        let confirm = app.buttons["Lease"]
-        if confirm.waitForExistence(timeout: 5) { confirm.tap() }
+        guard leaseAnAircraft() else { return }
         checkpoint("03-after-lease")
-
-        // Back to the fleet: the sheet dismisses on success, but only Done
-        // gets us out of a sheet that stayed up.
-        let done = app.buttons["Done"]
-        if done.exists { done.tap() }
 
         // AGREEMENT: leasing must put an aircraft in the fleet. The sheet
         // dismisses on success, so a non-empty Fleet is the observable result.
@@ -214,17 +184,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         require(browse, "the market entry point")
         browse.tap()
 
-        let eraFilter = app.switches["Hide what this era cannot buy"]
-        if eraFilter.waitForExistence(timeout: 5), eraFilter.value as? String == "0" {
-            eraFilter.tap()
-        }
-        let lease = app.buttons.matching(identifier: "ae-market-lease").firstMatch
-        guard scrollUntil(lease, "a Lease action") else { return }
-        lease.tap()
-        let confirmLease = app.buttons["Lease"]
-        if confirmLease.waitForExistence(timeout: 5) { confirmLease.tap() }
-        let done = app.buttons["Done"]
-        if done.waitForExistence(timeout: 3) { done.tap() }
+        guard leaseAnAircraft() else { return }
 
         // ── Open a route ───────────────────────────────────────────────────
         app.buttons["Routes"].tap()
