@@ -291,19 +291,47 @@ enum MapLabelLayout {
         var labels: [MapLabel] = []
         for (airport, point, priority) in ranked {
             guard labels.count < limit else { break }
-            // Approximate the text box; exact metrics are not worth a layout
-            // pass per frame, and the padding absorbs the error.
-            let width = CGFloat(airport.code.raw.count) * 7.0 + 10
-            let box = CGRect(x: point.x - width / 2, y: point.y - 20,
-                             width: width, height: 14)
-            guard !placed.contains(where: { $0.intersects(box) }) else { continue }
-            placed.append(box)
+            // The city if it fits, the code if it does not.
+            //
+            // A code is a lookup; a city is a place. "Stockholm" is what a
+            // player recognises, and "STV" is what they have to learn — so the
+            // city wins wherever there is room, and the code is the graceful
+            // degradation rather than the default.
+            //
+            // Not at world zoom: a world view with a full city name on every
+            // marker is a wall of text, and at that scale the map is being
+            // read as a shape rather than searched.
+            //
+            // Choosing per airport rather than per zoom level is what makes it
+            // self-tuning. The placer already knows what "fits" — it refuses
+            // any box overlapping one already placed — so a dense corner
+            // quietly falls back to codes while an empty one keeps its cities,
+            // with no threshold to guess at.
+            let candidates = level == .world || airport.city.isEmpty
+                ? [airport.code.raw]
+                : [airport.city, airport.code.raw]
+
+            var chosen: (text: String, box: CGRect)?
+            for text in candidates {
+                // Approximate the text box; exact metrics are not worth a
+                // layout pass per frame, and the padding absorbs the error.
+                let width = CGFloat(text.count) * 6.4 + 10
+                let box = CGRect(x: point.x - width / 2, y: point.y - 20,
+                                 width: width, height: 14)
+                if !placed.contains(where: { $0.intersects(box) }) {
+                    chosen = (text, box)
+                    break
+                }
+            }
+            guard let chosen else { continue }
+
+            placed.append(chosen.box)
             labels.append(MapLabel(
-                text: airport.code.raw, point: CGPoint(x: point.x, y: point.y - 13),
+                text: chosen.text, point: CGPoint(x: point.x, y: point.y - 13),
                 priority: priority,
                 isPlayer: airport.servedByPlayer || airport.isPlayerHome,
                 emphasis: airport.isPlayerHome || airport.code == selected,
-                box: box))
+                box: chosen.box))
         }
         return labels
     }

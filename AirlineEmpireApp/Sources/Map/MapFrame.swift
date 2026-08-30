@@ -59,10 +59,17 @@ struct MapFrame {
         drawOcean(&context, size: size)
         drawGraticule(&context)
         drawLand(&context)
-        // Airport labels are chosen first and drawn last. Choosing first is
-        // what lets the country names avoid them; drawing last is what keeps
-        // them on top. The two are not the same decision and were previously
-        // the same statement.
+        // Airports are projected first, chosen second, drawn last.
+        //
+        // Three separate steps because they answer to three different needs,
+        // and collapsing any two breaks something. The projection has to come
+        // first because the label placer reads it — folding it into
+        // `drawAirports` (where it used to live) meant the placer ran against
+        // an empty list and **every airport label silently disappeared from
+        // the map**, which a screenshot caught and nothing else could have.
+        // Choosing before the country names is what lets them yield. Drawing
+        // last is what keeps the codes on top of everything.
+        projectAirports()
         let airportLabels = placeAirportLabels()
         drawCountryLabels(&context, avoiding: airportLabels.map(\.box))
         drawEventRegions(&context)
@@ -359,13 +366,19 @@ struct MapFrame {
 
     // MARK: - Airports
 
-    private mutating func drawAirports(_ context: inout GraphicsContext) {
+    /// Which airports are on screen, and where. Separate from drawing them
+    /// because the label placer needs the answer before anything is drawn.
+    private mutating func projectAirports() {
         for airport in model.airports {
             guard policy.shows(airport) else { continue }
             let point = projector.project(airport.position)
             guard projector.isVisible(point) else { continue }
             geometry.airports.append((airport, point))
+        }
+    }
 
+    private func drawAirports(_ context: inout GraphicsContext) {
+        for (airport, point) in geometry.airports {
             let radius = policy.radius(airport)
             let isSelected = selection == .airport(airport.code)
 
@@ -626,10 +639,16 @@ struct MapFrame {
             projected, blocked: blocked,
             limit: policy.level == .world ? 10 : 18)
         for label in labels {
+            // Uppercase and letterspaced, which is how an atlas says "this is
+            // a region, not a place". It matters more now that airports carry
+            // city names: two labels in the same case at the same weight read
+            // as the same kind of thing, and a player scanning for Stockholm
+            // should never stop on Sweden.
             context.draw(
-                Text(label.text)
-                    .font(.system(size: policy.level == .local ? 11 : 10,
-                                  weight: .medium))
+                Text(label.text.uppercased())
+                    .font(.system(size: policy.level == .local ? 10 : 9,
+                                  weight: .semibold))
+                    .tracking(1.4)
                     .foregroundStyle(AETheme.mapCountryLabel),
                 at: label.point)
         }
@@ -652,12 +671,22 @@ struct MapFrame {
             let color: Color = label.emphasis ? AETheme.ember
                 : label.isPlayer ? playerColor.opacity(0.95)
                 : .white.opacity(0.72)
-            context.draw(
-                Text(label.text)
-                    .font(.system(size: label.emphasis ? 11 : 10,
-                                  weight: label.isPlayer ? .semibold : .medium))
-                    .foregroundStyle(color),
-                at: label.point)
+            let text = Text(label.text)
+                .font(.system(size: label.emphasis ? 11 : 10,
+                              weight: label.isPlayer ? .semibold : .medium))
+
+            // A hairline of the ocean colour underneath, offset a point.
+            //
+            // Cheap insurance that became necessary when these became city
+            // names: "STV" is three characters over one patch of ground, and
+            // "Stockholm" is nine that can cross a coastline, a border and a
+            // route on its way across. A shadow rather than a plate, because a
+            // filled background behind every label is what makes a map look
+            // like a diagram.
+            context.draw(text.foregroundStyle(AETheme.mapDeep.opacity(0.9)),
+                         at: CGPoint(x: label.point.x + 0.7,
+                                     y: label.point.y + 0.7))
+            context.draw(text.foregroundStyle(color), at: label.point)
         }
     }
 
