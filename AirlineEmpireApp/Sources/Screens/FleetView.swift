@@ -675,7 +675,10 @@ struct AircraftShopSheet: View {
             switch self {
             case .seats: "Seats"
             case .range: "Range"
-            case .efficiency: "Fuel per seat"
+            // "Fuel per seat" rendered as "Fuel per s…" in the segmented
+            // control at default type size (seen in run 60's market frame) —
+            // four segments share one row, and this was the longest.
+            case .efficiency: "Fuel/seat"
             case .price: "Price"
             }
         }
