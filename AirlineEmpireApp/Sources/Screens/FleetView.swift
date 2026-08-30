@@ -304,30 +304,104 @@ struct AircraftDetailView: View {
                         .font(.subheadline)
                         .foregroundStyle(AETheme.mutedText)
                 } else {
-                    Label("Idle at \(card.location.raw). It earns nothing here, and a leased aircraft still bills.",
-                          systemImage: "pause.circle")
-                        .font(.subheadline)
-                        .foregroundStyle(AETheme.caution)
-                        .fixedSize(horizontal: false, vertical: true)
-                    let open = snapshot.routes(of: player)
-                        .filter { $0.assignedAircraft.isEmpty }
-                    if !open.isEmpty {
-                        Menu {
-                            ForEach(open, id: \.id) { route in
-                                Button("\(route.origin.raw) – \(route.destination.raw)") {
-                                    controller.submit(AssignAircraftToRouteCommand(
-                                        airline: player, route: route.id,
-                                        aircraftID: card.id))
+                    // An unassigned aircraft in a check used to be described
+                    // as "idle", which reads as the player's fault and as
+                    // something they could fix by finding it a route. It is
+                    // neither: it is in the hangar because Core put it there.
+                    // The route it flies next can still be chosen now, which
+                    // is why the picker sits under both messages.
+                    if card.status.isInMaintenance {
+                        Label("In a maintenance check at \(card.location.raw). It can be given its next route now.",
+                              systemImage: "wrench")
+                            .font(AEType.body)
+                            .foregroundStyle(AETheme.caution)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        Label("Idle at \(card.location.raw). It earns nothing here, and a leased aircraft still bills.",
+                              systemImage: "pause.circle")
+                            .font(AEType.body)
+                            .foregroundStyle(AETheme.caution)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    routePicker(card, snapshot: snapshot, player: player,
+                                catalog: catalog)
+                }
+            }
+        }
+    }
+
+    /// Where this aeroplane could go next (MASTER PROMPT 5 §23, §24).
+    ///
+    /// The old picker listed routes with no aircraft at all and nothing else.
+    /// Two problems, in opposite directions. It offered routes this aircraft
+    /// could not reach — no range check, no runway check — so the player
+    /// picked one and Core refused the tap the app had just invited. And it
+    /// hid every route that already had an aeroplane, although Core appends
+    /// to `assignedAircraft` quite happily, so adding a second aircraft to a
+    /// busy route was unreachable from the screen that owns the aircraft.
+    ///
+    /// Both lists now come from `assignmentCandidates`, which mirrors the
+    /// command validator and is tested against it. Ineligible routes are
+    /// shown, disabled, with the reason — a picker that silently omits them
+    /// answers "why isn't my new route in this list?" with nothing.
+    @ViewBuilder
+    private func routePicker(_ card: FleetCardModel, snapshot: GameState,
+                             player: AirlineID,
+                             catalog: ContentCatalog) -> some View {
+        let candidates = snapshot.assignmentCandidates(forAircraft: card.id,
+                                                       catalog: catalog)
+        let eligible = candidates.filter(\.isEligible)
+        let blocked = candidates.filter { !$0.isEligible }
+        if candidates.isEmpty {
+            Text("You have no routes yet. Open one, and this aircraft can fly it.")
+                .font(AEType.secondary)
+                .foregroundStyle(AETheme.mutedText)
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            if !eligible.isEmpty {
+                Menu {
+                    ForEach(eligible, id: \.routeID) { candidate in
+                        if let route = snapshot.routes[candidate.routeID] {
+                            Button {
+                                controller.submit(AssignAircraftToRouteCommand(
+                                    airline: player, route: candidate.routeID,
+                                    aircraftID: card.id))
+                            } label: {
+                                // The note rides along in the menu label
+                                // because a Menu row has nowhere else to put
+                                // it, and the fit is the whole reason to
+                                // prefer one route over another.
+                                if let note = Vocab.assignmentNote(candidate.note) {
+                                    Text("\(route.origin.raw) – \(route.destination.raw) — \(note)")
+                                } else {
+                                    Text("\(route.origin.raw) – \(route.destination.raw)")
                                 }
                             }
-                        } label: {
-                            Label("Put it on a route that has none",
-                                  systemImage: "plus")
-                                .font(.subheadline.weight(.medium))
-                                .frame(minHeight: 44)
+                        }
+                    }
+                } label: {
+                    Label("Assign to a route", systemImage: "plus")
+                        .font(AEType.body.weight(.medium))
+                        .frame(minHeight: 44)
+                }
+            }
+            if !blocked.isEmpty {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(blocked, id: \.routeID) { candidate in
+                        if let route = snapshot.routes[candidate.routeID],
+                           let blocker = candidate.blocker {
+                            HStack(spacing: AETheme.spacingXS) {
+                                Text("\(route.origin.raw) – \(route.destination.raw)")
+                                    .font(AEType.caption)
+                                Text(Vocab.blocker(blocker))
+                                    .font(AEType.caption)
+                                    .foregroundStyle(AETheme.mutedText)
+                            }
+                            .accessibilityElement(children: .combine)
                         }
                     }
                 }
+                .padding(.top, 2)
             }
         }
     }

@@ -432,3 +432,59 @@ extension Vocab {
         }
     }
 }
+
+extension Vocab {
+    /// Why an aircraft cannot take a route (MASTER PROMPT 5 §23).
+    ///
+    /// Core's `AssignmentCandidate.Blocker` decides; this only chooses words.
+    /// Each reads as a fact about *this* pairing rather than a refusal, because
+    /// it is shown beside a disabled row the player has not tapped yet — "you
+    /// cannot do that" is the wrong tense for something nobody has tried.
+    static func blocker(_ blocker: AssignmentCandidate.Blocker) -> String {
+        switch blocker {
+        case .notDelivered:
+            return "Not delivered yet"
+        case .alreadyAssigned:
+            return "Already on a route"
+        case .beyondRange(let rangeKm, let distanceKm):
+            // The shortfall, not the two figures. "1,600 km range, 4,452 km
+            // route" makes the reader do the subtraction; "2,852 km short"
+            // is the same fact already used.
+            return "\(Format.grouped(Int64(distanceKm - rangeKm))) km beyond its range"
+        case .runwayTooSmall(let airport, _, _):
+            return "\(airport.raw) cannot take this aircraft"
+        }
+    }
+
+    /// What is worth knowing about an assignment Core would allow.
+    ///
+    /// Nil when Core had nothing to say — which is most of the time, and is
+    /// the point. A picker where every row carries a caption ranks nothing.
+    static func assignmentNote(_ note: AssignmentCandidate.Note?) -> String? {
+        switch note {
+        case nil:
+            return nil
+        case .inMaintenance:
+            return "In a maintenance check — it can be assigned now and will fly when the check finishes"
+        case .tightRange(let marginKm):
+            return "Only \(Format.grouped(Int64(marginKm))) km of range to spare"
+        case .seatsShortOfDemand(let seats, let demand):
+            return "\(Format.grouped(Int64(seats))) seats a day against \(Format.grouped(Int64(demand))) passengers wanting to fly"
+        case .seatsAboveDemand(let seats, let demand):
+            return "\(Format.grouped(Int64(seats))) seats a day for \(Format.grouped(Int64(demand))) passengers — it would fly light"
+        case .strongMatch:
+            return "Good fit for this route"
+        }
+    }
+
+    /// The tint for a note. Never the only carrier: the sentence above always
+    /// says the same thing in words.
+    static func assignmentNoteColor(_ note: AssignmentCandidate.Note?) -> Color {
+        switch note {
+        case nil: AETheme.mutedText
+        case .strongMatch: AETheme.positive
+        case .inMaintenance, .tightRange, .seatsAboveDemand: AETheme.caution
+        case .seatsShortOfDemand: AETheme.mutedText
+        }
+    }
+}

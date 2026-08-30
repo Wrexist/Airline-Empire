@@ -483,7 +483,22 @@ struct RouteDetailView: View {
                                  catalog: ContentCatalog) -> some View {
         let fleet = controller.fleetCards
         let assigned = fleet.filter { $0.assignedRoute == routeID }
-        let idle = fleet.filter { $0.assignedRoute == nil && $0.status.isActive }
+        // Eligibility comes from Core, which is the whole point: this list
+        // used to be "unassigned and active", which offered aeroplanes that
+        // could not reach the route or land on its runways, and hid ones in a
+        // maintenance check that Core would have accepted. See
+        // `AssignmentEligibility` — the rules live beside the validator they
+        // mirror, and a test fails the day the two disagree.
+        let candidates = controller.snapshot
+            .map { $0.assignmentCandidates(forRoute: routeID,
+                                           catalog: catalog) } ?? []
+        let offerable = candidates.filter { $0.isEligible }
+        let unavailable = candidates.filter {
+            // Aircraft already on *this* route are listed above as assigned,
+            // not repeated here as a reason they cannot be added again.
+            if case .alreadyAssigned(let other)? = $0.blocker { return other != routeID }
+            return $0.blocker != nil
+        }
         return AECard(tint: assigned.isEmpty ? AETheme.caution.opacity(0.18) : nil) {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "Aircraft", systemImage: "airplane")
@@ -514,26 +529,57 @@ struct RouteDetailView: View {
                         .frame(minHeight: 44)
                     }
                 }
-                if idle.isEmpty, assigned.isEmpty {
-                    Text("Every aircraft you own is already on a route. Acquire one, or unassign it from a route that needs it less.")
-                        .font(.caption)
+                if offerable.isEmpty, assigned.isEmpty {
+                    Text(unavailable.isEmpty
+                         ? "You own no aircraft yet. Buy or lease one, and it can fly this route."
+                         : "No aircraft you own can fly this route today. The reasons are below.")
+                        .font(AEType.caption)
                         .foregroundStyle(AETheme.mutedText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                if !idle.isEmpty {
+                if !offerable.isEmpty {
                     Menu {
-                        ForEach(idle, id: \.id) { aircraft in
-                            Button("\(aircraft.typeName) — at \(aircraft.location.raw)") {
-                                controller.submit(AssignAircraftToRouteCommand(
-                                    airline: player, route: routeID,
-                                    aircraftID: aircraft.id))
+                        ForEach(offerable, id: \.aircraftID) { candidate in
+                            if let card = controller.fleetCard(candidate.aircraftID) {
+                                Button {
+                                    controller.submit(AssignAircraftToRouteCommand(
+                                        airline: player, route: routeID,
+                                        aircraftID: candidate.aircraftID))
+                                } label: {
+                                    if let note = Vocab.assignmentNote(candidate.note) {
+                                        Text("\(card.typeName) at \(card.location.raw) — \(note)")
+                                    } else {
+                                        Text("\(card.typeName) at \(card.location.raw)")
+                                    }
+                                }
                             }
                         }
                     } label: {
                         Label("Assign an aircraft", systemImage: "plus")
-                            .font(.subheadline.weight(.medium))
+                            .font(AEType.body.weight(.medium))
                             .frame(minHeight: 44)
                     }
+                }
+                // The ones that cannot, and why. Listing them is the fix for
+                // the original defect: an aeroplane the player owns silently
+                // missing from the picker is indistinguishable from a bug.
+                if !unavailable.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(unavailable, id: \.aircraftID) { candidate in
+                            if let card = controller.fleetCard(candidate.aircraftID),
+                               let blocker = candidate.blocker {
+                                HStack(spacing: AETheme.spacingXS) {
+                                    Text(card.typeName).font(AEType.caption)
+                                    Spacer()
+                                    Text(Vocab.blocker(blocker))
+                                        .font(AEType.caption)
+                                        .foregroundStyle(AETheme.mutedText)
+                                }
+                                .accessibilityElement(children: .combine)
+                            }
+                        }
+                    }
+                    .padding(.top, 2)
                 }
             }
         }
