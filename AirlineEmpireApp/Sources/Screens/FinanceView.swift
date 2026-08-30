@@ -10,6 +10,16 @@ struct FinanceView: View {
                 .navigationTitle("Finance")
                 .navigationBarTitleDisplayMode(.inline)
                 .aeTimeToolbar()
+                // Finance links to the routes it names. Without these the
+                // links are inert on this tab while working from Home, which
+                // pushes the same content into a stack that does declare them
+                // — the sort of half-wired navigation §34 asks to hunt for.
+                .navigationDestination(for: RouteID.self) {
+                    RouteDetailView(routeID: $0)
+                }
+                .navigationDestination(for: AircraftID.self) {
+                    AircraftDetailView(aircraftID: $0)
+                }
         }
     }
 }
@@ -36,8 +46,14 @@ struct FinanceContent: View {
                         SolvencyBanner(model: solvency)
                     }
                     topLine(model)
+                    // What the airline is earning *now*. The screen showed
+                    // cash, net worth, debt and leverage — a balance sheet —
+                    // and nothing about whether operations are making money
+                    // this month, which is the question §15 puts first.
+                    operatingStrip()
                     runwayCard(model, solvency: solvency)
                     trendCard(model)
+                    routeExtremes()
                     statementCard(snapshot: snapshot, player: player.id)
                     loansCard(model, snapshot: snapshot, player: player.id)
                 }
@@ -69,6 +85,75 @@ struct FinanceContent: View {
             StatTile(label: "Leverage", value: Format.percent(model.debtRatio),
                      trend: model.debtRatio > 0.6 ? .down : .neutral)
         }
+    }
+
+    @ViewBuilder
+    private func operatingStrip() -> some View {
+        if let network = controller.networkSummary, network.routeCount > 0 {
+            AEMetricStrip([
+                AEMetric("revenue, month to date",
+                         Format.money(network.monthToDateRevenue)),
+                AEMetric("direct costs",
+                         Format.money(network.monthToDateCosts)),
+                AEMetric("operating profit",
+                         Format.money(network.monthToDateProfit),
+                         tint: network.monthToDateProfit.isNegative
+                             ? AETheme.negative : AETheme.positive,
+                         emphasised: true),
+            ])
+        }
+    }
+
+    /// Which routes are carrying the airline and which are dragging on it.
+    ///
+    /// §15 asks for best and weakest routes. Both come from the route cards
+    /// the controller already caches per tick, so this is a sort rather than a
+    /// second derivation — and the figures therefore match the Routes board
+    /// exactly.
+    @ViewBuilder
+    private func routeExtremes() -> some View {
+        let ranked = controller.routeCards
+            .filter { $0.assignedAircraftCount > 0 }
+            .sorted { $0.thisMonthProfit.cents > $1.thisMonthProfit.cents }
+        // Two routes are the minimum for "best" and "weakest" to mean
+        // anything; with one, the same row would be both.
+        if ranked.count >= 2, let best = ranked.first, let worst = ranked.last {
+            AEPanel {
+                VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                    AESectionHeader(text: "Carrying and dragging",
+                                    systemImage: "arrow.up.arrow.down")
+                    extremeRow("Best", best, tint: AETheme.positive)
+                    extremeRow("Weakest", worst,
+                               tint: worst.thisMonthProfit.isNegative
+                                   ? AETheme.negative : AETheme.mutedText)
+                }
+            }
+        }
+    }
+
+    private func extremeRow(_ label: String, _ card: RouteCardModel,
+                            tint: Color) -> some View {
+        NavigationLink(value: card.id) {
+            HStack {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(label)
+                        .font(AEType.caption)
+                        .foregroundStyle(AETheme.mutedText)
+                    Text("\(card.origin.raw) – \(card.destination.raw)")
+                        .font(AEType.code)
+                }
+                Spacer()
+                MoneyText(money: card.thisMonthProfit)
+                    .font(AEType.metricCompact)
+                Image(systemName: "chevron.right")
+                    .font(AEType.caption)
+                    .foregroundStyle(AETheme.mutedText)
+            }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.aePress)
+        .foregroundStyle(tint)
     }
 
     /// The number that actually decides whether a player is in trouble, and

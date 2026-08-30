@@ -62,6 +62,8 @@ struct SummaryModelTests {
         #expect(network.routeCount == 0)
         #expect(network.liveFlights == 0)
         #expect(network.monthToDateProfit == .zero)
+        #expect(network.monthToDateRevenue == .zero)
+        #expect(network.monthToDateCosts == .zero)
         // The distinction the optionals exist to make: no aeroplanes is not
         // the same claim as empty aeroplanes.
         #expect(network.averageLoadFactor == nil)
@@ -89,6 +91,22 @@ struct SummaryModelTests {
         // Profitable and losing are not complements: a route that has not
         // flown is neither, so they may sum to less than the total.
         #expect(summary.profitableRoutes + summary.losingRoutes <= summary.routeCount)
+
+        // Revenue and costs are the two halves of the profit, and costs are a
+        // positive magnitude rather than a negative to re-sign at the view.
+        let revenue = cards.reduce(Money.zero) {
+            $0 + Money(cents: $1.thisMonthBreakdown.revenueCents)
+        }
+        let costs = cards.reduce(Money.zero) {
+            $0 + Money(cents: $1.thisMonthBreakdown.fuelCents
+                       + $1.thisMonthBreakdown.feesCents
+                       + $1.thisMonthBreakdown.crewCents)
+        }
+        #expect(summary.monthToDateRevenue == revenue)
+        #expect(summary.monthToDateCosts == costs)
+        #expect(!summary.monthToDateCosts.isNegative)
+        #expect(summary.monthToDateRevenue - summary.monthToDateCosts
+                == summary.monthToDateProfit)
     }
 
     @Test("Network load factor is weighted by seats, not averaged over routes")

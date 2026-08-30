@@ -214,7 +214,7 @@ struct DashboardView: View {
     }
 
     private func eventsFeed(snapshot: GameState) -> some View {
-        AECard {
+        AEPanel {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "Operations feed", systemImage: "dot.radiowaves.left.and.right")
                 if controller.recentEvents.isEmpty {
@@ -276,7 +276,7 @@ struct UpcomingCard: View {
     var body: some View {
         let items = upcoming
         if items.isEmpty, hasOperations {
-            AECard {
+            AEPanel {
                 VStack(alignment: .leading, spacing: AETheme.spacingS) {
                     AESectionHeader(text: "Coming up", systemImage: "calendar")
                     Text("Nothing scheduled. Deliveries, maintenance and lease expiries appear here.")
@@ -286,7 +286,7 @@ struct UpcomingCard: View {
                 }
             }
         } else if !items.isEmpty {
-            AECard {
+            AEPanel {
                 VStack(alignment: .leading, spacing: AETheme.spacingS) {
                     AESectionHeader(text: "Coming up", systemImage: "calendar")
                     ForEach(items) { item in
@@ -400,7 +400,7 @@ struct DigestCard: View {
     @State private var expanded = false
 
     var body: some View {
-        AECard {
+        AEPanel {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 HStack {
                     VStack(alignment: .leading, spacing: 1) {

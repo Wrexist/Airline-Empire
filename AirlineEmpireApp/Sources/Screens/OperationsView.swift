@@ -185,6 +185,12 @@ struct WorldEventsView: View {
                         AEBadge(text: "forecast", color: AETheme.caution, icon: "clock")
                     }
                 }
+                // How hard it bites. `severity` was carried on every event and
+                // shown nowhere, so a mild storm and a severe one read
+                // identically (MASTER PROMPT 4 §16).
+                AEBadge(text: Vocab.severity(event.severity),
+                        color: Vocab.severityColor(event.severity),
+                        icon: "gauge.with.dots.needle.bottom.50percent")
                 Text(Vocab.worldEventEffect(event.kind))
                     .font(.subheadline)
                     .fixedSize(horizontal: false, vertical: true)
@@ -437,7 +443,7 @@ struct ProgressionView: View {
     @ViewBuilder
     private func missionsCard(_ model: ProgressionModel) -> some View {
         if !model.missions.isEmpty {
-            AECard {
+            AEPanel {
                 VStack(alignment: .leading, spacing: AETheme.spacingS) {
                     AESectionHeader(text: "Missions", systemImage: "target")
                     ForEach(Array(model.missions.enumerated()), id: \.offset) { _, progress in
@@ -469,7 +475,7 @@ struct ProgressionView: View {
 
     private func capabilitiesCard(_ model: ProgressionModel,
                                   player: AirlineID) -> some View {
-        AECard {
+        AEPanel {
             VStack(alignment: .leading, spacing: AETheme.spacingM) {
                 AESectionHeader(text: "Capability programs", systemImage: "wrench.and.screwdriver")
                 ForEach(Array(model.capabilities.enumerated()), id: \.offset) { _, status in
@@ -544,7 +550,7 @@ struct ProgressionView: View {
     }
 
     private func honoursCard(_ model: ProgressionModel) -> some View {
-        AECard {
+        AEPanel {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "Milestones and achievements",
                                 systemImage: "star")
@@ -598,7 +604,7 @@ struct ReputationDetailView: View {
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
-                    AECard {
+                    AEPanel {
                         VStack(alignment: .leading, spacing: AETheme.spacingM) {
                             AESectionHeader(text: "What it is made of",
                                             systemImage: "chart.bar.doc.horizontal")
@@ -614,7 +620,7 @@ struct ReputationDetailView: View {
                                       "Whether the fare feels worth it. Charging above the market without the product to match costs you here.")
                         }
                     }
-                    AECard {
+                    AEPanel {
                         VStack(alignment: .leading, spacing: AETheme.spacingS) {
                             AESectionHeader(text: "Service tier", systemImage: "cup.and.saucer")
                             ForEach(ServiceTier.allCases, id: \.self) { tier in
@@ -727,7 +733,7 @@ struct EconomyDetailView: View {
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
-                    AECard {
+                    AEPanel {
                         VStack(alignment: .leading, spacing: AETheme.spacingS) {
                             AESectionHeader(text: "Fuel", systemImage: "fuelpump")
                             HStack {

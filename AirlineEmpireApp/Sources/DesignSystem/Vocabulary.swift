@@ -395,3 +395,30 @@ extension Vocab {
         }
     }
 }
+
+extension Vocab {
+    /// A world event's severity as a word (MASTER PROMPT 4 §16).
+    ///
+    /// `WorldEvent.severity` is 0…1 "within the kind's semantics" — so it is
+    /// not comparable across kinds, and rendering it as a percentage would
+    /// invite exactly the comparison it cannot support ("this storm is 70%,
+    /// that strike is 40%, so the storm is worse"). Bands say what a player
+    /// can actually use: how hard this one is going to bite.
+    static func severity(_ value: Double) -> String {
+        switch value {
+        case ..<0.34: "Mild"
+        case ..<0.67: "Moderate"
+        default: "Severe"
+        }
+    }
+
+    /// The colour for a severity band. Never the only carrier — the word is
+    /// always shown beside it.
+    static func severityColor(_ value: Double) -> Color {
+        switch value {
+        case ..<0.34: AETheme.mutedText
+        case ..<0.67: AETheme.caution
+        default: AETheme.negative
+        }
+    }
+}

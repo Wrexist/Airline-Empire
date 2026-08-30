@@ -229,11 +229,16 @@ public struct NetworkSummary: Equatable, Sendable {
     public let averageLoadFactor: Double?
     public let liveFlights: Int
     public let monthToDateProfit: Money
+    /// Ticket revenue booked this month across the network.
+    public let monthToDateRevenue: Money
+    /// Direct operating costs — fuel, airport fees, crew. Positive.
+    public let monthToDateCosts: Money
     public let destinations: Int
 
     public init(routeCount: Int, profitableRoutes: Int, losingRoutes: Int,
                 idleRoutes: Int, averageLoadFactor: Double?, liveFlights: Int,
-                monthToDateProfit: Money, destinations: Int) {
+                monthToDateProfit: Money, monthToDateRevenue: Money,
+                monthToDateCosts: Money, destinations: Int) {
         self.routeCount = routeCount
         self.profitableRoutes = profitableRoutes
         self.losingRoutes = losingRoutes
@@ -241,6 +246,8 @@ public struct NetworkSummary: Equatable, Sendable {
         self.averageLoadFactor = averageLoadFactor
         self.liveFlights = liveFlights
         self.monthToDateProfit = monthToDateProfit
+        self.monthToDateRevenue = monthToDateRevenue
+        self.monthToDateCosts = monthToDateCosts
         self.destinations = destinations
     }
 }
@@ -307,6 +314,8 @@ extension GameState {
         let routes = self.routes(of: airline)
         var profitable = 0, losing = 0, idle = 0
         var monthToDate = Money.zero
+        var revenue = Money.zero
+        var costs = Money.zero
         var destinations = Set<AirportCode>()
 
         // Load factor is weighted by seats flown rather than averaged over
@@ -316,8 +325,14 @@ extension GameState {
         var seatsFlown: Int64 = 0
 
         for route in routes {
-            let profit = route.economicsThisMonth.directOperatingProfit
+            let economics = route.economicsThisMonth
+            let profit = economics.directOperatingProfit
             monthToDate = monthToDate + profit
+            revenue = revenue + Money(cents: economics.revenueCents)
+            // Costs are stored positive and summed positive: a screen showing
+            // "costs" wants a magnitude, not a negative number to re-sign.
+            costs = costs + Money(cents: economics.fuelCents
+                                  + economics.feesCents + economics.crewCents)
             if profit.isNegative {
                 losing += 1
             } else if profit.cents > 0 {
@@ -341,6 +356,7 @@ extension GameState {
             averageLoadFactor: seatsFlown > 0
                 ? Double(seatsSold) / Double(seatsFlown) : nil,
             liveFlights: live, monthToDateProfit: monthToDate,
+            monthToDateRevenue: revenue, monthToDateCosts: costs,
             destinations: destinations.count)
     }
 
