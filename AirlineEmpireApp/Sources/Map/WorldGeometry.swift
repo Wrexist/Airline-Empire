@@ -63,7 +63,7 @@ import AirlineEmpireCore
 enum WorldGeometry {
 
     /// Coastlines at the detail the current zoom can actually show.
-    static func landmasses(for level: MapZoomLevel) -> [[MapPoint]] {
+    static func landmasses(for level: MapZoomLevel) -> [Polygon] {
         switch level {
         case .world: coarseLand
         case .regional: mediumLand
@@ -74,7 +74,7 @@ enum WorldGeometry {
     /// Inland water, drawn in the ocean's own colour over the land it sits in.
     /// A lake is the same substance as the sea; giving it a third value would
     /// widen a palette deliberately kept narrow.
-    static func lakes(for level: MapZoomLevel) -> [[MapPoint]] {
+    static func lakes(for level: MapZoomLevel) -> [Polygon] {
         level == .local ? fineLakes : mediumLakes
     }
 
@@ -93,7 +93,7 @@ enum WorldGeometry {
     /// and a coastline alone does not say where France stops and Spain starts.
     /// `MapFrame` dashes them there instead, which separates them from routes
     /// by pattern rather than by absence.
-    static func borders(for level: MapZoomLevel) -> [[MapPoint]] {
+    static func borders(for level: MapZoomLevel) -> [Polygon] {
         borderLines
     }
 
@@ -105,16 +105,50 @@ enum WorldGeometry {
     private static let borderLines = points(WorldGeometryData.borders)
 
     /// One polygon or line per row; `lat,lon` pairs separated by spaces.
-    private static func points(_ data: String) -> [[MapPoint]] {
+    /// A polygon with its extent, so a frame can reject it without projecting
+    /// it.
+    ///
+    /// The extent is the whole point. At the map's *opening* zoom — which
+    /// `frameNetwork` sets to the maximum for an airline with one airport —
+    /// the local tier is 1,084 polygons and 28,937 points, and every one of
+    /// them was being projected every frame whether it was on screen or not.
+    /// Almost none of them are: at that magnification the viewport is a couple
+    /// of thousand kilometres across. Four comparisons in map space replace a
+    /// projection per point, and the coastline that survives is the same
+    /// coastline.
+    struct Polygon {
+        let points: [MapPoint]
+        let minX: Double, maxX: Double, minY: Double, maxY: Double
+
+        init(_ points: [MapPoint]) {
+            self.points = points
+            self.minX = points.map(\.x).min() ?? 0
+            self.maxX = points.map(\.x).max() ?? 0
+            self.minY = points.map(\.y).min() ?? 0
+            self.maxY = points.map(\.y).max() ?? 0
+        }
+
+        /// Whether this polygon, shifted into a world copy, can touch a
+        /// map-space rectangle. Conservative — a bounding box says "maybe",
+        /// never "definitely" — which is exactly what a cull needs.
+        func intersects(minX rectMinX: Double, maxX rectMaxX: Double,
+                        minY rectMinY: Double, maxY rectMaxY: Double,
+                        offset: Double) -> Bool {
+            maxX + offset >= rectMinX && minX + offset <= rectMaxX
+                && maxY >= rectMinY && minY <= rectMaxY
+        }
+    }
+
+    private static func points(_ data: String) -> [Polygon] {
         data.split(separator: "\n").map { row in
-            row.split(separator: " ").compactMap { pair -> MapPoint? in
+            Polygon(row.split(separator: " ").compactMap { pair -> MapPoint? in
                 let parts = pair.split(separator: ",")
                 guard parts.count == 2,
                       let latitude = Double(parts[0]),
                       let longitude = Double(parts[1]) else { return nil }
                 return MapPoint(coordinate: Coordinate(latitude: latitude,
                                                        longitude: longitude))
-            }
+            })
         }
     }
 

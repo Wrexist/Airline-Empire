@@ -119,10 +119,19 @@ struct MapFrame {
         let lakes = WorldGeometry.lakes(for: level)
         let borders = WorldGeometry.borders(for: level)
 
+        // The viewport in map space, with a margin so a shape straddling the
+        // edge still draws its part. Computed once, then four comparisons per
+        // polygon — against a projection per point, which at the local tier is
+        // 28,937 of them per world copy per frame, nearly all off screen.
+        let view = visibleMapRect(margin: 0.02)
+
         for offset in projector.visibleWorldOffsets {
             for landmass in land {
+                guard landmass.intersects(minX: view.minX, maxX: view.maxX,
+                                          minY: view.minY, maxY: view.maxY,
+                                          offset: offset) else { continue }
                 var path = Path()
-                appendPolyline(landmass, offset: offset, to: &path)
+                appendPolyline(landmass.points, offset: offset, to: &path)
                 path.closeSubpath()
                 context.fill(path, with: .color(AETheme.mapLand))
                 context.stroke(path, with: .color(AETheme.mapCoast),
@@ -132,8 +141,11 @@ struct MapFrame {
             // substance as the sea, and a third value would widen a palette
             // deliberately kept narrow.
             for lake in lakes {
+                guard lake.intersects(minX: view.minX, maxX: view.maxX,
+                                      minY: view.minY, maxY: view.maxY,
+                                      offset: offset) else { continue }
                 var path = Path()
-                appendPolyline(lake, offset: offset, to: &path)
+                appendPolyline(lake.points, offset: offset, to: &path)
                 path.closeSubpath()
                 context.fill(path, with: .color(AETheme.mapBackground))
                 context.stroke(path, with: .color(AETheme.mapCoast.opacity(0.6)),
@@ -148,8 +160,11 @@ struct MapFrame {
             // route at the scale where routes are longest.
             let hairline = level == .world
             for border in borders {
+                guard border.intersects(minX: view.minX, maxX: view.maxX,
+                                        minY: view.minY, maxY: view.maxY,
+                                        offset: offset) else { continue }
                 var path = Path()
-                appendPolyline(border, offset: offset, to: &path)
+                appendPolyline(border.points, offset: offset, to: &path)
                 context.stroke(
                     path, with: .color(AETheme.mapBorder),
                     style: hairline
@@ -647,6 +662,18 @@ struct MapFrame {
     }
 
     // MARK: - Primitives
+
+    /// The viewport as a rectangle in normalised map space.
+    private func visibleMapRect(margin: Double)
+        -> (minX: Double, maxX: Double, minY: Double, maxY: Double) {
+        let topLeft = projector.unproject(.zero)
+        let bottomRight = projector.unproject(
+            CGPoint(x: projector.size.width, y: projector.size.height))
+        return (min(topLeft.x, bottomRight.x) - margin,
+                max(topLeft.x, bottomRight.x) + margin,
+                min(topLeft.y, bottomRight.y) - margin,
+                max(topLeft.y, bottomRight.y) + margin)
+    }
 
     private func appendPolyline(_ points: [MapPoint], offset: Double = 0,
                                 to path: inout Path) {
