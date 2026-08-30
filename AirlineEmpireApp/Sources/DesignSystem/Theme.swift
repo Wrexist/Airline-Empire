@@ -68,6 +68,16 @@ enum AETheme {
     static let mapLand = Color(red: 0.130, green: 0.169, blue: 0.235)
     /// The coastline itself, a shade up from the land so the silhouette reads.
     static let mapCoast = Color(red: 0.255, green: 0.325, blue: 0.420)
+    /// Political borders. Their own value rather than a tint of the coast:
+    /// a border and a coastline mean different things, and drawing one as a
+    /// faded version of the other is how the map ended up unable to answer
+    /// "which country is that". Still below the coast, because a coastline is
+    /// the stronger fact.
+    static let mapBorder = Color(red: 0.290, green: 0.355, blue: 0.450)
+    /// Country names. Deliberately dim — well under the 0.72 white an airport
+    /// code gets, because the airport is the subject and the country is the
+    /// context it sits in.
+    static let mapCountryLabel = Color(red: 0.62, green: 0.69, blue: 0.80).opacity(0.55)
     /// Meridians and parallels: present, never read as data.
     static let mapGraticule = Color(red: 0.35, green: 0.45, blue: 0.60).opacity(0.10)
     static let playerRoute = Color.cyan

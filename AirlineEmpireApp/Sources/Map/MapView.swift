@@ -123,6 +123,13 @@ struct MapScreen: View {
             }
             .contentShape(Rectangle())
             .gesture(SimultaneousGesture(dragGesture(size: size), zoomGesture(size: size)))
+            // Double tap before single tap: SwiftUI gives the higher count
+            // first refusal, and a single tap still selects after the
+            // double-tap window lapses. Declared the other way round the
+            // double tap is unreachable.
+            .onTapGesture(count: 2) { location in
+                camera.zoomIn(about: location, size: size)
+            }
             .onTapGesture { location in handleTap(at: location, model: model) }
             .accessibilityElement()
             .accessibilityLabel("World map")
@@ -174,13 +181,25 @@ struct MapScreen: View {
     private func dragGesture(size: CGSize) -> some Gesture {
         DragGesture()
             .onChanged { camera.panOffset = $0.translation }
-            .onEnded { _ in camera.commitPan(size: size) }
+            .onEnded { value in
+                // Reduce Motion means what it says: the map still goes where
+                // the finger left it, it just stops there.
+                camera.commitPan(size: size,
+                                 predicted: value.predictedEndTranslation,
+                                 glide: !reduceMotion)
+            }
     }
 
     private func zoomGesture(size: CGSize) -> some Gesture {
         MagnifyGesture()
-            .onChanged { camera.pinch = $0.magnification }
-            .onEnded { _ in camera.commitZoom() }
+            .onChanged { value in
+                // The anchor is captured on the first change rather than in an
+                // onBegan, because MagnifyGesture has no onBegan and the first
+                // change still carries a magnification of very nearly 1.
+                camera.beginPinch(at: value.startLocation, size: size)
+                camera.pinch = value.magnification
+            }
+            .onEnded { _ in camera.commitZoom(size: size) }
     }
 
     private func handleTap(at location: CGPoint, model: MapModel) {
@@ -246,33 +265,127 @@ final class MapCamera {
     var panOffset: CGSize = .zero
     var pinch: CGFloat = 1
 
+    /// Where the pinch started on screen, and the world point that was under
+    /// it. Together they are what makes the map zoom about the fingers.
+    private var pinchAnchor: CGPoint?
+    private var pinchWorld: CGPoint?
+
     static let minZoom: CGFloat = 1
     static let maxZoom: CGFloat = 16
 
+    /// Zoom during a pinch, resisting rather than stopping at the limits.
+    ///
+    /// A hard clamp is what makes a map feel broken at the ends: the fingers
+    /// keep moving and nothing happens, so the gesture reads as dropped. The
+    /// exponent turns overshoot into resistance — it still moves, just less —
+    /// and `commitZoom` springs it back.
     var liveZoom: CGFloat {
-        min(Self.maxZoom, max(Self.minZoom, zoom * pinch))
+        let raw = zoom * pinch
+        if raw > Self.maxZoom { return Self.maxZoom * pow(raw / Self.maxZoom, 0.30) }
+        if raw < Self.minZoom { return Self.minZoom * pow(raw / Self.minZoom, 0.30) }
+        return raw
     }
 
     func liveCenter(size: CGSize) -> CGPoint {
-        let worldWidth = size.width * liveZoom
+        centre(at: liveZoom, size: size, pan: panOffset)
+    }
+
+    /// The camera centre for a given zoom, holding the pinch anchor fixed.
+    ///
+    /// The whole of "zoom about the fingers" is the second branch: solve
+    /// `project(world) == anchor` for the centre. `MapProjector.unproject`
+    /// was written for this and then never called — the map had the arithmetic
+    /// to follow a pinch and zoomed about the screen centre anyway, which is
+    /// why the thing under your fingers slid away as you pinched it.
+    private func centre(at zoomValue: CGFloat, size: CGSize,
+                        pan: CGSize) -> CGPoint {
+        let worldWidth = max(1, size.width * zoomValue)
         let worldHeight = max(1, worldWidth / 2)
-        return clamp(CGPoint(x: center.x - panOffset.width / max(1, worldWidth),
-                             y: center.y - panOffset.height / worldHeight))
+        var base = center
+        if let anchor = pinchAnchor, let world = pinchWorld {
+            base = CGPoint(x: world.x - (anchor.x - size.width / 2) / worldWidth,
+                           y: world.y - (anchor.y - size.height / 2) / worldHeight)
+        }
+        return clamp(CGPoint(x: base.x - pan.width / worldWidth,
+                             y: base.y - pan.height / worldHeight))
     }
 
-    func commitPan(size: CGSize) {
-        center = liveCenter(size: size)
+    /// Remember what the fingers landed on, in world space, before the
+    /// magnification starts changing the projection under them.
+    func beginPinch(at anchor: CGPoint, size: CGSize) {
+        guard pinchAnchor == nil else { return }
+        let projector = MapProjector(zoom: liveZoom,
+                                     center: liveCenter(size: size), size: size)
+        pinchAnchor = anchor
+        pinchWorld = projector.unproject(anchor)
+    }
+
+    /// Fold a finished drag into the camera, and let it coast.
+    ///
+    /// `predictedEndTranslation` is UIKit's own estimate of where the finger
+    /// was heading, which is what a flick expects to do on any map made in the
+    /// last fifteen years. Damped to 45%: the full prediction overshoots
+    /// badly on a small screen, and a map that sails past what you flicked at
+    /// is worse than one that does not coast at all.
+    func commitPan(size: CGSize, predicted: CGSize? = nil, glide: Bool = true) {
+        let landed = liveCenter(size: size)
+        center = landed
         panOffset = .zero
+        guard glide, let predicted else { return }
+        let worldWidth = max(1, size.width * zoom)
+        let worldHeight = max(1, worldWidth / 2)
+        let coast = CGSize(width: predicted.width * 0.45,
+                           height: predicted.height * 0.45)
+        let target = clamp(CGPoint(x: landed.x - coast.width / worldWidth,
+                                   y: landed.y - coast.height / worldHeight))
+        guard hypot(target.x - landed.x, target.y - landed.y) > 0.0004 else { return }
+        withAnimation(.interpolatingSpring(stiffness: 42, damping: 14)) {
+            center = target
+        }
     }
 
-    func commitZoom() {
-        zoom = liveZoom
+    /// Fold a finished pinch in, springing back if it was pushed past a limit.
+    func commitZoom(size: CGSize) {
+        let settled = min(Self.maxZoom, max(Self.minZoom, zoom * pinch))
+        let overshot = abs(settled - liveZoom) > 0.001
+        // Resolve the anchored centre at the zoom we are actually keeping,
+        // so releasing a pinch does not shift what is under the fingers.
+        center = centre(at: settled, size: size, pan: .zero)
+        pinchAnchor = nil
+        pinchWorld = nil
         pinch = 1
+        if overshot {
+            withAnimation(.interpolatingSpring(stiffness: 180, damping: 18)) {
+                zoom = settled
+            }
+        } else {
+            zoom = settled
+        }
     }
 
     func zoomBy(_ factor: CGFloat) {
         withAnimation(AEMotion.selection) {
             zoom = min(Self.maxZoom, max(Self.minZoom, zoom * factor))
+        }
+    }
+
+    /// Double tap: in by a step, about the point tapped.
+    ///
+    /// The step is the same 1.7 the on-screen buttons use, so the two ways of
+    /// zooming agree. Anchored for the same reason the pinch is — a double tap
+    /// on Tokyo should end up looking at Tokyo.
+    func zoomIn(about point: CGPoint, size: CGSize) {
+        let target = min(Self.maxZoom, zoom * 1.7)
+        let projector = MapProjector(zoom: zoom, center: center, size: size)
+        let world = projector.unproject(point)
+        let worldWidth = max(1, size.width * target)
+        let worldHeight = max(1, worldWidth / 2)
+        let settled = clamp(CGPoint(
+            x: world.x - (point.x - size.width / 2) / worldWidth,
+            y: world.y - (point.y - size.height / 2) / worldHeight))
+        withAnimation(.interpolatingSpring(stiffness: 120, damping: 16)) {
+            zoom = target
+            center = settled
         }
     }
 

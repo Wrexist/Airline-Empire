@@ -59,12 +59,19 @@ struct MapFrame {
         drawOcean(&context, size: size)
         drawGraticule(&context)
         drawLand(&context)
+        // Airport labels are chosen first and drawn last. Choosing first is
+        // what lets the country names avoid them; drawing last is what keeps
+        // them on top. The two are not the same decision and were previously
+        // the same statement.
+        let airportLabels = placeAirportLabels()
+        drawCountryLabels(&context, avoiding: airportLabels.map(\.box))
         drawEventRegions(&context)
         drawOpportunities(&context)
         drawRoutes(&context)
+        drawFlightTrails(&context)
         drawAirports(&context)
         drawFlights(&context)
-        drawLabels(&context)
+        draw(airportLabels, into: &context)
     }
 
     // MARK: - Geography
@@ -132,15 +139,22 @@ struct MapFrame {
                 context.stroke(path, with: .color(AETheme.mapCoast.opacity(0.6)),
                                lineWidth: 0.5)
             }
-            // Borders last, and faintly. They are what makes a dark field read
-            // as Earth rather than as shapes — but they are line work in the
-            // same weight as a route, so they sit well below it and never
-            // appear at world zoom at all.
+            // Borders last. They are what makes a dark field read as Earth
+            // rather than as shapes, and they were previously drawn so faintly
+            // — 45% of the coast colour at 0.4pt, and not at all at world zoom
+            // — that the answer to "which country is that" was still nowhere
+            // on the map. Now they have their own value and appear at every
+            // level, dashed at world zoom so a political line never reads as a
+            // route at the scale where routes are longest.
+            let hairline = level == .world
             for border in borders {
                 var path = Path()
                 appendPolyline(border, offset: offset, to: &path)
-                context.stroke(path, with: .color(AETheme.mapCoast.opacity(0.45)),
-                               lineWidth: 0.4)
+                context.stroke(
+                    path, with: .color(AETheme.mapBorder),
+                    style: hairline
+                        ? StrokeStyle(lineWidth: 0.5, dash: [2.5, 2.5])
+                        : StrokeStyle(lineWidth: level == .local ? 0.9 : 0.7))
             }
         }
     }
@@ -423,6 +437,74 @@ struct MapFrame {
 
     // MARK: - Flights
 
+    /// The part of each flight already flown, drawn over its route.
+    ///
+    /// The aircraft themselves have moved along their great circles since this
+    /// map was built, and a player watching one cross the Atlantic could see
+    /// *where* it was but not *how far along* — the route beneath it is one
+    /// uniform line from end to end, so a flight an hour out and a flight an
+    /// hour from landing look identical until you tap one. Every flight
+    /// tracker made in the last decade answers this the same way, and it is
+    /// the right answer: brighten the arc behind the aircraft.
+    ///
+    /// Player flights only. A rival trail would be the map's single most
+    /// numerous element and would say nothing a player can act on; rivals
+    /// keep their faint silhouettes.
+    private func drawFlightTrails(_ context: inout GraphicsContext) {
+        guard overlay != .opportunity else { return }
+        let width: CGFloat = policy.level == .world ? 1.6 : 2.2
+
+        for flight in model.flights where flight.isPlayer && flight.airborne {
+            guard let (origin, destination) = catalogAirports(flight) else { continue }
+            let progress = interpolate(flight).progress
+            guard progress > 0.01 else { continue }
+
+            // Sampled rather than clipped from the route's own arc: the route
+            // polyline is shared by every flight on it, and slicing it at a
+            // per-flight fraction would land between vertices. Twenty steps is
+            // enough that a great circle reads as a curve at any zoom this map
+            // reaches, and cheap enough to do per airborne aircraft per frame.
+            let steps = 20
+            let flown = (0...steps).map { step -> MapPoint in
+                let fraction = progress * Double(step) / Double(steps)
+                return MapPoint(coordinate: MapMath.greatCirclePoint(
+                    from: origin, to: destination, fraction: fraction))
+            }
+            let unwrapped = MapGeodesy.unwrap(flown)
+            guard unwrapped.count > 1 else { continue }
+
+            let color = Vocab.liveryColor(flight.livery)
+            for offset in MapGeodesy.worldOffsets(for: unwrapped) {
+                let points = unwrapped.map {
+                    projector.project(MapPoint(x: $0.x + offset, y: $0.y))
+                }
+                guard points.contains(where: { projector.isVisible($0, margin: 120) })
+                else { continue }
+
+                var path = Path()
+                for (index, point) in points.enumerated() {
+                    if index == 0 { path.move(to: point) } else { path.addLine(to: point) }
+                }
+                context.stroke(path, with: .color(color.opacity(0.5)),
+                               style: StrokeStyle(lineWidth: width, lineCap: .round,
+                                                  lineJoin: .round))
+
+                // The last fifth again, brighter. A single flat trail says
+                // "this much is done"; a trail that intensifies toward the
+                // aircraft also says which way it is going, which is the
+                // difference between a progress bar and a moving thing.
+                let tailStart = max(0, points.count - 1 - steps / 5)
+                var tail = Path()
+                for (index, point) in points[tailStart...].enumerated() {
+                    if index == 0 { tail.move(to: point) } else { tail.addLine(to: point) }
+                }
+                context.stroke(tail, with: .color(color.opacity(0.95)),
+                               style: StrokeStyle(lineWidth: width + 0.6,
+                                                  lineCap: .round, lineJoin: .round))
+            }
+        }
+    }
+
     private mutating func drawFlights(_ context: inout GraphicsContext) {
         for flight in model.flights {
             guard flight.isPlayer || policy.showsRivalAircraft(speed: speed) else {
@@ -503,16 +585,54 @@ struct MapFrame {
 
     // MARK: - Labels
 
-    private func drawLabels(_ context: inout GraphicsContext) {
+    /// Which country names fit, and where.
+    ///
+    /// Deliberately subordinate: smaller than an airport code, dimmer than
+    /// one, and yielding to every box an airport label already claimed. A
+    /// player reads this map for airports and routes; the country name is
+    /// there to answer "where am I", once, and then get out of the way.
+    private func drawCountryLabels(_ context: inout GraphicsContext,
+                                   avoiding blocked: [CGRect]) {
+        let candidates = CountryLabels.visible(atZoom: policy.zoom)
+        guard !candidates.isEmpty else { return }
+
+        var projected: [(CountryLabel, CGPoint)] = []
+        for offset in projector.visibleWorldOffsets {
+            for country in candidates {
+                let point = projector.project(
+                    MapPoint(x: country.point.x + offset, y: country.point.y))
+                guard projector.isVisible(point, margin: 60) else { continue }
+                projected.append((country, point))
+            }
+        }
+        guard !projected.isEmpty else { return }
+
+        let labels = MapLabelLayout.placeCountries(
+            projected, blocked: blocked,
+            limit: policy.level == .world ? 10 : 18)
+        for label in labels {
+            context.draw(
+                Text(label.text)
+                    .font(.system(size: policy.level == .local ? 11 : 10,
+                                  weight: .medium))
+                    .foregroundStyle(AETheme.mapCountryLabel),
+                at: label.point)
+        }
+    }
+
+    private func placeAirportLabels() -> [MapLabel] {
         // A statement rather than an `if case` expression: pattern-matching
         // conditions in expression position are the kind of thing that either
         // compiles or teaches you something, and this file has no business
         // finding out.
         var selectedCode: AirportCode?
         if case .airport(let code) = selection { selectedCode = code }
-        let labels = MapLabelLayout.place(
+        return MapLabelLayout.place(
             geometry.airports, level: policy.level, selected: selectedCode,
             limit: policy.level == .world ? 14 : 28)
+    }
+
+    private func draw(_ labels: [MapLabel], into context: inout GraphicsContext) {
         for label in labels {
             let color: Color = label.emphasis ? AETheme.ember
                 : label.isPlayer ? playerColor.opacity(0.95)

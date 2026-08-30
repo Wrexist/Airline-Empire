@@ -258,6 +258,11 @@ struct MapLabel {
     let priority: Int
     let isPlayer: Bool
     let emphasis: Bool
+    /// The box this label claimed, so a later pass can avoid it. Country
+    /// labels are placed against these: the map is about airports, and
+    /// geography that covers one has stopped being context and started being
+    /// clutter (docs/MAP_ARCHITECTURE.md §2).
+    let box: CGRect
 }
 
 enum MapLabelLayout {
@@ -297,7 +302,45 @@ enum MapLabelLayout {
                 text: airport.code.raw, point: CGPoint(x: point.x, y: point.y - 13),
                 priority: priority,
                 isPlayer: airport.servedByPlayer || airport.isPlayerHome,
-                emphasis: airport.isPlayerHome || airport.code == selected))
+                emphasis: airport.isPlayerHome || airport.code == selected,
+                box: box))
+        }
+        return labels
+    }
+
+    /// Chooses which country labels to draw, around the airport labels.
+    ///
+    /// Same greedy-by-priority rule as the airports, with two differences.
+    /// The boxes already claimed by airport labels are passed in and treated
+    /// as taken, so a country name can never sit on top of the thing the map
+    /// is for. And priority is Natural Earth's own `MIN_LABEL` inverted — the
+    /// countries a cartographer would print at the widest scale win ties, so
+    /// when Belgium and France collide it is France that survives.
+    static func placeCountries(_ countries: [(CountryLabel, CGPoint)],
+                               blocked: [CGRect],
+                               limit: Int) -> [MapLabel] {
+        let ranked = countries.sorted { lhs, rhs in
+            lhs.0.minZoom != rhs.0.minZoom
+                ? lhs.0.minZoom < rhs.0.minZoom
+                : lhs.0.name < rhs.0.name
+        }
+
+        var placed = blocked
+        var labels: [MapLabel] = []
+        for (country, point) in ranked {
+            guard labels.count < limit else { break }
+            // The flag counts roughly double a letter, and the gap after it
+            // one more. Approximate, like the airport boxes, and padded for
+            // the same reason: exact metrics are not worth a layout pass per
+            // frame at 30fps.
+            let width = CGFloat(country.name.count) * 5.4 + 22
+            let box = CGRect(x: point.x - width / 2, y: point.y - 8,
+                             width: width, height: 16)
+            guard !placed.contains(where: { $0.intersects(box) }) else { continue }
+            placed.append(box)
+            labels.append(MapLabel(text: country.display, point: point,
+                                   priority: 0, isPlayer: false,
+                                   emphasis: false, box: box))
         }
         return labels
     }

@@ -84,8 +84,17 @@ enum WorldGeometry {
     /// also the difference between a clean field and a mesh — 2,589 points of
     /// hairline over a silhouette, under the routes that matter. Empty at
     /// world zoom is a decision, not an omission.
+    /// Political borders, at every level.
+    ///
+    /// They used to be withheld at world zoom, on the reasoning that a border
+    /// is line work in the same weight as a route and world zoom is where
+    /// routes are longest. True of the weight, wrong about the need: world
+    /// zoom is precisely where a player cannot tell one country from another,
+    /// and a coastline alone does not say where France stops and Spain starts.
+    /// `MapFrame` dashes them there instead, which separates them from routes
+    /// by pattern rather than by absence.
     static func borders(for level: MapZoomLevel) -> [[MapPoint]] {
-        level == .world ? [] : borderLines
+        borderLines
     }
 
     private static let coarseLand = points(WorldGeometryData.coarseLand)
