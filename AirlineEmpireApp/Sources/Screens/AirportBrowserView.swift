@@ -243,7 +243,7 @@ struct AirportDetailView: View {
                 Text("\(spec.city), \(spec.country)")
                     .font(.subheadline)
                     .foregroundStyle(AETheme.mutedText)
-                HStack(spacing: AETheme.spacingXS) {
+                AEChipRow {
                     AEChip(icon: "globe", text: Vocab.region(spec.region))
                     AEChip(icon: "road.lanes", text: Vocab.runwayDetail(spec.runwayClass))
                     AEChip(icon: "cloud.rain.fill", text: Vocab.weatherRisk(spec.weatherRisk))

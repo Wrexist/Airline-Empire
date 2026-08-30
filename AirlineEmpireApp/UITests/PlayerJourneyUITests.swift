@@ -410,16 +410,17 @@ final class PlayerJourneyUITests: AEUITestCase {
             .matching(identifier: "ae-fleet-row").firstMatch
         require(aircraftRow, "the leased aircraft on the fleet board")
         aircraftRow.tap()
-        // The screen must carry content that only aircraft detail has:
-        // condition is its vocabulary, and a blank push would fail this.
-        let detailRendered = app.staticTexts
-            .matching(NSPredicate(format: "label CONTAINS[c] %@", "condition"))
-            .firstMatch.waitForExistence(timeout: 10)
+        // Content only aircraft detail has. The first attempt asked for
+        // "condition", which the fleet board's own summary also says — so
+        // run 60 photographed the board under the name "aircraft-detail" and
+        // the assertion passed anyway. "Ownership" is a section header that
+        // exists nowhere else.
+        let detailRendered = app.staticTexts["Ownership"]
+            .waitForExistence(timeout: 10)
         checkpoint("90-aircraft-detail")
         XCTAssertTrue(detailRendered, """
-            Aircraft detail shows nothing describing the aircraft's \
-            condition — either the wrong screen was pushed or it rendered \
-            empty. Screenshot attached.
+            Aircraft detail shows no Ownership section — either the wrong \
+            screen was pushed or it rendered empty. Screenshot attached.
             """)
         app.navigationBars.buttons.firstMatch.tap()
 
@@ -533,7 +534,7 @@ final class PlayerJourneyUITests: AEUITestCase {
 
         // Navigation failure is the worst outcome: every tab must survive.
         for tab in ["Map", "Network", "Finance", "World", "Home"] {
-            let button = app.tabBars.buttons[tab]
+            let button = tabButton(tab)
             require(button, "the \(tab) tab at accessibility size")
             XCTAssertTrue(button.isHittable,
                           "The \(tab) tab is not tappable at accessibility size")

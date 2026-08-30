@@ -377,7 +377,7 @@ struct AircraftDetailView: View {
                     }
                     Spacer()
                 }
-                HStack(spacing: AETheme.spacingXS) {
+                AEChipRow {
                     AEChip(icon: "person.2.fill", text: "\(spec.seats) seats")
                     AEChip(icon: "arrow.left.and.right", text: "\(spec.rangeKm) km")
                     // Was `fuelBurnKgPerKm` whole — which says a widebody is
@@ -814,7 +814,7 @@ struct AircraftShopSheet: View {
                     AEBadge(text: "later era", color: .secondary, icon: "lock")
                 }
             }
-            HStack(spacing: AETheme.spacingXS) {
+            AEChipRow {
                 AEChip(icon: "person.2.fill", text: "\(spec.seats) seats")
                 AEChip(icon: "arrow.left.and.right", text: "\(spec.rangeKm) km")
                 // Banded rather than the raw figure. "0.030 kg/km per seat"

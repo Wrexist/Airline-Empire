@@ -581,6 +581,26 @@ struct AEChip: View {
     }
 }
 
+/// The container chips sit in.
+///
+/// A row at reading sizes; a column at accessibility sizes. The first
+/// Dynamic Type screenshot this project produced (run 60, AccessibilityL)
+/// showed why the fixed HStack cannot stand: three chips shared one market
+/// card's width, hyphenated into "Ex-cel-lent fuel per…" towers, and
+/// truncated the one word the chip existed to carry.
+struct AEChipRow<Content: View>: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: AETheme.spacingXS) { content }
+        } else {
+            HStack(spacing: AETheme.spacingXS) { content }
+        }
+    }
+}
+
 /// A selectable glass card: the shape the onboarding uses for every choice.
 ///
 /// Selection is carried by three things at once — a tinted glass, an accent

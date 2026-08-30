@@ -474,23 +474,39 @@ class AEUITestCase: XCTestCase {
 
     // MARK: The journey's shared opening
 
+    /// The control that opens a top-level section, wherever this width class
+    /// put it.
+    ///
+    /// Compact width renders the shell's `TabView` as a tab bar; regular
+    /// width renders it as a **sidebar**, and `app.tabBars` matches nothing
+    /// at all — which is how the first iPad run in this project's history
+    /// (run 60) failed both its tests with "the tab bar after founding never
+    /// appeared" over a screenshot showing a perfectly healthy shell. The
+    /// fallback is scoped as a plain button lookup because the sidebar rows
+    /// expose themselves as buttons named by their tab title.
+    func tabButton(_ title: String) -> XCUIElement {
+        let tab = app.tabBars.buttons[title]
+        if tab.exists { return tab }
+        return app.buttons[title].firstMatch
+    }
+
     /// Found an airline and arrive in the shell. Every journey starts here.
     @discardableResult
     func foundAirline() -> Bool {
         // A relaunch inside one test may come back to a shell that is already
         // playing; that is a success, not a missing button.
-        if app.tabBars.buttons["Home"].waitForExistence(timeout: 3) { return true }
+        if tabButton("Home").waitForExistence(timeout: 3) { return true }
         let found = app.buttons["Found Skyline Air"]
         guard require(found, "the Found button on the new-game screen") else {
             return false
         }
         found.tap()
-        return require(app.tabBars.buttons["Home"], "the tab bar after founding")
+        return require(tabButton("Home"), "the Home tab (bar or sidebar) after founding")
     }
 
     /// Switch to a tab by its title.
     func openTab(_ title: String) {
-        let button = app.tabBars.buttons[title]
+        let button = tabButton(title)
         require(button, "the \(title) tab")
         button.tap()
     }
