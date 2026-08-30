@@ -727,3 +727,40 @@ can host that view declares it. Doing that across the app is what found these
 two. It is a five-line grep and should be a CI script.
 **Fix layer:** App. Both stacks now declare `AircraftID` alongside `RouteID`.
 **Status:** FIXED 2026-08-30.
+
+---
+
+## BUG-031 — Derived caches were keyed on the tick, so a paused player's own command changed nothing on screen
+**Severity:** P2 (a stale headline figure the player caused themselves) ·
+**Phase found:** CodeRabbit review of PR #7, 2026-08-30. **Predates AE-028.**
+**Repro:** pause the game. Buy an aircraft. The Fleet board still shows the old
+count. Open a route: the Routes board header still shows the old one. Nothing
+updates until the player unpauses and a tick lands.
+**Root cause:** `GameController.invalidateCachesIfNeeded` opened with
+`guard state.clock.tickCount != cachedTick else { return }`. That is the wrong
+key. While paused, `GameSession.submit` takes the `engine.applyNow` branch,
+which builds its context with `tick: SimDuration(minutes: 0)` and never touches
+`state.clock.tickCount`; only `advance` increments it. So the command produced
+a genuinely new `GameState` at an unchanged tick, the guard returned early, and
+every tick-keyed cache kept serving pre-command values.
+**Scope.** Five caches: `cachedMap`, `cachedRouteCards`, `cachedFleetCards`
+(all three since UI-016) and the two summaries added in AE-028. The bug is
+older than this phase; AE-028 only widened it.
+**Why it survived:** the tick is an *almost* correct key. It is right for every
+running-game path, which is nearly all of them, and the pause path is the one
+case where state advances without the clock. A cache invalidated on "the
+simulation moved" reads as obviously correct until you notice the player can
+move the simulation without moving the clock.
+**Fix layer:** App. `invalidateCaches()` clears unconditionally on every
+published snapshot; the accessors ask only whether a value is present.
+`cachedTick` is gone. This costs one recomputation per published snapshot,
+which is what already happened on every tick while running — the cache's real
+job is stopping repeated `body` evaluations between snapshots from each
+rebuilding the map, and it still does that.
+**Regression cover:** there is no app test target that runs on Linux, so the
+Core *precondition* is pinned instead:
+`SummaryModelTests.pausedCommandChangesStateAtTheSameTick` asserts that a
+command applied while paused changes the state without advancing the tick.
+Anything that caches on the tick alone is broken by that fact, and the test is
+where it is written down.
+**Status:** FIXED 2026-08-30.

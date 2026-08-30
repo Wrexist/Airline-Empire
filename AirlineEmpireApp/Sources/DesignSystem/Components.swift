@@ -679,7 +679,14 @@ struct AECompactMetric: View {
             Text(metric.label)
                 .font(AEType.caption)
                 .foregroundStyle(AETheme.mutedText)
-                .lineLimit(1)
+                // No line limit on purpose. These sit in an 88pt adaptive
+                // column, and a label like "revenue, month to date" at an
+                // accessibility Dynamic Type size cannot fit on one line at
+                // any tolerable scale — so a single line means truncation,
+                // which is the one outcome worse than a taller cell. The grid
+                // sizes each cell independently, so wrapping costs nothing but
+                // height. `minimumScaleFactor` stays as a gentle assist before
+                // the wrap, not as a substitute for it.
                 .minimumScaleFactor(0.85)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

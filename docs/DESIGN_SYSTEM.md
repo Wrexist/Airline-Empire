@@ -145,6 +145,15 @@ own.
 once, and `SummaryModelTests` holds each summary against the per-row model it
 summarises. Views format; they never calculate.
 
+**The rule is not fully applied yet, and the gap is narrower than it sounds.**
+The map's overlay hints count `MapModel`'s per-route *health classification* —
+which Core computes — so those views count Core's answers rather than inventing
+their own. What is genuinely unfinished is that two Core functions
+(`MapModel.health`'s `.grounded` and `NetworkSummary.idleRoutes`) describe one
+population with nothing linking them. A test now fails the day they disagree;
+the duplication itself remains. See `tasks/TECH_DEBT.md` TD-012, and do not
+read this section as describing a completed migration.
+
 Two conventions inside those types:
 
 - **`nil` is not zero.** No aeroplanes is a different claim from empty

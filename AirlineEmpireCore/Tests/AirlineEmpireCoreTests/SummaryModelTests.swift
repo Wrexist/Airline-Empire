@@ -209,6 +209,51 @@ struct SummaryModelTests {
         #expect(summary.idleRoutes == grounded)
     }
 
+    /// BUG-031, pinned at its source.
+    ///
+    /// The bug itself was in the app: `GameController` keyed its derived
+    /// caches on `clock.tickCount`, so a paused player's own command changed
+    /// nothing on screen. There is no app test target that runs here, so this
+    /// asserts the Core behaviour that made the app's assumption wrong —
+    /// **a command applied while paused changes the state without advancing
+    /// the tick.** Anything that caches on the tick alone is broken by this,
+    /// and this test is where that is written down.
+    @Test("A command applied while paused changes the state without advancing the tick")
+    func pausedCommandChangesStateAtTheSameTick() async throws {
+        let (session, player, catalog) = try await flyingWorld()
+        await session.setSpeed(.paused)
+
+        let before = await session.snapshot
+        let beforeSummary = before.networkSummary(for: player)
+        let beforeFleet = before.fleetSummary(for: player)
+
+        _ = await session.submit(BuyUsedAircraftCommand(
+            buyer: player, type: "MR180", ageYears: 4))
+        let after = await session.snapshot
+
+        // The trap: same tick, different world.
+        #expect(after.clock.tickCount == before.clock.tickCount)
+        #expect(after.fleetSummary(for: player).total == beforeFleet.total + 1)
+
+        // And again for a route, so the network summary is covered too.
+        let market = try #require(after.marketCandidates(from: before.playerAirline!.homeAirport,
+                                                         catalog: catalog)
+            .first { candidate in
+                !after.routes(of: player).contains {
+                    $0.sameMarket(origin: candidate.origin,
+                                  destination: candidate.destination)
+                }
+            })
+        _ = await session.submit(OpenRouteCommand(
+            airline: player, origin: market.origin, destination: market.destination,
+            dailyRoundTrips: 2, ticketPrice: market.referenceFare))
+        let withRoute = await session.snapshot
+
+        #expect(withRoute.clock.tickCount == before.clock.tickCount)
+        #expect(withRoute.networkSummary(for: player).routeCount
+                == beforeSummary.routeCount + 1)
+    }
+
     @Test("Live flights are the player's own, counted while airborne")
     func liveFlightsAreThePlayersAndAirborne() async throws {
         let (session, player, _) = try await flyingWorld()

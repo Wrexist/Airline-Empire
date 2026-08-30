@@ -14,10 +14,13 @@ Creation shows competition; Finance answers the operating question and names
 its best and weakest route; World events show severity. Card fatigue reduced
 across five screens.
 
-Three bugs found and fixed: BUG-027 (live flights counted the whole world),
-BUG-028 (a save warning followed the player into the next game), BUG-029 (dead
-route links on the Finance tab). One component defect found by reading the code
-against its own documentation — `AEMetricStrip` could not wrap.
+Five bugs found and fixed: BUG-027 (live flights counted the whole world),
+BUG-028 (a save warning followed the player into the next game), BUG-029 and
+BUG-030 (dead navigation links on three entry paths), and BUG-031 (derived
+caches keyed on the tick, so a paused player's own command changed nothing on
+screen — found by CodeRabbit, and older than this phase). One component defect
+found by reading the code against its own documentation: `AEMetricStrip` could
+not wrap.
 
 **Nothing in this phase has been seen rendered.** Core is tested and the app
 compiles on macOS CI; layout, contrast, Dynamic Type and whether any of it
