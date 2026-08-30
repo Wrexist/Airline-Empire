@@ -3,9 +3,33 @@
 ## Entities
 
 - **`AircraftTypeSpec`** (content): 14 fictional types across 6 categories
-  (turboprop → largeWidebody), anchored to GAME_BALANCE §3 with ±15%
-  per-type personality (cheaper-thirstier vs pricier-frugal). Validated at
+  (turboprop → largeWidebody), anchored to GAME_BALANCE §3. Validated at
   catalog load (positive figures, index ranges, lease-vs-price plausibility).
+
+  **Corrected 2026-08-30 (AE-029).** This entry previously claimed "±15%
+  per-type personality (cheaper-thirstier vs pricier-frugal)". The shipped
+  catalog does not have that. Measured across all 14 types, the largest
+  within-category spread in fuel burn per seat-km is **4.5%** (narrowbody) and
+  most categories are under 2%. There is no cheaper-thirstier/pricier-frugal
+  axis: within a class, the more expensive type is generally also the one with
+  more seats, more range, and equal-or-better efficiency. Types are separated
+  by **size and reach**, not by economic character.
+
+  The real economic axis is **between** categories and it is large: a turboprop
+  burns roughly **72% more fuel per seat-km than a large narrowbody**, and
+  regional jets are the thirstiest per seat in the catalog. Small aircraft buy
+  reach and short fields; the fuel bill per passenger is the price. This is
+  what `SeatEfficiencyBand` surfaces in the market.
+
+  One type is near-dominated: **NA160** loses to **MR180** on seats, range,
+  cost per seat and burn per seat. Its remaining niche is a lower *absolute*
+  price, which is a real reason for a cash-constrained new airline to buy one
+  — and the only one.
+
+  Not rebalanced. `AircraftContentTests` pins both findings as characterization
+  tests, so introducing the intended personality later fails a test and prompts
+  this paragraph to be rewritten with it, rather than the two silently
+  disagreeing again.
 - **`Airline`**: id, name, kind (player/ai — same rules), home airport,
   founded time. **Cash is not a field** — balances live in the `Ledger`.
 - **`Aircraft`**: type ref, owner, `AircraftOwnership`

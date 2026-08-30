@@ -257,3 +257,61 @@ hard part is the host graph — which stacks can push which views — so a first
 version could simply require that any file containing a value link also
 declares that type, or is documented as always hosted.
 
+
+---
+
+## TD-014 — Five aircraft types share one silhouette at one scale
+**Severity:** P3.
+**Introduced:** pre-existing; named 2026-08-30 while writing
+`docs/AIRCRAFT_ASSET_BIBLE.md`.
+**Description:** `AircraftCategory` has six cases; `AircraftSilhouette` draws
+four planforms. `narrowbody` and `largeNarrowbody` share a shape *and* a scale,
+as do `widebody` and `largeWidebody`. On the map that is correct — the
+difference is 40 seats, which has no silhouette. In the market and on the
+detail hero there is room to tell them apart and nothing does, so a player
+comparing an MR180 against an MR220 sees the identical drawing at the identical
+size beside two different seat counts. Five types share the narrowbody shape
+and five the widebody; within those groups the artwork carries no information
+at all.
+**Resolution path:** a scale factor keyed on `AircraftCategory` rather than
+`Planform`, applied only off-map. Not a fifth and sixth path — the shapes are
+genuinely the same, only the size should differ. Needs a device to judge how
+much difference reads without looking arbitrary.
+
+---
+
+## TD-015 — The fleet row uses an SF Symbol, not the silhouette
+**Severity:** P3.
+**Introduced:** pre-existing; named 2026-08-30.
+**Description:** the market card and the detail header draw
+`AircraftShape(category:)`; the fleet row draws `Vocab.categoryIcon`, a system
+glyph that looks near-identical for a turboprop and a widebody. That is the
+screen a player scans most often, and it is the one place the aircraft language
+is not used.
+**Resolution path:** swap the glyph for the silhouette. Deliberately not done
+in AE-029: the row's spacing is already tight, and changing its leading element
+without being able to look at the result is how a legible row becomes a
+cramped one.
+
+---
+
+## TD-016 — The App target has no test that runs anywhere we build
+**Severity:** P2 (it is the reason three separate defect classes stayed
+invisible: BUG-029, BUG-030, BUG-033).
+**Introduced:** pre-existing; named 2026-08-30.
+**Description:** `AirlineEmpireCore` has 408 tests that run on Linux in CI.
+`AirlineEmpireApp` has none that run anywhere. The macOS job compiles it,
+which catches type errors and nothing else. So every app-layer contract —
+that a rejection code maps to copy, that a navigation link resolves, that a
+picker offers what the command accepts — is guarded only by review.
+
+The pattern in this phase's bugs is consistent and worth stating: each was a
+*string or type agreement* between the app and Core that no compiler checks.
+Core-side tests can pin Core's half (`RejectionCodeContractTests`,
+`AssignmentEligibilityTests` both do), which is genuinely useful and is not the
+same as testing the app.
+**Resolution path:** an `AirlineEmpireAppTests` target running under
+`xcodebuild test` in the existing macOS job. The first three tests to write are
+already known: every code in `Rejections.present` is one Core emits; every
+`NavigationLink(value:)` type is declared by its host stack (TD-013); and
+`Vocab` is total over each Core enum it words. None needs a simulator.

@@ -764,3 +764,81 @@ command applied while paused changes the state without advancing the tick.
 Anything that caches on the tick alone is broken by that fact, and the test is
 where it is written down.
 **Status:** FIXED 2026-08-30.
+
+---
+
+## BUG-032 — Both assignment pickers offered moves Core would refuse
+**Severity:** P1 (a dead-end in the game's central loop; no data loss).
+**Found:** 2026-08-30, AE-029 §23 audit.
+**Symptom:** the player picks an aircraft for a route from either direction,
+and the command is rejected. From Aircraft Detail, routes the aeroplane cannot
+reach were listed as targets; from Route Detail, aeroplanes that cannot reach
+the route were listed as candidates.
+**Root cause:** each screen re-derived eligibility. Both filtered on
+"unassigned and active" and stopped. `AssignAircraftToRouteCommand.validate`
+checks six things, and the two the UI missed — range and runway class — are
+precisely the two a player cannot work out by looking at a row.
+**Wrong in the other direction too.** Core permits assigning an aircraft that
+is in a maintenance check. The `isActive` filter hid those, so a grounded
+aeroplane could not be given its next job while it sat in the hangar. One
+picker, simultaneously too permissive and too restrictive.
+**And a third:** Fleet's picker listed only routes with *no* aircraft
+(`assignedAircraft.isEmpty`), although `apply` appends to `assignedAircraft`
+without complaint. Adding a second aircraft to a busy route was unreachable
+from the screen that owns the aircraft.
+**Why it survived:** nothing connected the two layers. The UI's filter was a
+plausible-looking subset of the real rules, it compiled, it ran, and the only
+symptom was a refusal that looked like the player's mistake.
+**Fix layer:** Core. `AssignmentEligibility` puts the rules beside the
+validator they mirror; both screens render it and neither decides anything.
+Ineligible pairings are now listed with their reason rather than omitted —
+an aeroplane silently missing from a picker is indistinguishable from a bug.
+**Regression cover:** `AssignmentEligibilityTests.blockersAgreeWithTheValidator`
+drives every aircraft against every route in a real world and asserts the model
+and the validator agree on each, with a guard that the fixture actually
+contains refusals. Sabotage-checked: disabling the range branch fails it on
+four pairings.
+**Status:** FIXED 2026-08-30.
+
+---
+
+## BUG-033 — Three refusal mappings could never fire
+**Severity:** P2 (player-facing copy that no player could reach).
+**Found:** 2026-08-30, by diffing every code Core emits against every code the
+app maps.
+**Symptom:** two of the most confusing refusals in the fleet flow — "this
+airport cannot take your aircraft" and "wait for your flights to land" —
+appeared under the generic "Not possible" title with no suggestion, despite
+tailored copy for both existing in `Rejections.swift`.
+**Root cause:** the strings did not match. The app mapped
+`route.hasAirborneFlights`; Core emits `route.flightsAirborne`. The app mapped
+`route.runway` and `route.runwayTooShort`; Core emits `route.runwayTooSmall`.
+`progression.lockedCategory` — the refusal a player meets whenever they try to
+buy an aircraft their era does not allow, and so the most common refusal in the
+market — had no mapping at all.
+**Why it survived:** this fails silently by construction. A `switch` case on a
+string that nothing produces compiles cleanly and is simply never taken. There
+is no warning, no crash, and the fallback is plausible enough that a reader
+would not know they were seeing it.
+**Fix layer:** App for the strings; Core tests for the guard.
+**Regression cover:** `RejectionCodeContractTests` provokes each refusal from a
+real command and pins its literal code, and names the three wrong strings
+explicitly so that reintroducing one meets a failing test rather than a no-op.
+The app's half cannot be tested here — that target does not build on Linux —
+which is the residual risk, recorded as part of TD-016.
+**Status:** FIXED 2026-08-30.
+
+---
+
+## BUG-034 — An aircraft in a maintenance check was described as idle
+**Severity:** P3 (misleading copy).
+**Found:** 2026-08-30, while fixing BUG-032.
+**Symptom:** Aircraft Detail told the player an aeroplane undergoing a
+maintenance check was "Idle at STV. It earns nothing here" — which reads as
+the player's oversight and as something they could fix by finding it a route.
+**Root cause:** the branch tested `assignedRoute == nil` and `isOnOrder`, and
+treated everything else as idle. `inMaintenance` fell through to the idle copy.
+**Fix layer:** App. The check is named, and the route picker still appears
+beneath it, because the aeroplane's *next* route can be chosen while it sits
+in the hangar — which is what Core allows and what BUG-032's fix exposed.
+**Status:** FIXED 2026-08-30.
