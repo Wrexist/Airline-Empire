@@ -69,6 +69,10 @@ struct FleetList: View {
                                 FleetRow(card: card, catalog: catalog)
                             }
                             .aeListRow()
+                            // Same rule as the routes board: the first cell
+                            // is the fleet summary, so `cells.firstMatch` is
+                            // not an aircraft.
+                            .accessibilityIdentifier("ae-fleet-row")
                         }
                     }
                     .listStyle(.plain)

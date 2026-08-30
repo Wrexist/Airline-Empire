@@ -37,6 +37,10 @@ not overstating.
 | `testFoundingAnAirlineReachesEveryTab` | all five tabs reachable, each renders content |
 | `testHomeGuidesANewPlayerToTheirFirstAircraft` | Home carries the only signpost to the market |
 | `testNoScreenShowsTheOldCurrencyGlyph` | no label on any tab contains the generic currency sign |
+| `testDetailScreensAndSettingsRender` | aircraft detail, route detail and Settings each render content only that screen has (AE-032) |
+| `testAudioEngineStartsAndEveryCueDecodes` | the AVAudioEngine runs and every cue buffer decoded — proves the pipeline starts, not that anything was heard (AE-032) |
+| `testAccessibilityTextSizeKeepsTheShellUsable` | at accessibility Dynamic Type, every tab stays tappable and the lease action reachable (AE-032) |
+| `testColdLaunchBaseline` | cold launch, measured — a baseline, not a budget (AE-032) |
 
 ## 3. Screen coverage
 
@@ -45,7 +49,7 @@ not overstating.
 | New game | 👁 observed (it is pinned dark in either appearance) |
 | Home, Map, Network, Finance, World in dark | 👁 observed via the forced route |
 | Home | 👁 observed, 🧪 onboarding card asserted |
-| Map — world, regional and local zoom | 👁 observed, 🧪 pinch asserted |
+| Map — world, regional and local zoom | ⚠️ **the AE-031 claim here was false** — see §7: the three "zoom level" screenshots were one image. Re-covered in AE-032 with the camera's zoom published and asserted at each level |
 | Network — Routes empty | 👁 observed, 🧪 layout asserted |
 | Network — Fleet empty | 👁 observed, 🧪 layout asserted |
 | Aircraft market | 👁 observed |
@@ -133,7 +137,44 @@ against the app.
 
 ## 6. What this document does not claim
 
-- No performance figures. Nothing has been profiled.
-- No accessibility findings. Nothing has been measured.
-- No iPad findings. The regular-width shell has never been run.
+- Cold launch is now measured (`testColdLaunchBaseline`); nothing else is.
+  Map rendering, zoom latency and scroll hitching remain unprofiled.
+- Dynamic Type is sampled at one accessibility size; VoiceOver order and
+  contrast remain unmeasured (contrast of the *fixed* palette pairs was
+  computed from source in AE-032 — a READ-level claim, recorded in
+  CURRENT_PHASE, not a render measurement).
+- iPad has one opt-in CI job (`app-ipad`, workflow_dispatch) driving the
+  shell journey at regular width; until its screenshots have been looked at,
+  no iPad claim stands.
 - No claim that any screen *looks good*. Rendering is not design review.
+
+## 7. AE-032: the run that audited the auditors
+
+The phase's first act was to decode run 59's screenshots (main, c387dde) and
+*look*, before changing anything. Three of the findings were about the
+evidence system itself:
+
+- **BUG-039.** The zoom test's "world / regional / local" screenshots were
+  byte-identical (the map opens framed near the clamp; pinching in moved
+  nothing), and its "zoomed back out" frame was **the Finance screen** — the
+  wide synthetic pinch had pressed the tab bar. The test passed, the audit
+  recorded zoom coverage, and none of it had happened. The camera's zoom is
+  now in the canvas's accessibility value, every zoom step is asserted
+  against it, and a pinch that moves nothing is an `XCTSkip` that says so.
+- **BUG-038.** The route-opening journey tapped the From picker believing it
+  was a destination, then a button labelled "Open" that has never existed.
+  Underneath the broken proof sat a real flaw: the commit row lived below
+  all ~40 candidate rows. The commit now rides the sheet's bottom edge, and
+  the journey drives stable identifiers with a causality check at each step.
+- **The lease mis-tap, photographed.** `MARKET-DID-NOT-CLOSE` shows a
+  **"Buy used (8y)?"** dialog after the test tapped the lease action: the
+  list was still settling and the tap landed one row up. The harness now
+  settles after scrolling and refuses to confirm any dialog that is not
+  titled "Lease?". The same screenshot also showed BUG-037 — "Need
+  110000000 for this offer" — Core's rejection messages printing raw cents.
+
+One correction to §1's premise: the result-bundle artifact is *not* out of
+reach. `get_workflow_run_logs_url` hands back a signed URL that downloads the
+full log zip with no credential, so every screenshot of a run is decodable —
+the 2.6 MB log-tail cap that ate the early checkpoints (TD-020) has a
+workaround, and AE-032 read all twenty frames of run 59 with it.

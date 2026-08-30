@@ -167,8 +167,11 @@ final class PlayerJourneyUITests: AEUITestCase {
         guard openARoute() else { return }
 
         // ── Assign ─────────────────────────────────────────────────────────
-        // Into the route's own screen, where the assignment lives.
-        let routeRow = app.cells.firstMatch
+        // Into the route's own screen, where the assignment lives. By
+        // identifier: the board's first cell is the network summary, which
+        // navigates nowhere.
+        let routeRow = app.descendants(matching: .any)
+            .matching(identifier: "ae-route-row").firstMatch
         require(routeRow, "the new route on the board")
         routeRow.tap()
 
@@ -187,10 +190,23 @@ final class PlayerJourneyUITests: AEUITestCase {
             return
         }
         assign.tap()
-        // The menu lists one row per eligible aircraft; the first is the one
-        // just leased, since it is the only one owned.
-        let candidate = app.buttons.element(boundBy: 0)
+        // The menu lists one row per eligible aircraft, labelled
+        // "<type> at <airport>". Matched on that shape rather than
+        // `element(boundBy: 0)`, which is whatever button the accessibility
+        // tree happens to order first — the back button, on this screen.
+        let candidate = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", " at ")).firstMatch
         if candidate.waitForExistence(timeout: 5) { candidate.tap() }
+
+        // CAUSALITY: an assignment that took shows the aircraft on the route
+        // with an Unassign action. Without this, everything below would poll
+        // an empty schedule for two minutes and blame the map.
+        let unassign = app.buttons["Unassign"]
+        XCTAssertTrue(unassign.waitForExistence(timeout: 10), """
+            No Unassign action appeared after picking an aircraft from the \
+            assignment menu — the command did not take, or the screen did \
+            not refresh.
+            """)
         checkpoint("80-route-with-aircraft")
 
         // ── Run the clock ──────────────────────────────────────────────────
@@ -255,23 +271,74 @@ final class PlayerJourneyUITests: AEUITestCase {
 
         let map = app.descendants(matching: .any)["ae-map-canvas"]
         require(map, "the map canvas")
-        checkpoint("70-map-world-zoom")
 
-        // Two pinches rather than one large one: the camera clamps at 16x, and
-        // a single huge scale would jump straight past the regional level that
-        // is the interesting one for labels.
-        map.pinch(withScale: 2.4, velocity: 1.2)
-        checkpoint("71-map-regional-zoom")
-        map.pinch(withScale: 2.4, velocity: 1.2)
-        checkpoint("72-map-local-zoom")
+        // The camera's zoom is in the canvas's accessibility value, so every
+        // step below is *proved* to have moved it. The previous version of
+        // this test pinched blind: run 59's "world", "regional" and "local"
+        // screenshots came back byte-identical (the map opens framed on the
+        // home network, near the clamp, so pinching in moved nothing), and
+        // its final wide pinch-out landed a synthetic finger on the tab bar
+        // and photographed the Finance screen under a map filename. It
+        // passed, because all it asserted was that the canvas existed.
+        func zoom() -> Double {
+            let value = map.value as? String ?? ""
+            guard let range = value.range(of: #"zoom ([0-9.]+)x"#,
+                                          options: .regularExpression)
+            else { return .nan }
+            return Double(value[range].dropFirst(5).dropLast(1)) ?? .nan
+        }
+        checkpoint("70-map-opening-frame")
+        let opening = zoom()
+        XCTAssertFalse(opening.isNaN, "The map does not publish its zoom")
 
-        // The map must still be there and still be interactive; a gesture that
-        // wedged the canvas would show up as the element going away.
-        XCTAssertTrue(map.exists,
-                      "The map canvas did not survive being pinched")
+        // Buttons first: they drive the same camera the gestures do, and a
+        // button tap cannot miss. Out to the world, in to the streets.
+        let zoomOut = app.buttons["Zoom out"]
+        require(zoomOut, "the zoom out control")
+        for _ in 0..<6 { zoomOut.tap() }
+        let world = zoom()
+        XCTAssertLessThan(world, opening,
+                          "Six zoom-out taps did not move the camera out")
+        checkpoint("71-map-world")
 
-        map.pinch(withScale: 0.3, velocity: -1.5)
-        checkpoint("73-map-zoomed-back-out")
+        let zoomIn = app.buttons["Zoom in"]
+        for _ in 0..<3 { zoomIn.tap() }
+        XCTAssertGreaterThan(zoom(), world,
+                             "Three zoom-in taps did not move the camera in")
+        checkpoint("72-map-regional")
+        for _ in 0..<3 { zoomIn.tap() }
+        checkpoint("73-map-local")
+
+        // The gestures, each proved against the same probe.
+        //
+        // Double tap is synthesized reliably; it must zoom in, and that is a
+        // hard assertion. The pinch is XCUITest's weakest synthesis — if it
+        // moves the camera the claim is upgraded to asserted, and if it does
+        // not, that is recorded as an honest skip rather than a pass,
+        // because from here it is impossible to tell a broken gesture
+        // handler from a synthetic gesture the recognizer never saw. A
+        // person with a device settles it either way (docs/APPLE_VALIDATION.md).
+        for _ in 0..<4 { zoomOut.tap() }
+        let beforeDoubleTap = zoom()
+        map.doubleTap()
+        XCTAssertGreaterThan(zoom(), beforeDoubleTap,
+                             "Double-tapping the map did not zoom in")
+        checkpoint("74-map-after-double-tap")
+
+        let beforePinch = zoom()
+        map.pinch(withScale: 1.8, velocity: 1.0)
+        Thread.sleep(forTimeInterval: 1)
+        if !(zoom() > beforePinch) {
+            checkpoint("75-PINCH-DID-NOT-ZOOM")
+            throw XCTSkip("""
+                The synthetic pinch left the camera at \(zoom())x (was \
+                \(beforePinch)x). Buttons and double tap both move the same \
+                camera, so the zoom path works; whether a real two-finger \
+                pinch reaches the recognizer still needs a person and a \
+                device. Recorded as NOT VERIFIED, not as passing.
+                """)
+        }
+        checkpoint("75-map-after-pinch")
     }
 
     /// No screen shows the old generic currency sign.
@@ -339,7 +406,8 @@ final class PlayerJourneyUITests: AEUITestCase {
         browse.tap()
         guard leaseAnAircraft() else { return }
 
-        let aircraftRow = app.cells.firstMatch
+        let aircraftRow = app.descendants(matching: .any)
+            .matching(identifier: "ae-fleet-row").firstMatch
         require(aircraftRow, "the leased aircraft on the fleet board")
         aircraftRow.tap()
         // The screen must carry content that only aircraft detail has:
@@ -357,7 +425,8 @@ final class PlayerJourneyUITests: AEUITestCase {
 
         // ── Route detail, via the routes board ────────────────────────────
         guard openARoute() else { return }
-        let routeRow = app.cells.firstMatch
+        let routeRow = app.descendants(matching: .any)
+            .matching(identifier: "ae-route-row").firstMatch
         require(routeRow, "the new route on the board")
         routeRow.tap()
         let routeRendered = app.buttons["Assign an aircraft"]

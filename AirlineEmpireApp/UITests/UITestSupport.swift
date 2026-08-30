@@ -204,13 +204,21 @@ class AEUITestCase: XCTestCase {
     func scrollUntil(_ element: XCUIElement, _ what: String,
                      swipes: Int = 8) -> Bool {
         for _ in 0..<swipes {
-            if element.exists { return true }
+            if element.exists { break }
             app.swipeUp()
         }
-        if element.exists { return true }
-        capture(Self.logPrefix + "MISSING-\(what)")
-        XCTFail("\(what) never appeared, after scrolling \(swipes) times.")
-        return false
+        guard element.exists else {
+            capture(Self.logPrefix + "MISSING-\(what)")
+            XCTFail("\(what) never appeared, after scrolling \(swipes) times.")
+            return false
+        }
+        // Let the scroll's inertia finish before anyone taps. A tap resolves
+        // the element's frame at tap time, and a list still settling moved
+        // the Lease row far enough that the tap landed on the Buy-used row
+        // directly above it — the "Buy used (8y)?" dialog in main run 59's
+        // MARKET-DID-NOT-CLOSE screenshot is that exact miss, photographed.
+        Thread.sleep(forTimeInterval: 0.8)
+        return true
     }
 
     // MARK: Layout assertions (TD-019)
@@ -350,14 +358,47 @@ class AEUITestCase: XCTestCase {
         guard scrollUntil(lease, "a Lease action in the market") else { return false }
         lease.tap()
 
-        // The dialog's own button, not the row that opened it.
-        let dialog = app.sheets.firstMatch
-        if dialog.waitForExistence(timeout: 5) {
-            let confirm = dialog.buttons["Lease"]
-            if confirm.waitForExistence(timeout: 3) { confirm.tap() }
-        } else {
-            tapIfPresent(app.buttons["Lease"], settle: 0.3)
+        // The dialog must be the LEASE dialog before anything is confirmed.
+        //
+        // Run 59 on main photographed why: the tap above landed on the
+        // Buy-used row and a "Buy used (8y)?" dialog opened; the old code
+        // then looked for a Lease button, found none, and blundered on. A
+        // confirmation for the wrong action must be cancelled, not confirmed
+        // and not ignored. The title is asked for by name — ConfirmableButton
+        // titles the dialog "<action>?" — because on this runner's iOS 26 the
+        // dialog presents as an anchored popover that `app.sheets` does not
+        // reliably match.
+        let leaseDialogTitle = app.staticTexts["Lease?"]
+        if !leaseDialogTitle.waitForExistence(timeout: 4) {
+            capture(Self.logPrefix + "WRONG-OR-NO-DIALOG")
+            tapIfPresent(app.buttons["Cancel"])
+            Thread.sleep(forTimeInterval: 1)
+            lease.tap()
+            guard leaseDialogTitle.waitForExistence(timeout: 4) else {
+                XCTFail("""
+                    Tapping the lease action never produced the "Lease?" \
+                    confirmation, twice. Either the tap keeps landing on a \
+                    different control or the dialog is not presenting. \
+                    Screenshot of the first attempt attached.
+                    """)
+                return false
+            }
         }
+        // The dialog's confirm button and the market row are both labelled
+        // "Lease"; the row is behind the presented dialog and not hittable,
+        // so the hittable match — searched from the most recently added — is
+        // the dialog's.
+        let confirms = app.buttons.matching(NSPredicate(format: "label == %@", "Lease"))
+        var confirmed = false
+        for index in stride(from: confirms.count - 1, through: 0, by: -1) {
+            let candidate = confirms.element(boundBy: index)
+            if candidate.isHittable {
+                candidate.tap()
+                confirmed = true
+                break
+            }
+        }
+        if !confirmed { tapIfPresent(app.buttons["Lease"], settle: 0.3) }
 
         // The sheet dismisses itself on success. Done is the fallback for the
         // case where it did not — and if it is still there afterwards, the
@@ -388,12 +429,36 @@ class AEUITestCase: XCTestCase {
         else { return false }
         openRoute.tap()
 
-        let firstMarket = app.cells.firstMatch
-        if firstMarket.waitForExistence(timeout: 8) { firstMarket.tap() }
-        let openAction = app.buttons["Open"]
-        if openAction.waitForExistence(timeout: 5), openAction.isEnabled {
-            openAction.tap()
+        // The first *destination*, by its stable identifier. The previous
+        // version tapped `app.cells.firstMatch`, which on this sheet is the
+        // From picker: screenshots 05 and 06 of run 59 are pixel-identical,
+        // because the tap selected nothing and the test then reached for a
+        // button labelled "Open" that has never existed — the real label is
+        // "Open this route". Neither miss failed anything until the final
+        // assertion, which is what §17 calls manufactured sequence: action
+        // and assertion with no causality between them.
+        let destination = app.buttons
+            .matching(identifier: "ae-route-destination").firstMatch
+        guard require(destination, "a destination row in the route sheet")
+        else { return false }
+        destination.tap()
+
+        // CAUSALITY: the commit bar only exists once a destination is
+        // actually selected, so its appearance is proof the tap took.
+        let open = app.buttons.matching(identifier: "ae-route-open").firstMatch
+        guard require(open, "the commit bar after picking a destination",
+                      timeout: 8) else { return false }
+        if !open.isEnabled {
+            capture(Self.logPrefix + "ROUTE-OPEN-BLOCKED")
+            XCTFail("""
+                "Open this route" is disabled for the top-ranked suggestion. \
+                The sheet prints Core's reason above the button — the \
+                screenshot carries it. The guided first-route path does not \
+                connect, which is a product finding, not a test failure.
+                """)
+            return false
         }
+        open.tap()
 
         // AGREEMENT: opening a route must put one on the board.
         let emptyRoutes = app.staticTexts["No routes yet"]

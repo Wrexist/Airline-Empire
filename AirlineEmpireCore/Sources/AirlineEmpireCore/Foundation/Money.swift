@@ -34,4 +34,40 @@ public struct Money: Hashable, Codable, Comparable, Sendable, AdditiveArithmetic
     public static func * (lhs: Int64, rhs: Money) -> Money { rhs * lhs }
 
     public var isNegative: Bool { cents < 0 }
+
+    /// A compact human rendering — `$110.0M`, `$790k`, `$1,234` — for the
+    /// few places Core itself speaks to the player: rejection messages.
+    ///
+    /// Core used to interpolate `cents / 100` there, and the market rendered
+    /// "Need 110000000 for this aircraft" under a blocked offer — spotted in
+    /// the first screenshot that ever showed a blocked market row (BUG-037).
+    /// The thresholds mirror the app's `Format.money`, so a number in a
+    /// refusal reads like every other number on the same screen. Deliberately
+    /// a named property rather than `CustomStringConvertible`: nothing that
+    /// interpolates a Money by accident should silently get a formatted
+    /// string it did not ask for.
+    public var compact: String {
+        let dollars = Double(cents) / 100
+        let magnitude = abs(dollars)
+        let sign = dollars < 0 ? "−" : ""
+        func decimal(_ value: Double, places: Int) -> String {
+            String(format: "%.\(places)f", value)
+        }
+        switch magnitude {
+        case 1_000_000_000...:
+            return "\(sign)$\(decimal(magnitude / 1_000_000_000, places: 2))B"
+        case 1_000_000...:
+            return "\(sign)$\(decimal(magnitude / 1_000_000, places: 1))M"
+        case 10_000...:
+            return "\(sign)$\(decimal(magnitude / 1_000, places: 0))k"
+        default:
+            let whole = Int64(magnitude.rounded())
+            var digits = "\(whole)", grouped = ""
+            while digits.count > 3 {
+                grouped = "," + digits.suffix(3) + grouped
+                digits = String(digits.dropLast(3))
+            }
+            return "\(sign)$\(digits)\(grouped)"
+        }
+    }
 }

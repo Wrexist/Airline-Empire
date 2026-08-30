@@ -53,6 +53,10 @@ struct RoutesList: View {
                                 RouteRow(card: card)
                             }
                             .aeListRow()
+                            // Automation cannot use `cells.firstMatch` here:
+                            // the first cell is the network summary, which
+                            // navigates nowhere (BUG-038's class).
+                            .accessibilityIdentifier("ae-route-row")
                         }
                     }
                     .listStyle(.plain)
@@ -816,13 +820,25 @@ struct OpenRouteSheet: View {
                 } header: {
                     Text("Service")
                 }
-
-                Section {
-                    confirmRow(from: from, to: destination, player: player)
-                }
             }
         }
         .searchable(text: $search, prompt: "Airport code or city")
+        // The commit rides the bottom edge rather than living at the foot of
+        // the list. It used to be the last row after all ~40 candidates, so a
+        // player who picked LNW — the top-ranked suggestion — then had to
+        // scroll past every destination they had just rejected to find the
+        // button that acts on their choice. The first screenshot of this
+        // sheet is what made that visible; the UI test that drives this
+        // journey could not find the button either, which is the same finding
+        // made by a machine (BUG-038).
+        .safeAreaInset(edge: .bottom) {
+            if let destination, destination != from {
+                confirmRow(from: from, to: destination, player: player)
+                    .padding(.horizontal, AETheme.spacingM)
+                    .padding(.vertical, AETheme.spacingS)
+                    .background(.bar)
+            }
+        }
         .aeScreenBackground()
     }
 
@@ -942,6 +958,11 @@ struct OpenRouteSheet: View {
         .buttonStyle(.aePress)
         .accessibilityAddTraits(destination == candidate.code
                                 ? [.isButton, .isSelected] : .isButton)
+        // A stable name for automation. `app.cells.firstMatch` on this sheet
+        // is the From picker, not a destination — which is exactly the tap
+        // the journey test made, silently selecting nothing (BUG-038's other
+        // half, and the same class as the "Lease term" stepper mismatch).
+        .accessibilityIdentifier("ae-route-destination")
     }
 
     private func serviceControls(from: AirportCode, to: AirportCode,
@@ -1017,6 +1038,7 @@ struct OpenRouteSheet: View {
             }
             .buttonStyle(.aePrimary)
             .disabled(blocked != nil)
+            .accessibilityIdentifier("ae-route-open")
         }
     }
 }

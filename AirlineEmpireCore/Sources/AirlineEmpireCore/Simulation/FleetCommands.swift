@@ -96,7 +96,7 @@ public struct BuyNewAircraftCommand: Command, Equatable {
         }
         if state.ledger.balance(of: buyer) < spec.listPrice {
             return CommandRejection(code: "fleet.insufficientFunds",
-                                    message: "Need \(spec.listPrice.cents / 100) for this aircraft")
+                                    message: "Need \(spec.listPrice.compact) for this aircraft")
         }
         return nil
     }
@@ -155,7 +155,7 @@ public struct BuyUsedAircraftCommand: Command, Equatable {
             tuning: tuning)
         if state.ledger.balance(of: buyer) < price {
             return CommandRejection(code: "fleet.insufficientFunds",
-                                    message: "Need \(price.cents / 100) for this aircraft")
+                                    message: "Need \(price.compact) for this aircraft")
         }
         return nil
     }
@@ -214,7 +214,7 @@ public struct LeaseAircraftCommand: Command, Equatable {
         // First month is due on signing.
         if state.ledger.balance(of: lessee) < spec.leaseMonthly {
             return CommandRejection(code: "fleet.insufficientFunds",
-                                    message: "First lease payment of \(spec.leaseMonthly.cents / 100) required")
+                                    message: "First lease payment of \(spec.leaseMonthly.compact) required")
         }
         return nil
     }
