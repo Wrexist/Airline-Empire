@@ -255,14 +255,21 @@ iOS 26 anchors `.searchable` to the bottom of the sheet, which puts the
 search field *below* the "Open this route" bar added for BUG-038 — so the
 reading order is browse, commit, then search.
 
-### 6.6 P3 — dead space on World and on the empty Fleet/Routes boards
+### 6.6 P3 — dead space on World (and a correction about the empty boards)
 
-**OBSERVED**, `KEY-24-shell-world`, `KEY-41-layout-fleet-empty`. World is
-four navigation rows over roughly half a screen of nothing; the empty
-states are one card over the same. This is not BUG-035 returning — the
-picker sits correctly under the navigation bar — but the screens still
-read as unfinished. World in particular is a hub with room for the
-summary each of its four destinations would otherwise be entered to find.
+**OBSERVED**, `KEY-24-shell-world`. World is four navigation rows over
+roughly half a screen of nothing. It is a hub with room for the world's
+own conditions, which a player otherwise had to read off their own
+dashboard.
+
+**Correction to this finding's first draft**, which also named the empty
+Fleet and Routes boards (`KEY-41-layout-fleet-empty`). On a second look
+that half is *not* a defect: each empty state already carries its next
+action ("Browse the market", "Open a route") directly under the picker,
+which is exactly the BUG-035 shape working. Space under a call to action
+is ordinary iOS, and filling it would be decoration — the thing this
+project's own standards are against. Recorded rather than quietly
+dropped, because an audit that only ever adds findings is not an audit.
 
 ### 6.7 Not a defect, but the evidence is weaker than its name
 
@@ -291,7 +298,29 @@ render, and neither has been *seen*. A journey leg that taps an airport
 and captures the panel would close both at once, and is the single
 highest-value addition to the harness.
 
-### 6.9 What remains untestable here, unchanged from AE-032
+### 6.9 Fixed — commit 6f6b0ef
+
+All six findings above were fixed in one pass, and the harness gained the
+leg §6.8 said was missing:
+
+| Finding | Fix |
+| --- | --- |
+| 6.1 map hint under the tab bar | the canvas bleeds past the safe area; the chrome no longer does |
+| 6.2 perfect record with no history | `RouteCardModel.hasFlown`; the screen shows `—` until a flight operates |
+| 6.3 market row collision | silhouette and badge take their own row above the accessibility threshold |
+| 6.4 orphaned fourth metric | four metrics lay out 2×2; other counts keep adaptive columns |
+| 6.5 doubled "From", search below commit | header dropped; search pinned above the list it filters |
+| 6.6 World dead space | the hub ends with fuel per ton and the economic index |
+| 6.8 pulse and hub ring unseen | `testSelectingAnAirportOpensItsPanel` — taps until the map reports a selection, then photographs it |
+
+The new test is deliberately a skip rather than a failure when its taps
+find no marker: a synthetic tap landing between two markers is not the
+app being wrong, and claiming the pulse on a frame that does not show it
+is the exact failure mode §4 of this document exists to prevent.
+
+Core 414/414 on Linux after the read-model change.
+
+### 6.10 What remains untestable here, unchanged from AE-032
 
 System-appearance following, audio audibility, VoiceOver order, contrast
 as rendered, hardware performance, and the game-over screen. The iPad
