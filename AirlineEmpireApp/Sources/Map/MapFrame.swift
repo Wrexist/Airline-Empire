@@ -662,8 +662,9 @@ struct MapFrame {
         var selectedCode: AirportCode?
         if case .airport(let code) = selection { selectedCode = code }
         return MapLabelLayout.place(
-            geometry.airports, level: policy.level, selected: selectedCode,
-            limit: policy.level == .world ? 14 : 28)
+            geometry.airports, level: policy.level, zoom: policy.zoom,
+            selected: selectedCode,
+            limit: policy.level == .world ? 10 : 32)
     }
 
     private func draw(_ labels: [MapLabel], into context: inout GraphicsContext) {
