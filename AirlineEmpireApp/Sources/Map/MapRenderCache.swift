@@ -63,7 +63,8 @@ final class MapRenderCache {
     var counterSummary: String {
         let reasons = rebuildReasons.sorted { $0.key < $1.key }
             .map { "\($0.key):\($0.value)" }.joined(separator: ",")
-        return "cache rebuilds \(rebuilds) replays \(replays) reasons [\(reasons)]"
+        return "cache rebuilds \(rebuilds) replays \(replays) " +
+               "placements \(placementRuns) reasons [\(reasons)]"
     }
 
     /// How far, in screens, the cache builds beyond the viewport on each
@@ -460,6 +461,126 @@ final class MapRenderCache {
         routesZoom = projector.zoom
         routesCenter = projector.center
         routesBuilt = true
+    }
+
+    // MARK: - Label memory (P0-2)
+
+    /// When placement last ran, and under what conditions. Placement is a
+    /// *decision*, and the baseline measured what deciding per frame did:
+    /// 3.92 identity changes and 1.72 position hops per frame while panning
+    /// (docs/MAP_RUNTIME_BASELINE.md §5). So the decision runs only when
+    /// something decision-worthy changes — a gesture settles, the LOD tier
+    /// or selection or tick changes, or the camera drifts past the same
+    /// bands the geometry cache uses — and every frame in between simply
+    /// re-projects the remembered choices, which move exactly with the
+    /// world.
+    private struct PlacementKey: Equatable {
+        let level: MapZoomLevel
+        let size: CGSize
+        let offsets: [Double]
+        let tick: Date
+        let selection: AirportCode?
+        let settle: Int
+    }
+
+    private var placementKey: PlacementKey?
+    private var placementZoom: CGFloat = 1
+    private var placementCenter = CGPoint.zero
+    private var airportMemory: [MapLabelLayout.Remembered] = []
+    /// Country label memory: map-space anchor, display text, and the box's
+    /// width — everything needed to redraw without re-deciding.
+    private var countryMemory: [(anchor: CGPoint, text: String, width: CGFloat)] = []
+    private(set) var placementRuns = 0
+
+    /// Airport labels for this frame: re-projected memory while the
+    /// placement key holds, a fresh (memory-seeded) placement when it does
+    /// not. `placedNow` tells the country pass whether to re-decide too.
+    func airportLabels(airports: [(MapModel.MapAirport, CGPoint)],
+                       byCode: [AirportCode: MapModel.MapAirport],
+                       projector: MapProjector, policy: MapDetailPolicy,
+                       selected: AirportCode?, tick: Date, settle: Int,
+                       limit: Int,
+                       markerRadius: (MapModel.MapAirport) -> CGFloat)
+        -> (labels: [MapLabel], placedNow: Bool) {
+        let key = PlacementKey(level: policy.level, size: projector.size,
+                               offsets: projector.visibleWorldOffsets,
+                               tick: tick, selection: selected, settle: settle)
+        if placementKey == key,
+           cameraDrifted(builtZoom: placementZoom,
+                         builtCenter: placementCenter,
+                         projector: projector) == nil {
+            var out: [MapLabel] = []
+            out.reserveCapacity(airportMemory.count)
+            for memory in airportMemory {
+                guard let airport = byCode[memory.code] else { continue }
+                let anchor = projector.project(airport.position)
+                let centre = CGPoint(x: anchor.x + memory.offset.width,
+                                     y: anchor.y + memory.offset.height)
+                let width = CGFloat(memory.text.count) * 6.4 + 10
+                out.append(MapLabel(
+                    text: memory.text, point: centre,
+                    priority: memory.priority, isPlayer: memory.isPlayer,
+                    emphasis: memory.emphasis,
+                    box: CGRect(x: centre.x - width / 2, y: centre.y - 7,
+                                width: width, height: 14),
+                    code: memory.code, anchorOffset: memory.offset))
+            }
+            return (out, false)
+        }
+
+        placementRuns += 1
+        let labels = MapLabelLayout.place(
+            airports, level: policy.level, zoom: policy.zoom,
+            selected: selected, limit: limit,
+            bounds: CGRect(origin: .zero, size: projector.size),
+            markerRadius: markerRadius, remembered: airportMemory)
+        airportMemory = labels.compactMap { label in
+            guard let code = label.code else { return nil }
+            return MapLabelLayout.Remembered(
+                code: code, text: label.text, offset: label.anchorOffset,
+                priority: label.priority, isPlayer: label.isPlayer,
+                emphasis: label.emphasis)
+        }
+        placementKey = key
+        placementZoom = projector.zoom
+        placementCenter = projector.center
+        return (labels, true)
+    }
+
+    /// Country labels: decided alongside the airports (against their boxes),
+    /// frozen with them between placements. Anchors are stored in map space
+    /// via `unproject`, so re-projection moves them exactly with the world.
+    func countryLabels(projector: MapProjector, policy: MapDetailPolicy,
+                       blocked: [CGRect], placedNow: Bool) -> [MapLabel] {
+        if !placedNow {
+            return countryMemory.map { memory in
+                let point = projector.project(MapPoint(x: Double(memory.anchor.x),
+                                                       y: Double(memory.anchor.y)))
+                return MapLabel(
+                    text: memory.text, point: point, priority: 0,
+                    isPlayer: false, emphasis: false,
+                    box: CGRect(x: point.x - memory.width / 2, y: point.y - 8,
+                                width: memory.width, height: 16))
+            }
+        }
+        let candidates = CountryLabels.visible(atZoom: policy.zoom)
+        var projected: [(CountryLabel, CGPoint)] = []
+        for offset in projector.visibleWorldOffsets {
+            for country in candidates {
+                let point = projector.project(
+                    MapPoint(x: country.point.x + offset, y: country.point.y))
+                guard projector.isVisible(point, margin: 60) else { continue }
+                projected.append((country, point))
+            }
+        }
+        let labels = MapLabelLayout.placeCountries(
+            projected, blocked: blocked,
+            limit: policy.level == .world ? 10 : 18)
+        countryMemory = labels.map {
+            (anchor: projector.unproject($0.point), text: $0.text,
+             width: $0.box.width)
+        }
+        return labels
     }
 
     private func compensated(_ style: StrokeStyle, by s: CGFloat) -> StrokeStyle {

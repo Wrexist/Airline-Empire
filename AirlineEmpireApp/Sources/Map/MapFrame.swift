@@ -20,6 +20,8 @@ struct MapFrame {
     let elapsed: TimeInterval
     /// When the snapshot arrived — the route cache's tick key.
     let tick: Date
+    /// The camera's settle generation — the label memory's re-decide signal.
+    let settle: Int
     /// The cached geometry this frame replays instead of rebuilding
     /// (docs/MAP_RUNTIME_BASELINE.md §2 is the bill it retires).
     let cache: MapRenderCache
@@ -53,7 +55,7 @@ struct MapFrame {
 
     init(model: MapModel, snapshot: GameState, projector: MapProjector,
          policy: MapDetailPolicy, overlay: MapOverlay, selection: MapHit?,
-         speed: SimSpeed, elapsed: TimeInterval, tick: Date,
+         speed: SimSpeed, elapsed: TimeInterval, tick: Date, settle: Int,
          cache: MapRenderCache) {
         self.model = model
         self.snapshot = snapshot
@@ -64,6 +66,7 @@ struct MapFrame {
         self.speed = speed
         self.elapsed = elapsed
         self.tick = tick
+        self.settle = settle
         self.cache = cache
         self.airportsByCode = Dictionary(
             model.airports.map { ($0.code, $0) }, uniquingKeysWith: { first, _ in first })
@@ -606,23 +609,11 @@ struct MapFrame {
     /// there to answer "where am I", once, and then get out of the way.
     private func drawCountryLabels(_ context: inout GraphicsContext,
                                    avoiding blocked: [CGRect]) {
-        let candidates = CountryLabels.visible(atZoom: policy.zoom)
-        guard !candidates.isEmpty else { return }
-
-        var projected: [(CountryLabel, CGPoint)] = []
-        for offset in projector.visibleWorldOffsets {
-            for country in candidates {
-                let point = projector.project(
-                    MapPoint(x: country.point.x + offset, y: country.point.y))
-                guard projector.isVisible(point, margin: 60) else { continue }
-                projected.append((country, point))
-            }
-        }
-        guard !projected.isEmpty else { return }
-
-        let labels = MapLabelLayout.placeCountries(
-            projected, blocked: blocked,
-            limit: policy.level == .world ? 10 : 18)
+        // Decided with the airports, frozen with them between placements
+        // (MapRenderCache.countryLabels); the drawing below is unchanged.
+        let labels = cache.countryLabels(projector: projector, policy: policy,
+                                         blocked: blocked,
+                                         placedNow: labelsPlacedThisFrame)
         for label in labels {
             // Uppercase and letterspaced, which is how an atlas says "this is
             // a region, not a place". It matters more now that airports carry
@@ -639,19 +630,25 @@ struct MapFrame {
         }
     }
 
-    private func placeAirportLabels() -> [MapLabel] {
+    /// Whether the last label pass re-decided placement (true) or replayed
+    /// the memory (false) — the country pass follows the same choice.
+    private var labelsPlacedThisFrame = false
+
+    private mutating func placeAirportLabels() -> [MapLabel] {
         // A statement rather than an `if case` expression: pattern-matching
         // conditions in expression position are the kind of thing that either
         // compiles or teaches you something, and this file has no business
         // finding out.
         var selectedCode: AirportCode?
         if case .airport(let code) = selection { selectedCode = code }
-        return MapLabelLayout.place(
-            geometry.airports, level: policy.level, zoom: policy.zoom,
-            selected: selectedCode,
+        let result = cache.airportLabels(
+            airports: geometry.airports, byCode: airportsByCode,
+            projector: projector, policy: policy, selected: selectedCode,
+            tick: tick, settle: settle,
             limit: policy.level == .world ? 10 : 32,
-            bounds: CGRect(origin: .zero, size: projector.size),
             markerRadius: { policy.radius($0) })
+        labelsPlacedThisFrame = result.placedNow
+        return result.labels
     }
 
     private func draw(_ labels: [MapLabel], into context: inout GraphicsContext) {

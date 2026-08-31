@@ -268,6 +268,12 @@ struct MapLabel {
     /// geography that covers one has stopped being context and started being
     /// clutter (docs/MAP_ARCHITECTURE.md §2).
     let box: CGRect
+    /// Which airport this label belongs to (nil for country labels), and the
+    /// chosen centre's offset from the projected anchor — together, the
+    /// placement *decision*, which is what the label memory keeps while the
+    /// camera moves (docs/MAP_RUNTIME_BASELINE.md §3).
+    var code: AirportCode? = nil
+    var anchorOffset: CGSize = .zero
 }
 
 enum MapLabelLayout {
@@ -315,14 +321,35 @@ enum MapLabelLayout {
     ///   (§6.11) gave two dozen airports their true size: run 76 photographed
     ///   "Charles de Gaulle (Paris)" with two marker discs sitting in the
     ///   middle of the words.
+    /// One prior placement decision, kept so the next placement can prefer
+    /// it. Stability across deliberate re-placements is what stops a settle
+    /// from reshuffling every label the player was reading.
+    struct Remembered {
+        let code: AirportCode
+        let text: String
+        let offset: CGSize
+        let priority: Int
+        let isPlayer: Bool
+        let emphasis: Bool
+    }
+
     static func place(_ airports: [(MapModel.MapAirport, CGPoint)],
                       level: MapZoomLevel,
                       zoom: CGFloat,
                       selected: AirportCode?,
                       limit: Int,
                       bounds: CGRect,
-                      markerRadius: (MapModel.MapAirport) -> CGFloat) -> [MapLabel] {
+                      markerRadius: (MapModel.MapAirport) -> CGFloat,
+                      remembered: [Remembered] = []) -> [MapLabel] {
         let cap = min(limit, labelBudget(zoom: zoom))
+        // Hysteresis at the edges (docs/MAP_PERFORMANCE_TARGETS.md L4): a
+        // new label must clear the stricter rect, a remembered one is kept
+        // until it leaves the looser rect — so nothing flickers over a
+        // one-point threshold. The 8/12pt margins are ~one text-line height,
+        // small enough to be invisible, large enough that a settle two
+        // pixels from the last one changes nothing.
+        let enterBounds = bounds.insetBy(dx: 8, dy: 8)
+        let keepBounds = bounds.insetBy(dx: -12, dy: -12)
         // Explicit steps and an explicit tuple type: the chained version of
         // this expression blew the type-checker's budget on CI (run 68).
         typealias Candidate = (airport: MapModel.MapAirport,
@@ -354,7 +381,40 @@ enum MapLabelLayout {
 
         var placed: [CGRect] = []
         var labels: [MapLabel] = []
-        for (airport, point, priority) in ranked {
+        var kept = Set<AirportCode>()
+
+        // Pass 1 — the memory. Every label from the previous placement keeps
+        // its text rung and its side while it still fits: same anchor, same
+        // offset, looser bounds, and a 0.4-zoom grace on its reveal
+        // threshold so a hair of zoom drift cannot evict it.
+        let anchors = Dictionary(airports.map { ($0.0.code, ($0.0, $0.1)) },
+                                 uniquingKeysWith: { first, _ in first })
+        for memory in remembered.sorted(by: { $0.priority > $1.priority }) {
+            guard labels.count < cap,
+                  let (airport, point) = anchors[memory.code],
+                  priority(airport, selected: selected, level: level,
+                           zoom: zoom + 0.4) > 0 else { continue }
+            let width = CGFloat(memory.text.count) * 6.4 + 10
+            let centre = CGPoint(x: point.x + memory.offset.width,
+                                 y: point.y + memory.offset.height)
+            let box = CGRect(x: centre.x - width / 2, y: centre.y - 7,
+                             width: width, height: 14)
+            guard keepBounds.contains(box),
+                  !placed.contains(where: { $0.intersects(box) }),
+                  !discs.contains(where: {
+                      $0.code != memory.code && $0.rect.intersects(box)
+                  }) else { continue }
+            placed.append(box)
+            kept.insert(memory.code)
+            labels.append(MapLabel(
+                text: memory.text, point: centre,
+                priority: priority(airport, selected: selected,
+                                   level: level, zoom: zoom + 0.4),
+                isPlayer: memory.isPlayer, emphasis: memory.emphasis,
+                box: box, code: memory.code, anchorOffset: memory.offset))
+        }
+
+        for (airport, point, priority) in ranked where !kept.contains(airport.code) {
             guard labels.count < cap else { break }
             // The city if it fits, the code if it does not.
             //
@@ -406,7 +466,7 @@ enum MapLabelLayout {
                 for centre in centres {
                     let box = CGRect(x: centre.x - width / 2, y: centre.y - 7,
                                      width: width, height: 14)
-                    guard bounds.contains(box) else { continue }
+                    guard enterBounds.contains(box) else { continue }
                     let hitsLabel = placed.contains { $0.intersects(box) }
                     let hitsMarker = discs.contains {
                         $0.code != airport.code && $0.rect.intersects(box)
@@ -425,7 +485,9 @@ enum MapLabelLayout {
                 priority: priority,
                 isPlayer: airport.servedByPlayer || airport.isPlayerHome,
                 emphasis: airport.isPlayerHome || airport.code == selected,
-                box: chosen.box))
+                box: chosen.box, code: airport.code,
+                anchorOffset: CGSize(width: chosen.centre.x - point.x,
+                                     height: chosen.centre.y - point.y)))
         }
         return labels
     }

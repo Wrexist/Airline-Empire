@@ -138,6 +138,7 @@ struct MapScreen: View {
                                         ? timeline.date.timeIntervalSince(referenceDate)
                                         : 0,
                                      tick: referenceDate,
+                                     settle: camera.settleGeneration,
                                      cache: renderCache)
                 let drawStart = probesEnabled ? DispatchTime.now() : nil
                 frame.draw(into: &context, size: canvasSize)
@@ -314,6 +315,12 @@ final class MapCamera {
     var center = CGPoint(x: 0.5, y: 0.42)
     var panOffset: CGSize = .zero
     var pinch: CGFloat = 1
+    /// Bumped whenever a camera *intent* completes — a drag or pinch
+    /// commits, a zoom button or double tap fires, the network is framed.
+    /// The label memory re-decides on this signal rather than per frame
+    /// (docs/MAP_RUNTIME_BASELINE.md §3): during the gesture the choices
+    /// are frozen and only move with the world.
+    private(set) var settleGeneration = 0
 
     /// Where the pinch started on screen, and the world point that was under
     /// it. Together they are what makes the map zoom about the fingers.
@@ -378,6 +385,7 @@ final class MapCamera {
     /// badly on a small screen, and a map that sails past what you flicked at
     /// is worse than one that does not coast at all.
     func commitPan(size: CGSize, predicted: CGSize? = nil, glide: Bool = true) {
+        settleGeneration += 1
         let landed = liveCenter(size: size)
         center = landed
         panOffset = .zero
@@ -396,6 +404,7 @@ final class MapCamera {
 
     /// Fold a finished pinch in, springing back if it was pushed past a limit.
     func commitZoom(size: CGSize) {
+        settleGeneration += 1
         let settled = min(Self.maxZoom, max(Self.minZoom, zoom * pinch))
         let overshot = abs(settled - liveZoom) > 0.001
         // Resolve the anchored centre at the zoom we are actually keeping,
@@ -414,6 +423,7 @@ final class MapCamera {
     }
 
     func zoomBy(_ factor: CGFloat) {
+        settleGeneration += 1
         withAnimation(AEMotion.selection) {
             zoom = min(Self.maxZoom, max(Self.minZoom, zoom * factor))
         }
@@ -425,6 +435,7 @@ final class MapCamera {
     /// zooming agree. Anchored for the same reason the pinch is — a double tap
     /// on Tokyo should end up looking at Tokyo.
     func zoomIn(about point: CGPoint, size: CGSize) {
+        settleGeneration += 1
         let target = min(Self.maxZoom, zoom * 1.7)
         let projector = MapProjector(zoom: zoom, center: center, size: size)
         let world = projector.unproject(point)
@@ -443,6 +454,7 @@ final class MapCamera {
     /// previously had no way to ask for. Falls back to the whole world for an
     /// airline that has not flown anywhere yet.
     func frameNetwork(_ model: MapModel) {
+        settleGeneration += 1
         let mine = model.airports.filter { $0.servedByPlayer || $0.isPlayerHome }
         guard !mine.isEmpty else {
             withAnimation(AEMotion.content) {
