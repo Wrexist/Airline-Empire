@@ -201,10 +201,12 @@ Unassign proof (64), detail screens (61, 65) — and a different leg failed
 each time: a tap one row off, a row reported un-hittable, one run's failure
 frame showing the **iOS Settings app** where ours should be. These are
 recorded as automation limitations, not app defects: each failure's frame
-shows a healthy app. The consequence is stated plainly: **no single run has
-yet strung every leg together with the clock running, so "an aircraft
-observed in the air" is still NOT VERIFIED** — the flight journey and the
-clock test stand guard, and the first green flight run upgrades it.
+shows a healthy app. That upgrade landed: **run 69 was the first fully green run in the
+project's history** — 14 of 14 UI tests including the complete flight
+journey — and its frames show the aircraft en route Arlanda (Stockholm) →
+Heathrow (London) at 16×, the clock at January 2. An aircraft in the air is
+👁 observed and 🧪 asserted. The tap flakiness note above stands as history
+and as a warning for future journey legs.
 
 The iPad job's five-tab shell journey is green (runs 63, 66); its detail
 journey shares the market-sheet flakiness above and is not yet green.

@@ -43,12 +43,13 @@ Dynamic Type at AccessibilityL, and the iPad regular-width shell (sidebar +
 map, five tabs green in runs 63/66). **Asserted:** the audio pipeline starts
 with all ~54 cues decoded; cold launch 2.61 s median; camera zoom via
 buttons, double-tap and pinch; the full lease→route→assign chain (each step
-green in at least one run). **Honest residue:** the iOS 26 runner's tap
-synthesis is unstable in the market sheet — runs 61–66 each saw a different
-journey leg flake (one failure frame is the iOS Settings app); no run has
-yet strung every leg together with the clock running, so "an aircraft
-observed in the air" remains NOT VERIFIED, with `testTheClockActuallyRuns`
-and the flight journey as the standing guards. Also still not verified:
+green in at least one run). **Run 69 closed the loop:** the first fully green
+CI run in the project's history — 414 Core tests on the 94-real-airport
+world and 14 of 14 UI tests, the complete flight journey included. The
+frames show the aircraft en route Arlanda (Stockholm) → Heathrow (London)
+at 16×. The iOS 26 runner's tap synthesis remains the flakiest part of the
+harness (runs 61–66 each saw a different journey leg miss; one failure
+frame was the iOS Settings app) — recorded as a warning for future legs. Still not verified:
 system-appearance following, game over, VoiceOver order, audio audibility,
 hardware anything, antimeridian routes (TD-021).
 
