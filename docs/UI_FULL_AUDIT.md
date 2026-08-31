@@ -496,7 +496,37 @@ dragging the row into view, so the frame it aims at is the row's position
 until two consecutive reads agree before the tap. Not a skip, not a
 retry-until-green: the tap now aims at where the row actually is.
 
-### 6.14 What remains untestable here, unchanged from AE-032
+### 6.14 Run 81 — green, and the label work settled
+
+**15 of 15 UI tests and 414 of 414 Core.** `testAcquireAircraftThenOpenARoute`
+passed for the first time since run 72, which is the `waitUntilStill` fix
+doing exactly what its diagnosis predicted.
+
+The same crop of western Europe, four rounds on:
+
+| Run | What the crop showed |
+| --- | --- |
+| 76 | collisions — discs drawn through "Charles de Gaulle (Paris)" |
+| 77 | no collisions, but London and Paris unlabelled |
+| 78 | Paris recovered, placed left, clipped at the screen edge |
+| **81** | **Paris (below its marker), AMS, Madrid, Rome, Istanbul — no collisions, nothing clipped** |
+
+👁 **OBSERVED**: no text crosses a marker disc; no label leaves the
+viewport; five labels where run 77 managed four. Paris shows as "Paris"
+rather than "Charles de Gaulle (Paris)" — the degradation ladder choosing
+the city when the full name will not fit, which is the design working, not
+a shortfall.
+
+**One honest gap in the same frame: London is still unlabelled.** Its
+marker is drawn and ringed, but at this zoom, in this crowding, it loses
+to higher-ranked neighbours. That is the density budget behaving as
+specified rather than a defect — recorded here so the frame is not read as
+a clean sweep.
+
+World zoom holds at five labels (ARN, JFK, DEL, PEK, HND, CGK visible);
+the status bar measured 54 on every map frame in runs 76, 77, 78 and 81.
+
+### 6.15 What remains untestable here, unchanged from AE-032
 
 System-appearance following, audio audibility, VoiceOver order, contrast
 as rendered, hardware performance, and the game-over screen. The iPad
