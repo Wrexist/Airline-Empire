@@ -1033,3 +1033,34 @@ five game days, which is exactly how this was caught.
 trending — the first photograph of a running world in this project's
 history. The flight journey (an aircraft observed in the air) remains
 gated on the runner's flaky market-sheet taps, not on this bug.
+
+## BUG-041 — the lease tap misses by exactly one row on a still list
+
+**Severity:** P2, test infrastructure only. The app leases correctly — the
+same run that failed this proved it twice through the same helper.
+**Found:** 2026-08-31, AE-034 — run 85, `testAcquireAircraftThenOpenARoute`,
+"No lease completed after four attempts", 15/16 UI tests otherwise green.
+**Symptom:** the coordinate tap aimed at the market row's Lease action opens
+the **"Buy used (8y)?"** dialog — the row one pitch (~58 pt) above — on
+attempts 1 *and* 3 of the same test, then attempt 4's tap lands on nothing.
+**Root cause (photographed, not guessed):** the attempt frames show the list
+perfectly still, ruling out the scroll-momentum explanation that
+`waitUntilStill` (added after run 78's identical miss) was built on. A
+stationary, *repeatable* one-row miss means XCUITest's resolved frame for
+the row is stale by exactly one reported row pitch — the accessibility
+snapshot lags the expanded card's layout, and re-reading it returns the same
+stale answer, which is why polling for stillness passes and the tap still
+misses.
+**Why the earlier fix was incomplete:** `waitUntilStill` detects *changing*
+answers. It cannot detect a consistently wrong one.
+**Fix layer:** UITests. The wrong dialog identifies the miss precisely: if
+aiming at the reported Lease centre opened Buy-used, the true Lease position
+is one reported row pitch lower (the *difference* between two rows from the
+same stale snapshot is right even when both absolutes are wrong). The helper
+now measures `lease.midY − buyUsed.midY` when the wrong dialog appears and
+applies it as an aim correction on later attempts.
+**Regression cover:** the helper's own retry loop plus the LEASE-ATTEMPT
+frame captures; three tests exercise it every run.
+**Status:** FIX AUTHORED — awaiting the next CI run. Not claimed fixed until
+a run shows the previously failing test green (or a corrected attempt-2
+landing after a photographed attempt-1 miss).

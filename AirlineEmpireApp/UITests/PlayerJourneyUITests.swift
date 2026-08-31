@@ -285,7 +285,7 @@ final class PlayerJourneyUITests: AEUITestCase {
             // The render-cache counters ride the same channel; print them
             // raw so the log carries rebuild/replay evidence per sequence.
             if let cacheRange = value.range(
-                of: #"cache rebuilds \d+ replays \d+ reasons \[[^\]]*\]"#,
+                of: #"cache rebuilds \d+ replays \d+ placements \d+ reasons \[[^\]]*\]"#,
                 options: .regularExpression) {
                 print("MAP-CACHE \(value[cacheRange])")
             }

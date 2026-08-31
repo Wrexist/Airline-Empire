@@ -398,3 +398,14 @@ treatment (`pow(overshoot, 0.30)` + spring back); the pan limits should get
 the same. Not done in AE-034: the P0s were measured problems, this one is a
 READ-level polish item nobody has yet reproduced on a device. Do it with
 eyes on a screen, not blind.
+
+## TD-024 — Cache counter assertions await their first counted run
+
+The render cache counts every rebuild by cause and the probe publishes
+them, but run 85's log carries no counters (the test's forwarding regex
+predated the `placements` token — fixed the same day). The structural
+targets in `docs/MAP_PERFORMANCE_TARGETS.md` (D1: no rebuilds mid-drag;
+L1–L3: placements ≈ settle events) should become CI assertions, with
+bounds taken from the first run that actually prints MAP-CACHE lines —
+pinning bounds before seeing one counted run would be inventing the
+tolerance. One run of evidence, then assert.
