@@ -55,6 +55,15 @@ public struct RouteCardModel: Equatable, Sendable {
     /// then structurally zero rather than a real result, and a screen must
     /// say so instead of reporting a loss of nothing.
     public let hasClosedMonth: Bool
+    /// Whether any flight has ever operated or been cancelled on this route.
+    ///
+    /// `RouteStats` answers "perfect" for punctuality and completion with no
+    /// history, which is right for the reputation maths that consumes it and
+    /// wrong on a screen: a route with no aircraft was rendering **100%
+    /// punctuality, 100% completion** three rows under a banner saying it was
+    /// not flying (AE-033 audit §6.2). A screen that knows the record is
+    /// empty can say so instead of inventing a perfect one.
+    public let hasFlown: Bool
 }
 
 public struct FleetCardModel: Equatable, Sendable {
@@ -152,7 +161,8 @@ extension GameState {
                 // A month that closed leaves a trace even when it lost money:
                 // some flight flew, or some cost posted. All-zero means the
                 // route has not yet lived through a close.
-                hasClosedMonth: route.economicsLastMonth != RouteMonthEconomics())
+                hasClosedMonth: route.economicsLastMonth != RouteMonthEconomics(),
+                hasFlown: route.stats.totalFlights > 0)
         }
     }
 

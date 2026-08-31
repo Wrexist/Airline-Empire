@@ -231,7 +231,7 @@ struct DashboardView: View {
             }
         }
         // The pushed screens above link onward, so this stack has to know the
-        // same destinations the Network tab does.
+        // same destinations the Airline tab does.
         .navigationDestination(for: RouteID.self) { RouteDetailView(routeID: $0) }
         .navigationDestination(for: AircraftID.self) { AircraftDetailView(aircraftID: $0) }
     }
@@ -588,11 +588,11 @@ struct OnboardingCard: View {
     private func hint(_ step: OnboardingModel.Step) -> String {
         switch step {
         case .acquireAircraft:
-            "Network tab → Fleet → Acquire. Leasing keeps cash free early on."
+            "Airline tab → Fleet → Acquire. Leasing keeps cash free early on."
         case .openRoute:
             "Pick one of the suggested markets below, or browse the map."
         case .assignAircraft:
-            "Network tab → Routes → open the route → Assign an aircraft."
+            "Airline tab → Routes → open the route → Assign an aircraft."
         case .watchFirstFlight:
             "Set speed to 1× — boarding, taxi, and the map crossing are real."
         case .earnFirstRevenue:

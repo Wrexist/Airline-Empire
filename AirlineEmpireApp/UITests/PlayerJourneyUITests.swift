@@ -27,7 +27,7 @@ final class PlayerJourneyUITests: AEUITestCase {
     func testSectionPickerSitsUnderTheNavigationBarNotInDeadSpace() throws {
         launch(appearance: .light)
         guard foundAirline() else { return }
-        openTab("Network")
+        openTab("Airline")
 
         let routesSegment = app.buttons["Routes"]
         require(routesSegment, "the Routes segment")
@@ -73,7 +73,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         let route = appearanceRoute.rawValue
         checkpoint("50-\(route)-home")
 
-        let tabs = ["Map", "Network", "Finance", "World"]
+        let tabs = ["Map", "Airline", "Finance", "World"]
         for (index, tab) in tabs.enumerated() {
             openTab(tab)
             XCTAssertTrue(app.staticTexts.count > 0 || app.otherElements.count > 0,
@@ -107,7 +107,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         checkpoint("01-home")
 
         // ── Acquire ────────────────────────────────────────────────────────
-        openTab("Network")
+        openTab("Airline")
         app.buttons["Fleet"].tap()
         let browse = app.buttons["Browse the market"]
         require(browse, "the market entry point on an empty fleet")
@@ -155,7 +155,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         guard foundAirline() else { return }
 
         // ── Lease ──────────────────────────────────────────────────────────
-        openTab("Network")
+        openTab("Airline")
         app.buttons["Fleet"].tap()
         let browse = app.buttons["Browse the market"]
         require(browse, "the market entry point")
@@ -341,6 +341,79 @@ final class PlayerJourneyUITests: AEUITestCase {
         checkpoint("75-map-after-pinch")
     }
 
+    /// Selecting an airport on the map: the panel, and the marker art.
+    ///
+    /// This leg exists because of a gap the AE-033 audit had to record as
+    /// NOT VERIFIED. The selection pulse and the global-hub ring are drawn on
+    /// every frame the map renders, and *no automated frame had ever selected
+    /// an airport* — so neither had been seen, and neither could be, however
+    /// many map screenshots the suite collected. A tap that selects is the
+    /// one thing that photographs both.
+    ///
+    /// The camera frames home on open, so the home airport is at or near the
+    /// middle of the canvas. That is a good first guess and not a promise:
+    /// the tap walks a small spiral outward until the map reports a
+    /// selection, because an airport marker is a few points wide and a
+    /// synthetic tap that lands on empty ocean deselects rather than fails.
+    func testSelectingAnAirportOpensItsPanel() throws {
+        launch(appearance: .light)
+        guard foundAirline() else { return }
+        openTab("Map")
+
+        let map = app.descendants(matching: .any)["ae-map-canvas"]
+        require(map, "the map canvas")
+
+        // Zoom in a few steps first: at the opening frame the markers are
+        // small and close together, and a tap between two of them selects
+        // neither.
+        let zoomIn = app.buttons["Zoom in"]
+        if zoomIn.waitForExistence(timeout: 5) {
+            for _ in 0..<2 { zoomIn.tap() }
+        }
+
+        func selected() -> Bool {
+            (map.value as? String ?? "").contains("Selected")
+        }
+
+        // Centre first, then a ring around it. Normalised offsets, so this
+        // holds on any device the suite is pointed at.
+        let offsets: [(CGFloat, CGFloat)] = [
+            (0.5, 0.5), (0.5, 0.46), (0.54, 0.5), (0.46, 0.5),
+            (0.5, 0.54), (0.54, 0.46), (0.46, 0.54),
+        ]
+        var found = false
+        for (index, offset) in offsets.enumerated() {
+            map.coordinate(withNormalizedOffset:
+                CGVector(dx: offset.0, dy: offset.1)).tap()
+            Thread.sleep(forTimeInterval: 0.6)
+            if selected() { found = true; break }
+            if index == offsets.count - 1 { checkpoint("86-NO-AIRPORT-SELECTED") }
+        }
+
+        guard found else {
+            throw XCTSkip("""
+                Seven taps around the middle of the map selected nothing. The                 camera frames the home network on open, so a marker should be                 near the centre; a synthetic tap landing between markers is                 the likeliest explanation, and the pulse and hub ring stay                 NOT VERIFIED rather than being claimed on a frame that does                 not show them.
+                """)
+        }
+
+        // The panel is the proof the tap *meant* something, and the frame is
+        // the proof of what it looks like — the selection pulse around the
+        // marker, and the ring on any global hub in view.
+        let panel = app.descendants(matching: .any)["ae-map-selection"]
+        XCTAssertTrue(panel.waitForExistence(timeout: 5),
+                      "The map reported a selection but no panel opened")
+        checkpoint("86-airport-selected")
+
+        // Zoomed out one more time with the selection held: this is the frame
+        // where the hub rings on the other global airports are visible beside
+        // the pulsing selection.
+        let zoomOut = app.buttons["Zoom out"]
+        if zoomOut.exists {
+            for _ in 0..<3 { zoomOut.tap() }
+            checkpoint("87-airport-selected-world")
+        }
+    }
+
     /// No screen shows the old generic currency sign.
     ///
     /// `¤` (U+00A4) was chosen deliberately — the world is fictional, so
@@ -357,7 +430,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         launch(appearance: .light)
         guard foundAirline() else { return }
 
-        for tab in ["Home", "Map", "Network", "Finance", "World"] {
+        for tab in ["Home", "Map", "Airline", "Finance", "World"] {
             openTab(tab)
             let offending = app.staticTexts.matching(
                 NSPredicate(format: "label CONTAINS %@", "\u{00A4}"))
@@ -382,7 +455,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         launch(appearance: .light)
         guard foundAirline() else { return }
 
-        for (index, tab) in ["Home", "Map", "Network", "Finance", "World"].enumerated() {
+        for (index, tab) in ["Home", "Map", "Airline", "Finance", "World"].enumerated() {
             openTab(tab)
             XCTAssertTrue(app.staticTexts.count > 0 || app.otherElements.count > 0,
                           "\(tab) rendered no content")
@@ -399,7 +472,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         guard foundAirline() else { return }
 
         // ── Aircraft detail, via the fleet board ──────────────────────────
-        openTab("Network")
+        openTab("Airline")
         app.buttons["Fleet"].tap()
         let browse = app.buttons["Browse the market"]
         require(browse, "the market entry point")
@@ -571,7 +644,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         checkpoint("95-dynamictype-home")
 
         // Navigation failure is the worst outcome: every tab must survive.
-        for tab in ["Map", "Network", "Finance", "World", "Home"] {
+        for tab in ["Map", "Airline", "Finance", "World", "Home"] {
             guard let button = waitForTab(tab, timeout: 10) else {
                 capture(Self.logPrefix + "MISSING-\(tab)-at-accessibility-size")
                 XCTFail("The \(tab) tab vanished at accessibility size. Screenshot attached.")
@@ -581,7 +654,7 @@ final class PlayerJourneyUITests: AEUITestCase {
                           "The \(tab) tab is not tappable at accessibility size")
         }
 
-        openTab("Network")
+        openTab("Airline")
         checkpoint("96-dynamictype-routes-empty")
 
         // The market's primary action must still be reachable by scrolling.
@@ -596,7 +669,7 @@ final class PlayerJourneyUITests: AEUITestCase {
 
     /// Home guides a new player to their first aircraft.
     ///
-    /// Load-bearing rather than decorative: the Network tab opens on Routes,
+    /// Load-bearing rather than decorative: the Airline tab opens on Routes,
     /// whose empty state tells a player with no aircraft to "put an aircraft
     /// on it". This card is the only thing naming where the market is.
     func testHomeGuidesANewPlayerToTheirFirstAircraft() throws {

@@ -226,6 +226,39 @@ class AEUITestCase: XCTestCase {
     /// The window, as the coordinate space every assertion below is relative
     /// to. Fractions rather than points: a rule written in points is a rule
     /// that only holds on the device it was written on.
+    /// Wait until an element has stopped moving, then report whether it did.
+    ///
+    /// A coordinate tap resolves the element's frame and then fires at that
+    /// point, so a row still carrying scroll momentum is tapped where it
+    /// *was*. In this project that shows up as one specific failure: the tap
+    /// aimed at "Lease" opens the **"Buy used (8y)?"** dialog, the row
+    /// immediately above it — photographed in runs 59, 61 and 78, and every
+    /// time with a healthy market underneath. Two consecutive frame reads
+    /// that agree is enough; the poll is cheap and the alternative is a fixed
+    /// sleep long enough for the worst case, which is slower and still a
+    /// guess.
+    @discardableResult
+    func waitUntilStill(_ element: XCUIElement,
+                        timeout: TimeInterval = 4) -> Bool {
+        guard element.exists else { return false }
+        var last = element.frame
+        var agreements = 0
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.15)
+            guard element.exists else { return false }
+            let now = element.frame
+            if abs(now.midY - last.midY) < 0.5, abs(now.midX - last.midX) < 0.5 {
+                agreements += 1
+                if agreements >= 2 { return true }
+            } else {
+                agreements = 0
+            }
+            last = now
+        }
+        return false
+    }
+
     var window: CGRect { app.windows.firstMatch.frame }
 
     /// Fails when an element sits lower down the screen than it should.
@@ -389,6 +422,12 @@ class AEUITestCase: XCTestCase {
                 hops += 1
                 Thread.sleep(forTimeInterval: 0.6)
             }
+            guard lease.exists else { break }
+            // Let the list stop before reading the row's position. The drag
+            // above leaves momentum, and a coordinate tap fires at the frame
+            // as it was when resolved — which is how run 78's first attempt
+            // hit "Buy used (8y)", the row directly above this one.
+            waitUntilStill(lease)
             guard lease.exists else { break }
             // A coordinate tap at the element's own centre: fires at the
             // frame wherever hit-testing disagrees, and the dialog check

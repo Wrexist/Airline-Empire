@@ -139,8 +139,10 @@ struct RootView: View {
 /// or quitting ran through it (UIUX_FORENSIC_AUDIT UI-001).
 ///
 /// Routes and Fleet are the two halves of one question — what you fly, and
-/// where you fly it — so they became one **Network** tab with a segmented
-/// switch. Settings left the World hub for the Home toolbar, where a player
+/// where you fly it — so they became one tab with a segmented switch. It was
+/// titled **Network** first; players read that as an abstraction, and
+/// **Airline** says what it holds — *your airline*: its routes and its
+/// aircraft. Settings left the World hub for the Home toolbar, where a player
 /// looks for settings. Nothing lost a level; two things gained one.
 struct GameShell: View {
     @Environment(GameController.self) private var controller
@@ -154,7 +156,7 @@ struct GameShell: View {
             switch self {
             case .home: "Home"
             case .map: "Map"
-            case .network: "Network"
+            case .network: "Airline"
             case .finance: "Finance"
             case .world: "World"
             }
@@ -164,7 +166,7 @@ struct GameShell: View {
             switch self {
             case .home: "house"
             case .map: "globe"
-            case .network: "point.topleft.down.to.point.bottomright.curvepath"
+            case .network: "airplane"
             case .finance: "chart.bar"
             case .world: "bolt"
             }

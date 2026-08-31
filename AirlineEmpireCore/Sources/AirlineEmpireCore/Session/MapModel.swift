@@ -354,6 +354,8 @@ extension GameState {
         let populations = catalog.orderedAirportCodes
             .compactMap { catalog.airports[$0]?.demographics.populationThousands }
         let maxPopulation = Double(populations.max() ?? 1)
+        let maxSlots = Double(catalog.orderedAirportCodes
+            .compactMap { catalog.airports[$0]?.slotCapacityPerDay }.max() ?? 1)
 
         let airports = catalog.orderedAirportCodes.compactMap { code -> MapModel.MapAirport? in
             guard let spec = catalog.airports[code] else { return nil }
@@ -366,7 +368,8 @@ extension GameState {
                 region: spec.region,
                 position: MapPoint(coordinate: spec.coordinate),
                 prominence: prominence,
-                tier: MapModel.tier(for: spec, prominence: prominence),
+                tier: MapModel.tier(for: spec, prominence: prominence,
+                                    maxSlots: maxSlots),
                 servedByPlayer: playerAirports.contains(code),
                 isPlayerHome: code == home,
                 // Three routes is the point at which a station stops being a
@@ -509,19 +512,42 @@ extension GameState {
 }
 
 extension MapModel {
-    /// Classification from what the content pack already knows. A global hub
-    /// is a very large catchment that can also physically take the aircraft;
-    /// a huge city with a short runway is not a global hub, it is a market
-    /// nobody can serve properly.
-    static func tier(for spec: AirportSpec, prominence: Double) -> AirportTier {
-        let big = spec.slotCapacityPerDay >= 500
-        if prominence >= 0.55, spec.runwayClass >= .veryLarge, big {
+    /// Classification from what the content pack already knows: how big the
+    /// airport is, how big its city is, and whether the runway can take the
+    /// aeroplanes.
+    ///
+    /// **The city alone is not the airport.** This used to rank on
+    /// `prominence` — metro population over the largest metro — and nothing
+    /// else, which put Frankfurt, Amsterdam, Dubai and Copenhagen in the same
+    /// tier as Gothenburg: "small field", on 1,100–1,500 slots a day against
+    /// Gothenburg's 150. Tokyo's catchment is genuinely fifteen times
+    /// Frankfurt's, so on population Frankfurt *is* small; as an airport it is
+    /// one of the busiest on earth. The map's whole label ladder hangs off
+    /// this, so the effect was not cosmetic: the tier sets the zoom at which
+    /// an airport's name appears, and three of Europe's biggest hubs stayed
+    /// hidden until the deepest zoom while smaller cities showed at a glance.
+    /// It surfaced only when the first automated frame ever to open an
+    /// airport panel photographed Arlanda captioned "small field"
+    /// (AE-033 audit §6.11).
+    ///
+    /// So the score is the larger of the two claims to importance — the city's
+    /// catchment, or the airport's own capacity — rather than the city's
+    /// alone. Capacity is discounted slightly so that a city of real size
+    /// still outranks a big-but-empty field on equal slots. The runway gates
+    /// stay exactly as they were: a huge catchment with a short runway is not
+    /// a global hub, it is a market nobody can serve properly.
+    static func tier(for spec: AirportSpec, prominence: Double,
+                     maxSlots: Double) -> AirportTier {
+        let capacityShare = maxSlots > 0
+            ? Double(spec.slotCapacityPerDay) / maxSlots : 0
+        let score = max(prominence, capacityShare * 0.95)
+        if score >= 0.70, spec.runwayClass >= .veryLarge {
             return .global
         }
-        if prominence >= 0.30 {
+        if score >= 0.45 {
             return spec.runwayClass >= .large ? .major : .regional
         }
-        return prominence >= 0.12 ? .regional : .small
+        return score >= 0.18 ? .regional : .small
     }
 
     /// What a route looks like it is doing, from the figures the simulation

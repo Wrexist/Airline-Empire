@@ -202,11 +202,16 @@ struct MapDetailPolicy {
     /// Marker radius in points. Tier drives most of it; a hub and the home
     /// base get a little more because they are the map's anchors.
     func radius(_ airport: MapModel.MapAirport) -> CGFloat {
+        // Trimmed at the top after the tier fix (§6.11) put two dozen
+        // airports in `.global` instead of ten: the same radii that read as a
+        // hierarchy with ten big dots read as a crowd with twenty-three. The
+        // *ratios* are what carry the hierarchy, so they are kept and the
+        // whole ladder steps down.
         let base: CGFloat = switch airport.tier {
-        case .global: 5.0
-        case .major: 4.0
-        case .regional: 3.0
-        case .small: 2.2
+        case .global: 4.4
+        case .major: 3.5
+        case .regional: 2.6
+        case .small: 2.0
         }
         let presence: CGFloat = airport.isPlayerHome ? 2.4
             : airport.isPlayerHub ? 1.6
@@ -284,24 +289,39 @@ enum MapLabelLayout {
     static func labelZoomThreshold(for tier: MapModel.AirportTier) -> CGFloat {
         switch tier {
         case .global: 0
-        case .major: 2.2
-        case .regional: 4.2
-        case .small: 7.5
+        case .major: 2.8
+        case .regional: 5.0
+        case .small: 8.0
         }
     }
 
-    /// How many labels the screen can carry, grown smoothly with zoom: ~8 at
+    /// How many labels the screen can carry, grown smoothly with zoom: ~6 at
     /// the world view, ~30 by street level. The fit rule still decides which
-    /// candidates actually land; this only caps the attempt.
+    /// candidates actually land; this only caps the attempt. Deliberately
+    /// stingy at the top: fully zoomed out, the map is a command picture,
+    /// and every label it does not need is noise it does not earn.
     static func labelBudget(zoom: CGFloat) -> Int {
-        max(8, min(32, 8 + Int((zoom - 1) * 3.2)))
+        max(6, min(30, 6 + Int((zoom - 1) * 3.0)))
     }
 
+    /// - Parameter bounds: the viewport, so a label pushed sideways off the
+    ///   screen is refused instead of drawn half-visible. Run 78 put
+    ///   "Charles de Gaulle (Paris)" to the left of its marker and off the
+    ///   edge, reading "…s de Gaulle (Paris)".
+    /// - Parameter markerRadius: the drawn radius of an airport's marker, so
+    ///   labels can dodge the discs as well as each other. Without it a label
+    ///   avoids only other labels, which was survivable while most markers
+    ///   were small dots and stopped being so the moment the tier fix
+    ///   (§6.11) gave two dozen airports their true size: run 76 photographed
+    ///   "Charles de Gaulle (Paris)" with two marker discs sitting in the
+    ///   middle of the words.
     static func place(_ airports: [(MapModel.MapAirport, CGPoint)],
                       level: MapZoomLevel,
                       zoom: CGFloat,
                       selected: AirportCode?,
-                      limit: Int) -> [MapLabel] {
+                      limit: Int,
+                      bounds: CGRect,
+                      markerRadius: (MapModel.MapAirport) -> CGFloat) -> [MapLabel] {
         let cap = min(limit, labelBudget(zoom: zoom))
         // Explicit steps and an explicit tuple type: the chained version of
         // this expression blew the type-checker's budget on CI (run 68).
@@ -319,6 +339,18 @@ enum MapLabelLayout {
                 : lhs.airport.code.raw < rhs.airport.code.raw
         }
         let ranked = scored.prefix(cap * 3)
+
+        // Every marker on screen, as a box to keep text out of. Built once
+        // from the same radius the renderer draws with, so the two can never
+        // disagree about how big a dot is. An airport's own disc is exempt —
+        // its label sits directly above it by design.
+        var discs: [(code: AirportCode, rect: CGRect)] = []
+        for (airport, point) in airports {
+            let r = markerRadius(airport) + 1.5
+            discs.append((airport.code,
+                          CGRect(x: point.x - r, y: point.y - r,
+                                 width: r * 2, height: r * 2)))
+        }
 
         var placed: [CGRect] = []
         var labels: [MapLabel] = []
@@ -349,23 +381,47 @@ enum MapLabelLayout {
                 : [Vocab.airportDisplay(name: airport.name, city: airport.city),
                    airport.city, airport.code.raw]
 
-            var chosen: (text: String, box: CGRect)?
-            for text in candidates {
+            // Four placements per candidate, tried in that order: above the
+            // marker, below it, then out to the right and the left.
+            //
+            // Above only is what this used to offer, and in a dense corner it
+            // meant a label was *refused* rather than moved: run 77 cleared
+            // every text-over-dot collision and left London and Paris — the
+            // two largest airports in the view — as anonymous rings, because
+            // the space above each was taken by a neighbour's disc. Offering
+            // the other three sides is the ordinary cartographic answer and
+            // costs three rectangle tests.
+            let r = markerRadius(airport)
+            var chosen: (text: String, centre: CGPoint, box: CGRect)?
+            search: for text in candidates {
                 // Approximate the text box; exact metrics are not worth a
                 // layout pass per frame, and the padding absorbs the error.
                 let width = CGFloat(text.count) * 6.4 + 10
-                let box = CGRect(x: point.x - width / 2, y: point.y - 20,
-                                 width: width, height: 14)
-                if !placed.contains(where: { $0.intersects(box) }) {
-                    chosen = (text, box)
-                    break
+                let centres = [
+                    CGPoint(x: point.x, y: point.y - 13),
+                    CGPoint(x: point.x, y: point.y + r + 9),
+                    CGPoint(x: point.x + r + 4 + width / 2, y: point.y),
+                    CGPoint(x: point.x - r - 4 - width / 2, y: point.y),
+                ]
+                for centre in centres {
+                    let box = CGRect(x: centre.x - width / 2, y: centre.y - 7,
+                                     width: width, height: 14)
+                    guard bounds.contains(box) else { continue }
+                    let hitsLabel = placed.contains { $0.intersects(box) }
+                    let hitsMarker = discs.contains {
+                        $0.code != airport.code && $0.rect.intersects(box)
+                    }
+                    if !hitsLabel, !hitsMarker {
+                        chosen = (text, centre, box)
+                        break search
+                    }
                 }
             }
             guard let chosen else { continue }
 
             placed.append(chosen.box)
             labels.append(MapLabel(
-                text: chosen.text, point: CGPoint(x: point.x, y: point.y - 13),
+                text: chosen.text, point: chosen.centre,
                 priority: priority,
                 isPlayer: airport.servedByPlayer || airport.isPlayerHome,
                 emphasis: airport.isPlayerHome || airport.code == selected,

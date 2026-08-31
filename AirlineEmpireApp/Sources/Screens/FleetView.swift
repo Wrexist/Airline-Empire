@@ -661,6 +661,7 @@ struct AircraftDetailView: View {
 struct AircraftShopSheet: View {
     @Environment(GameController.self) private var controller
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var usedAge = 8
     @State private var leaseTermMonths = 60
     @State private var sort: Sort = .seats
@@ -781,6 +782,65 @@ struct AircraftShopSheet: View {
         .accessibilityElement(children: .combine)
     }
 
+    /// The silhouette, the name, and the lock — laid out by how much room
+    /// the type size leaves.
+    ///
+    /// Side by side at normal sizes. At an accessibility size the name wraps
+    /// to three lines and a vertically centred silhouette landed in the
+    /// middle of the word, with the "later era" badge overlapping the last
+    /// line (AE-033 audit §6.3) — so above that threshold the silhouette and
+    /// the badge take their own row and the name gets the full width. Top
+    /// alignment in the horizontal case for the same reason at one step down:
+    /// a two-line name should hang off the top of the glyph, not straddle it.
+    @ViewBuilder
+    private func shopRowHeader(_ spec: AircraftTypeSpec,
+                               locked: Bool) -> some View {
+        // The silhouette, not a generic glyph. `AircraftShape` was written for
+        // exactly this — its own doc comment says "a fleet row, a detail
+        // header" — and until now only the map used the underlying path. A
+        // regional jet and a widebody looked identical in the one screen where
+        // telling them apart is the entire decision (MASTER PROMPT 4 §11).
+        let silhouette = AircraftShape(category: spec.category)
+            .fill(locked ? AnyShapeStyle(AETheme.mutedText)
+                         : AnyShapeStyle(AETheme.accent))
+            .frame(width: 34, height: 34)
+            .accessibilityHidden(true)
+        let names = VStack(alignment: .leading, spacing: 1) {
+            Text("\(spec.manufacturer) \(spec.model)")
+                .font(AEType.body.weight(.semibold))
+                .fixedSize(horizontal: false, vertical: true)
+            // The role, not the category. "Regional jet" is a taxonomy a
+            // player has to already know; "Regional connector" is what the
+            // aeroplane is bought to do (MASTER PROMPT 5 §10).
+            Text(Vocab.role(spec.role))
+                .font(AEType.secondary).foregroundStyle(AETheme.mutedText)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        let badge = Group {
+            if locked {
+                AEBadge(text: "later era", color: .secondary, icon: "lock")
+            }
+        }
+
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                HStack(spacing: AETheme.spacingS) {
+                    silhouette
+                    Spacer()
+                    badge
+                }
+                names
+            }
+        } else {
+            HStack(alignment: .top, spacing: AETheme.spacingS) {
+                silhouette
+                names
+                Spacer()
+                badge
+            }
+        }
+    }
+
     private func shopRow(_ spec: AircraftTypeSpec, catalog: ContentCatalog,
                          snapshot: GameState, player: AirlineID) -> some View {
         let locked = !snapshot.progression.era.allowedCategories.contains(spec.category)
@@ -790,33 +850,7 @@ struct AircraftShopSheet: View {
                 ageYears: Double(usedAge), tuning: catalog.tuning.fleet),
             tuning: catalog.tuning.fleet)
         return VStack(alignment: .leading, spacing: AETheme.spacingS) {
-            HStack(spacing: AETheme.spacingS) {
-                // The silhouette, not a generic glyph. `AircraftShape` was
-                // written for exactly this — its own doc comment says "a fleet
-                // row, a detail header" — and until now only the map used the
-                // underlying path. A regional jet and a widebody looked
-                // identical in the one screen where telling them apart is the
-                // entire decision (MASTER PROMPT 4 §11).
-                AircraftShape(category: spec.category)
-                    .fill(locked ? AnyShapeStyle(AETheme.mutedText)
-                                 : AnyShapeStyle(AETheme.accent))
-                    .frame(width: 34, height: 34)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("\(spec.manufacturer) \(spec.model)")
-                        .font(AEType.body.weight(.semibold))
-                    // The role, not the category. "Regional jet" is a
-                    // taxonomy a player has to already know; "Regional
-                    // connector" is what the aeroplane is bought to do
-                    // (MASTER PROMPT 5 §10).
-                    Text(Vocab.role(spec.role))
-                        .font(AEType.secondary).foregroundStyle(AETheme.mutedText)
-                }
-                Spacer()
-                if locked {
-                    AEBadge(text: "later era", color: .secondary, icon: "lock")
-                }
-            }
+            shopRowHeader(spec, locked: locked)
             AEChipRow {
                 AEChip(icon: "person.2.fill", text: "\(spec.seats) seats")
                 AEChip(icon: "arrow.left.and.right", text: "\(spec.rangeKm) km")

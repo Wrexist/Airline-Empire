@@ -36,6 +36,7 @@ struct OperationsView: View {
                             badge: nil) {
                         AirportBrowserView()
                     }
+                    conditions
                 }
                 .padding(.horizontal, AETheme.spacingM)
                 .padding(.top, AETheme.spacingS)
@@ -45,6 +46,31 @@ struct OperationsView: View {
             .navigationTitle("World")
             .navigationBarTitleDisplayMode(.inline)
             .aeTimeToolbar()
+        }
+    }
+
+    /// The two world figures that were only ever on Home.
+    ///
+    /// Four navigation rows left roughly half the screen empty (AE-033 audit
+    /// §6.6), and fuel and the economic index are *world* facts — the two
+    /// numbers moving underneath every route in the game — that a player had
+    /// to go to their own dashboard to read. Putting them at the foot of the
+    /// hub fills the space with the thing the screen is about rather than
+    /// with decoration. Home keeps its copies: they belong in both places for
+    /// different reasons, one as world weather and one as a cost you carry.
+    @ViewBuilder
+    private var conditions: some View {
+        if let dashboard = controller.snapshot?.dashboardModel() {
+            AEMetricStrip([
+                AEMetric("fuel per ton",
+                         Format.money(dashboard.fuelPricePerTon)),
+                AEMetric("economy",
+                         Format.decimal(dashboard.economicIndex, places: 2),
+                         tint: dashboard.economicIndex >= 1
+                             ? AETheme.positive : AETheme.caution),
+            ])
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("World conditions")
         }
     }
 

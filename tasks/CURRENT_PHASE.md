@@ -1,5 +1,73 @@
 # Current Phase
 
+**AE-033 — The command map. (Immersion & professional UX pass.)**
+2026-08-31.
+
+The brief, from design review of run 69's frames: the map renders correctly
+but reads as a diagram — information density too high when zoomed out, all
+airports visually equal, routes mute about economics, chrome heavy. The
+instruction that governs every choice here: *"Do not add random visual
+effects everywhere. The goal is a clean command map where the world becomes
+richer as you zoom in."*
+
+What already existed (verified before adding anything): route health
+colours/dashes, frequency-weighted stroke widths, the double ember home
+ring, moving aircraft with trails interpolated between ticks, and the
+camera framing home on open. The gaps were density, hierarchy accents,
+route glow, and any sense of planetary time.
+
+**Shipped in this pass:**
+- **Density ladder tightened.** Label reveal thresholds are now
+  major ≥ 2.8×, regional ≥ 5.0×, small ≥ 8.0× (global hubs always), and
+  the label budget starts at 6 at world zoom — the world view shows only
+  the hubs and the player's own network.
+- **Airport hierarchy.** Global hubs carry a second faint ring (the ◎
+  read); the selected airport breathes — an animated pulse ring driven by
+  the canvas clock; home keeps its unique double ember ring.
+- **Route glow.** Player routes get a soft under-stroke halo so the
+  airline's own network reads as alive against competitor lines.
+- **Day/night terminator.** Two soft fills (α 0.14 + 0.10 inset 6° toward
+  the dark pole) sampled from the game clock — subsolar longitude at 15°/h,
+  declination by day-of-year. Cartoon astronomy, drawn under everything.
+- **"Network" tab → "Airline"** (icon now `airplane`), with the onboarding
+  hints and all UI-test drivers renamed to match.
+
+**Deliberately not done, and why:** weather cells and city lights (effect
+noise, the exact thing the brief warns against); shrinking the tab bar
+(system-controlled); renaming the sunrise control (it is *advance to next
+morning*, an action — a Day/Night label would misdescribe it); map-mode
+redesign (the overlay picker already has five modes; relabelling without a
+design is churn); camera-on-open (already frames home).
+
+**Render verification (runs 73–74, looked at, not assumed):**
+- Density ladder **OBSERVED** — the world view labels only the global hubs
+  (MEX, GRU, DEL, HND, CGK) and the player's home; regional and local
+  zooms reveal the full "Arlanda (Stockholm)" ladder exactly as designed.
+- Terminator **OBSERVED and measured** — a pixel-brightness profile along
+  a fixed latitude of run 73's world frame shows the night band centred
+  on longitude 0 at the game's 00:00, with the two-pass dusk ramp
+  (medians 48 → 43 → 41) and a width matching the terminator equation at
+  that latitude. Run 74's in-flight frames show the January arctic night
+  correctly darkening northern Scandinavia. Subtle by intent: on the dark
+  ocean it is a measured ~15% dim, not a hard edge.
+- "Airline" tab **OBSERVED** in light and dark with the airplane icon;
+  every tab-navigation test passed under the new name.
+- Route glow and moving aircraft **OBSERVED** — run 74's flight journey
+  went green and photographed the aircraft mid-route Arlanda → Heathrow
+  at 16× on the player-blue haloed line.
+- Selection pulse **NOT OBSERVED** — it animates on a selected airport
+  and no automated frame selects one; the drawing code is exercised by
+  every map render, but the pulse itself awaits a human eye or a new
+  journey leg. Recorded so a future still is not misread either way.
+- Run 73: 12/14 UI tests; run 74: 13/14. The only failures were the
+  documented lease-tap flakiness (four attempts, healthy market in every
+  attempt frame; the identical helper leased successfully inside run
+  74's flight journey minutes later). Core 414/414 in both runs.
+
+---
+
+# Previous Phase
+
 **AE-032 — Visual truth. (Verify the verifier, then observe what was never
 observed.)**
 2026-08-30.
@@ -59,7 +127,7 @@ Core: 414/414 on Linux, release clean. Benchmarks: 1 game-year 1.65 s
 
 ---
 
-# Previous Phase
+# Earlier
 
 **AE-031 — The app runs. (Premium game feel, phase 1.)**
 2026-08-30.
@@ -100,7 +168,7 @@ observed, asserted, or merely read.
 
 ---
 
-# Previous Phase
+# Earlier
 
 **AE-029 — Fleet and aircraft experience (MASTER PROMPT 5).**
 2026-08-30.
@@ -141,7 +209,7 @@ TD-015, TD-016.
 
 ---
 
-# Previous Phase
+# Earlier
 
 **AE-028 — UI/UX polish, information density, design system (MASTER PROMPT 4).**
 2026-08-30.

@@ -238,6 +238,11 @@ struct MapSelectionPanel: View {
                 MapIdlePanel(model: model, overlay: overlay, openRoute: openRoute)
             }
         }
+        // A stable handle on "something is selected", so the journey that taps
+        // an airport can prove the panel opened rather than photographing the
+        // map and hoping. The identifier is on the selected states only: the
+        // idle panel is not a selection and must not answer to the name.
+        .accessibilityIdentifier(selection == nil ? "" : "ae-map-selection")
         .aeAnimation(AEMotion.content, value: selection)
     }
 }

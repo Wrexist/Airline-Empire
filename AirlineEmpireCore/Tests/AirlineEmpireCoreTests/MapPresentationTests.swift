@@ -75,13 +75,36 @@ struct MapPresentationTests {
         for (_, group) in byTier {
             #expect(group.count < model.airports.count)
         }
-        // A bigger catchment never lands in a lower tier than a smaller one
-        // with the same runway — the ordering has to mean something.
-        let global = model.airports.filter { $0.tier == .global }
-        let small = model.airports.filter { $0.tier == .small }
-        if let smallestGlobal = global.map(\.prominence).min(),
-           let largestSmall = small.map(\.prominence).max() {
-            #expect(smallestGlobal > largestSmall)
+        // The ordering has to mean something — but *not* on catchment alone,
+        // which is what this test used to assert and what the tiering used to
+        // do. Frankfurt's metro is a twentieth of Tokyo's and its airport is
+        // one of the busiest on earth; ranking it under Gothenburg was the
+        // defect (AE-033 §6.11), so "a bigger city is never a lower tier" is
+        // now false by design and asserting it would pin the bug back.
+        //
+        // What must hold is monotonicity in the thing the tiering actually
+        // reads: with the same runway class, an airport that is at least as
+        // big in *both* claims — its city and its own capacity — can never
+        // land in a lower tier than one that is smaller in both.
+        // Capacity and runway live on the spec, not on the read model, so the
+        // pairing is built here rather than widening `MapAirport` for a test.
+        typealias Peer = (tier: MapModel.AirportTier, prominence: Double,
+                          slots: Int, code: AirportCode)
+        var peers: [Peer] = []
+        for airport in model.airports {
+            guard let spec = catalog.airports[airport.code] else { continue }
+            peers.append((airport.tier, airport.prominence,
+                          spec.slotCapacityPerDay, airport.code))
+        }
+        for a in peers {
+            guard let specA = catalog.airports[a.code] else { continue }
+            for b in peers where a.prominence >= b.prominence && a.slots >= b.slots {
+                guard let specB = catalog.airports[b.code],
+                      specA.runwayClass == specB.runwayClass else { continue }
+                #expect(a.tier >= b.tier, """
+                    \(a.code.raw) is at least as large as \(b.code.raw) on both                     catchment and capacity, with the same runway, yet sits in a                     lower tier.
+                    """)
+            }
         }
     }
 

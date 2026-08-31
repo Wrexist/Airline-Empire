@@ -39,10 +39,26 @@ struct MapScreen: View {
             GeometryReader { geometry in
                 if let snapshot = controller.snapshot, let model = controller.mapModel {
                     ZStack {
+                        // The canvas bleeds past the bottom safe area so the
+                        // world runs under the floating tab bar; the chrome
+                        // deliberately does not. They used to share one
+                        // `ignoresSafeArea` on this ZStack, and the tab bar
+                        // was drawn straight over the idle hint — "Tap an
+                        // airport, a route or an aircraft." was on screen and
+                        // unreadable in every frame that had it (AE-033 audit
+                        // §6.1). It hid for a whole phase because the taller
+                        // "Your airline begins here" card clears the bar, and
+                        // the short hint only appears once a player has routes.
                         canvas(model: model, snapshot: snapshot, size: geometry.size)
+                            .ignoresSafeArea(edges: .bottom)
                         chrome(model: model, snapshot: snapshot)
                     }
-                    .background(AETheme.mapBackground)
+                    // Every edge, deliberately. A bare `Color` background
+                    // bleeds into the safe areas on its own; the moment it is
+                    // wrapped in a modifier it stops, and run 75 photographed
+                    // the consequence — a white status-bar strip above the
+                    // near-black map, where run 74 had the map's own dark.
+                    .background(AETheme.mapBackground.ignoresSafeArea())
                     // BUG-036. The canvas is fixed near-black in both
                     // appearances by design (docs/MAP_ARCHITECTURE.md §2), but
                     // the chrome over it is glass and system materials, which
@@ -79,7 +95,6 @@ struct MapScreen: View {
             .navigationTitle("Map")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
-            .ignoresSafeArea(edges: .bottom)
             .sheet(item: $routeDraft) { draft in
                 OpenRouteSheet(suggestion: draft.suggestion)
             }

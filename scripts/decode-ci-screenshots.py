@@ -9,6 +9,11 @@ returns a signed link), curl the zip, and feed the iOS job's .txt to this.
 That is how AE-032 recovered every frame the 2.6 MB log-tail cap had
 swallowed (TECH_DEBT TD-020)."""
 
+import base64
+import os
+import re
+import sys
+
 log_path, out_dir = sys.argv[1], sys.argv[2]
 os.makedirs(out_dir, exist_ok=True)
 text = open(log_path, errors="replace").read()
