@@ -303,16 +303,22 @@ enum MapLabelLayout {
                       selected: AirportCode?,
                       limit: Int) -> [MapLabel] {
         let cap = min(limit, labelBudget(zoom: zoom))
-        let ranked = airports
-            .map { (airport, point) in
-                (airport, point, priority(airport, selected: selected,
-                                          level: level, zoom: zoom))
-            }
-            .filter { $0.2 > 0 }
-            .sorted { lhs, rhs in
-                lhs.2 != rhs.2 ? lhs.2 > rhs.2 : lhs.0.code.raw < rhs.0.code.raw
-            }
-            .prefix(cap * 3)
+        // Explicit steps and an explicit tuple type: the chained version of
+        // this expression blew the type-checker's budget on CI (run 68).
+        typealias Candidate = (airport: MapModel.MapAirport,
+                               point: CGPoint, priority: Int)
+        var scored: [Candidate] = []
+        for (airport, point) in airports {
+            let score = priority(airport, selected: selected,
+                                 level: level, zoom: zoom)
+            if score > 0 { scored.append((airport, point, score)) }
+        }
+        scored.sort { lhs, rhs in
+            lhs.priority != rhs.priority
+                ? lhs.priority > rhs.priority
+                : lhs.airport.code.raw < rhs.airport.code.raw
+        }
+        let ranked = scored.prefix(cap * 3)
 
         var placed: [CGRect] = []
         var labels: [MapLabel] = []
