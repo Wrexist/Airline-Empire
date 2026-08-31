@@ -87,8 +87,11 @@ struct MapAirportCard: View {
                      subtitle: "\(airport.country) · \(Vocab.region(airport.region))",
                      accent: accent, dismiss: dismiss) {
             HStack(spacing: AETheme.spacingS) {
-                MapFact(label: tierLabel, value: "\(Int(airport.prominence * 100))",
-                        tint: .white)
+                // The tier is the fact; it used to be the *label* over a bare
+                // "\(prominence * 100)" — so Arlanda's panel read "6" above
+                // the words "small field", a number of nothing under a
+                // caption that was itself wrong (AE-033 audit §6.11).
+                MapFact(label: "size", value: tierLabel, tint: .white)
                 MapFact(label: "slots used",
                         value: Format.percent(airport.slotPressure),
                         tint: airport.slotPressure > 0.85 ? AETheme.caution : .white)
@@ -127,12 +130,13 @@ struct MapAirportCard: View {
             : .white.opacity(0.4)
     }
 
+    /// One word, because it sits in a four-across strip of compact facts.
     private var tierLabel: String {
         switch airport.tier {
-        case .global: "global hub"
+        case .global: "global"
         case .major: "major"
         case .regional: "regional"
-        case .small: "small field"
+        case .small: "small"
         }
     }
 

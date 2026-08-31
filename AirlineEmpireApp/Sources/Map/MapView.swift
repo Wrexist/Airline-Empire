@@ -53,7 +53,12 @@ struct MapScreen: View {
                             .ignoresSafeArea(edges: .bottom)
                         chrome(model: model, snapshot: snapshot)
                     }
-                    .background(AETheme.mapBackground.ignoresSafeArea(edges: .bottom))
+                    // Every edge, deliberately. A bare `Color` background
+                    // bleeds into the safe areas on its own; the moment it is
+                    // wrapped in a modifier it stops, and run 75 photographed
+                    // the consequence — a white status-bar strip above the
+                    // near-black map, where run 74 had the map's own dark.
+                    .background(AETheme.mapBackground.ignoresSafeArea())
                     // BUG-036. The canvas is fixed near-black in both
                     // appearances by design (docs/MAP_ARCHITECTURE.md §2), but
                     // the chrome over it is glass and system materials, which

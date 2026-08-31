@@ -320,7 +320,89 @@ is the exact failure mode §4 of this document exists to prevent.
 
 Core 414/414 on Linux after the read-model change.
 
-### 6.10 What remains untestable here, unchanged from AE-032
+### 6.10 Verified against run 75's frames, and one regression caught
+
+`testSelectingAnAirportOpensItsPanel` **passed on its first run** — 14 of
+15 UI tests green, the sole failure being the same lease-tap flake as runs
+73 and 74. Each fix, checked against the frame rather than assumed:
+
+| Fix | Frame | Verdict |
+| --- | --- | --- |
+| 6.1 map hint | `KEY-81` | 👁 **fixed** — "Tap an airport, a route or an aircraft." now sits fully legible above the tab bar |
+| 6.3 market row | `KEY-97` | 👁 **fixed** — silhouette on its own row, name at full width, no collision |
+| 6.4 pulse strip | `KEY-20` | 👁 **fixed** — a clean 2×2, no orphan |
+| 6.5 route sheet | `KEY-06` | 👁 **fixed** — one "From", search above the list, commit at the foot |
+| 6.6 World hub | `KEY-24` | 👁 **partly** — fuel and economy are there, but they read as a footnote and most of the dead space remains. Honest verdict: a small improvement, not a solved screen |
+| 6.2 punctuality `—` | — | ❌ **NOT VERIFIED** — needs a route that exists and has never flown; no journey reaches that state, and the change is a two-line conditional on a field Core now supplies |
+| 6.8 selection pulse | `KEY-86`, `KEY-87` | 👁 **OBSERVED at last** — the ring around Arlanda, in the first frame in this project's history to open an airport panel |
+
+**The regression, caught by measurement rather than by eye.** Comparing
+the top strip of run 74's and run 75's map frames: median RGB sum 54 →
+765. The status bar had gone from the map's near-black to system white.
+Cause: a bare `Color` background bleeds into the safe areas on its own,
+and 6.1's fix wrapped it in `.ignoresSafeArea(edges: .bottom)` — the
+moment a `Color` is wrapped in a modifier it stops bleeding anywhere it
+is not told to. Fixed by ignoring every edge on the background while the
+chrome stays inside the safe area, which is what 6.1 actually needed.
+
+Worth stating plainly: the fix for a defect found by looking introduced a
+second defect that looking nearly missed. A three-line pixel comparison
+against the previous run caught it in seconds.
+
+### 6.11 P1 — the airport tier ranked cities, not airports
+
+**OBSERVED**, `KEY-86` — and only observable because §6.8's new test
+opened the first airport panel ever photographed. Arlanda's card read
+**"6"** above the words **"small field"**.
+
+Two defects in one strip of four facts, one cosmetic and one structural.
+
+The cosmetic half: `MapFact(label: tierLabel, value: prominence * 100)`
+put the tier in the *label* slot and a bare unitless number in the value —
+"6" of nothing. It now reads `size / regional`.
+
+The structural half is the real finding. `MapModel.tier` ranked airports
+on `prominence` alone — metro population over the largest metro — so it
+was measuring **cities, not airports**:
+
+| | metro | slots/day | old tier | new tier |
+| --- | --- | --- | --- | --- |
+| Frankfurt | 2.7 M | 1,140 | small field | global |
+| Amsterdam | 2.9 M | 1,178 | small field | global |
+| Dubai | 3.6 M | 1,500 | small field | global |
+| Singapore | 5.9 M | 1,292 | regional | global |
+| Gothenburg | 1.05 M | 150 | small field | small |
+
+Tokyo's catchment genuinely is fifteen times Frankfurt's, so on
+population Frankfurt *is* small; as an airport it is among the busiest on
+earth. Forty-seven of ninety-four airports were "small field".
+
+**This was not cosmetic, because the tier drives the map's label ladder.**
+The reveal thresholds added earlier in AE-033 — global always, major from
+2.8×, regional from 5.0×, small from 8.0× — were being applied to a
+ranking of city size. Three of Europe's largest hubs stayed hidden until
+the deepest zoom. The density work was correct and was reading the wrong
+input.
+
+**Fix:** the score is now the larger of the two claims to importance — the
+city's catchment, or the airport's own capacity share — with capacity
+discounted slightly so a city of real size still outranks a big empty
+field on equal slots. The runway gates are untouched: a huge catchment
+with a short runway is still not a global hub. The distribution moves
+from 10/12/25/47 (global/major/regional/small) to 23/20/37/14, which is
+recognisably the real world.
+
+`MapPresentationTests.tiersAreDistributed` asserted "a bigger catchment is
+never a lower tier", which is now false *by design* — it encoded the bug.
+Replaced with the invariant that actually holds and is worth holding: with
+the same runway class, an airport at least as large in **both** catchment
+and capacity can never sit in a lower tier. Verified: zero violations
+across all 94, and the smallest global's score (0.72) clears the largest
+small's (0.17) with room.
+
+Core 414/414 after the change.
+
+### 6.12 What remains untestable here, unchanged from AE-032
 
 System-appearance following, audio audibility, VoiceOver order, contrast
 as rendered, hardware performance, and the game-over screen. The iPad
