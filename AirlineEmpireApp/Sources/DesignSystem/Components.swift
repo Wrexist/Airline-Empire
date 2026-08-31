@@ -734,20 +734,36 @@ struct AEMetricStrip: View {
 
     init(_ metrics: [AEMetric]) { self.metrics = metrics }
 
+    /// The grid's columns, which is not quite a one-liner for one reason.
+    ///
+    /// Adaptive columns pack as many as fit, and four metrics at the 88pt
+    /// floor fit three across on a phone — so Home's pulse strip put "in the
+    /// air / load factor / aircraft used" on one row and dropped "month to
+    /// date" alone onto a second, where it read as a stray rather than the
+    /// fourth member of a set (AE-033 audit §6.4). The call site's own
+    /// comment says these are "one picture of one moment"; an orphaned row
+    /// contradicts it. Four metrics therefore go 2×2, which has no orphan at
+    /// any width, and every other count keeps the adaptive behaviour that
+    /// serves three metrics or nine without a decision at the call site.
+    ///
+    /// The floor grows with the type size for the older reason: at a fixed
+    /// 88pt, AccessibilityL squeezed three price columns into one card and
+    /// broke the figures mid-string — "$110. / 0M" — which run 62's market
+    /// frame photographed.
+    private var columns: [GridItem] {
+        if metrics.count == 4 {
+            return Array(repeating: GridItem(.flexible(), spacing: AETheme.spacingM,
+                                             alignment: .leading),
+                         count: 2)
+        }
+        return [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 150 : 88),
+                         spacing: AETheme.spacingM, alignment: .leading)]
+    }
+
     var body: some View {
         AEPanel {
-            LazyVGrid(
-                // The column floor grows with the type size. At the fixed
-                // 88pt floor, AccessibilityL squeezed three price columns
-                // into one card and broke the figures mid-string —
-                // "$110. / 0M" — which run 62's market frame photographed.
-                // A wider floor means fewer, whole columns instead.
-                columns: [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 150 : 88),
-                                   spacing: AETheme.spacingM,
-                                   alignment: .leading)],
-                alignment: .leading,
-                spacing: AETheme.spacingS
-            ) {
+            LazyVGrid(columns: columns, alignment: .leading,
+                      spacing: AETheme.spacingS) {
                 ForEach(metrics) { AECompactMetric(metric: $0) }
             }
         }

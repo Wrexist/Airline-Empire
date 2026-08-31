@@ -61,7 +61,13 @@ struct RoutesList: View {
                     }
                     .listStyle(.plain)
                     .aeScreenBackground()
-                    .searchable(text: $search, prompt: "Airport code or city")
+                    // Pinned to the destination list rather than left to float. iOS 26
+        // anchors a bare `.searchable` to the bottom of the sheet, which put
+        // the search field *below* the "Open this route" bar: browse, commit,
+        // then search (AE-033 audit §6.5). `.navigationBarDrawer` puts it
+        // back above the thing it filters.
+        .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always),
+                    prompt: "Airport code or city")
                     .aeAnimation(AEMotion.content, value: cards.count)
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) { sortMenu }
@@ -406,8 +412,15 @@ struct RouteDetailView: View {
                 // player compares against the load factor.
                 labelled("Frequency", "\(card.dailyRoundTrips)× round trips a day")
                 labelled("Distance", "\(Format.count(Int64(card.distanceKm))) km")
-                labelled("Punctuality", Format.percent(card.punctuality))
-                labelled("Completion", Format.percent(card.completionRate))
+                // Empty history is not a perfect record. `RouteStats`
+                // returns 1.0 for both with nothing flown — correct for the
+                // reputation maths, a lie on screen: a route with no aircraft
+                // reported 100% punctuality directly under a banner saying it
+                // was not flying (AE-033 audit §6.2).
+                labelled("Punctuality",
+                         card.hasFlown ? Format.percent(card.punctuality) : "—")
+                labelled("Completion",
+                         card.hasFlown ? Format.percent(card.completionRate) : "—")
                 labelled("Aircraft assigned", "\(card.assignedAircraftCount)")
             }
         }
@@ -795,10 +808,11 @@ struct OpenRouteSheet: View {
         let from = origin ?? player.homeAirport
         let candidates = destinations(from: from, snapshot: snapshot, catalog: catalog)
         List {
+            // No header here: the picker inside carries the label "From", and
+            // a section header saying it again stacked the word on itself
+            // (AE-033 audit §6.5).
             Section {
                 originPicker(catalog: catalog, snapshot: snapshot, player: player)
-            } header: {
-                Text("From")
             }
 
             Section {
@@ -822,7 +836,13 @@ struct OpenRouteSheet: View {
                 }
             }
         }
-        .searchable(text: $search, prompt: "Airport code or city")
+        // Pinned to the destination list rather than left to float. iOS 26
+        // anchors a bare `.searchable` to the bottom of the sheet, which put
+        // the search field *below* the "Open this route" bar: browse, commit,
+        // then search (AE-033 audit §6.5). `.navigationBarDrawer` puts it
+        // back above the thing it filters.
+        .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always),
+                    prompt: "Airport code or city")
         // The commit rides the bottom edge rather than living at the foot of
         // the list. It used to be the last row after all ~40 candidates, so a
         // player who picked LNW — the top-ranked suggestion — then had to

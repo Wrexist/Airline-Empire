@@ -37,7 +37,7 @@ struct RouteVerdictTests {
             thisMonthBreakdown: economics,
             thisMonthProfit: economics.directOperatingProfit,
             thisMonthPassengers: passengers,
-            hasClosedMonth: false)
+            hasClosedMonth: false, hasFlown: true)
     }
 
     @Test("A route with no aircraft is idle, not empty")
