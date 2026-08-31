@@ -137,9 +137,37 @@ fade rather than pop.
 
 ## 5. Measured interaction numbers — CI probe
 
-*This section is filled from the first CI run carrying the probe
-(commit 08f583c). Until those numbers are quoted here with their run number,
-every interaction claim above is READ, not MEASURED.*
+**MEASURED**, run 84 (commit 08f583c), iPhone simulator on the macos-26
+runner, new-game world (1 airline, 0 routes at map open), regional zoom,
+`testMapInteractionBaselineMeasurements` green. Deltas per driven sequence:
+
+| Sequence | Frames drawn | Avg draw | Worst draw | Identity churn / frame | Position hops / frame |
+| --- | --- | --- | --- | --- | --- |
+| Slow continuous drag (4 strokes) | 53 | **16.84 ms** | 156.37 ms | **3.92** | **1.72** |
+| Rapid alternating drag (6 strokes) | 37 | **22.06 ms** | **256.31 ms** | 8.05 | 2.78 |
+| Zoom cycling (3 × in/out ×3) | 18 | 12.31 ms | 256.31 ms* | 24.50 | 8.72 |
+
+\* worst is cumulative-max across the run; the 256 ms frame occurred during
+the fast drag.
+
+What the numbers establish:
+
+- **P0-1 confirmed.** The average draw during a slow drag (16.84 ms)
+  already exceeds a 60 fps budget by itself and consumes half the 30 Hz
+  budget; the worst frame during rapid alternation (256 ms) is a
+  quarter-second stall — the measured mechanism behind "the map catches
+  up". The low frame counts (53 frames across four multi-second strokes)
+  show the draw cannot keep pace with the gesture event rate.
+- **P0-2 confirmed.** ~4 label identity changes and ~1.7 position hops per
+  compared frame during an ordinary pan: the label set is churning nearly
+  continuously under the finger. Zoom cycling hops (8.72/frame) show
+  side-flipping during zoom as well.
+- These are **simulator CPU numbers** for `MapFrame.draw` — encoding cost,
+  not compositing; a device is not claimed. But the *ratios* and the churn
+  counts are architecture facts, not machine facts.
+
+Checkpoints `B0`–`B3` from the same run photograph label state around each
+sequence (log-decoded frames, run 84).
 
 ## 6. What this baseline cannot measure, honestly
 
