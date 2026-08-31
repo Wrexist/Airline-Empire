@@ -2,7 +2,7 @@
  "airports": [
   {
    "city": "Stockholm",
-   "code": "STV",
+   "code": "ARN",
    "coordinate": {
     "latitude": 59.65,
     "longitude": 17.92
@@ -18,7 +18,7 @@
    "movementFee": {
     "cents": 140000
    },
-   "name": "Stockholm Sj\u00f6vik",
+   "name": "Stockholm Arlanda",
    "passengerFee": {
     "cents": 1800
    },
@@ -32,7 +32,7 @@
   },
   {
    "city": "Oslo",
-   "code": "OSF",
+   "code": "OSL",
    "coordinate": {
     "latitude": 60.19,
     "longitude": 11.1
@@ -48,7 +48,7 @@
    "movementFee": {
     "cents": 135000
    },
-   "name": "Oslo Fjellhavn",
+   "name": "Oslo Gardermoen",
    "passengerFee": {
     "cents": 1700
    },
@@ -62,7 +62,7 @@
   },
   {
    "city": "Copenhagen",
-   "code": "CPN",
+   "code": "CPH",
    "coordinate": {
     "latitude": 55.62,
     "longitude": 12.65
@@ -78,7 +78,7 @@
    "movementFee": {
     "cents": 150000
    },
-   "name": "Copenhagen Strandby",
+   "name": "Copenhagen Kastrup",
    "passengerFee": {
     "cents": 1900
    },
@@ -92,7 +92,7 @@
   },
   {
    "city": "Helsinki",
-   "code": "HLS",
+   "code": "HEL",
    "coordinate": {
     "latitude": 60.32,
     "longitude": 24.96
@@ -108,7 +108,7 @@
    "movementFee": {
     "cents": 130000
    },
-   "name": "Helsinki Salmisaari",
+   "name": "Helsinki Vantaa",
    "passengerFee": {
     "cents": 1600
    },
@@ -122,7 +122,7 @@
   },
   {
    "city": "London",
-   "code": "LNW",
+   "code": "LHR",
    "coordinate": {
     "latitude": 51.47,
     "longitude": -0.45
@@ -138,7 +138,7 @@
    "movementFee": {
     "cents": 260000
    },
-   "name": "London Kingsmoor",
+   "name": "London Heathrow",
    "passengerFee": {
     "cents": 2700
    },
@@ -152,7 +152,7 @@
   },
   {
    "city": "Paris",
-   "code": "PRV",
+   "code": "CDG",
    "coordinate": {
     "latitude": 49.01,
     "longitude": 2.55
@@ -168,7 +168,7 @@
    "movementFee": {
     "cents": 250000
    },
-   "name": "Paris Vallonne",
+   "name": "Paris Charles de Gaulle",
    "passengerFee": {
     "cents": 2600
    },
@@ -182,7 +182,7 @@
   },
   {
    "city": "Amsterdam",
-   "code": "AMD",
+   "code": "AMS",
    "coordinate": {
     "latitude": 52.31,
     "longitude": 4.76
@@ -198,7 +198,7 @@
    "movementFee": {
     "cents": 240000
    },
-   "name": "Amsterdam Dijkzicht",
+   "name": "Amsterdam Schiphol",
    "passengerFee": {
     "cents": 2500
    },
@@ -212,7 +212,7 @@
   },
   {
    "city": "Frankfurt",
-   "code": "FRB",
+   "code": "FRA",
    "coordinate": {
     "latitude": 50.03,
     "longitude": 8.56
@@ -228,7 +228,7 @@
    "movementFee": {
     "cents": 245000
    },
-   "name": "Frankfurt Bergwald",
+   "name": "Frankfurt",
    "passengerFee": {
     "cents": 2400
    },
@@ -242,7 +242,7 @@
   },
   {
    "city": "Munich",
-   "code": "MNH",
+   "code": "MUC",
    "coordinate": {
     "latitude": 48.35,
     "longitude": 11.79
@@ -258,7 +258,7 @@
    "movementFee": {
     "cents": 220000
    },
-   "name": "Munich Hochfeld",
+   "name": "Munich",
    "passengerFee": {
     "cents": 2300
    },
@@ -272,7 +272,7 @@
   },
   {
    "city": "Berlin",
-   "code": "BRL",
+   "code": "BER",
    "coordinate": {
     "latitude": 52.36,
     "longitude": 13.5
@@ -288,7 +288,7 @@
    "movementFee": {
     "cents": 170000
    },
-   "name": "Berlin Havelsee",
+   "name": "Berlin Brandenburg",
    "passengerFee": {
     "cents": 2000
    },
@@ -302,7 +302,7 @@
   },
   {
    "city": "Zurich",
-   "code": "ZRA",
+   "code": "ZRH",
    "coordinate": {
     "latitude": 47.46,
     "longitude": 8.55
@@ -318,7 +318,7 @@
    "movementFee": {
     "cents": 230000
    },
-   "name": "Zurich Albiskopf",
+   "name": "Zurich Kloten",
    "passengerFee": {
     "cents": 2600
    },
@@ -332,7 +332,7 @@
   },
   {
    "city": "Vienna",
-   "code": "VND",
+   "code": "VIE",
    "coordinate": {
     "latitude": 48.11,
     "longitude": 16.57
@@ -348,7 +348,7 @@
    "movementFee": {
     "cents": 180000
    },
-   "name": "Vienna Donaupark",
+   "name": "Vienna Schwechat",
    "passengerFee": {
     "cents": 2000
    },
@@ -362,7 +362,7 @@
   },
   {
    "city": "Madrid",
-   "code": "MDL",
+   "code": "MAD",
    "coordinate": {
     "latitude": 40.47,
     "longitude": -3.56
@@ -378,7 +378,7 @@
    "movementFee": {
     "cents": 190000
    },
-   "name": "Madrid Loranca",
+   "name": "Madrid Barajas",
    "passengerFee": {
     "cents": 1900
    },
@@ -392,7 +392,7 @@
   },
   {
    "city": "Barcelona",
-   "code": "BCM",
+   "code": "BCN",
    "coordinate": {
     "latitude": 41.3,
     "longitude": 2.08
@@ -408,7 +408,7 @@
    "movementFee": {
     "cents": 180000
    },
-   "name": "Barcelona Marisol",
+   "name": "Barcelona El Prat",
    "passengerFee": {
     "cents": 1800
    },
@@ -422,7 +422,7 @@
   },
   {
    "city": "Lisbon",
-   "code": "LSB",
+   "code": "LIS",
    "coordinate": {
     "latitude": 38.77,
     "longitude": -9.13
@@ -438,7 +438,7 @@
    "movementFee": {
     "cents": 150000
    },
-   "name": "Lisbon Alfarim",
+   "name": "Lisbon Humberto Delgado",
    "passengerFee": {
     "cents": 1600
    },
@@ -452,7 +452,7 @@
   },
   {
    "city": "Rome",
-   "code": "RMC",
+   "code": "FCO",
    "coordinate": {
     "latitude": 41.8,
     "longitude": 12.25
@@ -468,7 +468,7 @@
    "movementFee": {
     "cents": 190000
    },
-   "name": "Rome Collina",
+   "name": "Rome Fiumicino",
    "passengerFee": {
     "cents": 1900
    },
@@ -482,7 +482,7 @@
   },
   {
    "city": "Milan",
-   "code": "MLV",
+   "code": "MXP",
    "coordinate": {
     "latitude": 45.63,
     "longitude": 8.72
@@ -498,7 +498,7 @@
    "movementFee": {
     "cents": 195000
    },
-   "name": "Milan Verdana",
+   "name": "Milan Malpensa",
    "passengerFee": {
     "cents": 2100
    },
@@ -512,7 +512,7 @@
   },
   {
    "city": "Athens",
-   "code": "ATK",
+   "code": "ATH",
    "coordinate": {
     "latitude": 37.94,
     "longitude": 23.94
@@ -528,7 +528,7 @@
    "movementFee": {
     "cents": 150000
    },
-   "name": "Athens Kastraki",
+   "name": "Athens Eleftherios Venizelos",
    "passengerFee": {
     "cents": 1500
    },
@@ -542,7 +542,7 @@
   },
   {
    "city": "Dublin",
-   "code": "DBK",
+   "code": "DUB",
    "coordinate": {
     "latitude": 53.43,
     "longitude": -6.25
@@ -558,7 +558,7 @@
    "movementFee": {
     "cents": 145000
    },
-   "name": "Dublin Kilbarrack",
+   "name": "Dublin",
    "passengerFee": {
     "cents": 1600
    },
@@ -572,7 +572,7 @@
   },
   {
    "city": "Warsaw",
-   "code": "WSW",
+   "code": "WAW",
    "coordinate": {
     "latitude": 52.17,
     "longitude": 20.97
@@ -588,7 +588,7 @@
    "movementFee": {
     "cents": 130000
    },
-   "name": "Warsaw Wislany",
+   "name": "Warsaw Chopin",
    "passengerFee": {
     "cents": 1400
    },
@@ -618,7 +618,7 @@
    "movementFee": {
     "cents": 135000
    },
-   "name": "Prague Zlatohrad",
+   "name": "Prague Václav Havel",
    "passengerFee": {
     "cents": 1400
    },
@@ -637,7 +637,7 @@
     "latitude": 41.26,
     "longitude": 28.74
    },
-   "country": "T\u00fcrkiye",
+   "country": "Türkiye",
    "demographics": {
     "businessIndex": 0.76,
     "cargoIndex": 0.75,
@@ -648,7 +648,7 @@
    "movementFee": {
     "cents": 170000
    },
-   "name": "Istanbul Marmaray",
+   "name": "Istanbul",
    "passengerFee": {
     "cents": 1500
    },
@@ -662,7 +662,7 @@
   },
   {
    "city": "Nice",
-   "code": "NCA",
+   "code": "NCE",
    "coordinate": {
     "latitude": 43.66,
     "longitude": 7.22
@@ -678,7 +678,7 @@
    "movementFee": {
     "cents": 160000
    },
-   "name": "Nice Calanque",
+   "name": "Nice Côte d'Azur",
    "passengerFee": {
     "cents": 1700
    },
@@ -692,7 +692,7 @@
   },
   {
    "city": "Palma",
-   "code": "PMR",
+   "code": "PMI",
    "coordinate": {
     "latitude": 39.55,
     "longitude": 2.74
@@ -708,7 +708,7 @@
    "movementFee": {
     "cents": 130000
    },
-   "name": "Palma Rocamar",
+   "name": "Palma Son Sant Joan",
    "passengerFee": {
     "cents": 1300
    },
@@ -721,8 +721,8 @@
    "weatherRisk": "low"
   },
   {
-   "city": "Troms\u00f8",
-   "code": "KRK",
+   "city": "Tromsø",
+   "code": "TOS",
    "coordinate": {
     "latitude": 69.68,
     "longitude": 18.92
@@ -738,7 +738,7 @@
    "movementFee": {
     "cents": 90000
    },
-   "name": "Kirkenes Vintervik",
+   "name": "Tromsø Langnes",
    "passengerFee": {
     "cents": 1000
    },
@@ -751,8 +751,8 @@
    "weatherRisk": "severe"
   },
   {
-   "city": "Reykjav\u00edk",
-   "code": "RKV",
+   "city": "Reykjavík",
+   "code": "KEF",
    "coordinate": {
     "latitude": 63.99,
     "longitude": -22.62
@@ -768,7 +768,7 @@
    "movementFee": {
     "cents": 120000
    },
-   "name": "Reykjav\u00edk Eldfell",
+   "name": "Reykjavík Keflavík",
    "passengerFee": {
     "cents": 1400
    },
@@ -782,7 +782,7 @@
   },
   {
    "city": "New York",
-   "code": "NYH",
+   "code": "JFK",
    "coordinate": {
     "latitude": 40.64,
     "longitude": -73.78
@@ -798,7 +798,7 @@
    "movementFee": {
     "cents": 280000
    },
-   "name": "New York Harborgate",
+   "name": "New York JFK",
    "passengerFee": {
     "cents": 2800
    },
@@ -812,7 +812,7 @@
   },
   {
    "city": "Chicago",
-   "code": "CHW",
+   "code": "ORD",
    "coordinate": {
     "latitude": 41.98,
     "longitude": -87.9
@@ -828,7 +828,7 @@
    "movementFee": {
     "cents": 240000
    },
-   "name": "Chicago Windermere",
+   "name": "Chicago O'Hare",
    "passengerFee": {
     "cents": 2400
    },
@@ -842,7 +842,7 @@
   },
   {
    "city": "Los Angeles",
-   "code": "LAP",
+   "code": "LAX",
    "coordinate": {
     "latitude": 33.94,
     "longitude": -118.41
@@ -858,7 +858,7 @@
    "movementFee": {
     "cents": 250000
    },
-   "name": "Los Angeles Pacifica",
+   "name": "Los Angeles",
    "passengerFee": {
     "cents": 2500
    },
@@ -872,7 +872,7 @@
   },
   {
    "city": "San Francisco",
-   "code": "SFB",
+   "code": "SFO",
    "coordinate": {
     "latitude": 37.62,
     "longitude": -122.38
@@ -888,7 +888,7 @@
    "movementFee": {
     "cents": 260000
    },
-   "name": "San Francisco Baywatch",
+   "name": "San Francisco",
    "passengerFee": {
     "cents": 2700
    },
@@ -902,7 +902,7 @@
   },
   {
    "city": "Miami",
-   "code": "MIC",
+   "code": "MIA",
    "coordinate": {
     "latitude": 25.79,
     "longitude": -80.29
@@ -918,7 +918,7 @@
    "movementFee": {
     "cents": 220000
    },
-   "name": "Miami Coralline",
+   "name": "Miami",
    "passengerFee": {
     "cents": 2200
    },
@@ -932,7 +932,7 @@
   },
   {
    "city": "Dallas",
-   "code": "DTX",
+   "code": "DFW",
    "coordinate": {
     "latitude": 32.9,
     "longitude": -97.04
@@ -948,7 +948,7 @@
    "movementFee": {
     "cents": 210000
    },
-   "name": "Dallas Prairiegate",
+   "name": "Dallas Fort Worth",
    "passengerFee": {
     "cents": 2100
    },
@@ -962,7 +962,7 @@
   },
   {
    "city": "Atlanta",
-   "code": "ATG",
+   "code": "ATL",
    "coordinate": {
     "latitude": 33.64,
     "longitude": -84.43
@@ -978,7 +978,7 @@
    "movementFee": {
     "cents": 220000
    },
-   "name": "Atlanta Peachgrove",
+   "name": "Atlanta Hartsfield-Jackson",
    "passengerFee": {
     "cents": 2200
    },
@@ -992,7 +992,7 @@
   },
   {
    "city": "Seattle",
-   "code": "SEP",
+   "code": "SEA",
    "coordinate": {
     "latitude": 47.45,
     "longitude": -122.31
@@ -1008,7 +1008,7 @@
    "movementFee": {
     "cents": 210000
    },
-   "name": "Seattle Pinecrest",
+   "name": "Seattle Tacoma",
    "passengerFee": {
     "cents": 2100
    },
@@ -1022,7 +1022,7 @@
   },
   {
    "city": "Denver",
-   "code": "DNV",
+   "code": "DEN",
    "coordinate": {
     "latitude": 39.86,
     "longitude": -104.67
@@ -1038,7 +1038,7 @@
    "movementFee": {
     "cents": 200000
    },
-   "name": "Denver Silverpeak",
+   "name": "Denver",
    "passengerFee": {
     "cents": 2000
    },
@@ -1052,7 +1052,7 @@
   },
   {
    "city": "Boston",
-   "code": "BSH",
+   "code": "BOS",
    "coordinate": {
     "latitude": 42.36,
     "longitude": -71.01
@@ -1068,7 +1068,7 @@
    "movementFee": {
     "cents": 230000
    },
-   "name": "Boston Shorewind",
+   "name": "Boston Logan",
    "passengerFee": {
     "cents": 2300
    },
@@ -1082,7 +1082,7 @@
   },
   {
    "city": "Toronto",
-   "code": "TRW",
+   "code": "YYZ",
    "coordinate": {
     "latitude": 43.68,
     "longitude": -79.63
@@ -1098,7 +1098,7 @@
    "movementFee": {
     "cents": 230000
    },
-   "name": "Toronto Waterway",
+   "name": "Toronto Pearson",
    "passengerFee": {
     "cents": 2300
    },
@@ -1112,7 +1112,7 @@
   },
   {
    "city": "Vancouver",
-   "code": "VCG",
+   "code": "YVR",
    "coordinate": {
     "latitude": 49.19,
     "longitude": -123.18
@@ -1128,7 +1128,7 @@
    "movementFee": {
     "cents": 210000
    },
-   "name": "Vancouver Cedargate",
+   "name": "Vancouver",
    "passengerFee": {
     "cents": 2100
    },
@@ -1142,7 +1142,7 @@
   },
   {
    "city": "Montreal",
-   "code": "MTL",
+   "code": "YUL",
    "coordinate": {
     "latitude": 45.47,
     "longitude": -73.74
@@ -1158,7 +1158,7 @@
    "movementFee": {
     "cents": 190000
    },
-   "name": "Montreal Rivemont",
+   "name": "Montreal Trudeau",
    "passengerFee": {
     "cents": 1900
    },
@@ -1172,7 +1172,7 @@
   },
   {
    "city": "Mexico City",
-   "code": "MXT",
+   "code": "MEX",
    "coordinate": {
     "latitude": 19.44,
     "longitude": -99.07
@@ -1188,7 +1188,7 @@
    "movementFee": {
     "cents": 140000
    },
-   "name": "Mexico City Tepeyac",
+   "name": "Mexico City Benito Juárez",
    "passengerFee": {
     "cents": 1200
    },
@@ -1201,7 +1201,7 @@
    "weatherRisk": "low"
   },
   {
-   "city": "Canc\u00fan",
+   "city": "Cancún",
    "code": "CUN",
    "coordinate": {
     "latitude": 21.04,
@@ -1218,7 +1218,7 @@
    "movementFee": {
     "cents": 120000
    },
-   "name": "Canc\u00fan Playazul",
+   "name": "Cancún",
    "passengerFee": {
     "cents": 1100
    },
@@ -1231,8 +1231,8 @@
    "weatherRisk": "severe"
   },
   {
-   "city": "S\u00e3o Paulo",
-   "code": "SPG",
+   "city": "São Paulo",
+   "code": "GRU",
    "coordinate": {
     "latitude": -23.43,
     "longitude": -46.47
@@ -1248,7 +1248,7 @@
    "movementFee": {
     "cents": 150000
    },
-   "name": "S\u00e3o Paulo Guaraviva",
+   "name": "São Paulo Guarulhos",
    "passengerFee": {
     "cents": 1300
    },
@@ -1262,7 +1262,7 @@
   },
   {
    "city": "Rio de Janeiro",
-   "code": "RJC",
+   "code": "GIG",
    "coordinate": {
     "latitude": -22.81,
     "longitude": -43.25
@@ -1278,7 +1278,7 @@
    "movementFee": {
     "cents": 140000
    },
-   "name": "Rio de Janeiro Corcovel",
+   "name": "Rio de Janeiro Galeão",
    "passengerFee": {
     "cents": 1200
    },
@@ -1292,7 +1292,7 @@
   },
   {
    "city": "Buenos Aires",
-   "code": "BAP",
+   "code": "EZE",
    "coordinate": {
     "latitude": -34.82,
     "longitude": -58.54
@@ -1308,7 +1308,7 @@
    "movementFee": {
     "cents": 135000
    },
-   "name": "Buenos Aires Pampero",
+   "name": "Buenos Aires Ezeiza",
    "passengerFee": {
     "cents": 1200
    },
@@ -1338,7 +1338,7 @@
    "movementFee": {
     "cents": 130000
    },
-   "name": "Santiago Cordillera",
+   "name": "Santiago",
    "passengerFee": {
     "cents": 1200
    },
@@ -1351,8 +1351,8 @@
    "weatherRisk": "moderate"
   },
   {
-   "city": "Bogot\u00e1",
-   "code": "BGT",
+   "city": "Bogotá",
+   "code": "BOG",
    "coordinate": {
     "latitude": 4.7,
     "longitude": -74.15
@@ -1368,7 +1368,7 @@
    "movementFee": {
     "cents": 125000
    },
-   "name": "Bogot\u00e1 Altiplano",
+   "name": "Bogotá El Dorado",
    "passengerFee": {
     "cents": 1100
    },
@@ -1382,7 +1382,7 @@
   },
   {
    "city": "Lima",
-   "code": "LMP",
+   "code": "LIM",
    "coordinate": {
     "latitude": -12.02,
     "longitude": -77.11
@@ -1398,7 +1398,7 @@
    "movementFee": {
     "cents": 120000
    },
-   "name": "Lima Pacifidor",
+   "name": "Lima Jorge Chávez",
    "passengerFee": {
     "cents": 1100
    },
@@ -1412,7 +1412,7 @@
   },
   {
    "city": "Dubai",
-   "code": "DXG",
+   "code": "DXB",
    "coordinate": {
     "latitude": 25.25,
     "longitude": 55.36
@@ -1428,7 +1428,7 @@
    "movementFee": {
     "cents": 200000
    },
-   "name": "Dubai Goldengate",
+   "name": "Dubai",
    "passengerFee": {
     "cents": 2000
    },
@@ -1442,7 +1442,7 @@
   },
   {
    "city": "Doha",
-   "code": "DOP",
+   "code": "DOH",
    "coordinate": {
     "latitude": 25.27,
     "longitude": 51.61
@@ -1458,7 +1458,7 @@
    "movementFee": {
     "cents": 190000
    },
-   "name": "Doha Pearlport",
+   "name": "Doha Hamad",
    "passengerFee": {
     "cents": 1900
    },
@@ -1472,7 +1472,7 @@
   },
   {
    "city": "Riyadh",
-   "code": "RYD",
+   "code": "RUH",
    "coordinate": {
     "latitude": 24.96,
     "longitude": 46.7
@@ -1488,7 +1488,7 @@
    "movementFee": {
     "cents": 160000
    },
-   "name": "Riyadh Najdgate",
+   "name": "Riyadh King Khalid",
    "passengerFee": {
     "cents": 1500
    },
@@ -1502,7 +1502,7 @@
   },
   {
    "city": "Tel Aviv",
-   "code": "TLR",
+   "code": "TLV",
    "coordinate": {
     "latitude": 32.01,
     "longitude": 34.89
@@ -1518,7 +1518,7 @@
    "movementFee": {
     "cents": 170000
    },
-   "name": "Tel Aviv Roshaviv",
+   "name": "Tel Aviv Ben Gurion",
    "passengerFee": {
     "cents": 1700
    },
@@ -1532,7 +1532,7 @@
   },
   {
    "city": "Cairo",
-   "code": "CAN",
+   "code": "CAI",
    "coordinate": {
     "latitude": 30.12,
     "longitude": 31.41
@@ -1548,7 +1548,7 @@
    "movementFee": {
     "cents": 120000
    },
-   "name": "Cairo Nilecrest",
+   "name": "Cairo",
    "passengerFee": {
     "cents": 1000
    },
@@ -1562,7 +1562,7 @@
   },
   {
    "city": "Johannesburg",
-   "code": "JBG",
+   "code": "JNB",
    "coordinate": {
     "latitude": -26.14,
     "longitude": 28.25
@@ -1578,7 +1578,7 @@
    "movementFee": {
     "cents": 130000
    },
-   "name": "Johannesburg Goldreef",
+   "name": "Johannesburg OR Tambo",
    "passengerFee": {
     "cents": 1200
    },
@@ -1608,7 +1608,7 @@
    "movementFee": {
     "cents": 125000
    },
-   "name": "Cape Town Tafelberg",
+   "name": "Cape Town",
    "passengerFee": {
     "cents": 1200
    },
@@ -1622,7 +1622,7 @@
   },
   {
    "city": "Nairobi",
-   "code": "NBK",
+   "code": "NBO",
    "coordinate": {
     "latitude": -1.32,
     "longitude": 36.93
@@ -1638,7 +1638,7 @@
    "movementFee": {
     "cents": 115000
    },
-   "name": "Nairobi Kilimani",
+   "name": "Nairobi Jomo Kenyatta",
    "passengerFee": {
     "cents": 1000
    },
@@ -1652,7 +1652,7 @@
   },
   {
    "city": "Lagos",
-   "code": "LGS",
+   "code": "LOS",
    "coordinate": {
     "latitude": 6.58,
     "longitude": 3.32
@@ -1668,7 +1668,7 @@
    "movementFee": {
     "cents": 110000
    },
-   "name": "Lagos Sandgrove",
+   "name": "Lagos Murtala Muhammed",
    "passengerFee": {
     "cents": 1000
    },
@@ -1682,7 +1682,7 @@
   },
   {
    "city": "Casablanca",
-   "code": "CSB",
+   "code": "CMN",
    "coordinate": {
     "latitude": 33.37,
     "longitude": -7.59
@@ -1698,7 +1698,7 @@
    "movementFee": {
     "cents": 115000
    },
-   "name": "Casablanca Atlantide",
+   "name": "Casablanca Mohammed V",
    "passengerFee": {
     "cents": 1000
    },
@@ -1728,7 +1728,7 @@
    "movementFee": {
     "cents": 105000
    },
-   "name": "Addis Ababa Entoto",
+   "name": "Addis Ababa Bole",
    "passengerFee": {
     "cents": 900
    },
@@ -1742,7 +1742,7 @@
   },
   {
    "city": "Delhi",
-   "code": "DLR",
+   "code": "DEL",
    "coordinate": {
     "latitude": 28.57,
     "longitude": 77.11
@@ -1758,7 +1758,7 @@
    "movementFee": {
     "cents": 130000
    },
-   "name": "Delhi Rajpath",
+   "name": "Delhi Indira Gandhi",
    "passengerFee": {
     "cents": 1000
    },
@@ -1772,7 +1772,7 @@
   },
   {
    "city": "Mumbai",
-   "code": "BMB",
+   "code": "BOM",
    "coordinate": {
     "latitude": 19.09,
     "longitude": 72.87
@@ -1788,7 +1788,7 @@
    "movementFee": {
     "cents": 135000
    },
-   "name": "Mumbai Sagarmala",
+   "name": "Mumbai Chhatrapati Shivaji",
    "passengerFee": {
     "cents": 1100
    },
@@ -1818,7 +1818,7 @@
    "movementFee": {
     "cents": 125000
    },
-   "name": "Bengaluru Silvangarden",
+   "name": "Bengaluru Kempegowda",
    "passengerFee": {
     "cents": 1000
    },
@@ -1832,7 +1832,7 @@
   },
   {
    "city": "Colombo",
-   "code": "CLB",
+   "code": "CMB",
    "coordinate": {
     "latitude": 7.18,
     "longitude": 79.88
@@ -1848,7 +1848,7 @@
    "movementFee": {
     "cents": 100000
    },
-   "name": "Colombo Lagoonside",
+   "name": "Colombo Bandaranaike",
    "passengerFee": {
     "cents": 900
    },
@@ -1862,7 +1862,7 @@
   },
   {
    "city": "Tokyo",
-   "code": "TKH",
+   "code": "HND",
    "coordinate": {
     "latitude": 35.55,
     "longitude": 139.78
@@ -1878,7 +1878,7 @@
    "movementFee": {
     "cents": 250000
    },
-   "name": "Tokyo Hanedagawa",
+   "name": "Tokyo Haneda",
    "passengerFee": {
     "cents": 2400
    },
@@ -1892,7 +1892,7 @@
   },
   {
    "city": "Osaka",
-   "code": "OSK",
+   "code": "KIX",
    "coordinate": {
     "latitude": 34.43,
     "longitude": 135.24
@@ -1908,7 +1908,7 @@
    "movementFee": {
     "cents": 230000
    },
-   "name": "Osaka Kansaiko",
+   "name": "Osaka Kansai",
    "passengerFee": {
     "cents": 2200
    },
@@ -1922,7 +1922,7 @@
   },
   {
    "city": "Seoul",
-   "code": "SEI",
+   "code": "ICN",
    "coordinate": {
     "latitude": 37.46,
     "longitude": 126.44
@@ -1938,7 +1938,7 @@
    "movementFee": {
     "cents": 230000
    },
-   "name": "Seoul Inchedo",
+   "name": "Seoul Incheon",
    "passengerFee": {
     "cents": 2200
    },
@@ -1952,7 +1952,7 @@
   },
   {
    "city": "Beijing",
-   "code": "BJC",
+   "code": "PEK",
    "coordinate": {
     "latitude": 40.08,
     "longitude": 116.58
@@ -1968,7 +1968,7 @@
    "movementFee": {
     "cents": 200000
    },
-   "name": "Beijing Capitaline",
+   "name": "Beijing Capital",
    "passengerFee": {
     "cents": 1800
    },
@@ -1982,7 +1982,7 @@
   },
   {
    "city": "Shanghai",
-   "code": "SHP",
+   "code": "PVG",
    "coordinate": {
     "latitude": 31.14,
     "longitude": 121.81
@@ -1998,7 +1998,7 @@
    "movementFee": {
     "cents": 210000
    },
-   "name": "Shanghai Pudongxi",
+   "name": "Shanghai Pudong",
    "passengerFee": {
     "cents": 1900
    },
@@ -2012,7 +2012,7 @@
   },
   {
    "city": "Hong Kong",
-   "code": "HKV",
+   "code": "HKG",
    "coordinate": {
     "latitude": 22.31,
     "longitude": 113.91
@@ -2028,7 +2028,7 @@
    "movementFee": {
     "cents": 240000
    },
-   "name": "Hong Kong Victoriabay",
+   "name": "Hong Kong Chek Lap Kok",
    "passengerFee": {
     "cents": 2300
    },
@@ -2042,7 +2042,7 @@
   },
   {
    "city": "Taipei",
-   "code": "TPF",
+   "code": "TPE",
    "coordinate": {
     "latitude": 25.08,
     "longitude": 121.23
@@ -2058,7 +2058,7 @@
    "movementFee": {
     "cents": 210000
    },
-   "name": "Taipei Formosagate",
+   "name": "Taipei Taoyuan",
    "passengerFee": {
     "cents": 2000
    },
@@ -2072,7 +2072,7 @@
   },
   {
    "city": "Singapore",
-   "code": "SGM",
+   "code": "SIN",
    "coordinate": {
     "latitude": 1.36,
     "longitude": 103.99
@@ -2088,7 +2088,7 @@
    "movementFee": {
     "cents": 250000
    },
-   "name": "Singapore Merlionport",
+   "name": "Singapore Changi",
    "passengerFee": {
     "cents": 2400
    },
@@ -2102,7 +2102,7 @@
   },
   {
    "city": "Bangkok",
-   "code": "BKS",
+   "code": "BKK",
    "coordinate": {
     "latitude": 13.69,
     "longitude": 100.75
@@ -2118,7 +2118,7 @@
    "movementFee": {
     "cents": 150000
    },
-   "name": "Bangkok Siamsong",
+   "name": "Bangkok Suvarnabhumi",
    "passengerFee": {
     "cents": 1300
    },
@@ -2132,7 +2132,7 @@
   },
   {
    "city": "Kuala Lumpur",
-   "code": "KLS",
+   "code": "KUL",
    "coordinate": {
     "latitude": 2.75,
     "longitude": 101.71
@@ -2148,7 +2148,7 @@
    "movementFee": {
     "cents": 140000
    },
-   "name": "Kuala Lumpur Selatan",
+   "name": "Kuala Lumpur",
    "passengerFee": {
     "cents": 1200
    },
@@ -2162,7 +2162,7 @@
   },
   {
    "city": "Jakarta",
-   "code": "JKG",
+   "code": "CGK",
    "coordinate": {
     "latitude": -6.13,
     "longitude": 106.66
@@ -2178,7 +2178,7 @@
    "movementFee": {
     "cents": 130000
    },
-   "name": "Jakarta Garudapura",
+   "name": "Jakarta Soekarno-Hatta",
    "passengerFee": {
     "cents": 1100
    },
@@ -2192,7 +2192,7 @@
   },
   {
    "city": "Manila",
-   "code": "MNB",
+   "code": "MNL",
    "coordinate": {
     "latitude": 14.51,
     "longitude": 121.02
@@ -2208,7 +2208,7 @@
    "movementFee": {
     "cents": 125000
    },
-   "name": "Manila Baywalk",
+   "name": "Manila Ninoy Aquino",
    "passengerFee": {
     "cents": 1100
    },
@@ -2222,7 +2222,7 @@
   },
   {
    "city": "Ho Chi Minh City",
-   "code": "HCS",
+   "code": "SGN",
    "coordinate": {
     "latitude": 10.82,
     "longitude": 106.65
@@ -2238,7 +2238,7 @@
    "movementFee": {
     "cents": 120000
    },
-   "name": "Ho Chi Minh Saigonport",
+   "name": "Ho Chi Minh City Tan Son Nhat",
    "passengerFee": {
     "cents": 1000
    },
@@ -2252,7 +2252,7 @@
   },
   {
    "city": "Denpasar",
-   "code": "DPB",
+   "code": "DPS",
    "coordinate": {
     "latitude": -8.75,
     "longitude": 115.17
@@ -2268,7 +2268,7 @@
    "movementFee": {
     "cents": 115000
    },
-   "name": "Denpasar Balindra",
+   "name": "Denpasar Ngurah Rai",
    "passengerFee": {
     "cents": 1000
    },
@@ -2282,7 +2282,7 @@
   },
   {
    "city": "Sydney",
-   "code": "SYH",
+   "code": "SYD",
    "coordinate": {
     "latitude": -33.95,
     "longitude": 151.18
@@ -2298,7 +2298,7 @@
    "movementFee": {
     "cents": 230000
    },
-   "name": "Sydney Harborview",
+   "name": "Sydney Kingsford Smith",
    "passengerFee": {
     "cents": 2300
    },
@@ -2312,7 +2312,7 @@
   },
   {
    "city": "Melbourne",
-   "code": "MLB",
+   "code": "MEL",
    "coordinate": {
     "latitude": -37.67,
     "longitude": 144.84
@@ -2328,7 +2328,7 @@
    "movementFee": {
     "cents": 220000
    },
-   "name": "Melbourne Yarraside",
+   "name": "Melbourne Tullamarine",
    "passengerFee": {
     "cents": 2200
    },
@@ -2342,7 +2342,7 @@
   },
   {
    "city": "Auckland",
-   "code": "AKW",
+   "code": "AKL",
    "coordinate": {
     "latitude": -37.01,
     "longitude": 174.79
@@ -2358,7 +2358,7 @@
    "movementFee": {
     "cents": 190000
    },
-   "name": "Auckland Waiheke",
+   "name": "Auckland",
    "passengerFee": {
     "cents": 1900
    },
@@ -2388,7 +2388,7 @@
    "movementFee": {
     "cents": 100000
    },
-   "name": "Nadi Coralhaven",
+   "name": "Nadi",
    "passengerFee": {
     "cents": 900
    },
@@ -2398,6 +2398,426 @@
    "slotCapacityPerDay": 160,
    "terminalCapacityPerDay": 30000,
    "utcOffsetMinutes": 720,
+   "weatherRisk": "severe"
+  },
+  {
+   "city": "Gothenburg",
+   "code": "GOT",
+   "coordinate": {
+    "latitude": 57.66,
+    "longitude": 12.28
+   },
+   "country": "Sweden",
+   "demographics": {
+    "businessIndex": 0.62,
+    "cargoIndex": 0.45,
+    "leisureIndex": 0.7,
+    "populationThousands": 1050,
+    "tourismIndex": 0.45
+   },
+   "movementFee": {
+    "cents": 100000
+   },
+   "name": "Gothenburg Landvetter",
+   "passengerFee": {
+    "cents": 1300
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "nordic",
+   "slotCapacityPerDay": 240,
+   "terminalCapacityPerDay": 40000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "high"
+  },
+  {
+   "city": "Bergen",
+   "code": "BGO",
+   "coordinate": {
+    "latitude": 60.29,
+    "longitude": 5.22
+   },
+   "country": "Norway",
+   "demographics": {
+    "businessIndex": 0.55,
+    "cargoIndex": 0.35,
+    "leisureIndex": 0.72,
+    "populationThousands": 420,
+    "tourismIndex": 0.6
+   },
+   "movementFee": {
+    "cents": 95000
+   },
+   "name": "Bergen Flesland",
+   "passengerFee": {
+    "cents": 1200
+   },
+   "region": "europe",
+   "runwayClass": "medium",
+   "seasonality": "nordic",
+   "slotCapacityPerDay": 200,
+   "terminalCapacityPerDay": 32000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "severe"
+  },
+  {
+   "city": "Billund",
+   "code": "BLL",
+   "coordinate": {
+    "latitude": 55.74,
+    "longitude": 9.15
+   },
+   "country": "Denmark",
+   "demographics": {
+    "businessIndex": 0.58,
+    "cargoIndex": 0.5,
+    "leisureIndex": 0.72,
+    "populationThousands": 350,
+    "tourismIndex": 0.55
+   },
+   "movementFee": {
+    "cents": 90000
+   },
+   "name": "Billund",
+   "passengerFee": {
+    "cents": 1100
+   },
+   "region": "europe",
+   "runwayClass": "medium",
+   "seasonality": "nordic",
+   "slotCapacityPerDay": 160,
+   "terminalCapacityPerDay": 25000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Manchester",
+   "code": "MAN",
+   "coordinate": {
+    "latitude": 53.35,
+    "longitude": -2.28
+   },
+   "country": "United Kingdom",
+   "demographics": {
+    "businessIndex": 0.68,
+    "cargoIndex": 0.5,
+    "leisureIndex": 0.78,
+    "populationThousands": 2800,
+    "tourismIndex": 0.55
+   },
+   "movementFee": {
+    "cents": 150000
+   },
+   "name": "Manchester",
+   "passengerFee": {
+    "cents": 1700
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 520,
+   "terminalCapacityPerDay": 90000,
+   "utcOffsetMinutes": 0,
+   "weatherRisk": "high"
+  },
+  {
+   "city": "Edinburgh",
+   "code": "EDI",
+   "coordinate": {
+    "latitude": 55.95,
+    "longitude": -3.37
+   },
+   "country": "United Kingdom",
+   "demographics": {
+    "businessIndex": 0.62,
+    "cargoIndex": 0.35,
+    "leisureIndex": 0.76,
+    "populationThousands": 900,
+    "tourismIndex": 0.8
+   },
+   "movementFee": {
+    "cents": 120000
+   },
+   "name": "Edinburgh",
+   "passengerFee": {
+    "cents": 1400
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 300,
+   "terminalCapacityPerDay": 50000,
+   "utcOffsetMinutes": 0,
+   "weatherRisk": "high"
+  },
+  {
+   "city": "Lyon",
+   "code": "LYS",
+   "coordinate": {
+    "latitude": 45.73,
+    "longitude": 5.08
+   },
+   "country": "France",
+   "demographics": {
+    "businessIndex": 0.68,
+    "cargoIndex": 0.45,
+    "leisureIndex": 0.72,
+    "populationThousands": 1700,
+    "tourismIndex": 0.55
+   },
+   "movementFee": {
+    "cents": 130000
+   },
+   "name": "Lyon Saint-Exupéry",
+   "passengerFee": {
+    "cents": 1500
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "alpine",
+   "slotCapacityPerDay": 300,
+   "terminalCapacityPerDay": 45000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Hamburg",
+   "code": "HAM",
+   "coordinate": {
+    "latitude": 53.63,
+    "longitude": 9.99
+   },
+   "country": "Germany",
+   "demographics": {
+    "businessIndex": 0.7,
+    "cargoIndex": 0.5,
+    "leisureIndex": 0.74,
+    "populationThousands": 1800,
+    "tourismIndex": 0.5
+   },
+   "movementFee": {
+    "cents": 140000
+   },
+   "name": "Hamburg",
+   "passengerFee": {
+    "cents": 1600
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 340,
+   "terminalCapacityPerDay": 55000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Düsseldorf",
+   "code": "DUS",
+   "coordinate": {
+    "latitude": 51.29,
+    "longitude": 6.77
+   },
+   "country": "Germany",
+   "demographics": {
+    "businessIndex": 0.78,
+    "cargoIndex": 0.55,
+    "leisureIndex": 0.7,
+    "populationThousands": 1200,
+    "tourismIndex": 0.4
+   },
+   "movementFee": {
+    "cents": 160000
+   },
+   "name": "Düsseldorf",
+   "passengerFee": {
+    "cents": 1800
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "businessFlat",
+   "slotCapacityPerDay": 420,
+   "terminalCapacityPerDay": 70000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Málaga",
+   "code": "AGP",
+   "coordinate": {
+    "latitude": 36.68,
+    "longitude": -4.5
+   },
+   "country": "Spain",
+   "demographics": {
+    "businessIndex": 0.5,
+    "cargoIndex": 0.3,
+    "leisureIndex": 0.82,
+    "populationThousands": 1000,
+    "tourismIndex": 0.95
+   },
+   "movementFee": {
+    "cents": 120000
+   },
+   "name": "Málaga Costa del Sol",
+   "passengerFee": {
+    "cents": 1300
+   },
+   "region": "europe",
+   "runwayClass": "large",
+   "seasonality": "summerSun",
+   "slotCapacityPerDay": 340,
+   "terminalCapacityPerDay": 60000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "low"
+  },
+  {
+   "city": "Venice",
+   "code": "VCE",
+   "coordinate": {
+    "latitude": 45.51,
+    "longitude": 12.35
+   },
+   "country": "Italy",
+   "demographics": {
+    "businessIndex": 0.55,
+    "cargoIndex": 0.3,
+    "leisureIndex": 0.75,
+    "populationThousands": 850,
+    "tourismIndex": 0.95
+   },
+   "movementFee": {
+    "cents": 130000
+   },
+   "name": "Venice Marco Polo",
+   "passengerFee": {
+    "cents": 1500
+   },
+   "region": "europe",
+   "runwayClass": "medium",
+   "seasonality": "summerSun",
+   "slotCapacityPerDay": 260,
+   "terminalCapacityPerDay": 40000,
+   "utcOffsetMinutes": 60,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Calgary",
+   "code": "YYC",
+   "coordinate": {
+    "latitude": 51.13,
+    "longitude": -114.01
+   },
+   "country": "Canada",
+   "demographics": {
+    "businessIndex": 0.7,
+    "cargoIndex": 0.5,
+    "leisureIndex": 0.7,
+    "populationThousands": 1500,
+    "tourismIndex": 0.6
+   },
+   "movementFee": {
+    "cents": 160000
+   },
+   "name": "Calgary",
+   "passengerFee": {
+    "cents": 1700
+   },
+   "region": "northAmerica",
+   "runwayClass": "large",
+   "seasonality": "skiNorth",
+   "slotCapacityPerDay": 380,
+   "terminalCapacityPerDay": 60000,
+   "utcOffsetMinutes": -420,
+   "weatherRisk": "high"
+  },
+  {
+   "city": "Brisbane",
+   "code": "BNE",
+   "coordinate": {
+    "latitude": -27.39,
+    "longitude": 153.12
+   },
+   "country": "Australia",
+   "demographics": {
+    "businessIndex": 0.7,
+    "cargoIndex": 0.5,
+    "leisureIndex": 0.76,
+    "populationThousands": 2500,
+    "tourismIndex": 0.75
+   },
+   "movementFee": {
+    "cents": 170000
+   },
+   "name": "Brisbane",
+   "passengerFee": {
+    "cents": 1800
+   },
+   "region": "oceania",
+   "runwayClass": "large",
+   "seasonality": "southernSun",
+   "slotCapacityPerDay": 420,
+   "terminalCapacityPerDay": 70000,
+   "utcOffsetMinutes": 600,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Guangzhou",
+   "code": "CAN",
+   "coordinate": {
+    "latitude": 23.39,
+    "longitude": 113.3
+   },
+   "country": "China",
+   "demographics": {
+    "businessIndex": 0.8,
+    "cargoIndex": 0.85,
+    "leisureIndex": 0.66,
+    "populationThousands": 15300,
+    "tourismIndex": 0.55
+   },
+   "movementFee": {
+    "cents": 180000
+   },
+   "name": "Guangzhou Baiyun",
+   "passengerFee": {
+    "cents": 1600
+   },
+   "region": "eastAsia",
+   "runwayClass": "veryLarge",
+   "seasonality": "cityBreak",
+   "slotCapacityPerDay": 980,
+   "terminalCapacityPerDay": 180000,
+   "utcOffsetMinutes": 480,
+   "weatherRisk": "moderate"
+  },
+  {
+   "city": "Sapporo",
+   "code": "CTS",
+   "coordinate": {
+    "latitude": 42.78,
+    "longitude": 141.69
+   },
+   "country": "Japan",
+   "demographics": {
+    "businessIndex": 0.58,
+    "cargoIndex": 0.4,
+    "leisureIndex": 0.78,
+    "populationThousands": 1950,
+    "tourismIndex": 0.8
+   },
+   "movementFee": {
+    "cents": 130000
+   },
+   "name": "Sapporo New Chitose",
+   "passengerFee": {
+    "cents": 1500
+   },
+   "region": "eastAsia",
+   "runwayClass": "large",
+   "seasonality": "skiNorth",
+   "slotCapacityPerDay": 340,
+   "terminalCapacityPerDay": 60000,
+   "utcOffsetMinutes": 540,
    "weatherRisk": "severe"
   }
  ],

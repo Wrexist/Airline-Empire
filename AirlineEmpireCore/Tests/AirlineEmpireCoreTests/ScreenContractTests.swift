@@ -18,7 +18,7 @@ struct ScreenContractTests {
                                   systems: GamePipeline.standard(),
                                   catalog: catalog)
         _ = await session.submit(FoundAirlineCommand(
-            airlineName: "Contract Air", kind: .player, homeAirport: "STV",
+            airlineName: "Contract Air", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(200_000_000)))
         var state = await session.snapshot
         let player = try #require(state.playerAirline).id

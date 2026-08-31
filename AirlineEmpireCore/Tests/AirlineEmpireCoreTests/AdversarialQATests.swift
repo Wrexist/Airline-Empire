@@ -46,8 +46,8 @@ struct AdversarialQATests {
         // second rejects; slots allocated exactly once.
         let (_, engine, airline, aircraft) = try RouteFixtures.withAircraft()
         for _ in 0..<5 {
-            engine.enqueue(OpenRouteCommand(airline: airline, origin: "STV",
-                                            destination: "LNW", dailyRoundTrips: 2,
+            engine.enqueue(OpenRouteCommand(airline: airline, origin: "ARN",
+                                            destination: "LHR", dailyRoundTrips: 2,
                                             ticketPrice: Money.dollars(129)))
         }
         for _ in 0..<5 {
@@ -60,16 +60,16 @@ struct AdversarialQATests {
         let applied = engine.lastCommandResults.filter { $0 == .applied }.count
         #expect(applied == 2, "expected 1 open + 1 assign, got \(applied)")
         #expect(engine.state.routes.count == 1)
-        #expect(engine.state.world.slotsHeld(by: airline, at: "STV") == 4)
+        #expect(engine.state.world.slotsHeld(by: airline, at: "ARN") == 4)
         Self.assertWorldSane(engine)
     }
 
     @Test func openCloseChurnConservesSlots() throws {
         let (_, engine, airline, aircraft) = try RouteFixtures.withAircraft()
         for cycle in 0..<50 {
-            let destination: AirportCode = cycle % 2 == 0 ? "LNW" : "CPN"
+            let destination: AirportCode = cycle % 2 == 0 ? "LHR" : "CPH"
             let open = engine.applyNow(OpenRouteCommand(
-                airline: airline, origin: "STV", destination: destination,
+                airline: airline, origin: "ARN", destination: destination,
                 dailyRoundTrips: 1 + cycle % 5, ticketPrice: Money.dollars(99)))
             #expect(open == .applied)
             let route = engine.state.routes.values.first { $0.airline == airline }!.id
@@ -144,7 +144,7 @@ struct AdversarialQATests {
         }
         let thrashed = newSession()
         _ = await thrashed.submit(FoundAirlineCommand(
-            airlineName: "Thrash", kind: .player, homeAirport: "STV",
+            airlineName: "Thrash", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(50_000_000)))
         var total = 0
         var step = 1
@@ -157,7 +157,7 @@ struct AdversarialQATests {
         }
         let straight = newSession()
         _ = await straight.submit(FoundAirlineCommand(
-            airlineName: "Thrash", kind: .player, homeAirport: "STV",
+            airlineName: "Thrash", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(50_000_000)))
         await straight.advance(ticks: Fixtures.ticksPerDay * 10)
         let a = try await thrashed.snapshot.stateHash()
@@ -171,15 +171,15 @@ struct AdversarialQATests {
         let engine = SimulationEngine(state: Fixtures.newState(seed: 987),
                                       systems: GamePipeline.standard(), catalog: catalog)
         _ = engine.applyNow(FoundAirlineCommand(
-            airlineName: "Leviathan", kind: .player, homeAirport: "LNW",
+            airlineName: "Leviathan", kind: .player, homeAirport: "LHR",
             startingCash: Money.dollars(3_000_000_000)))
         let player = engine.state.playerAirline!.id
-        let destinations = catalog.nearestAirports(to: "LNW", limit: 30)
+        let destinations = catalog.nearestAirports(to: "LHR", limit: 30)
             .map(\.0.code)
         var opened = 0
         for destination in destinations where opened < 25 {
             let open = engine.applyNow(OpenRouteCommand(
-                airline: player, origin: "LNW", destination: destination,
+                airline: player, origin: "LHR", destination: destination,
                 dailyRoundTrips: 2, ticketPrice: Money.dollars(119)))
             guard open == .applied else { continue }
             opened += 1
@@ -254,7 +254,7 @@ struct AdversarialQATests {
             if rng.chance("advance", probability: 0.2) {
                 engine.advance(ticks: 3)
             }
-            #expect(engine.state.world.slotsHeld(by: airline, at: "STV")
+            #expect(engine.state.world.slotsHeld(by: airline, at: "ARN")
                     == Route.dailySlotMovements(roundTrips: expected))
         }
         Self.assertWorldSane(engine)
@@ -267,14 +267,14 @@ struct AdversarialQATests {
         let engine = SimulationEngine(state: Fixtures.newState(seed: 111),
                                       systems: GamePipeline.standard(), catalog: catalog)
         _ = engine.applyNow(FoundAirlineCommand(
-            airlineName: "Doom Ops", kind: .ai, homeAirport: "LNW",
+            airlineName: "Doom Ops", kind: .ai, homeAirport: "LHR",
             startingCash: Money.dollars(140_000_000)))
         let airline = engine.state.airlines.values.first!.id
-        for destination: AirportCode in ["PRV", "AMD", "FRB"] {
+        for destination: AirportCode in ["CDG", "AMS", "FRA"] {
             _ = engine.applyNow(LeaseAircraftCommand(lessee: airline, type: "MR180",
                                                      termMonths: 60))
             _ = engine.applyNow(OpenRouteCommand(
-                airline: airline, origin: "LNW", destination: destination,
+                airline: airline, origin: "LHR", destination: destination,
                 dailyRoundTrips: 6, ticketPrice: Money.dollars(15))) // ruinous fare
             if let idle = engine.state.fleet(of: airline).first(where: {
                 $0.assignedRoute == nil

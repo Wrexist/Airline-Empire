@@ -21,7 +21,7 @@ struct BalanceTests {
         let catalog = try ContentCatalog.loadBundled()
         let engine = SimulationEngine(state: Fixtures.newState(seed: seed),
                                       systems: GamePipeline.standard(), catalog: catalog)
-        let homes: [AirportCode] = ["LNW", "NYH", "SGM", "DXG", "SPG"]
+        let homes: [AirportCode] = ["LHR", "JFK", "SIN", "DXB", "GRU"]
         for (index, archetype) in AIArchetype.allCases.enumerated() {
             let profile = AIProfile(archetype: archetype)
             _ = engine.applyNow(FoundAirlineCommand(
@@ -149,7 +149,7 @@ struct BalanceTests {
         let idle = SimulationEngine(state: Fixtures.newState(seed: 44),
                                     systems: GamePipeline.standard(), catalog: catalog)
         _ = idle.applyNow(FoundAirlineCommand(
-            airlineName: "Idle", kind: .player, homeAirport: "STV",
+            airlineName: "Idle", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(60_000_000)))
         idle.advance(ticks: Fixtures.ticksPerYear * 3)
         let idlePlayer = idle.state.playerAirline!
@@ -162,7 +162,7 @@ struct BalanceTests {
         let bleeding = SimulationEngine(state: Fixtures.newState(seed: 44),
                                         systems: GamePipeline.standard(), catalog: catalog)
         _ = bleeding.applyNow(FoundAirlineCommand(
-            airlineName: "Bleeder", kind: .player, homeAirport: "STV",
+            airlineName: "Bleeder", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(20_000_000)))
         let bleeder = bleeding.state.playerAirline!.id
         for _ in 0..<4 {
@@ -183,11 +183,11 @@ struct BalanceTests {
                                           systems: GamePipeline.standard(),
                                           catalog: catalog)
             _ = engine.applyNow(FoundAirlineCommand(
-                airlineName: "Lever", kind: .player, homeAirport: "LNW",
+                airlineName: "Lever", kind: .player, homeAirport: "LHR",
                 startingCash: Money.dollars(120_000_000)))
             let player = engine.state.playerAirline!.id
-            let destinations: [AirportCode] = ["PRV", "AMD", "FRB", "MDL", "RMC",
-                                               "DBK", "CPN", "ZRA", "VND", "BCM"]
+            let destinations: [AirportCode] = ["CDG", "AMS", "FRA", "MAD", "FCO",
+                                               "DUB", "CPH", "ZRH", "VIE", "BCN"]
             var nextDestination = 0
             for _ in 0..<24 { // two years, monthly decisions
                 if borrow {
@@ -204,7 +204,7 @@ struct BalanceTests {
                     let destination = destinations[nextDestination]
                     nextDestination += 1
                     _ = engine.applyNow(OpenRouteCommand(
-                        airline: player, origin: "LNW", destination: destination,
+                        airline: player, origin: "LHR", destination: destination,
                         dailyRoundTrips: 2, ticketPrice: Money.dollars(119)))
                     if let route = engine.state.routes.values.first(where: {
                         $0.airline == player && $0.destination == destination
@@ -240,7 +240,7 @@ struct BalanceTests {
         let engine = SimulationEngine(state: Fixtures.newState(seed: 66),
                                       systems: GamePipeline.standard(), catalog: catalog)
         _ = engine.applyNow(FoundAirlineCommand(
-            airlineName: "Flipper", kind: .player, homeAirport: "STV",
+            airlineName: "Flipper", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(200_000_000)))
         let player = engine.state.playerAirline!.id
         for _ in 0..<20 {
@@ -315,7 +315,7 @@ struct BalanceTests {
                 state: ScenarioBootstrap.newGame(scenario: "founder", worldSeed: 4242,
                                                  startYear: spec.startYear),
                 systems: GamePipeline.standard(), catalog: catalog)
-            _ = await session.beginScenario(spec, airlineName: "Pricer", home: "STV")
+            _ = await session.beginScenario(spec, airlineName: "Pricer", home: "ARN")
             var state = await session.snapshot
             let player = try #require(state.playerAirline).id
             let market = try #require(state.onboardingModel(catalog: catalog)?

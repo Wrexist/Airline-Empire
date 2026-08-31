@@ -619,12 +619,12 @@ struct CuratedStart: Identifiable {
     static let all: [CuratedStart] = [
         CuratedStart(id: "safe", title: "Stockholm — Sjövik", city: "Stockholm",
                      blurb: "A quiet Nordic market with loyal travellers, and room to make mistakes.",
-                     home: "STV"),
+                     home: "ARN"),
         CuratedStart(id: "balanced", title: "Barcelona — Marisol", city: "Barcelona",
                      blurb: "Sun-belt tourism that swings hard with the season, and real competition when it does.",
-                     home: "BCM"),
+                     home: "BCN"),
         CuratedStart(id: "bold", title: "Singapore — Merlionport", city: "Singapore",
                      blurb: "A rich crossroads hub. Deep pockets fly here — and so do your rivals.",
-                     home: "SGM"),
+                     home: "SIN"),
     ]
 }

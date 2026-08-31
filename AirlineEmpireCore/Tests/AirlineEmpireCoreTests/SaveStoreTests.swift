@@ -114,7 +114,7 @@ struct SaveStoreTests {
         var engine = SimulationEngine(state: Fixtures.newState(seed: 12),
                                       systems: GamePipeline.standard(), catalog: catalog)
         _ = engine.applyNow(FoundAirlineCommand(airlineName: "Cycler", kind: .player,
-                                                homeAirport: "STV",
+                                                homeAirport: "ARN",
                                                 startingCash: Money.dollars(90_000_000)))
         for _ in 0..<10 {
             engine.advance(ticks: Fixtures.ticksPerDay)
@@ -125,7 +125,7 @@ struct SaveStoreTests {
         let straight = SimulationEngine(state: Fixtures.newState(seed: 12),
                                         systems: GamePipeline.standard(), catalog: catalog)
         _ = straight.applyNow(FoundAirlineCommand(airlineName: "Cycler", kind: .player,
-                                                  homeAirport: "STV",
+                                                  homeAirport: "ARN",
                                                   startingCash: Money.dollars(90_000_000)))
         straight.advance(ticks: Fixtures.ticksPerDay * 10)
         #expect(engine.state == straight.state)
@@ -212,7 +212,7 @@ struct SessionAutosaveTests {
         await session.attachSaveManager(manager, autosaveSlot: "auto",
                                         autosaveEveryGameDays: 5)
         _ = await session.submit(FoundAirlineCommand(
-            airlineName: "AutoSaver", kind: .player, homeAirport: "STV",
+            airlineName: "AutoSaver", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(50_000_000)))
         await session.advance(ticks: Fixtures.ticksPerDay * 12)
 

@@ -187,12 +187,12 @@ struct DemandEngineTests {
         // Same market, summer-sun destination profile: July >> January.
         let catalog = try ContentCatalog.loadBundled()
         let january = DemandSystem.demandPool(
-            from: "STV", to: "PMR",
+            from: "ARN", to: "PMI",
             date: GameCalendar.date(at: GameCalendar.time(year: 2030, month: 1, day: 10,
                                                           startYear: 2030), startYear: 2030),
             economicIndex: 1.0, catalog: catalog)
         let july = DemandSystem.demandPool(
-            from: "STV", to: "PMR",
+            from: "ARN", to: "PMI",
             date: GameCalendar.date(at: GameCalendar.time(year: 2030, month: 7, day: 10,
                                                           startYear: 2030), startYear: 2030),
             economicIndex: 1.0, catalog: catalog)
@@ -205,9 +205,9 @@ struct DemandEngineTests {
     @Test func economyIndexShiftsDemand() throws {
         let catalog = try ContentCatalog.loadBundled()
         let date = GameCalendar.date(at: .epoch, startYear: 2030)
-        let boom = DemandSystem.demandPool(from: "LNW", to: "NYH", date: date,
+        let boom = DemandSystem.demandPool(from: "LHR", to: "JFK", date: date,
                                            economicIndex: 1.2, catalog: catalog)
-        let bust = DemandSystem.demandPool(from: "LNW", to: "NYH", date: date,
+        let bust = DemandSystem.demandPool(from: "LHR", to: "JFK", date: date,
                                            economicIndex: 0.8, catalog: catalog)
         #expect(boom.business > bust.business * 1.5)
         #expect(boom.leisure > bust.leisure)

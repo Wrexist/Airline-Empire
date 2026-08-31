@@ -42,10 +42,10 @@ struct ReputationTests {
         let old = engine.state.aircraft.values.first {
             $0.typeCode == AircraftTypeCode("NA70") }!.id
         _ = engine.applyNow(OpenRouteCommand(
-            airline: airline, origin: "STV", destination: "OSF",
+            airline: airline, origin: "ARN", destination: "OSL",
             dailyRoundTrips: 6, ticketPrice: Money.dollars(59)))
         let route = engine.state.routes.values.first {
-            $0.destination == AirportCode("OSF") }!.id
+            $0.destination == AirportCode("OSL") }!.id
         _ = engine.applyNow(AssignAircraftToRouteCommand(
             airline: airline, route: route, aircraftID: old))
         engine.advance(ticks: Fixtures.ticksPerDay * 120)
@@ -158,14 +158,14 @@ struct ReputationTests {
             let engine = SimulationEngine(state: Fixtures.newState(seed: 606),
                                           systems: GamePipeline.standard(), catalog: catalog)
             _ = engine.applyNow(FoundAirlineCommand(
-                airlineName: "RepSave", kind: .player, homeAirport: "STV",
+                airlineName: "RepSave", kind: .player, homeAirport: "ARN",
                 startingCash: Money.dollars(150_000_000)))
             let airline = engine.state.airlines.values.first!.id
             _ = engine.applyNow(SetServiceTierCommand(airline: airline, tier: .premium))
             _ = engine.applyNow(BuyUsedAircraftCommand(buyer: airline, type: "MR180",
                                                        ageYears: 4))
             _ = engine.applyNow(OpenRouteCommand(
-                airline: airline, origin: "STV", destination: "LNW",
+                airline: airline, origin: "ARN", destination: "LHR",
                 dailyRoundTrips: 2, ticketPrice: Money.dollars(139)))
             let route = engine.state.routes.values.first!.id
             let aircraft = engine.state.aircraft.values.first!.id

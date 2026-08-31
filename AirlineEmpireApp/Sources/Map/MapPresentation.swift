@@ -294,7 +294,7 @@ enum MapLabelLayout {
             // The city if it fits, the code if it does not.
             //
             // A code is a lookup; a city is a place. "Stockholm" is what a
-            // player recognises, and "STV" is what they have to learn — so the
+            // player recognises, and "ARN" is what they have to learn — so the
             // city wins wherever there is room, and the code is the graceful
             // degradation rather than the default.
             //

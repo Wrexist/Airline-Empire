@@ -89,7 +89,7 @@ struct WorldEventTests {
         engine.advance(ticks: Fixtures.ticksPerDay * 5)
         let before = engine.state.routes[route]!.stats
 
-        let closed = Self.engineWithEvent(.airportClosure(airport: "STV"),
+        let closed = Self.engineWithEvent(.airportClosure(airport: "ARN"),
                                           days: 2, severity: 1, from: engine)
         closed.advance(ticks: Fixtures.ticksPerDay * 2)
         let during = closed.state.routes[route]!.stats
@@ -185,7 +185,7 @@ struct WorldEventTests {
             let engine = SimulationEngine(state: Fixtures.newState(seed: 99),
                                           systems: GamePipeline.standard(), catalog: catalog)
             _ = engine.applyNow(FoundAirlineCommand(
-                airlineName: "Evented", kind: .player, homeAirport: "MIC",
+                airlineName: "Evented", kind: .player, homeAirport: "MIA",
                 startingCash: Money.dollars(100_000_000)))
             engine.advance(ticks: Fixtures.ticksPerYear * 2)
             return try engine.state.stateHash()

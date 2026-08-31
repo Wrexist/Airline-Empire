@@ -27,7 +27,7 @@ struct RouteVerdictTests {
             revenueCents: revenue, fuelCents: fuel, feesCents: fees,
             crewCents: crew, passengers: passengers)
         return RouteCardModel(
-            id: RouteID(raw: 1), origin: "STV", destination: "KRP",
+            id: RouteID(raw: 1), origin: "ARN", destination: "KRP",
             distanceKm: 900, dailyRoundTrips: 2, ticketPrice: Money.dollars(200),
             farePosition: farePosition, assignedAircraftCount: assigned,
             loadFactor: loadFactor, punctuality: 0.9,

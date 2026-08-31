@@ -158,7 +158,7 @@ struct FleetFilterTests {
                                   systems: GamePipeline.standard(),
                                   catalog: catalog)
         _ = await session.submit(FoundAirlineCommand(
-            airlineName: "Filter Air", kind: .player, homeAirport: "STV",
+            airlineName: "Filter Air", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(4_000_000_000)))
         let player = try #require(await session.snapshot.playerAirline).id
         await session.populateStandardWorld(competitors: 1)

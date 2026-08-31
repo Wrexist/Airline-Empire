@@ -1,5 +1,17 @@
 # Airline Empire — World & Airport System (Phase 4, as built)
 
+## Naming (owner decision, AE-032)
+
+Airports are the **real world's**: each city carries its real biggest
+airport — real IATA code, real name in the `"City Fieldname"` convention
+("Stockholm Arlanda", "London Heathrow") that `Vocab.airportDisplay` renders
+as "Arlanda (Stockholm)". An airport whose common name is just its city
+("Frankfurt", "Manchester") sets name == city and displays as the city
+alone. Fourteen secondary-city airports were added in the same pass
+(Landvetter, Flesland, Manchester, Edinburgh, Lyon, Hamburg, Düsseldorf,
+Málaga, Venice, Billund, Calgary, Brisbane, Guangzhou, Sapporo). Airlines,
+liveries and aircraft remain fictional — only the geography is real.
+
 ## Split of responsibilities
 
 - **`AirportSpec`** (content, immutable, in `ContentCatalog`): identity
@@ -20,7 +32,7 @@
 
 ## Content pipeline
 
-`Resources/airports.json` (80 airports, all 9 regions), `seasonality.json`
+`Resources/airports.json` (94 airports, all 9 regions), `seasonality.json`
 (11 profiles), `tuning.json` → `ContentCatalog.loadBundled()` →
 construction-time validation that **throws with a complete problem list**:
 duplicate/empty codes, invalid coordinates, non-positive capacities,

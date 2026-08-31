@@ -13,7 +13,7 @@ struct OnboardingTests {
                                       systems: GamePipeline.standard(),
                                       catalog: catalog)
         _ = engine.applyNow(FoundAirlineCommand(
-            airlineName: "First Flight", kind: .player, homeAirport: "STV",
+            airlineName: "First Flight", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(60_000_000)))
         return (engine, engine.state.airlines.values.first!.id)
     }
@@ -28,7 +28,7 @@ struct OnboardingTests {
         // Two demand-hinted candidates from home, best first.
         #expect(model.suggestions.count == 2)
         for suggestion in model.suggestions {
-            #expect(suggestion.origin == "STV")
+            #expect(suggestion.origin == "ARN")
             #expect(suggestion.expectedDailyPassengers > 0)
             #expect(suggestion.referenceFare > .zero)
             #expect(!suggestion.destinationCity.isEmpty)
@@ -69,7 +69,7 @@ struct OnboardingTests {
         let target = model.suggestions[0].destination
         let fare = model.suggestions[0].referenceFare
         #expect(engine.applyNow(OpenRouteCommand(
-            airline: player, origin: "STV", destination: target,
+            airline: player, origin: "ARN", destination: target,
             dailyRoundTrips: 2, ticketPrice: fare)) == .applied)
         model = try #require(engine.state.onboardingModel(catalog: catalog))
         #expect(model.isDone(.openRoute))

@@ -25,7 +25,7 @@ struct PlayerJourneyTests {
 
         // 1. New game: the airline exists and the world has rivals.
         #expect(await session.beginScenario(spec, airlineName: "Journey Air",
-                                            home: "STV") == .applied)
+                                            home: "ARN") == .applied)
         var state = await session.snapshot
         let player = try #require(state.playerAirline).id
         var dashboard = try #require(state.dashboardModel())
@@ -49,7 +49,7 @@ struct PlayerJourneyTests {
         let aircraft = try #require(fleetCards.first)
         #expect(aircraft.status == .active)
         #expect(aircraft.assignedRoute == nil)
-        #expect(aircraft.location == "STV")   // starts at home, ready to work
+        #expect(aircraft.location == "ARN")   // starts at home, ready to work
         #expect(state.ledger.balance(of: player) < spec.playerStartingCash)
 
         // 3. Open a route the onboarding model itself suggested.
@@ -112,7 +112,7 @@ struct PlayerJourneyTests {
                                   systems: GamePipeline.standard(),
                                   catalog: catalog)
         _ = await session.submit(FoundAirlineCommand(
-            airlineName: "Unwind Air", kind: .player, homeAirport: "STV",
+            airlineName: "Unwind Air", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(120_000_000)))
         var state = await session.snapshot
         let player = try #require(state.playerAirline).id
@@ -143,12 +143,12 @@ struct PlayerJourneyTests {
             .assignedRoute == nil)
 
         // Close the route → slots come back, no dangling flights.
-        let slotsBefore = state.world.slotsUsed(at: "STV")
+        let slotsBefore = state.world.slotsUsed(at: "ARN")
         #expect(await session.submit(CloseRouteCommand(airline: player,
                                                        route: route)) == .applied)
         state = await session.snapshot
         #expect(state.routes(of: player).isEmpty)
-        #expect(state.world.slotsUsed(at: "STV") < slotsBefore)
+        #expect(state.world.slotsUsed(at: "ARN") < slotsBefore)
         #expect(!state.flights.values.contains { $0.route == route })
 
         // Sell the aircraft → cash back, empty fleet, world still sane.
@@ -173,7 +173,7 @@ struct PlayerJourneyTests {
                                   systems: GamePipeline.standard(),
                                   catalog: catalog)
         _ = await session.submit(FoundAirlineCommand(
-            airlineName: "Persist Air", kind: .player, homeAirport: "STV",
+            airlineName: "Persist Air", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(120_000_000)))
         var state = await session.snapshot
         let player = try #require(state.playerAirline).id
@@ -223,7 +223,7 @@ struct PlayerJourneyTests {
                                   systems: GamePipeline.standard(),
                                   catalog: catalog)
         _ = await session.submit(FoundAirlineCommand(
-            airlineName: "Rescue Air", kind: .player, homeAirport: "STV",
+            airlineName: "Rescue Air", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(40_000_000)))
         var state = await session.snapshot
         let player = try #require(state.playerAirline).id

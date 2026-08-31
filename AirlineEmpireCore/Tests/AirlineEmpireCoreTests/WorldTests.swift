@@ -54,14 +54,14 @@ struct GeoTests {
 struct ContentCatalogTests {
     @Test func bundledContentLoadsAndValidates() throws {
         let catalog = try ContentCatalog.loadBundled()
-        #expect(catalog.airports.count == 80)
+        #expect(catalog.airports.count == 94)
         #expect(catalog.version == "world-1")
         // Every region is represented.
         for region in WorldRegion.allCases {
             #expect(!catalog.airports(in: region).isEmpty, "No airports in \(region)")
         }
         // Spot checks.
-        let stockholm = try #require(catalog.airport("STV"))
+        let stockholm = try #require(catalog.airport("ARN"))
         #expect(stockholm.city == "Stockholm")
         #expect(stockholm.region == .europe)
         #expect(stockholm.runwayClass == .large)
@@ -69,20 +69,20 @@ struct ContentCatalogTests {
 
     @Test func bundledDistancesAreSane() throws {
         let catalog = try ContentCatalog.loadBundled()
-        let d = try #require(catalog.distanceKm("STV", "LNW"))
+        let d = try #require(catalog.distanceKm("ARN", "LHR"))
         #expect(d > 1300 && d < 1600, "STV-LNW was \(d)")
-        let longHaul = try #require(catalog.distanceKm("LNW", "SYH"))
+        let longHaul = try #require(catalog.distanceKm("LHR", "SYD"))
         #expect(longHaul > 16000, "LNW-SYH was \(longHaul)")
-        #expect(catalog.distanceKm("STV", "XXX") == nil)
+        #expect(catalog.distanceKm("ARN", "XXX") == nil)
     }
 
     @Test func nearestAirportsSortedAscending() throws {
         let catalog = try ContentCatalog.loadBundled()
-        let nearest = catalog.nearestAirports(to: "STV", limit: 5)
+        let nearest = catalog.nearestAirports(to: "ARN", limit: 5)
         #expect(nearest.count == 5)
         #expect(zip(nearest, nearest.dropFirst()).allSatisfy { $0.1 <= $1.1 })
         // Oslo should be Stockholm's closest neighbor in this dataset.
-        #expect(nearest.first?.0.code == AirportCode("OSF"))
+        #expect(nearest.first?.0.code == AirportCode("OSL"))
     }
 
     @Test func duplicateCodeRejected() {
@@ -132,34 +132,34 @@ struct RouteEligibilityTests {
 
     @Test func validRouteHasNoReasons() throws {
         let reasons = try Self.catalog().routeEligibility(
-            from: "STV", to: "LNW", aircraftRangeKm: 5500, aircraftRunwayRequirement: .large)
+            from: "ARN", to: "LHR", aircraftRangeKm: 5500, aircraftRunwayRequirement: .large)
         #expect(reasons.isEmpty)
     }
 
     @Test func sameAirportRejected() throws {
         let reasons = try Self.catalog().routeEligibility(
-            from: "STV", to: "STV", aircraftRangeKm: 5000, aircraftRunwayRequirement: .small)
+            from: "ARN", to: "ARN", aircraftRangeKm: 5000, aircraftRunwayRequirement: .small)
         #expect(reasons == [.sameAirport])
     }
 
     @Test func unknownAirportRejected() throws {
         let reasons = try Self.catalog().routeEligibility(
-            from: "STV", to: "NOPE", aircraftRangeKm: 5000, aircraftRunwayRequirement: .small)
+            from: "ARN", to: "NOPE", aircraftRangeKm: 5000, aircraftRunwayRequirement: .small)
         #expect(reasons == [.unknownAirport("NOPE")])
     }
 
     @Test func beyondRangeRejected() throws {
         let reasons = try Self.catalog().routeEligibility(
-            from: "LNW", to: "SYH", aircraftRangeKm: 5500, aircraftRunwayRequirement: .large)
+            from: "LHR", to: "SYD", aircraftRangeKm: 5500, aircraftRunwayRequirement: .large)
         #expect(reasons.contains { if case .beyondAircraftRange = $0 { true } else { false } })
     }
 
     @Test func runwayClassEnforcedAtBothEnds() throws {
         // KRK (Tromsø) is a small runway; a widebody can't serve it.
         let reasons = try Self.catalog().routeEligibility(
-            from: "LNW", to: "KRK", aircraftRangeKm: 12000, aircraftRunwayRequirement: .veryLarge)
-        #expect(reasons.contains(.runwayTooSmall(airport: "KRK", has: .small, needs: .veryLarge)))
-        #expect(!reasons.contains(.runwayTooSmall(airport: "LNW", has: .veryLarge, needs: .veryLarge)))
+            from: "LHR", to: "TOS", aircraftRangeKm: 12000, aircraftRunwayRequirement: .veryLarge)
+        #expect(reasons.contains(.runwayTooSmall(airport: "TOS", has: .small, needs: .veryLarge)))
+        #expect(!reasons.contains(.runwayTooSmall(airport: "LHR", has: .veryLarge, needs: .veryLarge)))
     }
 
     @Test func minimumDistanceEnforced() throws {
@@ -187,7 +187,7 @@ struct RouteEligibilityTests {
 struct SlotTests {
     let airline1 = AirlineID(raw: 1)
     let airline2 = AirlineID(raw: 2)
-    let airport = AirportCode("STV")
+    let airport = AirportCode("ARN")
 
     @Test func allocateWithinCapacity() {
         var world = WorldState()

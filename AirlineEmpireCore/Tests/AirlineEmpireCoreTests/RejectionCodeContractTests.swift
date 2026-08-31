@@ -33,7 +33,7 @@ struct RejectionCodeContractTests {
                                   systems: GamePipeline.standard(),
                                   catalog: catalog)
         _ = await session.submit(FoundAirlineCommand(
-            airlineName: "Contract Air", kind: .player, homeAirport: "STV",
+            airlineName: "Contract Air", kind: .player, homeAirport: "ARN",
             startingCash: cash))
         let player = try #require(await session.snapshot.playerAirline).id
         await session.populateStandardWorld(competitors: 2)
