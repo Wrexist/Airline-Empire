@@ -58,25 +58,25 @@ struct RouteManagementTests {
     }
 
     @Test func slotScarcityBlocksOpening() throws {
-        // KRK (Tromsø) has 90 slots/day; grab them with 20-trip routes(40
-        // movements each) until exhausted.
+        // TOS (Tromsø) has 150 slots/day — the calibrated floor for a small
+        // field. Fill it with 20-trip routes (40 movements each) until a
+        // fourth cannot fit.
         let (_, engine, airline, _) = try RouteFixtures.withAircraft()
-        #expect(engine.applyNow(OpenRouteCommand(
-            airline: airline, origin: "TOS", destination: "ARN",
-            dailyRoundTrips: 20, ticketPrice: Money.dollars(99))) == .applied)
-        #expect(engine.applyNow(OpenRouteCommand(
-            airline: airline, origin: "TOS", destination: "OSL",
-            dailyRoundTrips: 20, ticketPrice: Money.dollars(99))) == .applied)
-        // 80 of 90 used; another 20-trip route (40 movements) must fail.
+        for destination in ["ARN", "OSL", "CPH"] as [AirportCode] {
+            #expect(engine.applyNow(OpenRouteCommand(
+                airline: airline, origin: "TOS", destination: destination,
+                dailyRoundTrips: 20, ticketPrice: Money.dollars(99))) == .applied)
+        }
+        // 120 of 150 used; another 20-trip route (40 movements) must fail.
         guard case .rejected(let rejection) = engine.applyNow(OpenRouteCommand(
-            airline: airline, origin: "TOS", destination: "CPH",
+            airline: airline, origin: "TOS", destination: "HEL",
             dailyRoundTrips: 20, ticketPrice: Money.dollars(99))) else {
             Issue.record("Expected slot rejection"); return
         }
         #expect(rejection.code == "route.noSlots")
-        // But a small one fits.
+        // But a small one fits (130 of 150).
         #expect(engine.applyNow(OpenRouteCommand(
-            airline: airline, origin: "TOS", destination: "CPH",
+            airline: airline, origin: "TOS", destination: "HEL",
             dailyRoundTrips: 5, ticketPrice: Money.dollars(99))) == .applied)
     }
 
