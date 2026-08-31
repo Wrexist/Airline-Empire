@@ -849,18 +849,31 @@ struct AircraftShopSheet: View {
             condition: FleetEconomics.usedMarketCondition(
                 ageYears: Double(usedAge), tuning: catalog.tuning.fleet),
             tuning: catalog.tuning.fleet)
+        // The bars are comparative against the whole catalogue, locked types
+        // included: "184 of a possible 422 seats" is a fact about the world,
+        // and the bars must not re-scale when the era filter flips.
+        let all = catalog.orderedAircraftTypeCodes
+            .compactMap { catalog.aircraftTypes[$0] }
+        let maxSeats = all.map(\.seats).max() ?? spec.seats
+        let maxRange = all.map(\.rangeKm).max() ?? spec.rangeKm
         return VStack(alignment: .leading, spacing: AETheme.spacingS) {
             shopRowHeader(spec, locked: locked)
-            AEChipRow {
-                AEChip(icon: "person.2.fill", text: "\(spec.seats) seats")
-                AEChip(icon: "arrow.left.and.right", text: "\(spec.rangeKm) km")
-                // Banded rather than the raw figure. "0.030 kg/km per seat"
-                // is not a number anyone can rank without the other thirteen
-                // beside it, and the ranking is the only thing it was for.
-                if let band = catalog.seatEfficiency(of: spec) {
-                    AEChip(icon: "fuelpump.fill",
-                           text: Vocab.seatEfficiency(band))
-                }
+            // The spec as bars, not prose: three chips of digits made every
+            // aircraft read the same, and comparing was the whole point of
+            // the screen. A bar against the catalogue's best is legible at a
+            // glance — the trading-card read.
+            specBar("Seats", value: "\(spec.seats)", icon: "person.2.fill",
+                    fraction: Double(spec.seats) / Double(max(maxSeats, 1)),
+                    tint: AETheme.accent)
+            specBar("Range", value: "\(spec.rangeKm) km",
+                    icon: "arrow.left.and.right",
+                    fraction: Double(spec.rangeKm) / Double(max(maxRange, 1)),
+                    tint: AETheme.owned)
+            if let band = catalog.seatEfficiency(of: spec) {
+                specBar("Fuel/seat", value: Vocab.seatEfficiency(band),
+                        icon: "fuelpump.fill",
+                        fraction: efficiencyFraction(band),
+                        tint: efficiencyTint(band))
             }
             // What it is for, and what that costs — the question a market
             // card exists to answer and the one the spec sheet never did.
@@ -877,89 +890,345 @@ struct AircraftShopSheet: View {
                     .foregroundStyle(AETheme.mutedText)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
-                // The three options side by side, as prices to compare
-                // rather than three sentences to read in sequence. The
-                // tradeoff *is* the decision: cash now against cash monthly,
-                // and condition against waiting (MASTER PROMPT 4 §11).
-                AEMetricStrip([
-                    AEMetric("new · in \(Format.days(spec.deliveryLeadDays))",
-                             Format.money(spec.listPrice)),
-                    AEMetric("used \(usedAge)y · flies now",
-                             Format.money(usedPrice)),
-                    AEMetric("lease · per month",
-                             Format.money(spec.leaseMonthly),
-                             tint: AETheme.leased),
-                ])
-                purchase("Buy new", price: spec.listPrice, snapshot: snapshot,
-                         player: player, identifier: "ae-market-buy-new",
-                         detail: "Delivered in \(Format.days(spec.deliveryLeadDays))",
-                         command: BuyNewAircraftCommand(buyer: player, type: spec.code))
-                purchase("Buy used (\(usedAge)y)", price: usedPrice, snapshot: snapshot,
-                         player: player, identifier: "ae-market-buy-used",
-                         detail: "Flies immediately, in used condition",
-                         command: BuyUsedAircraftCommand(buyer: player, type: spec.code,
-                                                         ageYears: usedAge))
-                purchase("Lease", price: spec.leaseMonthly, snapshot: snapshot,
-                         player: player, isMonthly: true,
-                         identifier: "ae-market-lease",
-                         detail: "\(Format.money(spec.leaseMonthly * Int64(leaseTermMonths))) over \(leaseTermMonths) months",
-                         command: LeaseAircraftCommand(lessee: player, type: spec.code,
-                                                       termMonths: leaseTermMonths))
+                ShopDealPicker(spec: spec, usedAge: usedAge,
+                               leaseTermMonths: leaseTermMonths,
+                               usedPrice: usedPrice,
+                               cash: snapshot.ledger.balance(of: player),
+                               player: player)
             }
         }
         .padding(.vertical, 2)
     }
 
-    /// One purchase option: what it costs, what it leaves, and Core's own
-    /// verdict on whether it can be done — before the tap.
-    private func purchase(_ title: String, price: Money, snapshot: GameState,
-                          player: AirlineID, isMonthly: Bool = false,
-                          identifier: String,
-                          detail: String, command: any Command) -> some View {
-        let blocked = controller.precheck(command)
-        let cash = snapshot.ledger.balance(of: player)
-        let after = isMonthly ? nil : cash - price
-        return VStack(alignment: .leading, spacing: 2) {
-            ConfirmableButton(
-                title: "\(title)?",
-                message: isMonthly
-                    ? "\(Format.money(price)) every month for \(leaseTermMonths) months. Returning early costs a penalty."
-                    : "\(Format.money(price)) now, leaving \(Format.money(after ?? cash)).",
-                confirmTitle: title, role: nil,
-                // Dismiss on success, like every other sheet in the app.
-                // Without it the largest single action in the game left the
-                // player looking at the identical row, with the only evidence
-                // a wallet figure scrolled off the top and a feed line on a
-                // different tab.
-                action: {
-                    if controller.submit(command) == nil { dismiss() }
-                }
-            ) {
-                HStack {
-                    Text(title).font(.subheadline.weight(.medium))
-                    Spacer()
-                    Text(isMonthly ? "\(Format.money(price))/mo" : Format.money(price))
-                        .font(.subheadline).monospacedDigit()
-                }
-                .frame(minHeight: 44)
-                .contentShape(Rectangle())
-            }
-            // A stable name for the one control a UI test has to find. The
-            // visible label cannot serve: "Lease" is also the opening word of
-            // the "Lease term: 60 months" stepper a few rows above, and a
-            // label-prefix query picked the stepper, decremented the term and
-            // leased nothing (AE-032).
-            .accessibilityIdentifier(identifier)
-            .disabled(blocked != nil)
-            Text(blocked?.message ?? detail)
+    /// One spec line: name, a bar against the catalogue's best, the number.
+    private func specBar(_ label: String, value: String, icon: String,
+                         fraction: Double, tint: Color) -> some View {
+        HStack(spacing: AETheme.spacingS) {
+            Image(systemName: icon)
                 .font(.caption2)
-                .foregroundStyle(blocked != nil ? AETheme.caution : AETheme.mutedText)
-                .fixedSize(horizontal: false, vertical: true)
+                .foregroundStyle(AETheme.mutedText)
+                .frame(width: 16)
+                .accessibilityHidden(true)
+            Text(label)
+                .font(AEType.caption)
+                .foregroundStyle(AETheme.mutedText)
+                .frame(width: 62, alignment: .leading)
+            Capsule()
+                .fill(AETheme.cardBackground)
+                .frame(height: 5)
+                .overlay(alignment: .leading) {
+                    GeometryReader { geo in
+                        Capsule()
+                            .fill(tint.gradient)
+                            .frame(width: geo.size.width
+                                   * min(max(fraction, 0.04), 1))
+                    }
+                }
+            Text(value)
+                .font(AEType.caption.weight(.medium)).monospacedDigit()
+                .frame(minWidth: 56, alignment: .trailing)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label), \(value)")
+    }
+
+    /// The band as a bar. Ordinal, not measured — the band already threw the
+    /// raw number away, and these fractions only have to keep its order.
+    private func efficiencyFraction(_ band: SeatEfficiencyBand) -> Double {
+        switch band {
+        case .best: 1.0
+        case .strong: 0.72
+        case .moderate: 0.45
+        case .thirsty: 0.22
+        }
+    }
+
+    private func efficiencyTint(_ band: SeatEfficiencyBand) -> Color {
+        switch band {
+        case .best, .strong: AETheme.positive
+        case .moderate: AETheme.caution
+        case .thirsty: AETheme.negative
         }
     }
 
     /// The first era whose allowed categories include this one.
     private func unlockEra(for category: AircraftCategory) -> Era {
         Era.allCases.first { $0.allowedCategories.contains(category) } ?? .empire
+    }
+}
+
+/// The deal: three ways to get the same aircraft, as one decision.
+///
+/// The previous market stacked "Buy new / Buy used / Lease" as three thin
+/// text rows — three separate 44 pt taps for what is really one choice with
+/// three answers, and the screen's own audit called it boring to buy from
+/// (AE-034, run 86's frames). Now the ways in are *cards you pick between*:
+/// tap a deal to try it on — the consequence line and the wallet bar answer
+/// "then what?" before any commitment — and one full-width signature button
+/// commits it. Picking is free and reversible; only the big button spends
+/// money, which is also why it is the only control here that confirms.
+///
+/// Lease is the default everywhere because it is the game's own advice —
+/// the onboarding checklist says "Leasing keeps cash free early on" — and
+/// because the CTA then carries `ae-market-lease` from first render, which
+/// the UI journeys scroll to.
+private struct ShopDealPicker: View {
+    @Environment(GameController.self) private var controller
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    let spec: AircraftTypeSpec
+    let usedAge: Int
+    let leaseTermMonths: Int
+    let usedPrice: Money
+    let cash: Money
+    let player: AirlineID
+
+    enum Deal: CaseIterable, Hashable { case new, used, lease }
+    @State private var deal: Deal = .lease
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AETheme.spacingS) {
+            if typeSize.isAccessibilitySize {
+                // Three cards share a row only while their text fits; at
+                // accessibility sizes each gets the full width.
+                VStack(spacing: AETheme.spacingS) {
+                    ForEach(Deal.allCases, id: \.self) { card(for: $0) }
+                }
+            } else {
+                HStack(spacing: AETheme.spacingS) {
+                    ForEach(Deal.allCases, id: \.self) { card(for: $0) }
+                }
+            }
+            consequence
+            commit
+        }
+        .aeAnimation(AEMotion.selection, value: deal)
+        // Trying a deal on is a real decision the world should acknowledge,
+        // quietly — the same select cue the rest of the app speaks.
+        .aeFeedback(.uiSelect, on: deal)
+    }
+
+    // MARK: The three ways in
+
+    private func card(for option: Deal) -> some View {
+        let selected = deal == option
+        return Button {
+            deal = option
+        } label: {
+            VStack(spacing: 2) {
+                Text(caption(for: option))
+                    .font(.caption2.weight(.semibold))
+                    .textCase(.uppercase)
+                    .foregroundStyle(selected ? tint(for: option)
+                                              : AETheme.mutedText)
+                Text(Format.money(price(for: option)))
+                    .font(AEType.body.weight(.bold)).monospacedDigit()
+                    .minimumScaleFactor(0.7)
+                    .lineLimit(1)
+                Text(subtitle(for: option))
+                    .font(.caption2)
+                    .foregroundStyle(AETheme.mutedText)
+            }
+            .padding(.vertical, AETheme.spacingS)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: AETheme.cornerRadiusSmall,
+                                 style: .continuous)
+                    .fill(selected ? tint(for: option).opacity(0.12)
+                                   : AETheme.cardBackground.opacity(0.6)))
+            .overlay(
+                RoundedRectangle(cornerRadius: AETheme.cornerRadiusSmall,
+                                 style: .continuous)
+                    .strokeBorder(selected ? tint(for: option)
+                                           : Color.clear,
+                                  lineWidth: 1.5))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("ae-deal-\(name(for: option))")
+        .accessibilityLabel("\(caption(for: option)), \(Format.money(price(for: option))), \(subtitle(for: option))")
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    // MARK: What the picked deal actually means
+
+    /// One line that answers "and then what?" for the selected deal, plus —
+    /// for the cash deals — a wallet bar showing what stays in the bank.
+    @ViewBuilder
+    private var consequence: some View {
+        HStack(spacing: AETheme.spacingS - 2) {
+            Image(systemName: consequenceIcon)
+                .font(.caption)
+                .foregroundStyle(tint(for: deal))
+                .accessibilityHidden(true)
+            Text(consequenceText)
+                .font(AEType.caption)
+                .foregroundStyle(AETheme.mutedText)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        if deal != .lease, cash.cents > 0 {
+            let after = cash - price(for: deal)
+            let fraction = Double(max(after.cents, 0)) / Double(cash.cents)
+            HStack(spacing: AETheme.spacingS) {
+                Text("Bank after")
+                    .font(.caption2)
+                    .foregroundStyle(AETheme.mutedText)
+                Capsule()
+                    .fill(AETheme.cardBackground)
+                    .frame(height: 5)
+                    .overlay(alignment: .leading) {
+                        GeometryReader { geo in
+                            Capsule()
+                                .fill((fraction < 0.15 ? AETheme.caution
+                                                       : AETheme.positive).gradient)
+                                .frame(width: geo.size.width
+                                       * min(max(fraction, 0.02), 1))
+                        }
+                    }
+                Text(Format.money(after))
+                    .font(.caption2.weight(.medium)).monospacedDigit()
+                    .foregroundStyle(after.cents < 0 ? AETheme.negative
+                                                     : .primary)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Leaves \(Format.money(after)) in the bank")
+        }
+    }
+
+    // MARK: The signature
+
+    private var commit: some View {
+        let command = command(for: deal)
+        let blocked = controller.precheck(command)
+        return VStack(alignment: .leading, spacing: 2) {
+            ConfirmableButton(
+                title: "\(confirmWord(for: deal))?",
+                message: dialogMessage(for: deal),
+                confirmTitle: confirmWord(for: deal), role: nil,
+                // Dismiss on success, like every other sheet in the app —
+                // the payoff is the aircraft in the fleet, not this sheet.
+                action: {
+                    if controller.submit(command) == nil { dismiss() }
+                }
+            ) {
+                Label(ctaTitle(for: deal), systemImage: "signature")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.aePrimary)
+            // The stable name a UI test scrolls to. It follows the selected
+            // deal, so "ae-market-lease" is the full-width signature button
+            // whenever Lease is picked — which it is by default.
+            .accessibilityIdentifier("ae-market-\(name(for: deal))")
+            .disabled(blocked != nil)
+            if let blocked {
+                Text(blocked.message)
+                    .font(.caption2)
+                    .foregroundStyle(AETheme.caution)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    // MARK: Per-deal facts
+
+    private func price(for option: Deal) -> Money {
+        switch option {
+        case .new: spec.listPrice
+        case .used: usedPrice
+        case .lease: spec.leaseMonthly
+        }
+    }
+
+    private func caption(for option: Deal) -> String {
+        switch option {
+        case .new: "New"
+        case .used: "Used \(usedAge)y"
+        case .lease: "Lease"
+        }
+    }
+
+    private func subtitle(for option: Deal) -> String {
+        switch option {
+        case .new: "in \(Format.days(spec.deliveryLeadDays))"
+        case .used: "flies now"
+        case .lease: "per month"
+        }
+    }
+
+    private func tint(for option: Deal) -> Color {
+        switch option {
+        case .new: AETheme.accent
+        case .used: AETheme.owned
+        case .lease: AETheme.leased
+        }
+    }
+
+    private var consequenceIcon: String {
+        switch deal {
+        case .new: "shippingbox.fill"
+        case .used: "bolt.fill"
+        case .lease: "calendar"
+        }
+    }
+
+    private var consequenceText: String {
+        switch deal {
+        case .new:
+            "Factory fresh, best condition — delivered in \(Format.days(spec.deliveryLeadDays))."
+        case .used:
+            "On the apron today, in used condition."
+        case .lease:
+            "No cash down. \(Format.money(spec.leaseMonthly * Int64(leaseTermMonths))) over \(leaseTermMonths) months."
+        }
+    }
+
+    private func ctaTitle(for option: Deal) -> String {
+        switch option {
+        case .new: "Order it new"
+        case .used: "Buy it today"
+        case .lease: "Sign the lease"
+        }
+    }
+
+    /// The word the confirmation dialog leads with and confirms with. These
+    /// are a UI-test contract ("Lease?" / "Lease", "Buy used (8y)?"); the
+    /// friendlier verbs live on the button, not in the dialog.
+    private func confirmWord(for option: Deal) -> String {
+        switch option {
+        case .new: "Buy new"
+        case .used: "Buy used (\(usedAge)y)"
+        case .lease: "Lease"
+        }
+    }
+
+    private func name(for option: Deal) -> String {
+        switch option {
+        case .new: "buy-new"
+        case .used: "buy-used"
+        case .lease: "lease"
+        }
+    }
+
+    private func dialogMessage(for option: Deal) -> String {
+        switch option {
+        case .new, .used:
+            "\(Format.money(price(for: option))) now, leaving \(Format.money(cash - price(for: option)))."
+        case .lease:
+            "\(Format.money(spec.leaseMonthly)) every month for \(leaseTermMonths) months. Returning early costs a penalty."
+        }
+    }
+
+    private func command(for option: Deal) -> any Command {
+        switch option {
+        case .new:
+            BuyNewAircraftCommand(buyer: player, type: spec.code)
+        case .used:
+            BuyUsedAircraftCommand(buyer: player, type: spec.code,
+                                   ageYears: usedAge)
+        case .lease:
+            LeaseAircraftCommand(lessee: player, type: spec.code,
+                                 termMonths: leaseTermMonths)
+        }
     }
 }
