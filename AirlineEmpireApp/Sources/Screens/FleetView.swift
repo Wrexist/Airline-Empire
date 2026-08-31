@@ -1045,7 +1045,12 @@ private struct ShopDealPicker: View {
                                   lineWidth: 1.5))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        // Borderless, not plain: several buttons share this List row, and
+        // borderless is the style Lists hit-test per-button. Run 88's frames
+        // showed twelve synthetic taps land inert on this row with .plain
+        // (and a custom style on the CTA); the one arrangement proven by
+        // thirty runs of this suite is default/borderless buttons in a row.
+        .buttonStyle(.borderless)
         .accessibilityIdentifier("ae-deal-\(name(for: option))")
         .accessibilityLabel("\(caption(for: option)), \(Format.money(price(for: option))), \(subtitle(for: option))")
         .accessibilityAddTraits(selected ? .isSelected : [])
@@ -1112,10 +1117,19 @@ private struct ShopDealPicker: View {
                     if controller.submit(command) == nil { dismiss() }
                 }
             ) {
+                // The capsule is drawn by the label, not by a ButtonStyle:
+                // the button itself stays default-styled, because that is the
+                // exact plumbing every tapped control in this List has used
+                // since run 59 — run 88 proved a custom-styled sibling
+                // arrangement here goes inert under synthetic taps.
                 Label(ctaTitle(for: deal), systemImage: "signature")
-                    .frame(maxWidth: .infinity)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(AETheme.accent, in: Capsule())
+                    .contentShape(Capsule())
+                    .opacity(blocked != nil ? 0.45 : 1)
             }
-            .buttonStyle(.aePrimary)
             // The stable name a UI test scrolls to. It follows the selected
             // deal, so "ae-market-lease" is the full-width signature button
             // whenever Lease is picked — which it is by default.
