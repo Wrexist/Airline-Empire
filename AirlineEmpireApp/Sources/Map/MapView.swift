@@ -33,6 +33,13 @@ struct MapScreen: View {
     /// Frozen geometry from the last draw, so a tap resolves against exactly
     /// what the player saw rather than against a recomputed layout.
     @State private var hitGeometry = MapHitGeometry()
+    /// Draw-cost and label-churn totals, collected only under
+    /// `-AEUITestProbes` and published through the canvas's accessibility
+    /// value so a UI test can drag the real map and read real numbers.
+    @State private var drawStats = MapDrawStats()
+    private var probesEnabled: Bool {
+        ProcessInfo.processInfo.arguments.contains("-AEUITestProbes")
+    }
 
     var body: some View {
         NavigationStack {
@@ -126,7 +133,13 @@ struct MapScreen: View {
                                      elapsed: animating
                                         ? timeline.date.timeIntervalSince(referenceDate)
                                         : 0)
+                let drawStart = probesEnabled ? DispatchTime.now() : nil
                 frame.draw(into: &context, size: canvasSize)
+                if let drawStart {
+                    let ms = Double(DispatchTime.now().uptimeNanoseconds
+                                    - drawStart.uptimeNanoseconds) / 1e6
+                    drawStats.record(drawMs: ms, labels: frame.placedLabels)
+                }
                 // Handing the drawn geometry back is what keeps hit-testing
                 // honest — the tap resolves against the frame on screen.
                 //
@@ -259,6 +272,10 @@ struct MapScreen: View {
                      String(format: "zoom %.1fx", camera.liveZoom)]
         if events > 0 { parts.append("\(events) world events active") }
         if let hit = selection { parts.append(describe(hit, model: model)) }
+        // The probe's totals ride the same channel as the zoom, and only
+        // under the flag: the value a VoiceOver user hears never carries
+        // engineering numbers.
+        if probesEnabled { parts.append(drawStats.summary) }
         return parts.joined(separator: ". ")
     }
 

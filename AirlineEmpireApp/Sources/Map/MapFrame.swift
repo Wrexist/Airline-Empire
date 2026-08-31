@@ -28,6 +28,11 @@ struct MapFrame {
 
     private(set) var geometry = Geometry()
 
+    /// The labels this frame placed, kept so the draw-stats probe can measure
+    /// churn between consecutive frames (MapDrawStats). Assigned in `draw`;
+    /// costs one array copy of at most ~30 elements.
+    private(set) var placedLabels: [MapLabel] = []
+
     /// Built once per frame. Interpolating fifty flights was doing a linear
     /// scan of eighty airports twice each, thirty times a second.
     private let airportsByCode: [AirportCode: MapModel.MapAirport]
@@ -72,6 +77,7 @@ struct MapFrame {
         drawNight(&context, size: size)
         projectAirports()
         let airportLabels = placeAirportLabels()
+        placedLabels = airportLabels
         drawCountryLabels(&context, avoiding: airportLabels.map(\.box))
         drawEventRegions(&context)
         drawOpportunities(&context)
