@@ -282,6 +282,13 @@ final class PlayerJourneyUITests: AEUITestCase {
         // passed, because all it asserted was that the canvas existed.
         func zoom() -> Double {
             let value = map.value as? String ?? ""
+            // The render-cache counters ride the same channel; print them
+            // raw so the log carries rebuild/replay evidence per sequence.
+            if let cacheRange = value.range(
+                of: #"cache rebuilds \d+ replays \d+ reasons \[[^\]]*\]"#,
+                options: .regularExpression) {
+                print("MAP-CACHE \(value[cacheRange])")
+            }
             guard let range = value.range(of: #"zoom ([0-9.]+)x"#,
                                           options: .regularExpression)
             else { return .nan }

@@ -33,6 +33,10 @@ struct MapScreen: View {
     /// Frozen geometry from the last draw, so a tap resolves against exactly
     /// what the player saw rather than against a recomputed layout.
     @State private var hitGeometry = MapHitGeometry()
+    /// Owned here, one per map screen: the cached geometry the frames replay.
+    /// Plain state (not observable) — the draw reads and writes it without
+    /// invalidating the view that is drawing.
+    @State private var renderCache = MapRenderCache()
     /// Draw-cost and label-churn totals, collected only under
     /// `-AEUITestProbes` and published through the canvas's accessibility
     /// value so a UI test can drag the real map and read real numbers.
@@ -132,7 +136,9 @@ struct MapScreen: View {
                                      speed: controller.speed,
                                      elapsed: animating
                                         ? timeline.date.timeIntervalSince(referenceDate)
-                                        : 0)
+                                        : 0,
+                                     tick: referenceDate,
+                                     cache: renderCache)
                 let drawStart = probesEnabled ? DispatchTime.now() : nil
                 frame.draw(into: &context, size: canvasSize)
                 if let drawStart {
@@ -275,7 +281,10 @@ struct MapScreen: View {
         // The probe's totals ride the same channel as the zoom, and only
         // under the flag: the value a VoiceOver user hears never carries
         // engineering numbers.
-        if probesEnabled { parts.append(drawStats.summary) }
+        if probesEnabled {
+            parts.append(drawStats.summary)
+            parts.append(renderCache.counterSummary)
+        }
         return parts.joined(separator: ". ")
     }
 
@@ -472,15 +481,36 @@ final class MapHitGeometry {
     private var airports: [(MapModel.MapAirport, CGPoint)] = []
     private var flights: [(InterpolatedFlight, CGPoint)] = []
     private var routes: [(MapModel.MapRoute, [CGPoint])] = []
+    private var routeTransform: CGAffineTransform = .identity
+    private var selectedRoute: (MapModel.MapRoute, [CGPoint])?
 
     func store(_ geometry: MapFrame.Geometry) {
         airports = geometry.airports
         flights = geometry.flights
         routes = geometry.routes
+        routeTransform = geometry.routeTransform
+        selectedRoute = geometry.selectedRoute
     }
 
     func hit(at location: CGPoint) -> MapHit? {
-        MapHitTester.hit(at: location, airports: airports, flights: flights,
-                         routes: routes)
+        // Route polylines live in the route cache's screen space; the tap is
+        // carried to them through the inverse of the transform they are
+        // displayed under — the same agreement as before ("hit what was
+        // drawn"), tested from the other side. The tolerance is a screen
+        // quantity, so it is scaled into cache space alongside the point.
+        let inverse = routeTransform.inverted()
+        let scale = max(0.0001, sqrt(abs(routeTransform.a * routeTransform.d)))
+        var cacheRoutes = routes
+        if let selectedRoute {
+            // The selected route was drawn per frame in current screen
+            // space; bring it into the same space as the rest.
+            cacheRoutes.append((selectedRoute.0,
+                                selectedRoute.1.map { $0.applying(inverse) }))
+        }
+        return MapHitTester.hit(at: location, airports: airports,
+                                flights: flights,
+                                routes: cacheRoutes,
+                                routeLocation: location.applying(inverse),
+                                routeTolerance: 26 / scale)
     }
 }

@@ -507,11 +507,18 @@ enum MapHitTester {
     /// routes.** An aircraft is the smallest and most transient thing on the
     /// map, so it must win where it overlaps; a route line passes under
     /// hundreds of pixels and would otherwise swallow every tap near it.
+    /// `routeLocation`/`routeTolerance` exist because route polylines are
+    /// now tested in the render cache's own screen space (MapHitGeometry):
+    /// the tap and the tolerance are carried there, airports and flights
+    /// stay in current screen space. Defaults keep the old single-space
+    /// behaviour for tests and callers that have no cache.
     static func hit(at location: CGPoint,
                     airports: [(MapModel.MapAirport, CGPoint)],
                     flights: [(InterpolatedFlight, CGPoint)],
                     routes: [(MapModel.MapRoute, [CGPoint])],
-                    tolerance: CGFloat = 26) -> MapHit? {
+                    tolerance: CGFloat = 26,
+                    routeLocation: CGPoint? = nil,
+                    routeTolerance: CGFloat? = nil) -> MapHit? {
         var best: (MapHit, CGFloat)?
 
         for (flight, point) in flights {
@@ -531,12 +538,14 @@ enum MapHitTester {
         if let best { return best.0 }
 
         // Routes last, and on a tighter tolerance: a line is a big target.
+        let routePoint = routeLocation ?? location
+        let routeReach = (routeTolerance ?? tolerance) * 0.5
         for (route, points) in routes {
             guard points.count >= 2 else { continue }
             for index in 0..<(points.count - 1) {
-                let distance = distanceToSegment(location, points[index],
+                let distance = distanceToSegment(routePoint, points[index],
                                                  points[index + 1])
-                if distance < tolerance * 0.5, distance < (best?.1 ?? .infinity) {
+                if distance < routeReach, distance < (best?.1 ?? .infinity) {
                     best = (.route(route.id), distance)
                 }
             }
