@@ -3,7 +3,7 @@ One aircraft. One route. Everything after that is yours to build.
 Airline Empire is a deep, offline airline management simulator. You decide where to fly, what to fly and what to charge — and a living world answers back. Demand shifts with the seasons, fuel prices move, rivals undercut you on your best route, and every number you see can be opened up and explained.
 
 BUILD A NETWORK THAT IS YOURS
-• Eighty airports across nine world regions, each with its own demand, slot capacity, runway limits and weather risk
+• Ninety-four real airports across nine world regions — Arlanda, Heathrow, Haneda, Landvetter — each with its own demand, slot capacity, runway limits and weather risk
 • Open routes, set frequencies, set the fare, and watch the map fill in behind you
 • Grow from a single regional hop to widebodies and long-haul, as hubs and fleet commonality start to matter
 
@@ -30,4 +30,4 @@ NO STRINGS ATTACHED
 • iPhone and iPad
 
 A NOTE ON THE WORLD
-Airline Empire is set in an invented one. Its cities, airports, aircraft and manufacturers were designed for the simulation rather than copied from a timetable, which is what lets the economics be honest instead of approximate.
+The map is the real one: ninety-four real airports, from Arlanda to Haneda, with real geography, distances and time zones. The airlines, aircraft and manufacturers are invented for the simulation, which is what lets the economics be honest instead of approximate.

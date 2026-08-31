@@ -61,6 +61,26 @@ struct RootView: View {
             ProcessInfo.processInfo.arguments.contains("-AEUITestDarkAppearance")
                 ? .dark : nil)
         .accessibilityIdentifier(appearanceIdentifier)
+        // The audio pipeline's state, as something a UI test can read.
+        //
+        // ~58 WAV files ship and none had ever been proven to reach a running
+        // engine: `prepare()` swallows every failure by design (silence must
+        // not crash the game), which also means a broken pipeline is
+        // indistinguishable from a working one from the outside. This probe
+        // is the one place the difference is visible to automation. Gated on
+        // a launch argument so neither players nor VoiceOver ever meet it.
+        .overlay(alignment: .topLeading) {
+            if ProcessInfo.processInfo.arguments.contains("-AEUITestProbes") {
+                Color.clear
+                    .frame(width: 2, height: 2)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityIdentifier("ae-audio-status")
+                    .accessibilityValue(
+                        "engine \(controller.feedback.engineIsRunning ? "running" : "stopped"), "
+                        + "\(controller.feedback.missingAssets.count) assets missing")
+                    .allowsHitTesting(false)
+            }
+        }
         // Every presentation the whole app can raise lives here, above the
         // three screen states — a rejection alert mounted on the tab view
         // could not appear over a sheet, and could not appear on the menu at

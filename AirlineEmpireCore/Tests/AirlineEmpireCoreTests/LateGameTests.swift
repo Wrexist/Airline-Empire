@@ -15,10 +15,10 @@ struct LateGameTests {
                                       systems: GamePipeline.standard(),
                                       catalog: catalog)
         _ = engine.applyNow(FoundAirlineCommand(
-            airlineName: "Long Haul", kind: .player, homeAirport: "STV",
+            airlineName: "Long Haul", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(400_000_000)))
         let player = engine.state.airlines.values.first!.id
-        WorldSetup.createCompetitors(engine: engine, count: 3, playerHome: "STV")
+        WorldSetup.createCompetitors(engine: engine, count: 3, playerHome: "ARN")
 
         let targets = engine.state.onboardingModel(catalog: catalog,
                                                    suggestionLimit: routes)?

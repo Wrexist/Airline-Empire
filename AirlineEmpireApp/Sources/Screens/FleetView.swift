@@ -69,6 +69,10 @@ struct FleetList: View {
                                 FleetRow(card: card, catalog: catalog)
                             }
                             .aeListRow()
+                            // Same rule as the routes board: the first cell
+                            // is the fleet summary, so `cells.firstMatch` is
+                            // not an aircraft.
+                            .accessibilityIdentifier("ae-fleet-row")
                         }
                     }
                     .listStyle(.plain)
@@ -373,7 +377,7 @@ struct AircraftDetailView: View {
                     }
                     Spacer()
                 }
-                HStack(spacing: AETheme.spacingXS) {
+                AEChipRow {
                     AEChip(icon: "person.2.fill", text: "\(spec.seats) seats")
                     AEChip(icon: "arrow.left.and.right", text: "\(spec.rangeKm) km")
                     // Was `fuelBurnKgPerKm` whole — which says a widebody is
@@ -671,7 +675,10 @@ struct AircraftShopSheet: View {
             switch self {
             case .seats: "Seats"
             case .range: "Range"
-            case .efficiency: "Fuel per seat"
+            // "Fuel per seat" rendered as "Fuel per s…" in the segmented
+            // control at default type size (seen in run 60's market frame) —
+            // four segments share one row, and this was the longest.
+            case .efficiency: "Fuel/seat"
             case .price: "Price"
             }
         }
@@ -810,7 +817,7 @@ struct AircraftShopSheet: View {
                     AEBadge(text: "later era", color: .secondary, icon: "lock")
                 }
             }
-            HStack(spacing: AETheme.spacingXS) {
+            AEChipRow {
                 AEChip(icon: "person.2.fill", text: "\(spec.seats) seats")
                 AEChip(icon: "arrow.left.and.right", text: "\(spec.rangeKm) km")
                 // Banded rather than the raw figure. "0.030 kg/km per seat"

@@ -17,7 +17,7 @@ AGE RATING
 The game contains no violence, no sexual content, no profanity, no substances, no gambling and no horror. Its subject matter is running an airline: money, aircraft, schedules and reputation. Aircraft losses are modelled as financial and reputational events only; there are no crashes, casualties or injury depicted anywhere in the game.
 
 CONTENT AND LIKENESS
-The world is entirely fictional. Airports, cities, airlines, aircraft models and manufacturers were invented for this simulation. No real airline, manufacturer, aircraft model, airport or trademark is depicted or referenced, and no real-world flight data is used.
+The geography is real: real cities and real airports (name, code and location only — e.g. Stockholm Arlanda / ARN), used as factual geographic reference the way flight-planning and mapping apps do. Everything commercial is fictional: airlines, liveries, aircraft models and manufacturers were invented for this simulation, no real airline or manufacturer trademark is depicted or referenced, no airport branding or imagery is used, and no real-world flight data is used.
 
 CONTACT
 The contact on this version is the developer, who can respond the same day for anything that blocks the review.

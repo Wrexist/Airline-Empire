@@ -581,6 +581,26 @@ struct AEChip: View {
     }
 }
 
+/// The container chips sit in.
+///
+/// A row at reading sizes; a column at accessibility sizes. The first
+/// Dynamic Type screenshot this project produced (run 60, AccessibilityL)
+/// showed why the fixed HStack cannot stand: three chips shared one market
+/// card's width, hyphenated into "Ex-cel-lent fuel per…" towers, and
+/// truncated the one word the chip existed to carry.
+struct AEChipRow<Content: View>: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: AETheme.spacingXS) { content }
+        } else {
+            HStack(spacing: AETheme.spacingXS) { content }
+        }
+    }
+}
+
 /// A selectable glass card: the shape the onboarding uses for every choice.
 ///
 /// Selection is carried by three things at once — a tinted glass, an accent
@@ -710,13 +730,20 @@ struct AECompactMetric: View {
 /// same strip serves three metrics or nine without a decision at the call site.
 struct AEMetricStrip: View {
     let metrics: [AEMetric]
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     init(_ metrics: [AEMetric]) { self.metrics = metrics }
 
     var body: some View {
         AEPanel {
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 88), spacing: AETheme.spacingM,
+                // The column floor grows with the type size. At the fixed
+                // 88pt floor, AccessibilityL squeezed three price columns
+                // into one card and broke the figures mid-string —
+                // "$110. / 0M" — which run 62's market frame photographed.
+                // A wider floor means fewer, whole columns instead.
+                columns: [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 150 : 88),
+                                   spacing: AETheme.spacingM,
                                    alignment: .leading)],
                 alignment: .leading,
                 spacing: AETheme.spacingS

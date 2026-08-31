@@ -157,7 +157,7 @@ struct SolvencyTests {
         let engine = SimulationEngine(state: Fixtures.newState(),
                                       systems: GamePipeline.standard(), catalog: catalog)
         _ = engine.applyNow(FoundAirlineCommand(
-            airlineName: "Icarus Air", kind: .ai, homeAirport: "STV",
+            airlineName: "Icarus Air", kind: .ai, homeAirport: "ARN",
             startingCash: Money.dollars(9_000_000)))
         let airline = engine.state.airlines.values.first!.id
         for _ in 0..<4 {
@@ -183,7 +183,7 @@ struct SolvencyTests {
         let engine = SimulationEngine(state: Fixtures.newState(),
                                       systems: GamePipeline.standard(), catalog: catalog)
         _ = engine.applyNow(FoundAirlineCommand(
-            airlineName: "Asset Rich", kind: .ai, homeAirport: "STV",
+            airlineName: "Asset Rich", kind: .ai, homeAirport: "ARN",
             startingCash: Money.dollars(120_000_000)))
         let airline = engine.state.airlines.values.first!.id
         // Owns a widebody outright, then bleeds via leases.
@@ -238,7 +238,7 @@ struct SolvencyTests {
             let engine = SimulationEngine(state: Fixtures.newState(seed: 404),
                                           systems: GamePipeline.standard(), catalog: catalog)
             _ = engine.applyNow(FoundAirlineCommand(
-                airlineName: "Saver", kind: .player, homeAirport: "STV",
+                airlineName: "Saver", kind: .player, homeAirport: "ARN",
                 startingCash: Money.dollars(80_000_000)))
             let airline = engine.state.airlines.values.first!.id
             _ = engine.applyNow(TakeLoanCommand(airline: airline,
@@ -247,7 +247,7 @@ struct SolvencyTests {
             _ = engine.applyNow(BuyUsedAircraftCommand(buyer: airline, type: "MR180",
                                                        ageYears: 6))
             _ = engine.applyNow(OpenRouteCommand(
-                airline: airline, origin: "STV", destination: "LNW",
+                airline: airline, origin: "ARN", destination: "LHR",
                 dailyRoundTrips: 2, ticketPrice: Money.dollars(119)))
             let route = engine.state.routes.values.first!.id
             let aircraft = engine.state.aircraft.values.first!.id

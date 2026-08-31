@@ -274,27 +274,60 @@ enum MapLabelLayout {
     /// then the biggest airports — and then refuses any label whose box
     /// overlaps one already placed. Greedy by priority, which is the standard
     /// answer and is stable frame to frame because the ranking is.
+    /// The zoom at which an airport of this tier *earns* a label.
+    ///
+    /// This is the "reveal ladder": fully zoomed out the map is a shape, not
+    /// a directory, so only the world's biggest airports (and the player's
+    /// own network, always) carry text; each step in shows the next tier
+    /// down. Thresholds sit just inside the level boundaries (2.6 regional,
+    /// 6.0 local) so the reveal reads as gradual rather than as three cliffs.
+    static func labelZoomThreshold(for tier: MapModel.AirportTier) -> CGFloat {
+        switch tier {
+        case .global: 0
+        case .major: 2.2
+        case .regional: 4.2
+        case .small: 7.5
+        }
+    }
+
+    /// How many labels the screen can carry, grown smoothly with zoom: ~8 at
+    /// the world view, ~30 by street level. The fit rule still decides which
+    /// candidates actually land; this only caps the attempt.
+    static func labelBudget(zoom: CGFloat) -> Int {
+        max(8, min(32, 8 + Int((zoom - 1) * 3.2)))
+    }
+
     static func place(_ airports: [(MapModel.MapAirport, CGPoint)],
                       level: MapZoomLevel,
+                      zoom: CGFloat,
                       selected: AirportCode?,
                       limit: Int) -> [MapLabel] {
-        let ranked = airports
-            .map { (airport, point) in
-                (airport, point, priority(airport, selected: selected, level: level))
-            }
-            .filter { $0.2 > 0 }
-            .sorted { lhs, rhs in
-                lhs.2 != rhs.2 ? lhs.2 > rhs.2 : lhs.0.code.raw < rhs.0.code.raw
-            }
+        let cap = min(limit, labelBudget(zoom: zoom))
+        // Explicit steps and an explicit tuple type: the chained version of
+        // this expression blew the type-checker's budget on CI (run 68).
+        typealias Candidate = (airport: MapModel.MapAirport,
+                               point: CGPoint, priority: Int)
+        var scored: [Candidate] = []
+        for (airport, point) in airports {
+            let score = priority(airport, selected: selected,
+                                 level: level, zoom: zoom)
+            if score > 0 { scored.append((airport, point, score)) }
+        }
+        scored.sort { lhs, rhs in
+            lhs.priority != rhs.priority
+                ? lhs.priority > rhs.priority
+                : lhs.airport.code.raw < rhs.airport.code.raw
+        }
+        let ranked = scored.prefix(cap * 3)
 
         var placed: [CGRect] = []
         var labels: [MapLabel] = []
         for (airport, point, priority) in ranked {
-            guard labels.count < limit else { break }
+            guard labels.count < cap else { break }
             // The city if it fits, the code if it does not.
             //
             // A code is a lookup; a city is a place. "Stockholm" is what a
-            // player recognises, and "STV" is what they have to learn — so the
+            // player recognises, and "ARN" is what they have to learn — so the
             // city wins wherever there is room, and the code is the graceful
             // degradation rather than the default.
             //
@@ -307,9 +340,14 @@ enum MapLabelLayout {
             // any box overlapping one already placed — so a dense corner
             // quietly falls back to codes while an empty one keeps its cities,
             // with no threshold to guess at.
+            // Fullest first: the airport's own name with its city —
+            // "Sjövik (Stockholm)" — which is how people actually say an
+            // airport. The placer's fit rule degrades a crowded corner to
+            // the bare city and then the code, so density still self-tunes.
             let candidates = level == .world || airport.city.isEmpty
                 ? [airport.code.raw]
-                : [airport.city, airport.code.raw]
+                : [Vocab.airportDisplay(name: airport.name, city: airport.city),
+                   airport.city, airport.code.raw]
 
             var chosen: (text: String, box: CGRect)?
             for text in candidates {
@@ -376,20 +414,21 @@ enum MapLabelLayout {
     /// Zero means "never label this one".
     private static func priority(_ airport: MapModel.MapAirport,
                                  selected: AirportCode?,
-                                 level: MapZoomLevel) -> Int {
+                                 level: MapZoomLevel,
+                                 zoom: CGFloat) -> Int {
         if airport.code == selected { return 1000 }
         if airport.isPlayerHome { return 900 }
         if airport.closed { return 850 }
         if airport.isPlayerHub { return 800 }
         if airport.servedByPlayer { return 700 }
-        switch level {
-        case .world:
-            return airport.tier == .global ? 500 : 0
-        case .regional:
-            return airport.tier >= .major ? 400 + airport.tier.rawValue : 0
-        case .local:
-            return 300 + airport.tier.rawValue * 10
-        }
+        // Everything else earns its label by size, and only once the camera
+        // is close enough for its tier — Heathrow labels before Billund, and
+        // Billund not at all until the player is looking at Denmark.
+        // Prominence (population share) breaks ties inside a tier, so the
+        // biggest airports of a tier claim the budget first.
+        guard zoom >= labelZoomThreshold(for: airport.tier) else { return 0 }
+        return 200 + airport.tier.rawValue * 100
+            + Int(airport.prominence * 90)
     }
 }
 

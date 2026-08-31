@@ -19,7 +19,7 @@ struct AudioDirectionTests {
                                   systems: GamePipeline.standard(),
                                   catalog: catalog)
         _ = await session.submit(FoundAirlineCommand(
-            airlineName: "Reverb Air", kind: .player, homeAirport: "STV",
+            airlineName: "Reverb Air", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(300_000_000)))
         let player = try #require(await session.snapshot.playerAirline).id
         return (session, player, catalog)
@@ -118,7 +118,7 @@ struct AudioDirectionTests {
             AudioCue.for(.worldEventStarted(id: 2, kind: .strike(airline: AirlineID(raw: 1)))),
             AudioCue.for(.worldEventStarted(id: 3, kind: .fuelShock)),
             AudioCue.for(.worldEventStarted(id: 4, kind: .tourismBoom(region: .eastAsia))),
-            AudioCue.for(.worldEventStarted(id: 5, kind: .airportClosure(airport: "STV"))),
+            AudioCue.for(.worldEventStarted(id: 5, kind: .airportClosure(airport: "ARN"))),
         ]
         #expect(cues.allSatisfy { $0 != nil })
         #expect(Set(cues.compactMap { $0 }).count == 5)
@@ -302,7 +302,7 @@ struct AudioDirectionTests {
         let (session, _, _) = try await world()
         let state = await session.snapshot
         let batch: [SimEvent] = [
-            event(.routeOpened(id: RouteID(raw: 1), origin: "STV", destination: "LHR")),
+            event(.routeOpened(id: RouteID(raw: 1), origin: "ARN", destination: "LHR")),
             event(.aircraftDelivered(id: AircraftID(raw: 2))),
             event(.maintenanceCompleted(id: AircraftID(raw: 3))),
             event(.loanTaken(airline: AirlineID(raw: 1),
@@ -327,7 +327,7 @@ struct AudioDirectionTests {
             event(.missionOffered(id: 3, kind: .boomRush(region: .europe, targetPassengers: 100),
                                   deadline: SimTime(rawMinutes: 1),
                                   reward: Money.dollars(1))),        // subtle
-            event(.routeOpened(id: RouteID(raw: 4), origin: "STV",
+            event(.routeOpened(id: RouteID(raw: 4), origin: "ARN",
                                destination: "LHR")),                 // important
         ]
         let cues = director.cues(for: batch, state: state, speed: .x16, now: 0)

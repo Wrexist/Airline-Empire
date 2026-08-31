@@ -20,7 +20,7 @@ struct LiveryMigrationTests {
                                   systems: GamePipeline.standard(),
                                   catalog: catalog)
         _ = await session.submit(FoundAirlineCommand(
-            airlineName: "Legacy Air", kind: .player, homeAirport: "STV",
+            airlineName: "Legacy Air", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(100_000_000)))
         await session.populateStandardWorld(competitors: competitors)
         await session.advance(ticks: Fixtures.ticksPerDay * 3)
@@ -154,7 +154,7 @@ struct LiveryMigrationTests {
                                   systems: GamePipeline.standard(),
                                   catalog: catalog)
         _ = await session.submit(FoundAirlineCommand(
-            airlineName: "Crimson Air", kind: .player, homeAirport: "STV",
+            airlineName: "Crimson Air", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(50_000_000), livery: .crimson))
         let player = try #require(await session.snapshot.playerAirline)
         #expect(player.livery == .crimson)
@@ -168,7 +168,7 @@ struct LiveryMigrationTests {
                                   catalog: catalog)
         let spec = try #require(catalog.scenario("entrepreneur"))
         _ = await session.beginScenario(spec, airlineName: "Jade Air",
-                                        home: "STV", livery: .jade)
+                                        home: "ARN", livery: .jade)
         let state = await session.snapshot
         let player = try #require(state.playerAirline)
         #expect(player.livery == .jade)
@@ -189,7 +189,7 @@ struct LiveryMigrationTests {
                                       catalog: catalog)
             let spec = try #require(catalog.scenario("entrepreneur"))
             _ = await session.beginScenario(spec, airlineName: "Same Air",
-                                            home: "STV", livery: livery)
+                                            home: "ARN", livery: livery)
             await session.advance(ticks: Fixtures.ticksPerDay * 120)
             var state = await session.snapshot
             // Neutralise the one field that is meant to differ.

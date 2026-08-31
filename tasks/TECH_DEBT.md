@@ -355,3 +355,25 @@ named subset (one per screen under review) at a smaller width, and let the
 artifact remain the full-resolution record. Or, better, have the job fail the
 build on a frame assertion (TD-019) so the screenshots become evidence for a
 human rather than the primary check.
+**Amended in AE-032:** the tail cap is defused, not fixed. A run's complete
+logs are downloadable with **no credential** — the API's
+`get_workflow_run_logs_url` returns a signed zip link — and
+`scripts/decode-ci-screenshots.py` turns any job log into PNG files. Every
+frame of runs 59 and 60 was recovered this way, including two that changed
+the phase (the byte-identical zoom "levels", the Finance screen filed under
+a map name). The scrape remains the delivery mechanism; it is no longer a
+window that silently discards the early journey.
+
+## TD-021 — One seed, one starting city, and no antimeridian route ever drawn
+**Severity:** P3.
+**Introduced:** named 2026-08-30 (AE-032).
+**Description:** every UI journey founds the same airline in the same world:
+Stockholm start, London as top suggestion. Nothing has ever rendered a route
+crossing the international date line, so the classic world-spanning-line
+defect class is unobserved — not absent, unobserved. The route sheet also
+only offers markets near the start city that early aircraft can reach, so
+the journey cannot organically produce one.
+**Resolution path:** a UI-test launch argument that founds in a Pacific-rim
+city (or loads a prepared save with a TKH-bound long-haul route), then the
+map matrix's D case — photograph the date-line crossing at world and
+regional zoom.

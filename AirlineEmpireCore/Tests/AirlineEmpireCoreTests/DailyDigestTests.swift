@@ -12,7 +12,7 @@ struct DailyDigestTests {
                                       systems: GamePipeline.standard(),
                                       catalog: catalog)
         _ = engine.applyNow(FoundAirlineCommand(
-            airlineName: "Digest Air", kind: .player, homeAirport: "STV",
+            airlineName: "Digest Air", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(120_000_000)))
         let player = engine.state.airlines.values.first!.id
         _ = engine.applyNow(BuyUsedAircraftCommand(buyer: player, type: "MR180",
@@ -148,7 +148,7 @@ struct DailyDigestTests {
                                       systems: GamePipeline.standard(),
                                       catalog: catalog)
         _ = engine.applyNow(FoundAirlineCommand(
-            airlineName: "Tiny Ring", kind: .player, homeAirport: "STV",
+            airlineName: "Tiny Ring", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(120_000_000)))
         let player = engine.state.airlines.values.first!.id
         _ = engine.applyNow(BuyUsedAircraftCommand(buyer: player, type: "MR180",
@@ -184,7 +184,7 @@ struct DailyDigestTests {
                                       systems: GamePipeline.standard(),
                                       catalog: catalog)
         _ = engine.applyNow(FoundAirlineCommand(
-            airlineName: "Day Zero Air", kind: .player, homeAirport: "STV",
+            airlineName: "Day Zero Air", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(50_000_000)))
         let player = engine.state.airlines.values.first!.id
 

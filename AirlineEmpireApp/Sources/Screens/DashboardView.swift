@@ -5,6 +5,7 @@ import AirlineEmpireCore
 /// glance, the ops feed, and the time controls.
 struct DashboardView: View {
     @Environment(GameController.self) private var controller
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var guidedRoute: FirstRouteSuggestion?
     @State private var showingGuidedSheet = false
     @State private var showingSettings = false
@@ -100,26 +101,48 @@ struct DashboardView: View {
                         .accessibilityHidden(true)
                         .padding(.trailing, AETheme.spacingXS)
                 }
-                VStack(alignment: .leading, spacing: AETheme.spacingXS) {
-                    Text(Format.date(snapshot.currentDate))
-                        .font(.headline).monospacedDigit()
-                        // The date advances while you watch at 4× and 16×.
-                        // Rolling digits read as time passing; a hard swap
-                        // reads as a glitch.
-                        .contentTransition(.numericText())
-                        .aeAnimation(AEMotion.content, value: snapshot.currentDate.day)
-                    Text("\(Format.clock(snapshot.currentDate)) · \(Vocab.season(snapshot.currentDate.season)) · \(Vocab.era(dashboard.era)) era")
-                        .font(.caption)
-                        .foregroundStyle(AETheme.mutedText)
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: AETheme.spacingXS) {
-                    MoneyText(money: dashboard.cash).font(.headline)
-                    Text("net worth \(Format.money(dashboard.netWorth))")
-                        .font(.caption)
-                        .foregroundStyle(AETheme.mutedText)
+                // Two columns at reading sizes; one leading column at
+                // accessibility sizes, where the pair squeezed each other
+                // into ragged two-line wraps (seen in run 60's
+                // AccessibilityL Home frame).
+                if typeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                        headerDate(snapshot: snapshot, dashboard: dashboard)
+                        headerMoney(dashboard: dashboard, alignment: .leading)
+                    }
+                    Spacer(minLength: 0)
+                } else {
+                    headerDate(snapshot: snapshot, dashboard: dashboard)
+                    Spacer()
+                    headerMoney(dashboard: dashboard, alignment: .trailing)
                 }
             }
+        }
+    }
+
+    private func headerDate(snapshot: GameState,
+                            dashboard: DashboardModel) -> some View {
+        VStack(alignment: .leading, spacing: AETheme.spacingXS) {
+            Text(Format.date(snapshot.currentDate))
+                .font(.headline).monospacedDigit()
+                // The date advances while you watch at 4× and 16×.
+                // Rolling digits read as time passing; a hard swap
+                // reads as a glitch.
+                .contentTransition(.numericText())
+                .aeAnimation(AEMotion.content, value: snapshot.currentDate.day)
+            Text("\(Format.clock(snapshot.currentDate)) · \(Vocab.season(snapshot.currentDate.season)) · \(Vocab.era(dashboard.era)) era")
+                .font(.caption)
+                .foregroundStyle(AETheme.mutedText)
+        }
+    }
+
+    private func headerMoney(dashboard: DashboardModel,
+                             alignment: HorizontalAlignment) -> some View {
+        VStack(alignment: alignment, spacing: AETheme.spacingXS) {
+            MoneyText(money: dashboard.cash).font(.headline)
+            Text("net worth \(Format.money(dashboard.netWorth))")
+                .font(.caption)
+                .foregroundStyle(AETheme.mutedText)
         }
     }
 

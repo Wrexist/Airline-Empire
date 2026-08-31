@@ -60,7 +60,7 @@ struct MapModelTests {
         let (engine, _) = try AIFixtures.world(competitors: 3)
         engine.advance(ticks: Fixtures.ticksPerDay * 40)
         let model = engine.state.mapModel(catalog: engine.catalog)
-        #expect(model.airports.count == 80)
+        #expect(model.airports.count == 94)
         #expect(model.airports.allSatisfy { $0.prominence > 0 && $0.prominence <= 1 })
         // Player serves nothing yet in this fixture beyond... actually the
         // player has no routes here; AI routes must NOT be marked player.

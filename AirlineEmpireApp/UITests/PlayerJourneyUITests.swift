@@ -130,30 +130,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         checkpoint("04-fleet-with-aircraft")
 
         // ── Open a route ───────────────────────────────────────────────────
-        app.buttons["Routes"].tap()
-        let openRoute = app.buttons["Open a route"]
-        require(openRoute, "the route entry point on an empty routes board")
-        openRoute.tap()
-        checkpoint("05-open-route-sheet")
-
-        // The sheet ranks destinations by demand; the first row is the guided
-        // path a new player is offered.
-        let firstMarket = app.cells.firstMatch
-        if firstMarket.waitForExistence(timeout: 8) { firstMarket.tap() }
-        let openAction = app.buttons["Open"]
-        if openAction.waitForExistence(timeout: 5), openAction.isEnabled {
-            openAction.tap()
-        }
-        checkpoint("06-after-open-route")
-
-        // AGREEMENT: opening a route must put one on the board.
-        let emptyRoutes = app.staticTexts["No routes yet"]
-        XCTAssertFalse(emptyRoutes.waitForExistence(timeout: 8),
-                       """
-                       The routes board still reports "No routes yet" after \
-                       Open was tapped. The sheet may have dismissed without \
-                       the command being accepted.
-                       """)
+        guard openARoute() else { return }
         checkpoint("07-routes-with-route")
     }
 
@@ -187,20 +164,14 @@ final class PlayerJourneyUITests: AEUITestCase {
         guard leaseAnAircraft() else { return }
 
         // ── Open a route ───────────────────────────────────────────────────
-        app.buttons["Routes"].tap()
-        let openRoute = app.buttons["Open a route"]
-        require(openRoute, "the route entry point")
-        openRoute.tap()
-        let firstMarket = app.cells.firstMatch
-        if firstMarket.waitForExistence(timeout: 8) { firstMarket.tap() }
-        let openAction = app.buttons["Open"]
-        if openAction.waitForExistence(timeout: 5), openAction.isEnabled {
-            openAction.tap()
-        }
+        guard openARoute() else { return }
 
         // ── Assign ─────────────────────────────────────────────────────────
-        // Into the route's own screen, where the assignment lives.
-        let routeRow = app.cells.firstMatch
+        // Into the route's own screen, where the assignment lives. By
+        // identifier: the board's first cell is the network summary, which
+        // navigates nowhere.
+        let routeRow = app.descendants(matching: .any)
+            .matching(identifier: "ae-route-row").firstMatch
         require(routeRow, "the new route on the board")
         routeRow.tap()
 
@@ -219,10 +190,23 @@ final class PlayerJourneyUITests: AEUITestCase {
             return
         }
         assign.tap()
-        // The menu lists one row per eligible aircraft; the first is the one
-        // just leased, since it is the only one owned.
-        let candidate = app.buttons.element(boundBy: 0)
+        // The menu lists one row per eligible aircraft, labelled
+        // "<type> at <airport>". Matched on that shape rather than
+        // `element(boundBy: 0)`, which is whatever button the accessibility
+        // tree happens to order first — the back button, on this screen.
+        let candidate = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", " at ")).firstMatch
         if candidate.waitForExistence(timeout: 5) { candidate.tap() }
+
+        // CAUSALITY: an assignment that took shows the aircraft on the route
+        // with an Unassign action. Without this, everything below would poll
+        // an empty schedule for two minutes and blame the map.
+        let unassign = app.buttons["Unassign"]
+        XCTAssertTrue(unassign.waitForExistence(timeout: 10), """
+            No Unassign action appeared after picking an aircraft from the \
+            assignment menu — the command did not take, or the screen did \
+            not refresh.
+            """)
         checkpoint("80-route-with-aircraft")
 
         // ── Run the clock ──────────────────────────────────────────────────
@@ -287,23 +271,74 @@ final class PlayerJourneyUITests: AEUITestCase {
 
         let map = app.descendants(matching: .any)["ae-map-canvas"]
         require(map, "the map canvas")
-        checkpoint("70-map-world-zoom")
 
-        // Two pinches rather than one large one: the camera clamps at 16x, and
-        // a single huge scale would jump straight past the regional level that
-        // is the interesting one for labels.
-        map.pinch(withScale: 2.4, velocity: 1.2)
-        checkpoint("71-map-regional-zoom")
-        map.pinch(withScale: 2.4, velocity: 1.2)
-        checkpoint("72-map-local-zoom")
+        // The camera's zoom is in the canvas's accessibility value, so every
+        // step below is *proved* to have moved it. The previous version of
+        // this test pinched blind: run 59's "world", "regional" and "local"
+        // screenshots came back byte-identical (the map opens framed on the
+        // home network, near the clamp, so pinching in moved nothing), and
+        // its final wide pinch-out landed a synthetic finger on the tab bar
+        // and photographed the Finance screen under a map filename. It
+        // passed, because all it asserted was that the canvas existed.
+        func zoom() -> Double {
+            let value = map.value as? String ?? ""
+            guard let range = value.range(of: #"zoom ([0-9.]+)x"#,
+                                          options: .regularExpression)
+            else { return .nan }
+            return Double(value[range].dropFirst(5).dropLast(1)) ?? .nan
+        }
+        checkpoint("70-map-opening-frame")
+        let opening = zoom()
+        XCTAssertFalse(opening.isNaN, "The map does not publish its zoom")
 
-        // The map must still be there and still be interactive; a gesture that
-        // wedged the canvas would show up as the element going away.
-        XCTAssertTrue(map.exists,
-                      "The map canvas did not survive being pinched")
+        // Buttons first: they drive the same camera the gestures do, and a
+        // button tap cannot miss. Out to the world, in to the streets.
+        let zoomOut = app.buttons["Zoom out"]
+        require(zoomOut, "the zoom out control")
+        for _ in 0..<6 { zoomOut.tap() }
+        let world = zoom()
+        XCTAssertLessThan(world, opening,
+                          "Six zoom-out taps did not move the camera out")
+        checkpoint("71-map-world")
 
-        map.pinch(withScale: 0.3, velocity: -1.5)
-        checkpoint("73-map-zoomed-back-out")
+        let zoomIn = app.buttons["Zoom in"]
+        for _ in 0..<3 { zoomIn.tap() }
+        XCTAssertGreaterThan(zoom(), world,
+                             "Three zoom-in taps did not move the camera in")
+        checkpoint("72-map-regional")
+        for _ in 0..<3 { zoomIn.tap() }
+        checkpoint("73-map-local")
+
+        // The gestures, each proved against the same probe.
+        //
+        // Double tap is synthesized reliably; it must zoom in, and that is a
+        // hard assertion. The pinch is XCUITest's weakest synthesis — if it
+        // moves the camera the claim is upgraded to asserted, and if it does
+        // not, that is recorded as an honest skip rather than a pass,
+        // because from here it is impossible to tell a broken gesture
+        // handler from a synthetic gesture the recognizer never saw. A
+        // person with a device settles it either way (docs/APPLE_VALIDATION.md).
+        for _ in 0..<4 { zoomOut.tap() }
+        let beforeDoubleTap = zoom()
+        map.doubleTap()
+        XCTAssertGreaterThan(zoom(), beforeDoubleTap,
+                             "Double-tapping the map did not zoom in")
+        checkpoint("74-map-after-double-tap")
+
+        let beforePinch = zoom()
+        map.pinch(withScale: 1.8, velocity: 1.0)
+        Thread.sleep(forTimeInterval: 1)
+        if !(zoom() > beforePinch) {
+            checkpoint("75-PINCH-DID-NOT-ZOOM")
+            throw XCTSkip("""
+                The synthetic pinch left the camera at \(zoom())x (was \
+                \(beforePinch)x). Buttons and double tap both move the same \
+                camera, so the zoom path works; whether a real two-finger \
+                pinch reaches the recognizer still needs a person and a \
+                device. Recorded as NOT VERIFIED, not as passing.
+                """)
+        }
+        checkpoint("75-map-after-pinch")
     }
 
     /// No screen shows the old generic currency sign.
@@ -339,15 +374,224 @@ final class PlayerJourneyUITests: AEUITestCase {
     }
 
     /// Every tab reachable, and each renders something.
+    ///
+    /// Checkpoints on every tab, because this is also the test the iPad job
+    /// runs: the same five screens at regular width are the whole of what
+    /// that job exists to photograph.
     func testFoundingAnAirlineReachesEveryTab() throws {
         launch(appearance: .light)
         guard foundAirline() else { return }
 
-        for tab in ["Home", "Map", "Network", "Finance", "World"] {
+        for (index, tab) in ["Home", "Map", "Network", "Finance", "World"].enumerated() {
             openTab(tab)
             XCTAssertTrue(app.staticTexts.count > 0 || app.otherElements.count > 0,
                           "\(tab) rendered no content")
+            checkpoint("2\(index)-shell-\(tab.lowercased())")
         }
+    }
+
+    // MARK: Screens the journey had never reached (§12)
+
+    /// Aircraft detail, route detail, and Settings — three screens that were
+    /// 📖 read-only until this test: reachable in source, never rendered.
+    func testDetailScreensAndSettingsRender() throws {
+        launch(appearance: .light)
+        guard foundAirline() else { return }
+
+        // ── Aircraft detail, via the fleet board ──────────────────────────
+        openTab("Network")
+        app.buttons["Fleet"].tap()
+        let browse = app.buttons["Browse the market"]
+        require(browse, "the market entry point")
+        browse.tap()
+        guard leaseAnAircraft() else { return }
+
+        let aircraftRow = app.descendants(matching: .any)
+            .matching(identifier: "ae-fleet-row").firstMatch
+        require(aircraftRow, "the leased aircraft on the fleet board")
+        aircraftRow.tap()
+        // Content only aircraft detail has. The first attempt asked for
+        // "condition", which the fleet board's own summary also says — so
+        // run 60 photographed the board under the name "aircraft-detail" and
+        // the assertion passed anyway. "Ownership" is a section header that
+        // exists nowhere else — matched case-insensitively, because
+        // AESectionHeader uppercases its text and run 64 failed this over a
+        // perfectly rendered screen whose header read "OWNERSHIP".
+        let detailRendered = app.staticTexts.matching(
+            NSPredicate(format: "label ==[c] %@", "Ownership")).firstMatch
+            .waitForExistence(timeout: 10)
+        checkpoint("90-aircraft-detail")
+        XCTAssertTrue(detailRendered, """
+            Aircraft detail shows no Ownership section — either the wrong \
+            screen was pushed or it rendered empty. Screenshot attached.
+            """)
+        app.navigationBars.buttons.firstMatch.tap()
+
+        // ── Route detail, via the routes board ────────────────────────────
+        guard openARoute() else { return }
+        let routeRow = app.descendants(matching: .any)
+            .matching(identifier: "ae-route-row").firstMatch
+        require(routeRow, "the new route on the board")
+        routeRow.tap()
+        let routeRendered = app.buttons["Assign an aircraft"]
+            .waitForExistence(timeout: 10)
+        checkpoint("91-route-detail")
+        XCTAssertTrue(routeRendered, """
+            Route detail did not offer to assign an aircraft, on a route \
+            with an idle, in-range aircraft in the fleet. Either the wrong \
+            screen was pushed or the assignment card is missing. Screenshot \
+            attached.
+            """)
+
+        // ── Settings, from Home ───────────────────────────────────────────
+        openTab("Home")
+        let settings = app.buttons["Settings"]
+        require(settings, "the Settings button in the toolbar")
+        settings.tap()
+        let muteToggle = app.switches["Mute everything"]
+        let settingsRendered = muteToggle.waitForExistence(timeout: 10)
+        checkpoint("92-settings")
+        XCTAssertTrue(settingsRendered, """
+            The Settings sheet shows no "Mute everything" toggle. Either the \
+            sheet did not present or it rendered empty. Screenshot attached.
+            """)
+    }
+
+    // MARK: Audio (§18)
+
+    /// The audio pipeline starts, and every shipped cue decoded.
+    ///
+    /// This is the strongest audio claim CI can make, and it is deliberately
+    /// bounded: `AVAudioSession` activates, the `AVAudioEngine` graph starts,
+    /// and all ~52 one-shot buffers loaded. Nothing here proves a sound was
+    /// *heard* — the engine could be running into a muted mixer — but every
+    /// failure mode short of that (a file that stopped decoding, a format
+    /// mismatch, a session that will not activate, an engine that throws on
+    /// start) turns from silent to red. The probe only exists under
+    /// `-AEUITestProbes`, so shipping accessibility is untouched.
+    func testAudioEngineStartsAndEveryCueDecodes() throws {
+        launch(appearance: .light, arguments: ["-AEUITestProbes"])
+        guard foundAirline() else { return }
+
+        let probe = app.descendants(matching: .any)["ae-audio-status"]
+        guard probe.waitForExistence(timeout: 10) else {
+            XCTFail("The audio status probe never appeared under -AEUITestProbes.")
+            return
+        }
+        // prepare() runs off the first frame; give it a beat and re-read.
+        var status = probe.value as? String ?? ""
+        let deadline = Date().addingTimeInterval(10)
+        while Date() < deadline,
+              !(status.contains("running") && status.contains("0 assets missing")) {
+            Thread.sleep(forTimeInterval: 1)
+            status = probe.value as? String ?? ""
+        }
+        XCTAssertTrue(status.contains("engine running"), """
+            The AVAudioEngine is not running after launch: the probe reports \
+            "\(status)". Every sound in the game is currently playing into \
+            nothing.
+            """)
+        XCTAssertTrue(status.contains("0 assets missing"), """
+            Some audio assets failed to decode on-device: the probe reports \
+            "\(status)". scripts/audio/check-assets.py validates the files \
+            exist and share a format, so a failure here is a decode problem \
+            the static check cannot see.
+            """)
+    }
+
+    // MARK: The clock (BUG-040)
+
+    /// Time actually passes when the player asks it to.
+    ///
+    /// The regression test for the most serious defect this phase found:
+    /// founding a game never started the simulation pump, so the clock sat
+    /// at day one, 00:00, whatever speed was selected — photographed twice
+    /// (runs 64 and 65) before the cause was found. This asks the smallest
+    /// possible version of the question, with no market, no sheets and no
+    /// scrolling in the way: found an airline, select 16×, and the date on
+    /// Home must change. At 16× a game-day passes in ~22 real seconds; a
+    /// minute of patience is generous, and a failure here means the game is
+    /// frozen for every player.
+    func testTheClockActuallyRuns() throws {
+        launch(appearance: .light)
+        guard foundAirline() else { return }
+
+        let openingDate = app.staticTexts["2030-01-01"]
+        XCTAssertTrue(openingDate.waitForExistence(timeout: 10),
+                      "Home does not show the scenario's opening date")
+
+        let fast = app.buttons["Sixteen times speed"]
+        require(fast, "the 16x speed control")
+        fast.tap()
+
+        let advanced = openingDate.waitForNonExistence(timeout: 60)
+        checkpoint("85-clock-after-16x")
+        XCTAssertTrue(advanced, """
+            A real minute at 16x — about two and a half game days — and Home \
+            still shows 2030-01-01. The simulation pump is not running: this \
+            is BUG-040's exact shape, and the game is frozen. Screenshot \
+            attached.
+            """)
+    }
+
+    // MARK: Performance (§23)
+
+    /// Cold launch, measured — the first UI-side performance number this
+    /// project has ever had.
+    ///
+    /// `ae-map-bench` measures model computation on Linux; nothing measured
+    /// the app. This is deliberately the cheapest honest metric: XCTest
+    /// launches the app five times and reports the median in the job log.
+    /// It is a baseline, not a budget — no assertion, because a number that
+    /// fails a build before anyone has agreed what is acceptable just gets
+    /// deleted. Map rendering, zoom latency and scroll hitching remain
+    /// unmeasured; those need Instruments and a person (docs/PERFORMANCE.md).
+    func testColdLaunchBaseline() throws {
+        measure(metrics: [XCTApplicationLaunchMetric()]) {
+            XCUIApplication().launch()
+        }
+    }
+
+    // MARK: Dynamic Type (§19)
+
+    /// The shell at an accessibility text size.
+    ///
+    /// `AccessibilityL` is the first of the five accessibility sizes — large
+    /// enough that any layout which cannot flex has already broken, small
+    /// enough that a pass is not trivial. The assertions are the failure
+    /// classes §19 names: navigation must survive, and the market's primary
+    /// action must still be reachable. Whether it *looks* right is what the
+    /// checkpoints are for.
+    func testAccessibilityTextSizeKeepsTheShellUsable() throws {
+        launch(appearance: .light, arguments: [
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityL",
+        ])
+        guard foundAirline() else { return }
+        checkpoint("95-dynamictype-home")
+
+        // Navigation failure is the worst outcome: every tab must survive.
+        for tab in ["Map", "Network", "Finance", "World", "Home"] {
+            guard let button = waitForTab(tab, timeout: 10) else {
+                capture(Self.logPrefix + "MISSING-\(tab)-at-accessibility-size")
+                XCTFail("The \(tab) tab vanished at accessibility size. Screenshot attached.")
+                continue
+            }
+            XCTAssertTrue(button.isHittable,
+                          "The \(tab) tab is not tappable at accessibility size")
+        }
+
+        openTab("Network")
+        checkpoint("96-dynamictype-routes-empty")
+
+        // The market's primary action must still be reachable by scrolling.
+        app.buttons["Fleet"].tap()
+        let browse = app.buttons["Browse the market"]
+        require(browse, "the market entry point at accessibility size")
+        browse.tap()
+        let lease = app.buttons.matching(identifier: "ae-market-lease").firstMatch
+        scrollUntil(lease, "a Lease action in the market at accessibility size")
+        checkpoint("97-dynamictype-market")
     }
 
     /// Home guides a new player to their first aircraft.

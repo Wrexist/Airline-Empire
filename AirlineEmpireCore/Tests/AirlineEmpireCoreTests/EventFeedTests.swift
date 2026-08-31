@@ -88,7 +88,7 @@ struct EventFeedTests {
                                   systems: GamePipeline.standard(),
                                   catalog: catalog)
         _ = await session.submit(FoundAirlineCommand(
-            airlineName: "Feed Air", kind: .player, homeAirport: "STV",
+            airlineName: "Feed Air", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(120_000_000)))
         await session.populateStandardWorld(competitors: 3)
         let player = try #require(await session.snapshot.playerAirline).id
@@ -166,12 +166,12 @@ struct EventFeedTests {
                                       systems: GamePipeline.standard(),
                                       catalog: catalog)
         _ = engine.applyNow(FoundAirlineCommand(
-            airlineName: "Survivor", kind: .player, homeAirport: "STV",
+            airlineName: "Survivor", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(150_000_000)))
         let player = engine.state.airlines.values.first!.id
         // A rival with barely any cash, flying an expensive lease: it fails.
         _ = engine.applyNow(FoundAirlineCommand(
-            airlineName: "Doomed", kind: .ai, homeAirport: "LNW",
+            airlineName: "Doomed", kind: .ai, homeAirport: "LHR",
             startingCash: Money.dollars(3_000_000)))
         let rival = try #require(engine.state.airlines.values
             .first { $0.name == "Doomed" }).id
@@ -197,7 +197,7 @@ struct EventFeedTests {
                                   systems: GamePipeline.standard(),
                                   catalog: catalog)
         _ = await session.submit(FoundAirlineCommand(
-            airlineName: "Broke Air", kind: .player, homeAirport: "STV",
+            airlineName: "Broke Air", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(1_000)))
         let player = try #require(await session.snapshot.playerAirline).id
 
@@ -228,7 +228,7 @@ struct EventFeedTests {
                                   systems: GamePipeline.standard(),
                                   catalog: catalog)
         _ = await session.submit(FoundAirlineCommand(
-            airlineName: "Stream Air", kind: .player, homeAirport: "STV",
+            airlineName: "Stream Air", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(80_000_000)))
 
         func collectFive(_ stream: AsyncStream<SimEvent>) -> Task<Int, Never> {
@@ -266,7 +266,7 @@ struct EventFeedTests {
                                   systems: GamePipeline.standard(),
                                   catalog: catalog)
         _ = await session.submit(FoundAirlineCommand(
-            airlineName: "Solvent Air", kind: .player, homeAirport: "STV",
+            airlineName: "Solvent Air", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(120_000_000)))
         let player = try #require(await session.snapshot.playerAirline).id
         await session.setSpeed(.x4)

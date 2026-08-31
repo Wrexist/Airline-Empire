@@ -233,7 +233,15 @@ struct MapScreen: View {
         let served = model.airports.filter(\.servedByPlayer).count
         let events = model.events.filter(\.hasStarted).count
         var parts = ["\(mine) routes across \(served) airports",
-                     "\(airborne) aircraft in the air"]
+                     "\(airborne) aircraft in the air",
+                     // The camera, so a gesture can be *proved* to have moved
+                     // it. Run 59 photographed three "zoom levels" that were
+                     // byte-identical: the pinch had done nothing, the test
+                     // asserted only that the canvas existed, and the audit
+                     // recorded zoom coverage the app never had (BUG-039).
+                     // One decimal is enough to see every step of the 1.7×
+                     // buttons and the clamps at either end.
+                     String(format: "zoom %.1fx", camera.liveZoom)]
         if events > 0 { parts.append("\(events) world events active") }
         if let hit = selection { parts.append(describe(hit, model: model)) }
         return parts.joined(separator: ". ")

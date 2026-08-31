@@ -913,6 +913,123 @@ contrast, so no assertion covers this. What exists is
 `testLightAppearanceMapForComparison`, which now proves the app is genuinely
 in light appearance and captures the map — turning this from invisible into
 observable at every run.
-**Status:** FIXED IN SOURCE, **not yet visually confirmed.** The claim that it
-now reads correctly is unverified until a light-appearance map screenshot from
-after this change has been looked at.
+**Status:** FIXED — **visually confirmed.** Run 59's `KEY-61-light-map`
+(main, c387dde) was decoded and looked at in AE-032: the shell is proven
+light by the appearance guard, and every piece of map chrome — the time
+controls, overlay picker, zoom cluster and the "Your airline begins here"
+card — renders dark glass with legible white text.
+
+## BUG-037 — Core rejection messages print raw cents
+
+**Severity:** P2. Cosmetic, but on the exact line that explains to a player
+why they cannot afford something.
+**Found:** 2026-08-30, AE-032 — in run 59's `MARKET-DID-NOT-CLOSE`
+screenshot: a blocked market row captioned **"Need 110000000 for this
+offer"**.
+**Root cause:** five rejection messages in Core interpolated
+`money.cents / 100` — a raw Int64 — because Core had no money formatting at
+all. The app then surfaces `rejection.message` verbatim, both in the market
+caption (`FleetView.purchase`) and in the rejection alert.
+**Why nothing caught it:** `RejectionCodeContractTests` pins codes, not
+message text; the copy in `Rejections.present` wraps the message without
+reading it; and the message only renders when a command is *blocked*, a state
+no screenshot had ever shown.
+**Fix layer:** Core. `Money.compact` — `$110.0M` / `$790k` / `$1,234`,
+thresholds mirroring the app's `Format.money` — used by all five sites
+(FleetCommands ×3, FinanceCommands, ProgressionCommands).
+**Regression cover:** `MoneyFormattingTests` pins the format and drives the
+three blocked market commands, asserting no rejection message carries a
+digit-run long enough to be an unformatted balance.
+**Status:** FIXED — **visually confirmed.** Run 61's market frame shows the
+blocked Buy-new row captioned "Need $110.0M for this aircraft".
+
+## BUG-038 — the route-opening journey drove controls that were not there
+
+**Severity:** P1 for the evidence pipeline; P2 for the product. The app
+worked; the proof did not, and one real UX flaw hid underneath.
+**Found:** 2026-08-30, AE-032 — run 59's checkpoints 05 and 06 are
+pixel-identical, and both journey tests failed.
+**Symptom:** `testAcquireAircraftThenOpenARoute` tapped
+`app.cells.firstMatch` on the route sheet — which is the **From picker**, not
+a destination — selecting nothing; then reached for `app.buttons["Open"]`,
+which has never existed (the real label is "Open this route"). Both misses
+were silent; only the final "board still empty" assertion fired. The same
+`cells.firstMatch` pattern on the routes and fleet boards taps the *summary
+row*, which navigates nowhere.
+**The product flaw underneath:** the "Open this route" row sat below all ~40
+destination candidates, so a player who picks the top-ranked suggestion must
+scroll past every destination they just rejected to commit.
+**Fix layer:** both. App: the commit row rides a bottom `safeAreaInset` on
+the sheet, always visible once a destination is chosen; stable identifiers
+`ae-route-destination`, `ae-route-open`, `ae-route-row`, `ae-fleet-row`.
+Tests: `openARoute()` selects by identifier and treats the commit bar's
+appearance as proof the selection took; a disabled commit button fails with
+Core's printed reason in the screenshot.
+**Status:** FIXED — **asserted and observed.** Run 61's
+`testDetailScreensAndSettingsRender` drove the new path end to end: a
+destination selected by identifier, the bottom commit bar tapped, and the
+route photographed on its own detail screen (STV – LNW, "No aircraft
+assigned, so this route is not flying" — correct for the state).
+
+## BUG-039 — the zoom test manufactured its own evidence
+
+**Severity:** P1 for the evidence pipeline. The audit recorded "world,
+regional and local zoom observed; pinch asserted" — none of which was true.
+**Found:** 2026-08-30, AE-032 — by hashing run 59's screenshots:
+`71-map-regional-zoom` and `72-map-local-zoom` are byte-identical,
+`70-map-world-zoom` differs from them by 0.01% of pixels, and
+`73-map-zoomed-back-out` is **the Finance screen** — the wide synthetic
+pinch-out planted a finger on the tab bar and switched tabs. The test passed
+throughout, because it asserted only that the canvas existed.
+**Root cause:** two agreements no assertion checked. The map opens framed on
+the home network, near the zoom clamp, so pinching *in* moves nothing; and
+an XCUITest pinch on a full-screen canvas spans the floating tab bar.
+**Fix layer:** both. App: the canvas publishes `zoom N.Nx` in its
+accessibility value, so a camera move is now a checkable fact. Test: buttons
+drive the camera out to the world and back in with hard assertions at each
+level; double tap is asserted to zoom; the pinch is attempted and, if the
+camera does not move, recorded as an explicit `XCTSkip` — NOT VERIFIED —
+because a broken recognizer and an unsynthesized gesture are
+indistinguishable from CI. A person with a device settles the pinch.
+**Status:** FIXED — **asserted and observed.** Run 61's rebuilt test passed
+with every level a genuinely different frame: world (six zoom-outs), regional
+and local (buttons), double-tap, and the synthetic pinch itself moved the
+camera this time, so pinch is asserted on the simulator. On *hardware* a real
+two-finger pinch remains untested, as does everything else — that is
+docs/APPLE_VALIDATION.md's list, not this bug's.
+
+## BUG-040 — the game can launch permanently frozen
+
+**Severity:** P0. The core loop — time passing — silently never starts, on a
+race the player cannot see or influence.
+**Found:** 2026-08-30, AE-032 — by run 64's flight journey, the first time
+any automation reached the state the game is *for*: an aircraft assigned to
+a route with the clock running. Frame `81-flight-in-progress` shows 16×
+selected and the clock still at day one, 00:00, after two real minutes.
+**Root cause:** two stacked halves, and the second is the one that matters.
+`setPumping` — the loop that feeds elapsed real time to the simulation — was
+called only from `.onChange(of: scenePhase)`, which (half one) does not fire
+for the value already present. But even when it fires (half two, proven by
+run 65 still freezing after `initial: true`), it fires at launch — on the
+menu — where `session` is nil and the guard returns without arming anything.
+Nothing called `setPumping` again when a session was finally created, so
+**founding or loading a game never started the clock at all**; the game only
+ever ran for a player who backgrounded the app and came back.
+**Why nothing caught it:** every earlier journey ended before running the
+clock; Core's 414 tests drive time directly and never meet SwiftUI's scene
+machinery; and a frozen game *renders perfectly* — every screen this phase
+photographed before run 64 was of a world at day one, 00:00, and looked
+right.
+**Fix layer:** App, both halves: `.onChange(of: scenePhase, initial: true)`
+(iOS 17+) so the current phase is delivered on attach, and — the load-bearing
+line — `setPumping(true)` at the end of `startNewGame` and `loadGame`, where
+a session finally exists to pump.
+**Regression cover:** `testAnAircraftFliesItsRouteOnTheMap` is the guard —
+it polls the map's own airborne count at 16× and fails if nothing flies in
+five game days, which is exactly how this was caught.
+**Status:** FIXED — **asserted and observed.** Run 67's
+`testTheClockActuallyRuns` passed, and its frame shows Home at
+**2030-01-03** with 16× selected, the fuel price moved and the economy
+trending — the first photograph of a running world in this project's
+history. The flight journey (an aircraft observed in the air) remains
+gated on the runner's flaky market-sheet taps, not on this bug.

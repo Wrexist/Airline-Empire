@@ -9,11 +9,11 @@ enum AIFixtures {
         let engine = SimulationEngine(state: Fixtures.newState(seed: seed),
                                       systems: GamePipeline.standard(), catalog: catalog)
         _ = engine.applyNow(FoundAirlineCommand(
-            airlineName: "Player Air", kind: .player, homeAirport: "STV",
+            airlineName: "Player Air", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(150_000_000)))
         let player = engine.state.airlines.values.first!.id
         WorldSetup.createCompetitors(engine: engine, count: competitors,
-                                     playerHome: "STV")
+                                     playerHome: "ARN")
         return (engine, player)
     }
 }
@@ -176,7 +176,7 @@ struct CompetitorAITests {
         let engine = SimulationEngine(state: Fixtures.newState(),
                                       systems: [], catalog: catalog)
         guard case .rejected(let rejection) = engine.applyNow(FoundAirlineCommand(
-            airlineName: "Cheater", kind: .player, homeAirport: "STV",
+            airlineName: "Cheater", kind: .player, homeAirport: "ARN",
             startingCash: .zero, aiProfile: AIProfile(archetype: .lowCost))) else {
             Issue.record("Expected rejection"); return
         }

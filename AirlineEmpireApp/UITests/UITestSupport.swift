@@ -54,9 +54,12 @@ class AEUITestCase: XCTestCase {
         Thread.sleep(forTimeInterval: settle)
     }
 
-    /// Launch in a named appearance.
-    func launch(appearance: XCUIDevice.Appearance) {
+    /// Launch in a named appearance, optionally with extra launch arguments
+    /// (a Dynamic Type override, the test probes).
+    func launch(appearance: XCUIDevice.Appearance,
+                arguments: [String] = []) {
         applyAppearance(appearance, settle: 3)
+        app.launchArguments.append(contentsOf: arguments)
         app.launch()
     }
 
@@ -201,13 +204,21 @@ class AEUITestCase: XCTestCase {
     func scrollUntil(_ element: XCUIElement, _ what: String,
                      swipes: Int = 8) -> Bool {
         for _ in 0..<swipes {
-            if element.exists { return true }
+            if element.exists { break }
             app.swipeUp()
         }
-        if element.exists { return true }
-        capture(Self.logPrefix + "MISSING-\(what)")
-        XCTFail("\(what) never appeared, after scrolling \(swipes) times.")
-        return false
+        guard element.exists else {
+            capture(Self.logPrefix + "MISSING-\(what)")
+            XCTFail("\(what) never appeared, after scrolling \(swipes) times.")
+            return false
+        }
+        // Let the scroll's inertia finish before anyone taps. A tap resolves
+        // the element's frame at tap time, and a list still settling moved
+        // the Lease row far enough that the tap landed on the Buy-used row
+        // directly above it — the "Buy used (8y)?" dialog in main run 59's
+        // MARKET-DID-NOT-CLOSE screenshot is that exact miss, photographed.
+        Thread.sleep(forTimeInterval: 0.8)
+        return true
     }
 
     // MARK: Layout assertions (TD-019)
@@ -345,54 +356,217 @@ class AEUITestCase: XCTestCase {
 
         let lease = app.buttons.matching(identifier: "ae-market-lease").firstMatch
         guard scrollUntil(lease, "a Lease action in the market") else { return false }
-        lease.tap()
 
-        // The dialog's own button, not the row that opened it.
-        let dialog = app.sheets.firstMatch
-        if dialog.waitForExistence(timeout: 5) {
-            let confirm = dialog.buttons["Lease"]
-            if confirm.waitForExistence(timeout: 3) { confirm.tap() }
-        } else {
-            tapIfPresent(app.buttons["Lease"], settle: 0.3)
-        }
-
-        // The sheet dismisses itself on success. Done is the fallback for the
-        // case where it did not — and if it is still there afterwards, the
-        // lease did not happen and everything downstream would be nonsense.
-        tapIfPresent(app.buttons["Done"])
+        // The dialog must be the LEASE dialog before anything is confirmed,
+        // and a wrong dialog must be dismissed and the tap retried.
+        //
+        // Both halves are earned. Run 59 photographed a tap aimed at the
+        // lease row opening a "Buy used (8y)?" dialog — a synthetic-tap miss
+        // that run 61 reproduced twice even after a scroll settle, while the
+        // very same helper succeeded later in the same run, so retrying is
+        // sound. And on this runner's iOS 26 the dialog is an anchored
+        // popover with NO Cancel button, so the only way out of a wrong one
+        // is a tap outside it. The dialog is also why confirmations stay ON
+        // in tests: a mis-tap with confirmations off would silently buy the
+        // wrong aircraft and pass.
         let market = app.staticTexts["Aircraft market"]
-        if market.waitForNonExistence(timeout: 8) { return true }
+        let leaseDialogTitle = app.staticTexts["Lease?"]
+        let fleetRow = app.descendants(matching: .any)
+            .matching(identifier: "ae-fleet-row").firstMatch
+        for attempt in 1...4 {
+            // Bring the row into the middle band before touching it. Every
+            // mis-hit this runner has produced — the Buy-used dialog of runs
+            // 59 and 61, the untappable row of run 63 — happened with the
+            // row hugging the sheet's bottom edge. Small drags rather than
+            // swipeUp: a full swipe is what overshot in the first place.
+            var hops = 0
+            while lease.exists, lease.frame.midY > window.height * 0.66,
+                  hops < 4 {
+                app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+                    .press(forDuration: 0.05,
+                           thenDragTo: app.coordinate(
+                               withNormalizedOffset: CGVector(dx: 0.5, dy: 0.42)))
+                hops += 1
+                Thread.sleep(forTimeInterval: 0.6)
+            }
+            guard lease.exists else { break }
+            // A coordinate tap at the element's own centre: fires at the
+            // frame wherever hit-testing disagrees, and the dialog check
+            // below decides whether it landed right.
+            lease.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+
+            if leaseDialogTitle.waitForExistence(timeout: 3) {
+                // The dialog's confirm button and the market row are both
+                // labelled "Lease"; the row is behind the dialog and not
+                // hittable, so the hittable match — searched from the most
+                // recently added — is the dialog's.
+                let confirms = app.buttons.matching(
+                    NSPredicate(format: "label == %@", "Lease"))
+                for index in stride(from: confirms.count - 1, through: 0, by: -1) {
+                    let candidate = confirms.element(boundBy: index)
+                    if candidate.isHittable { candidate.tap(); break }
+                }
+                // The sheet dismisses itself on success — there is no Done
+                // fallback any more. Blind-tapping Done has never rescued a
+                // stuck sheet; in runs 62 and 63 it closed a healthy market
+                // over a lease that had not happened, three times each.
+                if market.waitForNonExistence(timeout: 8),
+                   fleetRow.waitForExistence(timeout: 6) {
+                    return true
+                }
+            }
+
+            // Wrong dialog, no dialog, or a confirm that did not land.
+            // Photograph the state, dismiss any popover by tapping the
+            // sheet title's own coordinates (the scrim when one is up,
+            // inert otherwise), and reopen the market if something closed it.
+            capture(Self.logPrefix + "LEASE-ATTEMPT-\(attempt)")
+            if market.exists {
+                market.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+                Thread.sleep(forTimeInterval: 1)
+            }
+            if !market.exists {
+                let browse = app.buttons["Browse the market"]
+                guard browse.waitForExistence(timeout: 5) else { break }
+                browse.tap()
+                _ = market.waitForExistence(timeout: 5)
+                guard scrollUntil(lease, "the Lease action, reopened market")
+                else { return false }
+            }
+        }
 
         capture(Self.logPrefix + "MARKET-DID-NOT-CLOSE")
         XCTFail("""
-            The aircraft market is still on screen after a lease was \
-            confirmed. The command was refused without saying so, or the \
-            confirmation was never tapped — either way nothing after this \
-            point would be testing what it claims to. Screenshot attached.
+            No lease completed after four attempts. The attempt screenshots \
+            show what each tap actually produced. Nothing after this point \
+            would be testing what it claims to.
+            """)
+        return false
+    }
+
+    /// Open a route from the empty routes board, taking the guided first
+    /// suggestion. One implementation for every journey that needs a route,
+    /// for the same reason `leaseAnAircraft` is: two copies drifted once
+    /// already.
+    @discardableResult
+    func openARoute() -> Bool {
+        app.buttons["Routes"].tap()
+        let openRoute = app.buttons["Open a route"]
+        guard require(openRoute, "the route entry point on an empty board")
+        else { return false }
+        openRoute.tap()
+
+        // The first *destination*, by its stable identifier. The previous
+        // version tapped `app.cells.firstMatch`, which on this sheet is the
+        // From picker: screenshots 05 and 06 of run 59 are pixel-identical,
+        // because the tap selected nothing and the test then reached for a
+        // button labelled "Open" that has never existed — the real label is
+        // "Open this route". Neither miss failed anything until the final
+        // assertion, which is what §17 calls manufactured sequence: action
+        // and assertion with no causality between them.
+        let destination = app.buttons
+            .matching(identifier: "ae-route-destination").firstMatch
+        guard require(destination, "a destination row in the route sheet")
+        else { return false }
+        destination.tap()
+
+        // CAUSALITY: the commit bar only exists once a destination is
+        // actually selected, so its appearance is proof the tap took.
+        checkpoint("06-route-sheet-destination-picked")
+        let open = app.buttons.matching(identifier: "ae-route-open").firstMatch
+        guard require(open, "the commit bar after picking a destination",
+                      timeout: 8) else { return false }
+        if !open.isEnabled {
+            capture(Self.logPrefix + "ROUTE-OPEN-BLOCKED")
+            XCTFail("""
+                "Open this route" is disabled for the top-ranked suggestion. \
+                The sheet prints Core's reason above the button — the \
+                screenshot carries it. The guided first-route path does not \
+                connect, which is a product finding, not a test failure.
+                """)
+            return false
+        }
+        open.tap()
+
+        // AGREEMENT: opening a route must put one on the board.
+        let emptyRoutes = app.staticTexts["No routes yet"]
+        if !emptyRoutes.waitForExistence(timeout: 8) { return true }
+        capture(Self.logPrefix + "ROUTE-DID-NOT-OPEN")
+        XCTFail("""
+            The routes board still reports "No routes yet" after Open was \
+            tapped. The sheet may have dismissed without the command being \
+            accepted. Screenshot attached.
             """)
         return false
     }
 
     // MARK: The journey's shared opening
 
+    /// The control that opens a top-level section, wherever this width class
+    /// put it.
+    ///
+    /// Compact width renders the shell's `TabView` as a tab bar; regular
+    /// width renders it as a **sidebar**, and `app.tabBars` matches nothing
+    /// at all — which is how the first iPad run in this project's history
+    /// (run 60) failed both its tests with "the tab bar after founding never
+    /// appeared" over a screenshot showing a perfectly healthy shell. The
+    /// fallback is scoped as a plain button lookup because the sidebar rows
+    /// expose themselves as buttons named by their tab title.
+    /// The control that opens `title`'s section in the current snapshot, or
+    /// nil if none of its shapes exist yet.
+    ///
+    /// Run 62 taught the second lesson here: the iPad's sidebar rows are not
+    /// `buttons` either — a frame showing a perfectly healthy sidebar failed
+    /// "the Home tab never appeared" because only bar-buttons and plain
+    /// buttons were tried. Sidebar rows surface as cells (with the title as
+    /// a static text), so the ladder now walks tab bar → button → cell →
+    /// bare static text, and callers poll rather than binding to whichever
+    /// rung happened to be empty at first evaluation.
+    func tabButton(_ title: String) -> XCUIElement? {
+        let candidates = [
+            app.tabBars.buttons[title],
+            app.buttons[title].firstMatch,
+            app.cells.containing(.staticText, identifier: title).firstMatch,
+            app.staticTexts[title].firstMatch,
+        ]
+        for candidate in candidates where candidate.exists { return candidate }
+        return nil
+    }
+
+    /// Poll for the section control across all its shapes.
+    func waitForTab(_ title: String, timeout: TimeInterval) -> XCUIElement? {
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if let found = tabButton(title) { return found }
+            Thread.sleep(forTimeInterval: 0.5)
+        } while Date() < deadline
+        return nil
+    }
+
     /// Found an airline and arrive in the shell. Every journey starts here.
     @discardableResult
     func foundAirline() -> Bool {
         // A relaunch inside one test may come back to a shell that is already
         // playing; that is a success, not a missing button.
-        if app.tabBars.buttons["Home"].waitForExistence(timeout: 3) { return true }
+        if waitForTab("Home", timeout: 3) != nil { return true }
         let found = app.buttons["Found Skyline Air"]
         guard require(found, "the Found button on the new-game screen") else {
             return false
         }
         found.tap()
-        return require(app.tabBars.buttons["Home"], "the tab bar after founding")
+        if waitForTab("Home", timeout: 25) != nil { return true }
+        capture(Self.logPrefix + "MISSING-the shell after founding")
+        XCTFail("No Home control (tab bar, button, sidebar cell or text) appeared after founding. Screenshot attached.")
+        return false
     }
 
     /// Switch to a tab by its title.
     func openTab(_ title: String) {
-        let button = app.tabBars.buttons[title]
-        require(button, "the \(title) tab")
+        guard let button = waitForTab(title, timeout: 15) else {
+            capture(Self.logPrefix + "MISSING-the \(title) tab")
+            XCTFail("The \(title) tab never appeared in any shape. Screenshot attached.")
+            return
+        }
         button.tap()
     }
 }

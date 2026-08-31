@@ -203,16 +203,16 @@ pushes for you._
 
 ### English (U.S.)
 
-**Promotional Text** — 151/170 characters
+**Promotional Text** — 161/170 characters
 
 ```text
-Eighty airports. Fourteen aircraft. One turboprop to start with. Version 1.0 is the whole simulation — no timers, no ads, nothing to unlock with money.
+Ninety-four real airports. Fourteen aircraft. One turboprop to start with. Version 1.0 is the whole simulation — no timers, no ads, nothing to unlock with money.
 ```
 
 > The only field that can be changed **without submitting a new version**.
 > Keep anything time-bound here and nothing permanent.
 
-**Description** — 2183/4000 characters
+**Description** — 2270/4000 characters
 
 ```text
 One aircraft. One route. Everything after that is yours to build.
@@ -220,7 +220,7 @@ One aircraft. One route. Everything after that is yours to build.
 Airline Empire is a deep, offline airline management simulator. You decide where to fly, what to fly and what to charge — and a living world answers back. Demand shifts with the seasons, fuel prices move, rivals undercut you on your best route, and every number you see can be opened up and explained.
 
 BUILD A NETWORK THAT IS YOURS
-• Eighty airports across nine world regions, each with its own demand, slot capacity, runway limits and weather risk
+• Ninety-four real airports across nine world regions — Arlanda, Heathrow, Haneda, Landvetter — each with its own demand, slot capacity, runway limits and weather risk
 • Open routes, set frequencies, set the fare, and watch the map fill in behind you
 • Grow from a single regional hop to widebodies and long-haul, as hubs and fleet commonality start to matter
 
@@ -247,7 +247,7 @@ NO STRINGS ATTACHED
 • iPhone and iPad
 
 A NOTE ON THE WORLD
-Airline Empire is set in an invented one. Its cities, airports, aircraft and manufacturers were designed for the simulation rather than copied from a timetable, which is what lets the economics be honest instead of approximate.
+The map is the real one: ninety-four real airports, from Arlanda to Haneda, with real geography, distances and time zones. The airlines, aircraft and manufacturers are invented for the simulation, which is what lets the economics be honest instead of approximate.
 ```
 
 **Keywords** — 94/100 characters
@@ -273,16 +273,16 @@ https://wrexist.github.io/airline-empire/
 
 ### English (U.K.)
 
-**Promotional Text** — 155/170 characters
+**Promotional Text** — 165/170 characters
 
 ```text
-Eighty airports. Fourteen aircraft. One turboprop to start with. Version 1.0 is the whole simulation — no timers, no adverts, nothing to unlock with money.
+Ninety-four real airports. Fourteen aircraft. One turboprop to start with. Version 1.0 is the whole simulation — no timers, no adverts, nothing to unlock with money.
 ```
 
 > The only field that can be changed **without submitting a new version**.
 > Keep anything time-bound here and nothing permanent.
 
-**Description** — 2188/4000 characters
+**Description** — 2275/4000 characters
 
 ```text
 One aircraft. One route. Everything after that is yours to build.
@@ -290,7 +290,7 @@ One aircraft. One route. Everything after that is yours to build.
 Airline Empire is a deep, offline airline management simulator. You decide where to fly, what to fly and what to charge — and a living world answers back. Demand shifts with the seasons, fuel prices move, rivals undercut you on your best route, and every number you see can be opened up and explained.
 
 BUILD A NETWORK THAT IS YOURS
-• Eighty airports across nine world regions, each with its own demand, slot capacity, runway limits and weather risk
+• Ninety-four real airports across nine world regions — Arlanda, Heathrow, Haneda, Landvetter — each with its own demand, slot capacity, runway limits and weather risk
 • Open routes, set frequencies, set the fare, and watch the map fill in behind you
 • Grow from a single regional hop to widebodies and long-haul, as hubs and fleet commonality start to matter
 
@@ -317,7 +317,7 @@ NO STRINGS ATTACHED
 • iPhone and iPad
 
 A NOTE ON THE WORLD
-Airline Empire is set in an invented one. Its cities, airports, aircraft and manufacturers were designed for the simulation rather than copied from a timetable, which is what lets the economics be honest instead of approximate.
+The map is the real one: ninety-four real airports, from Arlanda to Haneda, with real geography, distances and time zones. The airlines, aircraft and manufacturers are invented for the simulation, which is what lets the economics be honest instead of approximate.
 ```
 
 **Keywords** — 95/100 characters
@@ -363,7 +363,7 @@ by the metadata workflow with **screenshots** ticked.
 - **Phone Number** — `REPLACE_ME`  ⚠️ **you must replace this**
 - **Email** — `REPLACE_ME@example.com`  ⚠️ **you must replace this**
 
-**Notes** — 2220/4000 characters
+**Notes** — 2427/4000 characters
 
 ```text
 Airline Empire is a single-player airline management simulation. Everything a reviewer needs is in the app on first launch — there is nothing to sign in to.
@@ -385,7 +385,7 @@ AGE RATING
 The game contains no violence, no sexual content, no profanity, no substances, no gambling and no horror. Its subject matter is running an airline: money, aircraft, schedules and reputation. Aircraft losses are modelled as financial and reputational events only; there are no crashes, casualties or injury depicted anywhere in the game.
 
 CONTENT AND LIKENESS
-The world is entirely fictional. Airports, cities, airlines, aircraft models and manufacturers were invented for this simulation. No real airline, manufacturer, aircraft model, airport or trademark is depicted or referenced, and no real-world flight data is used.
+The geography is real: real cities and real airports (name, code and location only — e.g. Stockholm Arlanda / ARN), used as factual geographic reference the way flight-planning and mapping apps do. Everything commercial is fictional: airlines, liveries, aircraft models and manufacturers were invented for this simulation, no real airline or manufacturer trademark is depicted or referenced, no airport branding or imagery is used, and no real-world flight data is used.
 
 CONTACT
 The contact on this version is the developer, who can respond the same day for anything that blocks the review.

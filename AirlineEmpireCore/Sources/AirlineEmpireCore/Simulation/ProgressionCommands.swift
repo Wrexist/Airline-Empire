@@ -40,7 +40,7 @@ public struct StartCapabilityProgramCommand: Command, Equatable {
         }
         if state.ledger.balance(of: airline) < tuning.capabilityCost {
             return CommandRejection(code: "progression.insufficientFunds",
-                                    message: "Program costs \(tuning.capabilityCost.cents / 100)")
+                                    message: "Program costs \(tuning.capabilityCost.compact)")
         }
         return nil
     }

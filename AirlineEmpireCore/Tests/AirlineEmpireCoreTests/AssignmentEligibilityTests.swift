@@ -26,7 +26,7 @@ struct AssignmentEligibilityTests {
                                   systems: GamePipeline.standard(),
                                   catalog: catalog)
         _ = await session.submit(FoundAirlineCommand(
-            airlineName: "Eligibility Air", kind: .player, homeAirport: "STV",
+            airlineName: "Eligibility Air", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(900_000_000)))
         let player = try #require(await session.snapshot.playerAirline).id
         await session.populateStandardWorld(competitors: 2)

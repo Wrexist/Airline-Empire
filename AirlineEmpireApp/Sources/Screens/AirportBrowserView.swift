@@ -172,7 +172,7 @@ struct AirportBrowserView: View {
             HStack(spacing: AETheme.spacingS) {
                 Text(row.code.raw)
                     .font(.subheadline.weight(.semibold)).monospaced()
-                Text(row.spec.city).font(.subheadline)
+                Text(Vocab.airportDisplay(row.spec)).font(.subheadline)
                 Spacer()
                 if row.closed {
                     AEBadge(text: "closed", color: AETheme.negative, icon: "xmark.octagon")
@@ -243,7 +243,7 @@ struct AirportDetailView: View {
                 Text("\(spec.city), \(spec.country)")
                     .font(.subheadline)
                     .foregroundStyle(AETheme.mutedText)
-                HStack(spacing: AETheme.spacingXS) {
+                AEChipRow {
                     AEChip(icon: "globe", text: Vocab.region(spec.region))
                     AEChip(icon: "road.lanes", text: Vocab.runwayDetail(spec.runwayClass))
                     AEChip(icon: "cloud.rain.fill", text: Vocab.weatherRisk(spec.weatherRisk))

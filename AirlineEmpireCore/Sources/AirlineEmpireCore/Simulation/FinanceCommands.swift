@@ -84,7 +84,7 @@ public struct RepayLoanCommand: Command, Equatable {
         let owed = borrower.loans[loanIndex].principalRemaining
         if state.ledger.balance(of: airline) < owed {
             return CommandRejection(code: "finance.insufficientFunds",
-                                    message: "Full payoff needs \(owed.cents / 100)")
+                                    message: "Full payoff needs \(owed.compact)")
         }
         return nil
     }

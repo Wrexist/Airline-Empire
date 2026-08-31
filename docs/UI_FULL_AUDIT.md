@@ -154,3 +154,35 @@ copy, a view and its container — and Swift checks none of them. The project's
 
 The correction is not more Core tests. It is that **the app must be run**, and
 as of AE-031 it is.
+
+---
+
+## 5. AE-032 — the screen-by-screen record, updated against real frames
+
+Every row below names its evidence. Frames come from CI runs 59 (main,
+c387dde) and 60 (branch, e135c3a), decoded from the job logs with
+`scripts/decode-ci-screenshots.py` and looked at; "next run" marks coverage
+authored in AE-032 whose frames land with the branch's fixed run.
+
+| Screen | Reached | Observed | Interactions | Known issues / uncertainty |
+| --- | --- | --- | --- | --- |
+| New game | 🧪 | 👁 (pinned dark) | Found button 🧪 | — |
+| Home | 🧪 | 👁 light + darkforced + AccessibilityL | onboarding card 🧪 | date reads "2030-01-01 00:00 · Winter" — terse, deliberate |
+| Map | 🧪 | 👁 six distinct zoom/pinch frames (run 61); airport labels in the "Sjövik (Stockholm)" form with graceful city/code fallback (run 63, iPhone + iPad) | zoom buttons, double-tap and pinch all 🧪 against the published camera | pinch on hardware still needs a person |
+| Network — Routes empty | 🧪 layout | 👁 light + dark | Open a route 🧪 | — |
+| Network — Fleet empty | 🧪 layout | 👁 light + dark | Browse the market 🧪 | — |
+| Fleet with aircraft | 🧪 | 👁 | row → detail 🧪 next run | — |
+| Aircraft market | 🧪 | 👁 light + AccessibilityL | lease 🧪 (dialog-verified) | sort segment truncates "Fuel per s…"; chips fixed for accessibility sizes (AEChipRow) |
+| Route sheet | 🧪 | 👁 | destination select + commit 🧪 (run 61) | commit rides a bottom bar (BUG-038) |
+| Route detail | 🧪 | 👁 (run 61) | reached via the new commit bar 🧪 | assignment interaction asserted only in the flight journey |
+| Aircraft detail | 🧪 | 👁 (run 61) | Ownership section asserted | run 60's first frame was the board under this name — predicate now screen-unique |
+| Finance | 🧪 | 👁 light + darkforced | — | — |
+| World | 🧪 | 👁 darkforced | — | — |
+| Settings | 🧪 | 👁 (run 61) | mute toggle asserted | — |
+| Game over | 📖 only | — | — | needs a bankruptcy path or a debug hook — NOT VERIFIED |
+| iPad shell | 🧪 full five-tab pass (run 63) | 👁 all five tabs at regular width | sidebar navigation driven by the tab ladder | detail screens on iPad still blocked by the market-sheet lease step |
+
+Dark appearance remains the **forced** route (`darkforced`): the CI simulator
+will not switch system appearance, so "the app follows the system setting"
+stays 📖. Audio: the engine running and all cues decoding is 🧪 (run 60);
+audibility is NOT VERIFIED and cannot be from CI.

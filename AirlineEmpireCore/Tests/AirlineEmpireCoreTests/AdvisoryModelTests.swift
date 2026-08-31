@@ -22,7 +22,7 @@ struct AdvisoryModelTests {
                                   systems: GamePipeline.standard(),
                                   catalog: catalog)
         _ = await session.submit(FoundAirlineCommand(
-            airlineName: "Advisory Air", kind: .player, homeAirport: "STV",
+            airlineName: "Advisory Air", kind: .player, homeAirport: "ARN",
             startingCash: cash))
         let player = try #require(await session.snapshot.playerAirline).id
         return (session, player, catalog)
@@ -235,7 +235,7 @@ struct AdvisoryModelTests {
         let session = GameSession(state: state, systems: GamePipeline.standard(),
                                   catalog: catalog)
         _ = await session.submit(FoundAirlineCommand(
-            airlineName: "Programme Air", kind: .player, homeAirport: "STV",
+            airlineName: "Programme Air", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(200_000_000)))
         let player = try #require(await session.snapshot.playerAirline).id
         return (session, player, catalog)

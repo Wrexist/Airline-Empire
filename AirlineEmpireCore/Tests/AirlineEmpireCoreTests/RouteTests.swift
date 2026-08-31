@@ -14,10 +14,10 @@ enum RouteFixtures {
     static func openStvLnw(_ engine: SimulationEngine, _ airline: AirlineID,
                            trips: Int = 2) -> RouteID {
         let result = engine.applyNow(OpenRouteCommand(
-            airline: airline, origin: "STV", destination: "LNW",
+            airline: airline, origin: "ARN", destination: "LHR",
             dailyRoundTrips: trips, ticketPrice: Money.dollars(129)))
         precondition(result == .applied, "\(result)")
-        return engine.state.routes.values.first { $0.origin == AirportCode("STV") }!.id
+        return engine.state.routes.values.first { $0.origin == AirportCode("ARN") }!.id
     }
 }
 
@@ -27,12 +27,12 @@ struct RouteManagementTests {
         let (catalog, engine, airline, _) = try RouteFixtures.withAircraft()
         let route = RouteFixtures.openStvLnw(engine, airline, trips: 3)
         let r = try #require(engine.state.routes[route])
-        #expect(r.distanceKm == catalog.distanceKm("STV", "LNW"))
+        #expect(r.distanceKm == catalog.distanceKm("ARN", "LHR"))
         // 3 round trips = 6 daily movements at each end.
-        #expect(engine.state.world.slotsHeld(by: airline, at: "STV") == 6)
-        #expect(engine.state.world.slotsHeld(by: airline, at: "LNW") == 6)
+        #expect(engine.state.world.slotsHeld(by: airline, at: "ARN") == 6)
+        #expect(engine.state.world.slotsHeld(by: airline, at: "LHR") == 6)
         #expect(engine.state.eventLog.recent.map(\.kind)
-            .contains(.routeOpened(id: route, origin: "STV", destination: "LNW")))
+            .contains(.routeOpened(id: route, origin: "ARN", destination: "LHR")))
     }
 
     @Test func openRejections() throws {
@@ -40,43 +40,43 @@ struct RouteManagementTests {
         func code(_ c: OpenRouteCommand) -> String? {
             if case .rejected(let r) = engine.applyNow(c) { r.code } else { nil }
         }
-        #expect(code(.init(airline: airline, origin: "STV", destination: "STV",
+        #expect(code(.init(airline: airline, origin: "ARN", destination: "ARN",
                            dailyRoundTrips: 1, ticketPrice: Money.dollars(99)))
                 == "route.sameAirport")
-        #expect(code(.init(airline: airline, origin: "STV", destination: "XXX",
+        #expect(code(.init(airline: airline, origin: "ARN", destination: "XXX",
                            dailyRoundTrips: 1, ticketPrice: Money.dollars(99)))
                 == "route.unknownAirport")
-        #expect(code(.init(airline: airline, origin: "STV", destination: "LNW",
+        #expect(code(.init(airline: airline, origin: "ARN", destination: "LHR",
                            dailyRoundTrips: 0, ticketPrice: Money.dollars(99)))
                 == "route.badFrequency")
-        #expect(code(.init(airline: airline, origin: "STV", destination: "LNW",
+        #expect(code(.init(airline: airline, origin: "ARN", destination: "LHR",
                            dailyRoundTrips: 1, ticketPrice: .zero)) == "route.badPrice")
         RouteFixtures.openStvLnw(engine, airline)
-        #expect(code(.init(airline: airline, origin: "LNW", destination: "STV",
+        #expect(code(.init(airline: airline, origin: "LHR", destination: "ARN",
                            dailyRoundTrips: 1, ticketPrice: Money.dollars(99)))
                 == "route.duplicate")
     }
 
     @Test func slotScarcityBlocksOpening() throws {
-        // KRK (Tromsø) has 90 slots/day; grab them with 20-trip routes(40
-        // movements each) until exhausted.
+        // TOS (Tromsø) has 150 slots/day — the calibrated floor for a small
+        // field. Fill it with 20-trip routes (40 movements each) until a
+        // fourth cannot fit.
         let (_, engine, airline, _) = try RouteFixtures.withAircraft()
-        #expect(engine.applyNow(OpenRouteCommand(
-            airline: airline, origin: "KRK", destination: "STV",
-            dailyRoundTrips: 20, ticketPrice: Money.dollars(99))) == .applied)
-        #expect(engine.applyNow(OpenRouteCommand(
-            airline: airline, origin: "KRK", destination: "OSF",
-            dailyRoundTrips: 20, ticketPrice: Money.dollars(99))) == .applied)
-        // 80 of 90 used; another 20-trip route (40 movements) must fail.
+        for destination in ["ARN", "OSL", "CPH"] as [AirportCode] {
+            #expect(engine.applyNow(OpenRouteCommand(
+                airline: airline, origin: "TOS", destination: destination,
+                dailyRoundTrips: 20, ticketPrice: Money.dollars(99))) == .applied)
+        }
+        // 120 of 150 used; another 20-trip route (40 movements) must fail.
         guard case .rejected(let rejection) = engine.applyNow(OpenRouteCommand(
-            airline: airline, origin: "KRK", destination: "CPN",
+            airline: airline, origin: "TOS", destination: "HEL",
             dailyRoundTrips: 20, ticketPrice: Money.dollars(99))) else {
             Issue.record("Expected slot rejection"); return
         }
         #expect(rejection.code == "route.noSlots")
-        // But a small one fits.
+        // But a small one fits (130 of 150).
         #expect(engine.applyNow(OpenRouteCommand(
-            airline: airline, origin: "KRK", destination: "CPN",
+            airline: airline, origin: "TOS", destination: "HEL",
             dailyRoundTrips: 5, ticketPrice: Money.dollars(99))) == .applied)
     }
 
@@ -85,10 +85,10 @@ struct RouteManagementTests {
         let route = RouteFixtures.openStvLnw(engine, airline, trips: 2)
         #expect(engine.applyNow(SetRouteFrequencyCommand(
             airline: airline, route: route, dailyRoundTrips: 5)) == .applied)
-        #expect(engine.state.world.slotsHeld(by: airline, at: "STV") == 10)
+        #expect(engine.state.world.slotsHeld(by: airline, at: "ARN") == 10)
         #expect(engine.applyNow(SetRouteFrequencyCommand(
             airline: airline, route: route, dailyRoundTrips: 1)) == .applied)
-        #expect(engine.state.world.slotsHeld(by: airline, at: "STV") == 2)
+        #expect(engine.state.world.slotsHeld(by: airline, at: "ARN") == 2)
     }
 
     @Test func closingReleasesEverything() throws {
@@ -99,7 +99,7 @@ struct RouteManagementTests {
         #expect(engine.applyNow(CloseRouteCommand(airline: airline, route: route)) == .applied)
         #expect(engine.state.routes.isEmpty)
         #expect(engine.state.flights.isEmpty)
-        #expect(engine.state.world.slotsHeld(by: airline, at: "STV") == 0)
+        #expect(engine.state.world.slotsHeld(by: airline, at: "ARN") == 0)
         #expect(engine.state.aircraft[aircraft]!.assignedRoute == nil)
     }
 
@@ -109,10 +109,10 @@ struct RouteManagementTests {
         // Turboprop NA70 (1450 km) can't fly STV-LNW (~1440+ km? it can);
         // use a clearly-too-far route: STV-NYH (~6300 km) narrowbody fails.
         _ = engine.applyNow(OpenRouteCommand(
-            airline: airline, origin: "STV", destination: "NYH",
+            airline: airline, origin: "ARN", destination: "JFK",
             dailyRoundTrips: 1, ticketPrice: Money.dollars(399)))
         let farRoute = engine.state.routes.values.first {
-            $0.destination == AirportCode("NYH") }!.id
+            $0.destination == AirportCode("JFK") }!.id
         guard case .rejected(let r1) = engine.applyNow(AssignAircraftToRouteCommand(
             airline: airline, route: farRoute, aircraftID: aircraft)) else {
             Issue.record("Range should reject"); return
@@ -142,10 +142,10 @@ struct RouteManagementTests {
         let widebody = engine.state.aircraft.values.first {
             $0.typeCode == AircraftTypeCode("MR300") }!.id
         _ = engine.applyNow(OpenRouteCommand(
-            airline: airline, origin: "STV", destination: "KRK",
+            airline: airline, origin: "ARN", destination: "TOS",
             dailyRoundTrips: 1, ticketPrice: Money.dollars(89)))
         let route = engine.state.routes.values.first {
-            $0.destination == AirportCode("KRK") }!.id
+            $0.destination == AirportCode("TOS") }!.id
         guard case .rejected(let rejection) = engine.applyNow(AssignAircraftToRouteCommand(
             airline: airline, route: route, aircraftID: widebody)) else {
             Issue.record("Runway should reject"); return
@@ -180,7 +180,7 @@ struct FlightOpsTests {
         #expect(kinds.contains { if case .flightArrived = $0 { true } else { false } })
         // The aircraft ends up parked at an endpoint, not stuck.
         let location = engine.state.aircraft[aircraft]!.location
-        #expect(location == AirportCode("STV") || location == AirportCode("LNW"))
+        #expect(location == AirportCode("ARN") || location == AirportCode("LHR"))
     }
 
     @Test func operatingCostsArePosted() throws {
@@ -253,17 +253,17 @@ struct FlightOpsTests {
         let (_, engine, airline, _) = try RouteFixtures.withAircraft()
         // Route between two airports the aircraft is NOT at.
         _ = engine.applyNow(OpenRouteCommand(
-            airline: airline, origin: "LNW", destination: "PRV",
+            airline: airline, origin: "LHR", destination: "CDG",
             dailyRoundTrips: 2, ticketPrice: Money.dollars(79)))
         let route = engine.state.routes.values.first!.id
         let aircraft = engine.state.aircraft.values.first!.id
-        #expect(engine.state.aircraft[aircraft]!.location == AirportCode("STV"))
+        #expect(engine.state.aircraft[aircraft]!.location == AirportCode("ARN"))
         #expect(engine.applyNow(AssignAircraftToRouteCommand(
             airline: airline, route: route, aircraftID: aircraft)) == .applied)
         engine.advance(ticks: Fixtures.ticksPerDay * 3)
         // Ferry moved it into the rotation; it now serves LNW-PRV.
         let location = engine.state.aircraft[aircraft]!.location
-        #expect(location == AirportCode("LNW") || location == AirportCode("PRV"))
+        #expect(location == AirportCode("LHR") || location == AirportCode("CDG"))
         #expect(engine.state.routes[route]!.stats.flightsCompleted > 0)
     }
 
@@ -308,10 +308,10 @@ struct FlightOpsTests {
         let old = engine.state.aircraft.values.first {
             $0.typeCode == AircraftTypeCode("NA70") }!.id
         _ = engine.applyNow(OpenRouteCommand(
-            airline: airline, origin: "STV", destination: "OSF",
+            airline: airline, origin: "ARN", destination: "OSL",
             dailyRoundTrips: 6, ticketPrice: Money.dollars(59)))
         let route = engine.state.routes.values.first {
-            $0.destination == AirportCode("OSF") }!.id
+            $0.destination == AirportCode("OSL") }!.id
         _ = engine.applyNow(AssignAircraftToRouteCommand(
             airline: airline, route: route, aircraftID: old))
         engine.advance(ticks: Fixtures.ticksPerDay * 60)
@@ -370,10 +370,10 @@ struct FlightOpsTests {
             let rj = engine.state.aircraft.values.first {
                 $0.typeCode == AircraftTypeCode("AV90") }!.id
             _ = engine.applyNow(OpenRouteCommand(
-                airline: airline, origin: "STV", destination: "CPN",
+                airline: airline, origin: "ARN", destination: "CPH",
                 dailyRoundTrips: 3, ticketPrice: Money.dollars(89)))
             let second = engine.state.routes.values.first {
-                $0.destination == AirportCode("CPN") }!.id
+                $0.destination == AirportCode("CPH") }!.id
             _ = engine.applyNow(AssignAircraftToRouteCommand(
                 airline: airline, route: second, aircraftID: rj))
             _ = (route, aircraft)

@@ -281,7 +281,7 @@ struct NewGameView: View {
                 .foregroundStyle(.white.opacity(0.62))
                 .fixedSize(horizontal: false, vertical: true)
             if let customHome, let spec = catalog?.airport(customHome) {
-                HStack(spacing: AETheme.spacingXS) {
+                AEChipRow {
                     AEChip(icon: "person.2.fill", text: Self.market(spec))
                     AEChip(icon: "briefcase.fill", text: Self.lean(spec))
                     AEChip(icon: "cloud.rain.fill", text: Vocab.weatherRisk(spec.weatherRisk))
@@ -312,7 +312,7 @@ struct NewGameView: View {
             // is not flavour text — it is market size, who else wants it, and
             // how often weather takes the day off you.
             if let spec {
-                HStack(spacing: AETheme.spacingXS) {
+                AEChipRow {
                     AEChip(icon: "person.2.fill", text: Self.market(spec))
                     AEChip(icon: "briefcase.fill", text: Self.lean(spec))
                     AEChip(icon: "cloud.rain.fill", text: Vocab.weatherRisk(spec.weatherRisk))
@@ -619,12 +619,12 @@ struct CuratedStart: Identifiable {
     static let all: [CuratedStart] = [
         CuratedStart(id: "safe", title: "Stockholm — Sjövik", city: "Stockholm",
                      blurb: "A quiet Nordic market with loyal travellers, and room to make mistakes.",
-                     home: "STV"),
+                     home: "ARN"),
         CuratedStart(id: "balanced", title: "Barcelona — Marisol", city: "Barcelona",
                      blurb: "Sun-belt tourism that swings hard with the season, and real competition when it does.",
-                     home: "BCM"),
+                     home: "BCN"),
         CuratedStart(id: "bold", title: "Singapore — Merlionport", city: "Singapore",
                      blurb: "A rich crossroads hub. Deep pockets fly here — and so do your rivals.",
-                     home: "SGM"),
+                     home: "SIN"),
     ]
 }

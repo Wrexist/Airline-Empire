@@ -1,5 +1,66 @@
 # Current Phase
 
+**AE-032 — Visual truth. (Verify the verifier, then observe what was never
+observed.)**
+2026-08-30.
+
+The brief: close the gap between what the project claims works and what has
+been seen working. Method: decode every CI run's screenshots (the full logs
+are downloadable without a credential — `scripts/decode-ci-screenshots.py`),
+look at them, fix what the frames show, and label every claim OBSERVED /
+ASSERTED / READ / NOT VERIFIED. Eight CI runs (59–66+) each taught something.
+
+**The defining finding — BUG-040, P0: the game has never run.** The
+simulation pump was armed only by a scene-phase *change*, which fires at
+launch on the menu — where no session exists, so the guard returned — and
+nothing armed it again when a game was founded or loaded. Selecting 16×
+highlighted the control and moved nothing; runs 64 and 65 photographed an
+aircraft assigned to a route with the clock still at day one, 00:00, minutes
+later. Every screenshot of every phase before this was of a frozen world
+that looked correct. Fixed at the source (`startNewGame`/`loadGame` call
+`setPumping(true)`; the scene handler keeps suspend/resume and gains
+`initial: true`); `testTheClockActuallyRuns` is the dedicated guard, and it
+passed in run 67 — the closing frame shows Home at **2030-01-03**, the first
+photograph of a running world in this project's history.
+
+**The evidence system had been lying, and was fixed first (BUG-038/039):**
+the zoom test's three "levels" were byte-identical frames and its zoom-out
+frame was the Finance screen; the route journey tapped the From picker as a
+destination and a button that never existed. The camera now publishes its
+zoom for assertion; every journey step proves causality before the next.
+
+**Product fixes, each confirmed against rendered frames:** BUG-037 (Core
+rejections printed raw cents — `Money.compact`), BUG-038's UX half (the
+route commit sat below ~40 candidate rows; now a bottom bar), BUG-036
+visually confirmed fixed, chips/Home header/metric strip at accessibility
+type sizes, the market sort segment truncation, and airports said the way
+people say them — "Sjövik (Stockholm)" — on the map, route sheet and
+browser, with graceful city/code fallback (observed on iPhone and iPad).
+
+**Observed for the first time:** aircraft detail, route detail, Settings,
+all five tabs dark and light, six genuinely distinct map zoom/pinch frames,
+Dynamic Type at AccessibilityL, and the iPad regular-width shell (sidebar +
+map, five tabs green in runs 63/66). **Asserted:** the audio pipeline starts
+with all ~54 cues decoded; cold launch 2.61 s median; camera zoom via
+buttons, double-tap and pinch; the full lease→route→assign chain (each step
+green in at least one run). **Run 69 closed the loop:** the first fully green
+CI run in the project's history — 414 Core tests on the 94-real-airport
+world and 14 of 14 UI tests, the complete flight journey included. The
+frames show the aircraft en route Arlanda (Stockholm) → Heathrow (London)
+at 16×. The iOS 26 runner's tap synthesis remains the flakiest part of the
+harness (runs 61–66 each saw a different journey leg miss; one failure
+frame was the iOS Settings app) — recorded as a warning for future legs. Still not verified:
+system-appearance following, game over, VoiceOver order, audio audibility,
+hardware anything, antimeridian routes (TD-021).
+
+Core: 414/414 on Linux, release clean. Benchmarks: 1 game-year 1.65 s
+(small) / 13.6 s (large); map model 2.2 ms/call on a 200-route world; saves
+≤ 605 KiB. See docs/UI_RUNTIME_VALIDATION.md §7 and docs/UI_FULL_AUDIT.md §5.
+
+---
+
+# Previous Phase
+
 **AE-031 — The app runs. (Premium game feel, phase 1.)**
 2026-08-30.
 

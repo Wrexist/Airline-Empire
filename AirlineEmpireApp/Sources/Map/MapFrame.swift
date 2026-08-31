@@ -662,8 +662,9 @@ struct MapFrame {
         var selectedCode: AirportCode?
         if case .airport(let code) = selection { selectedCode = code }
         return MapLabelLayout.place(
-            geometry.airports, level: policy.level, selected: selectedCode,
-            limit: policy.level == .world ? 14 : 28)
+            geometry.airports, level: policy.level, zoom: policy.zoom,
+            selected: selectedCode,
+            limit: policy.level == .world ? 10 : 32)
     }
 
     private func draw(_ labels: [MapLabel], into context: inout GraphicsContext) {
@@ -678,7 +679,7 @@ struct MapFrame {
             // A hairline of the ocean colour underneath, offset a point.
             //
             // Cheap insurance that became necessary when these became city
-            // names: "STV" is three characters over one patch of ground, and
+            // names: "ARN" is three characters over one patch of ground, and
             // "Stockholm" is nine that can cross a coastline, a border and a
             // route on its way across. A shadow rather than a plate, because a
             // filled background behind every label is what makes a map look

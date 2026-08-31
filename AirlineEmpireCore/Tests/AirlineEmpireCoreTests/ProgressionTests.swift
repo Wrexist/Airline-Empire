@@ -18,7 +18,7 @@ struct ProgressionTests {
             buyer: airline, type: "MR180", ageYears: 5)) == .applied)
         // AI airlines are exempt (established carriers).
         _ = engine.applyNow(FoundAirlineCommand(
-            airlineName: "BigCarrier", kind: .ai, homeAirport: "LNW",
+            airlineName: "BigCarrier", kind: .ai, homeAirport: "LHR",
             startingCash: Money.dollars(500_000_000),
             aiProfile: AIProfile(archetype: .premium)))
         let ai = engine.state.airlines.values.first { $0.kind == .ai }!.id
@@ -43,13 +43,13 @@ struct ProgressionTests {
         // Three profitable routes + owned aircraft = Regional.
         let (_, engine, airline) = try FleetFixtures.catalogAndEngine(
             cash: Money.dollars(500_000_000))
-        for destination in ["OSF", "CPN", "HLS"] {
+        for destination in ["OSL", "CPH", "HEL"] {
             _ = engine.applyNow(BuyUsedAircraftCommand(buyer: airline, type: "MR180",
                                                        ageYears: 3))
             let aircraft = engine.state.aircraft.values.first {
                 $0.owner == airline && $0.assignedRoute == nil }!.id
             _ = engine.applyNow(OpenRouteCommand(
-                airline: airline, origin: "STV", destination: AirportCode(destination),
+                airline: airline, origin: "ARN", destination: AirportCode(destination),
                 dailyRoundTrips: 2, ticketPrice: Money.dollars(79)))
             let route = engine.state.routes.values.first {
                 $0.destination == AirportCode(destination) }!.id
@@ -169,7 +169,7 @@ struct ProgressionTests {
         let engine = SimulationEngine(state: Fixtures.newState(),
                                       systems: GamePipeline.standard(), catalog: catalog)
         _ = engine.applyNow(FoundAirlineCommand(
-            airlineName: "Doomed", kind: .player, homeAirport: "STV",
+            airlineName: "Doomed", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(3_000_000)))
         let player = engine.state.airlines.values.first!.id
         for _ in 0..<3 {
@@ -187,13 +187,13 @@ struct ProgressionTests {
             let engine = SimulationEngine(state: Fixtures.newState(seed: 2027),
                                           systems: GamePipeline.standard(), catalog: catalog)
             _ = engine.applyNow(FoundAirlineCommand(
-                airlineName: "ProgSave", kind: .player, homeAirport: "STV",
+                airlineName: "ProgSave", kind: .player, homeAirport: "ARN",
                 startingCash: Money.dollars(200_000_000)))
             let airline = engine.state.airlines.values.first!.id
             _ = engine.applyNow(BuyUsedAircraftCommand(buyer: airline, type: "MR180",
                                                        ageYears: 4))
             _ = engine.applyNow(OpenRouteCommand(
-                airline: airline, origin: "STV", destination: "LNW",
+                airline: airline, origin: "ARN", destination: "LHR",
                 dailyRoundTrips: 3, ticketPrice: Money.dollars(119)))
             let route = engine.state.routes.values.first!.id
             let aircraft = engine.state.aircraft.values.first!.id
@@ -233,7 +233,7 @@ struct ScenarioTests {
                                              startYear: spec.startYear),
             systems: GamePipeline.standard(), catalog: catalog)
         let result = await session.beginScenario(spec, airlineName: "Hard Mode",
-                                                 home: "STV")
+                                                 home: "ARN")
         #expect(result == .applied)
         let snapshot = await session.snapshot
         let player = try #require(snapshot.playerAirline)

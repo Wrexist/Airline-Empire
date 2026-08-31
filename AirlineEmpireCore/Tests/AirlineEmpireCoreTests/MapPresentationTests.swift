@@ -19,7 +19,7 @@ struct MapPresentationTests {
                                   systems: GamePipeline.standard(),
                                   catalog: catalog)
         _ = await session.submit(FoundAirlineCommand(
-            airlineName: "Cartograph Air", kind: .player, homeAirport: "STV",
+            airlineName: "Cartograph Air", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(300_000_000)))
         let player = try #require(await session.snapshot.playerAirline).id
         await session.populateStandardWorld(competitors: competitors)
@@ -444,7 +444,7 @@ struct MapPresentationTests {
     @Test("A flight at the end of its arc still points along the route")
     func headingSurvivesArrival() async throws {
         let (_, _, catalog) = try await world()
-        let from = try #require(catalog.airport("STV")).coordinate
+        let from = try #require(catalog.airport("ARN")).coordinate
         let to = try #require(catalog.orderedAirportCodes
             .compactMap { catalog.airport($0) }
             .first { $0.coordinate.longitude != from.longitude }).coordinate

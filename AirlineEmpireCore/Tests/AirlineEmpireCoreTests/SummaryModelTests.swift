@@ -19,7 +19,7 @@ struct SummaryModelTests {
                                   systems: GamePipeline.standard(),
                                   catalog: catalog)
         _ = await session.submit(FoundAirlineCommand(
-            airlineName: "Summary Air", kind: .player, homeAirport: "STV",
+            airlineName: "Summary Air", kind: .player, homeAirport: "ARN",
             startingCash: Money.dollars(400_000_000)))
         let player = try #require(await session.snapshot.playerAirline).id
         await session.populateStandardWorld(competitors: 2)

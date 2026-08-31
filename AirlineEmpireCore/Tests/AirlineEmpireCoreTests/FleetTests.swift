@@ -12,7 +12,7 @@ enum FleetFixtures {
         let engine = SimulationEngine(state: Fixtures.newState(), systems: systems,
                                       catalog: catalog)
         let result = engine.applyNow(FoundAirlineCommand(
-            airlineName: "Nordwind", kind: .player, homeAirport: "STV", startingCash: cash))
+            airlineName: "Nordwind", kind: .player, homeAirport: "ARN", startingCash: cash))
         #expect(result == .applied)
         let airlineID = engine.state.airlines.values.first { $0.name == "Nordwind" }!.id
         return (catalog, engine, airlineID)
@@ -25,7 +25,7 @@ struct FoundAirlineTests {
         let (_, engine, id) = try FleetFixtures.catalogAndEngine(cash: Money.dollars(5_000_000))
         let airline = try #require(engine.state.airlines[id])
         #expect(airline.kind == .player)
-        #expect(airline.homeAirport == AirportCode("STV"))
+        #expect(airline.homeAirport == AirportCode("ARN"))
         #expect(engine.state.ledger.balance(of: id) == Money.dollars(5_000_000))
         #expect(engine.state.ledger.recent.last?.category == .initialCapital)
         #expect(engine.state.eventLog.recent.map(\.kind)
@@ -37,19 +37,19 @@ struct FoundAirlineTests {
         func rejectionCode(_ command: FoundAirlineCommand) -> String? {
             if case .rejected(let r) = engine.applyNow(command) { r.code } else { nil }
         }
-        #expect(rejectionCode(.init(airlineName: "  ", kind: .ai, homeAirport: "STV",
+        #expect(rejectionCode(.init(airlineName: "  ", kind: .ai, homeAirport: "ARN",
                                     startingCash: .zero)) == "airline.badName")
-        #expect(rejectionCode(.init(airlineName: "Nordwind", kind: .ai, homeAirport: "STV",
+        #expect(rejectionCode(.init(airlineName: "Nordwind", kind: .ai, homeAirport: "ARN",
                                     startingCash: .zero)) == "airline.nameTaken")
         #expect(rejectionCode(.init(airlineName: "Other", kind: .ai, homeAirport: "XXX",
                                     startingCash: .zero)) == "airline.unknownHome")
-        #expect(rejectionCode(.init(airlineName: "Other", kind: .ai, homeAirport: "STV",
+        #expect(rejectionCode(.init(airlineName: "Other", kind: .ai, homeAirport: "ARN",
                                     startingCash: Money(cents: -1))) == "airline.negativeCapital")
-        #expect(rejectionCode(.init(airlineName: "Second", kind: .player, homeAirport: "LNW",
+        #expect(rejectionCode(.init(airlineName: "Second", kind: .player, homeAirport: "LHR",
                                     startingCash: .zero)) == "airline.playerExists")
         // AI airlines are unlimited.
         #expect(engine.applyNow(FoundAirlineCommand(
-            airlineName: "PacificBlue", kind: .ai, homeAirport: "LNW",
+            airlineName: "PacificBlue", kind: .ai, homeAirport: "LHR",
             startingCash: Money.dollars(1_000_000))) == .applied)
     }
 }
@@ -167,7 +167,7 @@ struct DisposalTests {
     @Test func sellingRejectedForLeasedOrderedOrForeign() throws {
         let (_, engine, airline) = try FleetFixtures.catalogAndEngine()
         _ = engine.applyNow(FoundAirlineCommand(airlineName: "Rival", kind: .ai,
-                                                homeAirport: "LNW",
+                                                homeAirport: "LHR",
                                                 startingCash: Money.dollars(500_000_000)))
         let rival = engine.state.airlines.values.first { $0.name == "Rival" }!.id
 
@@ -299,7 +299,7 @@ struct FleetLifecycleTests {
         let fresh = Aircraft(id: AircraftID(raw: 1), typeCode: "MR180",
                              owner: AirlineID(raw: 1),
                              ownership: .owned(bookValue: spec.listPrice),
-                             status: .active, location: "STV", ageDays: 0, condition: 1.0)
+                             status: .active, location: "ARN", ageDays: 0, condition: 1.0)
         var old = fresh
         old.ageDays = 20 * 365
         old.condition = 0.6
