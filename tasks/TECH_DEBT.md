@@ -409,3 +409,10 @@ L1–L3: placements ≈ settle events) should become CI assertions, with
 bounds taken from the first run that actually prints MAP-CACHE lines —
 pinning bounds before seeing one counted run would be inventing the
 tolerance. One run of evidence, then assert.
+
+**Resolved.** Run 87 delivered the counted run: 24 rebuilds / 312
+replays / 14 placement runs across both drag sequences (168 frames),
+placements matching settle events exactly in all three sequences. The
+baseline test now asserts rebuilds ≤ 60, replays ≥ frames, and
+placements ≤ 40 across the drags — 2–3x the measured deltas, tight
+enough that per-event rebuilding cannot pass.

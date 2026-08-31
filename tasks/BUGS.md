@@ -1074,3 +1074,5 @@ and (c) jiggles the list after any no-dialog miss so each retry sees fresh
 geometry. Run 86 also re-proved the app path is healthy (414/414 Core, map
 baseline green with numbers matching run 85). Not claimed fixed until a
 run shows the lease tests green.
+**Verified:** run 87 (commit ede33c8) — **all 16 UI tests green**, all
+three lease-dependent journeys included. FIXED.

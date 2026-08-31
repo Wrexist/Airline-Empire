@@ -400,6 +400,21 @@ final class PlayerJourneyUITests: AEUITestCase {
             return (frames, total, worst, identity, hops, compared)
         }
 
+        // The render-cache counters, read from the value stats() just
+        // refreshed. Parsed separately so the timing tuple keeps its shape.
+        func cacheCounters() -> (rebuilds: Int, replays: Int,
+                                 placements: Int)? {
+            let value = map.value as? String ?? ""
+            guard let range = value.range(
+                of: #"cache rebuilds (\d+) replays (\d+) placements (\d+)"#,
+                options: .regularExpression) else { return nil }
+            let parts = value[range].split(separator: " ")
+            guard parts.count >= 7, let rebuilds = Int(parts[2]),
+                  let replays = Int(parts[4]), let placements = Int(parts[6])
+            else { return nil }
+            return (rebuilds, replays, placements)
+        }
+
         func report(_ label: String,
                     from before: (frames: Int, totalMs: Double, worstMs: Double,
                                   identity: Int, hops: Int, compared: Int),
@@ -430,6 +445,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         Thread.sleep(forTimeInterval: 1)
         checkpoint("B0-baseline-before-drag")
         guard let beforeDrag = stats() else { return }
+        let cacheBefore = cacheCounters()
 
         // ── MAP TEST B: continuous drag across the region ────────────────
         let strokes: [(CGVector, CGVector)] = [
@@ -460,6 +476,43 @@ final class PlayerJourneyUITests: AEUITestCase {
         checkpoint("B2-baseline-after-fast-drag")
         guard let afterFast = stats() else { return }
         report("fast-drag", from: afterSlow, to: afterFast)
+
+        // ── The AE-034 structural guarantees, as counted facts ───────────
+        //
+        // Bounds are 2–3x the deltas run 87 measured (the first counted
+        // run), so an intentional nudge never trips them but the failure
+        // they exist for — a return to per-event rebuilding — cannot pass.
+        if let before = cacheBefore, let after = cacheCounters() {
+            let rebuilds = after.rebuilds - before.rebuilds
+            let replays = after.replays - before.replays
+            let placements = after.placements - before.placements
+            let frames = afterFast.frames - beforeDrag.frames
+            // D1: ten drag strokes must not rebuild per event. Run 87
+            // measured 24 rebuilds across both drag sequences, every one a
+            // counted deliberate cause (pan headroom, the stats() nudges);
+            // the old architecture rebuilt per gesture event — hundreds.
+            XCTAssertLessThanOrEqual(rebuilds, 60, """
+                \(rebuilds) cache rebuilds across the two drag sequences. \
+                The drag path is rebuilding instead of replaying — the \
+                AE-034 P0 regressed. Reasons ride the MAP-CACHE log lines.
+                """)
+            // The fast path must carry the frames: geography and routes
+            // replay on every non-rebuild frame, so replays cannot fall
+            // below the frame count (run 87: 312 replays for 168 frames).
+            XCTAssertGreaterThanOrEqual(replays, frames, """
+                \(replays) replays for \(frames) frames — drag frames are \
+                not being served by transform replay.
+                """)
+            // L1-L3: placement runs track settle events (run 87: 14 for
+            // ten strokes plus four stats() nudges), never frames.
+            XCTAssertLessThanOrEqual(placements, 40, """
+                \(placements) label placement runs across the drag \
+                sequences — placement is deciding per frame again, not per \
+                settle.
+                """)
+        } else {
+            XCTFail("The probe published no cache counters; the structural targets went unchecked.")
+        }
 
         // ── MAP TEST F: zoom cycling between levels ──────────────────────
         for _ in 0..<3 {

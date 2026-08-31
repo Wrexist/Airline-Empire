@@ -53,17 +53,36 @@
   zoom-cycle figure measures deliberate re-decisions per (much fewer)
   drawn frames. Decomposing it needs the cache counters below.
 
-## 3. An instrumentation gap, stated
+## 3. The counters — structural targets as counted facts
 
-The probe's counter line gained a `placements N` token in the P0-2
-commit, and the test's log-forwarding regex (`MAP-CACHE …`) was not
-updated to match — so run 85 carries **no cache rebuild/replay/placement
-counters**, and the structural targets (D1: zero rebuilds mid-gesture;
-L1–L3: placements ≈ settle events) are verified this run only indirectly
-(the timing/churn deltas above and the frame inspection in §5). The
-regex is fixed; the next CI run carries the counters. Until it lands,
-"rebuilds were flat during drags" is **NOT VALIDATED** as a counted
-fact — deliberately not claimed.
+Runs 85/86 carried no counter lines (the forwarding print sat in a test
+that never launches with probes — an instrumentation gap, stated at the
+time rather than papered over). Run 87 (commit ede33c8) delivered the
+counted evidence, all **MEASURED**:
+
+| Sequence (delta) | Rebuilds | Replays | Placement runs | Frames |
+| --- | --- | --- | --- | --- |
+| Slow drag (4 strokes + 2 nudges) | 8 | 198 | **6** | 103 |
+| Fast drag (6 strokes + 2 nudges) | 16 | 114 | **8** | 65 |
+| Zoom cycles (18 taps + 2 nudges) | 36 | 4 | **20** | 20 |
+
+- **D1 confirmed**: every drag rebuild is a counted deliberate cause
+  (`panMargin`, plus the zoom-band crossings of the stats() nudges) —
+  the fast path served ~25 replays per rebuild during the slow drag.
+  The old architecture rebuilt per gesture event.
+- **L1–L3 confirmed exactly**: placement runs equal settle events in
+  all three sequences (4 strokes + 2 nudges = 6; 6 + 2 = 8; 18 zoom
+  commits + 2 = 20). Placement decides per settle, never per frame.
+- Zoom cycles legitimately rebuild (`lod` ×5 each side of the tier
+  boundary, `zoomBand` for the rest) — that is the deliberate path, and
+  it also explains §2's zoom-hops figure: re-decisions, not churn.
+- These are now **CI assertions** in the baseline test (rebuilds ≤ 60,
+  replays ≥ frames, placements ≤ 40 across the drags — 2–3x the
+  measured deltas), so a return to per-event rebuilding fails the build
+  rather than waiting for someone to feel it.
+- Run 87 timing, for the record: slow 10.97 ms / fast 9.90 ms / zoom
+  9.96 ms avg, worst frame 161.3 ms (the map-open build) — the third
+  consecutive run confirming the AFTER profile.
 
 ## 4. The one red test
 
@@ -74,7 +93,11 @@ Two other tests in the same run lease successfully with the same helper,
 so the app path is fine; the miss is stale accessibility geometry, off
 by exactly one reported row pitch. The helper now measures that pitch
 from the wrong dialog itself and corrects the aim on later attempts.
-Verification: next CI run.
+**Resolved**: run 86 completed the diagnosis (a second, no-dialog miss
+mode, with retries repeating a stale answer verbatim because nothing
+changed between attempts), the helper gained a between-attempts jiggle
+and a hittable-first tap, and run 87 came back **16/16 green**
+(tasks/BUGS.md BUG-041).
 
 ## 5. Visual validation (OBSERVED, run 85 decoded frames)
 
