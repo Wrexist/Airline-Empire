@@ -465,7 +465,38 @@ Run 76: 13 of 15 UI tests green. Both failures are the lease-tap flake
 touching this work — selection, zoom and labels, dark tabs, accessibility,
 the flight journey — passed.
 
-### 6.13 What remains untestable here, unchanged from AE-032
+### 6.13 Runs 77–78: converging, one frame at a time
+
+Three rounds on the same crop of western Europe, each fixing what the last
+one revealed:
+
+| Run | Labels in the crop | Problem |
+| --- | --- | --- |
+| 76 | Heathrow (London), Charles de Gaulle (Paris), Barajas (Madrid), Rome, Istanbul | text drawn straight through marker discs |
+| 77 | AMS, Madrid, FCO, Istanbul | no collisions — but London and Paris lost their labels entirely |
+| 78 | …s de Gaulle (Paris), AMS, Madrid, Rome, Istanbul | Paris recovered by placing left — and pushed off the screen edge |
+
+Run 78 proved the four-sided placement works: Paris came back, Rome
+recovered its name, and **no text crosses a disc anywhere in the frame**.
+It also showed the last gap — the placer had no idea where the screen
+ends, so "left of the marker" for a westerly airport means half the label
+outside the viewport. `place` now takes the viewport and refuses any box
+not fully inside it, which costs one `contains` per candidate position.
+
+The status bar held at 54 on every map frame across runs 76, 77 and 78.
+
+**The lease flake, root-caused at last.** Run 78's `LEASE-ATTEMPT-1` frame
+shows a **"Buy used (8y)?"** dialog — the row immediately *above* "Lease" —
+over a perfectly healthy market, while the identical helper leased
+successfully inside the flight journey in the same run. The cause is not
+the app and not really the runner: a coordinate tap resolves the element's
+frame and then fires at that point, and the helper taps immediately after
+dragging the row into view, so the frame it aims at is the row's position
+*before* the scroll momentum finishes. `waitUntilStill` polls the frame
+until two consecutive reads agree before the tap. Not a skip, not a
+retry-until-green: the tap now aims at where the row actually is.
+
+### 6.14 What remains untestable here, unchanged from AE-032
 
 System-appearance following, audio audibility, VoiceOver order, contrast
 as rendered, hardware performance, and the game-over screen. The iPad

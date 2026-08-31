@@ -746,6 +746,7 @@ struct MapFrame {
             geometry.airports, level: policy.level, zoom: policy.zoom,
             selected: selectedCode,
             limit: policy.level == .world ? 10 : 32,
+            bounds: CGRect(origin: .zero, size: projector.size),
             markerRadius: { policy.radius($0) })
     }
 

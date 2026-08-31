@@ -304,6 +304,10 @@ enum MapLabelLayout {
         max(6, min(30, 6 + Int((zoom - 1) * 3.0)))
     }
 
+    /// - Parameter bounds: the viewport, so a label pushed sideways off the
+    ///   screen is refused instead of drawn half-visible. Run 78 put
+    ///   "Charles de Gaulle (Paris)" to the left of its marker and off the
+    ///   edge, reading "…s de Gaulle (Paris)".
     /// - Parameter markerRadius: the drawn radius of an airport's marker, so
     ///   labels can dodge the discs as well as each other. Without it a label
     ///   avoids only other labels, which was survivable while most markers
@@ -316,6 +320,7 @@ enum MapLabelLayout {
                       zoom: CGFloat,
                       selected: AirportCode?,
                       limit: Int,
+                      bounds: CGRect,
                       markerRadius: (MapModel.MapAirport) -> CGFloat) -> [MapLabel] {
         let cap = min(limit, labelBudget(zoom: zoom))
         // Explicit steps and an explicit tuple type: the chained version of
@@ -401,6 +406,7 @@ enum MapLabelLayout {
                 for centre in centres {
                     let box = CGRect(x: centre.x - width / 2, y: centre.y - 7,
                                      width: width, height: 14)
+                    guard bounds.contains(box) else { continue }
                     let hitsLabel = placed.contains { $0.intersects(box) }
                     let hitsMarker = discs.contains {
                         $0.code != airport.code && $0.rect.intersects(box)
