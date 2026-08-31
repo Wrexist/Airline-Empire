@@ -390,7 +390,10 @@ final class MapCamera {
         center = landed
         panOffset = .zero
         guard glide, let predicted else { return }
-        let worldWidth = max(1, size.width * zoom)
+        // liveZoom, not zoom: during a combined pinch-drag the pinch may not
+        // have committed yet, and a coast scaled by the wrong world width
+        // overshoots by the pinch factor (baseline §4).
+        let worldWidth = max(1, size.width * liveZoom)
         let worldHeight = max(1, worldWidth / 2)
         let coast = CGSize(width: predicted.width * 0.45,
                            height: predicted.height * 0.45)

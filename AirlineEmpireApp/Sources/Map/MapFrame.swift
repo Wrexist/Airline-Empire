@@ -477,15 +477,22 @@ struct MapFrame {
 
             // Sampled rather than clipped from the route's own arc: the route
             // polyline is shared by every flight on it, and slicing it at a
-            // per-flight fraction would land between vertices. Twenty steps is
-            // enough that a great circle reads as a curve at any zoom this map
-            // reaches, and cheap enough to do per airborne aircraft per frame.
+            // per-flight fraction would land between vertices. The full-arc
+            // samples are cached per (flight, tick) — they only change when
+            // the flight does — so the per-frame cost is the moving tip's
+            // single slerp rather than twenty-one (baseline §4).
             let steps = 20
-            let flown = (0...steps).map { step -> MapPoint in
-                let fraction = progress * Double(step) / Double(steps)
-                return MapPoint(coordinate: MapMath.greatCirclePoint(
-                    from: origin, to: destination, fraction: fraction))
+            let full = cache.trailArc(for: flight.id, tick: tick) {
+                (0...steps).map { step -> MapPoint in
+                    MapPoint(coordinate: MapMath.greatCirclePoint(
+                        from: origin, to: destination,
+                        fraction: Double(step) / Double(steps)))
+                }
             }
+            let flownSteps = min(steps, Int(progress * Double(steps)))
+            var flown = Array(full.prefix(flownSteps + 1))
+            flown.append(MapPoint(coordinate: MapMath.greatCirclePoint(
+                from: origin, to: destination, fraction: progress)))
             let unwrapped = MapGeodesy.unwrap(flown)
             guard unwrapped.count > 1 else { continue }
 
@@ -527,6 +534,25 @@ struct MapFrame {
                 continue
             }
             guard overlay != .opportunity || flight.isPlayer else { continue }
+
+            // Cull before interpolating, not after: the slerp is the cost
+            // (450 flights at late-game scale — docs/MAP_RUNTIME_BASELINE.md
+            // §4). A flight lies on the great circle between its endpoints,
+            // whose deviation from the chord is bounded, so a bounding box
+            // over both projected endpoints padded by 20% of the world width
+            // safely contains it. At world zoom this culls nothing (all of
+            // it is visible), which is also correct.
+            if let (origin, destination) = catalogAirports(flight) {
+                let a = projector.project(MapPoint(coordinate: origin))
+                let b = projector.project(MapPoint(coordinate: destination))
+                let pad = projector.worldWidth * 0.2 + 60
+                let box = CGRect(x: min(a.x, b.x) - pad, y: min(a.y, b.y) - pad,
+                                 width: abs(a.x - b.x) + pad * 2,
+                                 height: abs(a.y - b.y) + pad * 2)
+                let viewport = CGRect(origin: .zero, size: projector.size)
+                    .insetBy(dx: -40, dy: -40)
+                guard box.intersects(viewport) else { continue }
+            }
 
             let interpolated = interpolate(flight)
             let point = projector.project(interpolated.position)

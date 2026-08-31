@@ -583,6 +583,29 @@ final class MapRenderCache {
         return labels
     }
 
+    // MARK: - Flight trail arcs
+
+    /// The full great-circle sample set for a flight's route, cached per
+    /// tick. The trail draw used to slerp 21 points per player flight per
+    /// frame; the arc itself only changes when the flight does, so it is
+    /// computed once per (flight, tick) and the per-frame work drops to one
+    /// slerp for the moving tip. Cleared wholesale on tick change — at most
+    /// one entry per live player flight, so memory is bounded by the fleet.
+    private var trailArcs: [FlightID: [MapPoint]] = [:]
+    private var trailTick: Date?
+
+    func trailArc(for flight: FlightID, tick: Date,
+                  compute: () -> [MapPoint]) -> [MapPoint] {
+        if trailTick != tick {
+            trailArcs.removeAll(keepingCapacity: true)
+            trailTick = tick
+        }
+        if let cached = trailArcs[flight] { return cached }
+        let arc = compute()
+        trailArcs[flight] = arc
+        return arc
+    }
+
     private func compensated(_ style: StrokeStyle, by s: CGFloat) -> StrokeStyle {
         var out = style
         out.lineWidth /= s
