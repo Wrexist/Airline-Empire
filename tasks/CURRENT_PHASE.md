@@ -1,5 +1,52 @@
 # Current Phase
 
+**AE-033 — The command map. (Immersion & professional UX pass.)**
+2026-08-31.
+
+The brief, from design review of run 69's frames: the map renders correctly
+but reads as a diagram — information density too high when zoomed out, all
+airports visually equal, routes mute about economics, chrome heavy. The
+instruction that governs every choice here: *"Do not add random visual
+effects everywhere. The goal is a clean command map where the world becomes
+richer as you zoom in."*
+
+What already existed (verified before adding anything): route health
+colours/dashes, frequency-weighted stroke widths, the double ember home
+ring, moving aircraft with trails interpolated between ticks, and the
+camera framing home on open. The gaps were density, hierarchy accents,
+route glow, and any sense of planetary time.
+
+**Shipped in this pass:**
+- **Density ladder tightened.** Label reveal thresholds are now
+  major ≥ 2.8×, regional ≥ 5.0×, small ≥ 8.0× (global hubs always), and
+  the label budget starts at 6 at world zoom — the world view shows only
+  the hubs and the player's own network.
+- **Airport hierarchy.** Global hubs carry a second faint ring (the ◎
+  read); the selected airport breathes — an animated pulse ring driven by
+  the canvas clock; home keeps its unique double ember ring.
+- **Route glow.** Player routes get a soft under-stroke halo so the
+  airline's own network reads as alive against competitor lines.
+- **Day/night terminator.** Two soft fills (α 0.14 + 0.10 inset 6° toward
+  the dark pole) sampled from the game clock — subsolar longitude at 15°/h,
+  declination by day-of-year. Cartoon astronomy, drawn under everything.
+- **"Network" tab → "Airline"** (icon now `airplane`), with the onboarding
+  hints and all UI-test drivers renamed to match.
+
+**Deliberately not done, and why:** weather cells and city lights (effect
+noise, the exact thing the brief warns against); shrinking the tab bar
+(system-controlled); renaming the sunrise control (it is *advance to next
+morning*, an action — a Day/Night label would misdescribe it); map-mode
+redesign (the overlay picker already has five modes; relabelling without a
+design is churn); camera-on-open (already frames home).
+
+Status: parse-checked and symbol-checked on Linux; CI dispatched for
+render verification. The pulse animates — stills can only show one phase
+of it, which is recorded here so a static frame is not read as a defect.
+
+---
+
+# Previous Phase
+
 **AE-032 — Visual truth. (Verify the verifier, then observe what was never
 observed.)**
 2026-08-30.
@@ -59,7 +106,7 @@ Core: 414/414 on Linux, release clean. Benchmarks: 1 game-year 1.65 s
 
 ---
 
-# Previous Phase
+# Earlier
 
 **AE-031 — The app runs. (Premium game feel, phase 1.)**
 2026-08-30.
@@ -100,7 +147,7 @@ observed, asserted, or merely read.
 
 ---
 
-# Previous Phase
+# Earlier
 
 **AE-029 — Fleet and aircraft experience (MASTER PROMPT 5).**
 2026-08-30.
@@ -141,7 +188,7 @@ TD-015, TD-016.
 
 ---
 
-# Previous Phase
+# Earlier
 
 **AE-028 — UI/UX polish, information density, design system (MASTER PROMPT 4).**
 2026-08-30.

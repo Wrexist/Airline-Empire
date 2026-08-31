@@ -69,6 +69,7 @@ struct MapFrame {
         // the map**, which a screenshot caught and nothing else could have.
         // Choosing before the country names is what lets them yield. Drawing
         // last is what keeps the codes on top of everything.
+        drawNight(&context, size: size)
         projectAirports()
         let airportLabels = placeAirportLabels()
         drawCountryLabels(&context, avoiding: airportLabels.map(\.box))
@@ -79,6 +80,57 @@ struct MapFrame {
         drawAirports(&context)
         drawFlights(&context)
         draw(airportLabels, into: &context)
+    }
+
+    /// The night side of the world, as a soft shade over the geography.
+    ///
+    /// The game clock is real UTC-ish time, so the map can show where in the
+    /// world it is night *right now* — the cheapest honest way to make the
+    /// picture feel like a planet with time passing rather than a diagram.
+    /// Astronomy at cartoon precision: the subsolar longitude walks 15° per
+    /// game hour, declination follows the season by day-of-year, and the
+    /// terminator is sampled as a polygon and filled twice — a wider faint
+    /// pass and a narrower deeper one — so the edge reads as dusk rather
+    /// than a hard line. Drawn under routes, airports and labels: night dims
+    /// the world, never the airline on top of it.
+    private func drawNight(_ context: inout GraphicsContext, size: CGSize) {
+        let date = snapshot.currentDate
+        let dayOfYear = Double((date.month - 1) * 30) + Double(date.day)
+        let declination = 23.44 * sin(2 * .pi * (dayOfYear - 81) / 365)
+            * .pi / 180
+        let utcHours = Double(date.hour) + Double(date.minute) / 60
+        // Solar noon at Greenwich at 12:00: subsolar longitude in degrees.
+        let subsolarLon = (12 - utcHours) * 15
+
+        for (inset, alpha) in [(0.0, 0.14), (6.0, 0.10)] {
+            var night = Path()
+            var first = true
+            // North-of-terminator when declination is negative, south when
+            // positive: the dark pole is the one leaning away from the sun.
+            let poleY: CGFloat = declination >= 0 ? 1 : 0
+            for step in 0...96 {
+                let lon = -540.0 + Double(step) * (1080.0 / 96.0)
+                var lat = atan(-cos((lon - subsolarLon) * .pi / 180)
+                               / tan(declination == 0 ? 1e-6 : declination))
+                // The deeper pass sits inset toward the dark pole, so the
+                // band between the two edges reads as dusk.
+                lat -= inset * .pi / 180 * (declination >= 0 ? 1 : -1)
+                let mapPoint = MapPoint(coordinate: Coordinate(
+                    latitude: max(-89, min(89, lat * 180 / .pi)),
+                    longitude: lon.truncatingRemainder(dividingBy: 360)))
+                // Project with the raw x so the polygon spans world copies.
+                let x = (lon + 180) / 360
+                let p = projector.project(MapPoint(x: x, y: mapPoint.y))
+                if first { night.move(to: p); first = false }
+                else { night.addLine(to: p) }
+            }
+            let poleScreenY = projector.project(MapPoint(x: 0, y: Double(poleY))).y
+            night.addLine(to: CGPoint(x: night.currentPoint?.x ?? size.width,
+                                      y: poleScreenY))
+            night.addLine(to: CGPoint(x: night.boundingRect.minX, y: poleScreenY))
+            night.closeSubpath()
+            context.fill(night, with: .color(.black.opacity(alpha)))
+        }
     }
 
     // MARK: - Geography
@@ -290,6 +342,16 @@ struct MapFrame {
                                style: StrokeStyle(lineWidth: style.width + 4,
                                                   lineCap: .round, lineJoin: .round))
             }
+            // The player's operating network carries a soft glow under the
+            // line — an airline's routes should read as the live wiring of
+            // the map, not pen strokes on it. Only routes that are actually
+            // flying: a grounded route earning a glow would be the map
+            // flattering the player.
+            if isPlayer, route.health != .grounded, !isSelected {
+                context.stroke(path, with: .color(style.color.opacity(0.16)),
+                               style: StrokeStyle(lineWidth: style.width + 5,
+                                                  lineCap: .round, lineJoin: .round))
+            }
             context.stroke(path, with: .color(style.color.opacity(style.opacity)),
                            style: StrokeStyle(lineWidth: style.width, lineCap: .round,
                                               lineJoin: .round, dash: style.dash))
@@ -406,8 +468,17 @@ struct MapFrame {
                              color: playerColor.opacity(0.55), width: 1.2)
             }
             if isSelected {
-                strokeCircle(&context, at: point, radius: radius + 7,
-                             color: .white, width: 1.6)
+                // A breathing pulse rather than a static ring: selection is
+                // the one moment the map should visibly answer the finger.
+                // `elapsed` freezes with the pause button, so a paused game
+                // holds a steady ring — motion always means time is moving.
+                let breath = (sin(elapsed * 2.4) + 1) / 2
+                strokeCircle(&context, at: point,
+                             radius: radius + 6 + breath * 3,
+                             color: .white.opacity(0.85 - breath * 0.45),
+                             width: 1.6)
+                strokeCircle(&context, at: point, radius: radius + 4,
+                             color: .white.opacity(0.9), width: 1.2)
             }
 
             let fill: Color = airport.closed ? AETheme.negative
@@ -416,6 +487,16 @@ struct MapFrame {
                 : airport.competitorHubCount > 0 ? AETheme.rivalRoute.opacity(0.9)
                 : .white.opacity(0.62)
             fillCircle(&context, at: point, radius: radius, color: fill)
+
+            // A global hub reads as ◎ — ring around dot — so the world's
+            // anchors are recognisable before any label appears. Skipped
+            // where a stronger identity (home, hub, selection) already owns
+            // the rings around this marker.
+            if airport.tier == .global, !airport.isPlayerHome,
+               !airport.isPlayerHub, !isSelected {
+                strokeCircle(&context, at: point, radius: radius + 2.6,
+                             color: fill.opacity(0.55), width: 1.0)
+            }
 
             // A closed airport gets a cross, because a red dot among coloured
             // dots is not a signal anybody can rely on.

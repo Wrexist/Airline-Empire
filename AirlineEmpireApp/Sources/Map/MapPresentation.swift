@@ -284,17 +284,19 @@ enum MapLabelLayout {
     static func labelZoomThreshold(for tier: MapModel.AirportTier) -> CGFloat {
         switch tier {
         case .global: 0
-        case .major: 2.2
-        case .regional: 4.2
-        case .small: 7.5
+        case .major: 2.8
+        case .regional: 5.0
+        case .small: 8.0
         }
     }
 
-    /// How many labels the screen can carry, grown smoothly with zoom: ~8 at
+    /// How many labels the screen can carry, grown smoothly with zoom: ~6 at
     /// the world view, ~30 by street level. The fit rule still decides which
-    /// candidates actually land; this only caps the attempt.
+    /// candidates actually land; this only caps the attempt. Deliberately
+    /// stingy at the top: fully zoomed out, the map is a command picture,
+    /// and every label it does not need is noise it does not earn.
     static func labelBudget(zoom: CGFloat) -> Int {
-        max(8, min(32, 8 + Int((zoom - 1) * 3.2)))
+        max(6, min(30, 6 + Int((zoom - 1) * 3.0)))
     }
 
     static func place(_ airports: [(MapModel.MapAirport, CGPoint)],

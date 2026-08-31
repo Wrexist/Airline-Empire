@@ -27,7 +27,7 @@ final class PlayerJourneyUITests: AEUITestCase {
     func testSectionPickerSitsUnderTheNavigationBarNotInDeadSpace() throws {
         launch(appearance: .light)
         guard foundAirline() else { return }
-        openTab("Network")
+        openTab("Airline")
 
         let routesSegment = app.buttons["Routes"]
         require(routesSegment, "the Routes segment")
@@ -73,7 +73,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         let route = appearanceRoute.rawValue
         checkpoint("50-\(route)-home")
 
-        let tabs = ["Map", "Network", "Finance", "World"]
+        let tabs = ["Map", "Airline", "Finance", "World"]
         for (index, tab) in tabs.enumerated() {
             openTab(tab)
             XCTAssertTrue(app.staticTexts.count > 0 || app.otherElements.count > 0,
@@ -107,7 +107,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         checkpoint("01-home")
 
         // ── Acquire ────────────────────────────────────────────────────────
-        openTab("Network")
+        openTab("Airline")
         app.buttons["Fleet"].tap()
         let browse = app.buttons["Browse the market"]
         require(browse, "the market entry point on an empty fleet")
@@ -155,7 +155,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         guard foundAirline() else { return }
 
         // ── Lease ──────────────────────────────────────────────────────────
-        openTab("Network")
+        openTab("Airline")
         app.buttons["Fleet"].tap()
         let browse = app.buttons["Browse the market"]
         require(browse, "the market entry point")
@@ -357,7 +357,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         launch(appearance: .light)
         guard foundAirline() else { return }
 
-        for tab in ["Home", "Map", "Network", "Finance", "World"] {
+        for tab in ["Home", "Map", "Airline", "Finance", "World"] {
             openTab(tab)
             let offending = app.staticTexts.matching(
                 NSPredicate(format: "label CONTAINS %@", "\u{00A4}"))
@@ -382,7 +382,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         launch(appearance: .light)
         guard foundAirline() else { return }
 
-        for (index, tab) in ["Home", "Map", "Network", "Finance", "World"].enumerated() {
+        for (index, tab) in ["Home", "Map", "Airline", "Finance", "World"].enumerated() {
             openTab(tab)
             XCTAssertTrue(app.staticTexts.count > 0 || app.otherElements.count > 0,
                           "\(tab) rendered no content")
@@ -399,7 +399,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         guard foundAirline() else { return }
 
         // ── Aircraft detail, via the fleet board ──────────────────────────
-        openTab("Network")
+        openTab("Airline")
         app.buttons["Fleet"].tap()
         let browse = app.buttons["Browse the market"]
         require(browse, "the market entry point")
@@ -571,7 +571,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         checkpoint("95-dynamictype-home")
 
         // Navigation failure is the worst outcome: every tab must survive.
-        for tab in ["Map", "Network", "Finance", "World", "Home"] {
+        for tab in ["Map", "Airline", "Finance", "World", "Home"] {
             guard let button = waitForTab(tab, timeout: 10) else {
                 capture(Self.logPrefix + "MISSING-\(tab)-at-accessibility-size")
                 XCTFail("The \(tab) tab vanished at accessibility size. Screenshot attached.")
@@ -581,7 +581,7 @@ final class PlayerJourneyUITests: AEUITestCase {
                           "The \(tab) tab is not tappable at accessibility size")
         }
 
-        openTab("Network")
+        openTab("Airline")
         checkpoint("96-dynamictype-routes-empty")
 
         // The market's primary action must still be reachable by scrolling.
@@ -596,7 +596,7 @@ final class PlayerJourneyUITests: AEUITestCase {
 
     /// Home guides a new player to their first aircraft.
     ///
-    /// Load-bearing rather than decorative: the Network tab opens on Routes,
+    /// Load-bearing rather than decorative: the Airline tab opens on Routes,
     /// whose empty state tells a player with no aircraft to "put an aircraft
     /// on it". This card is the only thing naming where the market is.
     func testHomeGuidesANewPlayerToTheirFirstAircraft() throws {
