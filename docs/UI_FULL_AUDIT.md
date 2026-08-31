@@ -402,7 +402,53 @@ small's (0.17) with room.
 
 Core 414/414 after the change.
 
-### 6.12 What remains untestable here, unchanged from AE-032
+### 6.12 Run 76: the regression closed, and the cost of §6.11 seen
+
+The status-bar regression is **fixed, confirmed by the same measurement
+that found it** — median RGB sum over the top strip: run 74 (baseline) 54,
+run 75 (regressed) 765, run 76 **54**. Exactly back to the ground truth.
+
+`KEY-86` shows Arlanda's card reading **`regional / size`** in place of
+`6 / small field`. The tier fix landed and the panel now says something
+true and something useful. `KEY-71` confirms world zoom is still sparse —
+five labels (ARN, JFK, IST, DEL, HND) — so the wider `.global` tier did
+*not* flood the world view; the budget held.
+
+**But §6.11 had a cost, and the frames show it.** Comparing the same crop
+of western Europe at regional zoom across runs 75 and 76: the tier fix
+correctly surfaced Madrid, which had been hidden as a "small field" — and
+it also put two dozen airports at their true, larger marker size, so
+**labels now run straight through marker discs**. `KEY-72` shows "Charles
+de Gaulle (Paris)" with two discs sitting in the middle of the words, and
+"Barajas (Madrid)" overlapping both its own marker and the SPAIN country
+label.
+
+The placer had only ever avoided *other labels*. That was survivable while
+most markers were small dots and stopped being so the moment the airports
+were sized honestly — a latent flaw in the layout that the data fix
+exposed rather than caused.
+
+Two changes, both in this commit:
+- `MapLabelLayout.place` now takes the renderer's own `markerRadius` and
+  seeds its occupied set with every marker disc, so text dodges dots as
+  well as text. An airport's own disc is exempt: its label sits above it
+  by design. Passing the radius rather than duplicating it means the
+  placer and the renderer cannot disagree about how big a dot is.
+- The marker ladder steps down (global 5.0 → 4.4, major 4.0 → 3.5,
+  regional 3.0 → 2.6, small 2.2 → 2.0). The *ratios* are what carry the
+  hierarchy; the absolute sizes were tuned when ten airports were global
+  and twenty-three now is a crowd at the old scale.
+
+Both need a further run to confirm by eye — recorded here as **NOT YET
+VERIFIED**, because the honest lesson of §6.10 is that a fix for something
+found by looking can introduce something else that looking nearly missed.
+
+Run 76: 13 of 15 UI tests green. Both failures are the lease-tap flake
+(one surfacing as a screenshot timeout inside the retry loop); every test
+touching this work — selection, zoom and labels, dark tabs, accessibility,
+the flight journey — passed.
+
+### 6.13 What remains untestable here, unchanged from AE-032
 
 System-appearance following, audio audibility, VoiceOver order, contrast
 as rendered, hardware performance, and the game-over screen. The iPad

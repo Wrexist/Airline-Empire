@@ -202,11 +202,16 @@ struct MapDetailPolicy {
     /// Marker radius in points. Tier drives most of it; a hub and the home
     /// base get a little more because they are the map's anchors.
     func radius(_ airport: MapModel.MapAirport) -> CGFloat {
+        // Trimmed at the top after the tier fix (§6.11) put two dozen
+        // airports in `.global` instead of ten: the same radii that read as a
+        // hierarchy with ten big dots read as a crowd with twenty-three. The
+        // *ratios* are what carry the hierarchy, so they are kept and the
+        // whole ladder steps down.
         let base: CGFloat = switch airport.tier {
-        case .global: 5.0
-        case .major: 4.0
-        case .regional: 3.0
-        case .small: 2.2
+        case .global: 4.4
+        case .major: 3.5
+        case .regional: 2.6
+        case .small: 2.0
         }
         let presence: CGFloat = airport.isPlayerHome ? 2.4
             : airport.isPlayerHub ? 1.6
@@ -299,11 +304,19 @@ enum MapLabelLayout {
         max(6, min(30, 6 + Int((zoom - 1) * 3.0)))
     }
 
+    /// - Parameter markerRadius: the drawn radius of an airport's marker, so
+    ///   labels can dodge the discs as well as each other. Without it a label
+    ///   avoids only other labels, which was survivable while most markers
+    ///   were small dots and stopped being so the moment the tier fix
+    ///   (§6.11) gave two dozen airports their true size: run 76 photographed
+    ///   "Charles de Gaulle (Paris)" with two marker discs sitting in the
+    ///   middle of the words.
     static func place(_ airports: [(MapModel.MapAirport, CGPoint)],
                       level: MapZoomLevel,
                       zoom: CGFloat,
                       selected: AirportCode?,
-                      limit: Int) -> [MapLabel] {
+                      limit: Int,
+                      markerRadius: (MapModel.MapAirport) -> CGFloat) -> [MapLabel] {
         let cap = min(limit, labelBudget(zoom: zoom))
         // Explicit steps and an explicit tuple type: the chained version of
         // this expression blew the type-checker's budget on CI (run 68).
@@ -321,6 +334,18 @@ enum MapLabelLayout {
                 : lhs.airport.code.raw < rhs.airport.code.raw
         }
         let ranked = scored.prefix(cap * 3)
+
+        // Every marker on screen, as a box to keep text out of. Built once
+        // from the same radius the renderer draws with, so the two can never
+        // disagree about how big a dot is. An airport's own disc is exempt —
+        // its label sits directly above it by design.
+        var discs: [(code: AirportCode, rect: CGRect)] = []
+        for (airport, point) in airports {
+            let r = markerRadius(airport) + 1.5
+            discs.append((airport.code,
+                          CGRect(x: point.x - r, y: point.y - r,
+                                 width: r * 2, height: r * 2)))
+        }
 
         var placed: [CGRect] = []
         var labels: [MapLabel] = []
@@ -358,7 +383,11 @@ enum MapLabelLayout {
                 let width = CGFloat(text.count) * 6.4 + 10
                 let box = CGRect(x: point.x - width / 2, y: point.y - 20,
                                  width: width, height: 14)
-                if !placed.contains(where: { $0.intersects(box) }) {
+                let hitsLabel = placed.contains { $0.intersects(box) }
+                let hitsMarker = discs.contains {
+                    $0.code != airport.code && $0.rect.intersects(box)
+                }
+                if !hitsLabel, !hitsMarker {
                     chosen = (text, box)
                     break
                 }

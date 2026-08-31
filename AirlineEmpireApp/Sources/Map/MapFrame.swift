@@ -745,7 +745,8 @@ struct MapFrame {
         return MapLabelLayout.place(
             geometry.airports, level: policy.level, zoom: policy.zoom,
             selected: selectedCode,
-            limit: policy.level == .world ? 10 : 32)
+            limit: policy.level == .world ? 10 : 32,
+            markerRadius: { policy.radius($0) })
     }
 
     private func draw(_ labels: [MapLabel], into context: inout GraphicsContext) {
