@@ -376,27 +376,46 @@ enum MapLabelLayout {
                 : [Vocab.airportDisplay(name: airport.name, city: airport.city),
                    airport.city, airport.code.raw]
 
-            var chosen: (text: String, box: CGRect)?
-            for text in candidates {
+            // Four placements per candidate, tried in that order: above the
+            // marker, below it, then out to the right and the left.
+            //
+            // Above only is what this used to offer, and in a dense corner it
+            // meant a label was *refused* rather than moved: run 77 cleared
+            // every text-over-dot collision and left London and Paris — the
+            // two largest airports in the view — as anonymous rings, because
+            // the space above each was taken by a neighbour's disc. Offering
+            // the other three sides is the ordinary cartographic answer and
+            // costs three rectangle tests.
+            let r = markerRadius(airport)
+            var chosen: (text: String, centre: CGPoint, box: CGRect)?
+            search: for text in candidates {
                 // Approximate the text box; exact metrics are not worth a
                 // layout pass per frame, and the padding absorbs the error.
                 let width = CGFloat(text.count) * 6.4 + 10
-                let box = CGRect(x: point.x - width / 2, y: point.y - 20,
-                                 width: width, height: 14)
-                let hitsLabel = placed.contains { $0.intersects(box) }
-                let hitsMarker = discs.contains {
-                    $0.code != airport.code && $0.rect.intersects(box)
-                }
-                if !hitsLabel, !hitsMarker {
-                    chosen = (text, box)
-                    break
+                let centres = [
+                    CGPoint(x: point.x, y: point.y - 13),
+                    CGPoint(x: point.x, y: point.y + r + 9),
+                    CGPoint(x: point.x + r + 4 + width / 2, y: point.y),
+                    CGPoint(x: point.x - r - 4 - width / 2, y: point.y),
+                ]
+                for centre in centres {
+                    let box = CGRect(x: centre.x - width / 2, y: centre.y - 7,
+                                     width: width, height: 14)
+                    let hitsLabel = placed.contains { $0.intersects(box) }
+                    let hitsMarker = discs.contains {
+                        $0.code != airport.code && $0.rect.intersects(box)
+                    }
+                    if !hitsLabel, !hitsMarker {
+                        chosen = (text, centre, box)
+                        break search
+                    }
                 }
             }
             guard let chosen else { continue }
 
             placed.append(chosen.box)
             labels.append(MapLabel(
-                text: chosen.text, point: CGPoint(x: point.x, y: point.y - 13),
+                text: chosen.text, point: chosen.centre,
                 priority: priority,
                 isPlayer: airport.servedByPlayer || airport.isPlayerHome,
                 emphasis: airport.isPlayerHome || airport.code == selected,

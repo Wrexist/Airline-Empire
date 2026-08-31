@@ -439,9 +439,26 @@ Two changes, both in this commit:
   hierarchy; the absolute sizes were tuned when ten airports were global
   and twenty-three now is a crowd at the old scale.
 
-Both need a further run to confirm by eye — recorded here as **NOT YET
-VERIFIED**, because the honest lesson of §6.10 is that a fix for something
-found by looking can introduce something else that looking nearly missed.
+**Run 77 — the first fully green run since 69**, 15 of 15 including the
+lease journey that had flaked for five runs straight. The status bar held
+at 54 on every map frame, world zoom stayed sparse at four labels, and
+**no text crosses a marker disc anywhere in the regional frame**. The
+collision fix works.
+
+**And it starved the map, exactly as feared.** Run 76 labelled "Heathrow
+(London)", "Charles de Gaulle (Paris)", "Barajas (Madrid)"; run 77 shows
+"AMS", "Madrid", "FCO" — and **London and Paris carry no label at all**,
+the two largest airports in the view reduced to anonymous rings. The
+degradation ladder (full name → city → code) was doing its job, but the
+placement rule underneath it had only one position to offer: directly
+above the marker. In a dense corner that space belongs to a neighbour's
+disc, so the label was *refused* rather than moved.
+
+Fixed by giving the placer the other three sides — above, then below,
+then right, then left — which is the ordinary cartographic answer and
+costs three rectangle tests per candidate. Also NOT YET VERIFIED; the run
+that confirms it is the fourth in a row where a fix for something found by
+looking had to be checked for what it broke.
 
 Run 76: 13 of 15 UI tests green. Both failures are the lease-tap flake
 (one surfacing as a screenshot timeout inside the retry loop); every test
