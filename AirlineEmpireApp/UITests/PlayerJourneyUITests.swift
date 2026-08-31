@@ -282,13 +282,6 @@ final class PlayerJourneyUITests: AEUITestCase {
         // passed, because all it asserted was that the canvas existed.
         func zoom() -> Double {
             let value = map.value as? String ?? ""
-            // The render-cache counters ride the same channel; print them
-            // raw so the log carries rebuild/replay evidence per sequence.
-            if let cacheRange = value.range(
-                of: #"cache rebuilds \d+ replays \d+ placements \d+ reasons \[[^\]]*\]"#,
-                options: .regularExpression) {
-                print("MAP-CACHE \(value[cacheRange])")
-            }
             guard let range = value.range(of: #"zoom ([0-9.]+)x"#,
                                           options: .regularExpression)
             else { return .nan }
@@ -382,6 +375,17 @@ final class PlayerJourneyUITests: AEUITestCase {
             app.buttons["Zoom out"].tap()
             Thread.sleep(forTimeInterval: 0.8)
             let value = map.value as? String ?? ""
+            // The render-cache counters ride the same channel and only exist
+            // under the probes flag, so this — not the un-probed zoom test —
+            // is where they reach the log. Printed at every checkpoint; the
+            // per-sequence deltas are the difference between prints. Run 85
+            // carried none because the only print sat in a test that never
+            // launches with -AEUITestProbes.
+            if let cacheRange = value.range(
+                of: #"cache rebuilds \d+ replays \d+ placements \d+ reasons \[[^\]]*\]"#,
+                options: .regularExpression) {
+                print("MAP-CACHE \(value[cacheRange])")
+            }
             guard let range = value.range(
                 of: #"probe frames (\d+) totalMs ([0-9.]+) worstMs ([0-9.]+) identity (\d+) hops (\d+) compared (\d+)"#,
                 options: .regularExpression) else { return nil }

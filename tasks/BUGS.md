@@ -1061,6 +1061,16 @@ now measures `lease.midY − buyUsed.midY` when the wrong dialog appears and
 applies it as an aim correction on later attempts.
 **Regression cover:** the helper's own retry loop plus the LEASE-ATTEMPT
 frame captures; three tests exercise it every run.
-**Status:** FIX AUTHORED — awaiting the next CI run. Not claimed fixed until
-a run shows the previously failing test green (or a corrected attempt-2
-landing after a photographed attempt-1 miss).
+**Status:** SECOND FIX AUTHORED. Run 86 disproved half the first diagnosis:
+all three lease-dependent tests failed, and the attempt frames showed a
+second miss mode — the tap landing on *nothing* (the inert caption between
+rows), which the dialog-measured correction can never see — repeated
+identically four times, because when the row already sits in the middle
+band nothing changes between attempts and the stale snapshot answers every
+retry the same way. The helper now (a) prefers `lease.tap()` when the
+system reports the row hittable — the hit point is resolved at event time,
+(b) applies a dialog-measured correction for exactly one following tap,
+and (c) jiggles the list after any no-dialog miss so each retry sees fresh
+geometry. Run 86 also re-proved the app path is healthy (414/414 Core, map
+baseline green with numbers matching run 85). Not claimed fixed until a
+run shows the lease tests green.
