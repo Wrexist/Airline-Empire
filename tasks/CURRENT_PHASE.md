@@ -39,9 +39,30 @@ morning*, an action — a Day/Night label would misdescribe it); map-mode
 redesign (the overlay picker already has five modes; relabelling without a
 design is churn); camera-on-open (already frames home).
 
-Status: parse-checked and symbol-checked on Linux; CI dispatched for
-render verification. The pulse animates — stills can only show one phase
-of it, which is recorded here so a static frame is not read as a defect.
+**Render verification (runs 73–74, looked at, not assumed):**
+- Density ladder **OBSERVED** — the world view labels only the global hubs
+  (MEX, GRU, DEL, HND, CGK) and the player's home; regional and local
+  zooms reveal the full "Arlanda (Stockholm)" ladder exactly as designed.
+- Terminator **OBSERVED and measured** — a pixel-brightness profile along
+  a fixed latitude of run 73's world frame shows the night band centred
+  on longitude 0 at the game's 00:00, with the two-pass dusk ramp
+  (medians 48 → 43 → 41) and a width matching the terminator equation at
+  that latitude. Run 74's in-flight frames show the January arctic night
+  correctly darkening northern Scandinavia. Subtle by intent: on the dark
+  ocean it is a measured ~15% dim, not a hard edge.
+- "Airline" tab **OBSERVED** in light and dark with the airplane icon;
+  every tab-navigation test passed under the new name.
+- Route glow and moving aircraft **OBSERVED** — run 74's flight journey
+  went green and photographed the aircraft mid-route Arlanda → Heathrow
+  at 16× on the player-blue haloed line.
+- Selection pulse **NOT OBSERVED** — it animates on a selected airport
+  and no automated frame selects one; the drawing code is exercised by
+  every map render, but the pulse itself awaits a human eye or a new
+  journey leg. Recorded so a future still is not misread either way.
+- Run 73: 12/14 UI tests; run 74: 13/14. The only failures were the
+  documented lease-tap flakiness (four attempts, healthy market in every
+  attempt frame; the identical helper leased successfully inside run
+  74's flight journey minutes later). Core 414/414 in both runs.
 
 ---
 
