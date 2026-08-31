@@ -666,6 +666,10 @@ struct AircraftShopSheet: View {
     @State private var leaseTermMonths = 60
     @State private var sort: Sort = .seats
     @State private var hidesLocked = false
+    /// Which way in is picked, per aircraft. Lives here because the picker
+    /// and the commit button are separate List rows (see `ShopCommitButton`)
+    /// that must see the same choice. Absent means the default, lease.
+    @State private var deals: [AircraftTypeCode: ShopDeal] = [:]
 
     /// Fourteen types with seven attributes each, and no way to order them,
     /// was a catalogue rather than a market (UIUX_FORENSIC_AUDIT UI-017).
@@ -718,6 +722,17 @@ struct AircraftShopSheet: View {
                             Section {
                                 shopRow(spec, catalog: catalog, snapshot: snapshot,
                                         player: player.id)
+                                // The commit is its own row on purpose: a row
+                                // whose only button is default-styled makes
+                                // the whole row the tap target (the pattern
+                                // every working control in this sheet uses).
+                                if !locked(spec, snapshot: snapshot) {
+                                    ShopCommitButton(
+                                        facts: facts(spec, catalog: catalog,
+                                                     snapshot: snapshot,
+                                                     player: player.id),
+                                        deal: deals[spec.code] ?? .lease)
+                                }
                             }
                         }
                     }
@@ -843,12 +858,7 @@ struct AircraftShopSheet: View {
 
     private func shopRow(_ spec: AircraftTypeSpec, catalog: ContentCatalog,
                          snapshot: GameState, player: AirlineID) -> some View {
-        let locked = !snapshot.progression.era.allowedCategories.contains(spec.category)
-        let usedPrice = FleetEconomics.usedPrice(
-            type: spec, ageYears: Double(usedAge),
-            condition: FleetEconomics.usedMarketCondition(
-                ageYears: Double(usedAge), tuning: catalog.tuning.fleet),
-            tuning: catalog.tuning.fleet)
+        let isLocked = locked(spec, snapshot: snapshot)
         // The bars are comparative against the whole catalogue, locked types
         // included: "184 of a possible 422 seats" is a fact about the world,
         // and the bars must not re-scale when the era filter flips.
@@ -857,7 +867,7 @@ struct AircraftShopSheet: View {
         let maxSeats = all.map(\.seats).max() ?? spec.seats
         let maxRange = all.map(\.rangeKm).max() ?? spec.rangeKm
         return VStack(alignment: .leading, spacing: AETheme.spacingS) {
-            shopRowHeader(spec, locked: locked)
+            shopRowHeader(spec, locked: isLocked)
             // The spec as bars, not prose: three chips of digits made every
             // aircraft read the same, and comparing was the whole point of
             // the screen. A bar against the catalogue's best is legible at a
@@ -882,7 +892,7 @@ struct AircraftShopSheet: View {
                 .foregroundStyle(AETheme.mutedText)
                 .fixedSize(horizontal: false, vertical: true)
 
-            if locked {
+            if isLocked {
                 // A locked row used to show nothing at all, so the player
                 // could not plan toward it.
                 Text("Unlocks in the \(Vocab.era(unlockEra(for: spec.category))) era. \(Vocab.eraDetail(unlockEra(for: spec.category))).")
@@ -890,14 +900,34 @@ struct AircraftShopSheet: View {
                     .foregroundStyle(AETheme.mutedText)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
-                ShopDealPicker(spec: spec, usedAge: usedAge,
-                               leaseTermMonths: leaseTermMonths,
-                               usedPrice: usedPrice,
-                               cash: snapshot.ledger.balance(of: player),
-                               player: player)
+                ShopDealPicker(
+                    facts: facts(spec, catalog: catalog, snapshot: snapshot,
+                                 player: player),
+                    deal: Binding(get: { deals[spec.code] ?? .lease },
+                                  set: { deals[spec.code] = $0 }))
             }
         }
         .padding(.vertical, 2)
+    }
+
+    private func locked(_ spec: AircraftTypeSpec,
+                        snapshot: GameState) -> Bool {
+        !snapshot.progression.era.allowedCategories.contains(spec.category)
+    }
+
+    /// The shared per-aircraft facts both deal rows read.
+    private func facts(_ spec: AircraftTypeSpec, catalog: ContentCatalog,
+                       snapshot: GameState,
+                       player: AirlineID) -> ShopDealFacts {
+        ShopDealFacts(
+            spec: spec, usedAge: usedAge, leaseTermMonths: leaseTermMonths,
+            usedPrice: FleetEconomics.usedPrice(
+                type: spec, ageYears: Double(usedAge),
+                condition: FleetEconomics.usedMarketCondition(
+                    ageYears: Double(usedAge), tuning: catalog.tuning.fleet),
+                tuning: catalog.tuning.fleet),
+            cash: snapshot.ledger.balance(of: player),
+            player: player)
     }
 
     /// One spec line: name, a bar against the catalogue's best, the number.
@@ -972,11 +1002,12 @@ struct AircraftShopSheet: View {
 /// the onboarding checklist says "Leasing keeps cash free early on" — and
 /// because the CTA then carries `ae-market-lease` from first render, which
 /// the UI journeys scroll to.
-private struct ShopDealPicker: View {
-    @Environment(GameController.self) private var controller
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.dynamicTypeSize) private var typeSize
+enum ShopDeal: CaseIterable, Hashable { case new, used, lease }
 
+/// Everything the deal views need to answer for one aircraft, in one place —
+/// the picker and the commit button live in *different List rows* (see
+/// `ShopCommitButton`) and must agree on every fact.
+struct ShopDealFacts {
     let spec: AircraftTypeSpec
     let usedAge: Int
     let leaseTermMonths: Int
@@ -984,8 +1015,113 @@ private struct ShopDealPicker: View {
     let cash: Money
     let player: AirlineID
 
-    enum Deal: CaseIterable, Hashable { case new, used, lease }
-    @State private var deal: Deal = .lease
+    func price(for option: ShopDeal) -> Money {
+        switch option {
+        case .new: spec.listPrice
+        case .used: usedPrice
+        case .lease: spec.leaseMonthly
+        }
+    }
+
+    func caption(for option: ShopDeal) -> String {
+        switch option {
+        case .new: "New"
+        case .used: "Used \(usedAge)y"
+        case .lease: "Lease"
+        }
+    }
+
+    func subtitle(for option: ShopDeal) -> String {
+        switch option {
+        case .new: "in \(Format.days(spec.deliveryLeadDays))"
+        case .used: "flies now"
+        case .lease: "per month"
+        }
+    }
+
+    func tint(for option: ShopDeal) -> Color {
+        switch option {
+        case .new: AETheme.accent
+        case .used: AETheme.owned
+        case .lease: AETheme.leased
+        }
+    }
+
+    func consequenceIcon(for option: ShopDeal) -> String {
+        switch option {
+        case .new: "shippingbox.fill"
+        case .used: "bolt.fill"
+        case .lease: "calendar"
+        }
+    }
+
+    func consequenceText(for option: ShopDeal) -> String {
+        switch option {
+        case .new:
+            "Factory fresh, best condition — delivered in \(Format.days(spec.deliveryLeadDays))."
+        case .used:
+            "On the apron today, in used condition."
+        case .lease:
+            "No cash down. \(Format.money(spec.leaseMonthly * Int64(leaseTermMonths))) over \(leaseTermMonths) months."
+        }
+    }
+
+    func ctaTitle(for option: ShopDeal) -> String {
+        switch option {
+        case .new: "Order it new"
+        case .used: "Buy it today"
+        case .lease: "Sign the lease"
+        }
+    }
+
+    /// The word the confirmation dialog leads with and confirms with. These
+    /// are a UI-test contract ("Lease?" / "Lease", "Buy used (8y)?"); the
+    /// friendlier verbs live on the button, not in the dialog.
+    func confirmWord(for option: ShopDeal) -> String {
+        switch option {
+        case .new: "Buy new"
+        case .used: "Buy used (\(usedAge)y)"
+        case .lease: "Lease"
+        }
+    }
+
+    func name(for option: ShopDeal) -> String {
+        switch option {
+        case .new: "buy-new"
+        case .used: "buy-used"
+        case .lease: "lease"
+        }
+    }
+
+    func dialogMessage(for option: ShopDeal) -> String {
+        switch option {
+        case .new, .used:
+            "\(Format.money(price(for: option))) now, leaving \(Format.money(cash - price(for: option)))."
+        case .lease:
+            "\(Format.money(spec.leaseMonthly)) every month for \(leaseTermMonths) months. Returning early costs a penalty."
+        }
+    }
+
+    func command(for option: ShopDeal) -> any Command {
+        switch option {
+        case .new:
+            BuyNewAircraftCommand(buyer: player, type: spec.code)
+        case .used:
+            BuyUsedAircraftCommand(buyer: player, type: spec.code,
+                                   ageYears: usedAge)
+        case .lease:
+            LeaseAircraftCommand(lessee: player, type: spec.code,
+                                 termMonths: leaseTermMonths)
+        }
+    }
+}
+
+/// The three deal cards and the consequence line for the picked one.
+struct ShopDealPicker: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    let facts: ShopDealFacts
+    @Binding var deal: ShopDeal
 
     var body: some View {
         VStack(alignment: .leading, spacing: AETheme.spacingS) {
@@ -993,15 +1129,14 @@ private struct ShopDealPicker: View {
                 // Three cards share a row only while their text fits; at
                 // accessibility sizes each gets the full width.
                 VStack(spacing: AETheme.spacingS) {
-                    ForEach(Deal.allCases, id: \.self) { card(for: $0) }
+                    ForEach(ShopDeal.allCases, id: \.self) { card(for: $0) }
                 }
             } else {
                 HStack(spacing: AETheme.spacingS) {
-                    ForEach(Deal.allCases, id: \.self) { card(for: $0) }
+                    ForEach(ShopDeal.allCases, id: \.self) { card(for: $0) }
                 }
             }
             consequence
-            commit
         }
         .aeAnimation(AEMotion.selection, value: deal)
         // Trying a deal on is a real decision the world should acknowledge,
@@ -1009,24 +1144,22 @@ private struct ShopDealPicker: View {
         .aeFeedback(.uiSelect, on: deal)
     }
 
-    // MARK: The three ways in
-
-    private func card(for option: Deal) -> some View {
+    private func card(for option: ShopDeal) -> some View {
         let selected = deal == option
         return Button {
             deal = option
         } label: {
             VStack(spacing: 2) {
-                Text(caption(for: option))
+                Text(facts.caption(for: option))
                     .font(.caption2.weight(.semibold))
                     .textCase(.uppercase)
-                    .foregroundStyle(selected ? tint(for: option)
+                    .foregroundStyle(selected ? facts.tint(for: option)
                                               : AETheme.mutedText)
-                Text(Format.money(price(for: option)))
+                Text(Format.money(facts.price(for: option)))
                     .font(AEType.body.weight(.bold)).monospacedDigit()
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
-                Text(subtitle(for: option))
+                Text(facts.subtitle(for: option))
                     .font(.caption2)
                     .foregroundStyle(AETheme.mutedText)
             }
@@ -1035,46 +1168,41 @@ private struct ShopDealPicker: View {
             .background(
                 RoundedRectangle(cornerRadius: AETheme.cornerRadiusSmall,
                                  style: .continuous)
-                    .fill(selected ? tint(for: option).opacity(0.12)
+                    .fill(selected ? facts.tint(for: option).opacity(0.12)
                                    : AETheme.cardBackground.opacity(0.6)))
             .overlay(
                 RoundedRectangle(cornerRadius: AETheme.cornerRadiusSmall,
                                  style: .continuous)
-                    .strokeBorder(selected ? tint(for: option)
+                    .strokeBorder(selected ? facts.tint(for: option)
                                            : Color.clear,
                                   lineWidth: 1.5))
             .contentShape(Rectangle())
         }
-        // Borderless, not plain: several buttons share this List row, and
-        // borderless is the style Lists hit-test per-button. Run 88's frames
-        // showed twelve synthetic taps land inert on this row with .plain
-        // (and a custom style on the CTA); the one arrangement proven by
-        // thirty runs of this suite is default/borderless buttons in a row.
+        // Borderless, not plain or default: several buttons share this List
+        // row, and borderless is the style Lists hit-test per button.
         .buttonStyle(.borderless)
-        .accessibilityIdentifier("ae-deal-\(name(for: option))")
-        .accessibilityLabel("\(caption(for: option)), \(Format.money(price(for: option))), \(subtitle(for: option))")
+        .accessibilityIdentifier("ae-deal-\(facts.name(for: option))")
+        .accessibilityLabel("\(facts.caption(for: option)), \(Format.money(facts.price(for: option))), \(facts.subtitle(for: option))")
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
-
-    // MARK: What the picked deal actually means
 
     /// One line that answers "and then what?" for the selected deal, plus —
     /// for the cash deals — a wallet bar showing what stays in the bank.
     @ViewBuilder
     private var consequence: some View {
         HStack(spacing: AETheme.spacingS - 2) {
-            Image(systemName: consequenceIcon)
+            Image(systemName: facts.consequenceIcon(for: deal))
                 .font(.caption)
-                .foregroundStyle(tint(for: deal))
+                .foregroundStyle(facts.tint(for: deal))
                 .accessibilityHidden(true)
-            Text(consequenceText)
+            Text(facts.consequenceText(for: deal))
                 .font(AEType.caption)
                 .foregroundStyle(AETheme.mutedText)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        if deal != .lease, cash.cents > 0 {
-            let after = cash - price(for: deal)
-            let fraction = Double(max(after.cents, 0)) / Double(cash.cents)
+        if deal != .lease, facts.cash.cents > 0 {
+            let after = facts.cash - facts.price(for: deal)
+            let fraction = Double(max(after.cents, 0)) / Double(facts.cash.cents)
             HStack(spacing: AETheme.spacingS) {
                 Text("Bank after")
                     .font(.caption2)
@@ -1100,40 +1228,49 @@ private struct ShopDealPicker: View {
             .accessibilityLabel("Leaves \(Format.money(after)) in the bank")
         }
     }
+}
 
-    // MARK: The signature
+/// The signature — deliberately its own List row.
+///
+/// Runs 88 and 90 photographed twenty-four synthetic taps landing inert on
+/// a CTA that shared its row with the deal cards, across every button-style
+/// arrangement tried. A row whose only button is default-styled is the one
+/// List pattern where the *entire row* is the button's tap target — the
+/// pattern every Toggle and Stepper row in this sheet already relies on —
+/// so the commit lives alone in its row and cannot be missed, by a finger
+/// or by the test runner.
+struct ShopCommitButton: View {
+    @Environment(GameController.self) private var controller
+    @Environment(\.dismiss) private var dismiss
 
-    private var commit: some View {
-        let command = command(for: deal)
+    let facts: ShopDealFacts
+    let deal: ShopDeal
+
+    var body: some View {
+        let command = facts.command(for: deal)
         let blocked = controller.precheck(command)
-        return VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 2) {
             ConfirmableButton(
-                title: "\(confirmWord(for: deal))?",
-                message: dialogMessage(for: deal),
-                confirmTitle: confirmWord(for: deal), role: nil,
+                title: "\(facts.confirmWord(for: deal))?",
+                message: facts.dialogMessage(for: deal),
+                confirmTitle: facts.confirmWord(for: deal), role: nil,
                 // Dismiss on success, like every other sheet in the app —
                 // the payoff is the aircraft in the fleet, not this sheet.
                 action: {
                     if controller.submit(command) == nil { dismiss() }
                 }
             ) {
-                // The capsule is drawn by the label, not by a ButtonStyle:
-                // the button itself stays default-styled, because that is the
-                // exact plumbing every tapped control in this List has used
-                // since run 59 — run 88 proved a custom-styled sibling
-                // arrangement here goes inert under synthetic taps.
-                Label(ctaTitle(for: deal), systemImage: "signature")
+                Label(facts.ctaTitle(for: deal), systemImage: "signature")
                     .font(.headline)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .background(AETheme.accent, in: Capsule())
-                    .contentShape(Capsule())
                     .opacity(blocked != nil ? 0.45 : 1)
             }
             // The stable name a UI test scrolls to. It follows the selected
-            // deal, so "ae-market-lease" is the full-width signature button
-            // whenever Lease is picked — which it is by default.
-            .accessibilityIdentifier("ae-market-\(name(for: deal))")
+            // deal, so "ae-market-lease" is this row whenever Lease is
+            // picked — which it is by default.
+            .accessibilityIdentifier("ae-market-\(facts.name(for: deal))")
             .disabled(blocked != nil)
             if let blocked {
                 Text(blocked.message)
@@ -1141,108 +1278,6 @@ private struct ShopDealPicker: View {
                     .foregroundStyle(AETheme.caution)
                     .fixedSize(horizontal: false, vertical: true)
             }
-        }
-    }
-
-    // MARK: Per-deal facts
-
-    private func price(for option: Deal) -> Money {
-        switch option {
-        case .new: spec.listPrice
-        case .used: usedPrice
-        case .lease: spec.leaseMonthly
-        }
-    }
-
-    private func caption(for option: Deal) -> String {
-        switch option {
-        case .new: "New"
-        case .used: "Used \(usedAge)y"
-        case .lease: "Lease"
-        }
-    }
-
-    private func subtitle(for option: Deal) -> String {
-        switch option {
-        case .new: "in \(Format.days(spec.deliveryLeadDays))"
-        case .used: "flies now"
-        case .lease: "per month"
-        }
-    }
-
-    private func tint(for option: Deal) -> Color {
-        switch option {
-        case .new: AETheme.accent
-        case .used: AETheme.owned
-        case .lease: AETheme.leased
-        }
-    }
-
-    private var consequenceIcon: String {
-        switch deal {
-        case .new: "shippingbox.fill"
-        case .used: "bolt.fill"
-        case .lease: "calendar"
-        }
-    }
-
-    private var consequenceText: String {
-        switch deal {
-        case .new:
-            "Factory fresh, best condition — delivered in \(Format.days(spec.deliveryLeadDays))."
-        case .used:
-            "On the apron today, in used condition."
-        case .lease:
-            "No cash down. \(Format.money(spec.leaseMonthly * Int64(leaseTermMonths))) over \(leaseTermMonths) months."
-        }
-    }
-
-    private func ctaTitle(for option: Deal) -> String {
-        switch option {
-        case .new: "Order it new"
-        case .used: "Buy it today"
-        case .lease: "Sign the lease"
-        }
-    }
-
-    /// The word the confirmation dialog leads with and confirms with. These
-    /// are a UI-test contract ("Lease?" / "Lease", "Buy used (8y)?"); the
-    /// friendlier verbs live on the button, not in the dialog.
-    private func confirmWord(for option: Deal) -> String {
-        switch option {
-        case .new: "Buy new"
-        case .used: "Buy used (\(usedAge)y)"
-        case .lease: "Lease"
-        }
-    }
-
-    private func name(for option: Deal) -> String {
-        switch option {
-        case .new: "buy-new"
-        case .used: "buy-used"
-        case .lease: "lease"
-        }
-    }
-
-    private func dialogMessage(for option: Deal) -> String {
-        switch option {
-        case .new, .used:
-            "\(Format.money(price(for: option))) now, leaving \(Format.money(cash - price(for: option)))."
-        case .lease:
-            "\(Format.money(spec.leaseMonthly)) every month for \(leaseTermMonths) months. Returning early costs a penalty."
-        }
-    }
-
-    private func command(for option: Deal) -> any Command {
-        switch option {
-        case .new:
-            BuyNewAircraftCommand(buyer: player, type: spec.code)
-        case .used:
-            BuyUsedAircraftCommand(buyer: player, type: spec.code,
-                                   ageYears: usedAge)
-        case .lease:
-            LeaseAircraftCommand(lessee: player, type: spec.code,
-                                 termMonths: leaseTermMonths)
         }
     }
 }
