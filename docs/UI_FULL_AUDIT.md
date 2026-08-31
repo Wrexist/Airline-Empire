@@ -186,3 +186,116 @@ Dark appearance remains the **forced** route (`darkforced`): the CI simulator
 will not switch system appearance, so "the app follows the system setting"
 stays 📖. Audio: the engine running and all cues decoding is 🧪 (run 60);
 audibility is NOT VERIFIED and cannot be from CI.
+
+---
+
+## 6. AE-033 — the post-immersion audit, from run 74's frames
+
+Every finding below was read off a decoded CI screenshot of run 74
+(commit e0958d7) or traced to the line that produces it. Nothing here is
+inferred from source alone; where a claim is READ rather than OBSERVED it
+says so. Ordered by how much each one costs a player.
+
+### 6.1 P1 — the map's help line is drawn underneath the tab bar
+
+**OBSERVED**, `KEY-81-flight-in-progress`. The idle hint — "Tap an airport,
+a route or an aircraft." — renders as a glass capsule at the bottom of the
+map chrome and the floating iOS 26 tab bar sits directly on top of it. It
+is not merely crowded; the sentence is unreadable.
+
+**Root cause, READ:** `MapView.swift:82` applies
+`.ignoresSafeArea(edges: .bottom)` to the ZStack that holds *both* the
+canvas and the chrome. The canvas should bleed to the screen edge; the
+chrome must not. The taller "Your airline begins here" card survives only
+because it is tall enough to poke out above the bar — which is why this
+was invisible for the whole of AE-032: every early-game frame shows the
+card, and the hint only appears once the player has routes.
+
+**Fix:** let the canvas ignore the safe area and leave the chrome inside it.
+
+### 6.2 P2 — a route that has never flown reports a perfect record
+
+**OBSERVED**, `KEY-91-route-detail`: a brand-new ARN–LHR with no aircraft
+assigned shows **Punctuality 100%, Completion 100%** while, three rows up,
+Load factor correctly reads 0% and the banner says the route is not flying.
+
+The screen is claiming operational performance for operations that have
+never happened — the same class of error as a screenshot named `dark`
+that rendered light. Load factor already knows how to say nothing; these
+two should use `—` until the route has flown at least once.
+(`RoutesView.swift:409-410`.)
+
+### 6.3 P2 — the aircraft market collides with itself at accessibility type
+
+**OBSERVED**, `KEY-97-dynamictype-market`. At AccessibilityL the aircraft
+name wraps to three lines while the silhouette stays vertically centred
+beside it, so the glyph lands in the middle of the word "Longline", and
+the "later era" chip overlaps the title's last line. The AE-032 pass fixed
+the *metric strip* at this size (whole figures, no "$110. / 0M"), but the
+row header above it was never re-checked.
+
+### 6.4 P3 — the Home pulse strip orphans its fourth metric
+
+**OBSERVED**, `KEY-20-shell-home`: "in the air / load factor / aircraft
+used" sit in one row, and "month to date" drops alone onto a second,
+reading as a stray rather than a fourth member of a set.
+
+**Root cause, READ:** `AEMetricStrip` lays out an adaptive grid with an
+88 pt column floor (`Components.swift:745`); four metrics at 88 pt on a
+390 pt-wide phone fit three across. Either a fixed four-column layout at
+compact width or a 2×2 grid would read as one picture, which is what the
+call-site comment says it is for.
+
+### 6.5 P3 — the route sheet says "From" twice, and the search box sits below the commit
+
+**OBSERVED**, `KEY-06-route-sheet-destination-picked`. The section header
+is `Text("From")` and the picker inside it is `Picker("From", …)`, so the
+word stacks on itself (`RoutesView.swift:801` and `:847`). Separately,
+iOS 26 anchors `.searchable` to the bottom of the sheet, which puts the
+search field *below* the "Open this route" bar added for BUG-038 — so the
+reading order is browse, commit, then search.
+
+### 6.6 P3 — dead space on World and on the empty Fleet/Routes boards
+
+**OBSERVED**, `KEY-24-shell-world`, `KEY-41-layout-fleet-empty`. World is
+four navigation rows over roughly half a screen of nothing; the empty
+states are one card over the same. This is not BUG-035 returning — the
+picker sits correctly under the navigation bar — but the screens still
+read as unfinished. World in particular is a hub with room for the
+summary each of its four destinations would otherwise be entered to find.
+
+### 6.7 Not a defect, but the evidence is weaker than its name
+
+`testLightAppearanceMapForComparison` produces a frame
+(`KEY-61-light-map`) that is indistinguishable from the dark one. That is
+**correct behaviour** — the map ZStack pins `colorScheme = .dark`
+deliberately (BUG-036, `MapView.swift:60`), so there is no such thing as a
+light map. The test name promises a comparison it cannot make. Rename it,
+or point it at chrome that does vary.
+
+### 6.8 The AE-033 work itself, re-checked against the frames
+
+| Claim | Status |
+| --- | --- |
+| World zoom labels only hubs + home | 👁 OBSERVED (`KEY-71`) |
+| Regional/local ladder reveals majors then secondaries | 👁 OBSERVED (`KEY-72`, `KEY-73`) |
+| Day/night terminator, correct hemisphere and phase | 👁 OBSERVED + measured (brightness profile, run 73) |
+| Player route glow | 👁 OBSERVED (`KEY-81`, `KEY-82`) |
+| Moving aircraft along the great circle | 👁 OBSERVED (`KEY-81`, `KEY-82`) |
+| "Airline" tab, light and dark | 👁 OBSERVED (`KEY-22`, `KEY-52`) |
+| Global-hub second ring | ⚠️ drawn, but too small to resolve in a downscaled log frame — NOT VERIFIED |
+| Selection pulse | ❌ NOT VERIFIED — no automated frame selects an airport |
+
+The last two are the honest gap in this phase: both are real code on every
+render, and neither has been *seen*. A journey leg that taps an airport
+and captures the panel would close both at once, and is the single
+highest-value addition to the harness.
+
+### 6.9 What remains untestable here, unchanged from AE-032
+
+System-appearance following, audio audibility, VoiceOver order, contrast
+as rendered, hardware performance, and the game-over screen. The iPad
+detail journey still fails on the same market-sheet tap flakiness as the
+phone (runs 73 and 74 both lost `testAcquireAircraftThenOpenARoute` to it
+while the identical helper leased successfully inside the flight journey
+minutes later — automation, not app).
