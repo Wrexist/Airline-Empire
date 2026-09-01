@@ -466,17 +466,6 @@ final class GameController {
         cachedCompetition = nil
     }
 
-    /// The competitive picture — Home's one rival fact, the World hub's live
-    /// line, the Competitors screen. Computed once per snapshot like the
-    /// rest: it walks every route and the market-move record.
-    var competitionSummary: CompetitionSummary? {
-        guard let snapshot, let catalog else { return nil }
-        if let cachedCompetition { return cachedCompetition }
-        let summary = snapshot.competitionSummary(catalog: catalog)
-        cachedCompetition = summary
-        return summary
-    }
-
     // MARK: Time control
 
     func setSpeed(_ newSpeed: SimSpeed) {
