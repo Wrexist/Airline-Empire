@@ -678,3 +678,18 @@ has landed — the first ticket revenue is in the bank"), and the four
 digit-coded milestones got real titles. The flight journey test drives to
 first landing and asserts the checklist→Next-Moves handover, capturing
 the post-checklist Home for the first time. Validation: next CI run.
+
+**2026-09-01 (AE-034 "The First Month" — the never-seen states, seen).**
+Runs 94/95: a new journey drives the real engine to 2030-02-01 with 31
+sunrise taps (synchronous day simulation, zero wall-clock dependence) and
+the frames photographed every state the project had only ever READ: the
+month-end close, "Last month $959k" on Home, the "First profitable month"
+celebration with its detail line, the JAN 2030 STATEMENT with per-category
+rows and the green no-burn forecast, the route's month ($1.9M last full
+month, 98% punctuality), and the World hub's live lines with real data.
+The first month is PROFITABLE through the real economy. 17/17 UI, 414/414
+Core, counter assertions held. EXP-03 partially fixed (two of three cases
+observed fixed; FM-03 records the survivor), EXP-04 deferred with reasons,
+EXP-05 fixed and observed, EXP-06 improved (residual ghosting, thickened),
+EXP-07 implemented (feel not claimed). Evidence:
+docs/FIRST_MONTH_RUNTIME_AUDIT.md.

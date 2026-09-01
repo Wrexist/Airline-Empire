@@ -756,6 +756,10 @@ struct AircraftShopSheet: View {
             // An always-on bar background is the smallest honest fix: the
             // header is a boundary, so it gets a surface — not a decorative
             // gradient.
+            // Thick, because run 95's XXL frame showed card text still
+            // legible through the default material. Visible alone was not a
+            // boundary.
+            .toolbarBackground(.thickMaterial, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             // Buying an aircraft is the most expensive thing a player does.
             // The sheet says so on the way in and out; the purchase itself is

@@ -55,16 +55,30 @@ no other P0/P1.)*
   ROOT CAUSE: airport labels clamp to the viewport only when their
   marker is on-screen; country labels never clamp. FIX: clamp or cull
   labels whose text rect crosses the safe-area edge. (OBSERVED)
+  **PARTIALLY FIXED (First Month phase)**: country-label and
+  under-tab-bar cases OBSERVED fixed (run 95 KEY-51); one torn airport
+  label survives the full-containment cull (run 95 KEY-82, FM-03 in
+  FIRST_MONTH_RUNTIME_AUDIT §5 — suspected text-width under-estimate).
 - **EXP-04 · MAP · World-zoom letterbox.** At 1× with the coach card up,
   a large empty field sits above the world band (KEY-71). FIX: bias
   vertical centering by the coach card's height. (OBSERVED)
+  **INVESTIGATED, DEFERRED** — chrome-coupled camera bias vs counted
+  invariants; reasons in FIRST_MONTH_RUNTIME_AUDIT §3.
 - **EXP-05 · WORLD · Bottom half empty** (KEY-24). FIX: surface one live
   fact per card (next storm, closest rival move) instead of static
   descriptions. (OBSERVED)
+  **FIXED** — live lines per card from real state; OBSERVED with data in
+  run 95 KEY-15 ("Biggest rival: PacificBlue, 1 route").
 - **EXP-06 · SHEETS · No header fade at XXL type** (KEY-97). (OBSERVED)
+  **PARTIALLY FIXED** — always-on bar background landed; default material
+  still ghosts at XXL (run 95 KEY-97), thickened to `.thickMaterial`
+  (AUTHORED, next run).
 - **EXP-07 · MAP · y-clamp pan absorbs the finger silently** — the zoom
   limits have resistance+spring, vertical pan does not
   (`MAP_RUNTIME_BASELINE.md` §4, TECH_DEBT TD-023). (READ)
+  **FIXED in code** — diminishing give past the clamp + spring-back on
+  release, the zoom limits' shape. AUTHORED; geometry simulator-honest,
+  feel is a device question (never claimed).
 
 ## Game feel: what exists vs. what is missing
 

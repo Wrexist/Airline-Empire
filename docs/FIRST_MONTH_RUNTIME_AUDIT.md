@@ -82,14 +82,40 @@ pending the phase's CI run). Exported keyframes: `10-before-month-end`,
   whether the resistance *feels* right — that is a device question and is
   not claimed (see §6).
 
-## 4. Frames inspected (filled at harvest)
+## 4. Frames inspected (runs 94 and 95, OBSERVED)
 
-*Pending the phase's CI run. Every keyframe listed in §2 gets a row here
-with what was actually looked at, or the section says why not.*
+| Frame | What was actually looked at |
+| --- | --- |
+| KEY-10-before-month-end | Home on 2030-01-31: month-to-date accumulated, checklist long gone, Next Moves ranking live. |
+| KEY-11-home-after-month-end | 2030-02-01 00:00. "Last month **$959k** ↗" tile populated (was an em-dash for the whole project's history), month-to-date reset to $0, reputation 60 % → 75 %, net worth held at $60.0M. Time visibly passed and the outcome is on the surface. |
+| KEY-14-first-profitable-month | The celebration overlay, caught live: star icon, "First profitable month — The airline made more than it spent this month." The new detail line renders; no confetti, no interruption. |
+| KEY-12-finance-first-statement | The whole answer stack: forecast card now reads "Last month made money — there is no burn to run out of" (green, prose); the monthly net-profit chart shows one ~$959k January bar; "JAN 2030 STATEMENT" lists per-category rows (Airport fees −$953k, Crew −$141k, Leases −$790k…), Net profit below the fold. Period, profit and cash are all distinguishable at a glance. |
+| KEY-13-route-after-month | ARN–LHR detail on Feb 1: "Last full month **$1.9M**", load 100 %, punctuality/completion 98 %, "Where the money went" with This-month vs Last columns, and the honest morning-after line "Too new to judge — the first flights have not landed yet." |
+| KEY-15-world-after-month | The World hub with something to say: "Biggest rival: PacificBlue, 1 route" live line, progression badge at 17 % to next era. No world event was active — the events line is honestly absent. |
+| KEY-51 / KEY-82 / KEY-97 | EXP re-checks, §5. |
 
-## 5. Defects found (filled from the frames)
+## 5. Defects found (from the frames)
 
-*Pending.*
+- **FM-01 (fixed in-phase, test-side).** The statement assertion searched
+  "Jan 2030 statement" while `AESectionHeader` renders uppercased — run
+  94 failed on it with the statement demonstrably on screen (KEY-11's
+  populated tile). One cycle spent; run 95 green.
+- **FM-02 (fixed in-phase).** Spec-bar labels wrapped mid-word at XXL
+  type ("Rang / e", run 94 KEY-97) — fixed 62 pt column became a minimum.
+  OBSERVED fixed in run 95's KEY-97.
+- **FM-03 (open, P3).** One torn edge label survives: run 95's KEY-82
+  still shows "Langnes (Tron" cut at the right edge *after* the
+  full-containment cull — while the under-tab-bar and country-label
+  cases (KEY-51) are OBSERVED fixed. Working hypothesis: the placer's
+  estimated text width (chars × 6.4 + 10) under-measures the rendered
+  string at this size, so a box passes containment while its glyphs
+  overflow it. Next step is measuring the rendered width from the frame
+  pixels before touching the estimate. Not worth a third cycle this
+  phase; recorded in GAME_EXPERIENCE_PRIORITY.
+- **FM-04 (improved, residual open, P3).** XXL sheet header: the default
+  visible toolbar material still let card text ghost through (run 95
+  KEY-97); strengthened to `.thickMaterial` — AUTHORED, rides the next
+  run.
 
 ## 6. Device validation still required
 
