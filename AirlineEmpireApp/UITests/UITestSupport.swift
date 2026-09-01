@@ -689,20 +689,45 @@ class AEUITestCase: XCTestCase {
             // A row tap that lands on stale geometry no-ops silently; the
             // board simply stays on screen. Retry, exactly as the first
             // assignment does, and photograph each miss.
+            //
+            // Every retry re-checks that the *board* is what we are looking
+            // at. Run 103 crashed here on a second tap issued from a route
+            // detail that had simply arrived slower than the five seconds
+            // allowed: `row` no longer matched anything, and XCUITest turns
+            // that into a hard failure rather than a miss.
             var arrived = false
             for attempt in 1...3 {
-                row.tap()
-                if assign.waitForExistence(timeout: 5) || unassign.exists {
+                if arrivedAtRouteDetail(assign, unassign, timeout: 0.5) {
                     arrived = true
                     break
                 }
-                capture("BARE-ROW-TAP-\(index)-\(attempt)")
-                app.swipeUp()
-                app.swipeDown()
+                guard row.exists else {
+                    checkpoint("BARE-ROW-GONE-\(index)-\(attempt)")
+                    break
+                }
+                row.tap()
+                if arrivedAtRouteDetail(assign, unassign, timeout: 8) {
+                    arrived = true
+                    break
+                }
+                checkpoint("BARE-ROW-TAP-\(index)-\(attempt)")
+                // Jiggle for fresh geometry — but only if the board is
+                // still in front of us; a swipe on a detail screen is just
+                // vandalism.
+                if row.exists {
+                    app.swipeUp()
+                    app.swipeDown()
+                }
                 Thread.sleep(forTimeInterval: 0.5)
             }
             guard arrived else {
                 bare += 1
+                // Leave whatever screen the misses landed on, so the next
+                // row starts from the board.
+                if !row.exists, app.navigationBars.buttons.firstMatch.exists {
+                    app.navigationBars.buttons.firstMatch.tap()
+                    Thread.sleep(forTimeInterval: 0.5)
+                }
                 continue
             }
 
@@ -716,7 +741,7 @@ class AEUITestCase: XCTestCase {
                     // No assignment menu at all: the route detail is saying
                     // no aircraft the airline owns can fly this pair today.
                     // That is the game answering, not a tap missing.
-                    capture("BARE-ROUTE-NO-CANDIDATE-\(index)")
+                    checkpoint("BARE-ROUTE-NO-CANDIDATE-\(index)")
                 }
                 if !unassign.waitForExistence(timeout: 8) { bare += 1 }
             }
@@ -821,6 +846,20 @@ class AEUITestCase: XCTestCase {
             taps += 1
         }
         return arrived.exists
+    }
+
+    /// Whether a route detail is in front of us — it offers either an
+    /// assignment menu or an Unassign action, and which of the two appears
+    /// first is a race, so wait on both together.
+    private func arrivedAtRouteDetail(_ assign: XCUIElement,
+                                      _ unassign: XCUIElement,
+                                      timeout: TimeInterval) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if assign.exists || unassign.exists { return true }
+            Thread.sleep(forTimeInterval: 0.25)
+        } while Date() < deadline
+        return false
     }
 
     /// Advance one morning at a time, stopping the day a given phrase shows

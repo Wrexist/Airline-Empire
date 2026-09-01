@@ -70,6 +70,13 @@ celebration overlay carries it live; nothing carries it afterwards.
 is its absence.) Milestones persist; missions, statements and completions
 do not.
 
+**The moment itself, finally photographed (OBSERVED, run 103 KEY-30b).**
+Watching Home every morning catches it on 13 January 2030: a banner
+across the top of the dashboard, *"Mission complete — $250k paid into
+your account."* It is a good moment, well made. EXP-08 is not about the
+moment; it is about the fact that a player who taps the sunrise control
+four times will never know it happened.
+
 ## 5. After the era
 
 READ: the Progression screen re-points at "To reach National" (trailing

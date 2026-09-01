@@ -79,7 +79,7 @@ journey founds on the same seed through the game's own World-seed field.
 | Second month opening from a closed first month | yes | run 102 KEY-32 | OBSERVED |
 | Gate part-satisfied ("2 of 3", owned airframe Yes) | yes | run 102 KEY-34, KEY-37 | OBSERVED |
 | Route sheet's era/fleet distinction + commit caution | yes | run 102 KEY-38, KEY-39 | OBSERVED |
-| Mission completion | Core only | campaign twin, day 11 | MEASURED, not yet OBSERVED |
+| Mission completion, paid, on screen | yes | run 103 KEY-30b | OBSERVED |
 | Second statement | Core only | $5.4M | MEASURED, not yet OBSERVED |
 | Era transition + celebration + post-era goals | Core only | day 59 | MEASURED, not yet OBSERVED |
 

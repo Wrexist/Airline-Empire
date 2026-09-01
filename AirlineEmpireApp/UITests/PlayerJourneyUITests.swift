@@ -534,7 +534,7 @@ final class PlayerJourneyUITests: AEUITestCase {
             // suggestion to actually accept a tap rather than assuming a
             // visible frame means a live control (run 99).
             guard tapWhenReady(suggestion) else {
-                capture("FEB-SUGGESTION-NO-TAP-\(attempt)")
+                checkpoint("FEB-SUGGESTION-NO-TAP-\(attempt)")
                 break
             }
             let commit = app.buttons.matching(identifier: "ae-route-open").firstMatch
@@ -546,7 +546,7 @@ final class PlayerJourneyUITests: AEUITestCase {
                 // said nothing about the second. Whatever the sheet is doing
                 // here — a disabled commit, a rejection, a screen that never
                 // arrived — it gets photographed before we walk away.
-                capture("FEB-ROUTE-SHEET-STUCK-\(attempt)")
+                checkpoint("FEB-ROUTE-SHEET-STUCK-\(attempt)")
                 if app.buttons["Done"].exists { app.buttons["Done"].tap() }
             }
             openTab("Home")
