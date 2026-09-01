@@ -1,0 +1,414 @@
+import XCTest
+
+/// The shell and the map: what every screen looks like, in both appearances,
+/// at large text sizes, and under the camera.
+///
+/// Three defect classes have been found in this project that no compiler can
+/// see, and all three are *agreements* Swift does not check:
+///
+/// | Class | Example | What catches it |
+/// | --- | --- | --- |
+/// | a link that resolves to nothing | BUG-029, BUG-030 | tapping it |
+/// | a string that matches nothing | BUG-033 | a contract test |
+/// | a control in the wrong place | BUG-035 | a frame assertion |
+///
+/// The first and third live here. The second lives in Core, in
+/// `RejectionCodeContractTests`.
+///
+/// The two appearance tests stay in the same class deliberately: appearance
+/// is a property of the *simulator*, not of the process, so switching it is
+/// a system-wide animation. Tests that fight over it must run on one clone,
+/// one after another.
+final class ShellAndMapUITests: AEUITestCase {
+
+
+    // MARK: Appearance
+    //
+    // `Theme.swift` states the intended behaviour outright: presentation
+    // surfaces sit on the dusk palette (the new-game screen forces
+    // `.preferredColorScheme(.dark)`), while "gameplay screens keep the system
+    // background — a dashboard is for reading numbers, not for atmosphere."
+    // `DESIGN_SYSTEM.md` §10 agrees, listing contrast in *both appearances* as
+    // unverified.
+    //
+    // So the app is adaptive by design, and the light screens seen in AE-031
+    // were correct behaviour, not a theme failing to apply. What has never
+    // been looked at is the dark half — which is the half the map's fixed
+    // near-black palette was designed against.
+
+    func testDarkAppearanceRendersEveryTab() throws {
+        // Reaching gameplay is the check: appearance only varies once the
+        // game is running, because the new-game screen is pinned to dark.
+        guard reachGameplay(in: .dark) else { return }
+        // Named by how the appearance was actually obtained, so a screenshot
+        // can never imply more than it proved.
+        let route = appearanceRoute.rawValue
+        checkpoint("50-\(route)-home")
+
+        let tabs = ["Map", "Airline", "Finance", "World"]
+        for (index, tab) in tabs.enumerated() {
+            openTab(tab)
+            XCTAssertTrue(app.staticTexts.count > 0 || app.otherElements.count > 0,
+                          "\(tab) rendered nothing in dark appearance")
+            checkpoint("5\(index + 1)-\(route)-\(tab.lowercased())")
+        }
+    }
+
+
+    /// The same screens in light, so the pair can be compared directly.
+    /// The map is the one that matters: its palette is fixed near-black in
+    /// both appearances, so light is where it risks looking like a hole.
+    func testLightAppearanceMapForComparison() throws {
+        guard reachGameplay(in: .light) else { return }
+        checkpoint("60-light-home")
+        openTab("Map")
+        checkpoint("61-light-map")
+    }
+
+
+    // MARK: Screens the journey had never reached (§12)
+
+    /// Aircraft detail, route detail, and Settings — three screens that were
+    /// 📖 read-only until this test: reachable in source, never rendered.
+    func testDetailScreensAndSettingsRender() throws {
+        launch(appearance: .light)
+        guard foundAirline() else { return }
+
+        // ── Aircraft detail, via the fleet board ──────────────────────────
+        openTab("Airline")
+        app.buttons["Fleet"].tap()
+        let browse = app.buttons["Browse the market"]
+        require(browse, "the market entry point")
+        browse.tap()
+        guard leaseAnAircraft() else { return }
+
+        let aircraftRow = app.descendants(matching: .any)
+            .matching(identifier: "ae-fleet-row").firstMatch
+        require(aircraftRow, "the leased aircraft on the fleet board")
+        aircraftRow.tap()
+        // Content only aircraft detail has. The first attempt asked for
+        // "condition", which the fleet board's own summary also says — so
+        // run 60 photographed the board under the name "aircraft-detail" and
+        // the assertion passed anyway. "Ownership" is a section header that
+        // exists nowhere else — matched case-insensitively, because
+        // AESectionHeader uppercases its text and run 64 failed this over a
+        // perfectly rendered screen whose header read "OWNERSHIP".
+        let detailRendered = app.staticTexts.matching(
+            NSPredicate(format: "label ==[c] %@", "Ownership")).firstMatch
+            .waitForExistence(timeout: 10)
+        checkpoint("90-aircraft-detail")
+        XCTAssertTrue(detailRendered, """
+            Aircraft detail shows no Ownership section — either the wrong \
+            screen was pushed or it rendered empty. Screenshot attached.
+            """)
+        app.navigationBars.buttons.firstMatch.tap()
+
+        // ── Route detail, via the routes board ────────────────────────────
+        guard openARoute() else { return }
+        let routeRow = app.descendants(matching: .any)
+            .matching(identifier: "ae-route-row").firstMatch
+        require(routeRow, "the new route on the board")
+        routeRow.tap()
+        let routeRendered = app.buttons["Assign an aircraft"]
+            .waitForExistence(timeout: 10)
+        checkpoint("91-route-detail")
+        XCTAssertTrue(routeRendered, """
+            Route detail did not offer to assign an aircraft, on a route \
+            with an idle, in-range aircraft in the fleet. Either the wrong \
+            screen was pushed or the assignment card is missing. Screenshot \
+            attached.
+            """)
+
+        // ── Settings, from Home ───────────────────────────────────────────
+        openTab("Home")
+        let settings = app.buttons["Settings"]
+        require(settings, "the Settings button in the toolbar")
+        settings.tap()
+        let muteToggle = app.switches["Mute everything"]
+        let settingsRendered = muteToggle.waitForExistence(timeout: 10)
+        checkpoint("92-settings")
+        XCTAssertTrue(settingsRendered, """
+            The Settings sheet shows no "Mute everything" toggle. Either the \
+            sheet did not present or it rendered empty. Screenshot attached.
+            """)
+    }
+
+
+    // MARK: Dynamic Type (§19)
+
+    /// The shell at an accessibility text size.
+    ///
+    /// `AccessibilityL` is the first of the five accessibility sizes — large
+    /// enough that any layout which cannot flex has already broken, small
+    /// enough that a pass is not trivial. The assertions are the failure
+    /// classes §19 names: navigation must survive, and the market's primary
+    /// action must still be reachable. Whether it *looks* right is what the
+    /// checkpoints are for.
+    func testAccessibilityTextSizeKeepsTheShellUsable() throws {
+        launch(appearance: .light, arguments: [
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityL",
+        ])
+        guard foundAirline() else { return }
+        checkpoint("95-dynamictype-home")
+
+        // Navigation failure is the worst outcome: every tab must survive.
+        for tab in ["Map", "Airline", "Finance", "World", "Home"] {
+            guard let button = waitForTab(tab, timeout: 10) else {
+                capture(Self.logPrefix + "MISSING-\(tab)-at-accessibility-size")
+                XCTFail("The \(tab) tab vanished at accessibility size. Screenshot attached.")
+                continue
+            }
+            XCTAssertTrue(button.isHittable,
+                          "The \(tab) tab is not tappable at accessibility size")
+        }
+
+        openTab("Airline")
+        checkpoint("96-dynamictype-routes-empty")
+
+        // The market's primary action must still be reachable by scrolling.
+        app.buttons["Fleet"].tap()
+        let browse = app.buttons["Browse the market"]
+        require(browse, "the market entry point at accessibility size")
+        browse.tap()
+        let lease = app.buttons.matching(identifier: "ae-market-lease").firstMatch
+        scrollUntil(lease, "a Lease action in the market at accessibility size")
+        checkpoint("97-dynamictype-market")
+    }
+
+
+    // MARK: The clock (BUG-040)
+
+    /// Time actually passes when the player asks it to.
+    ///
+    /// The regression test for the most serious defect this phase found:
+    /// founding a game never started the simulation pump, so the clock sat
+    /// at day one, 00:00, whatever speed was selected — photographed twice
+    /// (runs 64 and 65) before the cause was found. This asks the smallest
+    /// possible version of the question, with no market, no sheets and no
+    /// scrolling in the way: found an airline, select 16×, and the date on
+    /// Home must change. At 16× a game-day passes in ~22 real seconds; a
+    /// minute of patience is generous, and a failure here means the game is
+    /// frozen for every player.
+    func testTheClockActuallyRuns() throws {
+        launch(appearance: .light)
+        guard foundAirline() else { return }
+
+        let openingDate = app.staticTexts["2030-01-01"]
+        XCTAssertTrue(openingDate.waitForExistence(timeout: 10),
+                      "Home does not show the scenario's opening date")
+
+        let fast = app.buttons["Sixteen times speed"]
+        require(fast, "the 16x speed control")
+        fast.tap()
+
+        let advanced = openingDate.waitForNonExistence(timeout: 60)
+        checkpoint("85-clock-after-16x")
+        XCTAssertTrue(advanced, """
+            A real minute at 16x — about two and a half game days — and Home \
+            still shows 2030-01-01. The simulation pump is not running: this \
+            is BUG-040's exact shape, and the game is frozen. Screenshot \
+            attached.
+            """)
+    }
+
+
+    /// The map at two zoom levels, and a pinch that does not fall over.
+    ///
+    /// Two things this can honestly check, and one it cannot. It can prove the
+    /// pinch gesture is accepted and the map survives it — a `Canvas` that
+    /// throws away its projection under a gesture would fail here. And it
+    /// captures the world and regional levels, which is the only way anyone
+    /// finds out whether the country labels crowd the airport codes.
+    ///
+    /// What it cannot check is whether any of it *looks* right. There is no
+    /// assertion in XCUITest for "the coastline reads as geography" or "the
+    /// flag rendered in colour". Those need a person and a screenshot, which
+    /// is why both are captured rather than merely visited.
+    func testZoomingTheMapRevealsCountryLabels() throws {
+        launch(appearance: .light)
+        guard foundAirline() else { return }
+        openTab("Map")
+
+        let map = app.descendants(matching: .any)["ae-map-canvas"]
+        require(map, "the map canvas")
+
+        // The camera's zoom is in the canvas's accessibility value, so every
+        // step below is *proved* to have moved it. The previous version of
+        // this test pinched blind: run 59's "world", "regional" and "local"
+        // screenshots came back byte-identical (the map opens framed on the
+        // home network, near the clamp, so pinching in moved nothing), and
+        // its final wide pinch-out landed a synthetic finger on the tab bar
+        // and photographed the Finance screen under a map filename. It
+        // passed, because all it asserted was that the canvas existed.
+        func zoom() -> Double {
+            let value = map.value as? String ?? ""
+            guard let range = value.range(of: #"zoom ([0-9.]+)x"#,
+                                          options: .regularExpression)
+            else { return .nan }
+            return Double(value[range].dropFirst(5).dropLast(1)) ?? .nan
+        }
+        checkpoint("70-map-opening-frame")
+        let opening = zoom()
+        XCTAssertFalse(opening.isNaN, "The map does not publish its zoom")
+
+        // Buttons first: they drive the same camera the gestures do, and a
+        // button tap cannot miss. Out to the world, in to the streets.
+        let zoomOut = app.buttons["Zoom out"]
+        require(zoomOut, "the zoom out control")
+        for _ in 0..<6 { zoomOut.tap() }
+        let world = zoom()
+        XCTAssertLessThan(world, opening,
+                          "Six zoom-out taps did not move the camera out")
+        checkpoint("71-map-world")
+
+        let zoomIn = app.buttons["Zoom in"]
+        for _ in 0..<3 { zoomIn.tap() }
+        XCTAssertGreaterThan(zoom(), world,
+                             "Three zoom-in taps did not move the camera in")
+        checkpoint("72-map-regional")
+        for _ in 0..<3 { zoomIn.tap() }
+        checkpoint("73-map-local")
+
+        // The gestures, each proved against the same probe.
+        //
+        // Double tap is synthesized reliably; it must zoom in, and that is a
+        // hard assertion. The pinch is XCUITest's weakest synthesis — if it
+        // moves the camera the claim is upgraded to asserted, and if it does
+        // not, that is recorded as an honest skip rather than a pass,
+        // because from here it is impossible to tell a broken gesture
+        // handler from a synthetic gesture the recognizer never saw. A
+        // person with a device settles it either way (docs/APPLE_VALIDATION.md).
+        for _ in 0..<4 { zoomOut.tap() }
+        let beforeDoubleTap = zoom()
+        map.doubleTap()
+        XCTAssertGreaterThan(zoom(), beforeDoubleTap,
+                             "Double-tapping the map did not zoom in")
+        checkpoint("74-map-after-double-tap")
+
+        let beforePinch = zoom()
+        map.pinch(withScale: 1.8, velocity: 1.0)
+        Thread.sleep(forTimeInterval: 1)
+        if !(zoom() > beforePinch) {
+            checkpoint("75-PINCH-DID-NOT-ZOOM")
+            throw XCTSkip("""
+                The synthetic pinch left the camera at \(zoom())x (was \
+                \(beforePinch)x). Buttons and double tap both move the same \
+                camera, so the zoom path works; whether a real two-finger \
+                pinch reaches the recognizer still needs a person and a \
+                device. Recorded as NOT VERIFIED, not as passing.
+                """)
+        }
+        checkpoint("75-map-after-pinch")
+    }
+
+
+    /// Selecting an airport on the map: the panel, and the marker art.
+    ///
+    /// This leg exists because of a gap the AE-033 audit had to record as
+    /// NOT VERIFIED. The selection pulse and the global-hub ring are drawn on
+    /// every frame the map renders, and *no automated frame had ever selected
+    /// an airport* — so neither had been seen, and neither could be, however
+    /// many map screenshots the suite collected. A tap that selects is the
+    /// one thing that photographs both.
+    ///
+    /// The camera frames home on open, so the home airport is at or near the
+    /// middle of the canvas. That is a good first guess and not a promise:
+    /// the tap walks a small spiral outward until the map reports a
+    /// selection, because an airport marker is a few points wide and a
+    /// synthetic tap that lands on empty ocean deselects rather than fails.
+    func testSelectingAnAirportOpensItsPanel() throws {
+        launch(appearance: .light)
+        guard foundAirline() else { return }
+        openTab("Map")
+
+        let map = app.descendants(matching: .any)["ae-map-canvas"]
+        require(map, "the map canvas")
+
+        // Zoom in a few steps first: at the opening frame the markers are
+        // small and close together, and a tap between two of them selects
+        // neither.
+        let zoomIn = app.buttons["Zoom in"]
+        if zoomIn.waitForExistence(timeout: 5) {
+            for _ in 0..<2 { zoomIn.tap() }
+        }
+
+        func selected() -> Bool {
+            (map.value as? String ?? "").contains("Selected")
+        }
+
+        // Centre first, then a ring around it. Normalised offsets, so this
+        // holds on any device the suite is pointed at.
+        let offsets: [(CGFloat, CGFloat)] = [
+            (0.5, 0.5), (0.5, 0.46), (0.54, 0.5), (0.46, 0.5),
+            (0.5, 0.54), (0.54, 0.46), (0.46, 0.54),
+        ]
+        var found = false
+        for (index, offset) in offsets.enumerated() {
+            map.coordinate(withNormalizedOffset:
+                CGVector(dx: offset.0, dy: offset.1)).tap()
+            Thread.sleep(forTimeInterval: 0.6)
+            if selected() { found = true; break }
+            if index == offsets.count - 1 { checkpoint("86-NO-AIRPORT-SELECTED") }
+        }
+
+        guard found else {
+            throw XCTSkip("""
+                Seven taps around the middle of the map selected nothing. The                 camera frames the home network on open, so a marker should be                 near the centre; a synthetic tap landing between markers is                 the likeliest explanation, and the pulse and hub ring stay                 NOT VERIFIED rather than being claimed on a frame that does                 not show them.
+                """)
+        }
+
+        // The panel is the proof the tap *meant* something, and the frame is
+        // the proof of what it looks like — the selection pulse around the
+        // marker, and the ring on any global hub in view.
+        let panel = app.descendants(matching: .any)["ae-map-selection"]
+        XCTAssertTrue(panel.waitForExistence(timeout: 5),
+                      "The map reported a selection but no panel opened")
+        checkpoint("86-airport-selected")
+
+        // Zoomed out one more time with the selection held: this is the frame
+        // where the hub rings on the other global airports are visible beside
+        // the pulsing selection.
+        let zoomOut = app.buttons["Zoom out"]
+        if zoomOut.exists {
+            for _ in 0..<3 { zoomOut.tap() }
+            checkpoint("87-airport-selected-world")
+        }
+    }
+
+
+    // MARK: Layout regression (TD-019)
+
+    /// The assertion that would have failed before BUG-035 was fixed.
+    ///
+    /// Measured from the screenshots either side of the fix: the section
+    /// picker's top edge sat at roughly **39%** of the window before, and
+    /// **15%** after. The bar is set at 30% — comfortably clear of the fixed
+    /// layout, comfortably under the broken one, and loose enough that an
+    /// intentional change to spacing does not fail it.
+    func testSectionPickerSitsUnderTheNavigationBarNotInDeadSpace() throws {
+        launch(appearance: .light)
+        guard foundAirline() else { return }
+        openTab("Airline")
+
+        let routesSegment = app.buttons["Routes"]
+        require(routesSegment, "the Routes segment")
+        assertNear(routesSegment, top: 0.30, "the section picker (Routes)")
+        checkpoint("40-layout-routes-empty")
+
+        let fleetSegment = app.buttons["Fleet"]
+        require(fleetSegment, "the Fleet segment")
+        fleetSegment.tap()
+        assertNear(fleetSegment, top: 0.30, "the section picker (Fleet)")
+
+        // The other half of BUG-035: the empty-state card had drifted a long
+        // way below the picker that introduces it.
+        let emptyTitle = app.staticTexts["No aircraft"]
+        require(emptyTitle, "the empty fleet state")
+        assertBelow(emptyTitle, fleetSegment, "the empty state")
+        assertClose(fleetSegment, emptyTitle, within: 0.20,
+                    "the picker and the empty state it introduces")
+        assertNotUnderTabBar(emptyTitle, "the empty fleet state")
+        checkpoint("41-layout-fleet-empty")
+    }
+}

@@ -499,7 +499,7 @@ final class MapRenderCache {
                        byCode: [AirportCode: MapModel.MapAirport],
                        projector: MapProjector, policy: MapDetailPolicy,
                        selected: AirportCode?, tick: Date, settle: Int,
-                       limit: Int,
+                       limit: Int, labelBounds: CGRect,
                        markerRadius: (MapModel.MapAirport) -> CGFloat)
         -> (labels: [MapLabel], placedNow: Bool) {
         let key = PlacementKey(level: policy.level, size: projector.size,
@@ -511,18 +511,29 @@ final class MapRenderCache {
                          projector: projector) == nil {
             var out: [MapLabel] = []
             out.reserveCapacity(airportMemory.count)
+            // Full containment, not the placer's ±12pt keep margin: run 94
+            // re-photographed "Langnes (Tron" torn at the edge because a
+            // 12pt overhang still draws 12pt of shredded text. Between
+            // placements labels ride the camera by re-projection (run 85's
+            // KEY-82 first showed the tear, EXP-03); a box that no longer
+            // fits entirely on the legible canvas skips this frame — the
+            // memory itself survives, so the label returns the moment the
+            // camera gives it room.
+            let keep = labelBounds
             for memory in airportMemory {
                 guard let airport = byCode[memory.code] else { continue }
                 let anchor = projector.project(airport.position)
                 let centre = CGPoint(x: anchor.x + memory.offset.width,
                                      y: anchor.y + memory.offset.height)
                 let width = CGFloat(memory.text.count) * 6.4 + 10
+                let box = CGRect(x: centre.x - width / 2, y: centre.y - 7,
+                                 width: width, height: 14)
+                guard keep.contains(box) else { continue }
                 out.append(MapLabel(
                     text: memory.text, point: centre,
                     priority: memory.priority, isPlayer: memory.isPlayer,
                     emphasis: memory.emphasis,
-                    box: CGRect(x: centre.x - width / 2, y: centre.y - 7,
-                                width: width, height: 14),
+                    box: box,
                     code: memory.code, anchorOffset: memory.offset))
             }
             return (out, false)
@@ -532,7 +543,7 @@ final class MapRenderCache {
         let labels = MapLabelLayout.place(
             airports, level: policy.level, zoom: policy.zoom,
             selected: selected, limit: limit,
-            bounds: CGRect(origin: .zero, size: projector.size),
+            bounds: labelBounds,
             markerRadius: markerRadius, remembered: airportMemory)
         airportMemory = labels.compactMap { label in
             guard let code = label.code else { return nil }
@@ -551,16 +562,22 @@ final class MapRenderCache {
     /// frozen with them between placements. Anchors are stored in map space
     /// via `unproject`, so re-projection moves them exactly with the world.
     func countryLabels(projector: MapProjector, policy: MapDetailPolicy,
-                       blocked: [CGRect], placedNow: Bool) -> [MapLabel] {
+                       blocked: [CGRect], placedNow: Bool,
+                       labelBounds: CGRect) -> [MapLabel] {
         if !placedNow {
-            return countryMemory.map { memory in
+            // Same edge rule as the airports: full containment, or the
+            // label sits this frame out rather than drawing torn.
+            let keep = labelBounds
+            return countryMemory.compactMap { memory in
                 let point = projector.project(MapPoint(x: Double(memory.anchor.x),
                                                        y: Double(memory.anchor.y)))
+                let box = CGRect(x: point.x - memory.width / 2, y: point.y - 8,
+                                 width: memory.width, height: 16)
+                guard keep.contains(box) else { return nil }
                 return MapLabel(
                     text: memory.text, point: point, priority: 0,
                     isPlayer: false, emphasis: false,
-                    box: CGRect(x: point.x - memory.width / 2, y: point.y - 8,
-                                width: memory.width, height: 16))
+                    box: box)
             }
         }
         let candidates = CountryLabels.visible(atZoom: policy.zoom)
@@ -575,7 +592,8 @@ final class MapRenderCache {
         }
         let labels = MapLabelLayout.placeCountries(
             projected, blocked: blocked,
-            limit: policy.level == .world ? 10 : 18)
+            limit: policy.level == .world ? 10 : 18,
+            bounds: labelBounds)
         countryMemory = labels.map {
             (anchor: projector.unproject($0.point), text: $0.text,
              width: $0.box.width)

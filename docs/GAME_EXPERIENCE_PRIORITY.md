@@ -31,12 +31,41 @@ no other P0/P1.)*
   markets). VALIDATION: journey test extended past first revenue,
   screenshot of Home after checklist completion. (READ; the scripted
   journey ends before this state, so no frame exists.)
+  **IMPLEMENTED (first-session phase)**: `NextMovesCard` — the
+  idle-aircraft warning plus the top two `marketOpportunities`, opening
+  the same guided route sheet the checklist used; the flight journey
+  test now drives to first landing and asserts the checklist→card
+  handover. **OBSERVED (run 93, KEY-09)**: checklist retired, Next Moves
+  card with two ranked markets on screen, $66k month-to-date beside it —
+  the state exists and reads as designed.
 - **EXP-02 · ROUTES/FLEET · Summary strip outweighs a 1-row list.**
   REPRO: KEY-04/KEY-07. ROOT CAUSE: the 7-metric strip renders at full
   weight regardless of fleet size. IMPACT: early-game screens read as
   chrome over emptiness (~60 % dead space). FIX: collapse the strip to
   its 2–3 non-degenerate metrics until the list exceeds ~3 rows.
   VALIDATION: re-screenshot KEY-04/07. (OBSERVED)
+  **IMPLEMENTED (first-session phase)**: both strips gate their
+  aggregate columns behind `count > 3`. **OBSERVED (run 93, KEY-04/07)**:
+  both strips now four metrics, the dead-space chrome gone.
+
+- **EXP-08 · HOME · The record of the game’s biggest moments is
+  write-only.** REPRO: run 102 KEY-30 offers a mission on 10 January
+  ("Carry 500 passengers in Africa · $250k"); the Core twin completes it
+  on day 11; KEY-31 on 20 January shows no trace of it anywhere — the
+  MISSIONS section is simply gone. ROOT CAUSE: the Home feed renders
+  `recentEvents.suffix(14)` — the last fourteen **events**, not fourteen
+  days — and with flights arriving daily a completion rolls off within a
+  simulated week. The celebration overlay carries the moment live and
+  nothing carries it afterwards; milestones persist, missions,
+  completions and statements do not. IMPACT: a player who advances
+  several days between visits — which the sunrise control actively
+  encourages — can finish a mission, be paid for it, and never see that
+  it happened. FIX: keep a short *notable* history (statements,
+  missions, era changes, capability completions) that ages by simulated
+  days rather than by event count, or surface it on the Progression
+  screen where the mission lived. VALIDATION: the campaign now watches
+  Home morning-by-morning and photographs the completion the day it
+  lands (`advanceMorningsUntilHomeSays`). (READ + OBSERVED, run 102.)
 
 ## P3
 
@@ -45,16 +74,30 @@ no other P0/P1.)*
   ROOT CAUSE: airport labels clamp to the viewport only when their
   marker is on-screen; country labels never clamp. FIX: clamp or cull
   labels whose text rect crosses the safe-area edge. (OBSERVED)
+  **PARTIALLY FIXED (First Month phase)**: country-label and
+  under-tab-bar cases OBSERVED fixed (run 95 KEY-51); one torn airport
+  label survives the full-containment cull (run 95 KEY-82, FM-03 in
+  FIRST_MONTH_RUNTIME_AUDIT §5 — suspected text-width under-estimate).
 - **EXP-04 · MAP · World-zoom letterbox.** At 1× with the coach card up,
   a large empty field sits above the world band (KEY-71). FIX: bias
   vertical centering by the coach card's height. (OBSERVED)
+  **INVESTIGATED, DEFERRED** — chrome-coupled camera bias vs counted
+  invariants; reasons in FIRST_MONTH_RUNTIME_AUDIT §3.
 - **EXP-05 · WORLD · Bottom half empty** (KEY-24). FIX: surface one live
   fact per card (next storm, closest rival move) instead of static
   descriptions. (OBSERVED)
+  **FIXED** — live lines per card from real state; OBSERVED with data in
+  run 95 KEY-15 ("Biggest rival: PacificBlue, 1 route").
 - **EXP-06 · SHEETS · No header fade at XXL type** (KEY-97). (OBSERVED)
+  **PARTIALLY FIXED** — always-on bar background landed; default material
+  still ghosts at XXL (run 95 KEY-97), thickened to `.thickMaterial`
+  (AUTHORED, next run).
 - **EXP-07 · MAP · y-clamp pan absorbs the finger silently** — the zoom
   limits have resistance+spring, vertical pan does not
   (`MAP_RUNTIME_BASELINE.md` §4, TECH_DEBT TD-023). (READ)
+  **FIXED in code** — diminishing give past the clamp + spring-back on
+  release, the zoom limits' shape. AUTHORED; geometry simulator-honest,
+  feel is a device question (never claimed).
 
 ## Game feel: what exists vs. what is missing
 

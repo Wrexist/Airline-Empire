@@ -30,11 +30,19 @@ public struct MarketOpportunity: Equatable, Sendable {
     /// True when at least one aircraft the player owns could fly it today.
     /// False means the market is real but out of reach for this fleet.
     public let servableNow: Bool
+    /// True when some aircraft of the current era could fly it — so a market
+    /// that is not servable *now* still divides into "buy or lease the right
+    /// aircraft" and "a route for a later era". The AE-035 campaign opened
+    /// ARN–Addis Ababa (5,850 km, beyond every startup airframe) and watched
+    /// it sit unflown for two months; the sheet's warning could not say
+    /// which kind of impossible it was.
+    public let servableByEra: Bool
 
     public init(origin: AirportCode, destination: AirportCode,
                 destinationCity: String, distanceKm: Int,
                 expectedDailyPassengers: Int, referenceFare: Money,
-                incumbents: Int, servableNow: Bool) {
+                incumbents: Int, servableNow: Bool,
+                servableByEra: Bool = true) {
         self.origin = origin
         self.destination = destination
         self.destinationCity = destinationCity
@@ -43,6 +51,7 @@ public struct MarketOpportunity: Equatable, Sendable {
         self.referenceFare = referenceFare
         self.incumbents = incumbents
         self.servableNow = servableNow
+        self.servableByEra = servableByEra
     }
 
     /// A first-route suggestion is an opportunity with the extra fields
@@ -189,6 +198,9 @@ extension GameState {
         }
         let ownedSpecs = fleet(of: player.id)
             .compactMap { catalog.aircraftType($0.typeCode) }
+        let eraSpecs = catalog.orderedAircraftTypeCodes
+            .compactMap { catalog.aircraftType($0) }
+            .filter { progression.era.allowedCategories.contains($0.category) }
         let date = currentDate
         let quality = DemandSystem.representativeStarterQuality(
             tuning: catalog.tuning.demand)
@@ -200,12 +212,16 @@ extension GameState {
             // Per aircraft, never the best range paired with the least
             // demanding runway — the same rule `marketOpportunities` follows,
             // and for the same reason (BUG-006's neighbourhood).
-            let servable = ownedSpecs.contains { spec in
-                catalog.routeEligibility(
-                    from: origin, to: code,
-                    aircraftRangeKm: spec.rangeKm,
-                    aircraftRunwayRequirement: spec.runwayRequirement).isEmpty
+            func eligible(_ specs: [AircraftTypeSpec]) -> Bool {
+                specs.contains { spec in
+                    catalog.routeEligibility(
+                        from: origin, to: code,
+                        aircraftRangeKm: spec.rangeKm,
+                        aircraftRunwayRequirement: spec.runwayRequirement).isEmpty
+                }
             }
+            let servable = eligible(ownedSpecs)
+            let servableByEra = servable || eligible(eraSpecs)
             let outbound = DemandSystem.expectedCapturedPassengers(
                 pool: DemandSystem.demandPool(from: origin, to: code, date: date,
                                               economicIndex: world.economicIndex,
@@ -225,7 +241,7 @@ extension GameState {
                 expectedDailyPassengers: Int((outbound + inbound).rounded()),
                 referenceFare: Money(rounding: fare),
                 incumbents: carrierCounts[Route.market(origin, code)] ?? 0,
-                servableNow: servable))
+                servableNow: servable, servableByEra: servableByEra))
         }
         // Demand first, then reachability, then code — deterministic, and the
         // order the route sheet's own header has always claimed.

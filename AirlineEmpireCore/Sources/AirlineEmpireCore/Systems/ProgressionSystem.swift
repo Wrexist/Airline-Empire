@@ -209,7 +209,9 @@ public struct ProgressionSystem: SimulationSystem {
                 / GameCalendar.minutesPerDay)
             let target = max(500, Int64(Double(dailySeats) * Double(days)
                 * tuning.boomRushTargetFactor))
-            let reward = tuning.boomRushRewardPerPax * target
+            let scaled = tuning.boomRushRewardPerPax * target
+            let reward = scaled > tuning.boomRushRewardFloor
+                ? scaled : tuning.boomRushRewardFloor
             let mission = Mission(id: state.progression.nextMissionID,
                                   sourceEventID: event.id,
                                   kind: .boomRush(region: region,

@@ -538,7 +538,7 @@ final class GameController {
         case .milestoneReached(let code):
             celebration = Celebration(
                 id: celebrationCounter, title: Vocab.milestone(code),
-                detail: "Milestone reached.", icon: "star.fill")
+                detail: Vocab.milestoneDetail(code), icon: "star.fill")
         case .achievementUnlocked(let code):
             celebration = Celebration(
                 id: celebrationCounter, title: Vocab.achievement(code),

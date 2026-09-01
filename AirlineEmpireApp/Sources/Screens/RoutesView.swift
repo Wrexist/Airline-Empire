@@ -143,22 +143,32 @@ struct RoutesList: View {
 struct NetworkSummaryRow: View {
     let summary: NetworkSummary
 
+    /// A statistic over three rows is just the rows, restated. The AE-033
+    /// runtime audit photographed a seven-metric strip crowning a one-route
+    /// list (EXP-02): at that scale the aggregate columns read as chrome, so
+    /// they wait until the list is long enough to need summarising.
+    private var compact: Bool { summary.routeCount <= 3 }
+
     private var metrics: [AEMetric] {
         var list: [AEMetric] = [
             AEMetric("routes", "\(summary.routeCount)"),
-            AEMetric("earning", "\(summary.profitableRoutes)",
-                     tint: summary.profitableRoutes > 0 ? AETheme.positive : nil),
+        ]
+        if !compact {
+            list.append(AEMetric("earning", "\(summary.profitableRoutes)",
+                                 tint: summary.profitableRoutes > 0 ? AETheme.positive : nil))
             // Losing and earning do not sum to the total: a route that has not
             // flown yet is neither, and calling it a loss would be a lie.
-            AEMetric("losing", "\(summary.losingRoutes)",
-                     tint: summary.losingRoutes > 0 ? AETheme.negative : nil),
-        ]
+            list.append(AEMetric("losing", "\(summary.losingRoutes)",
+                                 tint: summary.losingRoutes > 0 ? AETheme.negative : nil))
+        }
         if summary.idleRoutes > 0 {
             list.append(AEMetric("no aircraft", "\(summary.idleRoutes)",
                                  tint: AETheme.caution))
         }
-        list.append(AEMetric("load factor",
-                             summary.averageLoadFactor.map(Format.percent) ?? "—"))
+        if !compact {
+            list.append(AEMetric("load factor",
+                                 summary.averageLoadFactor.map(Format.percent) ?? "—"))
+        }
         list.append(AEMetric("in the air", "\(summary.liveFlights)"))
         list.append(AEMetric("month to date",
                              Format.money(summary.monthToDateProfit),
@@ -894,6 +904,7 @@ struct OpenRouteSheet: View {
         let distanceKm: Int
         let referenceFare: Money
         let servable: Bool
+        let servableByEra: Bool
         /// Passengers a starter service could expect to capture per day
         /// across both directions — the same figure the onboarding card
         /// shows, so the guided path and the manual one agree.
@@ -929,6 +940,7 @@ struct OpenRouteSheet: View {
                     country: spec.country, distanceKm: market.distanceKm,
                     referenceFare: market.referenceFare,
                     servable: market.servableNow,
+                    servableByEra: market.servableByEra,
                     expectedDailyPassengers: market.expectedDailyPassengers,
                     incumbents: market.incumbents)
             }
@@ -964,9 +976,15 @@ struct OpenRouteSheet: View {
                         .foregroundStyle(candidate.incumbents == 0
                                          ? AETheme.positive : AETheme.mutedText)
                     if !candidate.servable {
-                        Text("No aircraft you own can serve it — range or runway")
+                        // Which kind of impossible matters (AE-035's dead
+                        // route): "get the right aircraft" is a next action,
+                        // "wait for a later era" is an aspiration.
+                        Text(candidate.servableByEra
+                             ? "Nothing in your fleet can serve it — the market sells aircraft that could"
+                             : "Beyond this era's aircraft — a route for a later fleet")
                             .font(.caption2)
-                            .foregroundStyle(AETheme.caution)
+                            .foregroundStyle(candidate.servableByEra
+                                             ? AETheme.caution : AETheme.mutedText)
                     }
                 }
                 Spacer()
@@ -1034,12 +1052,47 @@ struct OpenRouteSheet: View {
             airline: player.id, origin: from, destination: to,
             dailyRoundTrips: trips, ticketPrice: Money.dollars(Int64(fare)))
         let blocked = controller.precheck(command)
+        // Who could fly it: the fleet, something the era's market sells, or
+        // nobody yet. Two spec scans against Core's own eligibility rule —
+        // the same arithmetic the destination rows rank by.
+        let canServe: (fleet: Bool, era: Bool) = {
+            guard let snapshot = controller.snapshot,
+                  let catalog = controller.catalog else { return (true, true) }
+            let eligible: ([AircraftTypeSpec]) -> Bool = { specs in
+                specs.contains { spec in
+                    catalog.routeEligibility(
+                        from: from, to: to,
+                        aircraftRangeKm: spec.rangeKm,
+                        aircraftRunwayRequirement: spec.runwayRequirement).isEmpty
+                }
+            }
+            let owned = snapshot.fleet(of: player.id)
+                .compactMap { catalog.aircraftType($0.typeCode) }
+            let era = catalog.orderedAircraftTypeCodes
+                .compactMap { catalog.aircraftType($0) }
+                .filter { snapshot.progression.era.allowedCategories.contains($0.category) }
+            return (eligible(owned), eligible(era))
+        }()
         return VStack(alignment: .leading, spacing: AETheme.spacingS) {
             if let blocked {
                 Label(blocked.message, systemImage: "exclamationmark.triangle")
                     .font(.caption)
                     .foregroundStyle(AETheme.caution)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+            // Opening a route no aircraft can fly is allowed — a route may
+            // precede its aircraft — but it must never be a surprise: the
+            // AE-035 campaign opened one and watched it sit unflown for two
+            // months with nothing at the commit saying it would.
+            if blocked == nil, !canServe.fleet {
+                Label(canServe.era
+                      ? "Nothing in your fleet can fly this yet — it will wait, unflown, until you acquire an aircraft that can."
+                      : "No aircraft of this era can fly this — it will wait, unflown, for a later fleet.",
+                      systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(AETheme.caution)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("ae-route-unservable")
             }
             if let rejection {
                 Label(rejection.message, systemImage: "xmark.octagon")

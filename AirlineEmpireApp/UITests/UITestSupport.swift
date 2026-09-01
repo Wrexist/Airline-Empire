@@ -596,6 +596,325 @@ class AEUITestCase: XCTestCase {
         return false
     }
 
+    /// Assign the fleet's aircraft to the board's first route, and prove the
+    /// assignment took. One implementation for both journeys that need a
+    /// working schedule (the flight test and the month-end test), for the
+    /// same reason `leaseAnAircraft` is one: two copies drifted once already.
+    @discardableResult
+    func assignFirstAircraft() -> Bool {
+        // Into the route's own screen, where the assignment lives. By
+        // identifier: the board's first cell is the network summary, which
+        // navigates nowhere.
+        let routeRow = app.descendants(matching: .any)
+            .matching(identifier: "ae-route-row").firstMatch
+        guard require(routeRow, "the new route on the board") else { return false }
+        let assign = app.buttons["Assign an aircraft"]
+        // A synthetic tap on a List row can no-op while the board is still
+        // settling — run 98 photographed the board, unchanged, where the
+        // route detail should have been, and reported it as "no assignable
+        // aircraft" (the same tap-that-did-nothing family as the lease
+        // mis-hits). Verify arrival by the detail's own controls and try
+        // again rather than blaming the fleet for a tap that never landed.
+        for attempt in 1...3 {
+            guard !assign.exists, !app.buttons["Unassign"].exists else { break }
+            routeRow.tap()
+            if assign.waitForExistence(timeout: 6)
+                || app.buttons["Unassign"].exists { break }
+            capture(Self.logPrefix + "ROUTE-ROW-TAP-\(attempt)")
+            Thread.sleep(forTimeInterval: 1)
+        }
+
+        guard assign.waitForExistence(timeout: 10) else {
+            // Not a silent skip. If no aircraft can fly this route the
+            // assignment card says why, and that reason is the finding.
+            capture(Self.logPrefix + "NO-ASSIGNABLE-AIRCRAFT")
+            XCTFail("""
+                No aircraft could be assigned to the route just opened. The \
+                leased aircraft cannot fly it — most likely range — which \
+                means the guided path a new player is offered (lease the \
+                first aircraft, open the first suggested route) does not \
+                connect. Screenshot attached.
+                """)
+            return false
+        }
+        assign.tap()
+        // The menu lists one row per eligible aircraft, labelled
+        // "<type> at <airport>". Matched on that shape rather than
+        // `element(boundBy: 0)`, which is whatever button the accessibility
+        // tree happens to order first — the back button, on this screen.
+        let candidate = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", " at ")).firstMatch
+        if candidate.waitForExistence(timeout: 5) { candidate.tap() }
+
+        // CAUSALITY: an assignment that took shows the aircraft on the route
+        // with an Unassign action. Without this, everything after would poll
+        // an empty schedule and blame the wrong layer.
+        let unassign = app.buttons["Unassign"]
+        guard unassign.waitForExistence(timeout: 10) else {
+            XCTFail("""
+                No Unassign action appeared after picking an aircraft from \
+                the assignment menu — the command did not take, or the \
+                screen did not refresh.
+                """)
+            return false
+        }
+        return true
+    }
+
+    /// Walk the routes board and put an aircraft on every route that lacks
+    /// one. The campaign opens routes faster than one at a time, and "the
+    /// first row" stops meaning "the new route" the moment there are three.
+    /// The number of routes still without an aircraft after the walk. Zero
+    /// is the only healthy answer for a campaign: a route nothing flies
+    /// earns nothing, and so can never count toward the era gate's "routes
+    /// that made money last month".
+    ///
+    /// Run 102 reached March with three routes, two aircraft flying and the
+    /// gate stuck at "2 of 3" — and this helper, which had returned `true`,
+    /// was the reason nobody could say which of the two silent skips below
+    /// had happened. Both now leave a frame behind.
+    @discardableResult
+    func assignAllBareRoutes() -> Int {
+        let rows = app.descendants(matching: .any)
+            .matching(identifier: "ae-route-row")
+        guard rows.firstMatch.waitForExistence(timeout: 8) else { return -1 }
+        let count = min(rows.count, 6)
+        var bare = 0
+        for index in 0..<count {
+            let row = rows.element(boundBy: index)
+            guard row.exists else { continue }
+            let assign = app.buttons["Assign an aircraft"]
+            let unassign = app.buttons["Unassign"]
+
+            // A row tap that lands on stale geometry no-ops silently; the
+            // board simply stays on screen. Retry, exactly as the first
+            // assignment does, and photograph each miss.
+            //
+            // Every retry re-checks that the *board* is what we are looking
+            // at. Run 103 crashed here on a second tap issued from a route
+            // detail that had simply arrived slower than the five seconds
+            // allowed: `row` no longer matched anything, and XCUITest turns
+            // that into a hard failure rather than a miss.
+            var arrived = false
+            for attempt in 1...3 {
+                if arrivedAtRouteDetail(assign, unassign, timeout: 0.5) {
+                    arrived = true
+                    break
+                }
+                guard row.exists else {
+                    checkpoint("BARE-ROW-GONE-\(index)-\(attempt)")
+                    break
+                }
+                row.tap()
+                if arrivedAtRouteDetail(assign, unassign, timeout: 8) {
+                    arrived = true
+                    break
+                }
+                checkpoint("BARE-ROW-TAP-\(index)-\(attempt)")
+                // Jiggle for fresh geometry — but only if the board is
+                // still in front of us; a swipe on a detail screen is just
+                // vandalism.
+                if row.exists {
+                    app.swipeUp()
+                    app.swipeDown()
+                }
+                Thread.sleep(forTimeInterval: 0.5)
+            }
+            guard arrived else {
+                bare += 1
+                // Leave whatever screen the misses landed on, so the next
+                // row starts from the board.
+                if !row.exists, app.navigationBars.buttons.firstMatch.exists {
+                    app.navigationBars.buttons.firstMatch.tap()
+                    Thread.sleep(forTimeInterval: 0.5)
+                }
+                continue
+            }
+
+            if !unassign.exists {
+                if assign.exists {
+                    assign.tap()
+                    let candidate = app.buttons.matching(
+                        NSPredicate(format: "label CONTAINS %@", " at ")).firstMatch
+                    if candidate.waitForExistence(timeout: 5) { candidate.tap() }
+                } else {
+                    // No assignment menu at all: the route detail is saying
+                    // no aircraft the airline owns can fly this pair today.
+                    // That is the game answering, not a tap missing.
+                    checkpoint("BARE-ROUTE-NO-CANDIDATE-\(index)")
+                }
+                if !unassign.waitForExistence(timeout: 8) { bare += 1 }
+            }
+            app.navigationBars.buttons.firstMatch.tap()
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        return bare
+    }
+
+    /// Tap an element once it is genuinely hittable, falling back to a
+    /// coordinate tap at its centre.
+    ///
+    /// A control can exist, be on screen, and still refuse a tap while a
+    /// sheet is finishing its dismissal or a scroll is settling — run 99's
+    /// campaign failed on a Next Moves suggestion sitting at a perfectly
+    /// good frame, moments after the market sheet closed over it. Waiting
+    /// for hittability is the honest fix; the coordinate tap is the same
+    /// last resort the lease helper uses.
+    @discardableResult
+    func tapWhenReady(_ element: XCUIElement, timeout: TimeInterval = 10) -> Bool {
+        guard element.waitForExistence(timeout: timeout) else { return false }
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline, !element.isHittable {
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        if element.isHittable {
+            element.tap()
+        } else {
+            element.coordinate(withNormalizedOffset:
+                CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+        return true
+    }
+
+    /// Reach the aircraft market from the Fleet section, whatever the fleet
+    /// looks like.
+    ///
+    /// "Browse the market" is the *empty state's* call to action and stops
+    /// existing the moment the airline owns an aircraft; from then on the
+    /// market is the toolbar's "Acquire". Run 98's campaign failed asking
+    /// for the empty state's button after its first lease.
+    @discardableResult
+    func openAircraftMarket() -> Bool {
+        guard openAirlineSection("Fleet") else { return false }
+        let browse = app.buttons["Browse the market"]
+        let acquire = app.buttons["Acquire"]
+        if browse.waitForExistence(timeout: 4), browse.isHittable {
+            browse.tap()
+        } else if acquire.waitForExistence(timeout: 6) {
+            acquire.tap()
+        } else {
+            capture(Self.logPrefix + "NO-MARKET-ENTRY")
+            XCTFail("Neither the empty state's \"Browse the market\" nor the toolbar's \"Acquire\" was available on the Fleet section.")
+            return false
+        }
+        return app.staticTexts["Aircraft market"].waitForExistence(timeout: 8)
+    }
+
+    /// Open a section of the Airline tab (Routes or Fleet), popping whatever
+    /// is pushed on top of it first.
+    ///
+    /// A journey that assigns an aircraft leaves the tab on a *route detail*
+    /// — `assignFirstAircraft` pushes into it and stays, deliberately, so the
+    /// flight journey can photograph the assignment. Run 97 then came back to
+    /// the Airline tab three sunrise-weeks later and tapped "Fleet" into a
+    /// screen that has no segmented picker at all. Popping first makes the
+    /// section reachable from wherever the tab was left.
+    @discardableResult
+    func openAirlineSection(_ name: String) -> Bool {
+        openTab("Airline")
+        let segment = app.buttons[name]
+        for _ in 0..<3 {
+            if segment.exists, segment.isHittable { segment.tap(); return true }
+            let back = app.navigationBars.buttons.firstMatch
+            guard back.exists, back.isHittable else { break }
+            back.tap()
+            Thread.sleep(forTimeInterval: 0.6)
+        }
+        if segment.waitForExistence(timeout: 5), segment.isHittable {
+            segment.tap()
+            return true
+        }
+        capture(Self.logPrefix + "NO-AIRLINE-SECTION-\(name)")
+        XCTFail("The Airline tab's \(name) segment never appeared, even after popping the screens above it.")
+        return false
+    }
+
+    /// Tap the sunrise control until Home's date begins with `datePrefix`
+    /// (e.g. "2030-02"). Each tap simulates a full game day synchronously;
+    /// the loop exits on the calendar, never on elapsed time.
+    @discardableResult
+    func advanceMornings(until datePrefix: String, cap: Int = 35) -> Bool {
+        openTabIfNeeded("Home")
+        let sunrise = app.buttons["Advance to next morning"]
+        guard sunrise.waitForExistence(timeout: 8) else { return false }
+        let arrived = app.staticTexts.matching(NSPredicate(
+            format: "label BEGINSWITH %@", datePrefix)).firstMatch
+        var taps = 0
+        while taps < cap, !arrived.exists {
+            sunrise.tap()
+            // No fixed pause: `tap()` already waits for the app to go idle,
+            // and the `arrived.exists` query at the top of the loop is a
+            // second synchronisation point. The campaign taps this control
+            // ninety times, so half a second each was half a minute of the
+            // suite spent asleep.
+            taps += 1
+        }
+        return arrived.exists
+    }
+
+    /// Whether a route detail is in front of us — it offers either an
+    /// assignment menu or an Unassign action, and which of the two appears
+    /// first is a race, so wait on both together.
+    private func arrivedAtRouteDetail(_ assign: XCUIElement,
+                                      _ unassign: XCUIElement,
+                                      timeout: TimeInterval) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if assign.exists || unassign.exists { return true }
+            Thread.sleep(forTimeInterval: 0.25)
+        } while Date() < deadline
+        return false
+    }
+
+    /// Advance one morning at a time, stopping the day a given phrase shows
+    /// up on Home.
+    ///
+    /// The Home feed keeps the last **14 events**, not the last 14 days, so
+    /// a moment like "Mission complete!" has rolled off long before the
+    /// journey next looks at Home — run 102 photographed 20 January and saw
+    /// only the mission's *absence*. Catching it means looking every
+    /// morning, which is also how a player would meet it.
+    @discardableResult
+    func advanceMorningsUntilHomeSays(_ phrase: String, cap: Int) -> Bool {
+        openTabIfNeeded("Home")
+        let sunrise = app.buttons["Advance to next morning"]
+        guard sunrise.waitForExistence(timeout: 8) else { return false }
+        let line = app.staticTexts.matching(NSPredicate(
+            format: "label CONTAINS %@", phrase)).firstMatch
+        for _ in 0..<cap {
+            if line.exists { return true }
+            sunrise.tap()
+        }
+        return line.exists
+    }
+
+    private func openTabIfNeeded(_ title: String) {
+        if app.buttons["Advance to next morning"].exists { return }
+        openTab(title)
+    }
+
+    /// Open the Progression screen from the World hub. The hub's cards are
+    /// NavigationLinks whose accessibility label is the *whole card* —
+    /// title, badge and subtitle combined — so run 96's exact-label
+    /// `buttons["Progression"]` matched nothing while the card sat on
+    /// screen. Matched by prefix, with the bare title text as fallback.
+    @discardableResult
+    func openProgression() -> Bool {
+        openTab("World")
+        let card = app.buttons.matching(NSPredicate(
+            format: "label BEGINSWITH %@", "Progression")).firstMatch
+        if card.waitForExistence(timeout: 8) {
+            card.tap()
+        } else if app.staticTexts["Progression"].waitForExistence(timeout: 4) {
+            app.staticTexts["Progression"].tap()
+        } else {
+            capture(Self.logPrefix + "NO-PROGRESSION-CARD")
+            XCTFail("The World hub shows no Progression card in any shape.")
+            return false
+        }
+        return app.staticTexts["ERA"].waitForExistence(timeout: 8)
+    }
+
     // MARK: The journey's shared opening
 
     /// The control that opens a top-level section, wherever this width class
@@ -641,13 +960,37 @@ class AEUITestCase: XCTestCase {
 
     /// Found an airline and arrive in the shell. Every journey starts here.
     @discardableResult
-    func foundAirline() -> Bool {
+    func foundAirline(seed: String? = nil) -> Bool {
         // A relaunch inside one test may come back to a shell that is already
         // playing; that is a success, not a missing button.
         if waitForTab("Home", timeout: 3) != nil { return true }
         let found = app.buttons["Found Skyline Air"]
         guard require(found, "the Found button on the new-game screen") else {
             return false
+        }
+        // The campaign journey founds a *specific* world: the seed field is
+        // a product feature ("share one for a challenge run"), and the same
+        // seed is pinned by the Core twin (FirstEraCampaignTests), so the
+        // simulator walks the world Linux already proved.
+        if let seed {
+            let disclosure = app.buttons["World seed"]
+            if disclosure.waitForExistence(timeout: 5) {
+                disclosure.tap()
+                let field = app.textFields["Seed number"]
+                if field.waitForExistence(timeout: 5) {
+                    field.tap()
+                    field.typeText(seed)
+                    // Collapse the disclosure again: it keeps the typed seed
+                    // (the collapsed row echoes it) and puts the keyboard
+                    // away, so the Found button below is hittable.
+                    disclosure.tap()
+                    Thread.sleep(forTimeInterval: 0.5)
+                } else {
+                    capture(Self.logPrefix + "SEED-FIELD-MISSING")
+                    XCTFail("The World seed field did not appear after expanding the disclosure.")
+                    return false
+                }
+            }
         }
         found.tap()
         if waitForTab("Home", timeout: 25) != nil { return true }
