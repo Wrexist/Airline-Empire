@@ -157,6 +157,14 @@ public struct ProgressionTuning: Equatable, Codable, Sendable {
     /// Missions.
     public let boomRushTargetFactor: Double
     public let boomRushRewardPerPax: Money
+    /// The least a completed mission can pay. Per-pax rewards scale with the
+    /// player's capacity in the boom's region, and an *unserved* region
+    /// bottoms out at the 500-passenger floor target — $20k, measured against
+    /// $1.8M/$5.4M months in the AE-035 campaign. The mission asking for the
+    /// biggest change (enter a new region) paid the least; the floor makes
+    /// the invitation worth answering without letting big-capacity booms
+    /// swamp a month.
+    public let boomRushRewardFloor: Money
 
     public init(capabilityCost: Money, capabilityDurationDays: Int,
                 maxActivePrograms: Int, regionalProfitableRoutes: Int,
@@ -164,7 +172,8 @@ public struct ProgressionTuning: Equatable, Codable, Sendable {
                 internationalFleet: Int, empireDestinations: Int, empireFleet: Int,
                 valueLegendThreshold: Double, valueLegendDays: Int,
                 weatherProofFlights: Int64, weatherProofCompletionRate: Double,
-                boomRushTargetFactor: Double, boomRushRewardPerPax: Money) {
+                boomRushTargetFactor: Double, boomRushRewardPerPax: Money,
+                boomRushRewardFloor: Money = Money.dollars(250_000)) {
         self.capabilityCost = capabilityCost
         self.capabilityDurationDays = capabilityDurationDays
         self.maxActivePrograms = maxActivePrograms
@@ -180,6 +189,7 @@ public struct ProgressionTuning: Equatable, Codable, Sendable {
         self.weatherProofCompletionRate = weatherProofCompletionRate
         self.boomRushTargetFactor = boomRushTargetFactor
         self.boomRushRewardPerPax = boomRushRewardPerPax
+        self.boomRushRewardFloor = boomRushRewardFloor
     }
 
     public static let standard = ProgressionTuning(
@@ -189,7 +199,8 @@ public struct ProgressionTuning: Equatable, Codable, Sendable {
         internationalFleet: 8, empireDestinations: 20, empireFleet: 20,
         valueLegendThreshold: 0.8, valueLegendDays: 90,
         weatherProofFlights: 500, weatherProofCompletionRate: 0.97,
-        boomRushTargetFactor: 0.6, boomRushRewardPerPax: Money.dollars(40))
+        boomRushTargetFactor: 0.6, boomRushRewardPerPax: Money.dollars(40),
+        boomRushRewardFloor: Money.dollars(250_000))
 }
 
 extension GameState {

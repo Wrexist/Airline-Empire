@@ -434,6 +434,34 @@ final class PlayerJourneyUITests: AEUITestCase {
             return
         }
         search.tap()
+        // First, the trap AE-035 measured: Addis Ababa is the boom region's
+        // alphabetical pick and 5,850 km from ARN — beyond every startup
+        // airframe. The sheet must say which kind of impossible that is,
+        // and the commit must warn before the player opens a route nothing
+        // can fly (DEC-03/DEC-04).
+        search.typeText("Addis")
+        Thread.sleep(forTimeInterval: 1)
+        let addis = app.buttons.matching(NSPredicate(
+            format: "identifier == %@ AND label CONTAINS %@",
+            "ae-route-destination", "Addis")).firstMatch
+        if addis.waitForExistence(timeout: 6) {
+            checkpoint("38-future-opportunity-row")
+            addis.tap()
+            let caution = app.descendants(matching: .any)
+                .matching(identifier: "ae-route-unservable").firstMatch
+            XCTAssertTrue(caution.waitForExistence(timeout: 6),
+                          "An unservable destination is selected and the commit bar shows no warning — the player can open a route nothing can fly with no signal that it will sit unflown (AE-035's dead route, unfixed).")
+            checkpoint("39-open-anyway-caution")
+        } else {
+            capture(Self.logPrefix + "NO-ADDIS-ROW")
+        }
+        let clear = app.buttons["Clear text"]
+        if clear.exists { clear.tap() } else {
+            search.tap()
+            search.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue,
+                                   count: 5))
+        }
+        Thread.sleep(forTimeInterval: 0.5)
         search.typeText("Cairo")
         Thread.sleep(forTimeInterval: 1)
         let cairo = app.buttons.matching(NSPredicate(

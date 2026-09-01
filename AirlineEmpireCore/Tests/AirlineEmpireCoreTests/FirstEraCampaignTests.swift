@@ -21,6 +21,7 @@ struct FirstEraCampaignTests {
         var boomDays: [Int] = []
         var missionsOffered = 0
         var missionCompletedDay: Int?
+        var missionReward = Money.zero
         var finalCash = Money.zero
         var routesProfitableLastMonth = 0
     }
@@ -76,6 +77,10 @@ struct FirstEraCampaignTests {
             }
             report.missionsOffered = max(report.missionsOffered,
                                          state.progression.missions.count)
+            if let mission = state.progression.missions.first,
+               report.missionReward == .zero {
+                report.missionReward = mission.reward
+            }
 
             // React to a mission the way its design intends: a boom in a
             // region the airline does not serve is an invitation to expand
@@ -184,7 +189,7 @@ struct FirstEraCampaignTests {
         let report = try await runCampaign(seed: Self.campaignSeed)
         print("CAMPAIGN seed \(Self.campaignSeed): eraDay \(report.eraDay.map(String.init) ?? "never") " +
               "statements \(report.statements.map(\.compact)) booms@days \(report.boomDays) " +
-              "missions \(report.missionsOffered) missionDone \(report.missionCompletedDay.map(String.init) ?? "-") " +
+              "missions \(report.missionsOffered) reward \(report.missionReward.compact) missionDone \(report.missionCompletedDay.map(String.init) ?? "-") " +
               "profitableRoutes \(report.routesProfitableLastMonth) " +
               "cash \(report.finalCash.compact)")
         let eraDay = try #require(report.eraDay,
@@ -199,5 +204,10 @@ struct FirstEraCampaignTests {
         #expect(report.missionsOffered >= 1)
         #expect(report.missionCompletedDay != nil)
         if let done = report.missionCompletedDay { #expect(done <= 20) }
+        // AE-036: a mission into an unserved region bottoms out at the
+        // 500-passenger floor target, and the per-pax reward priced that at
+        // $20k against $1.8M months — symbolic. The floor makes answering
+        // the invitation worth something without swamping a month.
+        #expect(report.missionReward >= ProgressionTuning.standard.boomRushRewardFloor)
     }
 }
