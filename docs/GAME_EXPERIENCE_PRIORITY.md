@@ -31,7 +31,8 @@ not here.
   and not one event. **FIXED** (BUG-044): `MarketCompetition` standing /
   share / edge on the route, `CompetitionSummary` headline on Home and the
   World hub, `marketEntered` / `marketLeft` in the feed, the market-move
-  record (save v12). AUTHORED; frames pending.
+  record (save v12). **OBSERVED** (runs 112–113: KEY-40, 42, 43, 47, 48,
+  50–53 — `docs/RIVAL_PRESSURE_AUDIT.md` §8).
 
 ## P1
 

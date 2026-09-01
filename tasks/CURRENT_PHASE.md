@@ -45,8 +45,21 @@ retreat and the late game be photographed. Core: 415 → 427 tests, all
 green on Linux; release builds clean with warnings as errors. Evidence:
 `docs/RIVAL_PRESSURE_AUDIT.md`.
 
-**Not validated:** every frame — the App changes are AUTHORED and
-symbol-checked on Linux; the CI run on this branch decides.
+**Observed (runs 112–113, 138 frames decoded and read):** the route
+sheet's "2 airlines already fly it" for London–Paris from London; the
+route screen's standing sentence, share bar, per-rival share and the
+named response ("An even fight — 51% of today's passengers against 1
+rival, mostly because they fly more often" / "Answer with frequency");
+Home's one rival fact on three worlds ("SwiftJet pulled out of CDG–LHR
+yesterday — the market is yours again", "One of your routes is contested
+— an even fight so far", "SwiftJet added 2 routes this month, at
+airports you serve"); the World hub's "1 contested" badge and line; the
+Competitors screen's position strip, contested-route link and
+pressure-ordered rivals; the map hint. Three defects the frames found are
+fixed (a grounded rival read as sharing an airport; the morning of entry
+read as "losing at 0%"; a rival's expansion outranked the player's own
+fight on Home). UI: 17 of 18 journeys green in run 113; the campaign's
+last step is the identifier query run 114 replaces. Core 429/429.
 
 ---
 
