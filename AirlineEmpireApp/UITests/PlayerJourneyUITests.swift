@@ -400,8 +400,7 @@ final class PlayerJourneyUITests: AEUITestCase {
             XCTFail("The sunrise control could not reach January 10.")
             return
         }
-        openTab("World")
-        app.buttons["Progression"].tap()
+        guard openProgression() else { return }
         let mission = app.staticTexts.matching(NSPredicate(
             format: "label BEGINSWITH %@", "Carry ")).firstMatch
         XCTAssertTrue(mission.waitForExistence(timeout: 8), """
@@ -458,8 +457,7 @@ final class PlayerJourneyUITests: AEUITestCase {
             XCTFail("The sunrise control could not reach late January.")
             return
         }
-        openTab("World")
-        app.buttons["Progression"].tap()
+        guard openProgression() else { return }
         checkpoint("31-mission-after-reaction")
         app.navigationBars.buttons.firstMatch.tap()
 
@@ -515,8 +513,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         assignAllBareRoutes()
 
         // ── The gate, asked the player's question ──────────────────────────
-        openTab("World")
-        app.buttons["Progression"].tap()
+        guard openProgression() else { return }
         let gate = app.staticTexts["To reach Regional"]
         XCTAssertTrue(gate.waitForExistence(timeout: 8), """
             The Progression screen does not answer "what do I need to reach \
@@ -546,8 +543,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         Thread.sleep(forTimeInterval: 1)
         checkpoint("33-second-statement")
 
-        openTab("World")
-        app.buttons["Progression"].tap()
+        guard openProgression() else { return }
         let nextGate = app.staticTexts["To reach National"]
         XCTAssertTrue(nextGate.waitForExistence(timeout: 8), """
             The Regional era arrived but the Progression screen offers no \

@@ -700,6 +700,28 @@ class AEUITestCase: XCTestCase {
         openTab(title)
     }
 
+    /// Open the Progression screen from the World hub. The hub's cards are
+    /// NavigationLinks whose accessibility label is the *whole card* —
+    /// title, badge and subtitle combined — so run 96's exact-label
+    /// `buttons["Progression"]` matched nothing while the card sat on
+    /// screen. Matched by prefix, with the bare title text as fallback.
+    @discardableResult
+    func openProgression() -> Bool {
+        openTab("World")
+        let card = app.buttons.matching(NSPredicate(
+            format: "label BEGINSWITH %@", "Progression")).firstMatch
+        if card.waitForExistence(timeout: 8) {
+            card.tap()
+        } else if app.staticTexts["Progression"].waitForExistence(timeout: 4) {
+            app.staticTexts["Progression"].tap()
+        } else {
+            capture(Self.logPrefix + "NO-PROGRESSION-CARD")
+            XCTFail("The World hub shows no Progression card in any shape.")
+            return false
+        }
+        return app.staticTexts["ERA"].waitForExistence(timeout: 8)
+    }
+
     // MARK: The journey's shared opening
 
     /// The control that opens a top-level section, wherever this width class
