@@ -666,3 +666,15 @@ frame, off by exactly one row pitch, now measured and corrected from the
 wrong dialog itself). After that, `docs/GAME_EXPERIENCE_PRIORITY.md` is
 the ranked backlog; remaining Apple-runtime validation is enumerated in
 `docs/APPLE_VALIDATION.md`.
+
+**2026-09-01 (first-session phase, post-#11).** The audit's ranked top of
+the backlog, landed as one pass: `NextMovesCard` takes over Home when the
+checklist retires (EXP-01 — idle-aircraft warning + top two
+`marketOpportunities`, same guided-route flow); the Fleet and Routes
+summary strips gate their aggregate columns behind four rows (EXP-02 —
+averages over three rows are the rows); the celebration overlay now says
+what each milestone *means* (`Vocab.milestoneDetail` — "Your first flight
+has landed — the first ticket revenue is in the bank"), and the four
+digit-coded milestones got real titles. The flight journey test drives to
+first landing and asserts the checklist→Next-Moves handover, capturing
+the post-checklist Home for the first time. Validation: next CI run.

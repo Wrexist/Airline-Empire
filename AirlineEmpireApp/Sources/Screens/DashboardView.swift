@@ -36,6 +36,18 @@ struct DashboardView: View {
                                 guidedRoute = suggestion
                                 showingGuidedSheet = true
                             }
+                        } else if let catalog = controller.catalog,
+                                  snapshot.playerAirline != nil {
+                            // The checklist's replacement, not its ghost. The
+                            // AE-033 audit's top finding (EXP-01): the game's
+                            // strongest guidance surface went silent exactly
+                            // when the player first had freedom. Same ranking
+                            // the map coach uses, same guided-route flow the
+                            // checklist used.
+                            NextMovesCard(snapshot: snapshot, catalog: catalog) { suggestion in
+                                guidedRoute = suggestion
+                                showingGuidedSheet = true
+                            }
                         }
                         // The pulse comes before the history. This block
                         // used to sit fifth, below yesterday's digest and next
@@ -597,6 +609,90 @@ struct OnboardingCard: View {
             "Set speed to 1× — boarding, taxi, and the map crossing are real."
         case .earnFirstRevenue:
             "Revenue posts as flights land. Watch the feed below."
+        }
+    }
+}
+
+/// "What should I do next?", after the checklist has answered its last step.
+///
+/// The onboarding card disappears the moment the arc completes, which used to
+/// leave Home answering only "how big am I" (EXP-01). This is the surface
+/// that takes over: the fleet's one actionable warning (idle aircraft — they
+/// bill like flying ones and earn nothing) and the two best open markets from
+/// `marketOpportunities`, the same ranking the map's demand coach draws.
+/// Tapping a market opens the guided route sheet, exactly as the checklist's
+/// suggestions did — one flow, not two that drift.
+struct NextMovesCard: View {
+    let snapshot: GameState
+    let catalog: ContentCatalog
+    let openSuggestion: (FirstRouteSuggestion) -> Void
+
+    private var idleCount: Int {
+        guard let player = snapshot.playerAirline?.id else { return 0 }
+        return snapshot.fleet(of: player)
+            .filter { $0.assignedRoute == nil }.count
+    }
+
+    private var opportunities: [MarketOpportunity] {
+        // Servable markets first: advice the fleet cannot act on today is a
+        // wish, not a move. Two at most — a ranked pair is a decision, a
+        // longer list is homework.
+        let ranked = snapshot.marketOpportunities(catalog: catalog, limit: 4)
+        let servable = ranked.filter(\.servableNow)
+        return Array((servable.isEmpty ? ranked : servable).prefix(2))
+    }
+
+    var body: some View {
+        let idle = idleCount
+        let markets = opportunities
+        if idle > 0 || !markets.isEmpty {
+            AECard {
+                VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                    Text("Next moves").font(.headline)
+                    if idle > 0 {
+                        HStack(spacing: AETheme.spacingS) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(AETheme.caution)
+                                .accessibilityHidden(true)
+                            Text(idle == 1
+                                 ? "One aircraft is idle. It costs the same parked as flying — assign it in Airline → Routes."
+                                 : "\(idle) aircraft are idle. They cost the same parked as flying — assign them in Airline → Routes.")
+                                .font(.subheadline)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                    if !markets.isEmpty {
+                        Text(idle > 0 ? "Or grow the network:"
+                                      : "Strong open markets from your bases:")
+                            .font(.caption)
+                            .foregroundStyle(AETheme.mutedText)
+                        ForEach(markets, id: \.destination) { market in
+                            Button {
+                                openSuggestion(market.asFirstRouteSuggestion)
+                            } label: {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("\(market.origin.raw) → \(market.destination.raw) · \(market.destinationCity)")
+                                            .font(.subheadline.weight(.medium))
+                                        Text("≈\(market.expectedDailyPassengers) passengers/day · \(market.distanceKm) km · \(market.incumbents == 0 ? "no competition yet" : "\(market.incumbents) rival\(market.incumbents == 1 ? "" : "s") already here")")
+                                            .font(.caption)
+                                            .foregroundStyle(AETheme.mutedText)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                        .foregroundStyle(AETheme.mutedText)
+                                }
+                                .frame(minHeight: 44)
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(AETheme.accent)
+                        }
+                    }
+                }
+            }
+            .accessibilityIdentifier("ae-next-moves")
         }
     }
 }

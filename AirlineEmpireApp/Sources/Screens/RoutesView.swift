@@ -143,22 +143,32 @@ struct RoutesList: View {
 struct NetworkSummaryRow: View {
     let summary: NetworkSummary
 
+    /// A statistic over three rows is just the rows, restated. The AE-033
+    /// runtime audit photographed a seven-metric strip crowning a one-route
+    /// list (EXP-02): at that scale the aggregate columns read as chrome, so
+    /// they wait until the list is long enough to need summarising.
+    private var compact: Bool { summary.routeCount <= 3 }
+
     private var metrics: [AEMetric] {
         var list: [AEMetric] = [
             AEMetric("routes", "\(summary.routeCount)"),
-            AEMetric("earning", "\(summary.profitableRoutes)",
-                     tint: summary.profitableRoutes > 0 ? AETheme.positive : nil),
+        ]
+        if !compact {
+            list.append(AEMetric("earning", "\(summary.profitableRoutes)",
+                                 tint: summary.profitableRoutes > 0 ? AETheme.positive : nil))
             // Losing and earning do not sum to the total: a route that has not
             // flown yet is neither, and calling it a loss would be a lie.
-            AEMetric("losing", "\(summary.losingRoutes)",
-                     tint: summary.losingRoutes > 0 ? AETheme.negative : nil),
-        ]
+            list.append(AEMetric("losing", "\(summary.losingRoutes)",
+                                 tint: summary.losingRoutes > 0 ? AETheme.negative : nil))
+        }
         if summary.idleRoutes > 0 {
             list.append(AEMetric("no aircraft", "\(summary.idleRoutes)",
                                  tint: AETheme.caution))
         }
-        list.append(AEMetric("load factor",
-                             summary.averageLoadFactor.map(Format.percent) ?? "—"))
+        if !compact {
+            list.append(AEMetric("load factor",
+                                 summary.averageLoadFactor.map(Format.percent) ?? "—"))
+        }
         list.append(AEMetric("in the air", "\(summary.liveFlights)"))
         list.append(AEMetric("month to date",
                              Format.money(summary.monthToDateProfit),

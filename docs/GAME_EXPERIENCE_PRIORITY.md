@@ -31,12 +31,20 @@ no other P0/P1.)*
   markets). VALIDATION: journey test extended past first revenue,
   screenshot of Home after checklist completion. (READ; the scripted
   journey ends before this state, so no frame exists.)
+  **IMPLEMENTED (first-session phase)**: `NextMovesCard` — the
+  idle-aircraft warning plus the top two `marketOpportunities`, opening
+  the same guided route sheet the checklist used; the flight journey
+  test now drives to first landing and asserts the checklist→card
+  handover. Runtime validation rides the next CI run.
 - **EXP-02 · ROUTES/FLEET · Summary strip outweighs a 1-row list.**
   REPRO: KEY-04/KEY-07. ROOT CAUSE: the 7-metric strip renders at full
   weight regardless of fleet size. IMPACT: early-game screens read as
   chrome over emptiness (~60 % dead space). FIX: collapse the strip to
   its 2–3 non-degenerate metrics until the list exceeds ~3 rows.
   VALIDATION: re-screenshot KEY-04/07. (OBSERVED)
+  **IMPLEMENTED (first-session phase)**: both strips gate their
+  aggregate columns behind `count > 3`. Re-screenshot rides the next
+  CI run.
 
 ## P3
 

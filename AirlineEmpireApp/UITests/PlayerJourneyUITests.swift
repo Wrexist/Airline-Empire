@@ -250,6 +250,40 @@ final class PlayerJourneyUITests: AEUITestCase {
             map's own accessibility value is what this polled, so the two \
             disagreeing is itself the defect.
             """)
+
+        // ── The payoff (EXP-01) ────────────────────────────────────────────
+        // Revenue posts as the flight lands, seconds of real time after
+        // takeoff at 16x. The durable proof is on Home: the onboarding
+        // checklist retires and the Next Moves card takes its place. The
+        // celebration overlay is transient, so it is photographed when the
+        // poll happens to catch it, never asserted — a screenshot loop is
+        // not a race the suite should bet on.
+        openTab("Home")
+        let lastStep = app.staticTexts["Earn your first ticket revenue"]
+        var celebrationSeen = false
+        let payoffDeadline = Date().addingTimeInterval(120)
+        while Date() < payoffDeadline, lastStep.exists {
+            if !celebrationSeen, app.staticTexts["First flight"].exists {
+                celebrationSeen = true
+                checkpoint("08-first-flight-celebration")
+            }
+            Thread.sleep(forTimeInterval: 2)
+        }
+        checkpoint("09-home-after-first-revenue")
+        XCTAssertFalse(lastStep.exists, """
+            Two real minutes after an aircraft was airborne — several game \
+            days at 16x — the checklist still says no ticket revenue has \
+            been earned. Either revenue is not posting on landing or the \
+            onboarding model is not seeing it.
+            """)
+        let nextMoves = app.descendants(matching: .any)
+            .matching(identifier: "ae-next-moves").firstMatch
+        XCTAssertTrue(nextMoves.waitForExistence(timeout: 10), """
+            The checklist retired but nothing took its place: the Next \
+            Moves card did not render on Home. With one route open there \
+            are open markets to suggest, so an empty card is a defect, not \
+            a quiet state (EXP-01).
+            """)
     }
 
     /// The map at two zoom levels, and a pinch that does not fall over.

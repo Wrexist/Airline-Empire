@@ -222,6 +222,12 @@ struct FleetFilterBar: View {
 struct FleetSummaryRow: View {
     let summary: FleetSummary
 
+    /// Averages over three aircraft are the rows themselves, restated — the
+    /// AE-033 audit photographed a seven-metric strip over a one-aircraft
+    /// fleet (EXP-02). The aggregates join once the fleet is big enough for
+    /// scanning the rows to be work.
+    private var compact: Bool { summary.total <= 3 }
+
     private var metrics: [AEMetric] {
         var list: [AEMetric] = [
             AEMetric("aircraft", "\(summary.total)"),
@@ -231,14 +237,16 @@ struct FleetSummaryRow: View {
             // same as flying ones and earn nothing.
             AEMetric("idle", "\(summary.idle)",
                      tint: summary.idle > 0 ? AETheme.caution : nil),
-            AEMetric("in use", summary.utilization.map(Format.percent) ?? "—"),
-            AEMetric("avg age", summary.averageAgeYears
-                        .map { "\(Format.decimal($0, places: 0)) y" } ?? "—"),
-            AEMetric("condition",
+        ]
+        if !compact {
+            list.append(AEMetric("in use", summary.utilization.map(Format.percent) ?? "—"))
+            list.append(AEMetric("avg age", summary.averageAgeYears
+                        .map { "\(Format.decimal($0, places: 0)) y" } ?? "—"))
+            list.append(AEMetric("condition",
                      summary.averageCondition.map(Format.percent) ?? "—",
                      tint: (summary.averageCondition ?? 1) < 0.6
-                         ? AETheme.caution : nil),
-        ]
+                         ? AETheme.caution : nil))
+        }
         if summary.inMaintenance > 0 {
             list.append(AEMetric("in check", "\(summary.inMaintenance)",
                                  tint: AETheme.caution))

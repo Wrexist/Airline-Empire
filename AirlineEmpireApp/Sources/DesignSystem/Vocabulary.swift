@@ -255,7 +255,42 @@ enum Vocab {
         case "firstProfitableMonth": "First profitable month"
         case "firstMillionMonth": "First million-dollar month"
         case "firstIntercontinental": "First intercontinental route"
+        // The humanize fallback mangles codes with digits ("Passengers100k"),
+        // and these four exist in ProgressionSystem today.
+        case "passengers100k": "100,000 passengers"
+        case "passengers1m": "One million passengers"
+        case "destinations10": "Ten destinations"
+        case "fleet10": "A fleet of ten"
         default: humanize(code)
+        }
+    }
+
+    /// What a milestone *means*, for the celebration overlay. The generic
+    /// "Milestone reached." said nothing at the one moment the game had the
+    /// player's full attention; the first flight, in particular, is also the
+    /// first ticket money — the loop's proof — and the overlay is where that
+    /// gets said (GAME_EXPERIENCE_PRIORITY.md, game-feel #1).
+    static func milestoneDetail(_ code: String) -> String {
+        switch code {
+        case "firstFlight":
+            "Your first flight has landed — the first ticket revenue is in the bank."
+        case "firstOwnedAircraft":
+            "Bought outright. No lessor, no monthly bill."
+        case "firstProfitableMonth":
+            "The airline made more than it spent this month."
+        case "firstMillionMonth":
+            "A seven-figure month. The machine works."
+        case "firstIntercontinental":
+            "Your network now crosses an ocean."
+        case "passengers100k":
+            "One hundred thousand passengers flown."
+        case "passengers1m":
+            "One million passengers flown."
+        case "destinations10":
+            "Ten destinations on the map."
+        case "fleet10":
+            "Ten aircraft in the fleet."
+        default: "Milestone reached."
         }
     }
 
