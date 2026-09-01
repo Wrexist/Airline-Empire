@@ -509,6 +509,13 @@ final class PlayerJourneyUITests: AEUITestCase {
             sheet is still up or the command was rejected.
             """)
 
+        // The twin's February also *leases* alongside the purchase: four
+        // routes need four aircraft, and a route with nothing to fly it
+        // earns nothing and so never counts toward the gate's "routes that
+        // made money last month". Run 100 reached March with three.
+        guard openAircraftMarket() else { return }
+        guard leaseAnAircraft() else { return }
+
         // Two more markets, from the same ranking the Next Moves card shows.
         openTab("Home")
         for _ in 0..<2 {
@@ -548,6 +555,16 @@ final class PlayerJourneyUITests: AEUITestCase {
         if app.staticTexts["A new era"].exists {
             checkpoint("35-era-celebration")
         }
+        // Photograph March *before* the verdict: run 100's assertion failed
+        // with no frame of the state it was judging, so the next question —
+        // did the era not advance, or does Home not say so? — had nothing to
+        // read. The gate's own rows answer it either way.
+        checkpoint("36-era-home")
+        guard openProgression() else { return }
+        checkpoint("37-progression-after-era")
+        app.navigationBars.buttons.firstMatch.tap()
+        openTab("Home")
+
         let regional = app.staticTexts.matching(NSPredicate(
             format: "label CONTAINS %@", "Regional era")).firstMatch
         XCTAssertTrue(regional.waitForExistence(timeout: 10), """
@@ -555,7 +572,6 @@ final class PlayerJourneyUITests: AEUITestCase {
             still does not say "Regional era" — the era did not advance, or \
             the banner does not show it.
             """)
-        checkpoint("36-era-home")
 
         openTab("Finance")
         Thread.sleep(forTimeInterval: 1)
@@ -568,7 +584,6 @@ final class PlayerJourneyUITests: AEUITestCase {
             next goal — "To reach National" is missing, and a campaign \
             without a next goal ends here.
             """)
-        checkpoint("37-progression-after-era")
     }
 
     /// The map at two zoom levels, and a pinch that does not fall over.
