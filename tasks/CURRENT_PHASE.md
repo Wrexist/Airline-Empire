@@ -638,8 +638,31 @@ Subscription-lifecycle test added (§27). Swift 6 concurrency audit of the
 App: clean. `docs/LINUX_QA_AUDIT.md` written — proven vs. unknown, with
 §37's questions answered honestly.
 
+**2026-08-31 (AE-034 — map performance, measure→fix→verify).** The
+baseline probe (run 84) measured the two P0s: every gesture event rebuilt
+the entire scene (16.84 ms avg / 256 ms worst during drags) and labels
+re-decided placement per frame (3.92 identity changes/frame while
+panning). Fixed at the root: `MapRenderCache` (geometry built once per
+deliberate cause, replayed under one affine transform per frame, every
+rebuild counted by reason) and label placement memory (decisions at
+settle points, reprojection between, enter/keep hysteresis). Run 85, same
+workload: slow-drag avg 11.39 ms (−32 %) at +81 % frames drawn, fast-drag
+11.40 ms (−48 %), worst frame anywhere now the map-open build (169 ms);
+churn 1.35 (−66 %) and hops 0.40 (−77 %) during slow drag. Zoom-cycle
+hops/frame rose 8.72 → 10.20 (re-decisions per fewer frames — stated, not
+hidden). 414/414 Core, map baseline test green both runs; 12 map frames
+visually inspected, no cache defect classes found. Full evidence:
+`docs/MAP_P0_PERFORMANCE_REPORT.md`; architecture:
+`docs/MAP_INTERACTION_ARCHITECTURE.md`; audits:
+`docs/PLAYER_JOURNEY_RUNTIME_AUDIT.md`,
+`docs/GAME_EXPERIENCE_PRIORITY.md`.
+
 ## Next
 
-Remaining work is Apple-runtime by nature (compile, simulator, rendering,
-gestures, accessibility, Instruments, signing). It is enumerated in
-`docs/APPLE_VALIDATION.md`; no further Linux-side P0/P1 is known.
+Two verifications ride the next CI run: the cache counters (the MAP-CACHE
+regex missed the new `placements` token in run 85 — fixed) and the lease
+tap's adaptive aim (the one red UI test; the miss is a stale accessibility
+frame, off by exactly one row pitch, now measured and corrected from the
+wrong dialog itself). After that, `docs/GAME_EXPERIENCE_PRIORITY.md` is
+the ranked backlog; remaining Apple-runtime validation is enumerated in
+`docs/APPLE_VALIDATION.md`.

@@ -18,15 +18,36 @@ struct MapFrame {
     let speed: SimSpeed
     /// Real seconds since the snapshot, for flight interpolation.
     let elapsed: TimeInterval
+    /// When the snapshot arrived — the route cache's tick key.
+    let tick: Date
+    /// The camera's settle generation — the label memory's re-decide signal.
+    let settle: Int
+    /// The cached geometry this frame replays instead of rebuilding
+    /// (docs/MAP_RUNTIME_BASELINE.md §2 is the bill it retires).
+    let cache: MapRenderCache
 
     /// What the frame drew, in screen space.
     struct Geometry {
         var airports: [(MapModel.MapAirport, CGPoint)] = []
         var flights: [(InterpolatedFlight, CGPoint)] = []
+        /// Route polylines in the route cache's own screen space, with the
+        /// transform they are currently displayed under. The tap is
+        /// inverse-transformed instead of five thousand waypoints being
+        /// re-projected per frame; the honesty guarantee — hit what was
+        /// drawn — is unchanged.
         var routes: [(MapModel.MapRoute, [CGPoint])] = []
+        var routeTransform: CGAffineTransform = .identity
+        /// The selected route is drawn per frame (halo underneath), so its
+        /// hit polyline is in *current* screen space, separately.
+        var selectedRoute: (MapModel.MapRoute, [CGPoint])?
     }
 
     private(set) var geometry = Geometry()
+
+    /// The labels this frame placed, kept so the draw-stats probe can measure
+    /// churn between consecutive frames (MapDrawStats). Assigned in `draw`;
+    /// costs one array copy of at most ~30 elements.
+    private(set) var placedLabels: [MapLabel] = []
 
     /// Built once per frame. Interpolating fifty flights was doing a linear
     /// scan of eighty airports twice each, thirty times a second.
@@ -34,7 +55,8 @@ struct MapFrame {
 
     init(model: MapModel, snapshot: GameState, projector: MapProjector,
          policy: MapDetailPolicy, overlay: MapOverlay, selection: MapHit?,
-         speed: SimSpeed, elapsed: TimeInterval) {
+         speed: SimSpeed, elapsed: TimeInterval, tick: Date, settle: Int,
+         cache: MapRenderCache) {
         self.model = model
         self.snapshot = snapshot
         self.projector = projector
@@ -43,6 +65,9 @@ struct MapFrame {
         self.selection = selection
         self.speed = speed
         self.elapsed = elapsed
+        self.tick = tick
+        self.settle = settle
+        self.cache = cache
         self.airportsByCode = Dictionary(
             model.airports.map { ($0.code, $0) }, uniquingKeysWith: { first, _ in first })
     }
@@ -57,8 +82,11 @@ struct MapFrame {
 
     mutating func draw(into context: inout GraphicsContext, size: CGSize) {
         drawOcean(&context, size: size)
-        drawGraticule(&context)
-        drawLand(&context)
+        // Graticule, land, lakes, borders and the terminator replay from the
+        // cache — a pan is a translation, not a 29,000-point rebuild
+        // (docs/MAP_RUNTIME_BASELINE.md §2, MapRenderCache).
+        cache.drawGeography(into: &context, projector: projector,
+                            policy: policy, date: snapshot.currentDate)
         // Airports are projected first, chosen second, drawn last.
         //
         // Three separate steps because they answer to three different needs,
@@ -69,9 +97,9 @@ struct MapFrame {
         // the map**, which a screenshot caught and nothing else could have.
         // Choosing before the country names is what lets them yield. Drawing
         // last is what keeps the codes on top of everything.
-        drawNight(&context, size: size)
         projectAirports()
         let airportLabels = placeAirportLabels()
+        placedLabels = airportLabels
         drawCountryLabels(&context, avoiding: airportLabels.map(\.box))
         drawEventRegions(&context)
         drawOpportunities(&context)
@@ -80,57 +108,6 @@ struct MapFrame {
         drawAirports(&context)
         drawFlights(&context)
         draw(airportLabels, into: &context)
-    }
-
-    /// The night side of the world, as a soft shade over the geography.
-    ///
-    /// The game clock is real UTC-ish time, so the map can show where in the
-    /// world it is night *right now* — the cheapest honest way to make the
-    /// picture feel like a planet with time passing rather than a diagram.
-    /// Astronomy at cartoon precision: the subsolar longitude walks 15° per
-    /// game hour, declination follows the season by day-of-year, and the
-    /// terminator is sampled as a polygon and filled twice — a wider faint
-    /// pass and a narrower deeper one — so the edge reads as dusk rather
-    /// than a hard line. Drawn under routes, airports and labels: night dims
-    /// the world, never the airline on top of it.
-    private func drawNight(_ context: inout GraphicsContext, size: CGSize) {
-        let date = snapshot.currentDate
-        let dayOfYear = Double((date.month - 1) * 30) + Double(date.day)
-        let declination = 23.44 * sin(2 * .pi * (dayOfYear - 81) / 365)
-            * .pi / 180
-        let utcHours = Double(date.hour) + Double(date.minute) / 60
-        // Solar noon at Greenwich at 12:00: subsolar longitude in degrees.
-        let subsolarLon = (12 - utcHours) * 15
-
-        for (inset, alpha) in [(0.0, 0.14), (6.0, 0.10)] {
-            var night = Path()
-            var first = true
-            // North-of-terminator when declination is negative, south when
-            // positive: the dark pole is the one leaning away from the sun.
-            let poleY: CGFloat = declination >= 0 ? 1 : 0
-            for step in 0...96 {
-                let lon = -540.0 + Double(step) * (1080.0 / 96.0)
-                var lat = atan(-cos((lon - subsolarLon) * .pi / 180)
-                               / tan(declination == 0 ? 1e-6 : declination))
-                // The deeper pass sits inset toward the dark pole, so the
-                // band between the two edges reads as dusk.
-                lat -= inset * .pi / 180 * (declination >= 0 ? 1 : -1)
-                let mapPoint = MapPoint(coordinate: Coordinate(
-                    latitude: max(-89, min(89, lat * 180 / .pi)),
-                    longitude: lon.truncatingRemainder(dividingBy: 360)))
-                // Project with the raw x so the polygon spans world copies.
-                let x = (lon + 180) / 360
-                let p = projector.project(MapPoint(x: x, y: mapPoint.y))
-                if first { night.move(to: p); first = false }
-                else { night.addLine(to: p) }
-            }
-            let poleScreenY = projector.project(MapPoint(x: 0, y: Double(poleY))).y
-            night.addLine(to: CGPoint(x: night.currentPoint?.x ?? size.width,
-                                      y: poleScreenY))
-            night.addLine(to: CGPoint(x: night.boundingRect.minX, y: poleScreenY))
-            night.closeSubpath()
-            context.fill(night, with: .color(.black.opacity(alpha)))
-        }
     }
 
     // MARK: - Geography
@@ -146,91 +123,6 @@ struct MapFrame {
             Gradient(colors: [AETheme.mapDeep, AETheme.mapBackground,
                               AETheme.mapDeep]),
             startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)))
-    }
-
-    private func drawGraticule(_ context: inout GraphicsContext) {
-        // The grid earns its place by giving the eye something to measure a
-        // great circle against; it stays faint enough to never be read as data.
-        var grid = Path()
-        for offset in projector.visibleWorldOffsets {
-            for line in WorldGeometry.graticule {
-                appendPolyline(line, offset: offset, to: &grid)
-            }
-        }
-        context.stroke(grid, with: .color(AETheme.mapGraticule), lineWidth: 0.5)
-
-        var equator = Path()
-        for offset in projector.visibleWorldOffsets {
-            appendPolyline(WorldGeometry.equator, offset: offset, to: &equator)
-        }
-        context.stroke(equator, with: .color(AETheme.mapGraticule.opacity(1.6)),
-                       lineWidth: 0.7)
-    }
-
-    private func drawLand(_ context: inout GraphicsContext) {
-        // Everything here is chosen by zoom. Detail that helps at one level
-        // hurts at another: 29,000 points at world zoom is a grey fringe on
-        // every coast, competing with the routes the map exists to show
-        // (docs/MAP_ARCHITECTURE.md §2), and 2,000 points at local zoom is a
-        // polygon rather than a coastline.
-        let level = policy.level
-        let land = WorldGeometry.landmasses(for: level)
-        let lakes = WorldGeometry.lakes(for: level)
-        let borders = WorldGeometry.borders(for: level)
-
-        // The viewport in map space, with a margin so a shape straddling the
-        // edge still draws its part. Computed once, then four comparisons per
-        // polygon — against a projection per point, which at the local tier is
-        // 28,937 of them per world copy per frame, nearly all off screen.
-        let view = visibleMapRect(margin: 0.02)
-
-        for offset in projector.visibleWorldOffsets {
-            for landmass in land {
-                guard landmass.intersects(minX: view.minX, maxX: view.maxX,
-                                          minY: view.minY, maxY: view.maxY,
-                                          offset: offset) else { continue }
-                var path = Path()
-                appendPolyline(landmass.points, offset: offset, to: &path)
-                path.closeSubpath()
-                context.fill(path, with: .color(AETheme.mapLand))
-                context.stroke(path, with: .color(AETheme.mapCoast),
-                               lineWidth: level == .local ? 0.5 : 0.7)
-            }
-            // Inland water in the ocean's own colour: a lake is the same
-            // substance as the sea, and a third value would widen a palette
-            // deliberately kept narrow.
-            for lake in lakes {
-                guard lake.intersects(minX: view.minX, maxX: view.maxX,
-                                      minY: view.minY, maxY: view.maxY,
-                                      offset: offset) else { continue }
-                var path = Path()
-                appendPolyline(lake.points, offset: offset, to: &path)
-                path.closeSubpath()
-                context.fill(path, with: .color(AETheme.mapBackground))
-                context.stroke(path, with: .color(AETheme.mapCoast.opacity(0.6)),
-                               lineWidth: 0.5)
-            }
-            // Borders last. They are what makes a dark field read as Earth
-            // rather than as shapes, and they were previously drawn so faintly
-            // — 45% of the coast colour at 0.4pt, and not at all at world zoom
-            // — that the answer to "which country is that" was still nowhere
-            // on the map. Now they have their own value and appear at every
-            // level, dashed at world zoom so a political line never reads as a
-            // route at the scale where routes are longest.
-            let hairline = level == .world
-            for border in borders {
-                guard border.intersects(minX: view.minX, maxX: view.maxX,
-                                        minY: view.minY, maxY: view.maxY,
-                                        offset: offset) else { continue }
-                var path = Path()
-                appendPolyline(border.points, offset: offset, to: &path)
-                context.stroke(
-                    path, with: .color(AETheme.mapBorder),
-                    style: hairline
-                        ? StrokeStyle(lineWidth: 0.5, dash: [2.5, 2.5])
-                        : StrokeStyle(lineWidth: level == .local ? 0.9 : 0.7))
-            }
-        }
     }
 
     // MARK: - Events
@@ -301,12 +193,25 @@ struct MapFrame {
     // MARK: - Routes
 
     private mutating func drawRoutes(_ context: inout GraphicsContext) {
-        // Rivals first so the player's network always draws on top of theirs.
-        for route in model.routes where !route.isPlayer {
-            drawRoute(route, into: &context, isPlayer: false)
-        }
-        for route in model.routes where route.isPlayer {
-            drawRoute(route, into: &context, isPlayer: true)
+        var selectedRoute: RouteID?
+        if case .route(let id) = selection { selectedRoute = id }
+        // Everything unselected replays from the cache (rivals under players,
+        // z-order preserved at build). The hit polylines come back in the
+        // cache's own space with the transform they are shown under.
+        let replay = cache.drawRoutes(
+            into: &context, model: model, projector: projector,
+            policy: policy, overlay: overlay, tick: tick,
+            selectedRoute: selectedRoute, playerColor: playerColor,
+            style: { self.routeStyle($0, isPlayer: $1, isSelected: false) },
+            shows: { self.showsRoute($0) })
+        geometry.routes = replay.hits.map { ($0.route, $0.points) }
+        geometry.routeTransform = replay.transform
+        // The selected route alone is drawn per frame — its halo has to sit
+        // under its own stroke, and one route is a per-frame cost nothing
+        // notices. Selection changes re-key the cache (a tap-rate event).
+        if let selectedRoute,
+           let route = model.routes.first(where: { $0.id == selectedRoute }) {
+            drawRoute(route, into: &context, isPlayer: route.isPlayer)
         }
     }
 
@@ -358,9 +263,11 @@ struct MapFrame {
             if drawnForHitTest == nil { drawnForHitTest = points }
         }
 
-        // Every drawn route is selectable, rivals included — the competition
-        // overlay is not much use if you cannot tap what it shows you.
-        if let drawnForHitTest { geometry.routes.append((route, drawnForHitTest)) }
+        // Every drawn route is selectable, rivals included. This per-frame
+        // path now only ever draws the selected route; its polyline is in
+        // current screen space, so it lives in the dedicated slot rather
+        // than among the cache-space entries.
+        if let drawnForHitTest { geometry.selectedRoute = (route, drawnForHitTest) }
     }
 
     private func showsRoute(_ route: MapModel.MapRoute) -> Bool {
@@ -372,7 +279,7 @@ struct MapFrame {
         }
     }
 
-    private struct RouteStyle {
+    struct RouteStyle {
         let color: Color
         let width: CGFloat
         let opacity: Double
@@ -570,15 +477,22 @@ struct MapFrame {
 
             // Sampled rather than clipped from the route's own arc: the route
             // polyline is shared by every flight on it, and slicing it at a
-            // per-flight fraction would land between vertices. Twenty steps is
-            // enough that a great circle reads as a curve at any zoom this map
-            // reaches, and cheap enough to do per airborne aircraft per frame.
+            // per-flight fraction would land between vertices. The full-arc
+            // samples are cached per (flight, tick) — they only change when
+            // the flight does — so the per-frame cost is the moving tip's
+            // single slerp rather than twenty-one (baseline §4).
             let steps = 20
-            let flown = (0...steps).map { step -> MapPoint in
-                let fraction = progress * Double(step) / Double(steps)
-                return MapPoint(coordinate: MapMath.greatCirclePoint(
-                    from: origin, to: destination, fraction: fraction))
+            let full = cache.trailArc(for: flight.id, tick: tick) {
+                (0...steps).map { step -> MapPoint in
+                    MapPoint(coordinate: MapMath.greatCirclePoint(
+                        from: origin, to: destination,
+                        fraction: Double(step) / Double(steps)))
+                }
             }
+            let flownSteps = min(steps, Int(progress * Double(steps)))
+            var flown = Array(full.prefix(flownSteps + 1))
+            flown.append(MapPoint(coordinate: MapMath.greatCirclePoint(
+                from: origin, to: destination, fraction: progress)))
             let unwrapped = MapGeodesy.unwrap(flown)
             guard unwrapped.count > 1 else { continue }
 
@@ -620,6 +534,25 @@ struct MapFrame {
                 continue
             }
             guard overlay != .opportunity || flight.isPlayer else { continue }
+
+            // Cull before interpolating, not after: the slerp is the cost
+            // (450 flights at late-game scale — docs/MAP_RUNTIME_BASELINE.md
+            // §4). A flight lies on the great circle between its endpoints,
+            // whose deviation from the chord is bounded, so a bounding box
+            // over both projected endpoints padded by 20% of the world width
+            // safely contains it. At world zoom this culls nothing (all of
+            // it is visible), which is also correct.
+            if let (origin, destination) = catalogAirports(flight) {
+                let a = projector.project(MapPoint(coordinate: origin))
+                let b = projector.project(MapPoint(coordinate: destination))
+                let pad = projector.worldWidth * 0.2 + 60
+                let box = CGRect(x: min(a.x, b.x) - pad, y: min(a.y, b.y) - pad,
+                                 width: abs(a.x - b.x) + pad * 2,
+                                 height: abs(a.y - b.y) + pad * 2)
+                let viewport = CGRect(origin: .zero, size: projector.size)
+                    .insetBy(dx: -40, dy: -40)
+                guard box.intersects(viewport) else { continue }
+            }
 
             let interpolated = interpolate(flight)
             let point = projector.project(interpolated.position)
@@ -702,23 +635,11 @@ struct MapFrame {
     /// there to answer "where am I", once, and then get out of the way.
     private func drawCountryLabels(_ context: inout GraphicsContext,
                                    avoiding blocked: [CGRect]) {
-        let candidates = CountryLabels.visible(atZoom: policy.zoom)
-        guard !candidates.isEmpty else { return }
-
-        var projected: [(CountryLabel, CGPoint)] = []
-        for offset in projector.visibleWorldOffsets {
-            for country in candidates {
-                let point = projector.project(
-                    MapPoint(x: country.point.x + offset, y: country.point.y))
-                guard projector.isVisible(point, margin: 60) else { continue }
-                projected.append((country, point))
-            }
-        }
-        guard !projected.isEmpty else { return }
-
-        let labels = MapLabelLayout.placeCountries(
-            projected, blocked: blocked,
-            limit: policy.level == .world ? 10 : 18)
+        // Decided with the airports, frozen with them between placements
+        // (MapRenderCache.countryLabels); the drawing below is unchanged.
+        let labels = cache.countryLabels(projector: projector, policy: policy,
+                                         blocked: blocked,
+                                         placedNow: labelsPlacedThisFrame)
         for label in labels {
             // Uppercase and letterspaced, which is how an atlas says "this is
             // a region, not a place". It matters more now that airports carry
@@ -735,19 +656,25 @@ struct MapFrame {
         }
     }
 
-    private func placeAirportLabels() -> [MapLabel] {
+    /// Whether the last label pass re-decided placement (true) or replayed
+    /// the memory (false) — the country pass follows the same choice.
+    private var labelsPlacedThisFrame = false
+
+    private mutating func placeAirportLabels() -> [MapLabel] {
         // A statement rather than an `if case` expression: pattern-matching
         // conditions in expression position are the kind of thing that either
         // compiles or teaches you something, and this file has no business
         // finding out.
         var selectedCode: AirportCode?
         if case .airport(let code) = selection { selectedCode = code }
-        return MapLabelLayout.place(
-            geometry.airports, level: policy.level, zoom: policy.zoom,
-            selected: selectedCode,
+        let result = cache.airportLabels(
+            airports: geometry.airports, byCode: airportsByCode,
+            projector: projector, policy: policy, selected: selectedCode,
+            tick: tick, settle: settle,
             limit: policy.level == .world ? 10 : 32,
-            bounds: CGRect(origin: .zero, size: projector.size),
             markerRadius: { policy.radius($0) })
+        labelsPlacedThisFrame = result.placedNow
+        return result.labels
     }
 
     private func draw(_ labels: [MapLabel], into context: inout GraphicsContext) {
@@ -777,34 +704,6 @@ struct MapFrame {
     // MARK: - Primitives
 
     /// The viewport as a rectangle in normalised map space.
-    private func visibleMapRect(margin: Double)
-        -> (minX: Double, maxX: Double, minY: Double, maxY: Double) {
-        let topLeft = projector.unproject(.zero)
-        let bottomRight = projector.unproject(
-            CGPoint(x: projector.size.width, y: projector.size.height))
-        // Converted rather than left to the implicit CGFloat/Double bridge:
-        // map space is Double everywhere it is stored, and mixing the two
-        // silently is how a geometry bug becomes a platform-specific one.
-        let x0 = Double(topLeft.x), x1 = Double(bottomRight.x)
-        let y0 = Double(topLeft.y), y1 = Double(bottomRight.y)
-        return (min(x0, x1) - margin, max(x0, x1) + margin,
-                min(y0, y1) - margin, max(y0, y1) + margin)
-    }
-
-    private func appendPolyline(_ points: [MapPoint], offset: Double = 0,
-                                to path: inout Path) {
-        var started = false
-        for point in points {
-            let projected = projector.project(MapPoint(x: point.x + offset,
-                                                       y: point.y))
-            if !started {
-                path.move(to: projected)
-                started = true
-            } else {
-                path.addLine(to: projected)
-            }
-        }
-    }
 
     private func fillCircle(_ context: inout GraphicsContext, at point: CGPoint,
                             radius: CGFloat, color: Color) {

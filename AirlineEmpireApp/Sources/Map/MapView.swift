@@ -33,6 +33,17 @@ struct MapScreen: View {
     /// Frozen geometry from the last draw, so a tap resolves against exactly
     /// what the player saw rather than against a recomputed layout.
     @State private var hitGeometry = MapHitGeometry()
+    /// Owned here, one per map screen: the cached geometry the frames replay.
+    /// Plain state (not observable) — the draw reads and writes it without
+    /// invalidating the view that is drawing.
+    @State private var renderCache = MapRenderCache()
+    /// Draw-cost and label-churn totals, collected only under
+    /// `-AEUITestProbes` and published through the canvas's accessibility
+    /// value so a UI test can drag the real map and read real numbers.
+    @State private var drawStats = MapDrawStats()
+    private var probesEnabled: Bool {
+        ProcessInfo.processInfo.arguments.contains("-AEUITestProbes")
+    }
 
     var body: some View {
         NavigationStack {
@@ -125,8 +136,17 @@ struct MapScreen: View {
                                      speed: controller.speed,
                                      elapsed: animating
                                         ? timeline.date.timeIntervalSince(referenceDate)
-                                        : 0)
+                                        : 0,
+                                     tick: referenceDate,
+                                     settle: camera.settleGeneration,
+                                     cache: renderCache)
+                let drawStart = probesEnabled ? DispatchTime.now() : nil
                 frame.draw(into: &context, size: canvasSize)
+                if let drawStart {
+                    let ms = Double(DispatchTime.now().uptimeNanoseconds
+                                    - drawStart.uptimeNanoseconds) / 1e6
+                    drawStats.record(drawMs: ms, labels: frame.placedLabels)
+                }
                 // Handing the drawn geometry back is what keeps hit-testing
                 // honest — the tap resolves against the frame on screen.
                 //
@@ -259,6 +279,13 @@ struct MapScreen: View {
                      String(format: "zoom %.1fx", camera.liveZoom)]
         if events > 0 { parts.append("\(events) world events active") }
         if let hit = selection { parts.append(describe(hit, model: model)) }
+        // The probe's totals ride the same channel as the zoom, and only
+        // under the flag: the value a VoiceOver user hears never carries
+        // engineering numbers.
+        if probesEnabled {
+            parts.append(drawStats.summary)
+            parts.append(renderCache.counterSummary)
+        }
         return parts.joined(separator: ". ")
     }
 
@@ -288,6 +315,12 @@ final class MapCamera {
     var center = CGPoint(x: 0.5, y: 0.42)
     var panOffset: CGSize = .zero
     var pinch: CGFloat = 1
+    /// Bumped whenever a camera *intent* completes — a drag or pinch
+    /// commits, a zoom button or double tap fires, the network is framed.
+    /// The label memory re-decides on this signal rather than per frame
+    /// (docs/MAP_RUNTIME_BASELINE.md §3): during the gesture the choices
+    /// are frozen and only move with the world.
+    private(set) var settleGeneration = 0
 
     /// Where the pinch started on screen, and the world point that was under
     /// it. Together they are what makes the map zoom about the fingers.
@@ -352,11 +385,15 @@ final class MapCamera {
     /// badly on a small screen, and a map that sails past what you flicked at
     /// is worse than one that does not coast at all.
     func commitPan(size: CGSize, predicted: CGSize? = nil, glide: Bool = true) {
+        settleGeneration += 1
         let landed = liveCenter(size: size)
         center = landed
         panOffset = .zero
         guard glide, let predicted else { return }
-        let worldWidth = max(1, size.width * zoom)
+        // liveZoom, not zoom: during a combined pinch-drag the pinch may not
+        // have committed yet, and a coast scaled by the wrong world width
+        // overshoots by the pinch factor (baseline §4).
+        let worldWidth = max(1, size.width * liveZoom)
         let worldHeight = max(1, worldWidth / 2)
         let coast = CGSize(width: predicted.width * 0.45,
                            height: predicted.height * 0.45)
@@ -370,6 +407,7 @@ final class MapCamera {
 
     /// Fold a finished pinch in, springing back if it was pushed past a limit.
     func commitZoom(size: CGSize) {
+        settleGeneration += 1
         let settled = min(Self.maxZoom, max(Self.minZoom, zoom * pinch))
         let overshot = abs(settled - liveZoom) > 0.001
         // Resolve the anchored centre at the zoom we are actually keeping,
@@ -388,6 +426,7 @@ final class MapCamera {
     }
 
     func zoomBy(_ factor: CGFloat) {
+        settleGeneration += 1
         withAnimation(AEMotion.selection) {
             zoom = min(Self.maxZoom, max(Self.minZoom, zoom * factor))
         }
@@ -399,6 +438,7 @@ final class MapCamera {
     /// zooming agree. Anchored for the same reason the pinch is — a double tap
     /// on Tokyo should end up looking at Tokyo.
     func zoomIn(about point: CGPoint, size: CGSize) {
+        settleGeneration += 1
         let target = min(Self.maxZoom, zoom * 1.7)
         let projector = MapProjector(zoom: zoom, center: center, size: size)
         let world = projector.unproject(point)
@@ -417,6 +457,7 @@ final class MapCamera {
     /// previously had no way to ask for. Falls back to the whole world for an
     /// airline that has not flown anywhere yet.
     func frameNetwork(_ model: MapModel) {
+        settleGeneration += 1
         let mine = model.airports.filter { $0.servedByPlayer || $0.isPlayerHome }
         guard !mine.isEmpty else {
             withAnimation(AEMotion.content) {
@@ -455,15 +496,36 @@ final class MapHitGeometry {
     private var airports: [(MapModel.MapAirport, CGPoint)] = []
     private var flights: [(InterpolatedFlight, CGPoint)] = []
     private var routes: [(MapModel.MapRoute, [CGPoint])] = []
+    private var routeTransform: CGAffineTransform = .identity
+    private var selectedRoute: (MapModel.MapRoute, [CGPoint])?
 
     func store(_ geometry: MapFrame.Geometry) {
         airports = geometry.airports
         flights = geometry.flights
         routes = geometry.routes
+        routeTransform = geometry.routeTransform
+        selectedRoute = geometry.selectedRoute
     }
 
     func hit(at location: CGPoint) -> MapHit? {
-        MapHitTester.hit(at: location, airports: airports, flights: flights,
-                         routes: routes)
+        // Route polylines live in the route cache's screen space; the tap is
+        // carried to them through the inverse of the transform they are
+        // displayed under — the same agreement as before ("hit what was
+        // drawn"), tested from the other side. The tolerance is a screen
+        // quantity, so it is scaled into cache space alongside the point.
+        let inverse = routeTransform.inverted()
+        let scale = max(0.0001, sqrt(abs(routeTransform.a * routeTransform.d)))
+        var cacheRoutes = routes
+        if let selectedRoute {
+            // The selected route was drawn per frame in current screen
+            // space; bring it into the same space as the rest.
+            cacheRoutes.append((selectedRoute.0,
+                                selectedRoute.1.map { $0.applying(inverse) }))
+        }
+        return MapHitTester.hit(at: location, airports: airports,
+                                flights: flights,
+                                routes: cacheRoutes,
+                                routeLocation: location.applying(inverse),
+                                routeTolerance: 26 / scale)
     }
 }

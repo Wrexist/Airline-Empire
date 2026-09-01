@@ -384,3 +384,22 @@ the fleet; bar appears past eight aircraft; empty results offer the way back.
 3. **Extend the journey**: buy an aircraft, open a route, assign it. That is
    where BUG-032 lived and it is still undriven.
 4. Home, Map, Finance, World — observe, then audit.
+
+## AE-034 — Map performance (2026-08-31)
+
+### Done
+- Baseline measured (run 84), P0 fixes landed, after measured (run 85):
+  drag avg −32/−48 %, churn −66 %, hops −77 %, worst frame now the one-time
+  map-open build. `docs/MAP_P0_PERFORMANCE_REPORT.md` is the evidence.
+- Runtime audits written: `docs/PLAYER_JOURNEY_RUNTIME_AUDIT.md`,
+  `docs/GAME_EXPERIENCE_PRIORITY.md` (ranked EXP backlog).
+
+### Next, in order
+1. Verify on next CI run: MAP-CACHE counters (regex fixed) and the lease
+   aim correction (BUG-041).
+2. Counter assertions from that run's evidence (TD-024).
+3. EXP-01/EXP-02 (post-checklist direction on Home; summary strips) — the
+   two P2s a player meets in their first session.
+4. Game-feel moments (first revenue, route draw-in, assignment) — designs
+   in `docs/GAME_EXPERIENCE_PRIORITY.md`, each on the settle/celebration
+   machinery, never per-frame.

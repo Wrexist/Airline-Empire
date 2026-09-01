@@ -377,3 +377,42 @@ the journey cannot organically produce one.
 city (or loads a prepared save with a TKH-bound long-haul route), then the
 map matrix's D case — photograph the date-line crossing at world and
 regional zoom.
+
+## TD-022 — The ambient map timeline stays at 30 Hz
+
+The map's `TimelineView` ticks at 30 Hz when nothing is touching it — a
+deliberate battery choice from the map overhaul. The AE-034 brief targets
+60 FPS; after the render cache, gesture- and animation-driven invalidations
+already redraw at event rate during interaction (where responsiveness is
+felt), so the ambient cap now only limits idle flight motion. Raising it
+doubles idle draw work for smoothness only a device can judge — so the
+decision waits for hardware evidence (APPLE_VALIDATION §4, Instruments),
+not a simulator number. Revisit with a measured device frame budget.
+
+## TD-023 — Pan absorbs the finger at the world's edge
+
+`MapCamera.clamp` hard-pins the centre during a drag, so dragging at the
+map's y-limits eats finger motion silently and resuming reads as a jump
+(MAP_RUNTIME_BASELINE §4). The zoom limits got resistance-and-spring
+treatment (`pow(overshoot, 0.30)` + spring back); the pan limits should get
+the same. Not done in AE-034: the P0s were measured problems, this one is a
+READ-level polish item nobody has yet reproduced on a device. Do it with
+eyes on a screen, not blind.
+
+## TD-024 — Cache counter assertions await their first counted run
+
+The render cache counts every rebuild by cause and the probe publishes
+them, but run 85's log carries no counters (the test's forwarding regex
+predated the `placements` token — fixed the same day). The structural
+targets in `docs/MAP_PERFORMANCE_TARGETS.md` (D1: no rebuilds mid-drag;
+L1–L3: placements ≈ settle events) should become CI assertions, with
+bounds taken from the first run that actually prints MAP-CACHE lines —
+pinning bounds before seeing one counted run would be inventing the
+tolerance. One run of evidence, then assert.
+
+**Resolved.** Run 87 delivered the counted run: 24 rebuilds / 312
+replays / 14 placement runs across both drag sequences (168 frames),
+placements matching settle events exactly in all three sequences. The
+baseline test now asserts rebuilds ≤ 60, replays ≥ frames, and
+placements ≤ 40 across the drags — 2–3x the measured deltas, tight
+enough that per-event rebuilding cannot pass.

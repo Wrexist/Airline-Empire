@@ -406,6 +406,28 @@ class AEUITestCase: XCTestCase {
         let leaseDialogTitle = app.staticTexts["Lease?"]
         let fleetRow = app.descendants(matching: .any)
             .matching(identifier: "ae-fleet-row").firstMatch
+        // Runs 85 and 86 photographed the misses on a perfectly still list:
+        // sometimes the tap aimed at the lease row's reported centre opens
+        // "Buy used (8y)?" (one row pitch above), sometimes it lands on
+        // nothing at all (the inert caption between rows) — and run 86's
+        // frames showed the same wrong outcome four times in a row, because
+        // when the row is already in the middle band NOTHING changed between
+        // attempts, so a stale accessibility snapshot answered every retry
+        // identically. Two consequences below: the wrong dialog, when it
+        // appears, measures a one-shot aim correction (the *difference*
+        // between two rows of the same stale snapshot is right even when
+        // both absolutes are wrong); and every failed attempt jiggles the
+        // list before the next one, so a retry is a new question rather than
+        // the same question re-asked.
+        let buyUsed = app.buttons.matching(identifier: "ae-market-buy-used")
+            .firstMatch
+        // The dialog's title ends in "?"; the market row it sits over is
+        // labelled "Buy used (8y)" without one, so the question mark is what
+        // separates them.
+        let buyUsedDialog = app.staticTexts.matching(NSPredicate(
+            format: "label BEGINSWITH 'Buy used' AND label ENDSWITH '?'"))
+            .firstMatch
+        var aimCorrection: CGFloat = 0
         for attempt in 1...4 {
             // Bring the row into the middle band before touching it. Every
             // mis-hit this runner has produced — the Buy-used dialog of runs
@@ -429,10 +451,23 @@ class AEUITestCase: XCTestCase {
             // hit "Buy used (8y)", the row directly above this one.
             waitUntilStill(lease)
             guard lease.exists else { break }
-            // A coordinate tap at the element's own centre: fires at the
-            // frame wherever hit-testing disagrees, and the dialog check
-            // below decides whether it landed right.
-            lease.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            // Prefer the element's own tap when the system agrees it is
+            // hittable — the hit point is resolved at event time, which is
+            // exactly what a stale snapshot's centre coordinate is not. The
+            // coordinate fallback covers run 63's untappable-row case, and
+            // carries the one-shot correction when the previous attempt's
+            // wrong dialog measured one.
+            if aimCorrection == 0, lease.isHittable {
+                lease.tap()
+            } else {
+                let height = max(lease.frame.height, 1)
+                lease.coordinate(withNormalizedOffset: CGVector(
+                    dx: 0.5, dy: 0.5 + aimCorrection / height)).tap()
+            }
+            // The correction was measured against the snapshot of the moment
+            // it was taken; whatever happens next (a dismissal, a jiggle)
+            // invalidates it, so it never survives its one use.
+            aimCorrection = 0
 
             if leaseDialogTitle.waitForExistence(timeout: 3) {
                 // The dialog's confirm button and the market row are both
@@ -460,9 +495,31 @@ class AEUITestCase: XCTestCase {
             // sheet title's own coordinates (the scrim when one is up,
             // inert otherwise), and reopen the market if something closed it.
             capture(Self.logPrefix + "LEASE-ATTEMPT-\(attempt)")
+            let sawWrongDialog = buyUsedDialog.exists
+            if sawWrongDialog, buyUsed.exists, lease.exists {
+                // The miss identified itself: aiming at the reported lease
+                // centre landed on the buy-used row, so the true lease
+                // position is one reported row pitch further down — for the
+                // very next tap only.
+                aimCorrection = max(0, lease.frame.midY - buyUsed.frame.midY)
+            }
             if market.exists {
                 market.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
                 Thread.sleep(forTimeInterval: 1)
+            }
+            if market.exists, !sawWrongDialog {
+                // The tap landed on nothing, and nothing on screen changed —
+                // run 86 proved four such attempts return four identical
+                // answers. A small down-and-back drag forces a fresh layout
+                // pass and a fresh accessibility snapshot, so the next
+                // attempt aims with new information. (When the wrong dialog
+                // appeared, the measured correction is the new information,
+                // and moving the list would invalidate it.)
+                app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
+                    .press(forDuration: 0.05,
+                           thenDragTo: app.coordinate(
+                               withNormalizedOffset: CGVector(dx: 0.5, dy: 0.52)))
+                Thread.sleep(forTimeInterval: 0.8)
             }
             if !market.exists {
                 let browse = app.buttons["Browse the market"]
