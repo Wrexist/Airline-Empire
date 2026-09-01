@@ -363,6 +363,200 @@ final class PlayerJourneyUITests: AEUITestCase {
         checkpoint("15-world-after-month")
     }
 
+    /// The campaign: founding to the Regional era, on the world seed the
+    /// Core twin proved (AE-035 "The First Era").
+    ///
+    /// `FirstEraCampaignTests.campaignReachesTheRegionalEraDeterministically`
+    /// walks this exact script headlessly on seed 2039 and measures: a
+    /// tourism boom on day 8 offers a mission; reacting with an ARN–Cairo
+    /// route completes it by day 11; the February expansion (a used
+    /// narrowbody bought outright, two more markets) satisfies the Regional
+    /// gate — three profitable routes plus one owned airframe — and the era
+    /// arrives on day 59, with statements of $1.8M and $5.4M behind it.
+    /// This test's job is what Linux cannot do: SHOW those states — the
+    /// mission on the Progression screen, the gate's requirement rows, the
+    /// era changing on Home — and photograph them.
+    ///
+    /// Wherever the simulator's world diverges from the Core twin (a tap
+    /// that lands differently is a different command stream), the assertions
+    /// hold to the *contract* — a mission appears, the era arrives — rather
+    /// than to Linux's exact numbers.
+    func testTheCampaignReachesTheRegionalEra() throws {
+        launch(appearance: .light)
+        guard foundAirline(seed: "2039") else { return }
+
+        // ── Month one, the guided path ─────────────────────────────────────
+        openTab("Airline")
+        app.buttons["Fleet"].tap()
+        let browse = app.buttons["Browse the market"]
+        require(browse, "the market entry point")
+        browse.tap()
+        guard leaseAnAircraft() else { return }
+        guard openARoute() else { return }
+        guard assignFirstAircraft() else { return }
+
+        // ── Day 8: the world moves, a mission arrives ──────────────────────
+        guard advanceMornings(until: "2030-01-10", cap: 12) else {
+            XCTFail("The sunrise control could not reach January 10.")
+            return
+        }
+        openTab("World")
+        app.buttons["Progression"].tap()
+        let mission = app.staticTexts.matching(NSPredicate(
+            format: "label BEGINSWITH %@", "Carry ")).firstMatch
+        XCTAssertTrue(mission.waitForExistence(timeout: 8), """
+            Seed 2039's day-8 tourism boom offered no visible mission on the \
+            Progression screen by January 10 — the Core twin proves the \
+            mission exists in state, so either the offer diverged or the \
+            screen is not showing it.
+            """)
+        checkpoint("30-mission-offered")
+        app.navigationBars.buttons.firstMatch.tap()
+
+        // ── React: a route into the boom region ────────────────────────────
+        // Cairo is the nearest African airport inside a narrowbody's range
+        // (Addis Ababa, the alphabetical pick, is 5,850 km out — measured by
+        // the Core twin when its own first script left that route unflown).
+        openTab("Airline")
+        app.buttons["Fleet"].tap()
+        require(browse, "the market entry point, second lease")
+        browse.tap()
+        guard leaseAnAircraft() else { return }
+        openTab("Airline")
+        app.buttons["Routes"].tap()
+        // The shell toolbar's "+" is labelled "Open route".
+        let add = app.buttons["Open route"]
+        guard require(add, "the Open route toolbar action") else { return }
+        add.tap()
+        let search = app.searchFields.firstMatch
+        guard search.waitForExistence(timeout: 8) else {
+            capture(Self.logPrefix + "NO-ROUTE-SEARCH")
+            XCTFail("The route sheet's search field never appeared.")
+            return
+        }
+        search.tap()
+        search.typeText("Cairo")
+        Thread.sleep(forTimeInterval: 1)
+        let cairo = app.buttons.matching(NSPredicate(
+            format: "identifier == %@ AND label CONTAINS %@",
+            "ae-route-destination", "Cairo")).firstMatch
+        guard cairo.waitForExistence(timeout: 8) else {
+            capture(Self.logPrefix + "NO-CAIRO-ROW")
+            XCTFail("Searching the route sheet for Cairo produced no destination row.")
+            return
+        }
+        cairo.tap()
+        let open = app.buttons.matching(identifier: "ae-route-open").firstMatch
+        guard require(open, "the commit bar after picking Cairo", timeout: 8)
+        else { return }
+        open.tap()
+        Thread.sleep(forTimeInterval: 1)
+        assignAllBareRoutes()
+
+        // ── The mission completes on real passengers ───────────────────────
+        guard advanceMornings(until: "2030-01-2", cap: 14) else {
+            XCTFail("The sunrise control could not reach late January.")
+            return
+        }
+        openTab("World")
+        app.buttons["Progression"].tap()
+        checkpoint("31-mission-after-reaction")
+        app.navigationBars.buttons.firstMatch.tap()
+
+        // ── February: buy used, expand on the ranking ──────────────────────
+        guard advanceMornings(until: "2030-02", cap: 20) else {
+            XCTFail("The sunrise control could not reach February.")
+            return
+        }
+        checkpoint("32-month-two-home")
+        openTab("Airline")
+        app.buttons["Fleet"].tap()
+        require(browse, "the market entry point, the used purchase")
+        browse.tap()
+        let usedDeal = app.buttons.matching(identifier: "ae-deal-buy-used").firstMatch
+        guard scrollUntil(usedDeal, "the used-deal card in the market") else { return }
+        usedDeal.tap()
+        Thread.sleep(forTimeInterval: 0.5)
+        let buyUsed = app.buttons.matching(identifier: "ae-market-buy-used").firstMatch
+        XCTAssertTrue(buyUsed.waitForExistence(timeout: 5), """
+            Picking the Used deal card did not hand the commit row the \
+            ae-market-buy-used identity — the deal picker's selection did \
+            not take.
+            """)
+        buyUsed.tap()
+        let confirmUsed = app.buttons.matching(NSPredicate(
+            format: "label BEGINSWITH %@", "Buy used")).firstMatch
+        if confirmUsed.waitForExistence(timeout: 4) { confirmUsed.tap() }
+        let fleetRow = app.descendants(matching: .any)
+            .matching(identifier: "ae-fleet-row").firstMatch
+        XCTAssertTrue(fleetRow.waitForExistence(timeout: 10), """
+            The used purchase did not land back on the fleet — the market \
+            sheet is still up or the command was rejected.
+            """)
+
+        // Two more markets, from the same ranking the Next Moves card shows.
+        openTab("Home")
+        for _ in 0..<2 {
+            let suggestion = app.buttons.matching(NSPredicate(
+                format: "label CONTAINS %@", "→")).firstMatch
+            guard suggestion.waitForExistence(timeout: 8) else { break }
+            suggestion.tap()
+            let commit = app.buttons.matching(identifier: "ae-route-open").firstMatch
+            if commit.waitForExistence(timeout: 8), commit.isEnabled {
+                commit.tap()
+                Thread.sleep(forTimeInterval: 1)
+            } else if app.buttons["Done"].exists {
+                app.buttons["Done"].tap()
+            }
+            openTab("Home")
+        }
+        openTab("Airline")
+        app.buttons["Routes"].tap()
+        assignAllBareRoutes()
+
+        // ── The gate, asked the player's question ──────────────────────────
+        openTab("World")
+        app.buttons["Progression"].tap()
+        let gate = app.staticTexts["To reach Regional"]
+        XCTAssertTrue(gate.waitForExistence(timeout: 8), """
+            The Progression screen does not answer "what do I need to reach \
+            the next era" — no "To reach Regional" section rendered.
+            """)
+        checkpoint("34-progression-before-era")
+        app.navigationBars.buttons.firstMatch.tap()
+
+        // ── February closes; the era arrives with March ────────────────────
+        guard advanceMornings(until: "2030-03", cap: 33) else {
+            XCTFail("The sunrise control could not reach March.")
+            return
+        }
+        if app.staticTexts["A new era"].exists {
+            checkpoint("35-era-celebration")
+        }
+        let regional = app.staticTexts.matching(NSPredicate(
+            format: "label CONTAINS %@", "Regional era")).firstMatch
+        XCTAssertTrue(regional.waitForExistence(timeout: 10), """
+            March has begun with the Core twin's gate satisfied, but Home \
+            still does not say "Regional era" — the era did not advance, or \
+            the banner does not show it.
+            """)
+        checkpoint("36-era-home")
+
+        openTab("Finance")
+        Thread.sleep(forTimeInterval: 1)
+        checkpoint("33-second-statement")
+
+        openTab("World")
+        app.buttons["Progression"].tap()
+        let nextGate = app.staticTexts["To reach National"]
+        XCTAssertTrue(nextGate.waitForExistence(timeout: 8), """
+            The Regional era arrived but the Progression screen offers no \
+            next goal — "To reach National" is missing, and a campaign \
+            without a next goal ends here.
+            """)
+        checkpoint("37-progression-after-era")
+    }
+
     /// The map at two zoom levels, and a pinch that does not fall over.
     ///
     /// Two things this can honestly check, and one it cannot. It can prove the

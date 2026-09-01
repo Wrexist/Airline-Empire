@@ -648,6 +648,58 @@ class AEUITestCase: XCTestCase {
         return true
     }
 
+    /// Walk the routes board and put an aircraft on every route that lacks
+    /// one. The campaign opens routes faster than one at a time, and "the
+    /// first row" stops meaning "the new route" the moment there are three.
+    @discardableResult
+    func assignAllBareRoutes() -> Bool {
+        let rows = app.descendants(matching: .any)
+            .matching(identifier: "ae-route-row")
+        guard rows.firstMatch.waitForExistence(timeout: 8) else { return false }
+        let count = min(rows.count, 6)
+        for index in 0..<count {
+            let row = rows.element(boundBy: index)
+            guard row.exists else { continue }
+            row.tap()
+            let assign = app.buttons["Assign an aircraft"]
+            let unassign = app.buttons["Unassign"]
+            if assign.waitForExistence(timeout: 4), !unassign.exists {
+                assign.tap()
+                let candidate = app.buttons.matching(
+                    NSPredicate(format: "label CONTAINS %@", " at ")).firstMatch
+                if candidate.waitForExistence(timeout: 5) { candidate.tap() }
+                _ = unassign.waitForExistence(timeout: 8)
+            }
+            app.navigationBars.buttons.firstMatch.tap()
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        return true
+    }
+
+    /// Tap the sunrise control until Home's date begins with `datePrefix`
+    /// (e.g. "2030-02"). Each tap simulates a full game day synchronously;
+    /// the loop exits on the calendar, never on elapsed time.
+    @discardableResult
+    func advanceMornings(until datePrefix: String, cap: Int = 35) -> Bool {
+        openTabIfNeeded("Home")
+        let sunrise = app.buttons["Advance to next morning"]
+        guard sunrise.waitForExistence(timeout: 8) else { return false }
+        let arrived = app.staticTexts.matching(NSPredicate(
+            format: "label BEGINSWITH %@", datePrefix)).firstMatch
+        var taps = 0
+        while taps < cap, !arrived.exists {
+            sunrise.tap()
+            Thread.sleep(forTimeInterval: 0.5)
+            taps += 1
+        }
+        return arrived.exists
+    }
+
+    private func openTabIfNeeded(_ title: String) {
+        if app.buttons["Advance to next morning"].exists { return }
+        openTab(title)
+    }
+
     // MARK: The journey's shared opening
 
     /// The control that opens a top-level section, wherever this width class
@@ -693,13 +745,37 @@ class AEUITestCase: XCTestCase {
 
     /// Found an airline and arrive in the shell. Every journey starts here.
     @discardableResult
-    func foundAirline() -> Bool {
+    func foundAirline(seed: String? = nil) -> Bool {
         // A relaunch inside one test may come back to a shell that is already
         // playing; that is a success, not a missing button.
         if waitForTab("Home", timeout: 3) != nil { return true }
         let found = app.buttons["Found Skyline Air"]
         guard require(found, "the Found button on the new-game screen") else {
             return false
+        }
+        // The campaign journey founds a *specific* world: the seed field is
+        // a product feature ("share one for a challenge run"), and the same
+        // seed is pinned by the Core twin (FirstEraCampaignTests), so the
+        // simulator walks the world Linux already proved.
+        if let seed {
+            let disclosure = app.buttons["World seed"]
+            if disclosure.waitForExistence(timeout: 5) {
+                disclosure.tap()
+                let field = app.textFields["Seed number"]
+                if field.waitForExistence(timeout: 5) {
+                    field.tap()
+                    field.typeText(seed)
+                    // Collapse the disclosure again: it keeps the typed seed
+                    // (the collapsed row echoes it) and puts the keyboard
+                    // away, so the Found button below is hittable.
+                    disclosure.tap()
+                    Thread.sleep(forTimeInterval: 0.5)
+                } else {
+                    capture(Self.logPrefix + "SEED-FIELD-MISSING")
+                    XCTFail("The World seed field did not appear after expanding the disclosure.")
+                    return false
+                }
+            }
         }
         found.tap()
         if waitForTab("Home", timeout: 25) != nil { return true }
