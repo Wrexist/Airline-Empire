@@ -48,6 +48,25 @@ no other P0/P1.)*
   aggregate columns behind `count > 3`. **OBSERVED (run 93, KEY-04/07)**:
   both strips now four metrics, the dead-space chrome gone.
 
+- **EXP-08 · HOME · The record of the game’s biggest moments is
+  write-only.** REPRO: run 102 KEY-30 offers a mission on 10 January
+  ("Carry 500 passengers in Africa · $250k"); the Core twin completes it
+  on day 11; KEY-31 on 20 January shows no trace of it anywhere — the
+  MISSIONS section is simply gone. ROOT CAUSE: the Home feed renders
+  `recentEvents.suffix(14)` — the last fourteen **events**, not fourteen
+  days — and with flights arriving daily a completion rolls off within a
+  simulated week. The celebration overlay carries the moment live and
+  nothing carries it afterwards; milestones persist, missions,
+  completions and statements do not. IMPACT: a player who advances
+  several days between visits — which the sunrise control actively
+  encourages — can finish a mission, be paid for it, and never see that
+  it happened. FIX: keep a short *notable* history (statements,
+  missions, era changes, capability completions) that ages by simulated
+  days rather than by event count, or surface it on the Progression
+  screen where the mission lived. VALIDATION: the campaign now watches
+  Home morning-by-morning and photographs the completion the day it
+  lands (`advanceMorningsUntilHomeSays`). (READ + OBSERVED, run 102.)
+
 ## P3
 
 - **EXP-03 · MAP · Edge-clipped labels.** "Langnes (Tro…" (KEY-82),

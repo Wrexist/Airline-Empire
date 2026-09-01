@@ -659,12 +659,14 @@ visually inspected, no cache defect classes found. Full evidence:
 
 ## Next
 
-Two verifications ride the next CI run: the cache counters (the MAP-CACHE
-regex missed the new `placements` token in run 85 — fixed) and the lease
-tap's adaptive aim (the one red UI test; the miss is a stale accessibility
-frame, off by exactly one row pitch, now measured and corrected from the
-wrong dialog itself). After that, `docs/GAME_EXPERIENCE_PRIORITY.md` is
-the ranked backlog; remaining Apple-runtime validation is enumerated in
+One verification rides the next CI run: the campaign journey's February,
+which must end with four routes and none of them bare before March can be
+asked whether the era arrived (FE-05). Its diagnostics — `FEB-*`,
+`BARE-*`, `KEY-32b-network-after-february`, and the mission-completion
+morning `KEY-30b` — are there to name the failing step rather than the
+failing assertion. After that,
+`docs/GAME_EXPERIENCE_PRIORITY.md` is the ranked backlog (EXP-08 is the
+newest entry); remaining Apple-runtime validation is enumerated in
 `docs/APPLE_VALIDATION.md`.
 
 **2026-09-01 (first-session phase, post-#11).** The audit's ranked top of
@@ -693,3 +695,32 @@ observed fixed; FM-03 records the survivor), EXP-04 deferred with reasons,
 EXP-05 fixed and observed, EXP-06 improved (residual ghosting, thickened),
 EXP-07 implemented (feel not claimed). Evidence:
 docs/FIRST_MONTH_RUNTIME_AUDIT.md.
+
+**2026-09-01 (AE-035/AE-036 — the first era, and the next decision).**
+The Core twin (`FirstEraCampaignTests`) proves the campaign deterministic
+before a simulator ever runs it: seed 2039 reaches the Regional gate on
+day 59 with statements of $2.0M and $5.4M, one boom on day 8, its mission
+completed day 11, four profitable routes and $17.3M cash. AE-036 corrected
+AE-035's own premise from the code: the recommender never proposed the
+unflyable route — it filters by fleet eligibility — so the defect was one
+layer down, in the free-form sheet's silence at the commit. Fixed with
+`MarketOpportunity.servableByEra`, which distinguishes "nothing in your
+fleet can serve it — the market sells aircraft that could" from "beyond
+this era's aircraft — a route for a later fleet", and a commit caution
+that **warns without blocking**. Both are now OBSERVED (run 102, KEY-38 and
+KEY-39: the caution reads "No aircraft of this era can fly this — it will
+wait, unflown, for a later fleet" with "Open this route" still enabled).
+The symbolic mission reward was root-caused rather than patched — an
+unserved region has zero seats, so the per-pax target bottoms out at the
+500-passenger floor and paid $20k against multi-million-dollar months —
+and fixed with `boomRushRewardFloor` ($250k) in tuning; OBSERVED on
+KEY-30. **Not yet observed: the era transition itself.** Run 102's
+scripted campaign reached March with a smaller airline than the twin
+builds on the same seed (four aircraft, three routes, two idle), so the
+gate correctly read "2 of 3" — the game's arithmetic is right and the
+shortfall is the journey's (FE-05). Two silent skips in the script that
+made this undiagnosable now retry, photograph every miss, and assert
+their effect. New finding EXP-08: the Home feed keeps the last fourteen
+*events*, not fourteen days, so a completed mission leaves no trace on
+Home within a simulated week. Evidence:
+docs/FIRST_ERA_RUNTIME_AUDIT.md, docs/DECISION_EXPERIENCE_AUDIT.md.

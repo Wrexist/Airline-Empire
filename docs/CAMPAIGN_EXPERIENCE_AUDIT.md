@@ -25,7 +25,7 @@ states the two requirements with live standings ("Routes that made money
 last month — 0 of 3"; "An aircraft you own outright — Not yet"), and
 previews the reward ("A real regional carrier — large narrowbodies open
 up"). Beneath it a mission ("Carry 500 passengers in Africa", 0/500,
-"$20k · 73 days left") with the line "Missions are offers, never chores
+"$250k · 73 days left" after the floor fix, OBSERVED run 102 KEY-30) with the line "Missions are offers, never chores
 — ignoring one costs nothing". Beneath that, four capability programs,
 each explained in a sentence and each badged "National era".
 
@@ -48,9 +48,27 @@ and three are thin:
 ## 4. The era transition
 
 MEASURED in Core (day 59, automatic on passing the gate, emits the
-celebration event). Frames pending. Nothing in the code makes the
-transition a ceremony beyond the existing celebration overlay — which is
-the right machinery, not a new one.
+celebration event). Nothing in the code makes the transition a ceremony
+beyond the existing celebration overlay — which is the right machinery,
+not a new one.
+
+**Still not OBSERVED, and honestly why.** Run 102's simulator campaign
+reached 1 March 2030 with a *smaller airline than the twin builds on the
+same seed* — four aircraft, three routes, two of them idle — so the gate
+correctly read "routes that made money last month — 2 of 3" and the era
+did not advance (KEY-36, KEY-37). The arithmetic is the game's and it is
+right; the shortfall is the scripted player's (FE-05 in
+`FIRST_ERA_RUNTIME_AUDIT.md`). No assertion was weakened to hide it.
+
+**A finding that outlived the failure.** The Home feed keeps the last
+**fourteen events, not fourteen days**, so a moment as significant as
+"Mission complete! $250k" is gone from Home within a simulated week of
+happening. For a player who advances several days between visits, the
+game's own record of its biggest moments is effectively write-only. The
+celebration overlay carries it live; nothing carries it afterwards.
+(READ + OBSERVED, run 102 KEY-31 — the mission's only trace ten days on
+is its absence.) Milestones persist; missions, statements and completions
+do not.
 
 ## 5. After the era
 
