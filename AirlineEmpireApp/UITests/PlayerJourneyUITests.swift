@@ -386,10 +386,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         guard foundAirline(seed: "2039") else { return }
 
         // ── Month one, the guided path ─────────────────────────────────────
-        guard openAirlineSection("Fleet") else { return }
-        let browse = app.buttons["Browse the market"]
-        require(browse, "the market entry point")
-        browse.tap()
+        guard openAircraftMarket() else { return }
         guard leaseAnAircraft() else { return }
         guard openARoute() else { return }
         guard assignFirstAircraft() else { return }
@@ -415,9 +412,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         // Cairo is the nearest African airport inside a narrowbody's range
         // (Addis Ababa, the alphabetical pick, is 5,850 km out — measured by
         // the Core twin when its own first script left that route unflown).
-        guard openAirlineSection("Fleet") else { return }
-        require(browse, "the market entry point, second lease")
-        browse.tap()
+        guard openAircraftMarket() else { return }
         guard leaseAnAircraft() else { return }
         guard openAirlineSection("Routes") else { return }
         // The shell toolbar's "+" is labelled "Open route".
@@ -492,9 +487,7 @@ final class PlayerJourneyUITests: AEUITestCase {
             return
         }
         checkpoint("32-month-two-home")
-        guard openAirlineSection("Fleet") else { return }
-        require(browse, "the market entry point, the used purchase")
-        browse.tap()
+        guard openAircraftMarket() else { return }
         let usedDeal = app.buttons.matching(identifier: "ae-deal-buy-used").firstMatch
         guard scrollUntil(usedDeal, "the used-deal card in the market") else { return }
         usedDeal.tap()

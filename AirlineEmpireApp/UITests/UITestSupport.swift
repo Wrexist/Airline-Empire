@@ -608,9 +608,22 @@ class AEUITestCase: XCTestCase {
         let routeRow = app.descendants(matching: .any)
             .matching(identifier: "ae-route-row").firstMatch
         guard require(routeRow, "the new route on the board") else { return false }
-        routeRow.tap()
-
         let assign = app.buttons["Assign an aircraft"]
+        // A synthetic tap on a List row can no-op while the board is still
+        // settling — run 98 photographed the board, unchanged, where the
+        // route detail should have been, and reported it as "no assignable
+        // aircraft" (the same tap-that-did-nothing family as the lease
+        // mis-hits). Verify arrival by the detail's own controls and try
+        // again rather than blaming the fleet for a tap that never landed.
+        for attempt in 1...3 {
+            guard !assign.exists, !app.buttons["Unassign"].exists else { break }
+            routeRow.tap()
+            if assign.waitForExistence(timeout: 6)
+                || app.buttons["Unassign"].exists { break }
+            capture(Self.logPrefix + "ROUTE-ROW-TAP-\(attempt)")
+            Thread.sleep(forTimeInterval: 1)
+        }
+
         guard assign.waitForExistence(timeout: 10) else {
             // Not a silent skip. If no aircraft can fly this route the
             // assignment card says why, and that reason is the finding.
@@ -674,6 +687,30 @@ class AEUITestCase: XCTestCase {
             Thread.sleep(forTimeInterval: 0.5)
         }
         return true
+    }
+
+    /// Reach the aircraft market from the Fleet section, whatever the fleet
+    /// looks like.
+    ///
+    /// "Browse the market" is the *empty state's* call to action and stops
+    /// existing the moment the airline owns an aircraft; from then on the
+    /// market is the toolbar's "Acquire". Run 98's campaign failed asking
+    /// for the empty state's button after its first lease.
+    @discardableResult
+    func openAircraftMarket() -> Bool {
+        guard openAirlineSection("Fleet") else { return false }
+        let browse = app.buttons["Browse the market"]
+        let acquire = app.buttons["Acquire"]
+        if browse.waitForExistence(timeout: 4), browse.isHittable {
+            browse.tap()
+        } else if acquire.waitForExistence(timeout: 6) {
+            acquire.tap()
+        } else {
+            capture(Self.logPrefix + "NO-MARKET-ENTRY")
+            XCTFail("Neither the empty state's \"Browse the market\" nor the toolbar's \"Acquire\" was available on the Fleet section.")
+            return false
+        }
+        return app.staticTexts["Aircraft market"].waitForExistence(timeout: 8)
     }
 
     /// Open a section of the Airline tab (Routes or Fleet), popping whatever
