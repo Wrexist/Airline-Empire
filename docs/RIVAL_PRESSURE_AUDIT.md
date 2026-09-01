@@ -192,7 +192,7 @@ $2.0M to $2.1M with the new cast's slot and demand geography.
 
 | State | Core | UI journey step | Frame |
 | --- | --- | --- | --- |
-| COMP-01 first competing route | day 31, two incumbents | route sheet From: LHR, "Paris" → "2 airlines already fly it" → fare slider → open | KEY-40, KEY-41, KEY-42 |
+| COMP-01 first competing route | day 31, two incumbents | route sheet From: LHR, "Paris" → "2 airlines already fly it" → open at the market fare | KEY-40, KEY-41, KEY-42 |
 | COMP-02 rival expands into a meaningful market | day 3–4, LHR–CDG at the player's London | Competitors card: "shares 1 airport with you" / moves list | KEY-46 |
 | COMP-03 economic competition | share 36 % at day 38, route full, −$90k in March | route detail a week on: standing sentence, share bar | KEY-44 |
 | COMP-04 rival changes strategy | day 32: fare cut + frequency | route detail on entry vs a week later | KEY-42 → KEY-44 |
@@ -232,9 +232,31 @@ sunrise taps away.
 
 ## 8. Frames inspected
 
-*To be filled from the CI run that carries this branch.* Every KEY frame
-above is listed with what it showed and what it did not; nothing here is
-OBSERVED until then.
+### Run 112 (commit 2f54fe3) — 67 frames decoded, every one looked at
+
+Run 111 failed to compile the app (a duplicated accessor; fixed). Run 112
+built, measured, and ran the UI suite: 16 of 18 journeys green; the
+campaign and the retreat-save journey red, both for harness reasons the
+frames explain. The late-game save journey passed.
+
+| Frame | What it showed | Verdict |
+| --- | --- | --- |
+| KEY-40-contested-market-row | Route sheet, From: **LHR — Heathrow (London)**, "Paris" typed, one row: `CDG Charles de Gaulle (Paris) · ≈4,292 passengers/day · 347 km · fare ≈ $65 · 2 airlines already fly it` | **OBSERVED** COMP-01: the sheet says who is already there before anything is committed |
+| KEY-41-fight-fare + KEY-MISSING-commit-bar | The Routes board on 1 Feb with **LHR–CDG $64 2×/day, no aircraft** already open, ARN–HND $729 beside it, ARN–LHR and ARN–CAI at 100% load | The fare-slider drag landed on the pinned commit bar under the keyboard and opened the route at the reference fare before the journey looked. Harness defect, fixed: the fight opens at the market fare; the undercut stays the Core twin's |
+| KEY-50-late-game-home | Home on **2035-01-01, International era, $38.0M**: Next moves (one idle aircraft; ARN→MXP, ARN→FRA "no competition yet"), then the **RIVALS** card: *"One of your routes is contested — an even fight so far."*, then the pulse (95% load, 92% aircraft used) | **OBSERVED** COMP-07 Home: one competitive fact, no feed |
+| KEY-51-late-game-world-hub | World hub: Competitors card badged **"1 contested"** with the live line *"One of your routes is contested — an even fight so far."*; World events "1 active · Now: Severe weather over East Asia"; Progression "60% to next era" | **OBSERVED** COMP-06: the hub's competitor line is about the player |
+| KEY-52-late-game-competitors | Position strip **1 contested / 0 leading / 0 losing / 5 rivals flying**; "WHERE YOU ARE FIGHTING: LHR–CDG · even · 52%"; Aurora Atlantic (2 aircraft, 2 routes, rep 80%, *"You compete on 1 market."*) first; PacificBlue (20 aircraft, 4 routes, *"You share 4 airports but no city pair — presence, not a fight."*); SwiftJet 0 aircraft, 0 routes, rep 75% | **OBSERVED** COMP-06/07. Defect found: a grounded rival read as "shares 1 airport" (its home) — now "Grounded — flying nothing at the moment." |
+| KEY-53-late-game-map-rivals | Map, Rivals layer, the player's eight-spoke Stockholm network in blue over grey rival lines, hint *"1 of your routes are contested; you hold your own on each."* | **OBSERVED** COMP-07 map; the hint's grammar fixed (singular). Drawing untouched, no clutter at this density |
+| KEY-FEB-ROUTE-SHEET-STUCK-1 | The second Next Moves suggestion's sheet did not reach a commit (pre-existing FE-05 territory; the journey photographs and continues) | pre-existing; not this phase's |
+| KEY-30, 30b, 31, 32, 38, 39 | The first-era states, unchanged by the new cast: mission offered, completed on Home, the era card, the Addis Ababa caution | **OBSERVED** again; the campaign's spine survives the fixes |
+| KEY-01 … 24, 60 … 97, B0 … B3 | Every other journey's frames, unchanged | green, inspected for regressions: none |
+
+**Retreat save (COMP-05).** The journey reached Home (no fixture-load
+capture) and failed to find the card. `RivalPressureFixtureTests` now
+proves the save's headline *is* `rivalLeftYourMarket` (SwiftJet, CDG–LHR,
+one day ago), so the defect was the App's: the identifier sat on the
+card's container, which XCUITest does not expose. Moved to the link.
+Frames KEY-42 … 48 are pending run 113.
 
 ## 9. Bugs found
 
