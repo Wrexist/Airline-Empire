@@ -314,12 +314,15 @@ extension GameState {
 
         // Standing against an even split of the carriers that actually
         // carried demand today (a rival with no aircraft on the pair is on
-        // the list but not in the split).
-        guard marketDemand > 0 else {
+        // the list but not in the split). A route the player opened this
+        // morning has no allocation yet and has flown nothing: that is not
+        // "losing at 0%", it is too early — run 113 photographed the former
+        // on the day of entry (docs/RIVAL_PRESSURE_AUDIT.md §8).
+        guard marketDemand > 0, myDemand > 0 || mine.stats.totalFlights > 0 else {
             return MarketCompetition(
                 routeID: mine.id, origin: mine.origin, destination: mine.destination,
                 rivals: rivals, standing: .tooEarly, playerShareToday: nil,
-                evenShare: nil, marketDemandToday: 0, edge: nil,
+                evenShare: nil, marketDemandToday: marketDemand, edge: nil,
                 strongestRival: rivals.first?.airline)
         }
         let share = Double(myDemand) / Double(marketDemand)
@@ -471,13 +474,16 @@ extension GameState {
                 ? .rivalEnteredYourMarket(move) : .rivalLeftYourMarket(move)
         } else if trailing > 0 {
             headline = .trailing(routes: trailing, contested: contested.count)
+        } else if !contested.isEmpty, leading < contested.count {
+            // Your own contested pair outranks a rival's building elsewhere:
+            // run 113's Home, a week into the London–Paris fight, led with
+            // "SwiftJet added 2 routes this month" instead.
+            headline = .fighting(contested: contested.count)
         } else if let biggest, biggest.marketsEnteredRecently >= 2,
                   recent.contains(where: { $0.airline == biggest.airline && $0.kind == .entered }) {
             headline = .rivalExpanding(biggest)
-        } else if !contested.isEmpty, leading == contested.count {
-            headline = .leading(contested: contested.count)
         } else if !contested.isEmpty {
-            headline = .fighting(contested: contested.count)
+            headline = .leading(contested: contested.count)
         } else {
             headline = nil
         }

@@ -289,9 +289,14 @@ final class CampaignUITests: AEUITestCase {
             return
         }
         checkpoint("43-home-rival-pressure")
-        XCTAssertTrue(app.descendants(matching: .any)
+        // The card by its section header, which is a plain static text;
+        // run 113 photographed the card on screen and then failed the
+        // identifier query against it, which proves the query and not the
+        // card. The identifier remains the retreat journey's handle.
+        let rivalsHeader = app.staticTexts["RIVALS"]
+        let rivalsLink = app.descendants(matching: .any)
             .matching(identifier: "ae-rival-pressure").firstMatch
-            .waitForExistence(timeout: 6), """
+        XCTAssertTrue(rivalsHeader.waitForExistence(timeout: 6) || rivalsLink.exists, """
             Home carries no rival-pressure card a week into a contested \
             market — the one competitive fact the screen exists to show.
             """)
