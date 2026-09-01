@@ -35,7 +35,9 @@ no other P0/P1.)*
   idle-aircraft warning plus the top two `marketOpportunities`, opening
   the same guided route sheet the checklist used; the flight journey
   test now drives to first landing and asserts the checklist→card
-  handover. Runtime validation rides the next CI run.
+  handover. **OBSERVED (run 93, KEY-09)**: checklist retired, Next Moves
+  card with two ranked markets on screen, $66k month-to-date beside it —
+  the state exists and reads as designed.
 - **EXP-02 · ROUTES/FLEET · Summary strip outweighs a 1-row list.**
   REPRO: KEY-04/KEY-07. ROOT CAUSE: the 7-metric strip renders at full
   weight regardless of fleet size. IMPACT: early-game screens read as
@@ -43,8 +45,8 @@ no other P0/P1.)*
   its 2–3 non-degenerate metrics until the list exceeds ~3 rows.
   VALIDATION: re-screenshot KEY-04/07. (OBSERVED)
   **IMPLEMENTED (first-session phase)**: both strips gate their
-  aggregate columns behind `count > 3`. Re-screenshot rides the next
-  CI run.
+  aggregate columns behind `count > 3`. **OBSERVED (run 93, KEY-04/07)**:
+  both strips now four metrics, the dead-space chrome gone.
 
 ## P3
 
