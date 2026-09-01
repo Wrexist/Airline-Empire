@@ -416,3 +416,29 @@ placements matching settle events exactly in all three sequences. The
 baseline test now asserts rebuilds ≤ 60, replays ≥ frames, and
 placements ≤ 40 across the drags — 2–3x the measured deltas, tight
 enough that per-event rebuilding cannot pass.
+
+
+## TD-025 — The UI suite ran serially because it was one class
+
+**Symptom.** A full UI run took **26 minutes** of wall clock (1,513 s of
+test time in run 103) on a machine with cores to spare.
+
+**Root cause.** XCUITest distributes work by test *class*. All eighteen
+tests lived in `PlayerJourneyUITests`, so no xcodebuild flag could have
+parallelised anything — there was only ever one unit of work.
+
+**Fix.** The suite is four classes, balanced by measured duration:
+`CampaignUITests` (456 s), `EconomyJourneyUITests` (474 s),
+`ShellAndMapUITests` (485 s) and `PerformanceBaselineUITests` (113 s). CI
+runs the measurement class **first and alone** with parallelism off, then
+the other three on cloned simulators, three at a time.
+
+**Why the measurements are separated.** Map rebuild/replay counts and cold
+launch are the only figures this project treats as evidence. Measured
+against three competing simulators they would not be comparable with
+`docs/MAP_P0_PERFORMANCE_REPORT.md`, and a benchmark that is not
+comparable is not a benchmark.
+
+**Expected.** ~113 s serial + ~485 s parallel ≈ **10 minutes**, bounded by
+the longest class rather than by their sum. NOT VALIDATED until a run
+reports it; the class durations above are MEASURED from run 103.

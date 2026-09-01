@@ -294,7 +294,21 @@ jobs:
           echo "Using simulator: $NAME"
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
 
-      - name: Run the UI tests
+      # Two passes, on purpose.
+      #
+      # XCUITest distributes work by test *class*, so the whole suite in one
+      # class ran strictly serially — twenty-six minutes of one simulator
+      # while the runner's other cores sat idle. The suite is now four
+      # classes, and the second pass runs three of them on cloned simulators
+      # at once.
+      #
+      # The measurements do not join that party. Map rebuild/replay counts
+      # and cold launch are the only numbers this project treats as evidence,
+      # and a figure taken while three other simulators fight for the same
+      # cores is not comparable with the ones already in
+      # docs/MAP_P0_PERFORMANCE_REPORT.md. They run first, alone, on an
+      # otherwise quiet machine.
+      - name: Measure (alone, so the numbers stay comparable)
         if: steps.changes.outputs.build == 'true'
         working-directory: AirlineEmpireApp
         run: |
@@ -304,9 +318,28 @@ jobs:
             -scheme AirlineEmpire \
             -configuration Debug \
             -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
-            -resultBundlePath UITestResults.xcresult \
+            -only-testing:AirlineEmpireUITests/PerformanceBaselineUITests \
+            -parallel-testing-enabled NO \
+            -resultBundlePath UITestResults-baseline.xcresult \
             CODE_SIGNING_ALLOWED=NO \
             test 2>&1 | tee ui-test-output.txt
+
+      - name: Run the UI tests
+        if: always() && steps.changes.outputs.build == 'true'
+        working-directory: AirlineEmpireApp
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project AirlineEmpire.xcodeproj \
+            -scheme AirlineEmpire \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
+            -skip-testing:AirlineEmpireUITests/PerformanceBaselineUITests \
+            -parallel-testing-enabled YES \
+            -maximum-concurrent-test-simulator-destinations 3 \
+            -resultBundlePath UITestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            test 2>&1 | tee -a ui-test-output.txt
 
       # The screenshots. These are the only visual evidence this project has
       # ever produced, so they are kept whether the run passed or failed —
@@ -317,7 +350,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ui-screenshots
-          path: AirlineEmpireApp/UITestResults.xcresult
+          path: |
+            AirlineEmpireApp/UITestResults.xcresult
+            AirlineEmpireApp/UITestResults-baseline.xcresult
           retention-days: 14
           if-no-files-found: warn
 
@@ -344,20 +379,29 @@ jobs:
         run: |
           set +e
           OUT=$(mktemp -d)
-          xcrun xcresulttool export attachments \
-            --path UITestResults.xcresult --output-path "$OUT" >/dev/null 2>&1
+          # Both passes leave a bundle; the exporter writes one manifest per
+          # output directory, so each is exported into its own subdirectory
+          # and the reader below walks all of them.
+          for BUNDLE in UITestResults.xcresult UITestResults-baseline.xcresult; do
+            [ -d "$BUNDLE" ] || continue
+            SUB="$OUT/$(basename "$BUNDLE" .xcresult)"
+            mkdir -p "$SUB"
+            xcrun xcresulttool export attachments \
+              --path "$BUNDLE" --output-path "$SUB" >/dev/null 2>&1
+          done
           # The exporter writes a manifest plus files whose names are uuids;
           # the manifest carries the human name each attachment was given.
           python3 - "$OUT" <<'PYEOF'
           import base64, json, os, subprocess, sys
           out = sys.argv[1]
-          manifest = os.path.join(out, "manifest.json")
           pairs = []
-          if os.path.exists(manifest):
-              for suite in json.load(open(manifest)):
+          for root, _dirs, files in os.walk(out):
+              if "manifest.json" not in files:
+                  continue
+              for suite in json.load(open(os.path.join(root, "manifest.json"))):
                   for a in suite.get("attachments", []):
                       name = a.get("suggestedHumanReadableName") or a.get("exportedFileName")
-                      path = os.path.join(out, a.get("exportedFileName", ""))
+                      path = os.path.join(root, a.get("exportedFileName", ""))
                       if name and os.path.exists(path):
                           pairs.append((name, path))
           if not pairs:
@@ -413,7 +457,8 @@ jobs:
           grep -E "Test Case .* (passed|failed) \(" ui-test-output.txt || true
           echo "=== FAILURES ==="
           grep -E "^.*: error: -\[" ui-test-output.txt | head -40 || true
-          grep -E "Executed [0-9]+ tests?," ui-test-output.txt | tail -1 || true
+          # Two passes, so two totals: the measurement pass and the rest.
+          grep -E "Executed [0-9]+ tests?," ui-test-output.txt | tail -2 || true
 
   # ── 4 · The same shell, at regular width ───────────────────────────────────
   #
@@ -480,8 +525,8 @@ jobs:
             -configuration Debug \
             -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
             -resultBundlePath UITestResults.xcresult \
-            -only-testing:AirlineEmpireUITests/PlayerJourneyUITests/testFoundingAnAirlineReachesEveryTab \
-            -only-testing:AirlineEmpireUITests/PlayerJourneyUITests/testDetailScreensAndSettingsRender \
+            -only-testing:AirlineEmpireUITests/CampaignUITests/testFoundingAnAirlineReachesEveryTab \
+            -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testDetailScreensAndSettingsRender \
             CODE_SIGNING_ALLOWED=NO \
             test 2>&1 | tee ui-test-output.txt
 

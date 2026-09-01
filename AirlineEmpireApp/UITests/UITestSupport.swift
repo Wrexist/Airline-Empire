@@ -842,7 +842,11 @@ class AEUITestCase: XCTestCase {
         var taps = 0
         while taps < cap, !arrived.exists {
             sunrise.tap()
-            Thread.sleep(forTimeInterval: 0.5)
+            // No fixed pause: `tap()` already waits for the app to go idle,
+            // and the `arrived.exists` query at the top of the loop is a
+            // second synchronisation point. The campaign taps this control
+            // ninety times, so half a second each was half a minute of the
+            // suite spent asleep.
             taps += 1
         }
         return arrived.exists
@@ -880,7 +884,6 @@ class AEUITestCase: XCTestCase {
         for _ in 0..<cap {
             if line.exists { return true }
             sunrise.tap()
-            Thread.sleep(forTimeInterval: 0.5)
         }
         return line.exists
     }
