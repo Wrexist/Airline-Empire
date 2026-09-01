@@ -511,13 +511,15 @@ final class MapRenderCache {
                          projector: projector) == nil {
             var out: [MapLabel] = []
             out.reserveCapacity(airportMemory.count)
-            // The same keep rectangle the placer uses (L4 hysteresis).
-            // Between placements labels ride the camera by re-projection,
-            // and nothing re-checked the edges — run 85's KEY-82 photographed
-            // "Langnes (Tro…" torn at the right edge mid-slide (EXP-03). A
-            // label that has slid past the placer's own exit boundary leaves
-            // now instead of drawing shredded until the next settle.
-            let keep = labelBounds.insetBy(dx: -12, dy: -12)
+            // Full containment, not the placer's ±12pt keep margin: run 94
+            // re-photographed "Langnes (Tron" torn at the edge because a
+            // 12pt overhang still draws 12pt of shredded text. Between
+            // placements labels ride the camera by re-projection (run 85's
+            // KEY-82 first showed the tear, EXP-03); a box that no longer
+            // fits entirely on the legible canvas skips this frame — the
+            // memory itself survives, so the label returns the moment the
+            // camera gives it room.
+            let keep = labelBounds
             for memory in airportMemory {
                 guard let airport = byCode[memory.code] else { continue }
                 let anchor = projector.project(airport.position)
@@ -563,9 +565,9 @@ final class MapRenderCache {
                        blocked: [CGRect], placedNow: Bool,
                        labelBounds: CGRect) -> [MapLabel] {
         if !placedNow {
-            // Same edge rule as the airports: re-projected memory that has
-            // slid past the keep boundary leaves rather than drawing torn.
-            let keep = labelBounds.insetBy(dx: -12, dy: -12)
+            // Same edge rule as the airports: full containment, or the
+            // label sits this frame out rather than drawing torn.
+            let keep = labelBounds
             return countryMemory.compactMap { memory in
                 let point = projector.project(MapPoint(x: Double(memory.anchor.x),
                                                        y: Double(memory.anchor.y)))

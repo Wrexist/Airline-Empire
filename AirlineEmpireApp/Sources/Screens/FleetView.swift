@@ -957,7 +957,11 @@ struct AircraftShopSheet: View {
             Text(label)
                 .font(AEType.caption)
                 .foregroundStyle(AETheme.mutedText)
-                .frame(width: 62, alignment: .leading)
+                // min, not fixed: a fixed 62pt column wrapped "Range" to
+                // "Rang / e" at accessibility sizes (run 94, KEY-97). The
+                // bar flexes; the words do not break.
+                .frame(minWidth: 62, alignment: .leading)
+                .fixedSize()
             Capsule()
                 .fill(AETheme.cardBackground)
                 .frame(height: 5)

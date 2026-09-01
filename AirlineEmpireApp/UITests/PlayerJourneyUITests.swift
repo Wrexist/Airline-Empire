@@ -319,9 +319,14 @@ final class PlayerJourneyUITests: AEUITestCase {
 
         // ── The statement (the never-seen state) ───────────────────────────
         openTab("Finance")
-        let statementHeader = app.staticTexts["Jan 2030 statement"]
+        // AESectionHeader renders its text uppercased, and XCUITest matches
+        // the rendered string: run 94 failed this assertion against
+        // "Jan 2030 statement" while KEY-11's populated "Last month $959k"
+        // tile proved the statement existed — the only defect was this
+        // test's casing.
+        let statementHeader = app.staticTexts["JAN 2030 STATEMENT"]
         XCTAssertTrue(statementHeader.waitForExistence(timeout: 10), """
-            February has begun but Finance shows no "Jan 2030 statement" \
+            February has begun but Finance shows no "JAN 2030 STATEMENT" \
             header — the month closed without a statement the player can \
             see, or the rollup did not run.
             """)
@@ -347,6 +352,15 @@ final class PlayerJourneyUITests: AEUITestCase {
             Thread.sleep(forTimeInterval: 1)
             checkpoint("13-route-after-month")
         }
+
+        // ── The world, a month in ──────────────────────────────────────────
+        // The World hub's live lines (EXP-05) have nothing to say on day
+        // one — no event has started, the rivals are still building. A
+        // month later the world has history, which is the state the lines
+        // exist for; this is the frame that can show them.
+        openTab("World")
+        Thread.sleep(forTimeInterval: 1)
+        checkpoint("15-world-after-month")
     }
 
     /// The map at two zoom levels, and a pinch that does not fall over.
