@@ -256,7 +256,31 @@ capture) and failed to find the card. `RivalPressureFixtureTests` now
 proves the save's headline *is* `rivalLeftYourMarket` (SwiftJet, CDG–LHR,
 one day ago), so the defect was the App's: the identifier sat on the
 card's container, which XCUITest does not expose. Moved to the link.
-Frames KEY-42 … 48 are pending run 113.
+
+### Run 113 (commit 996af96) — 71 frames decoded, every one looked at
+
+17 of 18 journeys green, the retreat save and the late-game save among
+them. The campaign reached the week-after Home and stopped on its own
+identifier query (below).
+
+| Frame | What it showed | Verdict |
+| --- | --- | --- |
+| KEY-41-fight-commit | The route sheet with **CDG selected**, "Service · Round trips per day: 2", and the pinned **Open this route** bar sitting directly above the keyboard — the geometry that swallowed run 112's slider drag | **OBSERVED**; the journey now commits here |
+| KEY-42-contested-route-on-entry | **LHR–CDG on 1 Feb**, "Too new to judge"; Operations: 1 aircraft assigned; **WHO ELSE FLIES THIS**: *"You are losing this market — 0% of today's passengers against 2 rivals, mostly because they fly more often."*, the share bar in rival colours, `SwiftJet · their hub · 3×/day · reputation 69% · 52% of today · $65 · same as you`, `Aurora Atlantic · their hub · $74 · 16% over you` | **OBSERVED** COMP-01/03 — and a defect: the morning of entry is not "losing at 0%", it is too early. Fixed in Core (`tooEarly` until the route has an allocation or a flight); pinned in `CompetitionTests` |
+| KEY-43-home-rival-pressure | **Home, 2030-02-09**: Next moves (2 idle aircraft; ARN→CDG, ARN→IST), then **RIVALS**: *"SwiftJet added 2 routes this month, at airports you serve."*, pulse 100% load, $1.3M month to date, routes 4 | **OBSERVED** COMP-02 — and a priority defect: a week into the London–Paris fight, the player's own contested pair should lead, not a rival's building elsewhere. Reordered: entered/left → trailing → fighting → expanding → leading |
+| KEY-47-rival-retreat-on-home | **Home, 2030-09-07, Regional era, $41.4M**: **RIVALS** (green): *"SwiftJet pulled out of CDG–LHR yesterday — the market is yours again."* | **OBSERVED** COMP-05 |
+| KEY-48-market-after-retreat | **LHR–CDG on 7 Sep**: "Losing money — airport fees take 96% of the revenue", last full month −$94k, load 100%, punctuality 97%; Today's market 4,677 wanting to fly; **WHO ELSE FLIES THIS**: *"An even fight — 51% of today's passengers against 1 rival, mostly because they fly more often."*, `Aurora Atlantic · their hub · 20×/day · reputation 81% · 49% of today · $71 · 25% over you`, and the named response *"Answer with frequency: another rotation needs another aircraft on this route"* | **OBSERVED** COMP-03/04/05 in one frame: the consequence (fees at 96%), the rival's answer (20 rotations against 2), the standing, the why, the lever |
+| KEY-50 … 53 late-game | As run 112, with the map hint now singular | **OBSERVED** COMP-06/07 |
+| KEY-BARE-ROW-TAP-0-1, GONE-0-2 | `assignAllBareRoutes` retry diagnostics; the fight route was assigned (KEY-42: 1 aircraft) | harness, pre-existing |
+
+**The campaign's remaining red.** After KEY-43 the journey asserted the
+card by identifier and stopped, with the card on screen in the frame. The
+retreat journey's identical query passed, so the difference is the card's
+variant (a destination-closure link versus a value link). The assertion
+now accepts the card's **RIVALS** section header, a plain static text.
+Frames KEY-44 … 46 (the route a week on, the World hub and the Competitors
+screen during the fight) are pending run 114; the same screens are
+OBSERVED from the retreat and late-game saves.
 
 ## 9. Bugs found
 

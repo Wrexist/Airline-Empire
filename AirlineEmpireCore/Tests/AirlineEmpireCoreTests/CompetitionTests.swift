@@ -229,6 +229,11 @@ struct CompetitionTests {
         // measured after one.
         let mine = try #require(openAndFly(engine, player: player, from: "LHR", to: "CDG",
                                            fare: Money(rounding: reference * 0.88)))
+        // The morning of entry: nothing flown, nothing allocated — too early,
+        // not "losing at 0%" (run 113, KEY-42).
+        let onEntry = try #require(engine.state.marketCompetition(for: mine, catalog: engine.catalog))
+        #expect(onEntry.standing == .tooEarly)
+        #expect(onEntry.rivals.count == 1)
         engine.advance(ticks: Fixtures.ticksPerDay * 2)
 
         let state = engine.state
