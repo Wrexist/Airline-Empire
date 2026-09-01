@@ -75,13 +75,21 @@ journey founds on the same seed through the game's own World-seed field.
 | Gate requirements answering "what do I need" | yes | run 97 KEY-30 | OBSERVED |
 | Capability programs (locked state + explanations) | yes | run 97 KEY-30 | OBSERVED |
 | Mission progress bar (0/500 at offer) | yes | run 97 KEY-30 | OBSERVED |
+| Mission reaction, reward on screen | yes | run 102 KEY-31 | OBSERVED |
+| Second month opening from a closed first month | yes | run 102 KEY-32 | OBSERVED |
+| Gate part-satisfied ("2 of 3", owned airframe Yes) | yes | run 102 KEY-34, KEY-37 | OBSERVED |
+| Route sheet's era/fleet distinction + commit caution | yes | run 102 KEY-38, KEY-39 | OBSERVED |
 | Mission completion | Core only | campaign twin, day 11 | MEASURED, not yet OBSERVED |
 | Second statement | Core only | $5.4M | MEASURED, not yet OBSERVED |
 | Era transition + celebration + post-era goals | Core only | day 59 | MEASURED, not yet OBSERVED |
 
-The simulator journey reached KEY-30 in run 97 and then failed on a
-navigation defect of its own (see §4). The states below KEY-30 are
-proven in Core and pending their frames.
+The simulator journey now reaches March 2030 (run 102, KEY-36) but with
+a **smaller airline than the Core twin builds on the same seed**: four
+aircraft, three routes, two of them idle, and the gate reading "routes
+that made money last month — 2 of 3". The era transition is therefore
+still MEASURED-only. This is a gap in the scripted player, not in the
+game: the gate is arithmetically correct for the network the script
+actually built (see FE-05).
 
 ## 4. Defects found
 
@@ -103,6 +111,17 @@ proven in Core and pending their frames.
   fly can be opened with no warning at the commit, and the destination
   row could not say whether the market sells a capable aircraft or
   whether it is a later era's route.
+
+- **FE-05 (open, scripted-player gap).** Two silent skips in the
+  campaign script let February end short of the twin's four flown
+  routes, and neither could be diagnosed afterwards because both
+  reported success without capturing a frame: `assignAllBareRoutes`
+  returned `true` whether or not an assignment took, and the Next Moves
+  expansion loop tapped "Done" and moved on when the route sheet's
+  commit did not appear. Both now retry, distinguish "the detail never
+  arrived" from "the game offers no aircraft for this pair", photograph
+  every miss, and assert their effect (four routes, zero bare). Awaiting
+  the next run's frames.
 
 ## 5. Limits, stated
 

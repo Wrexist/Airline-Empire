@@ -55,7 +55,7 @@ route be opened with no warning that nothing could fly it.
 | Why did it stay inactive? | No owned airframe could be assigned; it sat unflown for two simulated months | MEASURED (Core twin) |
 | Root-cause layer | **UI communication**, not Core generation | READ |
 
-**Fix (AUTHORED, pending frames).** `MarketOpportunity.servableByEra`
+**Fix (RUNTIME VALIDATED, run 102).** `MarketOpportunity.servableByEra`
 distinguishes the two kinds of impossible using the same
 `routeEligibility` arithmetic the ranking uses:
 
@@ -101,9 +101,23 @@ strategic invitation into a chore.
 | What should I do next? | Home "Next moves": idle-aircraft warning, top two servable markets with demand and competition | OBSERVED (AE-034 run 93 KEY-09) |
 | What am I progressing toward? | Progression era card: "To reach Regional", with per-requirement rows and standings ("0 of 3", "Not yet") | OBSERVED (run 97 KEY-30) |
 | Which mission is worth reacting to? | Mission row: objective, progress bar, reward, days left | OBSERVED (run 97 KEY-30); reward now meaningful (MEASURED) |
-| Can I act on this market now? | Route sheet row + commit caution (three states) | AUTHORED, frames pending |
-| What would unlock a locked opportunity? | "the market sells aircraft that could" / "a later fleet" | AUTHORED, frames pending |
+| Can I act on this market now? | Route sheet row + commit caution (three states) | OBSERVED (run 102 KEY-38, KEY-39) |
+| What would unlock a locked opportunity? | "the market sells aircraft that could" / "a later fleet" | OBSERVED (run 102 KEY-38) |
 | What do capability programs do, and when? | Progression: four programs, each explained, each badged "National era" | OBSERVED (run 97 KEY-30) |
+
+### 4a. The two frames, read (OBSERVED, run 102)
+
+- **KEY-38-future-opportunity-row** — the free-form sheet, "Addis"
+  typed, one result: `ADD Bole (Addis Ababa) · ≈175 passengers/day ·
+  5,900 km · fare ≈ $537`, "Nobody flies this yet", and beneath it
+  **"Beyond this era's aircraft — a route for a later fleet"**. The
+  distinction lands before the player commits anything.
+- **KEY-39-open-anyway-caution** — the same row selected. A **Service**
+  section appears with a caution triangle: **"No aircraft of this era
+  can fly this — it will wait, unflown, for a later fleet."** The
+  **"Open this route"** button below it is **enabled**. Warned, not
+  blocked — the strategic mistake is still available, it is simply no
+  longer silent.
 
 ## 5. Unresolved
 
