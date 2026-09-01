@@ -676,6 +676,35 @@ class AEUITestCase: XCTestCase {
         return true
     }
 
+    /// Open a section of the Airline tab (Routes or Fleet), popping whatever
+    /// is pushed on top of it first.
+    ///
+    /// A journey that assigns an aircraft leaves the tab on a *route detail*
+    /// — `assignFirstAircraft` pushes into it and stays, deliberately, so the
+    /// flight journey can photograph the assignment. Run 97 then came back to
+    /// the Airline tab three sunrise-weeks later and tapped "Fleet" into a
+    /// screen that has no segmented picker at all. Popping first makes the
+    /// section reachable from wherever the tab was left.
+    @discardableResult
+    func openAirlineSection(_ name: String) -> Bool {
+        openTab("Airline")
+        let segment = app.buttons[name]
+        for _ in 0..<3 {
+            if segment.exists, segment.isHittable { segment.tap(); return true }
+            let back = app.navigationBars.buttons.firstMatch
+            guard back.exists, back.isHittable else { break }
+            back.tap()
+            Thread.sleep(forTimeInterval: 0.6)
+        }
+        if segment.waitForExistence(timeout: 5), segment.isHittable {
+            segment.tap()
+            return true
+        }
+        capture(Self.logPrefix + "NO-AIRLINE-SECTION-\(name)")
+        XCTFail("The Airline tab's \(name) segment never appeared, even after popping the screens above it.")
+        return false
+    }
+
     /// Tap the sunrise control until Home's date begins with `datePrefix`
     /// (e.g. "2030-02"). Each tap simulates a full game day synchronously;
     /// the loop exits on the calendar, never on elapsed time.

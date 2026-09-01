@@ -386,8 +386,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         guard foundAirline(seed: "2039") else { return }
 
         // ── Month one, the guided path ─────────────────────────────────────
-        openTab("Airline")
-        app.buttons["Fleet"].tap()
+        guard openAirlineSection("Fleet") else { return }
         let browse = app.buttons["Browse the market"]
         require(browse, "the market entry point")
         browse.tap()
@@ -416,13 +415,11 @@ final class PlayerJourneyUITests: AEUITestCase {
         // Cairo is the nearest African airport inside a narrowbody's range
         // (Addis Ababa, the alphabetical pick, is 5,850 km out — measured by
         // the Core twin when its own first script left that route unflown).
-        openTab("Airline")
-        app.buttons["Fleet"].tap()
+        guard openAirlineSection("Fleet") else { return }
         require(browse, "the market entry point, second lease")
         browse.tap()
         guard leaseAnAircraft() else { return }
-        openTab("Airline")
-        app.buttons["Routes"].tap()
+        guard openAirlineSection("Routes") else { return }
         // The shell toolbar's "+" is labelled "Open route".
         let add = app.buttons["Open route"]
         guard require(add, "the Open route toolbar action") else { return }
@@ -495,8 +492,7 @@ final class PlayerJourneyUITests: AEUITestCase {
             return
         }
         checkpoint("32-month-two-home")
-        openTab("Airline")
-        app.buttons["Fleet"].tap()
+        guard openAirlineSection("Fleet") else { return }
         require(browse, "the market entry point, the used purchase")
         browse.tap()
         let usedDeal = app.buttons.matching(identifier: "ae-deal-buy-used").firstMatch
@@ -536,8 +532,7 @@ final class PlayerJourneyUITests: AEUITestCase {
             }
             openTab("Home")
         }
-        openTab("Airline")
-        app.buttons["Routes"].tap()
+        guard openAirlineSection("Routes") else { return }
         assignAllBareRoutes()
 
         // ── The gate, asked the player's question ──────────────────────────
