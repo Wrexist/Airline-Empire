@@ -18,12 +18,12 @@ struct OperationsView: View {
                 VStack(spacing: AETheme.spacingS) {
                     hubLink(title: "World events", icon: "bolt.horizontal.fill",
                             subtitle: "Storms, fuel shocks and what they are doing to your network",
-                            badge: eventBadge) {
+                            badge: eventBadge, live: eventLive) {
                         WorldEventsView()
                     }
                     hubLink(title: "Competitors", icon: "person.2.fill",
                             subtitle: "Who else is flying, and how they are doing",
-                            badge: competitorBadge) {
+                            badge: competitorBadge, live: competitorLive) {
                         CompetitorsView()
                     }
                     hubLink(title: "Progression", icon: "chart.line.uptrend.xyaxis",
@@ -83,6 +83,31 @@ struct OperationsView: View {
         return ("\(active) active", AETheme.caution)
     }
 
+    /// The current event by name, not just a count — the hub's badge said
+    /// "2 active" and the AE-033 audit's EXP-05 finding was exactly that the
+    /// cards describe their category instead of the world (a live fact per
+    /// card, derived from real state, never invented).
+    private var eventLive: String? {
+        guard let snapshot = controller.snapshot,
+              let event = snapshot.world.activeEvents.first(where: \.hasStarted)
+        else { return nil }
+        return "Now: \(Vocab.worldEvent(event.kind, state: snapshot))"
+    }
+
+    /// The rival to watch: the largest network among living AI airlines.
+    private var competitorLive: String? {
+        guard let snapshot = controller.snapshot else { return nil }
+        let rivals = snapshot.airlines.values.filter {
+            $0.kind == .ai && $0.status == .active
+        }
+        guard let biggest = rivals.max(by: {
+            snapshot.routes(of: $0.id).count < snapshot.routes(of: $1.id).count
+        }) else { return nil }
+        let routes = snapshot.routes(of: biggest.id).count
+        guard routes > 0 else { return nil }
+        return "Biggest rival: \(biggest.name), \(routes) route\(routes == 1 ? "" : "s")"
+    }
+
     private var competitorBadge: (String, Color)? {
         guard let snapshot = controller.snapshot else { return nil }
         let alive = snapshot.airlines.values.filter {
@@ -111,6 +136,7 @@ private extension OperationsView {
         icon: String,
         subtitle: String,
         badge: (String, Color)?,
+        live: String? = nil,
         @ViewBuilder destination: () -> Destination
     ) -> some View {
         NavigationLink {
@@ -135,6 +161,13 @@ private extension OperationsView {
                         .foregroundStyle(AETheme.mutedText)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
+                    if let live {
+                        Text(live)
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(AETheme.accent)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")

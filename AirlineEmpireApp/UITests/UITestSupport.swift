@@ -596,6 +596,58 @@ class AEUITestCase: XCTestCase {
         return false
     }
 
+    /// Assign the fleet's aircraft to the board's first route, and prove the
+    /// assignment took. One implementation for both journeys that need a
+    /// working schedule (the flight test and the month-end test), for the
+    /// same reason `leaseAnAircraft` is one: two copies drifted once already.
+    @discardableResult
+    func assignFirstAircraft() -> Bool {
+        // Into the route's own screen, where the assignment lives. By
+        // identifier: the board's first cell is the network summary, which
+        // navigates nowhere.
+        let routeRow = app.descendants(matching: .any)
+            .matching(identifier: "ae-route-row").firstMatch
+        guard require(routeRow, "the new route on the board") else { return false }
+        routeRow.tap()
+
+        let assign = app.buttons["Assign an aircraft"]
+        guard assign.waitForExistence(timeout: 10) else {
+            // Not a silent skip. If no aircraft can fly this route the
+            // assignment card says why, and that reason is the finding.
+            capture(Self.logPrefix + "NO-ASSIGNABLE-AIRCRAFT")
+            XCTFail("""
+                No aircraft could be assigned to the route just opened. The \
+                leased aircraft cannot fly it — most likely range — which \
+                means the guided path a new player is offered (lease the \
+                first aircraft, open the first suggested route) does not \
+                connect. Screenshot attached.
+                """)
+            return false
+        }
+        assign.tap()
+        // The menu lists one row per eligible aircraft, labelled
+        // "<type> at <airport>". Matched on that shape rather than
+        // `element(boundBy: 0)`, which is whatever button the accessibility
+        // tree happens to order first — the back button, on this screen.
+        let candidate = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", " at ")).firstMatch
+        if candidate.waitForExistence(timeout: 5) { candidate.tap() }
+
+        // CAUSALITY: an assignment that took shows the aircraft on the route
+        // with an Unassign action. Without this, everything after would poll
+        // an empty schedule and blame the wrong layer.
+        let unassign = app.buttons["Unassign"]
+        guard unassign.waitForExistence(timeout: 10) else {
+            XCTFail("""
+                No Unassign action appeared after picking an aircraft from \
+                the assignment menu — the command did not take, or the \
+                screen did not refresh.
+                """)
+            return false
+        }
+        return true
+    }
+
     // MARK: The journey's shared opening
 
     /// The control that opens a top-level section, wherever this width class

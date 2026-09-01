@@ -167,46 +167,7 @@ final class PlayerJourneyUITests: AEUITestCase {
         guard openARoute() else { return }
 
         // ── Assign ─────────────────────────────────────────────────────────
-        // Into the route's own screen, where the assignment lives. By
-        // identifier: the board's first cell is the network summary, which
-        // navigates nowhere.
-        let routeRow = app.descendants(matching: .any)
-            .matching(identifier: "ae-route-row").firstMatch
-        require(routeRow, "the new route on the board")
-        routeRow.tap()
-
-        let assign = app.buttons["Assign an aircraft"]
-        guard assign.waitForExistence(timeout: 10) else {
-            // Not a silent skip. If no aircraft can fly this route the
-            // assignment card says why, and that reason is the finding.
-            capture(Self.logPrefix + "NO-ASSIGNABLE-AIRCRAFT")
-            XCTFail("""
-                No aircraft could be assigned to the route just opened. The \
-                leased aircraft cannot fly it — most likely range — which \
-                means the guided path a new player is offered (lease the \
-                first aircraft, open the first suggested route) does not \
-                connect. Screenshot attached.
-                """)
-            return
-        }
-        assign.tap()
-        // The menu lists one row per eligible aircraft, labelled
-        // "<type> at <airport>". Matched on that shape rather than
-        // `element(boundBy: 0)`, which is whatever button the accessibility
-        // tree happens to order first — the back button, on this screen.
-        let candidate = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS %@", " at ")).firstMatch
-        if candidate.waitForExistence(timeout: 5) { candidate.tap() }
-
-        // CAUSALITY: an assignment that took shows the aircraft on the route
-        // with an Unassign action. Without this, everything below would poll
-        // an empty schedule for two minutes and blame the map.
-        let unassign = app.buttons["Unassign"]
-        XCTAssertTrue(unassign.waitForExistence(timeout: 10), """
-            No Unassign action appeared after picking an aircraft from the \
-            assignment menu — the command did not take, or the screen did \
-            not refresh.
-            """)
+        guard assignFirstAircraft() else { return }
         checkpoint("80-route-with-aircraft")
 
         // ── Run the clock ──────────────────────────────────────────────────
@@ -284,6 +245,108 @@ final class PlayerJourneyUITests: AEUITestCase {
             are open markets to suggest, so an empty card is a defect, not \
             a quiet state (EXP-01).
             """)
+    }
+
+    /// The first month closes with a statement — the state no automation has
+    /// ever seen (AE-034 "The First Month").
+    ///
+    /// Everything before this test ends within the first game days: the
+    /// project has photographed a founded airline, a first flight, and first
+    /// revenue, but never a month-end — so the first financial statement,
+    /// the populated Finance tab, and the "first profitable month" milestone
+    /// have only ever existed as code (READ, never OBSERVED).
+    ///
+    /// The engine is driven by the sunrise control — "Advance to next
+    /// morning" simulates synchronously to the next midnight, a real product
+    /// action, so the month passes through the real economy with no
+    /// wall-clock dependence and no cheat scaffolding. Thirty-one taps take
+    /// the calendar from 2030-01-01 to 2030-02-01; the month boundary runs
+    /// the statement rollup during the last one.
+    ///
+    /// What it asserts is the contract, not the outcome: a statement for
+    /// January exists with a Net profit line. Whether the month is
+    /// *profitable* belongs to the balance, not this test — the milestone
+    /// celebration is photographed when it appears, never required.
+    func testTheFirstMonthClosesWithAStatement() throws {
+        launch(appearance: .light)
+        guard foundAirline() else { return }
+
+        // A schedule to bill and earn against: the same guided path every
+        // journey uses. Without a flying aircraft the month would close on
+        // overhead alone — a statement, but not the player's first month.
+        openTab("Airline")
+        app.buttons["Fleet"].tap()
+        let browse = app.buttons["Browse the market"]
+        require(browse, "the market entry point")
+        browse.tap()
+        guard leaseAnAircraft() else { return }
+        guard openARoute() else { return }
+        guard assignFirstAircraft() else { return }
+
+        // ── A month passes ─────────────────────────────────────────────────
+        openTab("Home")
+        let sunrise = app.buttons["Advance to next morning"]
+        require(sunrise, "the advance-to-morning control")
+        // The header prints the date as 2030-01-01; February appearing is
+        // the proof the boundary was crossed. Polled by prefix so the exact
+        // day is not a contract.
+        let february = app.staticTexts.matching(NSPredicate(
+            format: "label BEGINSWITH '2030-02'")).firstMatch
+        let january31 = app.staticTexts.matching(NSPredicate(
+            format: "label BEGINSWITH '2030-01-31'")).firstMatch
+        var days = 0
+        while days < 33, !february.exists {
+            if january31.exists { checkpoint("10-before-month-end") }
+            sunrise.tap()
+            // Each tap simulates a full game day synchronously on the
+            // session actor; the pause lets the snapshot land before the
+            // date is re-read. State-based, not time-based: the loop exits
+            // on the calendar, the sleep only paces the polling.
+            Thread.sleep(forTimeInterval: 0.5)
+            days += 1
+        }
+        XCTAssertTrue(february.exists, """
+            Thirty-three advance-to-morning taps did not reach February. \
+            Either the control stopped advancing the clock or the header \
+            stopped showing the date.
+            """)
+        // The overlay for "First profitable month" is transient; caught if
+        // present, never required — profitability is the balance's contract.
+        if app.staticTexts["First profitable month"].exists {
+            checkpoint("14-first-profitable-month")
+        }
+        checkpoint("11-home-after-month-end")
+
+        // ── The statement (the never-seen state) ───────────────────────────
+        openTab("Finance")
+        let statementHeader = app.staticTexts["Jan 2030 statement"]
+        XCTAssertTrue(statementHeader.waitForExistence(timeout: 10), """
+            February has begun but Finance shows no "Jan 2030 statement" \
+            header — the month closed without a statement the player can \
+            see, or the rollup did not run.
+            """)
+        XCTAssertFalse(app.staticTexts["No closed month yet."].exists,
+                       "The empty-state line survived a closed month.")
+        // Scroll the statement's own card into view before photographing:
+        // the header cards sit above it.
+        let netProfit = app.staticTexts["Net profit"]
+        scrollUntil(netProfit, "the statement's Net profit line")
+        XCTAssertTrue(netProfit.exists, """
+            The January statement renders without a Net profit line — the \
+            one number the first month exists to teach.
+            """)
+        checkpoint("12-finance-first-statement")
+
+        // ── The month, from the route's side ───────────────────────────────
+        openTab("Airline")
+        app.buttons["Routes"].tap()
+        let routeRow = app.descendants(matching: .any)
+            .matching(identifier: "ae-route-row").firstMatch
+        if routeRow.waitForExistence(timeout: 5) {
+            routeRow.tap()
+            Thread.sleep(forTimeInterval: 1)
+            checkpoint("13-route-after-month")
+        }
     }
 
     /// The map at two zoom levels, and a pinch that does not fall over.

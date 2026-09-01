@@ -750,6 +750,13 @@ struct AircraftShopSheet: View {
             }
             .aeScreenBackground()
             .navigationTitle("Aircraft market")
+            // EXP-06: at accessibility type sizes the run-84/85 frames showed
+            // scrolled card text bleeding through the header band above
+            // "Done / Aircraft market" with nothing separating the layers.
+            // An always-on bar background is the smallest honest fix: the
+            // header is a boundary, so it gets a surface — not a decorative
+            // gradient.
+            .toolbarBackground(.visible, for: .navigationBar)
             // Buying an aircraft is the most expensive thing a player does.
             // The sheet says so on the way in and out; the purchase itself is
             // voiced by `aircraftOrdered`/`aircraftDelivered` from Core.

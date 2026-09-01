@@ -60,7 +60,8 @@ struct MapScreen: View {
                         // §6.1). It hid for a whole phase because the taller
                         // "Your airline begins here" card clears the bar, and
                         // the short hint only appears once a player has routes.
-                        canvas(model: model, snapshot: snapshot, size: geometry.size)
+                        canvas(model: model, snapshot: snapshot, size: geometry.size,
+                               bottomOcclusion: geometry.safeAreaInsets.bottom)
                             .ignoresSafeArea(edges: .bottom)
                         chrome(model: model, snapshot: snapshot)
                     }
@@ -117,7 +118,7 @@ struct MapScreen: View {
     // MARK: - The canvas
 
     private func canvas(model: MapModel, snapshot: GameState,
-                        size: CGSize) -> some View {
+                        size: CGSize, bottomOcclusion: CGFloat) -> some View {
         // Paused stops the clock entirely, so nothing animates and the battery
         // is left alone. Reduce Motion does the same: the map still updates
         // every snapshot, it just stops interpolating between them.
@@ -139,6 +140,7 @@ struct MapScreen: View {
                                         : 0,
                                      tick: referenceDate,
                                      settle: camera.settleGeneration,
+                                     bottomOcclusion: bottomOcclusion,
                                      cache: renderCache)
                 let drawStart = probesEnabled ? DispatchTime.now() : nil
                 frame.draw(into: &context, size: canvasSize)
@@ -363,8 +365,29 @@ final class MapCamera {
             base = CGPoint(x: world.x - (anchor.x - size.width / 2) / worldWidth,
                            y: world.y - (anchor.y - size.height / 2) / worldHeight)
         }
-        return clamp(CGPoint(x: base.x - pan.width / worldWidth,
-                             y: base.y - pan.height / worldHeight))
+        let target = CGPoint(x: base.x - pan.width / worldWidth,
+                             y: base.y - pan.height / worldHeight)
+        // The finger keeps a say past the vertical clamp. The y limits used
+        // to be a hard stop: a pan at the world's edge was silently absorbed
+        // while x kept moving (baseline §4, TD-023/EXP-07). Same treatment
+        // the zoom limits get in `liveZoom`: diminishing overshoot while the
+        // finger is down, and `commitPan` springs the camera back. x keeps
+        // its hard clamp — it wraps conceptually and never had the problem.
+        return CGPoint(x: min(1, max(0, target.x)),
+                       y: softClampY(target.y))
+    }
+
+    /// y past its limit moves at a diminishing fraction — resistance the
+    /// hand can feel *as geometry on screen*; whether it feels right in the
+    /// hand is a device question, not a simulator claim.
+    private func softClampY(_ y: CGFloat) -> CGFloat {
+        let lower: CGFloat = 0.05, upper: CGFloat = 0.95
+        // How far past the edge the camera may be dragged, in world-height
+        // fraction: enough to read as give, never enough to show the void.
+        let give: CGFloat = 0.04
+        if y < lower { return lower - give * (1 - 1 / (1 + (lower - y) * 12)) }
+        if y > upper { return upper + give * (1 - 1 / (1 + (y - upper) * 12)) }
+        return y
     }
 
     /// Remember what the fingers landed on, in world space, before the
@@ -387,7 +410,18 @@ final class MapCamera {
     func commitPan(size: CGSize, predicted: CGSize? = nil, glide: Bool = true) {
         settleGeneration += 1
         let landed = liveCenter(size: size)
-        center = landed
+        let settled = clamp(landed)
+        // A release past the vertical edge springs home, exactly as an
+        // over-pinched zoom does in `commitZoom`.
+        if abs(settled.y - landed.y) > 0.0005 {
+            center = landed
+            panOffset = .zero
+            withAnimation(.interpolatingSpring(stiffness: 170, damping: 22)) {
+                center = settled
+            }
+            return
+        }
+        center = settled
         panOffset = .zero
         guard glide, let predicted else { return }
         // liveZoom, not zoom: during a combined pinch-drag the pinch may not

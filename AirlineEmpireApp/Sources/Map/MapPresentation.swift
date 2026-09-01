@@ -500,9 +500,14 @@ enum MapLabelLayout {
     /// is for. And priority is Natural Earth's own `MIN_LABEL` inverted — the
     /// countries a cartographer would print at the widest scale win ties, so
     /// when Belgium and France collide it is France that survives.
+    /// - Parameter bounds: the legible viewport. Country labels never had a
+    ///   bounds check at all, and run 84/85 frames photographed the result —
+    ///   "BELA…" cut at the right edge. A truncated country name is noise; a
+    ///   country whose anchor sits at the edge simply waits for the camera.
     static func placeCountries(_ countries: [(CountryLabel, CGPoint)],
                                blocked: [CGRect],
-                               limit: Int) -> [MapLabel] {
+                               limit: Int,
+                               bounds: CGRect) -> [MapLabel] {
         let ranked = countries.sorted { lhs, rhs in
             lhs.0.minZoom != rhs.0.minZoom
                 ? lhs.0.minZoom < rhs.0.minZoom
@@ -520,6 +525,7 @@ enum MapLabelLayout {
             let width = CGFloat(country.name.count) * 5.4 + 22
             let box = CGRect(x: point.x - width / 2, y: point.y - 8,
                              width: width, height: 16)
+            guard bounds.insetBy(dx: 2, dy: 2).contains(box) else { continue }
             guard !placed.contains(where: { $0.intersects(box) }) else { continue }
             placed.append(box)
             labels.append(MapLabel(text: country.display, point: point,

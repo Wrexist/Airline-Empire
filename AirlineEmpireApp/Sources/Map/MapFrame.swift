@@ -22,6 +22,11 @@ struct MapFrame {
     let tick: Date
     /// The camera's settle generation — the label memory's re-decide signal.
     let settle: Int
+    /// Height of chrome covering the canvas's bottom (the floating tab bar):
+    /// the canvas bleeds under it by design, but a label placed there is
+    /// unreadable by construction — run 84's dark map photographed one under
+    /// the bar (EXP-03). Placement subtracts it; geometry does not.
+    let bottomOcclusion: CGFloat
     /// The cached geometry this frame replays instead of rebuilding
     /// (docs/MAP_RUNTIME_BASELINE.md §2 is the bill it retires).
     let cache: MapRenderCache
@@ -56,6 +61,7 @@ struct MapFrame {
     init(model: MapModel, snapshot: GameState, projector: MapProjector,
          policy: MapDetailPolicy, overlay: MapOverlay, selection: MapHit?,
          speed: SimSpeed, elapsed: TimeInterval, tick: Date, settle: Int,
+         bottomOcclusion: CGFloat = 0,
          cache: MapRenderCache) {
         self.model = model
         self.snapshot = snapshot
@@ -67,9 +73,17 @@ struct MapFrame {
         self.elapsed = elapsed
         self.tick = tick
         self.settle = settle
+        self.bottomOcclusion = bottomOcclusion
         self.cache = cache
         self.airportsByCode = Dictionary(
             model.airports.map { ($0.code, $0) }, uniquingKeysWith: { first, _ in first })
+    }
+
+    /// Where a label is allowed to live: the canvas minus the strip the tab
+    /// bar covers. One rect, derived once, shared by both label passes.
+    private var labelBounds: CGRect {
+        CGRect(x: 0, y: 0, width: projector.size.width,
+               height: max(0, projector.size.height - bottomOcclusion))
     }
 
     private var playerLivery: Livery {
@@ -639,7 +653,8 @@ struct MapFrame {
         // (MapRenderCache.countryLabels); the drawing below is unchanged.
         let labels = cache.countryLabels(projector: projector, policy: policy,
                                          blocked: blocked,
-                                         placedNow: labelsPlacedThisFrame)
+                                         placedNow: labelsPlacedThisFrame,
+                                         labelBounds: labelBounds)
         for label in labels {
             // Uppercase and letterspaced, which is how an atlas says "this is
             // a region, not a place". It matters more now that airports carry
@@ -672,6 +687,7 @@ struct MapFrame {
             projector: projector, policy: policy, selected: selectedCode,
             tick: tick, settle: settle,
             limit: policy.level == .world ? 10 : 32,
+            labelBounds: labelBounds,
             markerRadius: { policy.radius($0) })
         labelsPlacedThisFrame = result.placedNow
         return result.labels
