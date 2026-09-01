@@ -473,6 +473,15 @@ final class PlayerJourneyUITests: AEUITestCase {
         assignAllBareRoutes()
 
         // ── The mission completes on real passengers ───────────────────────
+        // The Core twin completes it on day 11. Watch Home every morning
+        // rather than arriving ten days later: the feed keeps fourteen
+        // *events*, so the completion is gone from it well before then, and
+        // run 102's late-January frame could only show the mission missing.
+        if advanceMorningsUntilHomeSays("Mission complete", cap: 16) {
+            checkpoint("30b-mission-complete-on-home")
+        } else {
+            capture(Self.logPrefix + "NO-MISSION-COMPLETE-ON-HOME")
+        }
         guard advanceMornings(until: "2030-01-2", cap: 14) else {
             XCTFail("The sunrise control could not reach late January.")
             return

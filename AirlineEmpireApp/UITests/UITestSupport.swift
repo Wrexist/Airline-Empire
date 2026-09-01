@@ -823,6 +823,29 @@ class AEUITestCase: XCTestCase {
         return arrived.exists
     }
 
+    /// Advance one morning at a time, stopping the day a given phrase shows
+    /// up on Home.
+    ///
+    /// The Home feed keeps the last **14 events**, not the last 14 days, so
+    /// a moment like "Mission complete!" has rolled off long before the
+    /// journey next looks at Home — run 102 photographed 20 January and saw
+    /// only the mission's *absence*. Catching it means looking every
+    /// morning, which is also how a player would meet it.
+    @discardableResult
+    func advanceMorningsUntilHomeSays(_ phrase: String, cap: Int) -> Bool {
+        openTabIfNeeded("Home")
+        let sunrise = app.buttons["Advance to next morning"]
+        guard sunrise.waitForExistence(timeout: 8) else { return false }
+        let line = app.staticTexts.matching(NSPredicate(
+            format: "label CONTAINS %@", phrase)).firstMatch
+        for _ in 0..<cap {
+            if line.exists { return true }
+            sunrise.tap()
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        return line.exists
+    }
+
     private func openTabIfNeeded(_ title: String) {
         if app.buttons["Advance to next morning"].exists { return }
         openTab(title)
