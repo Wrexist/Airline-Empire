@@ -257,20 +257,24 @@ final class CampaignUITests: AEUITestCase {
             """)
         checkpoint("40-contested-market-row")
         paris.tap()
-        // Priced to provoke: the AI answers a fare more than 12% under the
-        // cheapest incumbent ($65 on this seed). The slider runs 30…800.
-        let fareSlider = app.sliders.firstMatch
-        if fareSlider.waitForExistence(timeout: 6) {
-            fareSlider.adjust(toNormalizedSliderPosition: 0.032)
-        } else {
-            capture(Self.logPrefix + "NO-FARE-SLIDER")
-        }
-        checkpoint("41-fight-fare")
+        // At the market fare, not under it. Run 112 tried the fare slider
+        // here and the drag landed on the pinned commit bar under the
+        // keyboard: the route opened at the reference fare before the
+        // journey had looked, and the "missing commit bar" frame was the
+        // Routes board with LHR–CDG already on it. The Core twin measures
+        // the undercut variant (0.88×, answered with a fare cut the next
+        // morning); at parity the incumbents answer with capacity, which
+        // is what the frames a week on show.
         let openFight = app.buttons.matching(identifier: "ae-route-open").firstMatch
-        guard require(openFight, "the commit bar after picking Paris", timeout: 8)
-        else { return }
-        openFight.tap()
-        Thread.sleep(forTimeInterval: 1)
+        if openFight.waitForExistence(timeout: 8) {
+            checkpoint("41-fight-commit")
+            openFight.tap()
+            Thread.sleep(forTimeInterval: 1)
+        } else if app.buttons["Done"].exists || app.buttons["Cancel"].exists {
+            capture(Self.logPrefix + "NO-FIGHT-COMMIT-BAR")
+            XCTFail("Picking Paris from London produced no commit bar.")
+            return
+        }
         assignAllBareRoutes()
 
         // The day of entry: the rivals' offers before they answer.
@@ -463,7 +467,7 @@ final class CampaignUITests: AEUITestCase {
             Home shows no rival-pressure card the morning after a rival left \
             the player's market.
             """)
-        let line = app.staticTexts.matching(NSPredicate(
+        let line = app.descendants(matching: .any).matching(NSPredicate(
             format: "label CONTAINS %@", "pulled out")).firstMatch
         XCTAssertTrue(line.waitForExistence(timeout: 6), """
             The card does not name the retreat — expected a line saying a \

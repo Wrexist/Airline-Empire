@@ -720,16 +720,20 @@ struct RivalPressureCard: View {
             AECard(tint: tint(headline).opacity(0.12)) {
                 VStack(alignment: .leading, spacing: AETheme.spacingS) {
                     AESectionHeader(text: "Rivals", systemImage: "person.2.fill")
+                    // The identifier rides the link, which is the element
+                    // XCUITest can see; on the card's container it matched
+                    // nothing in run 112 while the card was on screen.
                     if let route = route(for: headline, snapshot: snapshot) {
                         NavigationLink(value: route) { line(headline) }
                             .buttonStyle(.aePress)
+                            .accessibilityIdentifier("ae-rival-pressure")
                     } else {
                         NavigationLink { CompetitorsView() } label: { line(headline) }
                             .buttonStyle(.aePress)
+                            .accessibilityIdentifier("ae-rival-pressure")
                     }
                 }
             }
-            .accessibilityIdentifier("ae-rival-pressure")
         }
     }
 

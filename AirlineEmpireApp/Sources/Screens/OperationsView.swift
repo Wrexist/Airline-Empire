@@ -465,6 +465,13 @@ struct CompetitorsView: View {
                             .foregroundStyle(rival.marketsWherePlayerTrails > 0
                                              ? AETheme.negative : AETheme.accent)
                             .fixedSize(horizontal: false, vertical: true)
+                    } else if rival.routes == 0 {
+                        // Run 112 photographed a rival with no aircraft and no
+                        // routes described as sharing an airport with the
+                        // player: its home. Grounded is the fact.
+                        Text("Grounded — flying nothing at the moment.")
+                            .font(.subheadline)
+                            .foregroundStyle(AETheme.mutedText)
                     } else if rival.sharedAirports > 0 {
                         Text("You share \(rival.sharedAirports) airport\(rival.sharedAirports == 1 ? "" : "s") but no city pair — presence, not a fight.")
                             .font(.subheadline)

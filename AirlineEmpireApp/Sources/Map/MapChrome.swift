@@ -371,8 +371,10 @@ struct MapIdlePanel: View {
                 let losing = summary.trailingRoutes
                 return Hint(icon: "person.2.fill",
                             text: losing > 0
-                                ? "\(summary.contestedRoutes) of your routes are contested — you are losing \(losing)."
-                                : "\(summary.contestedRoutes) of your routes are contested; you hold your own on each.",
+                                ? "\(summary.contestedRoutes) of your routes \(summary.contestedRoutes == 1 ? "is" : "are") contested — you are losing \(losing)."
+                                : summary.contestedRoutes == 1
+                                    ? "One of your routes is contested; you hold your own on it."
+                                    : "\(summary.contestedRoutes) of your routes are contested; you hold your own on each.",
                             tint: losing > 0 ? AETheme.caution : AETheme.accent)
             }
             let shared = model.airports.filter {
