@@ -439,6 +439,14 @@ against three competing simulators they would not be comparable with
 `docs/MAP_P0_PERFORMANCE_REPORT.md`, and a benchmark that is not
 comparable is not a benchmark.
 
-**Expected.** ~113 s serial + ~485 s parallel ≈ **10 minutes**, bounded by
-the longest class rather than by their sum. NOT VALIDATED until a run
-reports it; the class durations above are MEASURED from run 103.
+**The second cost, found by measuring the first attempt.** The
+measurement pass spent **9 m 55 s running 113 s of tests** (run on
+c77d651). `Build for the simulator` was a plain `build`, which does not
+produce the test bundles, so every `xcodebuild test` compiled them again
+— and splitting the suite into two passes paid that compile twice. The
+build step is now `build-for-testing` and both passes are
+`test-without-building`.
+
+**Expected.** one build + ~113 s serial + ~485 s parallel. NOT VALIDATED
+until a run reports it; the class durations above are MEASURED from run
+103 and the 9 m 55 s overhead is MEASURED from the first attempt.

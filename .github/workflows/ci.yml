@@ -234,6 +234,12 @@ jobs:
 
       # No signing: this answers "does it compile", not "can it ship".
       # Signing needs credentials and belongs to ios-testflight.yml.
+      # `build-for-testing`, not `build`: it produces the test bundles and
+      # the runner as well as the app. Plain `build` left them to be
+      # compiled inside the `test` invocation, which is why the measurement
+      # pass below spent nine minutes running two minutes of tests — and why
+      # splitting the suite into two passes would otherwise have paid that
+      # compile twice.
       - name: Build for the simulator
         if: steps.changes.outputs.build == 'true'
         working-directory: AirlineEmpireApp
@@ -245,7 +251,7 @@ jobs:
             -configuration Debug \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
-            build
+            build-for-testing
 
       # The step that actually runs the app.
       #
@@ -322,7 +328,7 @@ jobs:
             -parallel-testing-enabled NO \
             -resultBundlePath UITestResults-baseline.xcresult \
             CODE_SIGNING_ALLOWED=NO \
-            test 2>&1 | tee ui-test-output.txt
+            test-without-building 2>&1 | tee ui-test-output.txt
 
       - name: Run the UI tests
         if: always() && steps.changes.outputs.build == 'true'
@@ -339,7 +345,7 @@ jobs:
             -maximum-concurrent-test-simulator-destinations 3 \
             -resultBundlePath UITestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO \
-            test 2>&1 | tee -a ui-test-output.txt
+            test-without-building 2>&1 | tee -a ui-test-output.txt
 
       # The screenshots. These are the only visual evidence this project has
       # ever produced, so they are kept whether the run passed or failed —
