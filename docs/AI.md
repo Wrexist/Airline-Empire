@@ -34,10 +34,15 @@ order per slot:
    (negative closed-month direct P&L), shed idle metal (return leases,
    sell owned).
 2. **Employ idle aircraft**: thicken a hot route (load > 0.82) it can
-   serve, else open the best new market from where the airframe sits —
-   candidates scored `demandPool / (incumbents + 1)`, gated by eligibility,
-   slots, archetype geography, and a viability floor; fare = ref ×
-   archetype factor.
+   serve **and that cannot already fly its frequency with the aircraft it
+   has** (the scheduler's own capacity arithmetic; AE-037 BUG-042 — a
+   full trunk route is hot forever and used to absorb every airframe its
+   airline ever bought), else open the best new market from where the
+   airframe sits — candidates scored `demandPool / (incumbents + 1)`,
+   gated by eligibility, slots, archetype geography, and a viability
+   floor; fare = ref × archetype factor. The incumbent halving means a
+   rival enters a pair the player already flies only when it is one of
+   the world's largest (TD-026).
 3. **Tune the network**: respond to >12% undercuts per archetype policy;
    push frequency on >0.82 loads; trim on <0.35; close persistent losers.
 4. **Grow** (runway ≥ archetype threshold, fleet < cap 40): lease or buy
@@ -49,9 +54,24 @@ world's randomness reaches AI only through outcomes).
 
 ## World population (`WorldSetup.createCompetitors`)
 
-Founds up to 8 fictional named competitors at the busiest large airports
-(skipping the player's home), archetypes in rotation, each with capital and
-a starter aircraft — all via commands. Failure is real: competitors flow
+Founds up to 8 fictional named competitors, archetypes in rotation, each
+with capital and a starter aircraft — all via commands. At least half the
+cast is based at the busiest large airports of the **player's own region**,
+the rest at the busiest anywhere (AE-037 BUG-043: the cast used to be the
+five most populous airports in the world, all in Asia, so a European start
+never met a rival in five years). From Stockholm the nearby cast is
+Istanbul (low-cost), London (premium) and Paris (regional).
+
+## What the player sees (AE-037)
+
+`world.marketMoves` records every entry into and exit from a city pair
+(bounded, save v12); `marketEntered` / `marketLeft` events reach the
+player's feed only on pairs the player flies. `MarketCompetition` and
+`CompetitionSummary` (Session/Competition.swift) restate the demand
+engine's split per route and across the network — standing against an even
+split, the dominant attractiveness term as the reason, and one prioritised
+headline for Home. Measured and documented in
+docs/RIVAL_PRESSURE_AUDIT.md. Failure is real: competitors flow
 through the same administration/collapse path as the player (Phase 8), and
 their slots/routes release back to the market.
 

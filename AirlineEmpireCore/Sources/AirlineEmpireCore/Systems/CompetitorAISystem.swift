@@ -108,9 +108,16 @@ public struct CompetitorAISystem: SimulationSystem {
 
     private func employ(_ aircraft: Aircraft, airlineID: AirlineID, profile: AIProfile,
                         state: inout GameState, context: SimContext, tuning: AITuning) {
-        // Prefer thickening an existing route that is running hot.
+        // Prefer thickening an existing route that is running hot — but only
+        // one whose assigned aircraft cannot already fly its frequency. A
+        // route pinned at full load is hot forever, and a route at the
+        // frequency cap absorbed every airframe its airline ever bought:
+        // measured over five years, no rival opened a second route and one
+        // carried sixteen aircraft on a pair that could use ten
+        // (docs/RIVAL_PRESSURE_AUDIT.md §3, BUG-042).
         if let hot = state.routes(of: airlineID).first(where: {
             $0.stats.loadFactor > tuning.expandLoadFactor && $0.stats.seatsFlown > 0
+                && routeNeedsAnotherAircraft($0, state: state, context: context)
         }), routeServableBy(aircraft, route: hot, state: state, context: context) {
             issue(AssignAircraftToRouteCommand(airline: airlineID, route: hot.id,
                                                aircraftID: aircraft.id),
@@ -195,6 +202,19 @@ public struct CompetitorAISystem: SimulationSystem {
             }
         }
         return best
+    }
+
+    /// Whether the route's frequency target exceeds what its assigned
+    /// aircraft can fly in a day — the scheduler's own capacity arithmetic.
+    private func routeNeedsAnotherAircraft(_ route: Route, state: GameState,
+                                           context: SimContext) -> Bool {
+        let assigned = route.assignedAircraft.sorted().compactMap { state.aircraft[$0] }
+        guard let first = assigned.first,
+              let spec = context.catalog.aircraftType(first.typeCode) else { return true }
+        let perAircraft = FlightSchedulingSystem.roundTripsPerAircraftPerDay(
+            distanceKm: route.distanceKm, spec: spec, ops: context.catalog.tuning.ops)
+        guard perAircraft > 0 else { return false }
+        return perAircraft * assigned.count < route.dailyRoundTrips
     }
 
     private func routeServableBy(_ aircraft: Aircraft, route: Route,

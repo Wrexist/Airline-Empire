@@ -450,3 +450,66 @@ build step is now `build-for-testing` and both passes are
 **Expected.** one build + ~113 s serial + ~485 s parallel. NOT VALIDATED
 until a run reports it; the class durations above are MEASURED from run
 103 and the 9 m 55 s overhead is MEASURED from the first attempt.
+
+
+## TD-026 — Rivals do not enter a pair the player already flies
+
+**Symptom.** MEASURED (AE-037, `ae-rival-probe`, five years from three
+homes with the BUG-042/043 fixes in): no rival ever opened a route on a
+pair the player was flying. Every player-rival contest in the game is the
+player's doing.
+
+**Root cause.** `CompetitorAISystem.bestMarket` scores candidates as
+`demandPool / (incumbents + 1)`. Halving a market per incumbent means a
+contested pair only wins against *every* open candidate among the sixteen
+nearest airports — which, with 94 airports and five rivals of at most five
+routes each, never happens except on the world's largest pairs
+(London–Paris is contested rival-to-rival by day 4). The design accepts
+contested markets at half value; it did not anticipate that there would
+always be an open one.
+
+**Why it is debt and not a bug here.** AE-037 was explicitly not to
+rewrite the AI, and the demand engine's real split gives a second entrant
+roughly two thirds of a monopolist's take, not a half — so the honest fix
+is to score with `DemandSystem.expectedCapturedPassengers` against the
+incumbents' actual offers, which is a scoring change with balance
+consequences (`tenYearWorldRemainsStableAndContested`'s HHI bound, the
+AI collapse rate). That is a phase's work, and it is the recommended next
+one.
+
+**Expected.** A rival entering the player's Stockholm–London when the
+player is the only carrier on a large pair; the Home headline
+`rivalEnteredYourMarket` firing in a plain campaign without the player
+picking the fight. NOT VALIDATED.
+
+## TD-027 — The route record has no opening date
+
+**Symptom.** "Since you arrived, Aurora added sixteen daily rotations" is
+a sentence the game cannot say: `Route` has no `openedAt`, and rival
+frequency and fare changes are not recorded anywhere (the market-move
+record deliberately keeps entries and exits only, so that a fortnight of
+weekly frequency pushes cannot roll the record over).
+
+**Cost.** The route screen shows rivals' *current* offers and the split;
+the UI journey photographs the day of entry and a week later to show the
+change, but the screen itself cannot narrate it.
+
+**Fix shape.** `Route.openedAt` (save bump) plus a per-route "offer at
+your entry" snapshot for contested pairs — small state, one migration.
+Worth doing when TD-026 makes rival responses a routine sight.
+
+## TD-028 — Two save fixtures ride the UI test bundle
+
+**What.** `AirlineEmpireApp/UITests/Fixtures/rival-pressure-retreat.json`
+(day 249 of the seed-2039 fight campaign) and
+`rival-pressure-late-game.json` (day 1825), ~400 KB each, written by
+`ae-rival-probe --save` and loaded under `-AEUITestLoadSave`. They are how
+COMP-05 and COMP-07 are photographed: a rival's retreat lands on day 248
+and the late game is ~1,800 sunrise taps away.
+
+**Debt.** Save format v12 is baked into the files. A future format bump
+still loads them (the migration chain runs on load), but any change to
+the campaign script, the cast rule or the AI makes them a *different*
+world from the one `RivalPressureCampaignTests` measures. Regenerate with
+`swift run -c release ae-rival-probe 2039 249 ARN LHR-CDG:0.88 --save …`
+and `… 1825 …` whenever the twin's numbers move.

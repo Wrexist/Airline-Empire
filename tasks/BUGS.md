@@ -1076,3 +1076,91 @@ baseline green with numbers matching run 85). Not claimed fixed until a
 run shows the lease tests green.
 **Verified:** run 87 (commit ede33c8) — **all 16 UI tests green**, all
 three lease-dependent journeys included. FIXED.
+
+## BUG-042 — A rival's idle aircraft always went onto its one full route
+
+**Severity:** P1 (world). Every AI airline was a single-route airline for
+the life of a game, so the "competitor expansion" the design promises never
+happened anywhere.
+**Found:** 2026-09-01, AE-037 — by `ae-rival-probe`, the first tool to diff
+rival state day by day. Five years from Stockholm: every rival opened
+exactly one route in its first week and never another; one carried
+sixteen aircraft on a pair the scheduler could use ten on; three of five
+collapsed under lease bills for aircraft that flew nothing.
+**Root cause:** `CompetitorAISystem.employ` preferred thickening a "hot"
+route (lifetime load > 0.82) over opening a market, with no check that the
+route could use another airframe. A trunk route pinned at full load is hot
+forever, and once `manageRoutes` had pushed it to the 20-rotation cap, every
+new aircraft was assigned to it and sat on the ground.
+**Fix layer:** Core, one guard. `routeNeedsAnotherAircraft` asks the
+scheduler's own capacity arithmetic (`FlightSchedulingSystem.
+roundTripsPerAircraftPerDay`, extracted rather than copied) whether the
+assigned aircraft already cover the frequency target; a covered route no
+longer absorbs aircraft, so the idle airframe opens the best new market.
+**Regression cover:** `CompetitionTests.rivalOpensASecondMarket` — three of
+five rivals fly two or more routes within 120 days, and no AI route carries
+more than one aircraft beyond what it can use.
+**Status:** FIXED, MEASURED (probe: rivals reach five routes each; the
+Stockholm cast's collapses fall from two in two years to zero in the
+fight campaign, one in the plain one).
+
+## BUG-043 — The competitor cast was founded where the player would never go
+
+**Severity:** P1 (world). Combined with BUG-042 it meant a European start
+never met a rival at all: MEASURED zero contested player markets in five
+years from Stockholm, Barcelona *and* Singapore.
+**Found:** 2026-09-01, AE-037, same probe.
+**Root cause:** `WorldSetup.createCompetitors` took the world's most
+populous large airports outright — Tokyo, Jakarta, Delhi, Shanghai, Seoul —
+and an AI expands only from where its aircraft sit, among its sixteen
+nearest airports. No rival ever had a reason to be within 5,000 km of
+Stockholm. The Barcelona curated start's blurb promises "real competition";
+the Singapore one says "so do your rivals". Neither was true.
+**Fix layer:** Core, world population. At least half the cast (⌈n/2⌉) is
+founded at the busiest large airports of the player's own region, the rest
+at the busiest anywhere. From Stockholm the nearby rivals are Istanbul,
+London and Paris — exactly the markets the guided first route and the Next
+Moves ranking send the player to.
+**Regression cover:** `CompetitionTests.castIsFoundedNearThePlayer`.
+**Status:** FIXED, MEASURED. Rival routes now touch the player's airports
+from day 3 (London–Paris while the player flies Stockholm–London). Note what
+this does *not* change: rivals still do not enter a pair the player already
+flies unless it is one of the world's largest — the AI halves a market's
+value per incumbent and there are always open markets left. Competition on
+the player's own pairs is player-initiated (the fight in
+`RivalPressureCampaignTests`), which the design lists as intended
+("fight, flank or cede"); recorded as TD-026, not a bug.
+
+## BUG-044 — Everything a rival did to the player's market was invisible
+
+**Severity:** P0 by the AE-037 ranking: the player suffered the consequence
+(a third of a market at full load, a monthly loss) with no way to know why.
+**Found:** 2026-09-01, AE-037 — measured on the London–Paris fight. Of the
+rivals' responses over four months (a fare cut, thirty-two frequency
+increases, one retreat), the feed carried **none**: `SetRoutePrice` and
+`SetRouteFrequency` emit no event at all; a rival's `routeOpened` names no
+airline and is filtered as its private business (BUG-004's rule, correct
+for the events it had); `routeClosed` names a route that no longer exists
+and so can never be attributed (BUG-007). The route screen listed the
+rivals' fares and frequencies as state, but said nothing about the split,
+the standing or the cause.
+**Fix layer:** Core + App.
+- Core: `world.marketMoves`, a bounded record of who entered and left which
+  pair (written by the open/close commands and the collapse path; save v12
+  with a migration), plus two events, `marketEntered` / `marketLeft`, which
+  the feed admits exactly when the pair is one the player flies.
+- Core: `MarketCompetition` (per route: rivals with share, standing against
+  an even split, the dominant attractiveness term as the *why*) and
+  `CompetitionSummary` (contested/leading/trailing counts, the rival that
+  touches the player most, recent moves, and one prioritised headline).
+- App: the route screen's competition section (standing sentence, share
+  bar, per-rival share, the named response); a Home card that renders only
+  the headline and nothing in a quiet world; the World hub's live line and
+  badge; the Competitors screen re-ordered by pressure with contested
+  routes as links; the map's Rivals overlay hint counting contested routes
+  rather than shared airports.
+**Regression cover:** `CompetitionTests` (11), `RivalPressureCampaignTests`
+(the seed-2039 fight, day by day), and the campaign UI journey's COMP
+checkpoints.
+**Status:** FIXED in Core (TESTED); App AUTHORED, awaiting the CI run's
+frames — see docs/RIVAL_PRESSURE_AUDIT.md §8 for what each frame showed.

@@ -37,3 +37,4 @@ ExportOptions.plist
 AuthKey_*.p8
 *.mobileprovision
 *.p12
+.build-probe/

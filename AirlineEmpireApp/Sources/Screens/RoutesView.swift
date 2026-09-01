@@ -613,46 +613,117 @@ struct RouteDetailView: View {
         }
     }
 
-    /// Who else flies this city pair — the single most useful fact on a route
-    /// screen in this genre, and the one that explains a falling load factor.
+    /// Who else flies this city pair, and what it is doing to this route.
+    ///
+    /// This section used to list rivals' fares and frequencies and stop
+    /// there. Measured on the seed-2039 campaign (docs/RIVAL_PRESSURE_AUDIT.md
+    /// §3): a player who entered London–Paris under two incumbents held a
+    /// third of the market at full load, lost money every month, was answered
+    /// with a fare cut and sixteen extra daily rotations — and the screen
+    /// could not say whether they were winning, why, or what to do. Now it
+    /// says all three, from `MarketCompetition`: the demand engine's own
+    /// split, restated.
     private func competitorSection(_ card: RouteCardModel, snapshot: GameState,
                                    player: AirlineID) -> some View {
-        let rivals = snapshot.orderedRouteIDs.compactMap { id -> (Airline, Route)? in
-            guard let route = snapshot.routes[id], route.airline != player,
-                  route.sameMarket(origin: card.origin, destination: card.destination),
-                  let airline = snapshot.airlines[route.airline] else { return nil }
-            return (airline, route)
+        let model = controller.catalog.flatMap {
+            snapshot.marketCompetition(for: card.id, catalog: $0)
         }
-        return AECard {
+        return AECard(tint: model?.standing == .trailing
+                      ? AETheme.caution.opacity(0.12) : nil) {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "Who else flies this", systemImage: "person.2")
-                if rivals.isEmpty {
+                if let model, model.isContested {
+                    if let standing = Vocab.standing(model) {
+                        Text(standing)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(standingTint(model.standing))
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("ae-route-standing")
+                    }
+                    if let share = model.playerShareToday {
+                        shareBar(share: share, model: model, snapshot: snapshot)
+                    }
+                    ForEach(model.rivals, id: \.routeID) { rival in
+                        rivalRow(rival, card: card)
+                    }
+                    if let response = Vocab.competitiveResponse(model) {
+                        Label(response, systemImage: "arrow.turn.down.right")
+                            .font(.caption)
+                            .foregroundStyle(AETheme.mutedText)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("ae-route-response")
+                    }
+                } else {
                     Text("Nobody. This market is yours alone — for now.")
                         .font(.subheadline)
                         .foregroundStyle(AETheme.mutedText)
-                } else {
-                    ForEach(rivals, id: \.1.id) { airline, route in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(airline.name).font(.subheadline)
-                                Text("\(route.dailyRoundTrips)×/day · reputation \(Format.percent(airline.reputation.score))")
-                                    .font(.caption)
-                                    .foregroundStyle(AETheme.mutedText)
-                            }
-                            Spacer()
-                            VStack(alignment: .trailing, spacing: 1) {
-                                Text(Format.money(route.ticketPrice))
-                                    .font(.subheadline).monospacedDigit()
-                                Text(comparison(route.ticketPrice, card.ticketPrice))
-                                    .font(.caption2)
-                                    .foregroundStyle(route.ticketPrice < card.ticketPrice
-                                                     ? AETheme.negative : AETheme.mutedText)
-                            }
-                        }
-                    }
                 }
             }
         }
+    }
+
+    private func standingTint(_ standing: MarketCompetition.Standing) -> Color {
+        switch standing {
+        case .leading: AETheme.positive
+        case .trailing: AETheme.negative
+        case .even, .tooEarly, .alone: AETheme.mutedText
+        }
+    }
+
+    /// Today's split of the market, you first, in each carrier's colour.
+    private func shareBar(share: Double, model: MarketCompetition,
+                          snapshot: GameState) -> some View {
+        let mine = Vocab.liveryColor(snapshot.playerAirline?.livery ?? .default)
+        return VStack(alignment: .leading, spacing: 2) {
+            GeometryReader { proxy in
+                HStack(spacing: 1) {
+                    Rectangle().fill(mine)
+                        .frame(width: max(2, proxy.size.width * share))
+                    ForEach(model.rivals, id: \.routeID) { rival in
+                        Rectangle().fill(Vocab.liveryColor(rival.livery).opacity(0.7))
+                            .frame(width: max(0, proxy.size.width * (rival.shareToday ?? 0)))
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+            .frame(height: 8)
+            .clipShape(Capsule())
+            Text("Today's passengers: you \(Format.percent(share)) · \(Format.count(Int64(model.marketDemandToday))) wanted to fly this pair")
+                .font(.caption2)
+                .foregroundStyle(AETheme.mutedText)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Your share of today's passengers \(Format.percent(share))")
+    }
+
+    private func rivalRow(_ rival: RivalOffer, card: RouteCardModel) -> some View {
+        HStack {
+            Circle()
+                .fill(Vocab.liveryColor(rival.livery))
+                .frame(width: 8, height: 8)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: AETheme.spacingXS) {
+                    Text(rival.name).font(.subheadline)
+                    if rival.isBasedOnPair {
+                        AEBadge(text: "their hub", color: AETheme.rivalRoute, icon: "house")
+                    }
+                }
+                Text("\(rival.dailyRoundTrips)×/day · reputation \(Format.percent(rival.reputationScore))\(rival.shareToday.map { " · \(Format.percent($0)) of today" } ?? "")")
+                    .font(.caption)
+                    .foregroundStyle(AETheme.mutedText)
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(Format.money(rival.fare))
+                    .font(.subheadline).monospacedDigit()
+                Text(comparison(rival.fare, card.ticketPrice))
+                    .font(.caption2)
+                    .foregroundStyle(rival.fare < card.ticketPrice
+                                     ? AETheme.negative : AETheme.mutedText)
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 
     private func comparison(_ theirs: Money, _ ours: Money) -> String {

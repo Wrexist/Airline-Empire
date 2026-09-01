@@ -49,6 +49,10 @@ struct DashboardView: View {
                                 showingGuidedSheet = true
                             }
                         }
+                        // One competitive fact, only when the world has one
+                        // (AE-037). Not a feed: the most decision-relevant
+                        // thing a rival did or is doing to this airline.
+                        RivalPressureCard()
                         // The pulse comes before the history. This block
                         // used to sit fifth, below yesterday's digest and next
                         // week's calendar — so "how is my airline doing right
@@ -697,6 +701,83 @@ struct NextMovesCard: View {
     }
 }
 
+/// The one thing the competition is doing to this airline, when there is
+/// one. Measured before it existed (docs/RIVAL_PRESSURE_AUDIT.md §3): a
+/// rival could enter the player's city pair, cut its fare the next morning
+/// and climb to twenty rotations a day, and Home said nothing, because the
+/// feed drops a rival's route events and price moves emit no event at all.
+///
+/// Reads `CompetitionSummary.headline` — Core's one pick, by priority — and
+/// renders nothing in a quiet world, which is most of the early game. Tapping
+/// opens the route it is about, or the Competitors screen.
+struct RivalPressureCard: View {
+    @Environment(GameController.self) private var controller
+
+    var body: some View {
+        if let summary = controller.competitionSummary,
+           let headline = summary.headline,
+           let snapshot = controller.snapshot {
+            AECard(tint: tint(headline).opacity(0.12)) {
+                VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                    AESectionHeader(text: "Rivals", systemImage: "person.2.fill")
+                    if let route = route(for: headline, snapshot: snapshot) {
+                        NavigationLink(value: route) { line(headline) }
+                            .buttonStyle(.aePress)
+                    } else {
+                        NavigationLink { CompetitorsView() } label: { line(headline) }
+                            .buttonStyle(.aePress)
+                    }
+                }
+            }
+            .accessibilityIdentifier("ae-rival-pressure")
+        }
+    }
+
+    private func line(_ headline: CompetitionSummary.Headline) -> some View {
+        HStack(alignment: .top, spacing: AETheme.spacingS) {
+            Text(Vocab.headline(headline))
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.primary)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(AETheme.mutedText)
+                .accessibilityHidden(true)
+        }
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+    }
+
+    /// The player's route the headline is about, when it is about one.
+    private func route(for headline: CompetitionSummary.Headline,
+                       snapshot: GameState) -> RouteID? {
+        guard let player = snapshot.playerAirline?.id else { return nil }
+        switch headline {
+        case .rivalEnteredYourMarket(let move), .rivalLeftYourMarket(let move):
+            return snapshot.routes(of: player).first {
+                $0.sameMarket(origin: move.origin, destination: move.destination)
+            }?.id
+        case .trailing:
+            return controller.competitionSummary?.contested
+                .first { $0.standing == .trailing }?.routeID
+        case .fighting(let contested) where contested == 1:
+            return controller.competitionSummary?.contested.first?.routeID
+        case .rivalExpanding, .leading, .fighting:
+            return nil
+        }
+    }
+
+    private func tint(_ headline: CompetitionSummary.Headline) -> Color {
+        switch headline {
+        case .rivalEnteredYourMarket, .trailing: AETheme.caution
+        case .rivalLeftYourMarket, .leading: AETheme.positive
+        case .rivalExpanding, .fighting: AETheme.accent
+        }
+    }
+}
+
 /// One feed line per SimEvent; unhandled kinds render nothing rather than
 /// noise (curation over completeness).
 struct EventRow: View {
@@ -738,6 +819,13 @@ struct EventRow: View {
         case .aircraftDelivered(let id), .aircraftOrdered(let id, _, _),
              .maintenanceStarted(let id, _, _), .maintenanceCompleted(let id):
             return liveAircraft(id).map(Subject.aircraft) ?? .none
+        case .marketEntered(_, let origin, let destination),
+             .marketLeft(_, let origin, let destination):
+            // A rival's move on your pair leads to your route on that pair.
+            guard let snapshot, let player else { return .none }
+            return snapshot.routes(of: player).first {
+                $0.sameMarket(origin: origin, destination: destination)
+            }.map { Subject.route($0.id) } ?? .none
         default:
             return .none
         }
@@ -818,6 +906,10 @@ struct EventRow: View {
         case .flightDelayed, .worldEventStarted, .worldEventForecast,
              .maintenanceStarted:
             return AETheme.caution
+        case .marketEntered(let airline, _, _):
+            return airline == player ? AETheme.mutedText : AETheme.caution
+        case .marketLeft(let airline, _, _):
+            return airline == player ? AETheme.mutedText : AETheme.positive
         default:
             return AETheme.mutedText
         }
@@ -855,6 +947,14 @@ struct EventRow: View {
             "\(aircraftName(id) ?? "An aircraft") is back in service"
         case .routeOpened(_, let origin, let destination):
             "Route opened: \(origin.raw)–\(destination.raw)"
+        // Your own entry is already the line above; a rival's is news only
+        // on your pair, which the feed filter has already decided.
+        case .marketEntered(let airline, let origin, let destination):
+            airline == player ? nil
+                : "\(Vocab.airlineName(airline, state: snapshot)) entered your \(Vocab.pair(origin, destination)) market"
+        case .marketLeft(let airline, let origin, let destination):
+            airline == player ? nil
+                : "\(Vocab.airlineName(airline, state: snapshot)) pulled out of \(Vocab.pair(origin, destination)) — the market is yours again"
         case .milestoneReached(let code):
             "Milestone: \(Vocab.milestone(code))"
         case .achievementUnlocked(let code):
@@ -908,6 +1008,7 @@ struct EventRow: View {
         case .aircraftDelivered, .aircraftOrdered: "airplane.circle"
         case .maintenanceStarted, .maintenanceCompleted: "wrench"
         case .routeOpened: "point.topleft.down.to.point.bottomright.curvepath"
+        case .marketEntered, .marketLeft: "person.2.fill"
         case .milestoneReached, .achievementUnlocked, .eraAdvanced,
              .capabilityCompleted: "star"
         case .missionOffered, .missionCompleted, .missionExpired: "target"

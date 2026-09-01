@@ -101,13 +101,35 @@ public struct DemandSystem: SimulationSystem {
     /// anyone (no assigned aircraft).
     private func offerQuality(route: Route, state: GameState,
                               catalog: ContentCatalog) -> Double? {
+        Self.offerQualityTerms(route: route, state: state, catalog: catalog)?.product
+    }
+
+    /// The non-price terms of an offer's attractiveness, kept apart so a
+    /// competition read model can say *which* of them is winning a market
+    /// with the demand engine's own arithmetic rather than a second opinion
+    /// (docs/RIVAL_PRESSURE_AUDIT.md §5). Nil when the route cannot carry
+    /// anyone (no assigned aircraft).
+    public struct OfferQualityTerms: Equatable, Sendable {
+        /// Frequency, with hard diminishing returns beyond ~4/day
+        /// (docs/GAME_BALANCE.md §5 anti-frequency-spam).
+        public let schedule: Double
+        /// The first assigned aircraft's cabin.
+        public let comfort: Double
+        /// Completion and punctuality, from the route's own record.
+        public let operations: Double
+        /// The airline's blended reputation as a demand multiplier.
+        public let reputation: Double
+
+        public var product: Double { schedule * comfort * operations * reputation }
+    }
+
+    public static func offerQualityTerms(route: Route, state: GameState,
+                                         catalog: ContentCatalog) -> OfferQualityTerms? {
         let tuning = catalog.tuning.demand
         guard let firstAircraft = route.assignedAircraft.sorted()
             .compactMap({ state.aircraft[$0] }).first,
             let spec = catalog.aircraftType(firstAircraft.typeCode) else { return nil }
 
-        // Frequency helps with hard diminishing returns beyond ~4/day
-        // (docs/GAME_BALANCE.md §5 anti-frequency-spam).
         let trips = Double(min(route.dailyRoundTrips, tuning.scheduleQualityTripCap))
         let schedule = pow(trips / tuning.scheduleQualityReferenceTrips,
                            tuning.scheduleQualityExponent)
@@ -117,7 +139,8 @@ public struct DemandSystem: SimulationSystem {
             * (route.stats.completionRate * 0.5 + route.stats.punctuality * 0.5)
         let reputation = state.airlines[route.airline]?.reputation
             .demandMultiplier(tuning: catalog.tuning.reputation) ?? 1.0
-        return schedule * comfort * operations * reputation
+        return OfferQualityTerms(schedule: schedule, comfort: comfort,
+                                 operations: operations, reputation: reputation)
     }
 
     /// Passengers a single operator could expect to carry per day on a

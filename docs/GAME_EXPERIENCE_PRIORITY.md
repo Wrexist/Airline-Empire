@@ -1,4 +1,4 @@
-# Game experience priority list — AE-033 audit
+# Game experience priority list — AE-033 audit, AE-037 update
 
 > The ranked output of the full runtime audit (map harvest + player
 > journey + screen-by-screen). Every item carries how it was found.
@@ -14,11 +14,28 @@ reviewer would notice. P3 = polish. The two AE-034 P0s (drag rebuild
 cost, label churn) were fixed this phase and live in the perf report,
 not here.
 
+## P0
+
+- **RIV-01 · WORLD · No rival ever met the player.** MEASURED (AE-037,
+  `ae-rival-probe`): five years from three curated starts, zero contested
+  player markets, zero rivals with a second route, three of five rivals
+  collapsed. ROOT CAUSE: BUG-042 (an idle aircraft always joined the one
+  full route) and BUG-043 (the cast founded at the five most populous
+  airports, all in Asia). **FIXED** at the source; rivals now build hub
+  networks in the player's region and fight each other. Rival-initiated
+  entry into a pair the player already flies remains unreached (TD-026).
+- **RIV-02 · ROUTES/HOME · A contested market's consequences had no
+  cause on screen.** MEASURED: entering London–Paris under two incumbents
+  drew a fare cut and an extra rotation the next morning, thirty-two
+  frequency increases, a settled third of the market and a monthly loss —
+  and not one event. **FIXED** (BUG-044): `MarketCompetition` standing /
+  share / edge on the route, `CompetitionSummary` headline on Home and the
+  World hub, `marketEntered` / `marketLeft` in the feed, the market-move
+  record (save v12). AUTHORED; frames pending.
+
 ## P1
 
-*(none open — the P0/P1 class found by the baseline was the map
-interaction cost, fixed and verified this phase; the journey audit found
-no other P0/P1.)*
+*(none open beyond RIV-01's residual, TD-026.)*
 
 ## P2
 

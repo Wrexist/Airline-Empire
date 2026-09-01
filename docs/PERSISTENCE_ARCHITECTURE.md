@@ -159,3 +159,15 @@ somebody's saved game. What the tests assert, in `LiveryMigrationTests`:
 
 The general rule this reinforces (§5): a migration's job is not to produce a
 decodable tree. It is to hand the player back the game they left.
+
+## Addendum — v12 (2026-09-01)
+
+`WorldState.marketMoves` (AE-037) took the format to **v12**: a bounded
+record (64 entries) of every airline's entry into and exit from a city
+pair, written by `OpenRouteCommand`, `CloseRouteCommand` and the collapse
+path. `MigrationV11AddMarketMoves` inserts an empty record — an older
+world's current routes are intact, so its competitive picture is whole and
+only the history of how it came to be is missing, which a v11 world never
+had. Round-trip and migration are pinned by
+`CompetitionTests.marketMovesPersistAndMigrate`; the v10→v11 fixture test
+now asserts `currentVersion == 12` and a chain reaching back to v9.

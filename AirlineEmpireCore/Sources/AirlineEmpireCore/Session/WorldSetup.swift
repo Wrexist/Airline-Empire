@@ -10,21 +10,35 @@ public enum WorldSetup {
         "TerraLink", "Borealis Air", "Solaria Airways", "Windward Express",
     ]
 
-    /// Founds up to `count` AI airlines at the busiest airports (skipping
-    /// the player's home), seeds each with capital and a starter aircraft,
-    /// and lets CompetitorAISystem take it from there.
+    /// Founds up to `count` AI airlines, seeds each with capital and a
+    /// starter aircraft, and lets CompetitorAISystem take it from there.
+    ///
+    /// At least half the cast is based in the player's own world region, at
+    /// its busiest large airports; the rest at the busiest airports anywhere.
+    /// The cast used to be the world's five most populous airports outright
+    /// — Tokyo, Jakarta, Delhi, Shanghai, Seoul — and an AI expands only from
+    /// where its aircraft sit, so a European start never met a rival:
+    /// measured over five years from Stockholm, Barcelona and Singapore, no
+    /// competitor ever entered a player market (docs/RIVAL_PRESSURE_AUDIT.md
+    /// §3, BUG-043). The world must be able to contest the player's ideas.
     public static func createCompetitors(engine: SimulationEngine, count: Int,
                                          playerHome: AirportCode,
                                          startingCash: Money = Money.dollars(120_000_000)) {
         let catalog = engine.catalog
         let archetypes = AIArchetype.allCases
         // Busiest airports first, deterministically.
-        let homes = catalog.orderedAirportCodes
+        let eligible = catalog.orderedAirportCodes
             .compactMap { catalog.airports[$0] }
             .filter { $0.code != playerHome && $0.runwayClass >= .large }
             .sorted { ($0.demographics.populationThousands, $0.code)
                 > ($1.demographics.populationThousands, $1.code) }
-            .prefix(count)
+        let playerRegion = catalog.airport(playerHome)?.region
+        let nearbyCount = (count + 1) / 2
+        var homes = Array(eligible.filter { $0.region == playerRegion }.prefix(nearbyCount))
+        for airport in eligible where homes.count < count
+            && !homes.contains(where: { $0.code == airport.code }) {
+            homes.append(airport)
+        }
 
         for (index, home) in homes.enumerated() {
             guard index < competitorNames.count else { break }

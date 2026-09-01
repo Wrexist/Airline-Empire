@@ -41,7 +41,8 @@ public struct FlightSchedulingSystem: SimulationSystem {
             }
             guard !usable.isEmpty else { continue }
 
-            let capacityPerAircraft = max(0, Int(ops.operatingDayMinutes / roundTripBlock))
+            let capacityPerAircraft = Self.roundTripsPerAircraftPerDay(
+                distanceKm: route.distanceKm, spec: spec, ops: ops)
             let totalTrips = min(route.dailyRoundTrips, capacityPerAircraft * usable.count)
             guard totalTrips > 0 else { continue }
 
@@ -71,6 +72,20 @@ public struct FlightSchedulingSystem: SimulationSystem {
                 }
             }
         }
+    }
+
+    /// How many round trips one airframe of `spec` can fly on a route of this
+    /// length in one operating day — the figure the materialisation above
+    /// caps a route's frequency with. Public so that a planner (the AI, a
+    /// screen) can ask "can this route use another aircraft?" with the
+    /// scheduler's own arithmetic rather than a second copy of it.
+    public static func roundTripsPerAircraftPerDay(distanceKm: Int, spec: AircraftTypeSpec,
+                                                   ops: OpsTuning) -> Int {
+        let flightMinutes = flightMinutes(distanceKm: distanceKm,
+                                          cruiseSpeedKmh: spec.cruiseSpeedKmh,
+                                          overheadMinutes: ops.flightOverheadMinutes)
+        let roundTripBlock = 2 * (flightMinutes + Int64(spec.turnaroundMinutes))
+        return max(0, Int(ops.operatingDayMinutes / roundTripBlock))
     }
 
     /// Cruise time + fixed overhead, whole minutes.

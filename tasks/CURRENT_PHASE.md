@@ -1,5 +1,57 @@
 # Current Phase
 
+**AE-037 — Rival pressure. (Make the world push back.)**
+2026-09-01.
+
+The brief: the Core has competitors, price competition and reputation —
+can the player *see* any of it? Measure first. `ae-rival-probe` (new
+executable) replays the seed-2039 campaign and diffs every rival's state
+day by day, and the answer was worse than "invisible": from Stockholm,
+Barcelona and Singapore alike, **no rival ever entered a player market in
+five years, and no rival ever opened a second route.** Two structural
+causes, both fixed at the source with one guard each (BUG-042: an AI's
+idle aircraft always joined its one full route, sixteen airframes on a
+pair that could use ten, three of five rivals collapsing under bills for
+parked metal; BUG-043: the cast was founded at Tokyo, Jakarta, Delhi,
+Shanghai and Seoul, and an AI only expands from where its aircraft sit).
+With both in, rivals build real hub networks — Istanbul, London, Paris for
+a Stockholm player — and fight each other by day 11. They still never
+enter a pair the player already flies: the scoring halves a market per
+incumbent and an open one always remains. Recorded as TD-026, not
+rewritten: competition on the player's pairs is player-initiated, which
+the design lists as intended.
+
+So the phase measured the fight that exists. Entering London–Paris under
+two incumbents at 0.88× reference: the premium rival cut its fare and added
+a rotation **the next morning**, both climbed to twenty rotations a day
+over four months, the player held an exact third of the market at full
+load and lost ~$90k every month, and the regional rival gave up on day
+248. Of those rival moves, the feed carried **none** — price and frequency
+commands emit no event, and a rival's route events were (correctly)
+filtered as its private business (BUG-044, P0 by this phase's ranking).
+
+**Shipped:** `world.marketMoves` (save v12, migrated), `marketEntered` /
+`marketLeft` events admitted to the feed only on the player's own pairs,
+`MarketCompetition` and `CompetitionSummary` — standing against an even
+split, the dominant attractiveness term as the *why* from the demand
+engine's own factors, and one prioritised headline. Route detail leads its
+competition section with the standing sentence, a share bar and the named
+response; Home carries one rival fact only when there is one; the World
+hub's badge and line are about the player; Competitors is ordered by
+pressure with contested routes as links; the map hint counts contested
+routes. `RivalPressureCampaignTests` is the deterministic twin of the UI
+journey's fight; two probe-written saves (day 249, day 1825) let the
+retreat and the late game be photographed. Core: 415 → 427 tests, all
+green on Linux; release builds clean with warnings as errors. Evidence:
+`docs/RIVAL_PRESSURE_AUDIT.md`.
+
+**Not validated:** every frame — the App changes are AUTHORED and
+symbol-checked on Linux; the CI run on this branch decides.
+
+---
+
+# Previous Phase
+
 **AE-033 — The command map. (Immersion & professional UX pass.)**
 2026-08-31.
 

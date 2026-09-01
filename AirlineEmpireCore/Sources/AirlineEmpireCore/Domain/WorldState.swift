@@ -18,6 +18,14 @@ public struct WorldState: Equatable, Codable, Sendable {
     /// Deterministic trigger cooldowns, keyed by label ("major",
     /// "strike.<id>"), value = dayIndex of last occurrence.
     public var eventCooldowns: [String: Int64]
+    /// Who entered and left which city pair, most recent last — the
+    /// competitive record the event log cannot keep. `routeOpened` names no
+    /// airline and `routeClosed` names a route that no longer exists, so a
+    /// rival's entry into the player's market was classified as nobody's
+    /// business and its retreat could never be attributed at all; both were
+    /// gone from the 512-event ring within a day of flying anyway
+    /// (docs/RIVAL_PRESSURE_AUDIT.md §4). Bounded by rule.
+    public var marketMoves: [MarketMove]
 
     public init(airportRuntimes: [AirportCode: AirportRuntime] = [:],
                 fuelPricePerTon: Money = Money(cents: 65_000),
@@ -30,6 +38,21 @@ public struct WorldState: Equatable, Codable, Sendable {
         self.activeEvents = []
         self.nextEventID = 1
         self.eventCooldowns = [:]
+        self.marketMoves = []
+    }
+
+    // MARK: Market moves
+
+    public static let marketMoveCapacity = 64
+
+    /// Records an entry into or exit from a city pair. Every airline's, so
+    /// the ledger is a fact about the world and the player's view is a
+    /// filter over it, not the other way round.
+    public mutating func recordMarketMove(_ move: MarketMove) {
+        marketMoves.append(move)
+        if marketMoves.count > Self.marketMoveCapacity {
+            marketMoves.removeFirst(marketMoves.count - Self.marketMoveCapacity)
+        }
     }
 
     // MARK: Slots
@@ -111,4 +134,29 @@ public enum SlotError: Equatable, Sendable {
     case invalidCount(Int)
     case capacityExceeded(requested: Int, available: Int)
     case releasingUnheldSlots(requested: Int, held: Int)
+}
+
+/// One airline entering or leaving one city pair.
+public struct MarketMove: Equatable, Codable, Sendable {
+    public enum Kind: String, Equatable, Codable, Sendable {
+        case entered
+        case left
+    }
+
+    public let at: SimTime
+    public let airline: AirlineID
+    public let origin: AirportCode
+    public let destination: AirportCode
+    public let kind: Kind
+
+    public init(at: SimTime, airline: AirlineID, origin: AirportCode,
+                destination: AirportCode, kind: Kind) {
+        self.at = at
+        self.airline = airline
+        self.origin = origin
+        self.destination = destination
+        self.kind = kind
+    }
+
+    public var market: Route.Market { Route.market(origin, destination) }
 }

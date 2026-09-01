@@ -97,6 +97,7 @@ final class GameController {
     @ObservationIgnored private var cachedFleetSummary: FleetSummary?
     @ObservationIgnored private var cachedRouteCards: [RouteCardModel]?
     @ObservationIgnored private var cachedFleetCards: [FleetCardModel]?
+    @ObservationIgnored private var cachedCompetition: CompetitionSummary?
 
     /// Drops every derived cache. Called on each published snapshot.
     ///
@@ -120,6 +121,18 @@ final class GameController {
         cachedFleetCards = nil
         cachedNetwork = nil
         cachedFleetSummary = nil
+        cachedCompetition = nil
+    }
+
+    /// The competitive picture — Home's one rival fact, the World hub's live
+    /// line, the Competitors screen. Computed once per snapshot like the
+    /// rest: it walks every route and the market-move record.
+    var competitionSummary: CompetitionSummary? {
+        guard let snapshot, let catalog else { return nil }
+        if let cachedCompetition { return cachedCompetition }
+        let summary = snapshot.competitionSummary(catalog: catalog)
+        cachedCompetition = summary
+        return summary
     }
 
     /// The network at a glance — Home's pulse, the Routes board's header.
@@ -273,6 +286,46 @@ final class GameController {
         }
     }
 
+    /// Opens a save file written by the real engine, from a path handed over
+    /// on the command line — `-AEUITestLoadSave <path>`.
+    ///
+    /// For the UI tests only, and a narrow affordance on purpose: the file
+    /// goes through the same codec, migrations and session setup as a slot
+    /// load, so what the screens then show is a world the simulation built
+    /// (`ae-rival-probe` writes it after five simulated years), not a state
+    /// assembled for the camera. A late-game world is ~1,800 sunrise taps
+    /// away from a fresh one; a save is how a player reaches it too.
+    func loadFixtureIfRequested() {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let flag = arguments.firstIndex(of: "-AEUITestLoadSave"),
+              arguments.indices.contains(flag + 1), session == nil else { return }
+        loadGame(fileURL: URL(fileURLWithPath: arguments[flag + 1]))
+    }
+
+    private func loadGame(fileURL: URL) {
+        startupFailure = nil
+        do {
+            let catalog = try ContentCatalog.loadBundled()
+            let manager = makeSaveManager()
+            let state = try manager.codec.decode(try Data(contentsOf: fileURL))
+            let session = GameSession(state: state, systems: GamePipeline.standard(),
+                                      catalog: catalog)
+            self.catalog = catalog
+            self.session = session
+            self.saveManager = manager
+            self.loadedFromBackup = nil
+            self.lastSolvencyStage = .healthy
+            Task {
+                await session.attachSaveManager(manager)
+                await self.subscribe()
+                await self.refresh()
+                self.setPumping(true)
+            }
+        } catch {
+            self.startupFailure = "The save at \(fileURL.lastPathComponent) could not be opened: \(error)"
+        }
+    }
+
     func clearStartupFailure() {
         startupFailure = nil
     }
@@ -410,6 +463,18 @@ final class GameController {
         cachedFleetCards = nil
         cachedNetwork = nil
         cachedFleetSummary = nil
+        cachedCompetition = nil
+    }
+
+    /// The competitive picture — Home's one rival fact, the World hub's live
+    /// line, the Competitors screen. Computed once per snapshot like the
+    /// rest: it walks every route and the market-move record.
+    var competitionSummary: CompetitionSummary? {
+        guard let snapshot, let catalog else { return nil }
+        if let cachedCompetition { return cachedCompetition }
+        let summary = snapshot.competitionSummary(catalog: catalog)
+        cachedCompetition = summary
+        return summary
     }
 
     // MARK: Time control
