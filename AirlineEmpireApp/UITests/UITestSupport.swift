@@ -689,6 +689,31 @@ class AEUITestCase: XCTestCase {
         return true
     }
 
+    /// Tap an element once it is genuinely hittable, falling back to a
+    /// coordinate tap at its centre.
+    ///
+    /// A control can exist, be on screen, and still refuse a tap while a
+    /// sheet is finishing its dismissal or a scroll is settling — run 99's
+    /// campaign failed on a Next Moves suggestion sitting at a perfectly
+    /// good frame, moments after the market sheet closed over it. Waiting
+    /// for hittability is the honest fix; the coordinate tap is the same
+    /// last resort the lease helper uses.
+    @discardableResult
+    func tapWhenReady(_ element: XCUIElement, timeout: TimeInterval = 10) -> Bool {
+        guard element.waitForExistence(timeout: timeout) else { return false }
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline, !element.isHittable {
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        if element.isHittable {
+            element.tap()
+        } else {
+            element.coordinate(withNormalizedOffset:
+                CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+        return true
+    }
+
     /// Reach the aircraft market from the Fleet section, whatever the fleet
     /// looks like.
     ///

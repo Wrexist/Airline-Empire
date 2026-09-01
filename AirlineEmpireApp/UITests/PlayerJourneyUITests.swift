@@ -514,8 +514,10 @@ final class PlayerJourneyUITests: AEUITestCase {
         for _ in 0..<2 {
             let suggestion = app.buttons.matching(NSPredicate(
                 format: "label CONTAINS %@", "→")).firstMatch
-            guard suggestion.waitForExistence(timeout: 8) else { break }
-            suggestion.tap()
+            // The market sheet has just closed over this card; wait for the
+            // suggestion to actually accept a tap rather than assuming a
+            // visible frame means a live control (run 99).
+            guard tapWhenReady(suggestion) else { break }
             let commit = app.buttons.matching(identifier: "ae-route-open").firstMatch
             if commit.waitForExistence(timeout: 8), commit.isEnabled {
                 commit.tap()
