@@ -518,24 +518,51 @@ final class PlayerJourneyUITests: AEUITestCase {
 
         // Two more markets, from the same ranking the Next Moves card shows.
         openTab("Home")
-        for _ in 0..<2 {
+        for attempt in 1...2 {
             let suggestion = app.buttons.matching(NSPredicate(
                 format: "label CONTAINS %@", "→")).firstMatch
             // The market sheet has just closed over this card; wait for the
             // suggestion to actually accept a tap rather than assuming a
             // visible frame means a live control (run 99).
-            guard tapWhenReady(suggestion) else { break }
+            guard tapWhenReady(suggestion) else {
+                capture("FEB-SUGGESTION-NO-TAP-\(attempt)")
+                break
+            }
             let commit = app.buttons.matching(identifier: "ae-route-open").firstMatch
             if commit.waitForExistence(timeout: 8), commit.isEnabled {
                 commit.tap()
                 Thread.sleep(forTimeInterval: 1)
-            } else if app.buttons["Done"].exists {
-                app.buttons["Done"].tap()
+            } else {
+                // Run 102 grew the network by one route across two taps and
+                // said nothing about the second. Whatever the sheet is doing
+                // here — a disabled commit, a rejection, a screen that never
+                // arrived — it gets photographed before we walk away.
+                capture("FEB-ROUTE-SHEET-STUCK-\(attempt)")
+                if app.buttons["Done"].exists { app.buttons["Done"].tap() }
             }
             openTab("Home")
         }
+
+        // CAUSALITY: the gate counts routes that made money, so the campaign
+        // has to actually be flying four of them. A silent three is what run
+        // 102 carried into March.
         guard openAirlineSection("Routes") else { return }
-        assignAllBareRoutes()
+        let routeRows = app.descendants(matching: .any)
+            .matching(identifier: "ae-route-row")
+        _ = routeRows.firstMatch.waitForExistence(timeout: 8)
+        let openedRoutes = routeRows.count
+        checkpoint("32b-network-after-february")
+        let bare = assignAllBareRoutes()
+        XCTAssertEqual(bare, 0, """
+            February ends with \(bare) of \(openedRoutes) routes having no \
+            aircraft to fly them. A route nothing flies earns nothing, so it \
+            can never count toward "routes that made money last month".
+            """)
+        XCTAssertGreaterThanOrEqual(openedRoutes, 4, """
+            February ended with \(openedRoutes) routes; the Core twin on the \
+            same seed opens four. The two Next Moves suggestions did not both \
+            become routes — the FEB- frames say which step dropped.
+            """)
 
         // ── The gate, asked the player's question ──────────────────────────
         guard openProgression() else { return }

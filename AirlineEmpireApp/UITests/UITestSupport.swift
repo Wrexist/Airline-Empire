@@ -664,29 +664,66 @@ class AEUITestCase: XCTestCase {
     /// Walk the routes board and put an aircraft on every route that lacks
     /// one. The campaign opens routes faster than one at a time, and "the
     /// first row" stops meaning "the new route" the moment there are three.
+    /// The number of routes still without an aircraft after the walk. Zero
+    /// is the only healthy answer for a campaign: a route nothing flies
+    /// earns nothing, and so can never count toward the era gate's "routes
+    /// that made money last month".
+    ///
+    /// Run 102 reached March with three routes, two aircraft flying and the
+    /// gate stuck at "2 of 3" — and this helper, which had returned `true`,
+    /// was the reason nobody could say which of the two silent skips below
+    /// had happened. Both now leave a frame behind.
     @discardableResult
-    func assignAllBareRoutes() -> Bool {
+    func assignAllBareRoutes() -> Int {
         let rows = app.descendants(matching: .any)
             .matching(identifier: "ae-route-row")
-        guard rows.firstMatch.waitForExistence(timeout: 8) else { return false }
+        guard rows.firstMatch.waitForExistence(timeout: 8) else { return -1 }
         let count = min(rows.count, 6)
+        var bare = 0
         for index in 0..<count {
             let row = rows.element(boundBy: index)
             guard row.exists else { continue }
-            row.tap()
             let assign = app.buttons["Assign an aircraft"]
             let unassign = app.buttons["Unassign"]
-            if assign.waitForExistence(timeout: 4), !unassign.exists {
-                assign.tap()
-                let candidate = app.buttons.matching(
-                    NSPredicate(format: "label CONTAINS %@", " at ")).firstMatch
-                if candidate.waitForExistence(timeout: 5) { candidate.tap() }
-                _ = unassign.waitForExistence(timeout: 8)
+
+            // A row tap that lands on stale geometry no-ops silently; the
+            // board simply stays on screen. Retry, exactly as the first
+            // assignment does, and photograph each miss.
+            var arrived = false
+            for attempt in 1...3 {
+                row.tap()
+                if assign.waitForExistence(timeout: 5) || unassign.exists {
+                    arrived = true
+                    break
+                }
+                capture("BARE-ROW-TAP-\(index)-\(attempt)")
+                app.swipeUp()
+                app.swipeDown()
+                Thread.sleep(forTimeInterval: 0.5)
+            }
+            guard arrived else {
+                bare += 1
+                continue
+            }
+
+            if !unassign.exists {
+                if assign.exists {
+                    assign.tap()
+                    let candidate = app.buttons.matching(
+                        NSPredicate(format: "label CONTAINS %@", " at ")).firstMatch
+                    if candidate.waitForExistence(timeout: 5) { candidate.tap() }
+                } else {
+                    // No assignment menu at all: the route detail is saying
+                    // no aircraft the airline owns can fly this pair today.
+                    // That is the game answering, not a tap missing.
+                    capture("BARE-ROUTE-NO-CANDIDATE-\(index)")
+                }
+                if !unassign.waitForExistence(timeout: 8) { bare += 1 }
             }
             app.navigationBars.buttons.firstMatch.tap()
             Thread.sleep(forTimeInterval: 0.5)
         }
-        return true
+        return bare
     }
 
     /// Tap an element once it is genuinely hittable, falling back to a
