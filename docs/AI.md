@@ -38,11 +38,18 @@ order per slot:
    has** (the scheduler's own capacity arithmetic; AE-037 BUG-042 — a
    full trunk route is hot forever and used to absorb every airframe its
    airline ever bought), else open the best new market from where the
-   airframe sits — candidates scored `demandPool / (incumbents + 1)`,
-   gated by eligibility, slots, archetype geography, and a viability
-   floor; fare = ref × archetype factor. The incumbent halving means a
-   rival enters a pair the player already flies only when it is one of
-   the world's largest (TD-026).
+   airframe sits — candidates scored by the pool an entrant could plan
+   against (`DemandSystem.poolAvailableToEntrant`: the demand engine's own
+   split applied to one hypothetical extra offer at the archetype's fare
+   against the incumbents' real fares and quality; an open pair scores its
+   whole pool, one incumbent at the reference fare leaves about two
+   thirds), gated by eligibility, slots, archetype geography, and a
+   viability floor; fare = ref × archetype factor. Until AE-038 the score
+   halved per incumbent, and 240 scanned campaigns showed that kept every
+   rival out of every pair the player flew except New York–Chicago
+   (docs/RIVALS_THAT_COME_TO_YOU_AUDIT.md §2). The candidate horizon is
+   still the sixteen nearest airports to where the airframe sits, so a
+   rival can only come to a pair whose far end is one of its own bases.
 3. **Tune the network**: respond to >12% undercuts per archetype policy;
    push frequency on >0.82 loads; trim on <0.35; close persistent losers.
 4. **Grow** (runway ≥ archetype threshold, fleet < cap 40): lease or buy
