@@ -59,6 +59,34 @@ struct HorizonTests {
         #expect(stockholm.score != nil)
     }
 
+    // HORIZON-02: a candidate beyond the shipped sixteen is absent from the
+    // shipped evaluation and present, with the same gates applied, when the
+    // horizon is widened — the mechanism the AE-039 sweep measured with.
+    // Stockholm from Istanbul (MEASURED rank 22) is such a candidate.
+    @Test func wideningTheHorizonAdmitsACandidateWithTheSameGates() throws {
+        let (state, catalog) = try Self.world()
+        let (pacific, spec, profile, _) = try Self.rival(named: "PacificBlue", in: state)
+        #expect(pacific.homeAirport == "IST")
+        let tuning = catalog.tuning.ai
+        let shipped = CompetitorAISystem.candidateMarkets(
+            from: pacific.homeAirport, airline: pacific, spec: spec, profile: profile,
+            state: state, catalog: catalog, tuning: tuning)
+        #expect(!shipped.contains { $0.destination == "ARN" })
+        let wider = CompetitorAISystem.candidateMarkets(
+            from: pacific.homeAirport, airline: pacific, spec: spec, profile: profile,
+            state: state, catalog: catalog, tuning: tuning, limit: 24)
+        let stockholm = try #require(wider.first { $0.destination == "ARN" })
+        #expect(stockholm.nearestRank > tuning.candidateMarketLimit && stockholm.nearestRank <= 24)
+        // Admitted, and scored by the same rule as everything inside the
+        // sixteen: eligible for the airframe, and worth what an airframe
+        // day sells there.
+        #expect(catalog.routeEligibility(from: "IST", to: "ARN", aircraftRangeKm: spec.rangeKm,
+                                         aircraftRunwayRequirement: spec.runwayRequirement).isEmpty)
+        #expect(stockholm.score != nil)
+        // The first sixteen are the same list either way.
+        #expect(wider.prefix(tuning.candidateMarketLimit).map(\.destination) == shipped.map(\.destination))
+    }
+
     // HORIZON-03: beyond the airframe's range the candidate is ineligible,
     // whatever the horizon.
     @Test func aCandidateBeyondRangeIsIneligibleNotScored() throws {
