@@ -189,15 +189,14 @@ struct AirframeDayProfitTests {
         let quality = try #require(DemandSystem.offerQualityTerms(route: flown, state: state, catalog: catalog)).product
         let passengers = DemandSystem.expectedCapturedPassengers(
             pool: pool, fareRatio: 1.0, quality: quality, tuning: catalog.tuning.demand)
-        // The estimator plans a full airframe day; the route flies two
-        // rotations, so scale the estimate to the rotations flown.
-        let rotationsPerAirframe = FlightSchedulingSystem.roundTripsPerAircraftPerDay(
-            distanceKm: distance, spec: type, ops: catalog.tuning.ops)
+        // The estimator plans an airframe day at the rotations asked of it;
+        // the route flies two, so ask for two. (Scaling a full-day estimate
+        // by rotations is wrong: passengers do not scale with seats.)
         let estimatePerDay = CompetitorAISystem.airframeDayProfit(
             distanceKm: distance, passengersPerDay: passengers, spec: type, fareRatio: 1.0,
             serviceTier: .standard, origin: origin, destination: destination,
-            state: state, catalog: catalog) * Double(flown.dailyRoundTrips) / Double(rotationsPerAirframe)
-        print("AIRFRAME-DAY ARN-LHR: real last month \(flown.economicsLastMonth.directOperatingProfit.compact) (\(Int(realPerDay))/day) · estimate \(Int(estimatePerDay))/day at \(flown.dailyRoundTrips) of \(rotationsPerAirframe) rotations · passengers \(Int(passengers)) load \(String(format: "%.0f%%", flown.stats.loadFactor * 100))")
+            state: state, catalog: catalog, rotationsPerDay: flown.dailyRoundTrips)
+        print("AIRFRAME-DAY ARN-LHR: real last month \(flown.economicsLastMonth.directOperatingProfit.compact) (\(Int(realPerDay))/day) · estimate \(Int(estimatePerDay))/day at \(flown.dailyRoundTrips) rotations · passengers \(Int(passengers)) load \(String(format: "%.0f%%", flown.stats.loadFactor * 100))")
         #expect(realPerDay > 0 && estimatePerDay > 0)
         #expect(estimatePerDay > realPerDay * 0.5 && estimatePerDay < realPerDay * 2.0,
                 "estimate \(Int(estimatePerDay)) vs real \(Int(realPerDay)) per day")

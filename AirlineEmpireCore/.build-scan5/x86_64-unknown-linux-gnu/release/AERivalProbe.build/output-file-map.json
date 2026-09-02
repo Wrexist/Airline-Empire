@@ -1,0 +1,12 @@
+{
+  "": {
+    "dependencies": "/home/user/Airline-Empire/AirlineEmpireCore/.build-scan5/x86_64-unknown-linux-gnu/release/AERivalProbe.build/AERivalProbe.d",
+    "object": "/home/user/Airline-Empire/AirlineEmpireCore/.build-scan5/x86_64-unknown-linux-gnu/release/AERivalProbe.build/AERivalProbe.o",
+    "swift-dependencies": "/home/user/Airline-Empire/AirlineEmpireCore/.build-scan5/x86_64-unknown-linux-gnu/release/AERivalProbe.build/master.swiftdeps"
+  },
+  "/home/user/Airline-Empire/AirlineEmpireCore/Sources/AERivalProbe/main.swift": {
+    "object": "/home/user/Airline-Empire/AirlineEmpireCore/.build-scan5/x86_64-unknown-linux-gnu/release/AERivalProbe.build/main.swift.o",
+    "swiftmodule": "/home/user/Airline-Empire/AirlineEmpireCore/.build-scan5/x86_64-unknown-linux-gnu/release/AERivalProbe.build/main~partial.swiftmodule",
+    "swift-dependencies": "/home/user/Airline-Empire/AirlineEmpireCore/.build-scan5/x86_64-unknown-linux-gnu/release/AERivalProbe.build/main.swiftdeps"
+  }
+}

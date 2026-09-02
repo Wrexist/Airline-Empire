@@ -1,0 +1,43 @@
+{
+ "scenarios": [
+  {
+   "blurb": "A gentle start: deep pockets, a calmer market.",
+   "code": "founder",
+   "competitorCount": 4,
+   "competitorStartingCash": {
+    "cents": 10000000000
+   },
+   "name": "Founder",
+   "playerStartingCash": {
+    "cents": 9000000000
+   },
+   "startYear": 2030
+  },
+  {
+   "blurb": "The standard game: enough to start, not enough to coast.",
+   "code": "entrepreneur",
+   "competitorCount": 5,
+   "competitorStartingCash": {
+    "cents": 12000000000
+   },
+   "name": "Entrepreneur",
+   "playerStartingCash": {
+    "cents": 6000000000
+   },
+   "startYear": 2030
+  },
+  {
+   "blurb": "Thin capital against rich, hungry rivals. Prove it.",
+   "code": "magnate",
+   "competitorCount": 6,
+   "competitorStartingCash": {
+    "cents": 14000000000
+   },
+   "name": "Magnate",
+   "playerStartingCash": {
+    "cents": 3500000000
+   },
+   "startYear": 2030
+  }
+ ]
+}

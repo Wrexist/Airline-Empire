@@ -38,6 +38,9 @@ let horizonMode = arguments.contains("--horizon")
 let horizonLimit: Int? = arguments.firstIndex(of: "--limit").flatMap {
     arguments.indices.contains($0 + 1) ? Int(arguments[$0 + 1]) : nil
 }
+/// `--revenue`: the AE-039 experiment variant — rank by what an airframe
+/// day sells, without the cost terms.
+if arguments.contains("--revenue") { CompetitorAISystem.rankingIncludesCosts = false }
 let shipped = try ContentCatalog.loadBundled()
 let catalog: ContentCatalog = try {
     guard let horizonLimit else { return shipped }

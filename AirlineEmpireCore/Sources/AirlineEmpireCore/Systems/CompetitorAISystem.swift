@@ -275,13 +275,19 @@ public struct CompetitorAISystem: SimulationSystem {
     /// so second-tier cities never came up, at any horizon size
     /// (docs/HORIZON_AUDIT.md §3). This is the question `employ` is
     /// actually asking: where does this airframe earn the most?
+    /// Experiment switch (AE-039 measurement only): rank by the revenue an
+    /// airframe day sells rather than by its profit. Tooling sets it; the
+    /// shipped value is the measured choice (docs/HORIZON_AUDIT.md §4).
+    nonisolated(unsafe) public static var rankingIncludesCosts = true
+
     public static func airframeDayProfit(distanceKm: Int, passengersPerDay: Double,
                                          spec: AircraftTypeSpec, fareRatio: Double,
                                          serviceTier: ServiceTier,
                                          origin: AirportSpec, destination: AirportSpec,
-                                         state: GameState, catalog: ContentCatalog) -> Double {
+                                         state: GameState, catalog: ContentCatalog,
+                                         rotationsPerDay: Int? = nil) -> Double {
         let ops = catalog.tuning.ops
-        let rotations = FlightSchedulingSystem.roundTripsPerAircraftPerDay(
+        let rotations = rotationsPerDay ?? FlightSchedulingSystem.roundTripsPerAircraftPerDay(
             distanceKm: distanceKm, spec: spec, ops: ops)
         guard rotations > 0 else { return 0 }
         let flights = Double(rotations * 2)
@@ -289,6 +295,7 @@ public struct CompetitorAISystem: SimulationSystem {
         let fare = DemandSystem.referenceFare(distanceKm: distanceKm,
                                              tuning: catalog.tuning.demand) * fareRatio
         let revenue = carried * fare
+        guard rankingIncludesCosts else { return revenue }
 
         let blockHours = Double(FlightSchedulingSystem.flightMinutes(
             distanceKm: distanceKm, cruiseSpeedKmh: spec.cruiseSpeedKmh,
