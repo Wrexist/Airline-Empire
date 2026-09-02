@@ -78,9 +78,11 @@ not here.
   same (parity to the cent). **FIXED** (BUG-051: the movement fee scales
   with seats, anchored at 180) and the AI's estimator brought to the
   ledger's maintenance rule (BUG-052). Before/after:
-  docs/BALANCING.md F-007. Frames: the fee line on KEY-48's route is a
-  narrowbody's and does not move; NOT VALIDATED on screen for a
-  turboprop.
+  docs/BALANCING.md F-007. **OBSERVED** (run 123, KEY-HZ5: the fee
+  row's new caption "Each flight pays $2,249 at Munich and $1,738 at
+  Istanbul for a 184-seat aircraft, plus $15–$23 per passenger landed.");
+  KEY-48's narrowbody fee line unchanged as designed. A turboprop route's
+  fee line is NOT VALIDATED on screen (no journey flies one).
 
 ## P1
 

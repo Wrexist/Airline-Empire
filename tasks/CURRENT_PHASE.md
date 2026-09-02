@@ -56,7 +56,7 @@ archetype now functions on the profit basis, but it reaches fewer player
 markets at the shipped horizon (31 entries against 60). Full Core suite
 450 green.
 
-**Status:** Core MEASURED, TESTED; App AUTHORED (the fee-terms caption), parsed and symbol-checked; CI run pending for the frames.
+**Status:** DONE — Core MEASURED, TESTED (450); App OBSERVED (run 123: 19 of 19 journeys, the fee-terms caption on KEY-HZ5). Final report: docs/AE040_FEE_ECONOMY_REPORT.md.
 
 ---
 

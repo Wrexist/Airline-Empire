@@ -218,7 +218,21 @@ as the evaluation; not shipped here.
 
 ## 10. Screenshots inspected
 
-FRAMES_SECTION
+CI run 123 (commit 8d700f0): Core 450 passed, release build clean; UI
+19 of 19 journeys passed; 90 frames decoded, eight route-screen frames
+looked at.
+
+| Frame | Screen | What was actually observed | Verdict |
+| --- | --- | --- | --- |
+| KEY-HZ5-after-response | MUC–IST, 3 Apr, "Where the money went" | Airport fees −$58k this month / −$823k last; under it the new caption: *"Each flight pays $2,249 at Munich and $1,738 at Istanbul for a 184-seat aircraft, plus $15–$23 per passenger landed."*; Crew, Direct operating profit $137k; Frequency 3×/day | **OBSERVED** — the fee terms line, with the seat-scaled movements (MUC $2,200 × 184/180 = $2,249, IST $1,700 × 184/180 = $1,738) and both ends' passenger fees |
+| KEY-48-market-after-retreat | LHR–CDG, 7 Sep (retreat fixture, PA184) | *"Losing money — airport fees take 96% of the revenue"*, −$17k so far, −$94k last month, 100% load, Aurora 20×/day at $71 | OBSERVED — unchanged, as designed: a 184-seat narrowbody on a 347 km pair at a fare below reference pays what it paid (TD-031) |
+| KEY-13-route-after-month | ARN–LHR, 1 Feb | *"Nobody. This market is yours alone — for now."*, money panel header at the fold | OBSERVED; caption below the fold |
+| KEY-91-route-detail | ARN–LHR, 1 Jan, no aircraft | Airport fees $0, no caption | OBSERVED — no aircraft, no terms (`feeTerms == nil`), as designed |
+| KEY-HZ3 / HZ4 / HZ6 route | MUC–IST 4 Mar / 3 Apr / 17 Apr | the AE-039 competition section unchanged: even fight 43%, losing 39%, losing 40% at 3×/day | OBSERVED; the money panel is below the fold in these frames |
+| KEY-44-contested-route-after-a-week | LHR–BER, 9 Feb | $222k, even fight 52%, Aurora 5×/day at $133 | OBSERVED; unchanged from run 122 within the fixture's normal variation ($225k) |
+
+Not seen on screen: a turboprop route's fee line (no journey flies one)
+— NOT VALIDATED on screen; MEASURED and TESTED in Core.
 
 ## 11. Bugs found
 
@@ -240,7 +254,7 @@ FRAMES_SECTION
   before the second run by the claims the fix makes (routes earn, the
   network keeps money) and the measured 60–62% is reported.
 - **UI:** 19 journeys, unchanged in intent; the new fee-terms caption
-  appears on the route screen in the existing frames. CI_RESULT
+  appears on the route screen in the existing frames. CI run 123: 19 of 19 passed (the Munich journey 981 s, the campaign 880 s).
 - **Campaign scans:** 150 campaigns before (five starts × thirty seeds,
   the pre-fix binary from a worktree at the last commit), 150 after on
   the shipped basis, 150 after on the profit basis — 450 two-year
@@ -252,7 +266,7 @@ FRAMES_SECTION
   `contestedMarketsCompressMargins`, `leverageAmplifiesButDoesNotDominate`,
   `fleetFlippingBleedsMoney`, `pricingHasRealConsequencesEndToEnd` — all
   green on the shipped basis; not run on the profit basis.
-- **CI:** CI_RUNS
+- **CI:** run 123 (commit 8d700f0) green on every job — Core 450, release build with warnings as errors, release tooling, symbols, 19 UI journeys, 90 frames.
 
 ## 13. Validation matrix
 
@@ -267,7 +281,7 @@ FRAMES_SECTION
 | Regional rival keeps money in the standard cast | — | ✓ (30 campaigns) | `regionalRivalKeepsMoneyInTheStandardCast` | ✓ | ✓ | — | — | — |
 | Long haul not subsidised | — | ✓ | `longHaulIsNotSubsidised` | ✓ | ✓ | — | — | — |
 | Player parity | ✓ | ✓ (to the cent) | (structural: no owner branch) | — | ✓ | — | — | — |
-| The fee row's reason on the route screen | — | — | `routeCardCarriesTheFeeTerms` | parse + symbols | — | FRAMES_OBSERVED | ✓ | — |
+| The fee row's reason on the route screen | — | — | `routeCardCarriesTheFeeTerms` | parse + symbols | — | ✓ run 123, KEY-HZ5 | ✓ | — |
 | Long-run balance (archetype battery, ten-year world) | — | — | ✓ (450 green) | ✓ | ✓ | — | — | — |
 | Regional-jet archetypes' margin shift is acceptable play | — | ✓ (+12–17 pts, under the 60% line) | — | — | — | — | — | ✓ a playtest question |
 | The profit ranking's safety | — | ✓ 150 campaigns (functions; reaches fewer markets) | — | — | — | — | — | balance battery on that basis not run; not shipped |
