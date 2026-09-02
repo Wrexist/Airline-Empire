@@ -175,15 +175,85 @@ Chicago is the largest pair either rival can see.
 
 ## 4. Alternatives considered
 
-ALTERNATIVES_SECTION
+Three ways to let the world see a second-tier city, all measured on the
+same 150 campaigns (30 seeds × Stockholm, Barcelona, Munich, New York,
+Singapore, two years) unless stated:
+
+| Strategy | Stockholm | Barcelona | Munich | Singapore | New York | Ten-year world | Balance battery |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| **A. Fixed larger horizon** (24 / 48 / 93), passenger ranking | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 30 / 30 / 30 | (unchanged rule) | (unchanged rule) |
+| **B. Adaptive horizon** | not built — every fixed size gave the same answer, so no size-selection rule could give a different one | | | | | | |
+| **C. Rank by airframe-day profit**, 16 | 0 | 0 | 0 | 0 | 0 | passes | **fails**: three archetype runs at 64–65% operating margin against the 60% line |
+| C at 24 | **30** (PacificBlue, ARN–IST, day 187 of the scripted campaign; day 201 of the UI campaign's) | 0 | 0 | 0 | 0 | passes | fails, as above |
+| C at 32 | 0 | 0 | 0 | 0 | 0 | | |
+| **D. Rank by airframe-day revenue**, 16 — shipped | 0 | 0 | **30** (PacificBlue, MUC–IST, day 61) | **30** (PacificBlue, CGK–SIN, days 509–551) | 0 | passes | passes |
+| D at 24 | 0 | 0 | 30 | 30 | 0 | | |
+
+REVENUE_SWEEP_NOTE
+
+**Why D and not C.** C is the AI's real question — where does this
+airframe earn the most — and it reaches the curated first start. But it
+answers the regional archetype's question with "nowhere": at hub movement
+fees, no market in the world is profitable for a 70-seat turboprop at the
+reference fare, so SwiftJet never opens a route, holds one idle airframe
+for ever, and the cast loses a member. It also lets the archetypes that
+do fly keep only their best markets, and three of fifteen archetype runs
+cross the balance battery's 60% margin line (64–65%). Neither is a
+horizon finding; both are economy findings, out of this phase's scope,
+and the rule against weakening a test to go green settles the second. D
+keeps every archetype flying, passes every battery unchanged, and brings
+the world to Munich in every seed on day 61 and to Singapore in the
+second year.
+
+**Why not A.** The distance list was never the binding constraint. A
+wider list adds larger open markets ahead of the player's pair, never
+smaller ones behind it; in the five-year run at 32 even Barcelona's three
+late entries vanished.
+
+**Why no adaptive rule.** An adaptive horizon chooses a size; every size
+chose the same markets. There is nothing for it to adapt.
 
 ## 5. What was changed
 
-CHANGE_SECTION
+`CompetitorAISystem.candidateMarkets` scores each candidate that passes
+the unchanged gates — archetype region, `routeEligibility` for the
+airframe, not already flown, slots for two rotations, and the passenger
+floor `minViableDailyDemand` on `DemandSystem.poolAvailableToEntrant` —
+by `airframeDayValue(basis: .revenue)`: the passengers the demand engine
+leaves an entrant, capped by the airframe's seats over the rotations the
+scheduler's own day allows (`FlightSchedulingSystem.roundTripsPerAircraftPerDay`),
+times the reference fare at the archetype's factor. The horizon stays the
+sixteen nearest. Eligibility is untouched: nothing is considered that was
+not considered before, and nothing is opened that the route validator
+would refuse.
+
+The profit basis is kept as the measured alternative — `airframeDayValue(basis: .profit)`
+adds the fuel, movement and passenger fees, crew, maintenance and service
+the flight system posts, and `AirframeDayProfitTests` checks it against a
+real month's ledger (an estimate of $52.6k a day against $65.8k booked on
+Stockholm–London at the same two rotations). The scan and probe take
+`--profit` to re-measure it; nothing in the app or the simulation sets it.
+
+What the change did to the world (§4's sweeps): the AE-037 fight's
+London–Paris is no longer flown by any rival on day 31 (the 350 km pair
+sells less per airframe day than anything else in London's sixteen), so
+the campaign's fight is now London–Berlin under Aurora Atlantic, which
+answers the next morning with a cut to its premium floor and a rotation
+($146/3× → $128/4×) and climbs to twenty, and the player holds 54% a week
+on at a profit; New York–Chicago is no longer entered by SwiftJet, whose
+turboprops lost $277k a month on it at full load — the AE-038 arrival was
+an artefact of ranking by passengers.
 
 ## 6. Ten-year world
 
-TENYEAR_SECTION
+`tenYearWorldRemainsStableAndContested` (five rivals, ten years,
+integrity every year, fuel and economy inside their clamps, flights under
+3,000, aircraft under 300, HHI under 0.7, at least two operators alive)
+passes on the shipped basis, as do `archetypeParityAndSanity` (three
+seeds × five archetypes over four years: no net worth over $300M, every
+margin under 60%, survivors at least 60%, archetype spread under 6×) and
+`contestedMarketsCompressMargins`. Under the profit basis the ten-year
+test also passes and the archetype battery does not (§4).
 
 ## 7. Performance
 
@@ -195,8 +265,31 @@ FRAMES_SECTION
 
 ## 9. Bugs
 
-BUGS_SECTION
+| ID | Priority | Root cause | Player impact | Status |
+| --- | --- | --- | --- | --- |
+| BUG-049 | P2 | the fare advice had one sentence and ignored the spare rotation the model already carried | told the player the answer that costs money and not the one that makes it | FIXED, TESTED (`MunichHorizonTests`); frame pending CI |
+| Finding: New York's arrival | — | ranking by passengers sent a turboprop operator into a pair it lost $277k a month on | the AE-038 world-initiated event was real on screen and irrational underneath; it no longer occurs | recorded in tasks/BUGS.md; twin and journey moved to Munich |
+| Finding: London–Paris | — | no rival flies the fee-dominated 350 km pair once markets are ranked by what an airframe sells | the AE-037 campaign fight had no incumbent | the fight is London–Berlin; twin re-pinned, journey retargeted |
+| TD-029 | debt | hub movement fees against a 70-seat cabin | the regional archetype has no profitable market anywhere | documented; economy decision |
+| TD-030 | debt | the profit basis freezes TD-029's archetype and crosses the margin line | Stockholm reachable only this way | measured, withheld, re-measurable with `--profit` |
 
 ## 10. Remaining limits
 
-LIMITS_SECTION
+- **Stockholm and Barcelona are still not reached within two years on the
+  shipped basis.** Stockholm needs the profit basis at a horizon of 24;
+  Barcelona was reached by nothing measured here. The geography is not
+  the reason: from Istanbul, Stockholm is a viable, rankable market on
+  every basis — it loses on what it sells per airframe day to Berlin,
+  Milan, Madrid and Barcelona itself. That is an economy ordering, and
+  the next lever is TD-029's fee structure, not the candidate list.
+- **The regional archetype loses money on everything it flies** (TD-029),
+  under every ranking. The shipped ranking keeps it flying as before.
+- **New York no longer produces a world-initiated event.** No rival can
+  see New York–Chicago as its best-selling market; the AE-038 frames
+  remain true of the build they were taken on and false of this one.
+- **Rival openings at the player's airports fell** from about eight per
+  campaign to about six: rivals sell more per route and open fewer.
+  Whether a player reads a quieter cast as a duller one is NOT VALIDATED.
+- **Day 61 is early.** Munich's rival arrives two days after the Regional
+  era. Whether that reads as the world responding or as bad luck is a
+  question for a human play session, NOT VALIDATED here.

@@ -1,5 +1,65 @@
 # Current Phase
 
+**AE-039 — The horizon.**
+2026-09-02.
+
+The brief: AE-038 left the curated European starts silent — no rival
+ever came to Stockholm, Barcelona or Munich — and named the sixteen-nearest
+candidate horizon as the suspect. Measure before changing it.
+
+Measured, and the suspect cleared: `ae-rival-scan --limit` ran the same
+150 two-year campaigns at horizons of 16, 24, 48 and all 93 airports, and
+the rivals reached exactly the same player pairs at every size (New York
+30 of 30, the rest 0). `--horizon`, which asks the AI's own evaluation
+(`CompetitorAISystem.candidateMarkets`, exposed for it) why each rival can
+or cannot reach each player pair, showed why: the ranking by passengers
+puts a 370 km pair with 2,000 passengers above a 1,400 km pair with 700
+for ever, though one airframe fills on either and earns twice the fare
+on the longer. Stockholm was outside every horizon *and* outscored
+(CASE E); Munich and Singapore inside and outscored (CASE B); Barcelona
+four places outside London's list (CASE A → B). Five years changed
+nothing. Cases and numbers: docs/HORIZON_AUDIT.md §2–3.
+
+The change: the ranking, not the list. Candidates are scored by what one
+airframe day sells on the market — the demand engine's entrant pool,
+capped by the airframe's seats over the rotations the scheduler's day
+allows, at the archetype's fare (`airframeDayValue`). The horizon stays
+sixteen; eligibility, slots and the passenger floor are untouched. The
+profit basis (the same less the flight system's costs) was measured
+too: it reaches Stockholm at a horizon of 24, and it is withheld
+(TD-030) because no market is profitable for the regional archetype's
+turboprops at hub fees (TD-029) and three archetype runs cross the
+balance battery's margin line.
+
+What the world does now, MEASURED across 30 seeds: PacificBlue, the
+low-cost carrier based at Istanbul, opens Munich–Istanbul on day 61 of
+every seed at $142 against the player's $167; a month later the player
+holds 39%, trailing on fare, with a rotation to spare; a tenth off the
+fare buys share and costs money, another rotation earns more (BUG-049,
+the advice line now says so). Singapore is reached in the second year
+(Jakarta–Singapore, days 509–551). Stockholm and Barcelona are not
+reached within two years on the shipped basis. New York's AE-038
+arrival turned out to be an artefact of the passenger ranking — the
+entrant lost $277k a month on the pair — and no longer happens; the
+London–Paris fight of AE-037 likewise has no incumbent now, so the
+campaign fights on London–Berlin under Aurora Atlantic (answered the next
+morning with a cut to its premium floor and a rotation). Ten-year world
+and the archetype battery pass unchanged.
+
+Twins: `HorizonTests` (the shipped horizon, range, eligibility, scoring,
+cost), `MunichHorizonTests` (the arrival, the headline, the feed, the
+split, three responses over a year), `RivalPressureCampaignTests`
+re-pinned on London–Berlin, `RivalsComeToYouTests` reduced to the
+entrant-pool arithmetic. Journeys: `HorizonArrivalUITests` (Munich,
+HORIZON-KEY-01 … 06) replaces the New York journey; the campaign fights
+Berlin.
+
+**Status:** Core MEASURED, TESTED; App AUTHORED; frames pending CI.
+
+---
+
+# Previous Phase
+
 **AE-038 — Rivals that come to you.**
 2026-09-02.
 

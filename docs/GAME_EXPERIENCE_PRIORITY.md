@@ -40,9 +40,37 @@ not here.
   **OBSERVED** (run 117, `KEY-32b`: the suggested Paris and Istanbul routes
   on the board, nothing else).
 
+- **RIV-04 · WORLD · The world never moved first.** MEASURED (AE-038,
+  `ae-rival-scan`, 240 campaigns): rivals entered a pair the player flew
+  at one of eight homes, because a contested pair scored half per
+  incumbent. **FIXED**: `DemandSystem.poolAvailableToEntrant` — the
+  engine's own split — in the AI's market scoring; 30 → 95 world-initiated
+  entries across the same campaigns. **OBSERVED** (run 119, KEY-R2:
+  "SwiftJet entered your … market yesterday" on Home two days after
+  founding in New York; KEY-R3/R4/R7 the split, the why, the response).
+  AE-039 found that entry to be an artefact of the passenger ranking —
+  see RIV-07.
+- **RIV-05 · ROUTES · The frequency advice named the wrong cost.**
+  MEASURED (AE-038): "another rotation needs another aircraft" on a pair
+  where the one aircraft had a rotation to spare. **FIXED** (BUG-046);
+  **OBSERVED** (run 119, KEY-R4 and R7).
+- **RIV-06 · HOME · Two wordings the New York frames found.** The pair in
+  the rival's orientation (BUG-047) and a month-old entry outranking the
+  live fight (BUG-048). **FIXED**, **OBSERVED** (run 120, KEY-R2, KEY-R4).
+- **RIV-07 · WORLD · The world could not reach the curated European
+  starts.** MEASURED (AE-039): the horizon was not the cause — at 24, 48
+  and 93 airports the rivals reached the same pairs as at 16 — the
+  passenger ranking was. **FIXED** in the ranking (airframe-day revenue):
+  Munich reached on day 61 in every seed, Singapore in year two.
+  Stockholm and Barcelona still not within two years (TD-026's residual
+  is now an economy question: TD-029, TD-030). Frames pending CI.
+- **RIV-08 · ROUTES · Fare advice named the costly answer.** MEASURED
+  (AE-039): matching a cheaper rival bought share and cost money; another
+  rotation earned more. **FIXED** (BUG-049). Frame pending CI.
+
 ## P1
 
-*(none open beyond RIV-01's residual, TD-026.)*
+*(none open beyond TD-026's economy residual: TD-029, TD-030.)*
 
 ## P2
 

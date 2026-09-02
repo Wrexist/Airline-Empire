@@ -482,6 +482,16 @@ player is the only carrier on a large pair; the Home headline
 `rivalEnteredYourMarket` firing in a plain campaign without the player
 picking the fight. NOT VALIDATED.
 
+**AE-039 (2026-09-02): the horizon half measured and dismissed.** At 24,
+48 and all 93 airports the rivals reached exactly the same player pairs
+as at 16 (docs/HORIZON_AUDIT.md §3.1): the distance list was never the
+binding constraint, the passenger ranking was. Ranking by airframe-day
+revenue (shipped) brings the world to Munich on day 61 and to Singapore
+in year two; Stockholm and Barcelona are still not reached within two
+years — Stockholm is reached only on the profit basis at a horizon of
+24, which this phase measured and withheld (TD-030). What remains of
+TD-026 is now an economy question, not a horizon one.
+
 **AE-038 (2026-09-02): narrowed, not closed.** The scoring half is done:
 `DemandSystem.poolAvailableToEntrant` replaces the halving, and across
 240 scanned campaigns world-initiated entries rose from 30 (New York
@@ -527,3 +537,35 @@ the campaign script, the cast rule or the AI makes them a *different*
 world from the one `RivalPressureCampaignTests` measures. Regenerate with
 `swift run -c release ae-rival-probe 2039 249 ARN LHR-CDG:0.88 --save …`
 and `… 1825 …` whenever the twin's numbers move.
+
+## TD-029 — The regional archetype has no profitable market at hub fees
+
+**Symptom.** MEASURED (AE-039, `ae-rival-scan --horizon --profit`): with
+markets scored by what an airframe day keeps after the flight system's
+own costs, SwiftJet — the regional archetype, 70-seat turboprops at the
+reference fare — has zero viable candidates from Paris, Chicago or
+anywhere else in the world it can reach. The ledger agrees: its
+New York–Chicago lost $277k a month at 100% load, Chicago–Toronto $953k.
+Under the shipped revenue ranking it still flies (and still loses), as it
+did under the passenger ranking; AE-037 saw it grounded or collapsed in
+the late game.
+
+**Cause.** `AirportSpec.movementFee` at large airports against a 70-seat
+cabin; the archetype's preferred categories are turboprop and regional
+jet, its geography its home region, its fare factor 1.0.
+
+**Fix shape.** An economy decision: lower fees at smaller airports (the
+catalog has few), a higher regional fare factor, or a different starter
+type. Any of them changes the player's economics on the same routes.
+Out of scope for a horizon phase.
+
+## TD-030 — The profit ranking, measured and withheld
+
+`CompetitorAISystem.airframeDayValue(basis: .profit)` — the revenue
+basis less the flight system's costs — reaches the curated first start:
+with a horizon of 24, PacificBlue enters Stockholm–Istanbul on day 187 of
+every scripted seed (docs/HORIZON_AUDIT.md §4). It is not shipped because
+it freezes the regional archetype (TD-029) and puts three of fifteen
+archetype runs over the balance battery's 60% margin line (64–65%), and a
+test is not weakened to go green. The scan and probe carry `--profit` so
+the measurement can be repeated once TD-029 is decided.

@@ -126,7 +126,7 @@ struct HorizonTests {
                 incumbents: incumbents, state: state, catalog: catalog)
             #expect(passengers >= tuning.minViableDailyDemand)
             if !incumbents.isEmpty { #expect(passengers < pool.total) } else { #expect(abs(passengers - pool.total) < 0.001) }
-            let expected = CompetitorAISystem.airframeDayProfit(
+            let expected = CompetitorAISystem.airframeDayValue(
                 distanceKm: candidate.distanceKm, passengersPerDay: passengers, spec: spec,
                 fareRatio: profile.priceFactor, serviceTier: aurora.serviceTier,
                 origin: try #require(catalog.airport(aurora.homeAirport)),
@@ -140,8 +140,9 @@ struct HorizonTests {
     }
 }
 
-/// The airframe-day estimator against the ledger, and its cost.
-@Suite("Airframe-day profit")
+/// The airframe-day estimator against the ledger (on its profit basis —
+/// the measured alternative, kept for the diagnostic), and its cost.
+@Suite("Airframe-day value")
 struct AirframeDayProfitTests {
 
     /// The estimator is the flight system's own arithmetic ahead of time: on
@@ -192,10 +193,10 @@ struct AirframeDayProfitTests {
         // The estimator plans an airframe day at the rotations asked of it;
         // the route flies two, so ask for two. (Scaling a full-day estimate
         // by rotations is wrong: passengers do not scale with seats.)
-        let estimatePerDay = CompetitorAISystem.airframeDayProfit(
+        let estimatePerDay = CompetitorAISystem.airframeDayValue(
             distanceKm: distance, passengersPerDay: passengers, spec: type, fareRatio: 1.0,
             serviceTier: .standard, origin: origin, destination: destination,
-            state: state, catalog: catalog, rotationsPerDay: flown.dailyRoundTrips)
+            state: state, catalog: catalog, rotationsPerDay: flown.dailyRoundTrips, basis: .profit)
         print("AIRFRAME-DAY ARN-LHR: real last month \(flown.economicsLastMonth.directOperatingProfit.compact) (\(Int(realPerDay))/day) · estimate \(Int(estimatePerDay))/day at \(flown.dailyRoundTrips) rotations · passengers \(Int(passengers)) load \(String(format: "%.0f%%", flown.stats.loadFactor * 100))")
         #expect(realPerDay > 0 && estimatePerDay > 0)
         #expect(estimatePerDay > realPerDay * 0.5 && estimatePerDay < realPerDay * 2.0,

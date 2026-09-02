@@ -38,18 +38,20 @@ order per slot:
    has** (the scheduler's own capacity arithmetic; AE-037 BUG-042 — a
    full trunk route is hot forever and used to absorb every airframe its
    airline ever bought), else open the best new market from where the
-   airframe sits — candidates scored by the pool an entrant could plan
-   against (`DemandSystem.poolAvailableToEntrant`: the demand engine's own
-   split applied to one hypothetical extra offer at the archetype's fare
-   against the incumbents' real fares and quality; an open pair scores its
-   whole pool, one incumbent at the reference fare leaves about two
-   thirds), gated by eligibility, slots, archetype geography, and a
-   viability floor; fare = ref × archetype factor. Until AE-038 the score
-   halved per incumbent, and 240 scanned campaigns showed that kept every
-   rival out of every pair the player flew except New York–Chicago
-   (docs/RIVALS_THAT_COME_TO_YOU_AUDIT.md §2). The candidate horizon is
-   still the sixteen nearest airports to where the airframe sits, so a
-   rival can only come to a pair whose far end is one of its own bases.
+   airframe sits — the sixteen nearest airports, each gated by
+   eligibility, slots, archetype geography and a passenger floor on
+   `DemandSystem.poolAvailableToEntrant` (the demand engine's own split
+   applied to one extra offer against the incumbents' real fares and
+   quality; AE-038), then scored by **what one airframe day sells** on the
+   market: the entrant's passengers, capped by the airframe's seats over
+   the rotations the scheduler's day allows, at the archetype's fare
+   (`airframeDayValue`, AE-039). Ranking by passengers alone had put every
+   short large pair ahead of every longer one for ever, so a second-tier
+   city a thousand kilometres from a hub never came up at any horizon
+   size (docs/HORIZON_AUDIT.md). The profit basis — the same less the
+   flight system's costs — is measured, kept behind `rankingBasis` for
+   the scan and probe, and not shipped (TD-030). Fare = ref × archetype
+   factor.
 3. **Tune the network**: respond to >12% undercuts per archetype policy;
    push frequency on >0.82 loads; trim on <0.35; close persistent losers.
 4. **Grow** (runway ≥ archetype threshold, fleet < cap 40): lease or buy

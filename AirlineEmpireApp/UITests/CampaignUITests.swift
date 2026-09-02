@@ -201,13 +201,13 @@ final class CampaignUITests: AEUITestCase {
             openTab("Home")
         }
 
-        // ── The fight: London–Paris under two incumbents (AE-037) ──────────
+        // ── The fight: London–Berlin under an incumbent (AE-037, AE-039) ───
         // The Core twin (RivalPressureCampaignTests) measures this exact
-        // move on this seed: two rivals already fly LHR–CDG; entering under
-        // their fares is answered the next morning with a fare cut and an
-        // extra rotation, both incumbents then climb to twenty a day, and
-        // the player holds a third of the market at full load while losing
-        // money. COMP-01 … COMP-04 are these states, photographed.
+        // move on this seed: Aurora Atlantic flies LHR–BER from day 18;
+        // entering under its fare is answered the next morning with a cut
+        // to its premium floor and an extra rotation ($146/3× → $128/4×),
+        // it then climbs to twenty a day, and a week on the player holds
+        // 54% at full load. COMP-01 … COMP-04 are these states, photographed.
         guard openAircraftMarket() else { return }
         guard leaseAnAircraft() else { return }
         guard openAirlineSection("Routes") else { return }
@@ -238,22 +238,26 @@ final class CampaignUITests: AEUITestCase {
             return
         }
         fightSearch.tap()
-        fightSearch.typeText("Paris")
+        // Berlin, not Paris: since AE-039 ranks markets by what an airframe
+        // day sells, no rival flies the fee-dominated London–Paris; Aurora
+        // Atlantic opens London–Berlin on day 18 of this seed
+        // (docs/HORIZON_AUDIT.md §5).
+        fightSearch.typeText("Berlin")
         Thread.sleep(forTimeInterval: 1)
         let paris = app.buttons.matching(NSPredicate(
             format: "identifier == %@ AND label CONTAINS %@",
-            "ae-route-destination", "Paris")).firstMatch
+            "ae-route-destination", "Berlin")).firstMatch
         guard paris.waitForExistence(timeout: 8) else {
-            capture(Self.logPrefix + "NO-PARIS-ROW")
-            XCTFail("Searching for Paris from London produced no destination row.")
+            capture(Self.logPrefix + "NO-BERLIN-ROW")
+            XCTFail("Searching for Berlin from London produced no destination row.")
             return
         }
         // COMP-01: the row says who is already there before anything is
-        // committed ("2 airlines already fly it").
+        // committed ("1 airline already flies it").
         XCTAssertTrue(paris.label.contains("already fly") || paris.label.contains("already flies"), """
-            The London–Paris row does not say that airlines already fly it: \
-            "\(paris.label)". The Core twin has two incumbents on this pair \
-            on this seed by day 4.
+            The London–Berlin row does not say that an airline already flies it: \
+            "\(paris.label)". The Core twin has Aurora Atlantic on this pair \
+            on this seed from day 18.
             """)
         checkpoint("40-contested-market-row")
         paris.tap()
@@ -410,88 +414,6 @@ final class CampaignUITests: AEUITestCase {
             """)
         app.navigationBars.buttons.firstMatch.tap()
 
-        // ── The horizon: the world comes to Stockholm (AE-039) ─────────────
-        // `StockholmHorizonTests` plays this exact script on this seed and
-        // measures: on day 201 PacificBlue, the low-cost carrier based at
-        // Istanbul, opens Stockholm–Istanbul on its own at $187 against the
-        // player's $220; a month later the player holds 38%, trailing on
-        // fare. Before AE-039 no rival ever came to a Stockholm pair, at any
-        // horizon size, in five years (docs/HORIZON_AUDIT.md §3).
-        //
-        // Stockholm–Istanbul has to be flying for the split to mean
-        // anything; run 117's board had it bare after February.
-        guard openAirlineSection("Routes") else { return }
-        let stillBare = assignAllBareRoutes()
-        XCTAssertEqual(stillBare, 0, "\(stillBare) route(s) still have no aircraft before the summer.")
-        guard advanceMornings(until: "2030-07-19", cap: 150) else {
-            XCTFail("The sunrise control could not reach July 19.")
-            return
-        }
-        checkpoint("H1-home-before-the-world-moves")
-        guard openRouteDetail(containing: "IST") else { return }
-        let aloneOnIstanbul = app.staticTexts["Nobody. This market is yours alone — for now."]
-        if !aloneOnIstanbul.waitForExistence(timeout: 6) {
-            capture(Self.logPrefix + "H1-ISTANBUL-NOT-ALONE")
-        }
-        checkpoint("H1-route-before-the-world-moves")
-        app.navigationBars.buttons.firstMatch.tap()
-
-        guard advanceMornings(until: "2030-07-21", cap: 4) else {
-            XCTFail("The sunrise control could not reach July 21.")
-            return
-        }
-        let cameToStockholm = app.descendants(matching: .any).matching(NSPredicate(
-            format: "label CONTAINS %@ AND label CONTAINS %@", "PacificBlue", "entered your")).firstMatch
-        let arrived = cameToStockholm.waitForExistence(timeout: 8)
-        if !arrived { capture(Self.logPrefix + "H2-NO-ENTRY-HEADLINE") }
-        XCTAssertTrue(arrived, """
-            Home does not say that PacificBlue entered the player's market the \
-            morning after it did — the world-initiated event the horizon \
-            phase exists to show, on the curated first start.
-            """)
-        checkpoint("H2-home-rival-entered")
-        guard openRouteDetail(containing: "IST") else { return }
-        checkpoint("H3-route-morning-after-entry")
-        app.navigationBars.buttons.firstMatch.tap()
-
-        guard advanceMornings(until: "2030-08-20", cap: 32) else {
-            XCTFail("The sunrise control could not reach August 20.")
-            return
-        }
-        checkpoint("H4-home-a-month-on")
-        guard openRouteDetail(containing: "IST") else { return }
-        let istanbulStanding = app.descendants(matching: .any)
-            .matching(identifier: "ae-route-standing").firstMatch
-        XCTAssertTrue(istanbulStanding.waitForExistence(timeout: 8), """
-            A month after a rival came to Stockholm–Istanbul the route screen \
-            has no standing sentence.
-            """)
-        checkpoint("H4-route-a-month-on")
-        let istanbulResponse = app.descendants(matching: .any)
-            .matching(identifier: "ae-route-response").firstMatch
-        if scrollUntil(istanbulResponse, "the response line on Stockholm–Istanbul") {
-            checkpoint("H5-response-line")
-        }
-        // The response the twin measured the market on: they are cheaper,
-        // so answer with the fare.
-        let cut = app.buttons["-10%"].firstMatch
-        if scrollUntil(cut, "the fare controls on Stockholm–Istanbul") {
-            cut.tap()
-            Thread.sleep(forTimeInterval: 1)
-            checkpoint("H5-after-fare-cut")
-        }
-        app.navigationBars.buttons.firstMatch.tap()
-
-        guard advanceMornings(until: "2030-09-03", cap: 18) else {
-            XCTFail("The sunrise control could not reach September 3.")
-            return
-        }
-        checkpoint("H6-home-after-response")
-        guard openRouteDetail(containing: "IST") else { return }
-        checkpoint("H6-route-after-response")
-        app.navigationBars.buttons.firstMatch.tap()
-        openTab("World")
-        checkpoint("H6-world-hub-after-response")
     }
 
     /// The route screen for the board row whose label carries `code`, with
@@ -528,15 +450,15 @@ final class CampaignUITests: AEUITestCase {
         let row = app.descendants(matching: .any)
             .matching(NSPredicate(
                 format: "identifier == %@ AND label CONTAINS %@ AND label CONTAINS %@",
-                "ae-route-row", "LHR", "CDG")).firstMatch
+                "ae-route-row", "LHR", "BER")).firstMatch
         guard row.waitForExistence(timeout: 8) else {
-            capture(Self.logPrefix + "NO-LHR-CDG-ROW")
-            XCTFail("The Routes board shows no LHR row after the fight was opened.")
+            capture(Self.logPrefix + "NO-LHR-BER-ROW")
+            XCTFail("The Routes board shows no LHR–BER row after the fight was opened.")
             return false
         }
         guard tapWhenReady(row) else {
-            capture(Self.logPrefix + "LHR-CDG-ROW-NO-TAP")
-            XCTFail("The LHR–CDG row did not accept a tap.")
+            capture(Self.logPrefix + "LHR-BER-ROW-NO-TAP")
+            XCTFail("The LHR–BER row did not accept a tap.")
             return false
         }
         let header = app.staticTexts["WHO ELSE FLIES THIS"]

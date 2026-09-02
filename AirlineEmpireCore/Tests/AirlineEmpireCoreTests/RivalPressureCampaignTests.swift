@@ -32,7 +32,13 @@ struct RivalPressureCampaignTests {
     }
 
     static let seed = FirstEraCampaignTests.campaignSeed
-    static let fight: (origin: AirportCode, destination: AirportCode) = ("LHR", "CDG")
+    /// London–Berlin: the pair Aurora Atlantic, the premium rival based at
+    /// London, opens on day 18 of this seed. Until AE-039 the fight was
+    /// London–Paris under two incumbents; with markets ranked by what an
+    /// airframe day sells, no rival flies that fee-dominated 350 km pair,
+    /// and the fight is one incumbent that holds its fare floor
+    /// (docs/HORIZON_AUDIT.md §5).
+    static let fight: (origin: AirportCode, destination: AirportCode) = ("LHR", "BER")
 
     func runCampaign(days: Int) async throws -> Report {
         let catalog = try ContentCatalog.loadBundled()
@@ -217,10 +223,10 @@ struct RivalPressureCampaignTests {
         let atMyAirport = try #require(report.firstRivalAtMyAirportDay)
         #expect(atMyAirport <= 31)
 
-        // COMP-01: the fight opens under incumbents, on the first of February.
+        // COMP-01: the fight opens under an incumbent, on the first of February.
         let invasion = try #require(report.invasionDay)
         #expect(invasion <= 32)
-        #expect(report.rivalsOnInvasionDay >= 2)
+        #expect(report.rivalsOnInvasionDay >= 1)
 
         // COMP-04: a rival changes its offer within its next decision cycle.
         let response = try #require(report.firstRivalResponseDay)
@@ -235,10 +241,14 @@ struct RivalPressureCampaignTests {
         #expect(report.edgeAfterAWeek != nil)
         #expect(report.rivalMaxTrips >= 10)
 
-        // COMP-05: one incumbent leaves the pair, and the record says so.
-        let retreat = try #require(report.retreatDay)
-        #expect(retreat <= 260)
-        #expect(report.retreatHeadline)
+        // COMP-05: a retreat from the pair is not part of this seed's arc
+        // any more (the London–Paris incumbent that left on day 248 never
+        // opens under the AE-039 ranking); the retreat state stays pinned
+        // by `RivalPressureFixtureTests` from its save.
+        if let retreat = report.retreatDay {
+            #expect(retreat <= 260)
+            #expect(report.retreatHeadline)
+        }
 
         // COMP-06: the summary carries live numbers by the end of month two.
         #expect(report.contestedAtDay60 >= 1)

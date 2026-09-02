@@ -696,7 +696,14 @@ extension Vocab {
               let edge = model.edge, !edge.playerAhead else { return nil }
         switch edge {
         case .fare:
-            return "Answer with the fare below, or accept a smaller share at a better price."
+            // Measured on Munich–Istanbul (AE-039, `MunichHorizonTests`): a
+            // tenth off the fare took the share from 35% to 40% and the
+            // route's month from $2.0M to $1.7M; one more rotation on the
+            // aircraft already there took it to 38% and $2.2M. Both are
+            // answers; they buy different things (BUG-049).
+            return model.spareRotationsToday > 0
+                ? "They are cheaper. Another rotation keeps the money; matching the fare keeps the share."
+                : "Answer with the fare below, or accept a smaller share at a better price."
         case .schedule:
             // Measured (AE-038): a lone narrowbody on New York–Chicago had a
             // third rotation in it, and taking it was worth half again the

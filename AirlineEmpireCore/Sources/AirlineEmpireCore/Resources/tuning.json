@@ -1,6 +1,6 @@
 {
  "ai": {
-  "candidateMarketLimit": 24,
+  "candidateMarketLimit": 16,
   "decisionIntervalDays": 7,
   "expandLoadFactor": 0.82,
   "initialRoundTrips": 2,

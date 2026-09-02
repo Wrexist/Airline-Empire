@@ -162,7 +162,8 @@ public struct CompetitorAISystem: SimulationSystem {
             case noSlots
             /// Too few passengers for an entrant (`minViableDailyDemand`).
             case belowFloor(Double)
-            /// Enough passengers, but one airframe would lose money on it.
+            /// Enough passengers, but one airframe is worth nothing on it
+            /// (on the profit basis: would lose money).
             case unprofitable(Double)
         }
         public let destination: AirportCode
@@ -180,13 +181,11 @@ public struct CompetitorAISystem: SimulationSystem {
     /// The airports an airline would consider from `origin` — the horizon —
     /// in the order the AI walks them.
     ///
-    /// The nearest airports by great-circle distance, `candidateMarketLimit`
-    /// of them — sixteen as built, twenty-four since AE-039. Measured
-    /// (docs/HORIZON_AUDIT.md §3): with the passenger ranking no size
-    /// brought a rival to a European start; with the airframe-day ranking,
-    /// sixteen still could not see Stockholm from Istanbul (rank 22),
-    /// twenty-four could, and thirty-two put larger markets ahead of it
-    /// again. The smallest size that reaches the curated first start.
+    /// The sixteen nearest airports by great-circle distance
+    /// (`candidateMarketLimit`), as built. AE-039 measured whether the
+    /// world needed more: at 24, 48 and all 93 the rivals reached exactly
+    /// the same player pairs as at 16, because the ranking, not the list,
+    /// decided (docs/HORIZON_AUDIT.md §3). The horizon stays.
     public static func horizon(from origin: AirportCode, catalog: ContentCatalog,
                                tuning: AITuning) -> [(AirportSpec, Int)] {
         catalog.nearestAirports(to: origin, limit: tuning.candidateMarketLimit)
@@ -251,7 +250,7 @@ public struct CompetitorAISystem: SimulationSystem {
             guard passengers >= tuning.minViableDailyDemand else {
                 out.append(candidate(.belowFloor(passengers))); continue
             }
-            let score = airframeDayProfit(
+            let score = airframeDayValue(
                 distanceKm: distance, passengersPerDay: passengers, spec: spec,
                 fareRatio: profile.priceFactor, serviceTier: airline.serviceTier,
                 origin: originSpec, destination: destinationSpec, state: state,
@@ -262,10 +261,32 @@ public struct CompetitorAISystem: SimulationSystem {
         return out
     }
 
-    /// What one airframe of `spec` would earn on a market per day, in
-    /// dollars: the passengers it can carry at the archetype's fare, less
-    /// the fuel, fees, crew, maintenance and service the flight system
-    /// posts per flight (`FlightOpsSystem`), for as many rotations as the
+    /// What a candidate market is ranked by.
+    public enum RankingBasis: Sendable {
+        /// The revenue one airframe day sells on the market: the passengers
+        /// the demand engine leaves an entrant, capped by the airframe's
+        /// seats over the rotations the scheduler's day allows, at the
+        /// archetype's fare. Shipped.
+        case revenue
+        /// The same, less the fuel, fees, crew, maintenance and service the
+        /// flight system posts. Measured in AE-039 and not shipped: it
+        /// reaches Stockholm, but no market in the world is profitable for
+        /// the regional archetype's turboprops at hub fees, so that rival
+        /// never flies, and the archetypes that do fly only their best
+        /// markets cross the balance battery's margin line
+        /// (docs/HORIZON_AUDIT.md §4).
+        case profit
+    }
+
+    /// The shipped basis; the scan and probe executables set `.profit` to
+    /// re-measure the alternative. Tooling only — nothing in the app or the
+    /// simulation writes it.
+    nonisolated(unsafe) public static var rankingBasis: RankingBasis = .revenue
+
+    /// What one airframe of `spec` would sell on a market per day, in
+    /// dollars — and, on the `.profit` basis, what it would keep after the
+    /// fuel, fees, crew, maintenance and service the flight system posts
+    /// per flight (`FlightOpsSystem`) — for as many rotations as the
     /// scheduler's own day allows.
     ///
     /// AE-039 measured that ranking by passengers alone made every hub
@@ -274,18 +295,14 @@ public struct CompetitorAISystem: SimulationSystem {
     /// airframe fills on either and earns twice the fare on the longer —
     /// so second-tier cities never came up, at any horizon size
     /// (docs/HORIZON_AUDIT.md §3). This is the question `employ` is
-    /// actually asking: where does this airframe earn the most?
-    /// Experiment switch (AE-039 measurement only): rank by the revenue an
-    /// airframe day sells rather than by its profit. Tooling sets it; the
-    /// shipped value is the measured choice (docs/HORIZON_AUDIT.md §4).
-    nonisolated(unsafe) public static var rankingIncludesCosts = true
-
-    public static func airframeDayProfit(distanceKm: Int, passengersPerDay: Double,
-                                         spec: AircraftTypeSpec, fareRatio: Double,
-                                         serviceTier: ServiceTier,
-                                         origin: AirportSpec, destination: AirportSpec,
-                                         state: GameState, catalog: ContentCatalog,
-                                         rotationsPerDay: Int? = nil) -> Double {
+    /// actually asking: where does this airframe sell the most?
+    public static func airframeDayValue(distanceKm: Int, passengersPerDay: Double,
+                                        spec: AircraftTypeSpec, fareRatio: Double,
+                                        serviceTier: ServiceTier,
+                                        origin: AirportSpec, destination: AirportSpec,
+                                        state: GameState, catalog: ContentCatalog,
+                                        rotationsPerDay: Int? = nil,
+                                        basis: RankingBasis = rankingBasis) -> Double {
         let ops = catalog.tuning.ops
         let rotations = rotationsPerDay ?? FlightSchedulingSystem.roundTripsPerAircraftPerDay(
             distanceKm: distanceKm, spec: spec, ops: ops)
@@ -295,7 +312,7 @@ public struct CompetitorAISystem: SimulationSystem {
         let fare = DemandSystem.referenceFare(distanceKm: distanceKm,
                                              tuning: catalog.tuning.demand) * fareRatio
         let revenue = carried * fare
-        guard rankingIncludesCosts else { return revenue }
+        guard basis == .profit else { return revenue }
 
         let blockHours = Double(FlightSchedulingSystem.flightMinutes(
             distanceKm: distanceKm, cruiseSpeedKmh: spec.cruiseSpeedKmh,
@@ -496,7 +513,7 @@ public struct AITuning: Equatable, Codable, Sendable {
     public static let standard = AITuning(
         decisionIntervalDays: 7, retrenchRunwayMonths: 1.5,
         expandLoadFactor: 0.82, shrinkLoadFactor: 0.35,
-        undercutResponseThreshold: 0.12, candidateMarketLimit: 24,
+        undercutResponseThreshold: 0.12, candidateMarketLimit: 16,
         minViableDailyDemand: 140, initialRoundTrips: 2,
         maxFleetPerAirline: 40)
 }

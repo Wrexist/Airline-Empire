@@ -1259,3 +1259,38 @@ move leads for a fortnight, then the standing of the fight takes over.
 entry is `fighting`.
 **Status:** FIXED — TESTED, **OBSERVED** (run 120, KEY-R4: *"One of your
 routes is contested — an even fight so far."* a month after the entry).
+
+## BUG-049 — The fare advice named one answer where the measurement found two
+
+**Severity:** P2. Misleading competitive advice, on the lever the player is
+about to pull.
+**Found:** 2026-09-02, AE-039 — `MunichHorizonTests`: a month after
+PacificBlue came to Munich–Istanbul at $142 against the player's $167 the
+route screen read *"Answer with the fare below, or accept a smaller share
+at a better price."* The twin then measured both answers over the
+following months: a tenth off the fare took the share from 35% to 40% and
+the route's month from about $2.0M to $1.7M; one more rotation on the
+aircraft already there took it to 38% and $2.2M. The advice had named the
+answer that costs money and left out the one that makes it.
+**Root cause:** `Vocab.competitiveResponse` had one sentence for the fare
+edge whatever the capacity fact; `MarketCompetition.spareRotationsToday`
+(BUG-046) was only consulted for the schedule edge.
+**Fix layer:** App. With a rotation to spare: *"They are cheaper. Another
+rotation keeps the money; matching the fare keeps the share."* Without
+one, the old sentence.
+**Regression cover:** `MunichHorizonTests` measures both responses; the
+Munich journey photographs the line (HORIZON-KEY-05).
+**Status:** FIXED — AUTHORED, TESTED; frame pending CI.
+
+## Finding — New York's arrival was an artefact of ranking by passengers
+
+Not a bug entry of its own; recorded so the AE-038 evidence reads right.
+SwiftJet's entry into New York–Chicago on day 3 (AE-038, OBSERVED in runs
+119–120) happened because the AI ranked candidate markets by passengers
+alone. The ledger says the regional rival's 70-seat turboprops lost $277k
+a month on that pair at 100% load (and $953k on Chicago–Toronto). Once
+markets are ranked by what an airframe day sells (AE-039), SwiftJet does
+not open it, and no other rival can see New York–Chicago as its best
+market. The world-initiated twin and journey moved to Munich
+(`MunichHorizonTests`, `HorizonArrivalUITests`); the New York ones were
+removed. The founding helper's any-home picker stays.
