@@ -1,4 +1,4 @@
-# Game experience priority list — AE-033 audit, AE-037 update
+# Game experience priority list — AE-033 audit, AE-037 and AE-038 updates
 
 > The ranked output of the full runtime audit (map harvest + player
 > journey + screen-by-screen). Every item carries how it was found.

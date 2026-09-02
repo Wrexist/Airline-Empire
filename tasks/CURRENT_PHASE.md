@@ -1,5 +1,49 @@
 # Current Phase
 
+**AE-038 — Rivals that come to you.**
+2026-09-02.
+
+The brief: AE-037 proved the player can see a contest — and every contest
+it photographed was the player's doing (TD-026). Does the world ever move
+first? Read the rival decision loop first (docs/RIVALS_THAT_COME_TO_YOU_AUDIT.md
+§1): rivals pick markets on their own from the sixteen airports nearest
+their airframe, scored — until this phase — at half value per incumbent.
+Then measured: `ae-rival-scan` (new executable) ran 240 two-year campaigns
+from eight homes and found the world coming to the player at **one home
+only**, New York, where the regional rival based at Chicago takes the
+guided first route JFK–ORD on day 17 of every seed. Not for want of
+sight — from Singapore five rivals can see the player's home — but
+because the halving made any contested pair worth less than any open one.
+
+The extension, the smallest that fits the architecture:
+`DemandSystem.poolAvailableToEntrant` — the demand engine's own split
+applied to one hypothetical extra offer against the incumbents' real
+fares and quality — replaces the halving in `CompetitorAISystem.bestMarket`.
+An open pair scores exactly as before; one incumbent leaves two thirds of
+the pool, not half. Same rules for everyone, no reference to the player.
+Rescanned: world-initiated entries 30 → 95 (New York on day 3 now, São
+Paulo on days 4 and 33, Dubai on five seeds); every Core test green
+(433). Stockholm, Barcelona and Munich still see none: no rival base can
+see Stockholm, and the horizon is the residual (TD-026, narrowed).
+
+The scenario: `RivalsComeToYouTests` pins the New York arc over a year —
+the entry, the Home headline and feed event the next morning, the even
+split and schedule edge a month on, and four responses: nothing (42% by
+day 90), one more rotation on the aircraft already there (half again the
+route's profit), a fare cut alone (less than nothing), both. The advice
+on that screen said the rotation needed another aircraft; it did not
+(BUG-046, fixed: `MarketCompetition.spareRotationsToday`). The founding
+helper can now pick any home; `RivalArrivalUITests` plays New York in
+the simulator and photographs RIVAL-KEY-01 … 07. RIVAL-KEY-08 (a
+retreat) is not reached within the year on that pair.
+
+**Status:** Core AUTHORED, TESTED, MEASURED; App AUTHORED; frames
+pending CI run 118.
+
+---
+
+# Previous Phase
+
 **AE-037 — Rival pressure. (Make the world push back.)**
 2026-09-01.
 
