@@ -120,7 +120,58 @@ Range (CASE C) rules out one rival per European pair — SwiftJet's
 turboprops reach 1,450 km — never all of them. Eligibility and slots
 (CASE D) exclude nothing relevant.
 
-HORIZON_SWEEP_SECTION
+## 3.1 The horizon sweep (MEASURED, `ae-rival-scan --limit`)
+
+Thirty seeds, two years, the five starts that matter (the three curated
+European ones, New York, Singapore), the shipped ranking, four horizon
+sizes. World-initiated entries into the player's pairs:
+
+| Start | 16 (shipped) | 24 | 48 | 93 (the whole world) |
+| --- | --- | --- | --- | --- |
+| Stockholm | 0 | 0 | 0 | 0 |
+| Barcelona | 0 | 0 | 0 | 0 |
+| Munich | 0 | 0 | 0 | 0 |
+| New York | 30 | 30 | 30 | 30 |
+| Singapore | 0 | 0 | 0 | 0 |
+
+**The horizon size changes nothing.** Rival networks do change with it —
+openings at the player's airports move (Stockholm 278 → 217 → 180 → 180),
+collapses move (Munich 32 → 2 → 0 → 0) — but not one rival comes to a
+European pair at any size, because a wider horizon adds *larger* open
+markets ahead of the player's pair, never smaller ones behind it.
+
+Over five years at the shipped horizon (five seeds): Stockholm 0, Munich
+0, Barcelona 3 — SwiftJet on Barcelona–Paris in years three and four,
+gone again within months. At 32 the same. Time does not bring the world
+to Stockholm or Munich either.
+
+## 3.2 What the ranking sees (MEASURED, `--horizon`, seed 2039, day 365)
+
+From each rival home, every airport in the world scored by the AI's own
+rule and sorted (° = outside the shipped sixteen, * = a pair the player
+flies):
+
+| Home | The ranking's head | Where the player's pair sits |
+| --- | --- | --- |
+| London (Aurora, 5,100 km airframe) | CAI° 3,515 · IST° 2,911 · MAD° 2,431 · AMS 2,168 · BCN° 2,048 · FCO° 2,015 · MXP 1,944 · FRA 1,915 · BER 1,863 · ZRH 1,703 · MAN 1,628 · LYS 1,540 · MUC* 1,490 | Munich #12 of 33; Barcelona #13; Stockholm #28 (725) |
+| Istanbul (PacificBlue, 5,100 km) | DEL° 2,828 · LHR° 2,806 · CDG° 2,728 · BOM° 2,115 · DXB° 1,646 · RUH° 1,643 · MAD° 1,469 · MXP 1,360 · BCN° 1,339 · BER 1,317 | Stockholm #30 of 36 (564); Barcelona #18 (935) |
+| Paris (SwiftJet, 1,450 km turboprop) | LHR 3,140 · MAD° 2,237 · FCO° 1,934 · MXP 1,860 · FRA 1,768 · ZRH 1,623 | Stockholm out of range |
+| Tokyo (Crown Meridian, 2,750 km) | PEK 5,854 · TPE 3,650 · CTS 2,824 | three viable markets in the world |
+| Jakarta (TerraLink, 2,750 km) | — | **no viable market at all** |
+
+The rule ranks by passengers. A 370 km pair with 2,168 passengers
+outranks a 1,462 km pair with 725 forever — though one airframe fills on
+either (640 seats a day at two rotations on the longer, 1,280 at four on
+the shorter) and the longer pair's fare is two and a half times the
+shorter's. Every hub therefore works through its short large pairs
+first, and a second-tier city a thousand kilometres away comes up
+twelfth or twenty-eighth. Widening the horizon adds Cairo, Istanbul and
+Madrid ahead of it.
+
+**Root cause, classified.** Stockholm: CASE E, with the *ranking*, not
+the distance list, as the binding half. Munich and Singapore: CASE B.
+Barcelona: CASE A by four places, then CASE B. New York: reached because
+Chicago is the largest pair either rival can see.
 
 ## 4. Alternatives considered
 
