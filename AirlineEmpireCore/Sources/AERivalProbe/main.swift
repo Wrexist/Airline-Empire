@@ -31,6 +31,8 @@ let fight: (origin: AirportCode, destination: AirportCode, fareRatio: Double)? =
     return (AirportCode(String(pair[0])), AirportCode(String(pair[1])), ratio)
 }()
 
+/// `--revenue`: the AE-039 experiment variant of the rival ranking.
+if arguments.contains("--revenue") { CompetitorAISystem.rankingIncludesCosts = false }
 let catalog = try ContentCatalog.loadBundled()
 guard let spec = catalog.scenario("entrepreneur") else {
     fatalError("no entrepreneur scenario")

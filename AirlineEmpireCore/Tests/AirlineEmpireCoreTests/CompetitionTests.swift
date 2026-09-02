@@ -133,6 +133,22 @@ struct CompetitionTests {
             aiProfile: AIProfile(archetype: .expansionist)))
         let doomed = engine.state.airlines.values.first { $0.name == "Doomed" }!.id
         _ = engine.applyNow(LeaseAircraftCommand(lessee: doomed, type: "PA184", termMonths: 60))
+        _ = engine.applyNow(LeaseAircraftCommand(lessee: doomed, type: "PA184", termMonths: 60))
+        // The route it cannot pay for, opened by the fixture rather than
+        // left to the AI: since AE-039 the AI ranks markets by what an
+        // airframe earns and no longer opens a fee-dominated short pair at
+        // a fare under the reference on its own. The claim here is about
+        // what a collapse records, not about how the AI chooses.
+        let distance = catalog.distanceKm("LHR", "CDG")!
+        let reference = DemandSystem.referenceFare(distanceKm: distance, tuning: catalog.tuning.demand)
+        #expect(engine.applyNow(OpenRouteCommand(
+            airline: doomed, origin: "LHR", destination: "CDG", dailyRoundTrips: 2,
+            ticketPrice: Money(rounding: reference * 0.6))) == .applied)
+        if let route = engine.state.routes(of: doomed).first,
+           let aircraft = engine.state.fleet(of: doomed).first {
+            _ = engine.applyNow(AssignAircraftToRouteCommand(airline: doomed, route: route.id,
+                                                             aircraftID: aircraft.id))
+        }
         engine.advance(ticks: Fixtures.ticksPerDay * 400)
         let airline = try #require(engine.state.airlines[doomed])
         guard airline.status == .collapsed else {
