@@ -84,7 +84,21 @@ network, classified by who started the contest:
 
 | Home | Campaigns | World-initiated entries | Player-initiated entries | Rival exits from the player's pairs | Rival openings at the player's airports |
 | --- | --- | --- | --- | --- | --- |
-SCAN_BASELINE_TABLE
+| ARN Stockholm | 30 | 0 | 0 | 0 | 278 |
+| BCN Barcelona | 30 | 0 | 0 | 0 | 217 |
+| MUC Munich | 30 | 0 | 0 | 0 | 153 |
+| SIN Singapore | 30 | 0 | 0 | 0 | 208 |
+| JFK New York | 30 | **30** (every seed: SwiftJet, JFK–ORD, day 17) | 0 | 4 (days 416–661) | 120 |
+| GRU São Paulo | 30 | 0 | 30 (the guided first route is a pair a rival already flies) | 0 | 179 |
+| DXB Dubai | 30 | 0 | 3 | 0 | 126 |
+| JNB Johannesburg | 30 | 0 | 0 | 0 | 0 |
+| **Total** | **240** | **30** | **33** | **4** | **1,281** |
+
+Also across the 240: 872 rival frequency increases on the player's pairs
+(all on New York–Chicago), 49 rival collapses (32 of them in the Munich
+campaigns), and not one rival price cut on a player's pair — the
+incumbents' answer is capacity, not fare, because the scripted player never
+undercuts.
 
 **Finding.** Before this phase the world came to the player at exactly one
 of eight homes, and there on one pair: New York–Chicago, entered on
