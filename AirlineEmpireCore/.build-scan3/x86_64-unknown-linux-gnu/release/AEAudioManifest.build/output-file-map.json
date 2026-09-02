@@ -1,0 +1,12 @@
+{
+  "": {
+    "dependencies": "/home/user/Airline-Empire/AirlineEmpireCore/.build-scan3/x86_64-unknown-linux-gnu/release/AEAudioManifest.build/AEAudioManifest.d",
+    "object": "/home/user/Airline-Empire/AirlineEmpireCore/.build-scan3/x86_64-unknown-linux-gnu/release/AEAudioManifest.build/AEAudioManifest.o",
+    "swift-dependencies": "/home/user/Airline-Empire/AirlineEmpireCore/.build-scan3/x86_64-unknown-linux-gnu/release/AEAudioManifest.build/master.swiftdeps"
+  },
+  "/home/user/Airline-Empire/AirlineEmpireCore/Sources/AEAudioManifest/main.swift": {
+    "object": "/home/user/Airline-Empire/AirlineEmpireCore/.build-scan3/x86_64-unknown-linux-gnu/release/AEAudioManifest.build/main.swift.o",
+    "swiftmodule": "/home/user/Airline-Empire/AirlineEmpireCore/.build-scan3/x86_64-unknown-linux-gnu/release/AEAudioManifest.build/main~partial.swiftmodule",
+    "swift-dependencies": "/home/user/Airline-Empire/AirlineEmpireCore/.build-scan3/x86_64-unknown-linux-gnu/release/AEAudioManifest.build/main.swiftdeps"
+  }
+}

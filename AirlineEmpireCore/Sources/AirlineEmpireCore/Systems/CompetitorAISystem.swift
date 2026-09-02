@@ -160,7 +160,10 @@ public struct CompetitorAISystem: SimulationSystem {
             case ineligible
             case alreadyServed
             case noSlots
+            /// Too few passengers for an entrant (`minViableDailyDemand`).
             case belowFloor(Double)
+            /// Enough passengers, but one airframe would lose money on it.
+            case unprofitable(Double)
         }
         public let destination: AirportCode
         public let distanceKm: Int
@@ -238,15 +241,67 @@ public struct CompetitorAISystem: SimulationSystem {
             let incumbents = state.routes.values.filter {
                 $0.sameMarket(origin: origin, destination: destination)
             }
-            let score = DemandSystem.poolAvailableToEntrant(
+            let passengers = DemandSystem.poolAvailableToEntrant(
                 pool: pool, fareRatio: profile.priceFactor, quality: entrantQuality,
                 incumbents: incumbents, state: state, catalog: catalog)
-            guard score >= tuning.minViableDailyDemand else {
-                out.append(candidate(.belowFloor(score))); continue
+            guard passengers >= tuning.minViableDailyDemand else {
+                out.append(candidate(.belowFloor(passengers))); continue
             }
+            let score = airframeDayProfit(
+                distanceKm: distance, passengersPerDay: passengers, spec: spec,
+                fareRatio: profile.priceFactor, serviceTier: airline.serviceTier,
+                origin: originSpec, destination: destinationSpec, state: state,
+                catalog: catalog)
+            guard score > 0 else { out.append(candidate(.unprofitable(score))); continue }
             out.append(candidate(.scored(score)))
         }
         return out
+    }
+
+    /// What one airframe of `spec` would earn on a market per day, in
+    /// dollars: the passengers it can carry at the archetype's fare, less
+    /// the fuel, fees, crew, maintenance and service the flight system
+    /// posts per flight (`FlightOpsSystem`), for as many rotations as the
+    /// scheduler's own day allows.
+    ///
+    /// AE-039 measured that ranking by passengers alone made every hub
+    /// chase its shortest large pairs first — a 370 km pair with 2,000
+    /// passengers outranked a 1,400 km pair with 700 forever, though one
+    /// airframe fills on either and earns twice the fare on the longer —
+    /// so second-tier cities never came up, at any horizon size
+    /// (docs/HORIZON_AUDIT.md §3). This is the question `employ` is
+    /// actually asking: where does this airframe earn the most?
+    public static func airframeDayProfit(distanceKm: Int, passengersPerDay: Double,
+                                         spec: AircraftTypeSpec, fareRatio: Double,
+                                         serviceTier: ServiceTier,
+                                         origin: AirportSpec, destination: AirportSpec,
+                                         state: GameState, catalog: ContentCatalog) -> Double {
+        let ops = catalog.tuning.ops
+        let rotations = FlightSchedulingSystem.roundTripsPerAircraftPerDay(
+            distanceKm: distanceKm, spec: spec, ops: ops)
+        guard rotations > 0 else { return 0 }
+        let flights = Double(rotations * 2)
+        let carried = min(passengersPerDay, flights * Double(spec.seats))
+        let fare = DemandSystem.referenceFare(distanceKm: distanceKm,
+                                             tuning: catalog.tuning.demand) * fareRatio
+        let revenue = carried * fare
+
+        let blockHours = Double(FlightSchedulingSystem.flightMinutes(
+            distanceKm: distanceKm, cruiseSpeedKmh: spec.cruiseSpeedKmh,
+            overheadMinutes: ops.flightOverheadMinutes)) / 60
+        let fuel = flights * spec.fuelBurnKgPerKm * Double(distanceKm) / 1000
+            * state.world.fuelPricePerTon.asDouble
+        let movementFees = flights * (origin.movementFee.asDouble + destination.movementFee.asDouble)
+        // Passenger fees are charged at the arrival airport; half the
+        // passengers land at each end.
+        let passengerFees = carried / 2
+            * (origin.passengerFee.asDouble + destination.passengerFee.asDouble)
+        let crew = flights * blockHours
+            * (Double(spec.crewCockpit) * ops.crewCostPerBlockHourCockpit.asDouble
+               + Double(spec.crewCabin) * ops.crewCostPerBlockHourCabin.asDouble)
+        let maintenance = flights * blockHours * spec.maintenancePerFlightHour.asDouble
+        let service = carried * catalog.tuning.reputation.serviceCostPerPax(serviceTier).asDouble
+        return revenue - fuel - movementFees - passengerFees - crew - maintenance - service
     }
 
     /// Deterministic candidate scoring: the pool an entrant could plan

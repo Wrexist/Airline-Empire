@@ -123,6 +123,8 @@ func explainReach(state: GameState, catalog: ContentCatalog, rival: Airline,
         verdict = "CASE C/D · ineligible for \(spec.code) (range \(spec.rangeKm) km, \(target.distanceKm) km)" + (inHorizon ? "" : " and outside the horizon (rank \(target.nearestRank))")
     case .belowFloor(let score):
         verdict = "CASE D · below the viability floor (\(Int(score)) < \(Int(tuning.minViableDailyDemand)))" + (inHorizon ? "" : " and outside the horizon (rank \(target.nearestRank))")
+    case .unprofitable(let loss):
+        verdict = "CASE D · one airframe would lose \(Int(-loss)) a day on it"  + (inHorizon ? "" : " and outside the horizon (rank \(target.nearestRank))")
     case .noSlots:
         verdict = "CASE D · no slots" + (inHorizon ? "" : " and outside the horizon (rank \(target.nearestRank))")
     case .regionExcluded:
@@ -370,6 +372,33 @@ func runCampaign(seed: UInt64, home: AirportCode) -> CampaignResult {
                 let homeRank = ranks.firstIndex { $0.0.code == home }.map { $0 + 1 } ?? -1
                 let range = state.fleet(of: airline.id).compactMap { catalog.aircraftType($0.typeCode)?.rangeKm }.max() ?? 0
                 result.horizon.append("BASE \(airline.name) [\(airline.aiProfile.map { "\($0.archetype)" } ?? "?")] at \(base.raw) · fleet \(state.fleet(of: airline.id).count) · longest range \(range) km · player's home \(home.raw) is rank \(homeRank) from here (\(catalog.distanceKm(base, home) ?? 0) km)")
+            }
+            // From each rival home: the whole world ranked by the AI's score,
+            // and where the player's pairs from that home sit in it — how
+            // many better markets stand between the rival and the player.
+            for id in state.orderedAirlineIDs {
+                guard let airline = state.airlines[id], airline.kind == .ai, airline.status == .active,
+                      let profile = airline.aiProfile else { continue }
+                let specs = state.fleet(of: id).compactMap { catalog.aircraftType($0.typeCode) }
+                guard let spec = specs.max(by: { $0.rangeKm < $1.rangeKm }) else { continue }
+                let everything = CompetitorAISystem.candidateMarkets(
+                    from: airline.homeAirport, airline: airline, spec: spec, profile: profile,
+                    state: state, catalog: catalog, tuning: catalog.tuning.ai,
+                    limit: catalog.orderedAirportCodes.count)
+                let ranked = everything.compactMap { c in c.score.map { (c, $0) } }.sorted { $0.1 > $1.1 }
+                let myFarEnds = Set(state.routes(of: player).compactMap { r -> AirportCode? in
+                    r.origin == airline.homeAirport ? r.destination : r.destination == airline.homeAirport ? r.origin : nil
+                })
+                let top = ranked.prefix(12).map { "\($0.0.destination.raw)\(myFarEnds.contains($0.0.destination) ? "*" : "")\($0.0.nearestRank <= catalog.tuning.ai.candidateMarketLimit ? "" : "°") \(Int($0.1))" }.joined(separator: " ")
+                var positions: [String] = []
+                for far in myFarEnds.sorted(by: { $0.raw < $1.raw }) {
+                    if let index = ranked.firstIndex(where: { $0.0.destination == far }) {
+                        positions.append("\(far.raw) is #\(index + 1) of \(ranked.count) scored (\(Int(ranked[index].1)))")
+                    } else if let c = everything.first(where: { $0.destination == far }) {
+                        positions.append("\(far.raw) unscored: \(c.verdict)")
+                    }
+                }
+                result.horizon.append("RANKING from \(airline.homeAirport.raw) (\(airline.name), \(spec.code) \(spec.rangeKm) km): \(top) · your pairs: \(positions.isEmpty ? "none from here" : positions.joined(separator: "; ")) · scored candidates in the world \(ranked.count), inside the horizon \(ranked.filter { $0.0.nearestRank <= catalog.tuning.ai.candidateMarketLimit }.count)")
             }
             for route in state.routes(of: player).sorted(by: { $0.id < $1.id }) {
                 var lines: [String] = []
