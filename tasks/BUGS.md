@@ -1242,7 +1242,8 @@ JFK–ORD and sees as JFK–ORD everywhere else.
 orientation of the player's route.
 **Regression cover:** `RivalsComeToYouTests` — the headline's pair equals
 the player's first route.
-**Status:** FIXED — TESTED; frame pending run 120.
+**Status:** FIXED — TESTED, **OBSERVED** (run 120, KEY-R2: *"SwiftJet
+entered your JFK–ORD market yesterday."*).
 
 ## BUG-048 — A month-old entry still led Home over a live fight
 
@@ -1256,4 +1257,5 @@ for the whole thirty-day window the Competitors screen keeps.
 move leads for a fortnight, then the standing of the fight takes over.
 **Regression cover:** `RivalsComeToYouTests` — the headline a month after
 entry is `fighting`.
-**Status:** FIXED — TESTED; frame pending run 120.
+**Status:** FIXED — TESTED, **OBSERVED** (run 120, KEY-R4: *"One of your
+routes is contested — an even fight so far."* a month after the entry).

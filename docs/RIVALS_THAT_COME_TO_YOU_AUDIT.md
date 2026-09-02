@@ -227,13 +227,22 @@ carries its own timeout and the job cap is 75 minutes.)
 | KEY-40 … 48, 50 … 53 | AE-037's states | as run 117 | OBSERVED again, green |
 | KEY-01 … 24, 60 … 97, B0 … B3 | every other journey | unchanged | green, inspected for regressions: none |
 
+### Run 120 (commit d20bcdc) — 89 frames decoded; the two changed frames looked at, the rest checked by name and verdict
+
+Green: 19 of 19 journeys, 433 Core tests, no failure texts. 47 minutes.
+
+| Frame | Scenario | Observation | Validation |
+| --- | --- | --- | --- |
+| KEY-R2-home-rival-entered | RIVAL-KEY-02/03 | **Home, 2030-01-05**: **RIVALS**: *"SwiftJet entered your JFK–ORD market yesterday."* — the player's orientation | OBSERVED: BUG-047 fixed |
+| KEY-R4-home-a-month-on | — | **Home, 2030-02-03**: **RIVALS**: *"One of your routes is contested — an even fight so far."*; last month $356k | OBSERVED: BUG-048 fixed — the fight leads once the entry is a month old |
+
 ## 7. Bugs found
 
 | ID | Priority | Root cause | Player impact | Status |
 | --- | --- | --- | --- | --- |
 | BUG-046 | P2 | the frequency advice had no capacity fact; one sentence for the schedule edge | told a rotation needed an aircraft it already had, on the lever that works | FIXED, TESTED, OBSERVED (KEY-R4/R7) |
-| BUG-047 | P3 | `RivalMove` kept the rival's route orientation for a pair the player flies the other way | "your ORD–JFK market" over the player's JFK–ORD | FIXED, TESTED; frame pending run 120 |
-| BUG-048 | P3 | a move on the player's pair led Home for the whole thirty-day record window | "entered your market 30 days ago" over a live fight | FIXED (fourteen-day lead), TESTED; frame pending run 120 |
+| BUG-047 | P3 | `RivalMove` kept the rival's route orientation for a pair the player flies the other way | "your ORD–JFK market" over the player's JFK–ORD | FIXED, TESTED, OBSERVED (run 120 KEY-R2) |
+| BUG-048 | P3 | a move on the player's pair led Home for the whole thirty-day record window | "entered your market 30 days ago" over a live fight | FIXED (fourteen-day lead), TESTED, OBSERVED (run 120 KEY-R4) |
 | Scanner (not a product bug) | — | pairs recorded on the first diff, not when opened | a rival entering during day 1 read as player-initiated | FIXED in `ae-rival-scan`; both scans re-measured for the affected homes |
 
 ## 8. Unresolved

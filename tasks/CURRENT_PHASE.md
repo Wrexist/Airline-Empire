@@ -50,9 +50,12 @@ fixed and pinned (BUG-047 the pair's orientation, BUG-048 a month-old
 entry outranking the fight). Run 118 was lost to a slow runner and the
 job cap; the UI step now has its own timeout so an overrun still exports.
 
-**Status:** Core TESTED and MEASURED; App OBSERVED for RIVAL-KEY-01 … 07;
-RIVAL-KEY-08 not reached (documented); run 120 carries the two wording
-fixes.
+**Status:** done. Run 120 green — 19 of 19 journeys, 433 Core tests —
+with both wordings OBSERVED fixed ("SwiftJet entered your JFK–ORD market
+yesterday"; a month on, "One of your routes is contested — an even fight
+so far"). RIVAL-KEY-01 … 07 OBSERVED from the live simulator; RIVAL-KEY-08
+(a retreat) MEASURED as rare and not photographed. Residual: the
+sixteen-nearest horizon (TD-026, narrowed).
 
 ---
 
