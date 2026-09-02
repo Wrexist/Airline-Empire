@@ -189,7 +189,13 @@ Singapore, two years) unless stated:
 | **D. Rank by airframe-day revenue**, 16 — shipped | 0 | 0 | **30** (PacificBlue, MUC–IST, day 61) | **30** (PacificBlue, CGK–SIN, days 509–551) | 0 | passes | passes |
 | D at 24 | 0 | 0 | 30 | 30 | 0 | | |
 
-REVENUE_SWEEP_NOTE
+Across the same 150 campaigns, the shipped basis against the passenger
+ranking it replaces (AE-038's scoring, horizon 16): world-initiated
+entries 30 → 59 (New York's 30 gone, Munich's 30 and Singapore's 29
+arrived); rival openings at the player's airports 979 → 989; rival
+collapses 60 → 30; rival frequency increases on the player's pairs
+1,549 → 750 (Munich–Istanbul and Jakarta–Singapore are fought with fewer
+rotations than New York–Chicago was).
 
 **Why D and not C.** C is the AI's real question — where does this
 airframe earn the most — and it reaches the curated first start. But it
@@ -257,7 +263,39 @@ test also passes and the archetype battery does not (§4).
 
 ## 7. Performance
 
-PERF_SECTION
+Measured numbers only. Every figure is on this session's Linux
+container, which runs about eight times slower than it did at the start
+of AE-038 (the same binary and campaign took 3 s then and 23 s now), so
+the absolute times are only comparable with each other.
+
+**Whole campaigns, release build, one core** (`ae-rival-scan`, seed 2039
+from Stockholm; the AI's evaluation is a small part of a day that also
+schedules, flies, allocates demand and posts every flight):
+
+| Build | 730 days | 1,825 days |
+| --- | --- | --- |
+| passenger ranking, horizon 16 (before) | 23.2 s | 60.5 s |
+| revenue ranking, horizon 16 (shipped) | 23.1 s | 57.6 s |
+| revenue ranking, horizon 32 | — | 59.0 s |
+| revenue ranking, horizon 93 (the whole world) | — | 65.4 s |
+| profit ranking, horizon 16 | 16.6 s | — |
+
+The ranking change costs nothing measurable at the campaign level; the
+whole world as a horizon costs 14% over five years; the profit basis is
+faster because rivals open fewer routes and fly fewer flights.
+
+**One candidate evaluation** (`HorizonTests.evaluatingAHorizonIsCheap`,
+debug build, Aurora Atlantic from London at day 60, 200 runs): 1.66 ms
+at 16 candidates, 2.03 ms at 32, 2.34 ms at 94. A rival evaluates once
+a week when it has an idle airframe; five rivals over seven days is under
+two milliseconds of debug-build work per simulated day at the shipped
+horizon. The airframe-day value itself is a dozen multiplications on top
+of the entrant pool the AE-038 scoring already computed. Nothing runs
+per frame; nothing in the app calls the AI.
+
+Early, mid and late game: the evaluation's cost scales with the routes
+on the candidate pairs (the incumbent scan), not with the game's age; the
+five-year campaigns above are the late-game figure.
 
 ## 8. Frames
 
@@ -287,9 +325,10 @@ FRAMES_SECTION
 - **New York no longer produces a world-initiated event.** No rival can
   see New York–Chicago as its best-selling market; the AE-038 frames
   remain true of the build they were taken on and false of this one.
-- **Rival openings at the player's airports fell** from about eight per
-  campaign to about six: rivals sell more per route and open fewer.
-  Whether a player reads a quieter cast as a duller one is NOT VALIDATED.
+- **The cast is no quieter.** Rival openings at the player's airports are
+  unchanged (979 → 989 across 150 campaigns); collapses halved (60 → 30).
+  Whether a player reads the pairs the rivals now pick as more credible
+  than the short hub pairs they picked before is NOT VALIDATED.
 - **Day 61 is early.** Munich's rival arrives two days after the Regional
   era. Whether that reads as the world responding or as bad luck is a
   question for a human play session, NOT VALIDATED here.
