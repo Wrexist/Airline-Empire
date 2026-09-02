@@ -183,12 +183,16 @@ jobs:
   app:
     name: iOS app (xcodebuild)
     runs-on: macos-26
-    # Measured on runs 112–114: build-for-testing ≈ 2 min, the measurement
-    # pass ≈ 11 min, the parallel UI pass 32 min and climbing as the
-    # campaign journey grew. 45 cancelled runs 112 and 114 with the UI pass
-    # still going and no frames exported; the export steps below need the
-    # job to finish, not the tests to pass.
-    timeout-minutes: 60
+    # Measured on runs 112–118: build-for-testing ≈ 2 min, the measurement
+    # pass 5–11 min, the parallel UI pass 32 min on a normal runner and
+    # 58+ min on a slow one (runs 114 and 118 ran every journey 1.3–2×
+    # slower). 45 cancelled runs 112 and 114, 60 cancelled run 118, each
+    # with the UI pass still going and nothing exported — a cancelled job
+    # skips its `always()` steps and its log is not even retrievable. The
+    # UI step below carries its own timeout so an overrun ends the tests
+    # and still exports what they photographed; this cap only has to
+    # outlast that.
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
         with:
@@ -338,6 +342,11 @@ jobs:
       - name: Run the UI tests
         if: always() && steps.changes.outputs.build == 'true'
         working-directory: AirlineEmpireApp
+        # A step timeout, not only the job's: when this overruns, the step
+        # fails and the evidence steps below still run on the result bundle
+        # as it stands. Run 118 lost every frame of a new journey to the job
+        # cap instead.
+        timeout-minutes: 52
         run: |
           set -o pipefail
           xcodebuild \
