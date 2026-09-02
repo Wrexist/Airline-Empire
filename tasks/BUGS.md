@@ -1226,5 +1226,34 @@ the frequency — and the advice reads it: *"your aircraft on this route can
 fly one more rotation today"* when it can, the old sentence when it cannot.
 **Regression cover:** `RivalsComeToYouTests` asserts a spare rotation on
 the pair a month after entry; `CompetitionTests` covers the model.
-**Status:** FIXED — AUTHORED, TESTED; awaiting the CI frame of the
-response line.
+**Status:** FIXED — TESTED, **OBSERVED** (run 119, KEY-R4: *"your
+aircraft on this route can fly one more rotation today"*, and KEY-R7 after
+the third rotation: *"another rotation needs another aircraft"*).
+
+## BUG-047 — A rival's move named the pair the rival's way round
+
+**Severity:** P3. Wording.
+**Found:** 2026-09-02, AE-038 — run 119's KEY-R2: *"SwiftJet entered your
+ORD–JFK market yesterday."* on Home, above a route the player opened as
+JFK–ORD and sees as JFK–ORD everywhere else.
+**Root cause:** `world.marketMoves` records the rival's route orientation;
+`competitionSummary` handed it through unchanged.
+**Fix layer:** Core. On the player's own pair the move takes the
+orientation of the player's route.
+**Regression cover:** `RivalsComeToYouTests` — the headline's pair equals
+the player's first route.
+**Status:** FIXED — TESTED; frame pending run 120.
+
+## BUG-048 — A month-old entry still led Home over a live fight
+
+**Severity:** P3. Priority, not correctness: the sentence was true.
+**Found:** 2026-09-02, AE-038 — run 119's KEY-R4-home-a-month-on:
+*"SwiftJet entered your ORD–JFK market 30 days ago."* while the route
+screen said "An even fight — 49% … mostly because they fly more often."
+**Root cause:** the headline let the most recent move on a player pair lead
+for the whole thirty-day window the Competitors screen keeps.
+**Fix layer:** Core. `CompetitionSummary.headlineMoveWindowDays = 14`: a
+move leads for a fortnight, then the standing of the fight takes over.
+**Regression cover:** `RivalsComeToYouTests` — the headline a month after
+entry is `fighting`.
+**Status:** FIXED — TESTED; frame pending run 120.

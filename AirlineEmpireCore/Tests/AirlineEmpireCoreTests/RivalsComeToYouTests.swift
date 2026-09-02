@@ -25,6 +25,8 @@ struct RivalsComeToYouTests {
         var entrantFare = Money.zero
         var entrantTrips = 0
         var headlineNextMorning = ""
+        var headlinePairNextMorning = ""
+        var headlineAfterMonth = ""
         var feedEventNextMorning = false
         var shareOnEntry: Double?
         var shareAfterMonth: Double?
@@ -95,6 +97,9 @@ struct RivalsComeToYouTests {
             if let entry = report.entryDay, day == entry + 1 {
                 let summary = state.competitionSummary(catalog: catalog)
                 report.headlineNextMorning = summary?.headline.map { "\($0)" } ?? "nil"
+                if case .rivalEnteredYourMarket(let move)? = summary?.headline {
+                    report.headlinePairNextMorning = "\(move.origin.raw)-\(move.destination.raw)"
+                }
                 report.feedEventNextMorning = state.eventLog.recent.contains { event in
                     if case .marketEntered(_, let a, let b) = event.kind,
                        Route.market(a, b) == market { return state.isFeedEvent(event, for: player) }
@@ -104,6 +109,8 @@ struct RivalsComeToYouTests {
             if let entry = report.entryDay, day == entry + 30,
                let model = state.marketCompetition(for: route.id, catalog: catalog),
                let mine = state.routes[route.id] {
+                report.headlineAfterMonth = state.competitionSummary(catalog: catalog)?.headline
+                    .map { "\($0)" } ?? "nil"
                 report.shareAfterMonth = model.playerShareToday
                 report.standingAfterMonth = model.standing
                 report.edgeAfterMonth = model.edge
@@ -167,6 +174,11 @@ struct RivalsComeToYouTests {
         // feed carries the entry.
         #expect(report.headlineNextMorning.hasPrefix("rivalEnteredYourMarket"))
         #expect(report.feedEventNextMorning)
+        // BUG-047: the pair the way the player flies it, not the rival's
+        // ORD–JFK.
+        #expect(report.headlinePairNextMorning == report.firstRoute)
+        // BUG-048: a month on, the fight itself leads Home, not the entry.
+        #expect(report.headlineAfterMonth.hasPrefix("fighting"))
 
         // RIVAL-04/05: a month on, the split is real and the model says why.
         let share = try #require(report.shareAfterMonth)

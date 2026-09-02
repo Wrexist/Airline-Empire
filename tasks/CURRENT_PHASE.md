@@ -37,8 +37,22 @@ helper can now pick any home; `RivalArrivalUITests` plays New York in
 the simulator and photographs RIVAL-KEY-01 … 07. RIVAL-KEY-08 (a
 retreat) is not reached within the year on that pair.
 
-**Status:** Core AUTHORED, TESTED, MEASURED; App AUTHORED; frames
-pending CI run 118.
+**Observed (run 119, 91 frames decoded and read; 19 of 19 journeys, 433
+Core):** Home two days after founding in New York — *"SwiftJet entered
+your … market yesterday"* — with nothing on it the day before; the route
+the morning after (52%, the rival at the same fare); a month on (49%,
+"mostly because they fly more often", **"your aircraft on this route can
+fly one more rotation today"**, 2,177 wanting to fly against 3,637 before);
+the response taken (3×/day) and the fortnight after it ($963k in seventeen
+days against $356k the whole previous month; SwiftJet at 4×; Home and the
+World hub saying "an even fight"). Two wordings the frames found are
+fixed and pinned (BUG-047 the pair's orientation, BUG-048 a month-old
+entry outranking the fight). Run 118 was lost to a slow runner and the
+job cap; the UI step now has its own timeout so an overrun still exports.
+
+**Status:** Core TESTED and MEASURED; App OBSERVED for RIVAL-KEY-01 … 07;
+RIVAL-KEY-08 not reached (documented); run 120 carries the two wording
+fixes.
 
 ---
 

@@ -152,7 +152,7 @@ redesigned.
 | --- | --- | --- | --- | --- |
 | Player opens London–Paris under two incumbents (AE-037) | player | share settles at a third, route loses money, one rival retreats day 248 | route section, Home, World hub, Competitors | OBSERVED runs 112–117 |
 | Guided first route from São Paulo is a pair a rival already flies | player (by the guide) | contested from day 1 | route section | MEASURED (scan: every GRU seed) |
-| SwiftJet opens New York–Chicago on the player's first route, day 17 | **world** | share 100% → 48% in a month → 42% by day 90; rival climbs 2 → 20 rotations by day 240 | feed event, Home headline "SwiftJet entered your JFK–ORD market yesterday", route section | MEASURED (`RivalsComeToYouTests`), OBSERVED run RUN_NUMBER |
+| SwiftJet opens New York–Chicago on the player's first route, day 17 | **world** | share 100% → 48% in a month → 42% by day 90; rival climbs 2 → 20 rotations by day 240 | feed event, Home headline "SwiftJet entered your JFK–ORD market yesterday", route section | MEASURED (`RivalsComeToYouTests`), OBSERVED run 119 |
 | Rival openings at the player's airports (about five per campaign) | world | none on the player's pairs; presence | Competitors; Home when two in a month | MEASURED (scan), OBSERVED AE-037 KEY-46 |
 | SwiftJet leaves New York–Chicago, seed 2040 day 521 | world | the pair is the player's again | Home headline, feed | MEASURED (scan); not photographed — see §6 |
 
@@ -203,12 +203,58 @@ in §2 (the after-scan) and §7 (the ten-year world test).
 
 ## 6. Frames inspected
 
-FRAMES_SECTION
+### Run 119 (commit 577e601) — 91 frames decoded, every one looked at
+
+Green: 19 of 19 journeys, 433 Core tests, no failure texts. The New York
+journey took 345 s. (Run 118, the first with this journey, was cancelled by
+the job cap on a runner that ran everything at half speed; a cancelled
+job exports nothing and its log cannot be fetched, so the UI step now
+carries its own timeout and the job cap is 75 minutes.)
+
+| Frame | Scenario | Observation | Validation |
+| --- | --- | --- | --- |
+| KEY-R1-home-before-the-rival | RIVAL-KEY-01 | **Home, 2030-01-03**, "First flight" overlay; Next moves JFK → YYZ, JFK → BOS "no competition yet"; no rivals card; fleet 1, routes 1 | OBSERVED: nothing to say, nothing said |
+| KEY-R1-route-before-the-rival | RIVAL-KEY-01 | **JFK–ORD on 3 Jan**: "Earning — aircraft are flying 100% full", $45k so far; **3,637 wanting to fly today**; WHO ELSE FLIES THIS: *"Nobody. This market is yours alone — for now."* | OBSERVED |
+| KEY-R2-home-rival-entered | RIVAL-KEY-02/03 | **Home, 2030-01-05**: **RIVALS** (amber): *"SwiftJet entered your ORD–JFK market yesterday."* between Next moves and the pulse; $134k month to date | OBSERVED — the world moved first and Home said who and where. Defect: the pair reads in the rival's orientation, ORD–JFK, over a route the player knows as JFK–ORD (BUG-047, fixed) |
+| KEY-R3-route-morning-after-entry | RIVAL-KEY-04 | **JFK–ORD on 5 Jan**: **2,758 wanting to fly today** (from 3,637); *"An even fight — 52% of today's passengers against 1 rival."*; share bar; `SwiftJet · their hub · 2×/day · reputation 60% · 48% of today · $136 · same as you` | OBSERVED: the split, the day after |
+| KEY-R4-home-a-month-on | — | **Home, 2030-02-03**, "First profitable month" overlay; **RIVALS**: *"SwiftJet entered your ORD–JFK market 30 days ago."*; last month $356k | OBSERVED. Defect: a month on, the entry still leads while the live fact is the fight (BUG-048, fixed: a move leads for fourteen days) |
+| KEY-R4-route-a-month-on / KEY-R5 | RIVAL-KEY-04/05/06 | **JFK–ORD on 3 Feb**: last full month **$1.3M**, this month $90k; **2,177 wanting to fly today**; *"An even fight — 49% of today's passengers against 1 rival, mostly because they fly more often."*; `SwiftJet · 3×/day · reputation 71% · 51% of today`; **"Answer with frequency: your aircraft on this route can fly one more rotation today."** | OBSERVED: the consequence (the demand allocated to the player, 3,637 → 2,177), the why, and the corrected advice (BUG-046) |
+| KEY-R6-after-response | RIVAL-KEY-06 | The same screen scrolled: WHERE THE MONEY WENT (this month $90k, last $1.3M); AIRCRAFT Pacifica PA-184; FARE AND FREQUENCY $135 "99% of market", **Frequency: 3×/day** | OBSERVED: the response took, on the aircraft already there |
+| KEY-R7-home-after-response | RIVAL-KEY-07 | **Home, 2030-02-17**: **RIVALS**: *"One of your routes is contested — an even fight so far."*; **$963k month to date** (against $356k the whole previous month); reputation 78% | OBSERVED |
+| KEY-R7-route-after-response | RIVAL-KEY-07 | **JFK–ORD on 17 Feb**: frequency 3×/day, load 100%, $963k this month so far; 2,306 wanting; *"An even fight — 50% … mostly because they fly more often."*; `SwiftJet · 4×/day · 50% of today`; advice now *"another rotation needs another aircraft on this route"* — the lone narrowbody's third rotation was its last | OBSERVED: the arms race continues and the advice tracks the capacity fact |
+| KEY-R7-world-hub-after-response | RIVAL-KEY-07 | World hub: Competitors **"1 contested"** — *"One of your routes is contested — an even fight so far."* | OBSERVED |
+| RIVAL-KEY-08 | retreat | not reached: the twin measures SwiftJet still on the pair at day 365; the scan saw one exit from JFK–ORD in 30 seeds (day 717, under the scripted growth policy) | NOT VALIDATED in a frame; MEASURED as rare |
+| KEY-40 … 48, 50 … 53 | AE-037's states | as run 117 | OBSERVED again, green |
+| KEY-01 … 24, 60 … 97, B0 … B3 | every other journey | unchanged | green, inspected for regressions: none |
 
 ## 7. Bugs found
 
-BUGS_SECTION
+| ID | Priority | Root cause | Player impact | Status |
+| --- | --- | --- | --- | --- |
+| BUG-046 | P2 | the frequency advice had no capacity fact; one sentence for the schedule edge | told a rotation needed an aircraft it already had, on the lever that works | FIXED, TESTED, OBSERVED (KEY-R4/R7) |
+| BUG-047 | P3 | `RivalMove` kept the rival's route orientation for a pair the player flies the other way | "your ORD–JFK market" over the player's JFK–ORD | FIXED, TESTED; frame pending run 120 |
+| BUG-048 | P3 | a move on the player's pair led Home for the whole thirty-day record window | "entered your market 30 days ago" over a live fight | FIXED (fourteen-day lead), TESTED; frame pending run 120 |
+| Scanner (not a product bug) | — | pairs recorded on the first diff, not when opened | a rival entering during day 1 read as player-initiated | FIXED in `ae-rival-scan`; both scans re-measured for the affected homes |
 
 ## 8. Unresolved
 
-UNRESOLVED_SECTION
+- **The horizon.** From Stockholm, Barcelona and Munich the world still does
+  not move first within two years (§2.1): no rival base can see Stockholm,
+  and the player's pairs from Barcelona and Munich are smaller than the
+  open alternatives the rivals that can see them have. TD-026 narrowed to
+  this; the demand-ranked horizon is the recommended next phase.
+- **RIVAL-KEY-08.** A rival leaving a pair it came to is MEASURED (one exit
+  from New York–Chicago in thirty seeds, day 717, under the scripted
+  growth policy) but not photographed; the twin's year ends with SwiftJet
+  at twenty rotations. A save fixture at that day would show it, as
+  AE-037's retreat did — deferred, because the retreat is rare enough
+  that a fixture would be documenting the exception.
+- **The player's capacity ceiling.** Every arc measured here is the
+  player at 100% load: the rival's arrival costs the growth the pair no
+  longer offers, not money on the route. Whether a player reads "2,177
+  wanting to fly today" against "3,637" a month earlier as that loss is
+  NOT VALIDATED.
+- **Balance.** The entrant scoring raised rival collapses across the 240
+  campaigns from 49 to 60 (New York 10 → 21). The ten-year world test
+  holds; a longer look at the New York cast's economics is not this
+  phase's.

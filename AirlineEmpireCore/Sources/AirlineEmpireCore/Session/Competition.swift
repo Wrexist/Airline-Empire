@@ -261,6 +261,9 @@ public struct CompetitionSummary: Equatable, Sendable {
     public let headline: Headline?
 
     public static let recentWindowDays: Int64 = 30
+    /// How long a rival's entry into or exit from the player's pair leads
+    /// Home before the standing of the fight itself takes over.
+    public static let headlineMoveWindowDays = 14
 
     public init(contested: [MarketCompetition], contestedRoutes: Int, trailingRoutes: Int,
                 leadingRoutes: Int, biggestRival: RivalStanding?, rivals: [RivalStanding],
@@ -445,9 +448,19 @@ extension GameState {
                 relevance = nil
             }
             guard let relevance, let airline = airlines[move.airline] else { continue }
+            // The pair the way the player flies it: run 119 photographed
+            // "SwiftJet entered your ORD–JFK market" over a route the
+            // player knows as JFK–ORD, because the record keeps the rival's
+            // own orientation (BUG-047).
+            var origin = move.origin, destination = move.destination
+            if relevance == .onPlayerMarket,
+               let ownRoute = mine.first(where: { $0.market == move.market }) {
+                origin = ownRoute.origin
+                destination = ownRoute.destination
+            }
             recent.append(RivalMove(
-                airline: move.airline, name: airline.name, origin: move.origin,
-                destination: move.destination, kind: move.kind, at: move.at,
+                airline: move.airline, name: airline.name, origin: origin,
+                destination: destination, kind: move.kind, at: move.at,
                 daysAgo: Int((now.rawMinutes - move.at.rawMinutes) / GameCalendar.minutesPerDay),
                 relevance: relevance, airlineCollapsed: airline.status == .collapsed))
         }
@@ -490,8 +503,16 @@ extension GameState {
         // The headline, by priority. The most recent move on one of the
         // player's pairs leads whichever way it went: an entry followed by
         // an exit is "they pulled out", not "they arrived".
+        //
+        // A move leads for a fortnight, not the whole thirty-day window the
+        // Competitors screen keeps: run 119's Home a month after SwiftJet's
+        // entry still read "entered your market 30 days ago" while the live
+        // fact was an even fight in progress (BUG-048).
         let headline: CompetitionSummary.Headline?
-        if let move = recent.first(where: { $0.relevance == .onPlayerMarket }) {
+        if let move = recent.first(where: {
+            $0.relevance == .onPlayerMarket
+                && $0.daysAgo <= CompetitionSummary.headlineMoveWindowDays
+        }) {
             headline = move.kind == .entered
                 ? .rivalEnteredYourMarket(move) : .rivalLeftYourMarket(move)
         } else if trailing > 0 {
