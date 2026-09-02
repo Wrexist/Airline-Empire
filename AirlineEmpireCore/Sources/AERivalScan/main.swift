@@ -146,7 +146,26 @@ func runCampaign(seed: UInt64, home: AirportCode) -> CampaignResult {
     var playerPairs: [Route.Market: (day: Int, contestedAtOpen: Bool)] = [:]
     var pendingImpact: [(market: Route.Market, day: Int, rival: String)] = []
 
+    /// The player's pairs are recorded the moment they exist, before the
+    /// world gets its day: a rival that opens the same pair during the
+    /// first day after the player is a rival that came to the player.
+    func recordPlayerPairs(_ state: GameState, day: Int) {
+        for route in state.routes(of: player) where playerPairs[route.market] == nil {
+            let rivalsHere = state.routes.values.filter { $0.market == route.market && $0.airline != player }
+            playerPairs[route.market] = (day, !rivalsHere.isEmpty)
+            if !rivalsHere.isEmpty {
+                let rivals = rivalsHere.map { name($0.airline) }.sorted()
+                result.moves.append(RivalMoveRecord(
+                    day: day, rival: rivals.joined(separator: "+"), archetype: "-",
+                    kind: .playerEntry, market: label(route.market),
+                    detail: "you entered under \(rivals.count) incumbent\(rivals.count == 1 ? "" : "s")"))
+            }
+        }
+    }
+    recordPlayerPairs(engine.state, day: 0)
+
     for day in 1...days {
+        recordPlayerPairs(engine.state, day: day - 1)
         engine.advance(ticks: ticksPerDay)
         var state = engine.state
 
@@ -196,18 +215,9 @@ func runCampaign(seed: UInt64, home: AirportCode) -> CampaignResult {
 
         state = engine.state
         let now = rivalRoutes(state)
-        // The player's pairs: new ones this day, and whether a rival was there.
-        for route in state.routes(of: player) where playerPairs[route.market] == nil {
-            let contested = now.values.contains { $0.1 == route.market }
-            playerPairs[route.market] = (day, contested)
-            if contested {
-                let rivals = now.values.filter { $0.1 == route.market }.map { name($0.0) }.sorted()
-                result.moves.append(RivalMoveRecord(
-                    day: day, rival: rivals.joined(separator: "+"), archetype: "-",
-                    kind: .playerEntry, market: label(route.market),
-                    detail: "you entered under \(rivals.count) incumbent\(rivals.count == 1 ? "" : "s")"))
-            }
-        }
+        // Pairs the player opened during this day's script, before the
+        // world's turn tomorrow.
+        recordPlayerPairs(state, day: day)
         let myPairs = Set(playerPairs.keys.filter { m in state.routes(of: player).contains { $0.market == m } })
         var myAirports: Set<AirportCode> = [home]
         for route in state.routes(of: player) { myAirports.insert(route.origin); myAirports.insert(route.destination) }
