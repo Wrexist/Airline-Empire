@@ -153,5 +153,21 @@ public enum FleetEconomics {
         return Money(rounding: type.maintenancePerFlightHour.asDouble
             * tuning.maintenanceCheckHoursEquivalent * ageMultiplier)
     }
+
+    /// What the fleet system's checks cost per day, ahead of time, for an
+    /// airframe flying `blockHoursPerDay`: condition falls by the daily
+    /// decay plus the wear per flight hour, a check is due each time it
+    /// has fallen by `1 − maintenanceConditionThreshold`, and a check
+    /// costs `maintenanceCheckCost`. The same constants `FleetSystem`
+    /// applies, so an estimate lands where the ledger will (AE-040: the
+    /// AI's estimator charged the type's hourly rate for every hour and
+    /// came out ten times the ledger, docs/FEE_ECONOMY_ESTIMATOR_AUDIT.md).
+    public static func expectedMaintenancePerDay(type: AircraftTypeSpec, ageYears: Double,
+                                                 blockHoursPerDay: Double,
+                                                 fleet: FleetTuning, ops: OpsTuning) -> Double {
+        let conditionPerDay = fleet.dailyConditionDecay + ops.wearPerFlightHour * blockHoursPerDay
+        let checksPerDay = conditionPerDay / (1 - fleet.maintenanceConditionThreshold)
+        return maintenanceCheckCost(type: type, ageYears: ageYears, tuning: fleet).asDouble * checksPerDay
+    }
 }
 

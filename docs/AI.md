@@ -50,8 +50,13 @@ order per slot:
    city a thousand kilometres from a hub never came up at any horizon
    size (docs/HORIZON_AUDIT.md). The profit basis — the same less the
    flight system's costs — is measured, kept behind `rankingBasis` for
-   the scan and probe, and not shipped (TD-030). Fare = ref × archetype
-   factor.
+   the scan and probe, and not shipped (TD-030). Its cost lines are the
+   flight system's own arithmetic ahead of time: fuel, the seat-scaled
+   movement fees, the arrival passenger fee, crew, onboard service, and
+   maintenance as the fleet system books it — checks per condition lost,
+   not the type's hourly rate, which had made the estimate ten times the
+   ledger (AE-040, docs/FEE_ECONOMY_ESTIMATOR_AUDIT.md). Fare = ref ×
+   archetype factor.
 3. **Tune the network**: respond to >12% undercuts per archetype policy;
    push frequency on >0.82 loads; trim on <0.35; close persistent losers.
 4. **Grow** (runway ≥ archetype threshold, fleet < cap 40): lease or buy

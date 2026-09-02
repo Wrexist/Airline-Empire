@@ -569,3 +569,36 @@ it freezes the regional archetype (TD-029) and puts three of fifteen
 archetype runs over the balance battery's 60% margin line (64–65%), and a
 test is not weakened to go green. The scan and probe carry `--profit` so
 the measurement can be repeated once TD-029 is decided.
+
+## TD-031 — The reference route P&L was never reconciled line by line
+
+**Symptom.** MEASURED (AE-040, docs/FEE_ECONOMY_BASELINE.md §6.4):
+docs/GAME_BALANCE.md §4 gives the per-flight P&L the economy was to be
+tuned against (narrowbody, 1,100 km, 78% load: fuel $4.9k, crew $2.3k,
+airport/handling $3.2k, maintenance $2.4k, ownership $3.1k, overhead
+$1.3k on $18.1k of revenue, ~5% margin). The game's anchor fixture lands
+near the total ($16.5k against $17.2k) with none of the lines in place:
+fees 1.6× the anchor, ownership 2×, fuel ½, crew ½, maintenance ⅒
+(the fleet system's checks book about $0.2k per flight against a
+$2.4k reserve). The anchor test only requires a positive result.
+
+**Cost.** Fees lead every cost line under 1,600 km for every aircraft and
+short haul under 400 km is fee-bound for everyone (the arrival passenger
+fee alone is 40–45% of a $60–69 fare at LHR, CDG or JFK); fuel, the cost
+the design expects to lead and the one the world's fuel walk moves, is
+4–12% of revenue on short routes, so fuel shocks under-bite. The
+composition is what the batteries are calibrated on, so no single line
+can be moved alone without moving the anchor's margin.
+
+**Fix shape.** A reconciliation pass on the reference P&L as a whole —
+fee level, fuel price or burn, crew rates, the maintenance check cadence,
+lease rates — one anchor at a time against `BalanceTests`, with the
+per-line test §4 promised (±10%). A whole-economy phase; AE-040 fixed the
+fee *scale* (BUG-051) and left every level where it was.
+
+**Also seen (MEASURED, AE-040):** no aircraft can fly a round trip longer
+than about eight hours one way because the scheduler needs the whole
+round trip inside the 18-hour operating day (LHR–SIN has zero rotations
+for every type); a full schedule loses 6–25% of its rotations to delay
+cascades and expiry; widebodies are era-locked for the player and not
+for rivals.

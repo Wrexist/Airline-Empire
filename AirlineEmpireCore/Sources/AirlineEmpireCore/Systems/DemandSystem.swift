@@ -220,7 +220,9 @@ public struct DemandSystem: SimulationSystem {
 
     /// The day's directional demand pool, by segment.
     /// `tourismBoost` is the destination-region event boost (0 = none).
-    static func demandPool(from: AirportCode, to: AirportCode, date: GameDate,
+    /// Public since AE-040 so `ae-fee-baseline` can compare the AI's own
+    /// forecast with the ledger; nothing in the app calls it.
+    public static func demandPool(from: AirportCode, to: AirportCode, date: GameDate,
                            economicIndex: Double, tourismBoost: Double = 0,
                            catalog: ContentCatalog) -> SegmentDemand {
         guard let origin = catalog.airport(from), let destination = catalog.airport(to)

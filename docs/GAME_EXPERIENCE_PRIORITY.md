@@ -70,9 +70,23 @@ not here.
   rotation earned more. **FIXED** (BUG-049), **OBSERVED** (run 121,
   KEY-HZ5-response-line).
 
+- **ECON-01 · WORLD/ROUTES · A movement cost the same whatever landed.**
+  MEASURED (AE-040, `ae-fee-baseline`): the 68-seat turboprop's airport
+  fees were 1.7–1.9× the narrowbody's as a share of revenue on the same
+  pair; no turboprop route in the world paid for its lease; the regional
+  archetype had no market from its European home; the player paid the
+  same (parity to the cent). **FIXED** (BUG-051: the movement fee scales
+  with seats, anchored at 180) and the AI's estimator brought to the
+  ledger's maintenance rule (BUG-052). Before/after:
+  docs/BALANCING.md F-007. Frames: the fee line on KEY-48's route is a
+  narrowbody's and does not move; NOT VALIDATED on screen for a
+  turboprop.
+
 ## P1
 
-*(none open beyond TD-026's economy residual: TD-029, TD-030.)*
+*(TD-026's economy residual — Stockholm and Barcelona unreached — is
+re-measured after AE-040 in docs/AE040_FEE_ECONOMY_REPORT.md §9; TD-031
+holds the reference P&L reconciliation.)*
 
 ## P2
 

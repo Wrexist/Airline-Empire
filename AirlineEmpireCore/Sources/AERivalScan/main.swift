@@ -32,6 +32,8 @@ let homes: [AirportCode] = (arguments.count > 3 ? arguments[3] : "ARN")
 /// rival can or cannot reach each of the player's pairs (AE-039,
 /// docs/HORIZON_AUDIT.md).
 let horizonMode = arguments.contains("--horizon")
+/// `--rivals`: print every rival's end state after each campaign (AE-040).
+let rivalsMode = arguments.contains("--rivals")
 /// `--limit N`: run with a candidate horizon of N airports instead of the
 /// shipped `candidateMarketLimit`, for the AE-039 horizon sweep. The
 /// shipped tuning file is not touched; the catalog is rebuilt in memory.
@@ -89,6 +91,8 @@ struct CampaignResult {
     var rivalsAlive = 0
     var reachable: [String] = []
     var horizon: [String] = []
+    /// `--rivals`: every rival's end state (AE-040).
+    var rivalStates: [String] = []
 }
 
 /// Why a rival at `base` can or cannot come to the player's pair `base`–`far`:
@@ -417,6 +421,34 @@ func runCampaign(seed: UInt64, home: AirportCode) -> CampaignResult {
         }
     }
     let final = engine.state
+    if rivalsMode {
+        // Each rival at the end: what it flies, what it owns, whether its
+        // routes pay, and how much of its route revenue the airports took
+        // (AE-040, docs/REGIONAL_ARCHETYPE_AUDIT.md).
+        for airline in final.airlines.values.sorted(by: { $0.id < $1.id }) where airline.kind == .ai {
+            let routes = final.routes(of: airline.id)
+            let revenue = routes.reduce(Int64(0)) { $0 + $1.economicsLastMonth.revenueCents }
+            let fees = routes.reduce(Int64(0)) { $0 + $1.economicsLastMonth.feesCents }
+            let direct = routes.reduce(Int64(0)) { $0 + $1.economicsLastMonth.directOperatingProfit.cents }
+            let losing = routes.filter { $0.economicsLastMonth.directOperatingProfit.cents < 0 }.count
+            let fleet = final.fleet(of: airline.id)
+            let types = Dictionary(grouping: fleet, by: \.typeCode).map { "\($0.value.count)×\($0.key.raw)" }.sorted().joined(separator: " ")
+            let netWorth = CreditMath.assets(of: airline.id, state: final) - CreditMath.totalDebt(of: airline)
+            let statement = final.finance.byAirline[airline.id]?.latest
+            let margin = statement.map { s -> String in
+                s.operatingRevenue.cents > 0
+                    ? String(format: "%.0f%%", Double(s.operatingProfit.cents) / Double(s.operatingRevenue.cents) * 100) : "—"
+            } ?? "—"
+            result.rivalStates.append(String(
+                format: "RIVAL %@ [%@] %@ · routes %d (losing %d) · fleet %d (%@) · last month revenue %@ fees %@ (%@) direct %@ · airline margin %@ · net worth %@ · cash %@",
+                airline.name as NSString, airline.aiProfile?.archetype.rawValue ?? "?" as NSString,
+                "\(airline.status)" as NSString, routes.count, losing, fleet.count, types as NSString,
+                Money(cents: revenue).compact as NSString, Money(cents: fees).compact as NSString,
+                (revenue > 0 ? String(format: "%.0f%%", Double(fees) / Double(revenue) * 100) : "—") as NSString,
+                Money(cents: direct).compact as NSString, margin as NSString, netWorth.compact as NSString,
+                final.ledger.balance(of: airline.id).compact as NSString))
+        }
+    }
     result.playerRoutes = final.routes(of: player).count
     result.era = "\(final.progression.era)"
     result.rivalsAlive = final.airlines.values.filter { $0.kind == .ai && $0.status == .active }.count
@@ -446,6 +478,7 @@ for seed in seedRange {
         }
         for line in result.playerMonthlyProfitOnWorldEntries { print("   → \(line)") }
         for line in result.horizon { print(line) }
+        for line in result.rivalStates { print("   " + line) }
     }
 }
 print("\n== Totals over \(campaigns) campaigns ==")

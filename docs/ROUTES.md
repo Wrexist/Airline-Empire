@@ -54,7 +54,9 @@ simulation-driven:
   piling up, then burst-flying on return); expiry-as-cancellation is the
   honest operational outcome.
 - **Arrival** posts categorized costs (fuel = burn × distance × world fuel
-  price; movement fees both ends + per-pax fee; crew = block hours × cockpit/
+  price; movement fees both ends, each scaled by the aircraft's seats over
+  the 180-seat reference cabin (AE-040), + per-pax fee at the arrival end;
+  crew = block hours × cockpit/
   cabin rates), applies flight-hour wear + hours, then turnaround; completion
   updates `RouteStats`. Live-flight population stays bounded (flights are
   removed when done; history lives in stats + ledger).

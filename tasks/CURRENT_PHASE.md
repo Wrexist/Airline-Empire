@@ -1,5 +1,55 @@
 # Current Phase
 
+**AE-040 — The fee economy and the regional archetype.**
+2026-09-02.
+
+The brief: AE-039 left one red flag — the regional archetype had no
+profitable market anywhere at hub fees (TD-029), the profit-based rival
+ranking was withheld because of it (TD-030), and KEY-48 showed a
+player's short route with "airport fees take 96% of the revenue". Is the
+fee model wrong, wrongly applied, or right and incompatible? Measure
+first.
+
+Measured (docs/FEE_ECONOMY_BASELINE.md, `ae-fee-baseline`, a new
+headless executable that flies single routes through the real pipeline
+and reads the ledger back): fees are the largest direct cost on every
+route under 1,600 km for every aircraft, and the share is a per-flight
+ratio that is worst for the smallest cabin — the 68-seat turboprop's fee
+share is 1.7–1.9× the 180-seat narrowbody's on the same pair, because
+the two movement fees are the same money whatever lands. No turboprop
+route in a forty-route battery paid for its lease. The regional
+archetype's own evaluation from its European home (Paris) found all
+sixteen candidates losing on money alone (docs/REGIONAL_ARCHETYPE_AUDIT.md).
+The player pays the same to the cent (parity MEASURED). Beside that,
+the AI's profit estimator charged maintenance at the type's hourly rate
+where the ledger books a 60-hour check per 500–650 flight hours: 9.8×
+(docs/FEE_ECONOMY_ESTIMATOR_AUDIT.md).
+
+Root cause (docs/FEE_ECONOMY_FIX_DECISION.md): CASE F — two formulas
+applied to the wrong thing. (1) The movement fee scaled with nothing;
+real landing charges follow aircraft weight. (2) The estimator and the
+ledger used two definitions of maintenance. Rejected: a global fee cut
+(moves the calibrated anchor, leaves the size gap), a regional-only
+discount (breaks parity), AI-only compensation (the losses are real), an
+arbitrary multiplier (no unit), and re-levelling the ledger's
+maintenance (a whole-economy recalibration, recorded as TD-031).
+
+Shipped: `AirportSpec.movementFee(for:ops:)` — the quoted fee in
+proportion to the aircraft's seats over a 180-seat reference cabin
+(`OpsTuning.movementFeeReferenceSeats`), integer cents, used by the
+flight system and the estimator; the 180-seat narrowbody pays exactly
+what it paid. `FleetEconomics.expectedMaintenancePerDay` — the fleet
+system's check rule integrated — replaces the estimator's hourly line.
+No level changed, no save-format change, no archetype or player branch.
+
+RESULTS_SECTION
+
+**Status:** STATUS_LINE
+
+---
+
+# Previous Phase
+
 **AE-039 — The horizon.**
 2026-09-02.
 

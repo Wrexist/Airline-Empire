@@ -19,6 +19,11 @@ let package = Package(
         // player's network classified by who started the contest
         // (docs/RIVALS_THAT_COME_TO_YOU_AUDIT.md).
         .executable(name: "ae-rival-scan", targets: ["AERivalScan"]),
+        // Flies single routes through the real pipeline and reads the
+        // ledger back: the fee, fuel, crew, maintenance and service each
+        // route actually paid, against what the AI's estimator would have
+        // said (docs/FEE_ECONOMY_BASELINE.md).
+        .executable(name: "ae-fee-baseline", targets: ["AEFeeBaseline"]),
     ],
     targets: [
         // Swift 6 language mode: strict concurrency is on by default.
@@ -51,6 +56,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "AERivalScan",
+            dependencies: ["AirlineEmpireCore"]
+        ),
+        .executableTarget(
+            name: "AEFeeBaseline",
             dependencies: ["AirlineEmpireCore"]
         ),
     ]

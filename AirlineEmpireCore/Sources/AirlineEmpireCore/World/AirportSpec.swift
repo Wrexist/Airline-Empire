@@ -47,6 +47,15 @@ public struct AirportSpec: Equatable, Codable, Sendable {
         self.seasonality = seasonality
         self.weatherRisk = weatherRisk
     }
+
+    /// What one movement of `type` costs here: the quoted fee in
+    /// proportion to the aircraft's seats over the reference cabin
+    /// (`OpsTuning.movementFeeReferenceSeats`). Integer cents, so the
+    /// ledger and the AI's estimate are the same arithmetic. The one place
+    /// the size of what lands enters the fee (AE-040).
+    public func movementFee(for type: AircraftTypeSpec, ops: OpsTuning) -> Money {
+        Money(cents: movementFee.cents * Int64(type.seats) / Int64(ops.movementFeeReferenceSeats))
+    }
 }
 
 /// Market characteristics that drive demand (Phase 7 consumes these).

@@ -54,9 +54,11 @@ Demand lands on each route as directional daily grants
 (`demandOutbound/InboundToday` → `remaining…`). At **boarding**, a revenue
 flight sells `min(seats, remaining)`; at **departure**, `pax × fare` posts
 as `ticketRevenue`; a cancellation forfeits the flight's sold demand (no
-rebooking — cancellations cost real revenue). Arrival adds per-passenger
-airport fees and updates `passengersCarried`/`seatsFlown` → route load
-factor.
+rebooking — cancellations cost real revenue). Arrival adds the airport
+fees — each end's movement fee scaled by the aircraft's seats over the
+180-seat reference cabin, plus the arrival end's per-passenger fee
+(AE-040, docs/AIRPORTS.md fee note) — and updates
+`passengersCarried`/`seatsFlown` → route load factor.
 
 ## Calibration (verified by automated economy tests)
 

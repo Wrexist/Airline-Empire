@@ -1318,3 +1318,52 @@ not open it, and no other rival can see New York–Chicago as its best
 market. The world-initiated twin and journey moved to Munich
 (`MunichHorizonTests`, `HorizonArrivalUITests`); the New York ones were
 removed. The founding helper's any-home picker stays.
+
+## BUG-051 — A movement cost the same whatever landed
+
+**Severity:** P1. An entire airline archetype could not function, and a
+player flying the same aircraft paid the same.
+**Found:** 2026-09-02, AE-040 — `ae-fee-baseline`: on every pair in a
+forty-route battery the 68-seat turboprop's airport fees were 1.7–1.9×
+the 180-seat narrowbody's as a share of revenue (LHR–CDG 157% vs 85%,
+JFK–ORD 75% vs 40%), and no turboprop route in the world paid for its
+lease; the regional archetype had 40 profitable candidates out of 542 at
+28 of 88 homes (docs/FEE_ECONOMY_BASELINE.md §6, docs/REGIONAL_ARCHETYPE_AUDIT.md
+§2). Previously recorded as TD-029 from the symptoms (SwiftJet's
+JFK–ORD −$277k a month, KEY-48's "airport fees take 96% of the
+revenue").
+**Root cause:** `AirportSpec.movementFee` was charged per arrival for
+both ends with no term for the aircraft: a 68-seat cabin and a 422-seat
+one paid the same two movements. Real landing charges follow aircraft
+weight; the game's passenger fee already followed passengers, the
+movement fee followed nothing. CASE B, wrong scale.
+**Fix layer:** Core. `AirportSpec.movementFee(for:ops:)` — the quoted fee
+in proportion to seats over `OpsTuning.movementFeeReferenceSeats` (180,
+new tuning constant), integer cents — used by `FlightOpsSystem.arrive`
+and the AI's estimator. The 180-seat narrowbody pays exactly what it
+paid; the anchor economy does not move. No save-format change.
+**Regression cover:** `FeeEconomyTests` (scale, once-per-arrival posting,
+the category, the two types on one pair, long haul not subsidised, the
+archetype's markets from Paris and in the standard cast).
+**Status:** FIXED — AUTHORED; TESTED and MEASURED pending this phase's
+batteries (docs/AE040_FEE_ECONOMY_REPORT.md).
+
+## BUG-052 — The AI's profit estimate charged maintenance ten times what the ledger books
+
+**Severity:** P2 (AI only; the withheld profit ranking's view of the
+world).
+**Found:** 2026-09-02, AE-040 — `ae-fee-baseline --months 12` against
+`airframeDayValue(basis: .profit)` over forty routes: fuel, fees and crew
+within 4–8% (the scheduled rotations that do not fly), service and
+revenue exact, maintenance 9.8× (docs/FEE_ECONOMY_ESTIMATOR_AUDIT.md).
+**Root cause:** the estimator charged `maintenancePerFlightHour` for every
+block hour; `FleetSystem` charges a 60-hour check each time condition
+falls by 0.25, which at real utilisation is one check per 500–650 flight
+hours. Two definitions of the same cost (CASE D).
+**Fix layer:** Core AI. `FleetEconomics.expectedMaintenancePerDay` — the
+fleet system's constants integrated: check cost × (daily decay + wear ×
+hours flown) / (1 − threshold) — replaces the hourly line in the
+estimator. The ledger is unchanged.
+**Regression cover:** `FeeEconomyTests.expectedMaintenanceMatchesTheLedger`
+(two years, within one check), `estimateMatchesTheLedgerOnActualPassengers`.
+**Status:** FIXED — AUTHORED; TESTED pending.

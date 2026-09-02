@@ -151,7 +151,82 @@ uncontested mega-market. That is a monopolist's price and it should compress
 toward the reference as rivals enter; F-001's counterweight now has real
 teeth to apply. Worth re-measuring under contested conditions at playtest.
 
+### F-007 (2026-09-02, AE-040): a movement cost the same whatever landed
+
+**Evidence.** `ae-fee-baseline` (new; docs/FEE_ECONOMY_BASELINE.md) flew
+forty single routes for a year each through the real pipeline. Airport
+fees were the largest direct cost on every route under 1,600 km for
+every aircraft (62–90% of fuel + fees + crew), and the share was a
+per-flight ratio worst for the smallest cabin: on LHR–CDG the 68-seat
+NA70's fees were 157% of revenue at 100% load against the MR180's 85%;
+on JFK–ORD 75% against 40%. No turboprop route paid for its lease. The
+regional archetype's own evaluation from Paris found all sixteen
+candidates losing on money alone; worldwide its turboprop had 40
+profitable candidates of 542 (docs/REGIONAL_ARCHETYPE_AUDIT.md). The
+player paid the same to the cent.
+
+**Reading.** `AirportSpec.movementFee` was charged per movement with no
+term for the aircraft. Real landing charges follow aircraft weight; the
+passenger fee already followed passengers. Not a level to tune — a scale
+that was missing (BUG-051). Beside it, the AI's profit estimator charged
+maintenance at the type's hourly rate where the fleet system books a
+60-hour check per 500–650 flight hours: 9.8× the ledger (BUG-052,
+docs/FEE_ECONOMY_ESTIMATOR_AUDIT.md).
+
+**Action.** The movement fee is quoted for a 180-seat movement and
+charged in proportion to seats (`OpsTuning.movementFeeReferenceSeats`,
+integer cents), in the flight system and the estimator alike; the
+estimator's maintenance line is the fleet system's check rule
+integrated. No fee level moved; the MR180 pays exactly what it paid, so
+the anchor economy and every battery calibrated on it are untouched by
+construction. Rejected alternatives and risks:
+docs/FEE_ECONOMY_FIX_DECISION.md.
+
+**Not changed, recorded as TD-031.** The reference route P&L
+(GAME_BALANCE §4) was never reconciled line by line: fees carry 1.6×
+their designed weight, ownership 2×, fuel and crew a half, maintenance a
+tenth; the total lands within 4% of the design. Short haul under 400 km
+stays fee-bound for every aircraft (a $26–28 hub passenger fee against a
+$60–69 fare).
+
 ## Tuning changelog
+
+**2026-09-02 — movement fees scale with seats (F-007, AE-040).** New
+`ops.movementFeeReferenceSeats: 180` in `tuning.json`; no existing
+constant or airport value changed.
+
+*Before / after, `ae-fee-baseline --rotations 2 --months 12`, average
+month, seed 2039:*
+
+| Route | Aircraft | Fees before → after | Fee share | Direct profit | All-in margin |
+|---|---|---|---|---|---|
+| LHR–CDG 347 km | NA70 | $793k → $428k | 157% → 85% | −$394k → −$30k | −170% → −97% |
+| LHR–CDG | MR180 | $1.15M → $1.15M | 85% → 85% | +$64k → +$64k | unchanged |
+| JFK–ORD 1,187 km | NA70 | $771k → $413k | 75% → 40% | −$57k → +$301k | −51% → −16% |
+| JFK–ORD | AV90 | $836k → $539k | 63% → 40% | +$157k → +$454k | −35% → −13% |
+| JFK–ORD | MR180 | $1.11M → $1.11M | 40% → 40% | +$1.24M | unchanged |
+| ARN–LHR 1,462 km | AV90 | $666k → $439k | 43% → 28% | +$479k → +$707k | −10% → +5% |
+| ARN–LHR | MR180 | $905k → $905k | 28% → 28% | +$1.83M | unchanged |
+| LHR–JFK 5,541 km | MR300 (AI) | $625k → $930k | 9% → 11% | +$4.96M → +$5.62M* | 34% → 37%* |
+
+\* the widebody month is a different month (twelve averaged against
+one) — the movement part rose from $248k to $292k as designed (×1.66 on
+fewer flights); the fee share rose two points.
+
+*Candidate evaluation, the regional profile at every large-or-better
+home, profit basis (`--candidates all`):*
+
+| Type | Profitable candidates before → after | Homes with ≥ 1 |
+|---|---|---|
+| NA70 | 40 of 542 → 374 | 28 → 80 of 88 |
+| AV90 | 294 of 747 → 504 | 69 → 86 |
+| MR180 | 511 of 842 → 542 (the maintenance line only) | 80 → 84 |
+
+*Estimator error on actual passengers (forty routes, $/day):* −3.3k to
+−17k before → −0.6k to −5.3k after; what remains is the 5–10% of
+scheduled rotations that do not fly and the fuel walk.
+
+
 
 **2026-08-27 — airport populations corrected (F-006).** All 80 values in
 `airports.json` divided by 1000 so `populationThousands` holds thousands,

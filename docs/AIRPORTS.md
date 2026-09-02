@@ -18,7 +18,9 @@ liveries and aircraft remain fictional — only the geography is real.
   (code/name/city/country), `WorldRegion`, coordinates, fixed UTC offset
   (no DST by design), `RunwayClass` (small→veryLarge, Comparable), daily
   slot capacity, daily terminal capacity, movement + passenger fees
-  (`Money`), `Demographics` (population **in thousands** — see the unit
+  (`Money`; the movement fee is quoted for a 180-seat movement and a
+  landing aircraft pays it in proportion to its seats —
+  `movementFee(for:ops:)`, AE-040, see the fee note below), `Demographics` (population **in thousands** — see the unit
   note below, business/leisure/tourism/cargo
   indices 0…1), seasonality profile reference, `WeatherRisk`.
 - **`AirportRuntime`** (state, in `GameState.world`): per-airline slot
@@ -97,3 +99,17 @@ to a plausible metro range and asserts the largest market pool stays within
 reach of real fleet capacity) and
 `BalanceTests.pricingHasRealConsequencesEndToEnd` (a fare rise must cost
 passengers, and profit must have an interior optimum).
+
+## Fee note: what a movement costs (added 2026-09-02, AE-040)
+
+`movementFee` is the charge for one movement of the **reference cabin**
+(`OpsTuning.movementFeeReferenceSeats`, 180 seats — the narrowbody the
+economy is anchored on). A flight pays each end's movement fee scaled by
+its aircraft's seats over that number, in whole cents, plus the arrival
+airport's `passengerFee` per passenger landed
+(`FlightOpsSystem.arrive`). So at Heathrow ($2,600 quoted) a 68-seat
+turboprop pays $982 per movement, an MR-180 $2,600, a 298-seat widebody
+$4,304. Until AE-040 every aircraft paid the quoted fee, and the 68-seat
+turboprop could not clear its fees on any route in the world
+(docs/FEE_ECONOMY_BASELINE.md, docs/FEE_ECONOMY_FIX_DECISION.md). The
+passenger fee is unchanged. Player and rival flights pay the same.

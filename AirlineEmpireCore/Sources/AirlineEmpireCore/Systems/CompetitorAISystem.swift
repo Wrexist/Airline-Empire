@@ -319,15 +319,20 @@ public struct CompetitorAISystem: SimulationSystem {
             overheadMinutes: ops.flightOverheadMinutes)) / 60
         let fuel = flights * spec.fuelBurnKgPerKm * Double(distanceKm) / 1000
             * state.world.fuelPricePerTon.asDouble
-        let movementFees = flights * (origin.movementFee.asDouble + destination.movementFee.asDouble)
-        // Passenger fees are charged at the arrival airport; half the
-        // passengers land at each end.
+        // The flight system's own fee arithmetic: movements for this
+        // airframe's size, passengers at the arrival end (half land at each).
+        let movementFees = flights * (origin.movementFee(for: spec, ops: ops).asDouble
+                                      + destination.movementFee(for: spec, ops: ops).asDouble)
         let passengerFees = carried / 2
             * (origin.passengerFee.asDouble + destination.passengerFee.asDouble)
         let crew = flights * blockHours
             * (Double(spec.crewCockpit) * ops.crewCostPerBlockHourCockpit.asDouble
                + Double(spec.crewCabin) * ops.crewCostPerBlockHourCabin.asDouble)
-        let maintenance = flights * blockHours * spec.maintenancePerFlightHour.asDouble
+        // Maintenance as the fleet system will book it — checks, not hours
+        // (AE-040: the hourly rate here was ten times the ledger).
+        let maintenance = FleetEconomics.expectedMaintenancePerDay(
+            type: spec, ageYears: 0, blockHoursPerDay: flights * blockHours,
+            fleet: catalog.tuning.fleet, ops: ops)
         let service = carried * catalog.tuning.reputation.serviceCostPerPax(serviceTier).asDouble
         return revenue - fuel - movementFees - passengerFees - crew - maintenance - service
     }

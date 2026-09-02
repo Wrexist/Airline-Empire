@@ -442,6 +442,18 @@ extension Vocab {
 }
 
 extension Vocab {
+    /// The reason behind the fee line: what each end charges a flight of
+    /// this aircraft's size, and what each passenger pays to land. Stated
+    /// as the charges, not as a judgement (AE-040, Phase 13).
+    static func feeTerms(_ terms: FeeTerms, origin: String, destination: String) -> String {
+        let low = min(terms.originPassenger, terms.destinationPassenger)
+        let high = max(terms.originPassenger, terms.destinationPassenger)
+        let perPassenger = low == high
+            ? "\(Format.money(low)) per passenger"
+            : "\(Format.money(low))–\(Format.money(high)) per passenger"
+        return "Each flight pays \(Format.money(terms.originMovement)) at \(origin) and \(Format.money(terms.destinationMovement)) at \(destination) for a \(terms.seats)-seat aircraft, plus \(perPassenger) landed."
+    }
+
     /// A world event's severity as a word (MASTER PROMPT 4 §16).
     ///
     /// `WorldEvent.severity` is 0…1 "within the kind's semantics" — so it is

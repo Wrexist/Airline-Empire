@@ -246,7 +246,7 @@ struct RouteDetailView: View {
                     operations(card)
                     demandSection(card, snapshot: snapshot)
                     competitorSection(card, snapshot: snapshot, player: player.id)
-                    breakdown(card)
+                    breakdown(card, catalog: catalog)
                     aircraftSection(card, player: player.id, catalog: catalog)
                     fareControls(card, player: player.id)
                     dangerZone(player: player.id)
@@ -343,7 +343,7 @@ struct RouteDetailView: View {
 
     /// Where the money went. Month to date is what a young route has; the
     /// closed month sits beside it once there is one.
-    private func breakdown(_ card: RouteCardModel) -> some View {
+    private func breakdown(_ card: RouteCardModel, catalog: ContentCatalog) -> some View {
         AEPanel {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "Where the money went", systemImage: "chart.pie")
@@ -370,6 +370,18 @@ struct RouteDetailView: View {
                               Money(cents: -card.thisMonthBreakdown.feesCents),
                               Money(cents: -card.lastMonthBreakdown.feesCents),
                               showsLast: card.hasClosedMonth)
+                // The fee line's reason, from the same content the flight
+                // system charges (AE-040): the two movements for this
+                // aircraft's size and the passenger charge.
+                if let terms = card.feeTerms {
+                    Text(Vocab.feeTerms(terms,
+                                        origin: catalog.airport(card.origin)?.city ?? card.origin.raw,
+                                        destination: catalog.airport(card.destination)?.city ?? card.destination.raw))
+                        .font(.caption)
+                        .foregroundStyle(AETheme.mutedText)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("ae-route-fee-terms")
+                }
                 comparisonRow("Crew",
                               Money(cents: -card.thisMonthBreakdown.crewCents),
                               Money(cents: -card.lastMonthBreakdown.crewCents),
