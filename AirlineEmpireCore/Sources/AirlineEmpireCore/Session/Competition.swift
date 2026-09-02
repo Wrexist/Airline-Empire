@@ -105,6 +105,13 @@ public struct MarketCompetition: Equatable, Sendable {
     public let edge: Edge?
     /// The rival the edge is measured against.
     public let strongestRival: AirlineID?
+    /// Rotations the aircraft already on this route could add today — the
+    /// scheduler's own capacity arithmetic. Zero means another rotation
+    /// needs another aircraft. AE-038 measured a lone narrowbody on
+    /// New York–Chicago answering a rival with a third rotation and half
+    /// again the route's profit, while the screen said the answer needed
+    /// another aircraft (BUG-046).
+    public let spareRotationsToday: Int
 
     public var isContested: Bool { !rivals.isEmpty }
 
@@ -115,7 +122,7 @@ public struct MarketCompetition: Equatable, Sendable {
     public init(routeID: RouteID, origin: AirportCode, destination: AirportCode,
                 rivals: [RivalOffer], standing: Standing, playerShareToday: Double?,
                 evenShare: Double?, marketDemandToday: Int, edge: Edge?,
-                strongestRival: AirlineID?) {
+                strongestRival: AirlineID?, spareRotationsToday: Int = 0) {
         self.routeID = routeID
         self.origin = origin
         self.destination = destination
@@ -126,6 +133,19 @@ public struct MarketCompetition: Equatable, Sendable {
         self.marketDemandToday = marketDemandToday
         self.edge = edge
         self.strongestRival = strongestRival
+        self.spareRotationsToday = spareRotationsToday
+    }
+
+    /// What the route's assigned aircraft could fly beyond its current
+    /// frequency, from the scheduler's own per-aircraft capacity.
+    static func spareRotations(of route: Route, state: GameState,
+                               catalog: ContentCatalog) -> Int {
+        let assigned = route.assignedAircraft.sorted().compactMap { state.aircraft[$0] }
+        guard let first = assigned.first,
+              let spec = catalog.aircraftType(first.typeCode) else { return 0 }
+        let perAircraft = FlightSchedulingSystem.roundTripsPerAircraftPerDay(
+            distanceKm: route.distanceKm, spec: spec, ops: catalog.tuning.ops)
+        return max(0, perAircraft * assigned.count - route.dailyRoundTrips)
     }
 }
 
@@ -318,12 +338,13 @@ extension GameState {
         // morning has no allocation yet and has flown nothing: that is not
         // "losing at 0%", it is too early — run 113 photographed the former
         // on the day of entry (docs/RIVAL_PRESSURE_AUDIT.md §8).
+        let spare = MarketCompetition.spareRotations(of: mine, state: self, catalog: catalog)
         guard marketDemand > 0, myDemand > 0 || mine.stats.totalFlights > 0 else {
             return MarketCompetition(
                 routeID: mine.id, origin: mine.origin, destination: mine.destination,
                 rivals: rivals, standing: .tooEarly, playerShareToday: nil,
                 evenShare: nil, marketDemandToday: marketDemand, edge: nil,
-                strongestRival: rivals.first?.airline)
+                strongestRival: rivals.first?.airline, spareRotationsToday: spare)
         }
         let share = Double(myDemand) / Double(marketDemand)
         let carriers = 1 + offers.filter { $0.demand > 0 }.count
@@ -375,7 +396,8 @@ extension GameState {
             routeID: mine.id, origin: mine.origin, destination: mine.destination,
             rivals: rivals, standing: standing, playerShareToday: share,
             evenShare: even, marketDemandToday: marketDemand, edge: edge,
-            strongestRival: rivals.first?.airline)
+            strongestRival: rivals.first?.airline,
+            spareRotationsToday: spare)
     }
 
     /// The competitive picture of the whole network. Nil without a player.

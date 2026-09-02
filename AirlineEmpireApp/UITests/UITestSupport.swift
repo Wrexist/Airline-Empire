@@ -960,7 +960,7 @@ class AEUITestCase: XCTestCase {
 
     /// Found an airline and arrive in the shell. Every journey starts here.
     @discardableResult
-    func foundAirline(seed: String? = nil) -> Bool {
+    func foundAirline(seed: String? = nil, home: (code: String, city: String)? = nil) -> Bool {
         // A relaunch inside one test may come back to a shell that is already
         // playing; that is a success, not a missing button.
         if waitForTab("Home", timeout: 3) != nil { return true }
@@ -990,6 +990,29 @@ class AEUITestCase: XCTestCase {
                     XCTFail("The World seed field did not appear after expanding the disclosure.")
                     return false
                 }
+            }
+        }
+        // A home beyond the curated three: the "Somewhere else" card opens
+        // the whole-world picker (UI-025). AE-038's world-initiated rival
+        // lives in New York, which no curated start offers.
+        if let home {
+            let anywhere = app.buttons.matching(NSPredicate(
+                format: "label CONTAINS %@", "Somewhere else")).firstMatch
+            guard require(anywhere, "the Somewhere-else home card") else { return false }
+            anywhere.tap()
+            let search = app.searchFields.firstMatch
+            guard require(search, "the home picker's search field", timeout: 8) else { return false }
+            search.tap()
+            search.typeText(home.code)
+            let row = app.buttons.matching(NSPredicate(
+                format: "label CONTAINS %@ AND label CONTAINS %@", home.code, home.city)).firstMatch
+            guard require(row, "the \(home.code) row in the home picker", timeout: 8) else { return false }
+            row.tap()
+            let chosen = app.staticTexts[home.city]
+            if !chosen.waitForExistence(timeout: 6) {
+                capture(Self.logPrefix + "HOME-NOT-CHOSEN-\(home.code)")
+                XCTFail("Picking \(home.code) did not put \(home.city) on the home card.")
+                return false
             }
         }
         found.tap()

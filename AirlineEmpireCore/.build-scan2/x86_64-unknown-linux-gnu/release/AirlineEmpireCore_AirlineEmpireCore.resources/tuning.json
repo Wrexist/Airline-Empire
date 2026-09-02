@@ -1,0 +1,197 @@
+{
+ "ai": {
+  "candidateMarketLimit": 16,
+  "decisionIntervalDays": 7,
+  "expandLoadFactor": 0.82,
+  "initialRoundTrips": 2,
+  "maxFleetPerAirline": 40,
+  "minViableDailyDemand": 140,
+  "retrenchRunwayMonths": 1.5,
+  "shrinkLoadFactor": 0.35,
+  "undercutResponseThreshold": 0.12
+ },
+ "demand": {
+  "attenuationPower": 1.2,
+  "attenuationScaleKm": 3000,
+  "businessWeight": 0.35,
+  "comfortBase": 0.85,
+  "comfortWeight": 0.3,
+  "economyBusinessExponent": 1.5,
+  "economyLeisureExponent": 0.8,
+  "fareBase": 35,
+  "farePerKm": 0.085,
+  "gravityConstant": 0.55,
+  "leisureWeight": 0.65,
+  "operationsBase": 0.7,
+  "operationsWeight": 0.3,
+  "outsideOptionWeight": 1.0,
+  "priceSensitivityBusiness": 1.2,
+  "priceSensitivityLeisure": 2.2,
+  "scheduleQualityExponent": 0.35,
+  "scheduleQualityReferenceTrips": 4.0,
+  "scheduleQualityTripCap": 6,
+  "weekdayBusinessFactor": [
+   1.2,
+   1.2,
+   1.2,
+   1.2,
+   1.1,
+   0.5,
+   0.7
+  ],
+  "weekdayLeisureFactor": [
+   0.9,
+   0.9,
+   0.9,
+   0.9,
+   1.15,
+   1.25,
+   1.2
+  ]
+ },
+ "events": {
+  "closureSeverityThreshold": 0.85,
+  "fuelShockDailyChance": 0.0025,
+  "fuelShockDurationDaysMax": 90,
+  "fuelShockDurationDaysMin": 30,
+  "fuelShockSeverityMax": 0.9,
+  "fuelShockSeverityMin": 0.3,
+  "majorEventCooldownDays": 45,
+  "maxActiveRegionalEvents": 2,
+  "stormBaseDailyChance": 0.004,
+  "stormDisruptionBoost": 0.3,
+  "stormDurationDaysMax": 3,
+  "stormDurationDaysMin": 1,
+  "stormForecastLeadDays": 1,
+  "stormSeverityMax": 1.0,
+  "stormSeverityMin": 0.3,
+  "strikeCooldownDays": 180,
+  "strikeDailyChance": 0.02,
+  "strikeDurationDaysMax": 4,
+  "strikeDurationDaysMin": 2,
+  "strikeServiceThreshold": 0.35,
+  "tourismBoomBoost": 0.35,
+  "tourismBoomDailyChance": 0.002,
+  "tourismBoomDurationDaysMax": 120,
+  "tourismBoomDurationDaysMin": 60
+ },
+ "finance": {
+  "administrationGraceDays": 7,
+  "administrationHaircut": 0.3,
+  "baseLoanRateBasisPoints": 500,
+  "fireSalePriceFactor": 0.7,
+  "maxConcurrentLoans": 5,
+  "maxDebtRatio": 0.85,
+  "maxLoanTermMonths": 120,
+  "minLoanCents": 100000000,
+  "overdraftFloorCents": -200000000,
+  "overheadBaseMonthly": {
+   "cents": 15000000
+  },
+  "payrollPerAircraftMonthly": {
+   "cents": 4000000
+  },
+  "payrollPerRouteMonthly": {
+   "cents": 1500000
+  },
+  "spreadBaseBasisPoints": 200,
+  "spreadLeverageBasisPoints": 1000,
+  "statementHistoryMonths": 24
+ },
+ "fleet": {
+  "annualDepreciationRate": 0.08,
+  "dailyConditionDecay": 0.0006,
+  "earlyLeaseReturnPenaltyMonths": 2,
+  "maintenanceAgeCostGrowthPerYear": 0.045,
+  "maintenanceCheckDays": 3,
+  "maintenanceCheckHoursEquivalent": 60,
+  "maintenanceConditionThreshold": 0.75,
+  "maxLeaseTermMonths": 144,
+  "maxUsedPurchaseAgeYears": 22,
+  "minLeaseTermMonths": 6,
+  "reliabilityAgePenaltyPerYear": 0.003,
+  "reliabilityConditionWeight": 0.1,
+  "reliabilityFloor": 0.85,
+  "residualValueFraction": 0.25,
+  "saleFriction": 0.1,
+  "usedMarketConditionFloor": 0.55,
+  "usedMarketConditionLossPerYear": 0.02,
+  "usedPriceConditionFloor": 0.7
+ },
+ "minRouteDistanceKm": 80,
+ "ops": {
+  "baseFuelPricePerTon": {
+   "cents": 65000
+  },
+  "boardingMinutes": 30,
+  "cancellationShareOfDisruptions": 0.2,
+  "crewCostPerBlockHourCabin": {
+   "cents": 4500
+  },
+  "crewCostPerBlockHourCockpit": {
+   "cents": 18000
+  },
+  "delayMinutesMax": 240,
+  "delayMinutesMin": 45,
+  "flightOverheadMinutes": 20,
+  "operatingDayMinutes": 1080,
+  "operatingDayStartMinute": 360,
+  "scheduledFlightExpiryMinutes": 240,
+  "wearPerFlightHour": 0.00035
+ },
+ "progression": {
+  "boomRushRewardPerPax": {
+   "cents": 4000
+  },
+  "boomRushRewardFloor": {
+   "cents": 25000000
+  },
+  "boomRushTargetFactor": 0.6,
+  "capabilityCost": {
+   "cents": 1200000000
+  },
+  "capabilityDurationDays": 90,
+  "empireDestinations": 20,
+  "empireFleet": 20,
+  "internationalFleet": 8,
+  "maxActivePrograms": 2,
+  "nationalDestinations": 8,
+  "nationalReputationFloor": 0.55,
+  "regionalProfitableRoutes": 3,
+  "valueLegendDays": 90,
+  "valueLegendThreshold": 0.8,
+  "weatherProofCompletionRate": 0.97,
+  "weatherProofFlights": 500
+ },
+ "reputation": {
+  "administrationScar": 0.85,
+  "driftRate": 0.05,
+  "initialComponent": 0.6,
+  "multiplierBase": 0.8,
+  "multiplierSpan": 0.45,
+  "serviceCostPerPaxBasic": {
+   "cents": 400
+  },
+  "serviceCostPerPaxPremium": {
+   "cents": 1800
+  },
+  "serviceCostPerPaxStandard": {
+   "cents": 900
+  },
+  "serviceTargetBasic": 0.35,
+  "serviceTargetPremium": 0.85,
+  "serviceTargetStandard": 0.6,
+  "valueDriftRate": 0.02
+ },
+ "world": {
+  "economyDailyVolatility": 0.0015,
+  "economyHighTarget": 1.15,
+  "economyLowTarget": 0.85,
+  "economyRegimeSwitchDailyChance": 0.0011,
+  "economyReversion": 0.003,
+  "fuelDailyVolatility": 0.012,
+  "fuelMaxFactor": 2.2,
+  "fuelMeanReversion": 0.02,
+  "fuelMinFactor": 0.6
+ }
+}

@@ -698,7 +698,12 @@ extension Vocab {
         case .fare:
             return "Answer with the fare below, or accept a smaller share at a better price."
         case .schedule:
-            return "Answer with frequency: another rotation needs another aircraft on this route."
+            // Measured (AE-038): a lone narrowbody on New York–Chicago had a
+            // third rotation in it, and taking it was worth half again the
+            // route's profit — the old line said it needed another aircraft.
+            return model.spareRotationsToday > 0
+                ? "Answer with frequency: your aircraft on this route can fly \(model.spareRotationsToday == 1 ? "one more rotation" : "\(model.spareRotationsToday) more rotations") today."
+                : "Answer with frequency: another rotation needs another aircraft on this route."
         case .reputation:
             return "Reputation moves in weeks — on-time flying and service, not this route alone."
         case .comfort:

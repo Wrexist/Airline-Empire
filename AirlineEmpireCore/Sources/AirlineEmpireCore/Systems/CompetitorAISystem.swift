@@ -157,14 +157,30 @@ public struct CompetitorAISystem: SimulationSystem {
         let score: Double
     }
 
-    /// Deterministic candidate scoring: expected pool split by incumbents,
-    /// gated by eligibility and archetype geography.
+    /// Deterministic candidate scoring: the pool an entrant could plan
+    /// against with the incumbents' real offers in the way, gated by
+    /// eligibility and archetype geography.
+    ///
+    /// Until AE-038 the score halved per incumbent (`pool / (n + 1)`), and
+    /// the seed scan measured what that did: across 240 two-year campaigns
+    /// from eight homes, no rival ever entered a pair the player flew
+    /// except New York–Chicago, the one pair large enough to win at half
+    /// value — even from Singapore, where five rivals had the player's
+    /// home in their candidate set (docs/RIVALS_THAT_COME_TO_YOU_AUDIT.md).
+    /// The demand engine gives a second entrant nearer two thirds than a
+    /// half, so the AI now asks the engine, and an open pair still scores
+    /// exactly as before.
     private func bestMarket(from origin: AirportCode, airline: Airline,
                             spec: AircraftTypeSpec, profile: AIProfile,
                             state: GameState, context: SimContext,
                             tuning: AITuning) -> MarketCandidate? {
         let catalog = context.catalog
         guard let originSpec = catalog.airport(origin) else { return nil }
+        // The offer this airline would put on a new pair: a starter
+        // operation at its archetype's fare, carrying its own reputation.
+        let entrantQuality = DemandSystem.representativeStarterQuality(
+            tuning: catalog.tuning.demand)
+            * airline.reputation.demandMultiplier(tuning: catalog.tuning.reputation)
         var best: MarketCandidate?
         for (destinationSpec, distance) in catalog.nearestAirports(
             to: origin, limit: tuning.candidateMarketLimit) {
@@ -193,8 +209,10 @@ public struct CompetitorAISystem: SimulationSystem {
                                                catalog: catalog)
             let incumbents = state.routes.values.filter {
                 $0.sameMarket(origin: origin, destination: destination)
-            }.count
-            let score = pool.total / Double(incumbents + 1)
+            }
+            let score = DemandSystem.poolAvailableToEntrant(
+                pool: pool, fareRatio: profile.priceFactor, quality: entrantQuality,
+                incumbents: incumbents, state: state, catalog: catalog)
             guard score >= tuning.minViableDailyDemand else { continue }
             if best == nil || score > best!.score {
                 best = MarketCandidate(destination: destination,

@@ -15,6 +15,10 @@ let package = Package(
         // competition did, what it cost the player, and whether the player
         // could see it (docs/RIVAL_PRESSURE_AUDIT.md).
         .executable(name: "ae-rival-probe", targets: ["AERivalProbe"]),
+        // Headless seed scan: many campaigns, every rival move on the
+        // player's network classified by who started the contest
+        // (docs/RIVALS_THAT_COME_TO_YOU_AUDIT.md).
+        .executable(name: "ae-rival-scan", targets: ["AERivalScan"]),
     ],
     targets: [
         // Swift 6 language mode: strict concurrency is on by default.
@@ -43,6 +47,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "AERivalProbe",
+            dependencies: ["AirlineEmpireCore"]
+        ),
+        .executableTarget(
+            name: "AERivalScan",
             dependencies: ["AirlineEmpireCore"]
         ),
     ]

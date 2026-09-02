@@ -1201,3 +1201,30 @@ so the unflyable route was the sheet's doing, not the card's.
 **Status:** FIXED — **OBSERVED** in run 117 (`KEY-32b`: both suggestions
 became the routes the card named, ARN–CDG earning $478k by 9 Feb, no
 Tokyo, no `FEB-*` frame; 18 of 18 journeys green).
+
+## BUG-046 — The route's frequency advice said a rotation needed an aircraft it already had
+
+**Severity:** P2. Misleading competitive advice on the one lever the
+measurement says works.
+**Found:** 2026-09-02, AE-038 — `RivalsComeToYouTests` on seed 2030 from
+New York: with SwiftJet at three rotations against the player's two on
+JFK–ORD, the route screen's response line read *"Answer with frequency:
+another rotation needs another aircraft on this route."* The Linux twin
+then set the frequency to three on the one leased narrowbody already
+there, the scheduler flew it, and the route's profit rose from about
+$1.3M to about $1.9M a month for the rest of the year (docs/RIVALS_THAT_COME_TO_YOU_AUDIT.md §4).
+**Root cause:** `Vocab.competitiveResponse` had one sentence for the
+schedule edge and no way to know whether the assigned aircraft could fly
+another rotation; `MarketCompetition` carried the standing, the share and
+the why, but not the capacity fact the advice turns on.
+**Why nothing caught it:** AE-037's frames were of London–Paris where
+the incumbents flew twenty rotations and the player's response genuinely
+needed more aircraft; the sentence was true there.
+**Fix layer:** Core + App. `MarketCompetition.spareRotationsToday` — the
+scheduler's own per-aircraft capacity times aircraft on the route, minus
+the frequency — and the advice reads it: *"your aircraft on this route can
+fly one more rotation today"* when it can, the old sentence when it cannot.
+**Regression cover:** `RivalsComeToYouTests` asserts a spare rotation on
+the pair a month after entry; `CompetitionTests` covers the model.
+**Status:** FIXED — AUTHORED, TESTED; awaiting the CI frame of the
+response line.

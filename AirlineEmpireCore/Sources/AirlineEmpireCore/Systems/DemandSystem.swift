@@ -161,6 +161,44 @@ public struct DemandSystem: SimulationSystem {
             + pool.leisure * (leisure / (out + leisure))
     }
 
+    /// The pool a new entrant could plan against on a pair, given who is
+    /// already flying it: the demand engine's own split, applied to one
+    /// hypothetical extra offer against the incumbents' actual fares and
+    /// quality, expressed in pool units so it compares directly with an
+    /// empty pair's `pool.total`. Empty pair: the whole pool. One incumbent
+    /// at the same fare and quality: roughly two thirds of it (the outside
+    /// option shrinks as offers multiply), never half — which is what the
+    /// competitor AI assumed until AE-038 measured that the halving kept
+    /// every rival out of every pair the player flew except the largest
+    /// (TD-026, docs/RIVALS_THAT_COME_TO_YOU_AUDIT.md). Incumbents that
+    /// cannot carry anyone (no aircraft) attract nothing, as in `allocate`.
+    public static func poolAvailableToEntrant(
+        pool: SegmentDemand, fareRatio: Double, quality: Double,
+        incumbents: [Route], state: GameState, catalog: ContentCatalog) -> Double {
+        guard quality > 0, pool.total > 0 else { return 0 }
+        let tuning = catalog.tuning.demand
+        guard let first = incumbents.first,
+              let distance = catalog.distanceKm(first.origin, first.destination)
+        else { return pool.total }
+        let refFare = referenceFare(distanceKm: distance, tuning: tuning)
+        var rivalsBusiness = 0.0, rivalsLeisure = 0.0
+        for route in incumbents {
+            guard let rivalQuality = offerQualityTerms(route: route, state: state,
+                                                       catalog: catalog)?.product
+            else { continue }
+            let ratio = route.ticketPrice.asDouble / refFare
+            rivalsBusiness += exp(tuning.priceSensitivityBusiness * (1 - ratio)) * rivalQuality
+            rivalsLeisure += exp(tuning.priceSensitivityLeisure * (1 - ratio)) * rivalQuality
+        }
+        let out = tuning.outsideOptionWeight
+        let business = exp(tuning.priceSensitivityBusiness * (1 - fareRatio)) * quality
+        let leisure = exp(tuning.priceSensitivityLeisure * (1 - fareRatio)) * quality
+        // Each segment: what the entrant takes with the incumbents there,
+        // over what it would take alone — the pool scaled by that ratio.
+        return pool.business * ((out + business) / (out + business + rivalsBusiness))
+            + pool.leisure * ((out + leisure) / (out + leisure + rivalsLeisure))
+    }
+
     /// Service quality of a representative starter operation, used for
     /// pre-flight estimates where no route exists yet: a mid-comfort
     /// aircraft flying the reference frequency with as-yet-unproven
