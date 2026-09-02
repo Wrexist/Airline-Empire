@@ -732,6 +732,13 @@ extension Vocab {
             return move.airlineCollapsed
                 ? "\(move.name) collapsed — \(pair) is yours again (\(when))."
                 : "\(move.name) pulled out of \(pair) \(when) — the market is yours again."
+        case (.entered, .beforePlayerJoined):
+            // The rival was there first: run 121 read "entered your
+            // LHR–BER market 21 days ago" over a pair the player had
+            // walked into three weeks later (BUG-050).
+            return "\(move.name) was already flying \(pair) when you opened it (\(when))."
+        case (.left, .beforePlayerJoined):
+            return "\(move.name) dropped \(pair) \(when), before you opened it."
         case (.entered, .atPlayerAirport):
             return "\(move.name) opened \(pair) \(when) — an airport you serve."
         case (.left, .atPlayerAirport):

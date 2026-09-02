@@ -299,13 +299,47 @@ five-year campaigns above are the late-game figure.
 
 ## 8. Frames
 
-FRAMES_SECTION
+CI run 121 (commit 8a12d58, macOS job, iPhone simulator): 90 frames
+decoded with `scripts/decode-ci-screenshots.py`; every HORIZON-KEY frame
+and the London–Berlin campaign frames were looked at. Seed 2030, home
+Munich, the journey `HorizonArrivalUITests.testARivalComesToMunich`.
+
+| Frame | Key | Screen and what it says | Verdict |
+| --- | --- | --- | --- |
+| KEY-HZ-network-after-february | setup | **Routes, 1 Feb**: MUC–CAI (no aircraft yet), MUC–IST, MUC–LHR (load 100%); 3 routes, $0 month to date | OBSERVED — the February purchases and the two suggestions are on the board before the rival moves |
+| KEY-HZ1-home-before-the-world-moves | HORIZON-KEY-01 | **Home, 2030-03-02**: RIVALS *"SwiftJet added 3 routes this month"* — the world moving elsewhere; no card on the player's pairs | OBSERVED — a silent start: nothing on the player's markets yet |
+| KEY-HZ1-route-before-the-world-moves | HORIZON-KEY-01 | **MUC–IST, 2 Mar**: *"Nobody. This market is yours alone — for now."*; last full month $1.8M | OBSERVED |
+| KEY-HZ2-home-rival-entered | HORIZON-KEY-02 | **Home, 2030-03-04**: RIVALS (amber) *"PacificBlue entered your MUC–IST market yesterday."* | OBSERVED — the world moved first, on the pair the scan predicted (day 61) |
+| KEY-HZ3-route-morning-after-entry | HORIZON-KEY-03 | **MUC–IST, 4 Mar**: *"An even fight — 43% of today's passengers against 1 rival, mostly because their fare is lower"*; PacificBlue 2×/day, $142, 15% under you | OBSERVED — the split, the rival's offer and the reason on the route the day after |
+| KEY-HZ4-home-a-month-on | HORIZON-KEY-04 | **Home, 2030-04-03**: RIVALS (red) *"You are losing 1 of your 1 contested route — see why."* | OBSERVED |
+| KEY-HZ4-route-a-month-on | HORIZON-KEY-04 | **MUC–IST, 3 Apr**: *"You are losing this market — 39% … their fare is lower"*; PacificBlue 4×/day | OBSERVED — the rival has doubled its frequency in a month, as the twin measured |
+| KEY-HZ5-response-line | HORIZON-KEY-05 | the response line: *"They are cheaper. Another rotation keeps the money; matching the fare keeps the share."* | OBSERVED — BUG-049's sentence, both answers named |
+| KEY-HZ5-after-response | HORIZON-KEY-05 | Frequency stepper at **3×/day** after one tap | OBSERVED — the run's assertion missed it (a `staticTexts` query against a Stepper label); the frame shows the change took. Harness fix in the next run |
+| KEY-HZ6-route-after-response | HORIZON-KEY-06 | **MUC–IST, 17 Apr**: 3× round trips, load 97%, $1.2M this month, 40% against PacificBlue at 5×/day | OBSERVED — the rival keeps building; the player's third rotation is full |
+| KEY-HZ6-home-after-response | HORIZON-KEY-06 | **Home, 17 Apr**: *"You are losing 1 of your 1 contested route — see why."* | OBSERVED |
+| KEY-HZ6-world-hub-after-response | HORIZON-KEY-06 | **World, 17 Apr**: Competitors badge *"losing 1"* | OBSERVED |
+
+The London–Berlin campaign (`CampaignUITests`, seed 2039, home Stockholm),
+retargeted from London–Paris:
+
+| Frame | Screen and what it says | Verdict |
+| --- | --- | --- |
+| KEY-40-contested-market-row | route sheet from London: **BER Brandenburg** ≈1,670 passengers/day, 960 km, fare ≈ $117, *"1 airline already flies it"* | OBSERVED — the incumbent is declared before the player commits |
+| KEY-42-contested-route-on-entry | **LHR–BER, 1 Feb**: *"Contested — the market has not split a day between you yet."*; Aurora Atlantic (their hub) 3×/day, $146, 26% over you | OBSERVED |
+| KEY-43-home-rival-pressure | **Home, 9 Feb**: *"One of your routes is contested — an even fight so far."* | OBSERVED |
+| KEY-44-contested-route-after-a-week | **LHR–BER, 9 Feb**: $225k, *"An even fight — 52% … mostly because they fly more often"*; Aurora 5×/day, $133, 15% over you; *"Answer with frequency"* | OBSERVED — Aurora answered the entry with two rotations and a cut, as the twin measured |
+| KEY-45 / KEY-46 | **World**: Competitors *1 contested*; **Competitors**: 1 contested, 0 leading, 0 losing, 5 rivals flying; Aurora *"You compete on 1 market"* | OBSERVED. Defect: *"Aurora Atlantic entered your LHR–BER market 21 days ago"* — Aurora was flying the pair three weeks before the player opened it (BUG-050, fixed) |
+| KEY-47-rival-retreat-on-home | **Home, 2030-09-07** (fixture): *"SwiftJet pulled out of LHR–CDG yesterday — the market is yours again."* | OBSERVED. The journey then failed opening the route: the shared helper had been retargeted to Berlin while the fixture flies Paris. Harness fix in the next run |
+
+Run 121: Core 439 passed; UI 17 of 19 journeys passed. Both failures
+were in the harness, not the app, and the frames above are the evidence.
 
 ## 9. Bugs
 
 | ID | Priority | Root cause | Player impact | Status |
 | --- | --- | --- | --- | --- |
-| BUG-049 | P2 | the fare advice had one sentence and ignored the spare rotation the model already carried | told the player the answer that costs money and not the one that makes it | FIXED, TESTED (`MunichHorizonTests`); frame pending CI |
+| BUG-049 | P2 | the fare advice had one sentence and ignored the spare rotation the model already carried | told the player the answer that costs money and not the one that makes it | FIXED, TESTED (`MunichHorizonTests`), OBSERVED (run 121, KEY-HZ5-response-line) |
+| BUG-050 | P3 | a rival's move on a pair was read against the player's markets today, not at the move's time | "Aurora Atlantic entered your LHR–BER market 21 days ago" over a market the player walked into | FIXED (`RivalMove.Relevance.beforePlayerJoined`), TESTED (`CompetitionTests`); frame pending CI |
 | Finding: New York's arrival | — | ranking by passengers sent a turboprop operator into a pair it lost $277k a month on | the AE-038 world-initiated event was real on screen and irrational underneath; it no longer occurs | recorded in tasks/BUGS.md; twin and journey moved to Munich |
 | Finding: London–Paris | — | no rival flies the fee-dominated 350 km pair once markets are ranked by what an airframe sells | the AE-037 campaign fight had no incumbent | the fight is London–Berlin; twin re-pinned, journey retargeted |
 | TD-029 | debt | hub movement fees against a 70-seat cabin | the regional archetype has no profitable market anywhere | documented; economy decision |

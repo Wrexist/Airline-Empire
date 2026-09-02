@@ -155,8 +155,12 @@ public struct MarketCompetition: Equatable, Sendable {
 /// serves — the recent competitive history that matters to this airline.
 public struct RivalMove: Equatable, Sendable {
     public enum Relevance: Equatable, Sendable {
-        /// The pair is one of the player's own routes.
+        /// The pair is one of the player's own routes, and was when the
+        /// rival moved.
         case onPlayerMarket
+        /// The pair is one the player flies now but was not flying when
+        /// the rival moved: the player walked into the rival's market.
+        case beforePlayerJoined
         /// One end is an airport the player serves; no demand is shared.
         case atPlayerAirport
     }
@@ -433,6 +437,26 @@ extension GameState {
         var recent: [RivalMove] = []
         var enteredBy: [AirlineID: Int] = [:]
         var leftBy: [AirlineID: Int] = [:]
+        // The player's own record on each pair, so a rival's move can be
+        // read against whether the player was flying the pair at the time.
+        // Run 121's Competitors screen said "Aurora Atlantic entered your
+        // LHR–BER market 21 days ago" over a pair Aurora had flown for
+        // three weeks when the player opened it: the player entered
+        // Aurora's market, not the other way round (BUG-050).
+        var ownMoves: [Route.Market: [MarketMove]] = [:]
+        for move in world.marketMoves where move.airline == player.id {
+            ownMoves[move.market, default: []].append(move)
+        }
+        func playerWasFlying(_ market: Route.Market, at time: SimTime) -> Bool {
+            // No own move on record: the route predates the record.
+            guard let moves = ownMoves[market] else { return true }
+            if let last = moves.last(where: { $0.at.rawMinutes <= time.rawMinutes }) {
+                return last.kind == .entered
+            }
+            // Every own move came later; the first says whether the player
+            // was on the pair before it.
+            return moves.first?.kind == .left
+        }
         for move in world.marketMoves where move.airline != player.id
             && now.rawMinutes - move.at.rawMinutes <= window {
             switch move.kind {
@@ -441,7 +465,8 @@ extension GameState {
             }
             let relevance: RivalMove.Relevance?
             if myMarkets.contains(move.market) {
-                relevance = .onPlayerMarket
+                relevance = playerWasFlying(move.market, at: move.at)
+                    ? .onPlayerMarket : .beforePlayerJoined
             } else if myAirports.contains(move.origin) || myAirports.contains(move.destination) {
                 relevance = .atPlayerAirport
             } else {
@@ -453,7 +478,7 @@ extension GameState {
             // player knows as JFK–ORD, because the record keeps the rival's
             // own orientation (BUG-047).
             var origin = move.origin, destination = move.destination
-            if relevance == .onPlayerMarket,
+            if relevance != .atPlayerAirport,
                let ownRoute = mine.first(where: { $0.market == move.market }) {
                 origin = ownRoute.origin
                 destination = ownRoute.destination

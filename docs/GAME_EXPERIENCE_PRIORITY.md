@@ -63,10 +63,12 @@ not here.
   passenger ranking was. **FIXED** in the ranking (airframe-day revenue):
   Munich reached on day 61 in every seed, Singapore in year two.
   Stockholm and Barcelona still not within two years (TD-026's residual
-  is now an economy question: TD-029, TD-030). Frames pending CI.
+  is now an economy question: TD-029, TD-030). **OBSERVED** (run 121,
+  KEY-HZ2 … HZ6: PacificBlue arrives on Munich–Istanbul on 3 March).
 - **RIV-08 · ROUTES · Fare advice named the costly answer.** MEASURED
   (AE-039): matching a cheaper rival bought share and cost money; another
-  rotation earned more. **FIXED** (BUG-049). Frame pending CI.
+  rotation earned more. **FIXED** (BUG-049), **OBSERVED** (run 121,
+  KEY-HZ5-response-line).
 
 ## P1
 

@@ -439,9 +439,12 @@ final class CampaignUITests: AEUITestCase {
     }
 
 
-    /// The route detail for the contested London–Paris pair, from wherever
-    /// the tab was left.
-    private func openContestedRouteDetail() -> Bool {
+    /// The route detail for the contested London pair, from wherever the
+    /// tab was left. The campaign fights over London–Berlin; the retreat
+    /// fixture was saved from the older London–Paris fight, so the far end
+    /// is a parameter — run 121's retreat journey asked for a BER row in a
+    /// world that only ever flew CDG.
+    private func openContestedRouteDetail(farEnd: String = "BER") -> Bool {
         guard openAirlineSection("Routes") else { return false }
         // Both ends, not one: on 9 Feb the board sorts Stockholm–London
         // above London–Paris, and run 115's "any row with LHR in it" opened
@@ -450,15 +453,15 @@ final class CampaignUITests: AEUITestCase {
         let row = app.descendants(matching: .any)
             .matching(NSPredicate(
                 format: "identifier == %@ AND label CONTAINS %@ AND label CONTAINS %@",
-                "ae-route-row", "LHR", "BER")).firstMatch
+                "ae-route-row", "LHR", farEnd)).firstMatch
         guard row.waitForExistence(timeout: 8) else {
-            capture(Self.logPrefix + "NO-LHR-BER-ROW")
-            XCTFail("The Routes board shows no LHR–BER row after the fight was opened.")
+            capture(Self.logPrefix + "NO-LHR-\(farEnd)-ROW")
+            XCTFail("The Routes board shows no LHR–\(farEnd) row after the fight was opened.")
             return false
         }
         guard tapWhenReady(row) else {
-            capture(Self.logPrefix + "LHR-BER-ROW-NO-TAP")
-            XCTFail("The LHR–BER row did not accept a tap.")
+            capture(Self.logPrefix + "LHR-\(farEnd)-ROW-NO-TAP")
+            XCTFail("The LHR–\(farEnd) row did not accept a tap.")
             return false
         }
         let header = app.staticTexts["WHO ELSE FLIES THIS"]
@@ -535,7 +538,7 @@ final class CampaignUITests: AEUITestCase {
             rival pulled out of a market.
             """)
         checkpoint("47-rival-retreat-on-home")
-        guard openContestedRouteDetail() else { return }
+        guard openContestedRouteDetail(farEnd: "CDG") else { return }
         checkpoint("48-market-after-retreat")
     }
 

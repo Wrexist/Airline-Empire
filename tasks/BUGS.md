@@ -1280,6 +1280,29 @@ rotation keeps the money; matching the fare keeps the share."* Without
 one, the old sentence.
 **Regression cover:** `MunichHorizonTests` measures both responses; the
 Munich journey photographs the line (HORIZON-KEY-05).
+**Status:** FIXED — TESTED, OBSERVED (run 121, KEY-HZ5-response-line).
+
+## BUG-050 — A rival that was there first "entered your market"
+
+**Severity:** P3. A false sentence on the Competitors screen, and for a
+fortnight after the player opens a pair it can lead Home.
+**Found:** 2026-09-02, AE-039 — run 121's KEY-46 (Competitors, 9 Feb):
+*"Aurora Atlantic entered your LHR–BER market 21 days ago."* Aurora
+opened London–Berlin on 19 January; the player opened it on 1 February,
+into a market the route sheet had already marked *"1 airline already
+flies it"*. The player entered Aurora's market, not the other way round.
+**Root cause:** `WorldState.competitionSummary` classified a rival's move
+as `.onPlayerMarket` when the pair is one of the player's routes *now*;
+it never asked whether the player was flying the pair when the move
+happened. The world's move record carries the player's own entries and
+exits, so the question was answerable.
+**Fix layer:** Core read model. A rival's move on a pair the player was
+not yet flying is `RivalMove.Relevance.beforePlayerJoined`; it does not
+lead Home, and the Competitors screen reads *"Aurora Atlantic was already
+flying LHR–BER when you opened it (21 days ago)."* A rival's exit after
+the player joined stays a move on the player's market. Save format
+unchanged.
+**Regression cover:** `CompetitionTests.aRivalThereFirstIsNotAnEntryIntoYourMarket`.
 **Status:** FIXED — AUTHORED, TESTED; frame pending CI.
 
 ## Finding — New York's arrival was an artefact of ranking by passengers

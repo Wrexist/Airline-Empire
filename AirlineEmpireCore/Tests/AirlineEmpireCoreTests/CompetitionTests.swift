@@ -294,6 +294,47 @@ struct CompetitionTests {
 
     // MARK: The summary and its headline
 
+    @Test("A rival already flying the pair when you open it did not enter your market (BUG-050)")
+    func aRivalThereFirstIsNotAnEntryIntoYourMarket() throws {
+        let (engine, player) = try world(competitors: 0)
+        let catalog = engine.catalog
+        _ = engine.applyNow(FoundAirlineCommand(
+            airlineName: "Rival", kind: .ai, homeAirport: "LHR",
+            startingCash: Money.dollars(100_000_000),
+            aiProfile: AIProfile(archetype: .lowCost)))
+        let rival = engine.state.airlines.values.first { $0.name == "Rival" }!.id
+        _ = engine.applyNow(OpenRouteCommand(airline: rival, origin: "LHR", destination: "ARN",
+                                             dailyRoundTrips: 2, ticketPrice: Money.dollars(99)))
+        engine.advance(ticks: Fixtures.ticksPerDay * 3)
+
+        // The player walks into the rival's market three days later. Run
+        // 121's Competitors screen called that "Aurora Atlantic entered
+        // your LHR–BER market 21 days ago".
+        _ = try #require(openAndFly(engine, player: player, from: "ARN", to: "LHR",
+                                    fare: Money.dollars(150)))
+        var summary = try #require(engine.state.competitionSummary(catalog: catalog))
+        #expect(summary.contestedRoutes == 1)
+        let move = try #require(summary.recentMoves.first { $0.airline == rival })
+        #expect(move.kind == .entered)
+        #expect(move.relevance == .beforePlayerJoined)
+        #expect(move.origin == "ARN" && move.destination == "LHR",
+                "the pair reads the way the player flies it")
+        if case .rivalEnteredYourMarket = summary.headline {
+            Issue.record("a rival that was there first is not an entry into the player's market")
+        }
+
+        // Once the player is on the pair, the rival's exit is a move on
+        // the player's market.
+        let theirRoute = engine.state.routes(of: rival).first!.id
+        _ = engine.applyNow(CloseRouteCommand(airline: rival, route: theirRoute))
+        summary = try #require(engine.state.competitionSummary(catalog: catalog))
+        guard case .rivalLeftYourMarket(let exit) = summary.headline else {
+            Issue.record("expected an exit headline, got \(String(describing: summary.headline))")
+            return
+        }
+        #expect(exit.relevance == .onPlayerMarket)
+    }
+
     @Test("A rival entering your pair is the headline; leaving it is the next; a quiet world says nothing")
     func headlineFollowsTheRecord() throws {
         let (engine, player) = try world(competitors: 0)

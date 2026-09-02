@@ -54,7 +54,17 @@ entrant-pool arithmetic. Journeys: `HorizonArrivalUITests` (Munich,
 HORIZON-KEY-01 … 06) replaces the New York journey; the campaign fights
 Berlin.
 
-**Status:** Core MEASURED, TESTED; App AUTHORED; frames pending CI.
+Run 121 (commit 8a12d58): Core 439 passed; 17 of 19 journeys passed,
+and every HORIZON-KEY frame was looked at (docs/HORIZON_AUDIT.md §8).
+The two failures were harness queries — a Stepper label asked for as a
+static text, and the campaign's contested-route helper retargeted to
+Berlin while the retreat fixture flies Paris — both fixed. The frames
+also found BUG-050: a rival that was flying a pair before the player
+opened it read as having "entered your market"; fixed in the read model
+with `RivalMove.Relevance.beforePlayerJoined`.
+
+**Status:** Core MEASURED, TESTED; App OBSERVED (run 121); run 122 pending
+for the two harness fixes and BUG-050's sentence.
 
 ---
 

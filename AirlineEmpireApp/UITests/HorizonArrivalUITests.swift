@@ -130,7 +130,10 @@ final class HorizonArrivalUITests: AEUITestCase {
         if scrollUntil(increment, "the frequency stepper") {
             increment.tap()
             Thread.sleep(forTimeInterval: 1)
-            let three = app.staticTexts.matching(NSPredicate(
+            // The count lives on the Stepper's own label ("Frequency:
+            // 3×/day"), not on a static text: run 121 photographed the
+            // route at 3×/day and still failed a staticTexts query for it.
+            let three = app.descendants(matching: .any).matching(NSPredicate(
                 format: "label CONTAINS %@", "3×/day")).firstMatch
             XCTAssertTrue(three.waitForExistence(timeout: 6), "Tapping the frequency stepper did not take Munich–Istanbul to 3×/day.")
             checkpoint("HZ5-after-response")
