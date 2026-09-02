@@ -540,6 +540,12 @@ and `… 1825 …` whenever the twin's numbers move.
 
 ## TD-029 — The regional archetype has no profitable market at hub fees
 
+**RESOLVED 2026-09-02 (AE-040):** the cause was BUG-051, the movement fee
+not scaling with the aircraft, not the archetype. After the fix the
+turboprop has 374 profitable candidates of 542 worldwide (40 before), 11
+from Paris (0), and the regional rival is alive in 150 of 150 campaigns
+with earning routes (docs/REGIONAL_ARCHETYPE_AUDIT.md §5).
+
 **Symptom.** MEASURED (AE-039, `ae-rival-scan --horizon --profit`): with
 markets scored by what an airframe day keeps after the flight system's
 own costs, SwiftJet — the regional archetype, 70-seat turboprops at the
@@ -560,6 +566,14 @@ type. Any of them changes the player's economics on the same routes.
 Out of scope for a horizon phase.
 
 ## TD-030 — The profit ranking, measured and withheld
+
+**Re-measured 2026-09-02 (AE-040):** on the corrected economy the
+regional archetype functions on the profit basis (150 of 150 alive), but
+at the shipped horizon the basis reaches fewer player markets than the
+shipped one (31 world-initiated entries against 60 across 150 campaigns;
+Singapore's arrival does not happen). Still withheld; recommended as a
+phase of its own together with the horizon-24 measurement
+(docs/AE040_FEE_ECONOMY_REPORT.md §9, §16).
 
 `CompetitorAISystem.airframeDayValue(basis: .profit)` — the revenue
 basis less the flight system's costs — reaches the curated first start:

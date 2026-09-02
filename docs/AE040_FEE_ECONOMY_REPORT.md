@@ -109,7 +109,19 @@ of 30 alive with 4.0 routes (0.3 losing), fleet 9.3, fees 61%, direct
 **What changed?** Only the fee scale and the estimator's maintenance
 line. Its fleet, fare, geography and decision loop are as they were.
 
-OTHER_HOMES_SECTION
+**Every start, thirty campaigns each (MEASURED, `ae-rival-scan --rivals`):**
+
+| Start | Regional rival | Alive before → after | Routes (losing) | Fleet | Fees / revenue | Direct profit / month | Collapses in the cast |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stockholm | Paris | 28 → 30 | 1.7 (1.7) → 4.0 (0.3) | 3.0 → 9.2 | 103% → 61% | −$1.09M → +$1.08M | 2 → 0 |
+| Barcelona | Paris | 26 → 30 | 1.6 (1.6) → 4.0 (0.4) | 2.8 → 9.3 | 104% → 61% | −$1.07M → +$1.02M | 4 → 0 |
+| Munich | Paris | 24 → 30 | 1.5 (1.5) → 3.9 (0.3) | 2.7 → 9.0 | 102% → 60% | −$0.96M → +$1.11M | 6 → 0 |
+| New York | Chicago | 12 → 30 | 1.2 (0.4) → 3.9 (0.0) | 3.1 → 15.2 | 66% → 42% | +$0.05M → +$4.72M | 18 → 0 |
+| Singapore | Bangkok | 30 → 30 | 3.0 (0.0) → 3.0 (0.0) | 12.6 → 22.2 | 49% → 25% | +$2.92M → +$10.55M | 0 → 0 |
+
+Its own operating margin from Paris is still about −6% (routes earn;
+nine leases, payroll and overhead on four routes do not yet); from
+Chicago +12%, from Bangkok +30%.
 
 ## 6. Player parity
 
@@ -157,13 +169,52 @@ says what each end charges the aircraft's size and each passenger
 | Stockholm cast: conservative margin (regional jets) | 22% | 39% | +17 pts | MEASURED |
 | Stockholm cast: expansionist margin (regional jets) | 11% | 23% | +12 pts | MEASURED |
 | Stockholm cast: collapses (30 campaigns) | 2 | 0 | −2 | MEASURED |
-| Long-run balance battery | pass | BALANCE_RESULT | | |
+| Long-run balance battery (archetype parity, ten-year world, contested margins) | pass | pass | — | TESTED (450 tests) |
+| Expansionist fleet after two years (Stockholm cast) | 28 | 40 (the cap) | BUG-053 | MEASURED |
+| World-initiated entries, 150 campaigns, shipped ranking | 60 | 60 (Munich 30, Singapore 29, one more at Munich) | 0 | MEASURED |
 
-CAMPAIGN_RESULTS_SECTION
+The cast around the regional rival, Stockholm start: low-cost fees
+36% → 34%, premium 38% → 36%, conservative (regional jets) 42% → 25%
+with margin 22% → 39%, expansionist (regional jets) 32% → 19% with
+margin 11% → 22% and a fleet that now reaches the 40-airframe cap in two
+years (28 before) — the last because of BUG-053, found by this phase's
+re-run of the full suite: a rival holding an airframe it could not place
+returned from its decision slot before managing routes or growing, and
+SwiftJet's fourth turboprop at Osaka had nowhere to go, so it never
+answered a 40% undercut (`aiRespondsToUndercutting`). Fixed in the
+decision loop (a slot that placed nothing goes on), the suite is green at
+450 and the scans above are from the fixed build. Collapses across the
+150 campaigns: 30 → 0.
 
 ## 9. Profit-ranking re-evaluation (TD-030)
 
-PROFIT_RANKING_SECTION
+**WITHHELD.** Re-measured on the corrected economy across the same 150
+campaigns (`ae-rival-scan --profit --rivals`):
+
+1. *Does profit ranking now allow the regional archetype to function?*
+   Yes: alive in 150 of 150, fleet 13–23, margin 0% (Paris) to +31%
+   (Bangkok), net worth $125M–$219M — better than under the shipped
+   basis from Paris ($125M against $93M).
+2. *Does Stockholm become reachable?* No: 0 world-initiated entries in
+   30 campaigns at the shipped horizon of sixteen. AE-039 measured it as
+   reachable on this basis only at a horizon of 24.
+3. *Does Barcelona become reachable?* No: 0 of 30.
+4. *Does it improve rival economics?* For the regional archetype, yes
+   (above). For the rest, within a few points of the shipped basis.
+5. *Does it preserve long-term balance?* Not measured: the archetype
+   battery and the ten-year world were run on the shipped basis only,
+   and nothing ships on the profit basis.
+
+Against that, the shipped basis reaches more player markets: 60
+world-initiated entries across the 150 campaigns (Munich 30,
+Singapore 29) against 31 on the profit basis (Munich 30, Singapore 0).
+So the reason for withholding has changed — from "the regional archetype
+cannot function on it" (no longer true) to "it reaches fewer player
+markets at the shipped horizon" — and the combination AE-039 measured
+(profit basis at a horizon of 24, which reached Stockholm on day 187 of
+every seed) is now worth a phase of its own, with the balance battery
+run on that basis before anything ships. RECOMMENDED FOR A FUTURE PHASE
+as the evaluation; not shipped here.
 
 ## 10. Screenshots inspected
 
@@ -179,11 +230,47 @@ FRAMES_SECTION
 
 ## 12. Testing
 
-TESTING_SECTION
+- **Core:** 450 tests, all passing (`swift test`, 1,596 s on this
+  container), up from 441: nine new in `FeeEconomyTests` (scale,
+  once-per-arrival posting and category, two types on one pair, the
+  maintenance estimate against two years of checks, the whole estimate
+  against a year, the archetype's markets from Paris, the archetype in
+  the standard cast, long haul, the fee terms on the route card). No test
+  weakened; one new test's authored bound (a 60% fee share) was replaced
+  before the second run by the claims the fix makes (routes earn, the
+  network keeps money) and the measured 60–62% is reported.
+- **UI:** 19 journeys, unchanged in intent; the new fee-terms caption
+  appears on the route screen in the existing frames. CI_RESULT
+- **Campaign scans:** 150 campaigns before (five starts × thirty seeds,
+  the pre-fix binary from a worktree at the last commit), 150 after on
+  the shipped basis, 150 after on the profit basis — 450 two-year
+  campaigns; plus 40 single-route years × 2 frequencies × before/after
+  = 160 route-years, and 88 homes × 3 types of candidate evaluation
+  before and after.
+- **Balance batteries:** `archetypeParityAndSanity` (3 seeds × 5
+  archetypes × 4 years), `tenYearWorldRemainsStableAndContested`,
+  `contestedMarketsCompressMargins`, `leverageAmplifiesButDoesNotDominate`,
+  `fleetFlippingBleedsMoney`, `pricingHasRealConsequencesEndToEnd` — all
+  green on the shipped basis; not run on the profit basis.
+- **CI:** CI_RUNS
 
 ## 13. Validation matrix
 
-VALIDATION_SECTION
+| Claim | READ | MEASURED | TESTED | COMPILED | RUNTIME VALIDATED | OBSERVED | AUTHORED | NOT VALIDATED |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Fee pipeline: two movements + arrival passenger fee, once per arrival, one category | ✓ | ✓ (memo-level) | `feesArePostedOncePerArrival` | ✓ | ✓ (headless) | — | — | — |
+| Movement fee independent of aircraft (before) | ✓ | ✓ (40 routes, 542 candidates) | — | — | — | KEY-48 (run 122, before) | — | — |
+| Seat scale anchored at 180; narrowbody unchanged to the cent | ✓ | ✓ (route battery before/after) | `movementFeeScalesWithSeats`, `smallAircraftPayLessPerMovement` | ✓ | ✓ | — | — | — |
+| Estimator maintenance 9.8× the ledger (before), within 1.5% after | — | ✓ | `expectedMaintenanceMatchesTheLedger` | ✓ | ✓ | — | — | — |
+| Whole estimate within a fifth of the ledger | — | ✓ (3% of revenue) | `estimateMatchesTheLedgerOnActualPassengers` | ✓ | ✓ | — | — | — |
+| Regional archetype has markets from Paris | — | ✓ (11 of 16) | `regionalArchetypeHasViableMarketsFromParis` | ✓ | ✓ | — | — | — |
+| Regional rival keeps money in the standard cast | — | ✓ (30 campaigns) | `regionalRivalKeepsMoneyInTheStandardCast` | ✓ | ✓ | — | — | — |
+| Long haul not subsidised | — | ✓ | `longHaulIsNotSubsidised` | ✓ | ✓ | — | — | — |
+| Player parity | ✓ | ✓ (to the cent) | (structural: no owner branch) | — | ✓ | — | — | — |
+| The fee row's reason on the route screen | — | — | `routeCardCarriesTheFeeTerms` | parse + symbols | — | FRAMES_OBSERVED | ✓ | — |
+| Long-run balance (archetype battery, ten-year world) | — | — | ✓ (450 green) | ✓ | ✓ | — | — | — |
+| Regional-jet archetypes' margin shift is acceptable play | — | ✓ (+12–17 pts, under the 60% line) | — | — | — | — | — | ✓ a playtest question |
+| The profit ranking's safety | — | ✓ 150 campaigns (functions; reaches fewer markets) | — | — | — | — | — | balance battery on that basis not run; not shipped |
 
 ## 14. Remaining debt
 
@@ -205,8 +292,54 @@ VALIDATION_SECTION
 
 ## 15. Release impact
 
-RELEASE_IMPACT_SECTION
+- **Economy credibility:** improved, specifically. A 68-seat aircraft
+  no longer pays a 180-seat aircraft's landing charges; fee shares by
+  aircraft size now sit together (medians 0.43 / 0.40 / 0.38 for
+  turboprop / regional jet / narrowbody, from 0.82 / 0.64 / 0.38). What
+  is *not* improved and is now written down: the reference P&L's lines
+  are still out of proportion with the design (TD-031) and short haul at
+  hubs is still fee-bound for everyone.
+- **AI credibility:** the regional archetype functions — 30 of 30 alive
+  in the Stockholm cast with a positive network month, from 28 of 30 all
+  losing — and the AI's profit view of the world now predicts the ledger
+  within a few percent of revenue instead of charging ten times the
+  maintenance. The two regional-jet archetypes grew 12–17 margin points;
+  the balance line still holds them.
+- **Player fairness:** unchanged in principle (parity was exact before
+  and after) and better in practice: a player who buys the small aircraft
+  the game offers first now faces the same fee-per-seat as the rivals'
+  narrowbodies, and the route screen tells them what each end charges.
+- **Campaign depth:** more regional-aircraft routes in the world's
+  networks (SwiftJet's fleet 3 → 9 in two years from Stockholm); whether
+  that reads as a busier, more credible cast to a player is NOT VALIDATED.
 
 ## 16. ONE recommended next master prompt
 
-NEXT_PROMPT_SECTION
+**AE-041 — Profit versus revenue rival strategy, with the horizon at 24.**
+
+- **WHY NOW:** the one thing AE-039 could not ship — the profit basis —
+  was withheld for a reason this phase removed (the regional archetype
+  now functions on it: 150 of 150 alive, fleet 13–23) and one it did
+  not (it reaches fewer player markets at the shipped horizon: 31
+  world-initiated entries against 60). AE-039 measured that the profit
+  basis at a horizon of 24 reaches Stockholm on day 187 of every seed,
+  the one curated start no shipped configuration reaches. The question
+  is now a clean strategy question — which basis, at which horizon,
+  reaches the most player markets while keeping every battery green —
+  and every tool to answer it exists (`--profit`, `--limit`, `--rivals`,
+  the archetype battery).
+- **EVIDENCE:** this report §9; docs/HORIZON_AUDIT.md §4 (C at 24: 30
+  Stockholm entries); docs/REGIONAL_ARCHETYPE_AUDIT.md §5.
+- **OUT OF SCOPE:** fee levels and the reference P&L (TD-031), the fare
+  formula, new competitive UI, any player-targeting logic, notable
+  history on Home (EXP-08) and the UI journey runtime (both real, both
+  smaller than a rival strategy that decides whether the curated starts
+  ever meet the world).
+
+Not chosen: *Stockholm and Barcelona economy ordering* (that is this
+prompt, stated as the outcome rather than the mechanism); *notable
+history on Home* (P2, no new evidence); *UI journey runtime reduction*
+(52 minutes at the step cap on a slow runner — real, and the cheaper
+fix is a fixture for the Munich journey, worth doing inside whichever
+phase next touches the journeys); *release-readiness validation* (not
+until the world can reach the curated starts).

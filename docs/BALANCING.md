@@ -226,6 +226,15 @@ home, profit basis (`--candidates all`):*
 −17k before → −0.6k to −5.3k after; what remains is the 5–10% of
 scheduled rotations that do not fly and the fuel walk.
 
+*Campaigns, five starts × thirty seeds, the regional rival:* alive 120 →
+150 of 150; from Paris 1.7 routes all losing → 4.0 with 0.3 losing,
+fees 103% → 61% of revenue, direct −$1.09M → +$1.08M a month. Cast
+collapses 30 → 0. The regional-jet archetypes (conservative,
+expansionist) gained 12–17 margin points; the expansionist now reaches
+the 40-airframe cap in two years (28 before) after BUG-053 — an
+unplaceable airframe had frozen a rival's route management and growth —
+was found by the full-suite re-run and fixed. Battery: 450 tests green.
+
 
 
 **2026-08-27 — airport populations corrected (F-006).** All 80 values in

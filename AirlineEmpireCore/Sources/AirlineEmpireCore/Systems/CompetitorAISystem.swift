@@ -35,12 +35,16 @@ public struct CompetitorAISystem: SimulationSystem {
             return
         }
 
-        // 2. Put idle aircraft to work.
+        // 2. Put idle aircraft to work. A slot that placed an airframe is
+        // spent; one that could not — no market in range worth opening —
+        // goes on to the network, or an unplaceable airframe would freeze
+        // the airline's pricing for good (AE-040, BUG-053: SwiftJet's
+        // fourth turboprop at Osaka had nowhere to go, and the airline
+        // never answered an undercut on Tokyo–Osaka).
         if let idle = state.fleet(of: airlineID).first(where: {
             $0.isOperational && $0.assignedRoute == nil && $0.activeFlight == nil
-        }) {
-            employ(idle, airlineID: airlineID, profile: profile,
-                   state: &state, context: context, tuning: tuning)
+        }), employ(idle, airlineID: airlineID, profile: profile,
+                   state: &state, context: context, tuning: tuning) {
             return
         }
 
@@ -106,8 +110,10 @@ public struct CompetitorAISystem: SimulationSystem {
 
     // MARK: Network
 
+    /// Returns whether the airframe was put to work.
+    @discardableResult
     private func employ(_ aircraft: Aircraft, airlineID: AirlineID, profile: AIProfile,
-                        state: inout GameState, context: SimContext, tuning: AITuning) {
+                        state: inout GameState, context: SimContext, tuning: AITuning) -> Bool {
         // Prefer thickening an existing route that is running hot — but only
         // one whose assigned aircraft cannot already fly its frequency. A
         // route pinned at full load is hot forever, and a route at the
@@ -119,18 +125,17 @@ public struct CompetitorAISystem: SimulationSystem {
             $0.stats.loadFactor > tuning.expandLoadFactor && $0.stats.seatsFlown > 0
                 && routeNeedsAnotherAircraft($0, state: state, context: context)
         }), routeServableBy(aircraft, route: hot, state: state, context: context) {
-            issue(AssignAircraftToRouteCommand(airline: airlineID, route: hot.id,
-                                               aircraftID: aircraft.id),
-                  state: &state, context: context)
-            return
+            return issue(AssignAircraftToRouteCommand(airline: airlineID, route: hot.id,
+                                                      aircraftID: aircraft.id),
+                         state: &state, context: context)
         }
         // Otherwise open the best new market from an airport we sit at.
-        guard let spec = context.catalog.aircraftType(aircraft.typeCode) else { return }
+        guard let spec = context.catalog.aircraftType(aircraft.typeCode) else { return false }
         let airline = state.airlines[airlineID]!
         guard let candidate = bestMarket(from: aircraft.location, airline: airline,
                                          spec: spec, profile: profile,
                                          state: state, context: context, tuning: tuning)
-        else { return }
+        else { return false }
         let reference = DemandSystem.referenceFare(
             distanceKm: candidate.distanceKm, tuning: context.catalog.tuning.demand)
         let fare = Money(rounding: reference * profile.priceFactor)
@@ -148,7 +153,9 @@ public struct CompetitorAISystem: SimulationSystem {
                                                    aircraftID: aircraft.id),
                       state: &state, context: context)
             }
+            return true
         }
+        return false
     }
 
     /// One airport considered from where an airframe sits: scored, or the

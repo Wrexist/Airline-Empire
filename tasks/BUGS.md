@@ -1367,3 +1367,27 @@ estimator. The ledger is unchanged.
 **Regression cover:** `FeeEconomyTests.expectedMaintenanceMatchesTheLedger`
 (two years, within one check), `estimateMatchesTheLedgerOnActualPassengers`.
 **Status:** FIXED — AUTHORED; TESTED pending.
+
+## BUG-053 — An airframe the AI could not place froze its pricing for good
+
+**Severity:** P2. A rival with an idle aircraft and nowhere to put it
+stopped answering undercuts, pushing frequency and trimming losers —
+all of route management — until the aircraft found a market.
+**Found:** 2026-09-02, AE-040 — the full Core suite after the fee fix:
+`CompetitorAITests.aiRespondsToUndercutting` failed because its target,
+SwiftJet on Tokyo–Osaka, held its fare at $71.72 through three decision
+cycles of a 40% undercut. Diagnostic: the healthier archetype had bought
+a fourth turboprop that could reach nothing in its region it did not
+already fly, so every decision slot found an idle airframe, tried to
+employ it, and returned.
+**Root cause:** `CompetitorAISystem.decide` returned after *attempting*
+to employ an idle aircraft, whether or not the attempt placed it. Latent
+since Phase 10; reached only once an archetype could afford an aircraft
+with nowhere to go.
+**Fix layer:** Core AI. `employ` reports whether it placed the airframe;
+a slot that placed one is spent as before, a slot that could not goes on
+to route management and growth.
+**Regression cover:** `aiRespondsToUndercutting` (the failing case), the
+AI suites and campaign twins re-run green (27 tests), the full suite and
+the scans re-run after the change.
+**Status:** FIXED — TESTED.

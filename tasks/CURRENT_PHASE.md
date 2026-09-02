@@ -42,9 +42,21 @@ what it paid. `FleetEconomics.expectedMaintenancePerDay` — the fleet
 system's check rule integrated — replaces the estimator's hourly line.
 No level changed, no save-format change, no archetype or player branch.
 
-RESULTS_SECTION
+Measured after (docs/AE040_FEE_ECONOMY_REPORT.md §8): narrowbody rows
+unchanged to the cent; the turboprop's fee share halved; its profitable
+candidates 40 → 374 of 542 worldwide and 0 → 11 from Paris; across 150
+two-year campaigns the regional rival is alive in 150 (from 120), with
+four earning routes from Paris where it had two losing ones, and the
+cast's collapses fell from 30 to 0. The two regional-jet archetypes
+gained 12–17 margin points (correct by the rule; inside the battery's
+60% line). The re-run found BUG-053 — a rival holding an airframe it
+could not place stopped managing routes and growing — fixed in the
+decision loop. TD-030 re-measured and still withheld: the regional
+archetype now functions on the profit basis, but it reaches fewer player
+markets at the shipped horizon (31 entries against 60). Full Core suite
+450 green.
 
-**Status:** STATUS_LINE
+**Status:** Core MEASURED, TESTED; App AUTHORED (the fee-terms caption), parsed and symbol-checked; CI run pending for the frames.
 
 ---
 

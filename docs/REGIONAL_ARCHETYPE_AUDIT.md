@@ -104,8 +104,95 @@ At the archetype's homes, both rules: CDG NA70 11 profitable (best PRG
 
 ## 4. Two-year campaigns (MEASURED, `ae-rival-scan --rivals`, current rules)
 
-SCAN_BEFORE_SECTION
+`ae-rival-scan 730 2030-2059 HOME --rivals`: the scripted entrepreneur
+campaign (the same one the AE-038/039 sweeps ran) with the standard
+five-rival cast, thirty seeds per home, and at the end of each campaign
+every rival's state: routes and how many lost money in the last closed
+month, fleet, fees as a share of route revenue, direct operating profit,
+the airline's operating margin, net worth.
+
+**Stockholm start (the regional rival at Paris), thirty campaigns, current rules:**
+
+| Archetype | Alive | Routes (losing) | Fleet | Fees / route revenue | Direct profit / month | Margin (median) | Net worth |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| **regional** (SwiftJet, NA70) | 28 / 30 | 1.7 (1.7) | 3.0 | **103%** | **−$1.09M** | −48% | $29M |
+| lowCost (NA160) | 30 / 30 | 5.2 (0.0) | 20.2 | 36% | +$13.6M | −9% | $57M |
+| premium (NA160) | 30 / 30 | 2.0 (0.0) | 3.0 | 38% | +$4.8M | 29% | $160M |
+| conservative (AV90) | 30 / 30 | 3.0 (1.0) | 6.0 | 42% | +$4.0M | 22% | $158M |
+| expansionist (AV90) | 30 / 30 | 5.0 (0.0) | 28.0 | 32% | +$19.0M | 11% | $160M |
+
+Two collapses in thirty campaigns, both SwiftJet. Every SwiftJet route
+that existed at the end lost money in its last month; the airline's
+fees were larger than its revenue. Its fleet never grew past the three
+turboprops it could buy before the losses stopped it.
+
+**The other starts, thirty campaigns each, current rules — the regional rival only:**
+
+| Start | Regional rival at | Alive | Routes (losing) | Fleet | Fees / revenue | Direct profit / month | Margin | Net worth | Collapses in the cast |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stockholm | Paris | 28 / 30 | 1.7 (1.7) | 3.0 | 103% | −$1.09M | −48% | $29M | 2 |
+| Barcelona | Paris | 26 / 30 | 1.6 (1.6) | 2.8 | 104% | −$1.07M | −47% | $28M | 4 |
+| Munich | Paris | 24 / 30 | 1.5 (1.5) | 2.7 | 102% | −$0.96M | −49% | $25M | 6 |
+| New York | Chicago | **12 / 30** | 1.2 (0.4) | 3.1 | 66% | +$0.05M | −28% | $28M | **18** |
+| Singapore | Bangkok | 30 / 30 | 3.0 (0.0) | 12.6 | 49% | +$2.92M | +6% | $130M | 0 |
+
+From Chicago the archetype collapsed in eighteen of thirty campaigns —
+the turboprop's 1,450 km reaches seven markets from Chicago and all
+seven lose (§2). From Bangkok, where fees are $1,500 a movement and the
+pairs are 700–1,200 km, it lived and grew: the one home where the fee
+structure left it room. The other four archetypes were unaffected by
+where the regional rival was based; their figures are in §5's table.
 
 ## 5. After the fix
 
-AFTER_SECTION
+The same five starts, thirty seeds each, after the fee scale and the
+estimator's maintenance line (and BUG-053, found by the re-run: a rival
+with an airframe it could not place had stopped managing its routes),
+shipped ranking (revenue basis):
+
+| Start | Regional rival | Alive | Routes (losing) | Fleet | Fees / revenue | Direct profit / month | Margin | Net worth | Collapses in the cast |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Stockholm | Paris | 28 → **30** / 30 | 1.7 (1.7) → 4.0 (0.3) | 3.0 → 9.2 | 103% → 61% | −$1.09M → +$1.08M | −48% → −6% | $29M → $93M | 2 → 0 |
+| Barcelona | Paris | 26 → 30 | 1.6 (1.6) → 4.0 (0.4) | 2.8 → 9.3 | 104% → 61% | −$1.07M → +$1.02M | −47% → −7% | $28M → $92M | 4 → 0 |
+| Munich | Paris | 24 → 30 | 1.5 (1.5) → 3.9 (0.3) | 2.7 → 9.0 | 102% → 60% | −$0.96M → +$1.11M | −49% → −6% | $25M → $92M | 6 → 0 |
+| New York | Chicago | **12 → 30** | 1.2 (0.4) → 3.9 (0.0) | 3.1 → 15.2 | 66% → 42% | +$0.05M → +$4.72M | −28% → +12% | $28M → $157M | 18 → 0 |
+| Singapore | Bangkok | 30 → 30 | 3.0 (0.0) → 3.0 (0.0) | 12.6 → 22.2 | 49% → 25% | +$2.92M → +$10.55M | +6% → +30% | $130M → $215M | 0 → 0 |
+
+The airline's own operating margin from Paris is still around −6%: its
+routes earn, and the leases, payroll and overhead of a nine-aircraft
+airline on four routes eat it. That is the archetype's economics as
+designed (the cheapest used aircraft, no leases, no debt beyond 40%),
+not the fee structure; from Chicago and Bangkok it is profitable.
+
+**The rest of the cast, Stockholm start, before → after:**
+
+| Archetype | Fleet | Fees / revenue | Direct profit / month | Margin |
+| --- | ---: | ---: | ---: | ---: |
+| lowCost (NA160, ×0.9) | 20.2 → 21.6 | 36% → 34% | $13.6M → $15.5M | −9% → −6% |
+| premium (NA160) | 3.0 → 3.7 | 38% → 36% | $4.8M → $5.9M | 29% → 32% |
+| conservative (AV90, ×0.49) | 6.0 → 8.7 | 42% → 25% | $4.0M → $8.4M | 22% → 39% |
+| expansionist (AV90) | 28.0 → 40.0 | 32% → 19% | $19.0M → $32.6M | 11% → 22% |
+
+The two regional-jet archetypes gained twelve to seventeen margin points
+— correct by the rule (their 88-seat cabins were paying a narrowbody's
+movements) and the largest shift outside the regional archetype itself.
+The expansionist's fleet reached the 40-airframe cap in two years where
+it had stopped at 28: BUG-053 — an unplaceable airframe had also frozen
+its growth step. The battery's 60% margin line, the survival floor and
+the six-times spread all hold (`archetypeParityAndSanity`, 450 tests
+green); the world-initiated entries the AE-039 ranking produced are
+unchanged (Munich 30 of 30 on Munich–Istanbul, Singapore 29 of 30 on
+Jakarta–Singapore, Stockholm, Barcelona and New York 0).
+
+**Under the withheld profit ranking** (`--profit`, same five starts):
+the regional rival is alive in 150 of 150 campaigns with a fleet of
+13–23 and a margin of 0% (Paris) to +31% (Bangkok) — the archetype
+functions on the basis that AE-039 found empty. World-initiated entries:
+Munich 30 (Munich–Istanbul), everything else 0 — Singapore's
+Jakarta–Singapore arrival (29 under the revenue basis) does not happen,
+and Stockholm and Barcelona are still not reached at the shipped horizon
+of sixteen, as AE-039 measured (they were reached only at 24). The
+archetype battery on the profit basis was not run: nothing ships on it.
+Verdict: TD-030 stays WITHHELD; the reason has changed from "the
+regional archetype cannot function on it" to "it reaches fewer player
+markets than the shipped basis at the shipped horizon".
