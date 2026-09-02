@@ -58,8 +58,14 @@ Competitors screen's position strip, contested-route link and
 pressure-ordered rivals; the map hint. Three defects the frames found are
 fixed (a grounded rival read as sharing an airport; the morning of entry
 read as "losing at 0%"; a rival's expansion outranked the player's own
-fight on Home). UI: 17 of 18 journeys green in run 113; the campaign's
-last step is the identifier query run 114 replaces. Core 429/429.
+fight on Home). UI: 17 of 18 journeys green in run 113, the campaign
+stopping on its own identifier query with the card in frame; run 114
+(16 of 18 green, KEY-43 now showing the player's own fight leading Home)
+was cut by the macOS job's 45-minute cap with the campaign and the
+flight journey still running — both "failures" carry the cancellation's
+timestamp. The cap is 60 minutes, CI now prints assertion texts from the
+result bundle, and the campaign carries on past a failed card query so
+KEY-44 … 46 get photographed. Core 429/429 on Linux and on CI.
 
 ---
 

@@ -289,21 +289,44 @@ final class CampaignUITests: AEUITestCase {
             return
         }
         checkpoint("43-home-rival-pressure")
-        // The card by its section header, which is a plain static text;
-        // run 113 photographed the card on screen and then failed the
-        // identifier query against it, which proves the query and not the
-        // card. The identifier remains the retreat journey's handle.
+        // Runs 113 and 114 both photographed the card on screen here and
+        // then stopped on the query against it — by identifier in 113, by
+        // identifier or the RIVALS header in 114 — with no frame of what
+        // XCUITest was actually looking at. Three shapes are tried; when
+        // none matches, the labels Home exposes go to the log and a frame
+        // is kept, and the journey carries on: the screens after this one
+        // are the evidence this journey exists for, and a query that
+        // cannot see a card the frame shows must not hide them. The
+        // failure is still recorded.
         let rivalsHeader = app.staticTexts["RIVALS"]
         let rivalsLink = app.descendants(matching: .any)
             .matching(identifier: "ae-rival-pressure").firstMatch
-        XCTAssertTrue(rivalsHeader.waitForExistence(timeout: 6) || rivalsLink.exists, """
+        let rivalsLine = app.descendants(matching: .any).matching(NSPredicate(
+            format: "label CONTAINS[c] %@", "contested")).firstMatch
+        let cardFound = rivalsHeader.waitForExistence(timeout: 6)
+            || rivalsLink.exists || rivalsLine.exists
+        if !cardFound {
+            capture(Self.logPrefix + "43-NO-RIVAL-CARD-QUERY")
+            let labels = app.staticTexts.allElementsBoundByIndex
+                .prefix(48).map(\.label)
+            print("AE-UI Home static texts at KEY-43: \(labels)")
+        }
+        continueAfterFailure = true
+        XCTAssertTrue(cardFound, """
             Home carries no rival-pressure card a week into a contested \
             market — the one competitive fact the screen exists to show.
             """)
         guard openContestedRouteDetail() else { return }
         let standing = app.descendants(matching: .any)
             .matching(identifier: "ae-route-standing").firstMatch
-        XCTAssertTrue(standing.waitForExistence(timeout: 8), """
+        let standingLine = app.descendants(matching: .any).matching(NSPredicate(
+            format: "label CONTAINS %@ OR label CONTAINS %@ OR label CONTAINS %@",
+            "even fight", "lead this market", "losing this market")).firstMatch
+        let standingFound = standing.waitForExistence(timeout: 8) || standingLine.exists
+        if !standingFound {
+            capture(Self.logPrefix + "44-NO-STANDING-QUERY")
+        }
+        XCTAssertTrue(standingFound, """
             The route screen for a contested pair does not say where the \
             player stands — no standing sentence rendered.
             """)

@@ -278,9 +278,38 @@ card by identifier and stopped, with the card on screen in the frame. The
 retreat journey's identical query passed, so the difference is the card's
 variant (a destination-closure link versus a value link). The assertion
 now accepts the card's **RIVALS** section header, a plain static text.
-Frames KEY-44 … 46 (the route a week on, the World hub and the Competitors
-screen during the fight) are pending run 114; the same screens are
-OBSERVED from the retreat and late-game saves.
+
+### Run 114 (commit 1ccfeea) — 69 frames decoded, every one looked at
+
+Cancelled by the macOS job's 45-minute cap with the UI pass still
+running: 16 of 18 journeys had passed, and the two reported as failed
+carry the cancellation's own timestamp — the campaign at 1,099 s (run 113
+stopped on its assertion at 839 s) and the flight journey at 447 s (171 s
+and green in run 113). Every journey on that runner took 1.3–2× its run-113
+time, so both were killed mid-flight, not failed on an assertion.
+Core on CI: 429 tests passed.
+
+| Frame | What it showed | Verdict |
+| --- | --- | --- |
+| KEY-42-contested-route-on-entry | LHR–CDG on 1 Feb, the two incumbents at their pre-response offers | **OBSERVED**; the frame that run 113 read "losing at 0%" from now carries the entry-day rule — the sentence is the too-early one |
+| KEY-43-home-rival-pressure | **Home, 2030-02-09, $6.2M**: Next moves (2 idle aircraft; ARN→CDG, ARN→IST "no competition yet"), then **RIVALS**: *"One of your routes is contested — an even fight so far."*, pulse 100% load, $1.3M month to date, fleet 5, routes 4 | **OBSERVED** COMP-03/04: the reordered headline — the player's own fight now leads Home a week after entry, where run 113 led with SwiftJet's building |
+| KEY-47, KEY-48 | The retreat save, as run 113 | **OBSERVED** again, green |
+| KEY-50 … 53 | The late-game save, as run 113 | **OBSERVED** again, green |
+| KEY-80-route-with-aircraft | ARN–LHR on 1 Jan, "Nobody. This market is yours alone — for now." under WHO ELSE FLIES THIS, the leased PA-184 assigned | **OBSERVED**; the uncontested wording of the same section |
+| KEY-01 … 24, 60 … 97, B0 … B3 | Every other journey's frames | green, inspected for regressions: none |
+
+What changed for run 115: the macOS job's cap is 60 minutes with the
+measured step times in the workflow; a step prints each result bundle's
+assertion texts into the log (the xcodebuild log names the test and its
+duration and nothing else, which is why runs 113 and 114 could not say
+*which* query failed); the campaign after KEY-43 tries the header, the
+identifier and the headline's text, keeps a frame and the labels Home
+exposes when none matches, and carries on to KEY-44 … 46 with the failure
+recorded rather than stopping; the flight journey keeps one frame of the
+map before it starts the clock. Frames KEY-44 … 46 (the route a week on,
+the World hub and the Competitors screen during the fight) are still
+pending; the same screens are OBSERVED from the retreat and late-game
+saves.
 
 ## 9. Bugs found
 
