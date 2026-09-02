@@ -1008,7 +1008,10 @@ class AEUITestCase: XCTestCase {
                 format: "label CONTAINS %@ AND label CONTAINS %@", home.code, home.city)).firstMatch
             guard require(row, "the \(home.code) row in the home picker", timeout: 8) else { return false }
             row.tap()
-            let chosen = app.staticTexts[home.city]
+            // The choice card is one button whose label is its whole text,
+            // so the city may be a button label rather than a static text.
+            let chosen = app.descendants(matching: .any).matching(NSPredicate(
+                format: "label CONTAINS %@ AND label CONTAINS %@", home.city, home.code)).firstMatch
             if !chosen.waitForExistence(timeout: 6) {
                 capture(Self.logPrefix + "HOME-NOT-CHOSEN-\(home.code)")
                 XCTFail("Picking \(home.code) did not put \(home.city) on the home card.")
