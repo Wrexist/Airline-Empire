@@ -415,9 +415,14 @@ final class CampaignUITests: AEUITestCase {
     /// the tab was left.
     private func openContestedRouteDetail() -> Bool {
         guard openAirlineSection("Routes") else { return false }
+        // Both ends, not one: on 9 Feb the board sorts Stockholm–London
+        // above London–Paris, and run 115's "any row with LHR in it" opened
+        // ARN–LHR — the frame it kept says "Nobody. This market is yours
+        // alone" under a route that was never contested.
         let row = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "identifier == %@ AND label CONTAINS %@",
-                                  "ae-route-row", "LHR")).firstMatch
+            .matching(NSPredicate(
+                format: "identifier == %@ AND label CONTAINS %@ AND label CONTAINS %@",
+                "ae-route-row", "LHR", "CDG")).firstMatch
         guard row.waitForExistence(timeout: 8) else {
             capture(Self.logPrefix + "NO-LHR-CDG-ROW")
             XCTFail("The Routes board shows no LHR row after the fight was opened.")

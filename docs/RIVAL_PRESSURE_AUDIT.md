@@ -311,6 +311,31 @@ the World hub and the Competitors screen during the fight) are still
 pending; the same screens are OBSERVED from the retreat and late-game
 saves.
 
+### Run 115 (commit 2a71c04) — 85 frames decoded, every one looked at
+
+Finished inside the 60-minute cap (53 minutes end to end). 17 of 18
+journeys green, the flight journey among them (264 s; run 114's red was
+the cap, as read). The campaign carried on past its one failed
+assertion, which the new step names in the log: *"The route screen for a
+contested pair does not say where the player stands"* — and its frame
+says why: the journey opened the wrong route. Core on CI: 429 passed.
+
+| Frame | What it showed | Verdict |
+| --- | --- | --- |
+| KEY-42-contested-route-on-entry | **LHR–CDG on 1 Feb**, "Too new to judge"; **WHO ELSE FLIES THIS**: *"Contested — the market has not split a day between you yet."*, `SwiftJet · their hub · 3×/day · reputation 69% · 52% of today · $65 · same as you`, `Aurora Atlantic · their hub · 4×/day · reputation 77% · 48% of today · $74 · 16% over you` | **OBSERVED** COMP-01: the entry-day rule on screen — no "losing at 0%", the incumbents' offers before they answer |
+| KEY-43-home-rival-pressure | **Home, 2030-02-09**: **RIVALS** *"One of your routes is contested — an even fight so far."* between Next moves and the pulse | **OBSERVED** COMP-03: the player's own fight leads Home |
+| KEY-44-NO-STANDING-QUERY / KEY-44 | **ARN–LHR on 9 Feb** — Stockholm–London, $532k this month, "Earning — aircraft are flying 100% full", 1,343 wanting to fly, *"Nobody. This market is yours alone — for now."* | Harness defect: the row query took any row containing LHR and the board sorts Stockholm–London first a week on. Fixed (both codes). The uncontested wording of the section, OBSERVED as a by-product |
+| KEY-45-world-hub-with-competition | **World hub, 9 Feb**: Competitors badged **"1 contested"** with *"One of your routes is contested — an even fight so far."*; World events "1 active · Now: Tourism boom in Africa"; Progression "83% to next era" | **OBSERVED** COMP-06 during the fight, not from a save |
+| KEY-46-competitors-screen | Position strip **1 contested / 0 leading / 0 losing / 5 rivals flying**; **WHERE YOU ARE FIGHTING: LHR–CDG · even · 31%**; **SwiftJet** (Regional, 4 aircraft, 3 routes, rep 71%) *"You compete on 1 market."*, "This month: opened 2 routes." — CDG–BCN 8 days ago, CDG–MUC 22 days ago, "an airport you serve"; **Aurora Atlantic** (Premium, 2 aircraft, 2 routes, rep 78%) *"You compete on 1 market."*, LHR–MUC 21 days ago | **OBSERVED** COMP-02 and COMP-06 in one frame: who, where, what they did and when, and the market the player shares with each |
+| KEY-47, 48, 50 … 53 | The retreat and late-game saves, as runs 113–114 | **OBSERVED** again, green |
+| KEY-80b-map-before-the-clock, 81, 82 | The flight journey's map before and during the clock; an aircraft in the air | green; run 114's red confirmed as the cap |
+| KEY-01 … 24, 60 … 97, B0 … B3 | Every other journey's frames | green, inspected for regressions: none |
+
+Still pending a run: **KEY-44 on the right route** — London–Paris a week
+after entry, in the campaign. The same screen eight months on is
+OBSERVED from the retreat save (KEY-48: the standing, the share, the
+rival's twenty rotations, the response line).
+
 ## 9. Bugs found
 
 BUG-042 (rival thickens a full route forever), BUG-043 (cast never near the

@@ -65,7 +65,13 @@ was cut by the macOS job's 45-minute cap with the campaign and the
 flight journey still running — both "failures" carry the cancellation's
 timestamp. The cap is 60 minutes, CI now prints assertion texts from the
 result bundle, and the campaign carries on past a failed card query so
-KEY-44 … 46 get photographed. Core 429/429 on Linux and on CI.
+KEY-44 … 46 get photographed. Run 115 (53 minutes, 17 of 18 green,
+flight journey back to green): the World hub's "1 contested" line and
+the Competitors screen during the fight (SwiftJet's two openings at
+Paris, Aurora's at London, LHR–CDG even at 31%) are OBSERVED; the one
+red was the journey opening Stockholm–London instead of London–Paris
+(row query matched the first LHR row; fixed to require both codes).
+Core 429/429 on Linux and on CI.
 
 ---
 
