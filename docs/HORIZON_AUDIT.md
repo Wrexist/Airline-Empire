@@ -334,12 +334,24 @@ retargeted from London–Paris:
 Run 121: Core 439 passed; UI 17 of 19 journeys passed. Both failures
 were in the harness, not the app, and the frames above are the evidence.
 
+CI run 122 (commit 44bfbca): Core 441 passed, release build clean; UI
+19 of 19 journeys passed (the Munich journey in 1,188 s, the campaign in
+1,107 s, on a runner that took the UI step to 52 minutes). The frames
+that changed:
+
+| Frame | Screen and what it says | Verdict |
+| --- | --- | --- |
+| KEY-HZ5-after-response | **MUC–IST, 3 Apr**: *Frequency: 3×/day* after one tap on the stepper; direct operating profit $137k this month | OBSERVED — the assertion now reads the Stepper's label |
+| KEY-46-competitors-screen | **Competitors, 9 Feb**: Aurora Atlantic *"was already flying LHR–BER when you opened it (21 days ago)."* | OBSERVED — BUG-050's sentence; the entry no longer claims the player's market |
+| KEY-47-rival-retreat-on-home | **Home, 2030-09-07**: *"SwiftJet pulled out of LHR–CDG yesterday — the market is yours again."* | OBSERVED |
+| KEY-48-market-after-retreat | **LHR–CDG, 7 Sep**: *"Losing money — airport fees take 96% of the revenue"* (−$17k so far, −$94k last month); *"An even fight — 51% … mostly because they fly more often"*; Aurora Atlantic 20×/day at $71 | OBSERVED — the fixture's London–Paris fight after the retreat; the fee line is TD-029 on screen |
+
 ## 9. Bugs
 
 | ID | Priority | Root cause | Player impact | Status |
 | --- | --- | --- | --- | --- |
 | BUG-049 | P2 | the fare advice had one sentence and ignored the spare rotation the model already carried | told the player the answer that costs money and not the one that makes it | FIXED, TESTED (`MunichHorizonTests`), OBSERVED (run 121, KEY-HZ5-response-line) |
-| BUG-050 | P3 | a rival's move on a pair was read against the player's markets today, not at the move's time | "Aurora Atlantic entered your LHR–BER market 21 days ago" over a market the player walked into | FIXED (`RivalMove.Relevance.beforePlayerJoined`), TESTED (`CompetitionTests`); frame pending CI |
+| BUG-050 | P3 | a rival's move on a pair was read against the player's markets today, not at the move's time | "Aurora Atlantic entered your LHR–BER market 21 days ago" over a market the player walked into | FIXED (`RivalMove.Relevance.beforePlayerJoined`), TESTED (`CompetitionTests`), OBSERVED (run 122, KEY-46) |
 | Finding: New York's arrival | — | ranking by passengers sent a turboprop operator into a pair it lost $277k a month on | the AE-038 world-initiated event was real on screen and irrational underneath; it no longer occurs | recorded in tasks/BUGS.md; twin and journey moved to Munich |
 | Finding: London–Paris | — | no rival flies the fee-dominated 350 km pair once markets are ranked by what an airframe sells | the AE-037 campaign fight had no incumbent | the fight is London–Berlin; twin re-pinned, journey retargeted |
 | TD-029 | debt | hub movement fees against a 70-seat cabin | the regional archetype has no profitable market anywhere | documented; economy decision |

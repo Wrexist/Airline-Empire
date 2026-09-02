@@ -63,8 +63,10 @@ also found BUG-050: a rival that was flying a pair before the player
 opened it read as having "entered your market"; fixed in the read model
 with `RivalMove.Relevance.beforePlayerJoined`.
 
-**Status:** Core MEASURED, TESTED; App OBSERVED (run 121); run 122 pending
-for the two harness fixes and BUG-050's sentence.
+Run 122 (commit 44bfbca): Core 441 passed, release build clean, 19 of
+19 journeys passed; BUG-050's sentence photographed (KEY-46).
+
+**Status:** DONE — Core MEASURED, TESTED; App OBSERVED (runs 121 and 122).
 
 ---
 

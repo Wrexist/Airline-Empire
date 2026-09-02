@@ -1303,7 +1303,8 @@ flying LHR–BER when you opened it (21 days ago)."* A rival's exit after
 the player joined stays a move on the player's market. Save format
 unchanged.
 **Regression cover:** `CompetitionTests.aRivalThereFirstIsNotAnEntryIntoYourMarket`.
-**Status:** FIXED — AUTHORED, TESTED; frame pending CI.
+**Status:** FIXED — TESTED, OBSERVED (run 122, KEY-46: *"Aurora Atlantic
+was already flying LHR–BER when you opened it (21 days ago)."*).
 
 ## Finding — New York's arrival was an artefact of ranking by passengers
 
