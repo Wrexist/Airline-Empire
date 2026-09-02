@@ -71,7 +71,15 @@ the Competitors screen during the fight (SwiftJet's two openings at
 Paris, Aurora's at London, LHR–CDG even at 31%) are OBSERVED; the one
 red was the journey opening Stockholm–London instead of London–Paris
 (row query matched the first LHR row; fixed to require both codes).
-Core 429/429 on Linux and on CI.
+Run 116 (36 minutes, 17 of 18 green): KEY-44 OBSERVED on London–Paris
+— "An even fight — 31% … mostly because they fly more often", SwiftJet
+at 4×/day a week after entry — so every COMP state is now photographed
+from the live campaign or a save. Its one red found BUG-045: the guided
+route sheet from Home could present before its suggestion landed and
+open empty, and the campaign opened Stockholm–Tokyo from it (bare all
+spring). Fixed with item-driven presentation; `NextMovesServabilityTests`
+pins that the card's ranking was never the problem. Core 430/430 on
+Linux; run 117 dispatched.
 
 ---
 

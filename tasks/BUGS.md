@@ -1162,5 +1162,40 @@ the standing or the cause.
 **Regression cover:** `CompetitionTests` (11), `RivalPressureCampaignTests`
 (the seed-2039 fight, day by day), and the campaign UI journey's COMP
 checkpoints.
-**Status:** FIXED in Core (TESTED); App AUTHORED, awaiting the CI run's
-frames — see docs/RIVAL_PRESSURE_AUDIT.md §8 for what each frame showed.
+**Status:** FIXED — TESTED in Core, **OBSERVED** on every screen (runs
+112–116: the route on entry and a week on, Home, the World hub, the
+Competitors screen, the retreat and the late game — see
+docs/RIVAL_PRESSURE_AUDIT.md §8 for what each frame showed).
+
+## BUG-045 — The guided route sheet could open empty
+
+**Severity:** P1. Home's strongest guidance surface — tap a suggested
+market, get its route sheet — sometimes handed the player a blank sheet
+instead: From their home, nothing picked, the whole ranked list.
+**Found:** 2026-09-02, AE-037 — run 116's `FEB-ROUTE-SHEET-STUCK-1` frame,
+read against `KEY-32`: Home on 1 Feb offered ARN → CDG and ARN → IST, the
+journey tapped the first, and the sheet that came up had no destination.
+The route it eventually opened was Stockholm–Tokyo, 8,168 km, for a fleet
+of 5,700 km narrowbodies; it sat bare through March. Run 112's
+`FEB-ROUTE-SHEET-STUCK-1` was the same defect, then read as harness
+flakiness.
+**Root cause:** `DashboardView` presented the sheet with
+`.sheet(isPresented:)` driven by a Bool set in the same statement as a
+separate optional `guidedRoute`, and the sheet's body did
+`if let guidedRoute … else OpenRouteSheet()`. SwiftUI can evaluate the
+sheet content with the optional still nil on the presentation that flips
+the Bool, and the else branch renders a plain sheet. A deliberate fallback
+made the race invisible.
+**Why nothing caught it:** the plain sheet is a legitimate screen, so
+nothing on it was wrong; the journey photographed it as "stuck" and moved
+on; Core never sees SwiftUI presentation.
+**Fix layer:** App. `.sheet(item:)` on the optional itself, with a private
+`Identifiable` wrapper — a sheet that cannot present without its value.
+The else branch is gone.
+**Regression cover:** the campaign journey's February (two suggestion
+taps, `FEB-*` frames on any miss) and its "no bare routes at the end of
+February" assertion, which is what failed in run 116.
+`NextMovesServabilityTests` pins the other half of the diagnosis: the
+card's ranking from Stockholm on 1 Feb is all within the fleet's reach,
+so the unflyable route was the sheet's doing, not the card's.
+**Status:** FIXED — AUTHORED, parse-checked; awaiting run 117's frames.

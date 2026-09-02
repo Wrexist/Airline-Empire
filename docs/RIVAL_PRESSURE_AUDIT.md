@@ -331,10 +331,29 @@ says why: the journey opened the wrong route. Core on CI: 429 passed.
 | KEY-80b-map-before-the-clock, 81, 82 | The flight journey's map before and during the clock; an aircraft in the air | green; run 114's red confirmed as the cap |
 | KEY-01 … 24, 60 … 97, B0 … B3 | Every other journey's frames | green, inspected for regressions: none |
 
-Still pending a run: **KEY-44 on the right route** — London–Paris a week
-after entry, in the campaign. The same screen eight months on is
-OBSERVED from the retreat save (KEY-48: the standing, the share, the
-rival's twenty rotations, the response line).
+### Run 116 (commit 2e41fcf) — 83 frames decoded, every one looked at
+
+36 minutes end to end; 17 of 18 journeys green. The campaign reached the
+Regional era and failed one assertion, named by the log: *"February ends
+with 1 of 4 routes having no aircraft to fly them."* Core on CI: 429.
+
+| Frame | What it showed | Verdict |
+| --- | --- | --- |
+| KEY-44-contested-route-after-a-week | **LHR–CDG on 9 Feb**: $5,577 this month, "Earning — aircraft are flying 100% full", load 100%, punctuality 88%, 2,537 wanting to fly today; **WHO ELSE FLIES THIS**: *"An even fight — 31% of today's passengers against 2 rivals, mostly because they fly more often."*, the share bar (you 31%, 8,175 wanted to fly this pair), `SwiftJet · their hub · 4×/day · reputation 71% · 36% of today · $65 · same as you` | **OBSERVED** COMP-03 and COMP-04 in the campaign itself: SwiftJet's answer (3× → 4×) a week after entry, the standing and the why. The last pending frame |
+| KEY-32-month-two-home | **Home, 2030-02-01, $60.4M**: Next moves *"Strong open markets from your bases: ARN → CDG · Paris ≈975/day · 1,539 km · no competition yet; ARN → IST · Istanbul ≈806/day"*; **RIVALS**: *"SwiftJet added 3 routes this month, at an airport you serve."*; fleet 2, routes 2 | **OBSERVED** COMP-02 on Home in the campaign (the `rivalExpanding` headline, in a month with no fight yet). The suggestions are flyable |
+| KEY-FEB-ROUTE-SHEET-STUCK-1 | The sheet that came up from tapping ARN → CDG: **"Open a route", From ARN, nothing selected**, the ranked list — LHR "1 airline already flies it", CDG "Nobody flies this yet", …, HND "Beyond this era's aircraft — a route for a later fleet" | **Defect, BUG-045**: the guided sheet presented before its suggestion landed and fell to its plain-sheet branch; the journey's next tap opened Tokyo from it |
+| KEY-32b-network-after-february | Routes board on 9 Feb: **4 routes · 3 earning · 1 no aircraft**; `ARN–HND 2×/day load 0% $729 no aircraft`, ARN–CAI $715k, ARN–LHR $532k, LHR–CDG $5,577 | The consequence of the empty sheet: an 8,168 km route in a 5,700 km fleet, bare |
+| KEY-BARE-ROW-TAP/GONE | ARN–HND's detail: "No aircraft assigned, so this route is not flying", "Nobody. This market is yours alone — for now." | harness diagnostics; nothing could be assigned because nothing could fly it |
+| KEY-36-era-home, 37 | The Regional era arrives with three routes earning | **OBSERVED** again |
+| KEY-42, 43, 45, 46, 47, 48, 50 … 53 | As run 115 | **OBSERVED** again, green |
+| KEY-01 … 24, 60 … 97, B0 … B3 | Every other journey's frames | green, inspected for regressions: none |
+
+`NextMovesServabilityTests` was written to test the first suspicion —
+that BUG-043's cast change had pushed intercontinental markets to the top
+of the card — and measured the opposite: the top four from Stockholm on
+1 Feb are Paris, Istanbul, Cairo, Delhi, all within reach, matching
+KEY-32. Kept as the pin. Every COMP state is now OBSERVED in the campaign
+or from a save; run 117 carries BUG-045's fix.
 
 ## 9. Bugs found
 

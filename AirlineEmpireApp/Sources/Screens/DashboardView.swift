@@ -6,8 +6,14 @@ import AirlineEmpireCore
 struct DashboardView: View {
     @Environment(GameController.self) private var controller
     @Environment(\.dynamicTypeSize) private var typeSize
-    @State private var guidedRoute: FirstRouteSuggestion?
-    @State private var showingGuidedSheet = false
+    /// The suggestion whose route sheet is up. Item-driven, not a Bool
+    /// beside an optional: run 116 photographed the guided sheet opening
+    /// *empty* — From Stockholm, nothing picked, the whole ranked list —
+    /// because `isPresented` flipped before the optional had landed and the
+    /// sheet's `if let` took its else branch; the journey then opened a
+    /// route no aircraft could fly. `sheet(item:)` cannot present without
+    /// the value (BUG-045).
+    @State private var guidedRoute: GuidedRoute?
     @State private var showingSettings = false
 
     var body: some View {
@@ -33,8 +39,7 @@ struct DashboardView: View {
                            let onboarding = snapshot.onboardingModel(catalog: catalog),
                            !onboarding.isComplete {
                             OnboardingCard(model: onboarding) { suggestion in
-                                guidedRoute = suggestion
-                                showingGuidedSheet = true
+                                guidedRoute = GuidedRoute(suggestion)
                             }
                         } else if let catalog = controller.catalog,
                                   snapshot.playerAirline != nil {
@@ -45,8 +50,7 @@ struct DashboardView: View {
                             // the map coach uses, same guided-route flow the
                             // checklist used.
                             NextMovesCard(snapshot: snapshot, catalog: catalog) { suggestion in
-                                guidedRoute = suggestion
-                                showingGuidedSheet = true
+                                guidedRoute = GuidedRoute(suggestion)
                             }
                         }
                         // One competitive fact, only when the world has one
@@ -83,12 +87,8 @@ struct DashboardView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingGuidedSheet) {
-                if let guidedRoute {
-                    OpenRouteSheet(suggestion: guidedRoute)
-                } else {
-                    OpenRouteSheet()
-                }
+            .sheet(item: $guidedRoute) { guided in
+                OpenRouteSheet(suggestion: guided.suggestion)
             }
             .sheet(isPresented: $showingSettings) {
                 NavigationStack { SettingsView() }
@@ -1033,4 +1033,12 @@ private extension String {
         guard let first else { return self }
         return first.lowercased() + dropFirst()
     }
+}
+
+/// A first-route suggestion as a sheet item: `sheet(item:)` needs identity,
+/// and Core's value type has none of its own.
+private struct GuidedRoute: Identifiable {
+    let suggestion: FirstRouteSuggestion
+    var id: String { "\(suggestion.origin.raw)-\(suggestion.destination.raw)" }
+    init(_ suggestion: FirstRouteSuggestion) { self.suggestion = suggestion }
 }

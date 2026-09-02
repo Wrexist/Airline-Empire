@@ -31,8 +31,13 @@ not here.
   and not one event. **FIXED** (BUG-044): `MarketCompetition` standing /
   share / edge on the route, `CompetitionSummary` headline on Home and the
   World hub, `marketEntered` / `marketLeft` in the feed, the market-move
-  record (save v12). **OBSERVED** (runs 112–113: KEY-40, 42, 43, 47, 48,
+  record (save v12). **OBSERVED** (runs 112–116: KEY-40, 42–48,
   50–53 — `docs/RIVAL_PRESSURE_AUDIT.md` §8).
+- **RIV-03 · HOME · The guided route sheet could open empty.** OBSERVED
+  (run 116, `FEB-ROUTE-SHEET-STUCK-1` against `KEY-32`): a suggestion tap
+  produced a sheet with nothing picked, and the campaign opened an
+  unflyable route from it. **FIXED** (BUG-045): item-driven presentation.
+  Awaiting run 117's frames.
 
 ## P1
 
