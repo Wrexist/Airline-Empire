@@ -1,6 +1,0 @@
-version: "Swift version 6.0.3 (swift-6.0.3-RELEASE)"
-options: "7cd2fffcfb15abd16e91d234c66c08d2b999f35810815f3369b6bb199ab6e57d"
-build_start_time: [1788344116, 703167000]
-build_end_time: [1788344125, 220245000]
-inputs:
-  "/home/user/Airline-Empire/AirlineEmpireCore/Sources/AERivalScan/main.swift": [1788343789, 0]
