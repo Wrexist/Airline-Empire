@@ -408,6 +408,112 @@ final class CampaignUITests: AEUITestCase {
             next goal — "To reach National" is missing, and a campaign \
             without a next goal ends here.
             """)
+        app.navigationBars.buttons.firstMatch.tap()
+
+        // ── The horizon: the world comes to Stockholm (AE-039) ─────────────
+        // `StockholmHorizonTests` plays this exact script on this seed and
+        // measures: on day 201 PacificBlue, the low-cost carrier based at
+        // Istanbul, opens Stockholm–Istanbul on its own at $187 against the
+        // player's $220; a month later the player holds 38%, trailing on
+        // fare. Before AE-039 no rival ever came to a Stockholm pair, at any
+        // horizon size, in five years (docs/HORIZON_AUDIT.md §3).
+        //
+        // Stockholm–Istanbul has to be flying for the split to mean
+        // anything; run 117's board had it bare after February.
+        guard openAirlineSection("Routes") else { return }
+        let stillBare = assignAllBareRoutes()
+        XCTAssertEqual(stillBare, 0, "\(stillBare) route(s) still have no aircraft before the summer.")
+        guard advanceMornings(until: "2030-07-19", cap: 150) else {
+            XCTFail("The sunrise control could not reach July 19.")
+            return
+        }
+        checkpoint("H1-home-before-the-world-moves")
+        guard openRouteDetail(containing: "IST") else { return }
+        let aloneOnIstanbul = app.staticTexts["Nobody. This market is yours alone — for now."]
+        if !aloneOnIstanbul.waitForExistence(timeout: 6) {
+            capture(Self.logPrefix + "H1-ISTANBUL-NOT-ALONE")
+        }
+        checkpoint("H1-route-before-the-world-moves")
+        app.navigationBars.buttons.firstMatch.tap()
+
+        guard advanceMornings(until: "2030-07-21", cap: 4) else {
+            XCTFail("The sunrise control could not reach July 21.")
+            return
+        }
+        let cameToStockholm = app.descendants(matching: .any).matching(NSPredicate(
+            format: "label CONTAINS %@ AND label CONTAINS %@", "PacificBlue", "entered your")).firstMatch
+        let arrived = cameToStockholm.waitForExistence(timeout: 8)
+        if !arrived { capture(Self.logPrefix + "H2-NO-ENTRY-HEADLINE") }
+        XCTAssertTrue(arrived, """
+            Home does not say that PacificBlue entered the player's market the \
+            morning after it did — the world-initiated event the horizon \
+            phase exists to show, on the curated first start.
+            """)
+        checkpoint("H2-home-rival-entered")
+        guard openRouteDetail(containing: "IST") else { return }
+        checkpoint("H3-route-morning-after-entry")
+        app.navigationBars.buttons.firstMatch.tap()
+
+        guard advanceMornings(until: "2030-08-20", cap: 32) else {
+            XCTFail("The sunrise control could not reach August 20.")
+            return
+        }
+        checkpoint("H4-home-a-month-on")
+        guard openRouteDetail(containing: "IST") else { return }
+        let istanbulStanding = app.descendants(matching: .any)
+            .matching(identifier: "ae-route-standing").firstMatch
+        XCTAssertTrue(istanbulStanding.waitForExistence(timeout: 8), """
+            A month after a rival came to Stockholm–Istanbul the route screen \
+            has no standing sentence.
+            """)
+        checkpoint("H4-route-a-month-on")
+        let istanbulResponse = app.descendants(matching: .any)
+            .matching(identifier: "ae-route-response").firstMatch
+        if scrollUntil(istanbulResponse, "the response line on Stockholm–Istanbul") {
+            checkpoint("H5-response-line")
+        }
+        // The response the twin measured the market on: they are cheaper,
+        // so answer with the fare.
+        let cut = app.buttons["-10%"].firstMatch
+        if scrollUntil(cut, "the fare controls on Stockholm–Istanbul") {
+            cut.tap()
+            Thread.sleep(forTimeInterval: 1)
+            checkpoint("H5-after-fare-cut")
+        }
+        app.navigationBars.buttons.firstMatch.tap()
+
+        guard advanceMornings(until: "2030-09-03", cap: 18) else {
+            XCTFail("The sunrise control could not reach September 3.")
+            return
+        }
+        checkpoint("H6-home-after-response")
+        guard openRouteDetail(containing: "IST") else { return }
+        checkpoint("H6-route-after-response")
+        app.navigationBars.buttons.firstMatch.tap()
+        openTab("World")
+        checkpoint("H6-world-hub-after-response")
+    }
+
+    /// The route screen for the board row whose label carries `code`, with
+    /// its competition section on screen.
+    private func openRouteDetail(containing code: String) -> Bool {
+        guard openAirlineSection("Routes") else { return false }
+        let row = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == %@ AND label CONTAINS %@",
+                                  "ae-route-row", code)).firstMatch
+        guard row.waitForExistence(timeout: 8) else {
+            capture(Self.logPrefix + "NO-\(code)-ROW-ON-BOARD")
+            XCTFail("The Routes board shows no \(code) row.")
+            return false
+        }
+        guard tapWhenReady(row) else {
+            capture(Self.logPrefix + "\(code)-ROW-NO-TAP")
+            XCTFail("The \(code) row did not accept a tap.")
+            return false
+        }
+        let header = app.staticTexts["WHO ELSE FLIES THIS"]
+        if header.waitForExistence(timeout: 8) { return true }
+        return scrollUntil(header, "the competition section on the route screen")
     }
 
 

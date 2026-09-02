@@ -180,9 +180,13 @@ public struct CompetitorAISystem: SimulationSystem {
     /// The airports an airline would consider from `origin` — the horizon —
     /// in the order the AI walks them.
     ///
-    /// The sixteen nearest by great-circle distance (`candidateMarketLimit`),
-    /// as built. AE-039 measures whether that is the horizon the world
-    /// needs (docs/HORIZON_AUDIT.md).
+    /// The nearest airports by great-circle distance, `candidateMarketLimit`
+    /// of them — sixteen as built, twenty-four since AE-039. Measured
+    /// (docs/HORIZON_AUDIT.md §3): with the passenger ranking no size
+    /// brought a rival to a European start; with the airframe-day ranking,
+    /// sixteen still could not see Stockholm from Istanbul (rank 22),
+    /// twenty-four could, and thirty-two put larger markets ahead of it
+    /// again. The smallest size that reaches the curated first start.
     public static func horizon(from origin: AirportCode, catalog: ContentCatalog,
                                tuning: AITuning) -> [(AirportSpec, Int)] {
         catalog.nearestAirports(to: origin, limit: tuning.candidateMarketLimit)
@@ -485,7 +489,7 @@ public struct AITuning: Equatable, Codable, Sendable {
     public static let standard = AITuning(
         decisionIntervalDays: 7, retrenchRunwayMonths: 1.5,
         expandLoadFactor: 0.82, shrinkLoadFactor: 0.35,
-        undercutResponseThreshold: 0.12, candidateMarketLimit: 16,
+        undercutResponseThreshold: 0.12, candidateMarketLimit: 24,
         minViableDailyDemand: 140, initialRoundTrips: 2,
         maxFleetPerAirline: 40)
 }
