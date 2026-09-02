@@ -151,10 +151,102 @@ public struct CompetitorAISystem: SimulationSystem {
         }
     }
 
-    private struct MarketCandidate {
-        let destination: AirportCode
-        let distanceKm: Int
-        let score: Double
+    /// One airport considered from where an airframe sits: scored, or the
+    /// reason it was not.
+    public struct MarketCandidate: Equatable, Sendable {
+        public enum Verdict: Equatable, Sendable {
+            case scored(Double)
+            case regionExcluded
+            case ineligible
+            case alreadyServed
+            case noSlots
+            case belowFloor(Double)
+        }
+        public let destination: AirportCode
+        public let distanceKm: Int
+        /// Position in the distance-ordered list from the origin, from 1.
+        public let nearestRank: Int
+        public let verdict: Verdict
+
+        public var score: Double? {
+            if case .scored(let value) = verdict { return value }
+            return nil
+        }
+    }
+
+    /// The airports an airline would consider from `origin` — the horizon —
+    /// in the order the AI walks them.
+    ///
+    /// The sixteen nearest by great-circle distance (`candidateMarketLimit`),
+    /// as built. AE-039 measures whether that is the horizon the world
+    /// needs (docs/HORIZON_AUDIT.md).
+    public static func horizon(from origin: AirportCode, catalog: ContentCatalog,
+                               tuning: AITuning) -> [(AirportSpec, Int)] {
+        catalog.nearestAirports(to: origin, limit: tuning.candidateMarketLimit)
+    }
+
+    /// Every candidate in the horizon from `origin`, with its verdict — the
+    /// AI's own evaluation, exposed so a diagnostic or a test can ask why a
+    /// market was or was not chosen without a second implementation.
+    /// `limit` overrides the horizon size (a diagnostic asks for the whole
+    /// world to see what lies beyond).
+    public static func candidateMarkets(from origin: AirportCode, airline: Airline,
+                                        spec: AircraftTypeSpec, profile: AIProfile,
+                                        state: GameState, catalog: ContentCatalog,
+                                        tuning: AITuning,
+                                        limit: Int? = nil) -> [MarketCandidate] {
+        guard let originSpec = catalog.airport(origin) else { return [] }
+        // The offer this airline would put on a new pair: a starter
+        // operation at its archetype's fare, carrying its own reputation.
+        let entrantQuality = DemandSystem.representativeStarterQuality(
+            tuning: catalog.tuning.demand)
+            * airline.reputation.demandMultiplier(tuning: catalog.tuning.reputation)
+        let considered = limit.map { catalog.nearestAirports(to: origin, limit: $0) }
+            ?? horizon(from: origin, catalog: catalog, tuning: tuning)
+        var out: [MarketCandidate] = []
+        out.reserveCapacity(considered.count)
+        for (rank, (destinationSpec, distance)) in considered.enumerated() {
+            let destination = destinationSpec.code
+            func candidate(_ verdict: MarketCandidate.Verdict) -> MarketCandidate {
+                MarketCandidate(destination: destination, distanceKm: distance,
+                                nearestRank: rank + 1, verdict: verdict)
+            }
+            if profile.homeRegionOnly && destinationSpec.region != originSpec.region {
+                out.append(candidate(.regionExcluded)); continue
+            }
+            guard catalog.routeEligibility(from: origin, to: destination,
+                                           aircraftRangeKm: spec.rangeKm,
+                                           aircraftRunwayRequirement: spec.runwayRequirement)
+                .isEmpty else { out.append(candidate(.ineligible)); continue }
+            // Already served by us?
+            if state.routes.values.contains(where: {
+                $0.airline == airline.id
+                    && $0.sameMarket(origin: origin, destination: destination)
+            }) { out.append(candidate(.alreadyServed)); continue }
+            // Slots for the initial frequency at both ends?
+            let movements = Route.dailySlotMovements(roundTrips: tuning.initialRoundTrips)
+            if state.world.slotsUsed(at: origin) + movements > originSpec.slotCapacityPerDay
+                || state.world.slotsUsed(at: destination) + movements
+                    > destinationSpec.slotCapacityPerDay {
+                out.append(candidate(.noSlots)); continue
+            }
+
+            let pool = DemandSystem.demandPool(from: origin, to: destination,
+                                               date: state.currentDate,
+                                               economicIndex: state.world.economicIndex,
+                                               catalog: catalog)
+            let incumbents = state.routes.values.filter {
+                $0.sameMarket(origin: origin, destination: destination)
+            }
+            let score = DemandSystem.poolAvailableToEntrant(
+                pool: pool, fareRatio: profile.priceFactor, quality: entrantQuality,
+                incumbents: incumbents, state: state, catalog: catalog)
+            guard score >= tuning.minViableDailyDemand else {
+                out.append(candidate(.belowFloor(score))); continue
+            }
+            out.append(candidate(.scored(score)))
+        }
+        return out
     }
 
     /// Deterministic candidate scoring: the pool an entrant could plan
@@ -174,49 +266,13 @@ public struct CompetitorAISystem: SimulationSystem {
                             spec: AircraftTypeSpec, profile: AIProfile,
                             state: GameState, context: SimContext,
                             tuning: AITuning) -> MarketCandidate? {
-        let catalog = context.catalog
-        guard let originSpec = catalog.airport(origin) else { return nil }
-        // The offer this airline would put on a new pair: a starter
-        // operation at its archetype's fare, carrying its own reputation.
-        let entrantQuality = DemandSystem.representativeStarterQuality(
-            tuning: catalog.tuning.demand)
-            * airline.reputation.demandMultiplier(tuning: catalog.tuning.reputation)
         var best: MarketCandidate?
-        for (destinationSpec, distance) in catalog.nearestAirports(
-            to: origin, limit: tuning.candidateMarketLimit) {
-            let destination = destinationSpec.code
-            if profile.homeRegionOnly && destinationSpec.region != originSpec.region {
-                continue
-            }
-            guard catalog.routeEligibility(from: origin, to: destination,
-                                           aircraftRangeKm: spec.rangeKm,
-                                           aircraftRunwayRequirement: spec.runwayRequirement)
-                .isEmpty else { continue }
-            // Already served by us?
-            if state.routes.values.contains(where: {
-                $0.airline == airline.id
-                    && $0.sameMarket(origin: origin, destination: destination)
-            }) { continue }
-            // Slots for the initial frequency at both ends?
-            let movements = Route.dailySlotMovements(roundTrips: tuning.initialRoundTrips)
-            if state.world.slotsUsed(at: origin) + movements > originSpec.slotCapacityPerDay
-                || state.world.slotsUsed(at: destination) + movements
-                    > destinationSpec.slotCapacityPerDay { continue }
-
-            let pool = DemandSystem.demandPool(from: origin, to: destination,
-                                               date: state.currentDate,
-                                               economicIndex: state.world.economicIndex,
-                                               catalog: catalog)
-            let incumbents = state.routes.values.filter {
-                $0.sameMarket(origin: origin, destination: destination)
-            }
-            let score = DemandSystem.poolAvailableToEntrant(
-                pool: pool, fareRatio: profile.priceFactor, quality: entrantQuality,
-                incumbents: incumbents, state: state, catalog: catalog)
-            guard score >= tuning.minViableDailyDemand else { continue }
-            if best == nil || score > best!.score {
-                best = MarketCandidate(destination: destination,
-                                       distanceKm: distance, score: score)
+        for candidate in Self.candidateMarkets(from: origin, airline: airline, spec: spec,
+                                               profile: profile, state: state,
+                                               catalog: context.catalog, tuning: tuning) {
+            guard let score = candidate.score else { continue }
+            if best == nil || score > best!.score! {
+                best = candidate
             }
         }
         return best

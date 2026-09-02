@@ -28,7 +28,39 @@ let seedRange: ClosedRange<UInt64> = {
 }()
 let homes: [AirportCode] = (arguments.count > 3 ? arguments[3] : "ARN")
     .split(separator: ",").map { AirportCode(String($0)) }
-let catalog = try ContentCatalog.loadBundled()
+/// `--horizon`: instead of the move table, explain on the last day why each
+/// rival can or cannot reach each of the player's pairs (AE-039,
+/// docs/HORIZON_AUDIT.md).
+let horizonMode = arguments.contains("--horizon")
+/// `--limit N`: run with a candidate horizon of N airports instead of the
+/// shipped `candidateMarketLimit`, for the AE-039 horizon sweep. The
+/// shipped tuning file is not touched; the catalog is rebuilt in memory.
+let horizonLimit: Int? = arguments.firstIndex(of: "--limit").flatMap {
+    arguments.indices.contains($0 + 1) ? Int(arguments[$0 + 1]) : nil
+}
+let shipped = try ContentCatalog.loadBundled()
+let catalog: ContentCatalog = try {
+    guard let horizonLimit else { return shipped }
+    let ai = shipped.tuning.ai
+    let tuning = Tuning(
+        minRouteDistanceKm: shipped.tuning.minRouteDistanceKm, fleet: shipped.tuning.fleet,
+        ops: shipped.tuning.ops, demand: shipped.tuning.demand, finance: shipped.tuning.finance,
+        world: shipped.tuning.world, reputation: shipped.tuning.reputation,
+        ai: AITuning(decisionIntervalDays: ai.decisionIntervalDays,
+                     retrenchRunwayMonths: ai.retrenchRunwayMonths,
+                     expandLoadFactor: ai.expandLoadFactor, shrinkLoadFactor: ai.shrinkLoadFactor,
+                     undercutResponseThreshold: ai.undercutResponseThreshold,
+                     candidateMarketLimit: horizonLimit,
+                     minViableDailyDemand: ai.minViableDailyDemand,
+                     initialRoundTrips: ai.initialRoundTrips,
+                     maxFleetPerAirline: ai.maxFleetPerAirline),
+        events: shipped.tuning.events, progression: shipped.tuning.progression)
+    return try ContentCatalog(
+        version: shipped.version, airports: Array(shipped.airports.values),
+        seasonality: Array(shipped.seasonality.values),
+        aircraftTypes: Array(shipped.aircraftTypes.values),
+        scenarios: Array(shipped.scenarios.values), tuning: tuning)
+}()
 guard let spec = catalog.scenario("entrepreneur") else { fatalError("no entrepreneur scenario") }
 let ticksPerDay = Int(GameCalendar.minutesPerDay / ScenarioBootstrap.standardTickMinutes)
 
@@ -53,6 +85,52 @@ struct CampaignResult {
     var era = ""
     var rivalsAlive = 0
     var reachable: [String] = []
+    var horizon: [String] = []
+}
+
+/// Why a rival at `base` can or cannot come to the player's pair `base`–`far`:
+/// the AI's own candidate evaluation, asked over the whole world, against
+/// the best it can see inside its horizon.
+@MainActor
+func explainReach(state: GameState, catalog: ContentCatalog, rival: Airline,
+                  base: AirportCode, far: AirportCode, player: AirlineID) -> String {
+    let tuning = catalog.tuning.ai
+    guard let profile = rival.aiProfile else { return "no profile" }
+    // The rival's longest-legged type, the one that decides reach.
+    let specs = state.fleet(of: rival.id).compactMap { catalog.aircraftType($0.typeCode) }
+    guard let spec = specs.max(by: { $0.rangeKm < $1.rangeKm }) else { return "no aircraft" }
+    let everything = CompetitorAISystem.candidateMarkets(
+        from: base, airline: rival, spec: spec, profile: profile, state: state,
+        catalog: catalog, tuning: tuning, limit: catalog.orderedAirportCodes.count)
+    let inside = CompetitorAISystem.candidateMarkets(
+        from: base, airline: rival, spec: spec, profile: profile, state: state,
+        catalog: catalog, tuning: tuning)
+    guard let target = everything.first(where: { $0.destination == far }) else { return "not in catalog" }
+    let winner = inside.compactMap { c in c.score.map { (c, $0) } }.max { $0.1 < $1.1 }
+    let winnerText = winner.map { "\($0.0.destination.raw) \(Int($0.1))" } ?? "none"
+    let inHorizon = target.nearestRank <= tuning.candidateMarketLimit
+    let verdict: String
+    switch target.verdict {
+    case .scored(let score):
+        if !inHorizon {
+            verdict = "CASE A · outside the horizon (rank \(target.nearestRank) of \(tuning.candidateMarketLimit)); would score \(Int(score)) vs winner \(winnerText)" + (winner.map { score > $0.1 ? " → WOULD WIN" : " → would lose" } ?? " → WOULD WIN")
+        } else if let winner, score < winner.1 {
+            verdict = "CASE B · inside (rank \(target.nearestRank)) but scores \(Int(score)) vs winner \(winnerText)"
+        } else {
+            verdict = "IN REACH · inside (rank \(target.nearestRank)), scores \(Int(score)) — the winner"
+        }
+    case .ineligible:
+        verdict = "CASE C/D · ineligible for \(spec.code) (range \(spec.rangeKm) km, \(target.distanceKm) km)" + (inHorizon ? "" : " and outside the horizon (rank \(target.nearestRank))")
+    case .belowFloor(let score):
+        verdict = "CASE D · below the viability floor (\(Int(score)) < \(Int(tuning.minViableDailyDemand)))" + (inHorizon ? "" : " and outside the horizon (rank \(target.nearestRank))")
+    case .noSlots:
+        verdict = "CASE D · no slots" + (inHorizon ? "" : " and outside the horizon (rank \(target.nearestRank))")
+    case .regionExcluded:
+        verdict = "CASE D · outside the archetype's home region" + (inHorizon ? "" : " and outside the horizon (rank \(target.nearestRank))")
+    case .alreadyServed:
+        verdict = "already flies it"
+    }
+    return "\(rival.name) [\(profile.archetype)] at \(base.raw) → \(far.raw) \(target.distanceKm) km: \(verdict)"
 }
 
 @MainActor
@@ -274,6 +352,37 @@ func runCampaign(seed: UInt64, home: AirportCode) -> CampaignResult {
             }
         }
         previous = now
+        if horizonMode, day == days {
+            let bases: [(Airline, AirportCode)] = state.orderedAirlineIDs.compactMap { id -> [(Airline, AirportCode)] in
+                guard let airline = state.airlines[id], airline.kind == .ai, airline.status == .active else { return [] }
+                // Where an expansion can start from: the home (new deliveries
+                // arrive there) and wherever an *idle* airframe sits. An
+                // assigned airframe's location alternates between its
+                // route's ends and is not an expansion origin.
+                var locations = Set(state.fleet(of: id)
+                    .filter { $0.assignedRoute == nil && $0.isOperational }
+                    .map(\.location))
+                locations.insert(airline.homeAirport)
+                return locations.sorted { $0.raw < $1.raw }.map { (airline, $0) }
+            }.flatMap { $0 }
+            for (airline, base) in bases {
+                let ranks = catalog.nearestAirports(to: base, limit: catalog.orderedAirportCodes.count)
+                let homeRank = ranks.firstIndex { $0.0.code == home }.map { $0 + 1 } ?? -1
+                let range = state.fleet(of: airline.id).compactMap { catalog.aircraftType($0.typeCode)?.rangeKm }.max() ?? 0
+                result.horizon.append("BASE \(airline.name) [\(airline.aiProfile.map { "\($0.archetype)" } ?? "?")] at \(base.raw) · fleet \(state.fleet(of: airline.id).count) · longest range \(range) km · player's home \(home.raw) is rank \(homeRank) from here (\(catalog.distanceKm(base, home) ?? 0) km)")
+            }
+            for route in state.routes(of: player).sorted(by: { $0.id < $1.id }) {
+                var lines: [String] = []
+                for (airline, base) in bases where base == route.origin || base == route.destination {
+                    let far = base == route.origin ? route.destination : route.origin
+                    lines.append("   " + explainReach(state: state, catalog: catalog, rival: airline,
+                                                     base: base, far: far, player: player))
+                }
+                let contested = state.routes.values.contains { $0.market == route.market && $0.airline != player }
+                result.horizon.append("PAIR \(route.origin.raw)-\(route.destination.raw) \(route.distanceKm) km load \(String(format: "%.0f%%", route.stats.loadFactor * 100))\(contested ? " CONTESTED" : "") · rivals sitting at an end: \(lines.count)")
+                result.horizon.append(contentsOf: lines)
+            }
+        }
     }
     let final = engine.state
     result.playerRoutes = final.routes(of: player).count
@@ -282,7 +391,7 @@ func runCampaign(seed: UInt64, home: AirportCode) -> CampaignResult {
     return result
 }
 
-print("== Rival scan · \(days) days · seeds \(seedRange.lowerBound)-\(seedRange.upperBound) · homes \(homes.map(\.raw).joined(separator: ",")) ==")
+print("== Rival scan · \(days) days · seeds \(seedRange.lowerBound)-\(seedRange.upperBound) · homes \(homes.map(\.raw).joined(separator: ",")) · horizon \(catalog.tuning.ai.candidateMarketLimit) ==")
 var totals: [RivalMoveRecord.Kind: Int] = [:]
 var campaigns = 0
 for seed in seedRange {
@@ -304,6 +413,7 @@ for seed in seedRange {
             print("   D\(String(format: "%03d", move.day)) \(move.kind.rawValue) \(move.market) \(move.rival) [\(move.archetype)] \(move.detail)")
         }
         for line in result.playerMonthlyProfitOnWorldEntries { print("   → \(line)") }
+        for line in result.horizon { print(line) }
     }
 }
 print("\n== Totals over \(campaigns) campaigns ==")
