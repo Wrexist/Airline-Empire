@@ -1198,4 +1198,6 @@ February" assertion, which is what failed in run 116.
 `NextMovesServabilityTests` pins the other half of the diagnosis: the
 card's ranking from Stockholm on 1 Feb is all within the fleet's reach,
 so the unflyable route was the sheet's doing, not the card's.
-**Status:** FIXED — AUTHORED, parse-checked; awaiting run 117's frames.
+**Status:** FIXED — **OBSERVED** in run 117 (`KEY-32b`: both suggestions
+became the routes the card named, ARN–CDG earning $478k by 9 Feb, no
+Tokyo, no `FEB-*` frame; 18 of 18 journeys green).

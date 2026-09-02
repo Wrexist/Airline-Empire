@@ -78,8 +78,12 @@ from the live campaign or a save. Its one red found BUG-045: the guided
 route sheet from Home could present before its suggestion landed and
 open empty, and the campaign opened Stockholm–Tokyo from it (bare all
 spring). Fixed with item-driven presentation; `NextMovesServabilityTests`
-pins that the card's ranking was never the problem. Core 430/430 on
-Linux; run 117 dispatched.
+pins that the card's ranking was never the problem. **Run 117: green —
+18 of 18 journeys, 430 Core tests on Linux and CI, no failure texts;**
+KEY-32b shows the suggested Paris and Istanbul routes on the board and
+no unflyable one. Remaining script gap: the journey acquires two
+airframes for three February openings, so Istanbul sits without an
+aircraft (the gate passes on four earning routes).
 
 ---
 

@@ -37,7 +37,8 @@ not here.
   (run 116, `FEB-ROUTE-SHEET-STUCK-1` against `KEY-32`): a suggestion tap
   produced a sheet with nothing picked, and the campaign opened an
   unflyable route from it. **FIXED** (BUG-045): item-driven presentation.
-  Awaiting run 117's frames.
+  **OBSERVED** (run 117, `KEY-32b`: the suggested Paris and Istanbul routes
+  on the board, nothing else).
 
 ## P1
 

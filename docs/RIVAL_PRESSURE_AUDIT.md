@@ -355,6 +355,18 @@ of the card — and measured the opposite: the top four from Stockholm on
 KEY-32. Kept as the pin. Every COMP state is now OBSERVED in the campaign
 or from a save; run 117 carries BUG-045's fix.
 
+### Run 117 (commit 4123742) — 78 frames decoded, every one looked at
+
+**Green: 18 of 18 journeys, 430 Core tests, no failure texts recorded.**
+50 minutes end to end.
+
+| Frame | What it showed | Verdict |
+| --- | --- | --- |
+| KEY-32b-network-after-february | Routes board on 9 Feb: **5 routes · 4 earning · 1 no aircraft**; `ARN–IST 2×/day load 0% $220 no aircraft`, ARN–CAI $715k, ARN–LHR $499k, **ARN–CDG $478k**, LHR–CDG $5,577 | **OBSERVED** BUG-045 fixed: both Next Moves suggestions became the routes the card named (Paris, Istanbul); no Tokyo, no `FEB-*` frame. Istanbul sits without an aircraft because the journey acquires two airframes for three February openings (the Core twin leases a third for the fight) — a script gap, recorded, not a product defect: the Regional gate passed on four earning routes |
+| KEY-44-contested-route-after-a-week | LHR–CDG on 9 Feb, as run 116: *"An even fight — 31% … mostly because they fly more often."*, SwiftJet 4×/day, punctuality 100% | **OBSERVED** again |
+| KEY-40 … 48, 50 … 53 | The full competitive arc, as runs 115–116 | **OBSERVED** again, all green |
+| KEY-01 … 24, 60 … 97, B0 … B3 | Every other journey's frames | green, inspected for regressions: none |
+
 ## 9. Bugs found
 
 BUG-042 (rival thickens a full route forever), BUG-043 (cast never near the
