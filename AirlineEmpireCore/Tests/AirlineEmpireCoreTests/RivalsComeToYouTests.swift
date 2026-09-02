@@ -39,6 +39,10 @@ struct RivalsComeToYouTests {
         var tripsAfterResponse = 0
         var retreatDay: Int?
         var monthly: [String] = []
+        var spareRotationsAfterMonth = 0
+        /// Route profit, last full month, sampled every 30 days from day 120.
+        var laterProfits: [Money] = []
+        var shareAtDay90: Double?
     }
 
     enum Response: String { case none, frequency, fare, both }
@@ -105,6 +109,7 @@ struct RivalsComeToYouTests {
                 report.edgeAfterMonth = model.edge
                 report.profitMonthAfter = mine.economicsLastMonth.directOperatingProfit
                 report.rivalTripsAfterMonth = model.rivals.map(\.dailyRoundTrips).max() ?? 0
+                report.spareRotationsAfterMonth = model.spareRotationsToday
                 if respond != .none {
                     report.responseDay = day
                     report.shareBeforeResponse = model.playerShareToday
@@ -123,6 +128,12 @@ struct RivalsComeToYouTests {
             }
             if let response = report.responseDay, day == response + 14 {
                 report.shareAfterResponse = state.marketCompetition(for: route.id, catalog: catalog)?.playerShareToday
+            }
+            if day == 90 {
+                report.shareAtDay90 = state.marketCompetition(for: route.id, catalog: catalog)?.playerShareToday
+            }
+            if day % 30 == 0, day >= 120, let mine = state.routes[route.id] {
+                report.laterProfits.append(mine.economicsLastMonth.directOperatingProfit)
             }
             if day % 30 == 0, let mine = state.routes[route.id],
                let model = state.marketCompetition(for: route.id, catalog: catalog) {
@@ -143,11 +154,51 @@ struct RivalsComeToYouTests {
         print("RIVALS-COME response \(response.rawValue): " + report.monthly.joined(separator: " | "))
         print("RIVALS-COME seed \(Self.seed) \(Self.home): first route \(report.firstRoute) entry day \(report.entryDay.map(String.init) ?? "-") by \(report.entrant) [\(report.entrantArchetype)] @\(report.entrantFare.compact) \(report.entrantTrips)x · share on entry \(report.shareOnEntry.map { String(format: "%.2f", $0) } ?? "-") · headline next morning \(report.headlineNextMorning) feed \(report.feedEventNextMorning) · month later share \(report.shareAfterMonth.map { String(format: "%.2f", $0) } ?? "-") standing \(String(describing: report.standingAfterMonth)) edge \(String(describing: report.edgeAfterMonth)) profit \(report.profitMonthBefore.compact)→\(report.profitMonthAfter.compact) rival trips \(report.rivalTripsAfterMonth) · response day \(report.responseDay.map(String.init) ?? "-") trips \(report.tripsAfterResponse) share \(report.shareBeforeResponse.map { String(format: "%.2f", $0) } ?? "-")→\(report.shareAfterResponse.map { String(format: "%.2f", $0) } ?? "-") · retreat day \(report.retreatDay.map(String.init) ?? "-")")
 
-        // RIVAL-01/02: the player's first route, and a rival that comes to it.
+        // RIVAL-01/02: the player's first route, and a rival that comes to it
+        // — on its first decision, now that a contested pair is scored by
+        // the demand engine's split (day 17 under the old halving).
         let entry = try #require(report.entryDay)
         #expect(report.playerWasFirst)
-        #expect(entry <= 31)
-        #expect(!report.entrant.isEmpty)
+        #expect(entry <= 10)
+        #expect(report.entrant == "SwiftJet")
+        #expect(report.entrantArchetype == "regional")
+
+        // RIVAL-03: the morning after, Home's one headline is this, and the
+        // feed carries the entry.
+        #expect(report.headlineNextMorning.hasPrefix("rivalEnteredYourMarket"))
+        #expect(report.feedEventNextMorning)
+
+        // RIVAL-04/05: a month on, the split is real and the model says why.
+        let share = try #require(report.shareAfterMonth)
+        #expect(share > 0.4 && share < 0.6)
+        #expect(report.standingAfterMonth == .even)
+        #expect(report.edgeAfterMonth == .schedule(playerAhead: false))
+        #expect(report.rivalTripsAfterMonth >= 3)
+        // BUG-046: the one narrowbody on the pair has a rotation to spare.
+        #expect(report.spareRotationsAfterMonth >= 1)
+
+        // RIVAL-06: the responses, measured over the year (audit §4).
+        let day90 = try #require(report.shareAtDay90)
+        #expect(report.laterProfits.count >= 8)
+        let averageLater = report.laterProfits.reduce(0.0) { $0 + $1.asDouble }
+            / Double(max(1, report.laterProfits.count))
+        switch response {
+        case .none:
+            #expect(day90 < 0.45, "doing nothing: share slides to \(day90)")
+            #expect(averageLater < 1_450_000)
+        case .frequency:
+            #expect(day90 > 0.44)
+            #expect(averageLater > 1_600_000, "one more rotation: \(averageLater)")
+            #expect(report.tripsAfterResponse == 3)
+        case .fare:
+            #expect(averageLater < 1_200_000, "a fare cut alone earns less than nothing: \(averageLater)")
+        case .both:
+            #expect(day90 > 0.48)
+        }
+
+        // RIVAL-07: no retreat within the year on this pair — documented,
+        // not asserted away.
+        #expect(report.retreatDay == nil)
     }
 }
 

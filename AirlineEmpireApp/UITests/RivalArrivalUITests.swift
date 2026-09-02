@@ -6,8 +6,8 @@ import XCTest
 /// of them was the player's doing. The seed scan behind
 /// docs/RIVALS_THAT_COME_TO_YOU_AUDIT.md found the one the world starts:
 /// from New York, the guided first route is JFK–ORD, and SwiftJet — the
-/// regional rival based at Chicago — opens the same pair on day 17 of every
-/// seed, on its own decision, and then adds a rotation a week until it
+/// regional rival based at Chicago — opens the same pair on day 3 of every
+/// seed, its first decision, and then adds a rotation a week until it
 /// flies twenty. `RivalsComeToYouTests` is the Linux twin on seed 2030 and
 /// measured the arc: the player's share slides from all of it to 42% by
 /// day 90 if they do nothing; one more rotation on the aircraft they
@@ -30,23 +30,23 @@ final class RivalArrivalUITests: AEUITestCase {
         guard assignFirstAircraft() else { return }
 
         // ── RIVAL-KEY-01 · before: the pair is the player's alone ─────────
-        guard advanceMornings(until: "2030-01-17", cap: 20) else {
-            XCTFail("The sunrise control could not reach January 17.")
+        guard advanceMornings(until: "2030-01-03", cap: 6) else {
+            XCTFail("The sunrise control could not reach January 3.")
             return
         }
         checkpoint("R1-home-before-the-rival")
         guard openRouteDetail(containing: "ORD") else { return }
         let alone = app.staticTexts["Nobody. This market is yours alone — for now."]
         XCTAssertTrue(alone.waitForExistence(timeout: 6), """
-            On January 17 the route screen should still say nobody else flies \
-            JFK–ORD; the Core twin has SwiftJet arriving on day 17 (the 18th).
+            On January 3 the route screen should still say nobody else flies \
+            JFK–ORD; the Core twin has SwiftJet arriving on day 3 (the 4th).
             """)
         checkpoint("R1-route-before-the-rival")
         app.navigationBars.buttons.firstMatch.tap()
 
         // ── RIVAL-KEY-02/03 · the morning after: Home says who and where ──
-        guard advanceMornings(until: "2030-01-19", cap: 4) else {
-            XCTFail("The sunrise control could not reach January 19.")
+        guard advanceMornings(until: "2030-01-05", cap: 4) else {
+            XCTFail("The sunrise control could not reach January 5.")
             return
         }
         let entered = app.descendants(matching: .any).matching(NSPredicate(
@@ -65,8 +65,8 @@ final class RivalArrivalUITests: AEUITestCase {
         app.navigationBars.buttons.firstMatch.tap()
 
         // ── RIVAL-KEY-04/05 · a month on: the split and what it costs ─────
-        guard advanceMornings(until: "2030-02-17", cap: 32) else {
-            XCTFail("The sunrise control could not reach February 17.")
+        guard advanceMornings(until: "2030-02-03", cap: 32) else {
+            XCTFail("The sunrise control could not reach February 3.")
             return
         }
         checkpoint("R4-home-a-month-on")
@@ -101,8 +101,8 @@ final class RivalArrivalUITests: AEUITestCase {
         app.navigationBars.buttons.firstMatch.tap()
 
         // ── RIVAL-KEY-07 · two weeks later: the world after the response ──
-        guard advanceMornings(until: "2030-03-03", cap: 18) else {
-            XCTFail("The sunrise control could not reach March 3.")
+        guard advanceMornings(until: "2030-02-17", cap: 18) else {
+            XCTFail("The sunrise control could not reach February 17.")
             return
         }
         checkpoint("R7-home-after-response")
