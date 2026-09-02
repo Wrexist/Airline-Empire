@@ -38,3 +38,6 @@ AuthKey_*.p8
 *.mobileprovision
 *.p12
 .build-probe/
+.build-scan2/
+.build-old/
+.build-check/
