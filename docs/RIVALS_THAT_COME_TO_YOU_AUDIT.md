@@ -108,7 +108,43 @@ five rivals have the player's home in their candidate set — but because
 the halving made a contested pair worth less than any open one, and
 JFK–ORD is the only pair large enough to win at half value.
 
-SCAN_AFTER_SECTION
+### 2.1 The same 240 campaigns with the entrant scoring (MEASURED)
+
+`DemandSystem.poolAvailableToEntrant` in place of `pool / (n + 1)` (§5),
+nothing else changed:
+
+| Home | World-initiated entries before → after | Which pairs, and when |
+| --- | --- | --- |
+| ARN Stockholm | 0 → 0 | no rival's candidate set contains Stockholm |
+| BCN Barcelona | 0 → 0 | SwiftJet at Paris can see Barcelona; the player's pairs from it are smaller than Paris's open alternatives |
+| MUC Munich | 0 → 0 | three rivals can see Munich; same reason |
+| SIN Singapore | 0 → 0 | five rivals can see Singapore; same reason |
+| JFK New York | 30 → 30 | SwiftJet, JFK–ORD — now on its **first** decision (day 3) rather than its third (day 17) |
+| GRU São Paulo | 0 → **60** | Aurora Atlantic (premium, based Rio) takes GIG–GRU on day 4; PacificBlue (low-cost, based Buenos Aires) takes EZE–GRU two days after the player opens it (day 33) — every seed |
+| DXB Dubai | 0 → **5** | PacificBlue (low-cost, based Riyadh), DXB–RUH, five seeds |
+| JNB Johannesburg | 0 → 0 | one rival can see it; the pairs are too small |
+| **Total** | **30 → 95** | three of eight homes, on the region's largest pairs |
+
+Player-initiated entries fall from 33 to 3: São Paulo's February expansion
+onto Buenos Aires now finds PacificBlue arriving *after* the player instead
+of before. What else moved, across the 240: rival frequency increases on
+the player's pairs 872 → 1,549; rival price cuts on the player's pairs
+0 → 30 (all PacificBlue's low-cost answer on São Paulo–Buenos Aires);
+rival openings at the player's airports 1,281 → 1,251; rival collapses
+49 → 60 (New York 10 → 21 — the cast there fights harder and two of it
+fail more often; Munich's 32 are unchanged); rival exits from the
+player's pairs 4 → 1. The ten-year five-rival world test (HHI < 0.7,
+at least two operators alive) and every other Core test pass with the
+change: 433 of 433.
+
+**What the scoring did and did not do.** Where a rival could already see
+a large pair the player flew, it now comes for it at once. Where no rival
+can see the player's home — Stockholm, the curated first start — nothing
+changes, because the candidate horizon is still the sixteen nearest
+airports to the rival's base. That horizon is the residual of TD-026 and
+is left alone here: widening it is a change to where every rival flies,
+not to how it weighs a contest, and this phase measured rather than
+redesigned.
 
 ## 3. Player-initiated versus world-initiated (MEASURED)
 
@@ -117,7 +153,7 @@ SCAN_AFTER_SECTION
 | Player opens London–Paris under two incumbents (AE-037) | player | share settles at a third, route loses money, one rival retreats day 248 | route section, Home, World hub, Competitors | OBSERVED runs 112–117 |
 | Guided first route from São Paulo is a pair a rival already flies | player (by the guide) | contested from day 1 | route section | MEASURED (scan: every GRU seed) |
 | SwiftJet opens New York–Chicago on the player's first route, day 17 | **world** | share 100% → 48% in a month → 42% by day 90; rival climbs 2 → 20 rotations by day 240 | feed event, Home headline "SwiftJet entered your JFK–ORD market yesterday", route section | MEASURED (`RivalsComeToYouTests`), OBSERVED run RUN_NUMBER |
-| Rival openings at the player's airports (9–12 per campaign) | world | none on the player's pairs; presence | Competitors; Home when two in a month | MEASURED (scan), OBSERVED AE-037 KEY-46 |
+| Rival openings at the player's airports (about five per campaign) | world | none on the player's pairs; presence | Competitors; Home when two in a month | MEASURED (scan), OBSERVED AE-037 KEY-46 |
 | SwiftJet leaves New York–Chicago, seed 2040 day 521 | world | the pair is the player's again | Home headline, feed | MEASURED (scan); not photographed — see §6 |
 
 ## 4. The scenario (MEASURED, `RivalsComeToYouTests`, seed 2030, New York)

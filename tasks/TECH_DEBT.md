@@ -482,6 +482,20 @@ player is the only carrier on a large pair; the Home headline
 `rivalEnteredYourMarket` firing in a plain campaign without the player
 picking the fight. NOT VALIDATED.
 
+**AE-038 (2026-09-02): narrowed, not closed.** The scoring half is done:
+`DemandSystem.poolAvailableToEntrant` replaces the halving, and across
+240 scanned campaigns world-initiated entries rose from 30 (New York
+only) to 95 (New York, São Paulo, Dubai) with every Core test green
+(docs/RIVALS_THAT_COME_TO_YOU_AUDIT.md §2.1). What remains is the
+**candidate horizon**: a rival scores only the sixteen airports nearest
+to where its airframe sits, so it can only come to a pair whose far end
+is one of its bases, and no rival base can see Stockholm at all. From
+the curated European starts the world still does not move first within
+two years. Fix shape: a demand-ranked horizon (the top N pairs by pool
+from the base, within the airframe's range) beside or instead of the
+nearest sixteen — a change to where every rival flies, to be measured
+with `ae-rival-scan` and the ten-year world test before it is kept.
+
 ## TD-027 — The route record has no opening date
 
 **Symptom.** "Since you arrived, Aurora added sixteen daily rotations" is
