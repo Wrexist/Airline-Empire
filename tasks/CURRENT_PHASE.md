@@ -89,6 +89,18 @@ tap was computed from a frame mid-scroll ({210, 738}), landed in the gap
 above the pinned Found bar, and left the disclosure shut — the failure
 frame still reads "World seed >" with the chevron unturned.
 
+**Run 129: green.** All 19 journeys and both measurements pass, Core 450
+green beside them, and the whole run finishes in **28 min 41 s** against
+run 123's 48. `testTheCampaignReachesTheRegionalEra` passed (765.7 s) —
+the first time it has run to the era since the split. Campaign 6/6 in
+909.9 s, economy 4/4 in 457.8 s, the Munich arrival 439.2 s (981 s in
+run 123), the shell class 585.5 s. What is left is measured and named in
+docs/UI_RUNTIME_VALIDATION.md §1: the campaign journey's own 1,907 UI
+interactions (765.7 s, no longer sunrise taps) and 5–8 minutes of
+simulator boot per shard, which is runner cost under
+`test-without-building` rather than test cost. A fourth macOS shard
+would buy perhaps five minutes at 10× billing; it is not taken.
+
 ---
 
 # Previous Phase
