@@ -49,9 +49,16 @@ configuration, so New York measures the cast and not the arrival. And
 **TD-032** — a rival's entry can roll off the 512-event feed within a
 day in a busy world (seen at day 201 under the profit basis).
 
-**Status:** DONE at Core — MEASURED (600 two-year and 50 five-year
-campaigns), TESTED (see the report §11); App: the CI run recorded in
-the report §8.
+**Status:** DONE — Core MEASURED (about 1,500 campaigns: 600 for the
+matrix run twice, 150 after the fix, 75 for the fix variants, 50 over
+five years, the diagnostics), TESTED (451 green on CI, run 133, the
+release build clean); App OBSERVED (run 133: 19 of 19 journeys, the
+Munich arrival's frames unchanged from run 131). Run 132 on the way
+found the Core job's 30-minute limit had no headroom for a suite two
+minutes longer (raised to 45 with the measurement beside it) and the
+arrival shard starved once on the runner (the documented signature; the
+redispatch was green). Final report:
+docs/AE041_PROFIT_VS_REVENUE_REPORT.md.
 
 ---
 

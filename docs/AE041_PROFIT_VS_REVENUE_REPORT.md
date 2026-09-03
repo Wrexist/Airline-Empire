@@ -253,9 +253,32 @@ tests and a journey on day 1), and by the same shard's green run 131
 on the same code path seventy minutes earlier. One redispatch, after
 the core job's timeout fix, is in §8.1.
 
-### 8.1 Run 133
+### 8.1 Run 133 (commit 489f8fd, the timeout fix; dispatched by hand)
 
-(filled in from the redispatch)
+**Green: all 19 journeys, both measurements, Core 451 of 451, release
+build clean; 28 min 33 s wall clock.** Core test step 26 min 40 s
+(`Test run with 451 tests passed after 1550.941 seconds`; the ten-year
+world inside its limit; `RIVAL-CREDIBILITY seed 2039: Crown Meridian
+opened ["D2 HND-TPE", "D30 HND-KIX", "D58 HND-PEK"] · early closures []
+· quick sales []` printed on the runner). Campaign 6 of 6 in 802.1 s
+(the regional-era journey 674.5 s); economy 4 of 4 in 560.8 s; the
+Munich arrival **475.1 s** on its clone beside the shell class (8 of
+8, 86.7 s for the test that took 523 s when starved). 41 frames
+decoded from the arrival shard; the HORIZON-KEY frames were looked at:
+
+| Frame | What was visible | Verdict |
+| --- | --- | --- |
+| KEY-HZ2-home-rival-entered | **Home, 2030-03-04**, Startup era, $5.0M, net worth $61.1M: RIVALS *"PacificBlue entered your MUC–IST market yesterday."*; Next moves MUC → FCO (≈944/day) and MUC → MAD (≈921/day), "no competition yet"; Fleet 3, Routes 3, $94k month to date | OBSERVED — day 61, the same card, the same numbers as run 131 on the pre-change build |
+| KEY-HZ3-route-morning-after-entry | **MUC–IST, 4 Mar**: load 100%, 2× round trips, punctuality 94%, completion 93%, 1 aircraft; last full month $1.8M; *"An even fight — 43% of today's passengers against 1 rival, mostly because their fare is lower."*; PacificBlue · their hub · 2×/day · reputation 70% · 57% of today · **$142 · 15% under you**; *"They are cheaper. Another rotation keeps the money…"* | OBSERVED — identical to run 131 |
+| KEY-HZ4-route-a-month-on | **MUC–IST, 3 Apr**: $137k this month so far, *"Earning — aircraft are flying 100% full."*, last full month $2.0M; *"You are losing this market — 39% of today's passengers against 1 rival, mostly because their fare is lower."*; PacificBlue **4×/day** · 61% of today · $142 | OBSERVED — the rival doubled its rotations in a month, as the twin measures |
+| KEY-HZ5-response-line | the same screen (the response line sits below the fold in this capture; the assertion that found it passed) | OBSERVED |
+| KEY-HZ6-route-after-response | **MUC–IST, 17 Apr**: **3× round trips**, load 97%, $1.2M this month, completion 92%; *"You are losing this market — 40% … their fare is lower"*; PacificBlue **5×/day** · 60% of today · $142; *"Answer with the fare below, or accept a smaller share at…"* | OBSERVED — the player's third rotation took and is 97% full; the rival keeps building |
+| KEY-HZ6-home-after-response | **Home, 2030-04-17**, $7.0M, net worth $62.7M: RIVALS *"You are losing 1 of your 1 contested route — see why."*; 1 in the air, 99% load, $1.6M month to date | OBSERVED |
+
+What the fix changed on screen: nothing — every figure above matches
+the frames AE-039 recorded in runs 121–129 and run 131 photographed
+seventy minutes before this phase's commit. What it changed underneath
+is in §7.1.
 
 ## 9. Bugs found
 
@@ -313,7 +336,13 @@ five-year campaigns and the diagnostics (seed 2039 horizon reads for
 four configurations, `--player`, `--follow`, `--openings`): about
 1,500 campaigns in all.
 
-**UI journeys:** §8 (the CI run).
+**UI journeys and CI:** two dispatched runs on this branch. Run 132:
+Core 451 of 451 passed in 28 min 09 s, then the job's 30-minute limit
+cancelled the release build; campaign 6 of 6, economy 4 of 4; the
+arrival + shell shard 6 of 9 on runner starvation (§8). Run 133, after
+the core job's limit was raised to 45 with the measurement beside it:
+Core 451 of 451 in 26 min 40 s and the release build clean; **19 of 19
+journeys** and both measurements; 28 min 33 s wall clock.
 
 ### 11.1 The two slowest tests, and the time limits
 
