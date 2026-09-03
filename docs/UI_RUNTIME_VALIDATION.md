@@ -23,8 +23,9 @@ Screenshots named with the `KEY-` prefix are also downscaled and base64'd
 into the job log, because the result-bundle artifact needs a GitHub
 credential the agent doing the interface work does not have (TD-020).
 
-Seven tests, one device, portrait. That is the whole of it — small, and worth
-not overstating.
+Twenty journeys and two measurements, one device, portrait, across three
+shards (run 135). That is the whole of it — small, and worth not overstating:
+one simulator, one screen size, and nothing on a physical device.
 
 **The week control (2026-09-03).** Under `-AEUITestSunriseWeek`, which
 every journey launches with, the speed bar carries a second control beside
@@ -56,6 +57,8 @@ established it:
 | 131 | main, the AE-040 merge (0579b9f) | UI shards green (arrival 445.3 s; the shell class 640 s across its clone); the Core job red on a time limit — `regionalRivalKeepsMoneyInTheStandardCast` past 300 s on the parallel runner, the same code green in run 130 |
 | 132 | AE-041 (a2e8681), dispatched by hand | campaign 6/6 (23 min 50 s), economy 4/4 (17 min 19 s), Core 451/451 in 28 min 09 s — and then the Core job's release build cancelled by the job's 30-minute limit; the arrival + shell shard starved: "Timed out while synthesizing event" on the Munich journey's first search-field tap on day 1, two shell tests on AX/query timeouts, `testDetailScreensAndSettingsRender` 523 s against 101 s in run 131. No product change is on that path before day 61. Core timeout raised to 45 (measured, docs/AE041_PROFIT_VS_REVENUE_REPORT.md §11.1); one redispatch |
 | 133 | AE-041 with the core timeout at 45 (489f8fd) | **green — all 19 journeys and both measurements, Core 451/451 in 26 min 40 s with the release build clean, 28 min 33 s wall clock.** Campaign 6/6 in 802.1 s (the regional-era journey 674.5 s); economy 4/4 in 560.8 s; the Munich arrival **475.1 s**; the shell class 8/8 across its clone. The HORIZON-KEY frames looked at and unchanged from run 131 (report §8.1) |
+| 134 | AE-042 (23f9b75) | **all three shards failed at "Build for the simulator"** in 76-113 s — `DashboardView.swift`, exit 65. One line: `opportunities.contains(\.paysForItsAirframe)`, a key path handed to the unlabeled `contains(_:)`, which takes an *element*, not a predicate. `swiftc -parse`, the only compiler check a Linux session has, accepts it. `scripts/check-app-symbols.mjs` grew a rule for that class (verified by reintroducing the defect); it runs on the 1x runner in milliseconds. One redispatch |
+| 135 | AE-042 with the compile fix (2026ab7) | **green — 20 journeys and both measurements, Core 457/457 in 24 min 51 s with the release build clean (48 s, inside the 45-minute limit).** Campaign 6/6 in 856.0 s; economy **5/5** in 1,109.3 s (the new `testNewYorkAdviceIsWorthFollowing` 558.9 s); arrival + shell 9/9 on the re-run, the Munich arrival **471.9 s**. Attempt 1's arrival shard failed `testARivalComesToMunich()` at 64.7 s — *"the home picker's search field never appeared"*, the same step run 132 lost — but the shell clone was healthy this time (`testDetailScreensAndSettingsRender` 104.2 s against 101 s in run 131), so a single tap that did not take rather than shard-wide starvation. Not the product's: the screen predates any `GameState`, and the same helper founded New York on the economy shard in the same run. One re-run of that shard confirmed it. The AE042-* frames and Munich's KEY-HZ frames looked at (docs/AE042_FINAL_REPORT.md §12) |
 
 What the runners cannot take is simultaneous app launches: the shard
 whose second class was a single long journey passed, the shard with ten

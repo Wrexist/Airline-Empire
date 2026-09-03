@@ -1538,7 +1538,11 @@ advice is unchanged; a recommendation names a flyable airframe; a home where
 nothing pays still gets advice; and a New York campaign that follows Home's
 advice through real commands for 500 days ends active, with no
 administration and more cash than it started with.
-**Status:** FIXED — TESTED; OBSERVED in CI run (docs/AE042_FINAL_REPORT.md §10).
+**Status:** FIXED — TESTED (457 of 457, locally and in CI run 135) and
+OBSERVED: the New York journey's frames show the card offering Mexico City and
+Miami with the airframe named and a positive month, Toronto gone, and the
+player solvent and debt-free at day 435, five days past where the old advice
+ended the game (docs/AE042_FINAL_REPORT.md §12).
 
 ---
 

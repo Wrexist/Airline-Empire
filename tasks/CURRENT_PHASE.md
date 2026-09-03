@@ -59,8 +59,17 @@ before the new tests and 457 with them, nothing weakened, no seed moved.
 Also found and recorded, not fixed: **BUG-056** — the aircraft market sorts
 by seats descending whatever the route is for.
 
-**Status:** Core MEASURED and TESTED; App: see docs/AE042_FINAL_REPORT.md §10
-for the CI run and the frames inspected.
+**Status:** DONE — Core MEASURED and TESTED (457 of 457, locally and in CI
+run 135, with the release build clean); App RUNTIME VALIDATED and OBSERVED
+(run 135: 20 journeys and both measurements green, the AE042 frames and
+Munich's KEY-HZ2 looked at). Run 134 lost all three simulator shards to a key
+path passed to `contains(_:)`, which `swiftc -parse` accepts and the
+type-checker rejects; `scripts/check-app-symbols.mjs` now catches that class
+on the cheap runner. Run 135's arrival shard failed
+`testARivalComesToMunich()` at the home picker's search field — a screen this
+change does not touch, on a helper that passed in the same run for New York —
+and passed on the one re-run in 471.9 s. Final report:
+docs/AE042_FINAL_REPORT.md.
 
 ---
 
