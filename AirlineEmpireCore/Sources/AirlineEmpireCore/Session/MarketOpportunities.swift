@@ -37,12 +37,40 @@ public struct MarketOpportunity: Equatable, Sendable {
     /// it sit unflown for two months; the sheet's warning could not say
     /// which kind of impossible it was.
     public let servableByEra: Bool
+    /// The airframe this market is best flown with, of the ones the airline
+    /// could operate — its own types if it has any, the era's if not — and
+    /// what a month on it would keep after that airframe's lease and the
+    /// crew and route payroll the economy charges for having it.
+    ///
+    /// Nil when nothing available can fly the pair. AE-042 measured why this
+    /// has to be part of the answer rather than left to the player: at 9 of
+    /// 93 homes a market that keeps $141k a month on a 90-seat regional jet
+    /// loses $703k on the 184-seat narrowbody the aircraft market's default
+    /// sort offers first (docs/AE042_NEXT_MOVES_BASELINE.md §6).
+    public let bestAirframe: AircraftTypeCode?
+    /// A month of this market's own operating result on `bestAirframe`, less
+    /// that airframe's monthly lease, the crew it carries and the route's own
+    /// payroll. Zero when nothing can fly it.
+    ///
+    /// Airline overhead is deliberately not charged here: the figure answers
+    /// "does this route pay for the aircraft it needs", not "what is the
+    /// airline worth". Measured against six months of real ledger on seven
+    /// pairs, it errs generous by $0.3–0.8M a month
+    /// (docs/AE042_NEXT_MOVES_BASELINE.md §3).
+    public let monthlyAfterAirframe: Money
+
+    /// Whether the market clears the airframe it needs. The one boundary the
+    /// recommendation depends on, and not a tuned one: below it the route
+    /// cannot pay for the aircraft that flies it.
+    public var paysForItsAirframe: Bool { monthlyAfterAirframe > .zero }
 
     public init(origin: AirportCode, destination: AirportCode,
                 destinationCity: String, distanceKm: Int,
                 expectedDailyPassengers: Int, referenceFare: Money,
                 incumbents: Int, servableNow: Bool,
-                servableByEra: Bool = true) {
+                servableByEra: Bool = true,
+                bestAirframe: AircraftTypeCode? = nil,
+                monthlyAfterAirframe: Money = .zero) {
         self.origin = origin
         self.destination = destination
         self.destinationCity = destinationCity
@@ -52,6 +80,8 @@ public struct MarketOpportunity: Equatable, Sendable {
         self.incumbents = incumbents
         self.servableNow = servableNow
         self.servableByEra = servableByEra
+        self.bestAirframe = bestAirframe
+        self.monthlyAfterAirframe = monthlyAfterAirframe
     }
 
     /// A first-route suggestion is an opportunity with the extra fields
@@ -66,6 +96,47 @@ public struct MarketOpportunity: Equatable, Sendable {
 }
 
 extension GameState {
+    /// What a market would keep in a month on the best airframe available to
+    /// this airline, after that airframe's lease and the crew it carries.
+    ///
+    /// The arithmetic is the flight system's own, ahead of time — the same
+    /// `CompetitorAISystem.airframeDayValue` the rivals decide on, corrected
+    /// in AE-040 and measured against six months of ledger on seven pairs in
+    /// AE-042. There is one economy in this game and this is it; nothing is
+    /// re-derived here.
+    ///
+    /// Returns nil when no available airframe can fly the pair.
+    func airframeResult(from origin: AirportCode, to destination: AirportCode,
+                        distanceKm: Int, passengersPerDay: Double,
+                        candidateSpecs: [AircraftTypeSpec],
+                        catalog: ContentCatalog) -> (spec: AircraftTypeSpec, monthly: Money)? {
+        guard let originSpec = catalog.airport(origin),
+              let destinationSpec = catalog.airport(destination) else { return nil }
+        // The two monthly costs the economy charges for having this route at
+        // all: the crew on its airframe and the route's own payroll
+        // (`EconomySystem`). Airline overhead is deliberately left out — it
+        // is charged once for the airline, not once per market — which is
+        // why the figure reads a little generous against a real month
+        // (docs/AE042_RECOMMENDATION_AUDIT.md §2).
+        let payroll = catalog.tuning.finance.payrollPerAircraftMonthly.asDouble
+            + catalog.tuning.finance.payrollPerRouteMonthly.asDouble
+        var best: (spec: AircraftTypeSpec, monthly: Double)?
+        for spec in candidateSpecs {
+            guard catalog.routeEligibility(
+                from: origin, to: destination,
+                aircraftRangeKm: spec.rangeKm,
+                aircraftRunwayRequirement: spec.runwayRequirement).isEmpty else { continue }
+            let perDay = CompetitorAISystem.airframeDayValue(
+                distanceKm: distanceKm, passengersPerDay: passengersPerDay, spec: spec,
+                fareRatio: 1.0, serviceTier: .standard,
+                origin: originSpec, destination: destinationSpec,
+                state: self, catalog: catalog, basis: .profit)
+            let monthly = perDay * 30 - spec.leaseMonthly.asDouble - payroll
+            if best == nil || monthly > best!.monthly { best = (spec, monthly) }
+        }
+        return best.map { ($0.spec, Money(rounding: $0.monthly)) }
+    }
+
     /// The best markets the player could open, ranked by capturable demand.
     ///
     /// Origins are the airports the player already touches (home included),
@@ -121,7 +192,7 @@ extension GameState {
             tuning: catalog.tuning.demand)
 
         let carrierCounts = carrierCountByMarket()
-        var scored: [(MarketOpportunity, Double)] = []
+        var scored: [(MarketOpportunity, Double, Double)] = []
         for origin in origins.sorted(by: { $0.raw < $1.raw }) {
             for code in catalog.orderedAirportCodes where code != origin {
                 guard !served.contains(Route.market(origin, code)),
@@ -164,18 +235,62 @@ extension GameState {
                     servableNow: servable)
                 // A contested market is worth less than an open one of the
                 // same size; the player still sees it, just ranked lower.
-                scored.append((opportunity, pool / Double(1 + incumbents)))
+                scored.append((opportunity, pool / Double(1 + incumbents), pool))
             }
         }
 
-        return scored
-            .sorted { lhs, rhs in
-                lhs.1 != rhs.1 ? lhs.1 > rhs.1
-                    : (lhs.0.origin.raw, lhs.0.destination.raw)
-                        < (rhs.0.origin.raw, rhs.0.destination.raw)
+        let ranked = scored.sorted { lhs, rhs in
+            lhs.1 != rhs.1 ? lhs.1 > rhs.1
+                : (lhs.0.origin.raw, lhs.0.destination.raw)
+                    < (rhs.0.origin.raw, rhs.0.destination.raw)
+        }
+
+        // Demand decides the order; paying for its own aircraft decides
+        // whether a market is offered at all.
+        //
+        // AE-042 measured what ranking on passengers alone recommends: at 21
+        // of the 93 homes a player can pick, the first suggestion either
+        // loses money after the airframe it needs or cannot be flown by
+        // anything the era sells. The fare rises with distance and the two
+        // movement fees do not, so the densest short pairs — Manchester to
+        // London at 96% of revenue in fees, London to Paris at 85% — sort to
+        // the top of a passenger ranking and to the bottom of an economic
+        // one (docs/AE042_BUG055_ROOT_CAUSE.md). The rivals stopped ranking
+        // this way in AE-039 for the same reason.
+        //
+        // The gate is not a filter: markets that pay come first, and a home
+        // with too few of them still sees the rest, so nothing is hidden and
+        // no player is stranded without a first route to open. Pricing stops
+        // as soon as `limit` qualifying markets are in hand, so the usual
+        // cost is a handful of evaluations rather than one per market.
+        var qualifying: [MarketOpportunity] = []
+        var rest: [MarketOpportunity] = []
+        for (opportunity, _, pool) in ranked {
+            guard qualifying.count < limit else { break }
+            let result = airframeResult(
+                from: opportunity.origin, to: opportunity.destination,
+                distanceKm: opportunity.distanceKm, passengersPerDay: pool,
+                candidateSpecs: candidateSpecs, catalog: catalog)
+            let priced = MarketOpportunity(
+                origin: opportunity.origin, destination: opportunity.destination,
+                destinationCity: opportunity.destinationCity,
+                distanceKm: opportunity.distanceKm,
+                expectedDailyPassengers: opportunity.expectedDailyPassengers,
+                referenceFare: opportunity.referenceFare,
+                incumbents: opportunity.incumbents,
+                servableNow: opportunity.servableNow,
+                servableByEra: opportunity.servableByEra,
+                bestAirframe: result?.spec.code,
+                monthlyAfterAirframe: result?.monthly ?? .zero)
+            if priced.paysForItsAirframe {
+                qualifying.append(priced)
+            } else if rest.count < limit {
+                rest.append(priced)
             }
-            .prefix(limit)
-            .map(\.0)
+        }
+        return qualifying.count >= limit
+            ? qualifying
+            : qualifying + rest.prefix(limit - qualifying.count)
     }
 
     /// Every destination reachable from `origin`, ranked by capturable demand.
@@ -234,6 +349,16 @@ extension GameState {
                 fareRatio: 1.0, quality: quality, tuning: catalog.tuning.demand)
             let fare = DemandSystem.referenceFare(distanceKm: distance,
                                                   tuning: catalog.tuning.demand)
+            // The sheet lists every destination on purpose, in demand order —
+            // opening a route the numbers dislike is the player's to make.
+            // It carries the same airframe verdict `marketOpportunities`
+            // gates on, so the screen can say what a market needs rather
+            // than leaving the player to find out from the ledger.
+            let result = airframeResult(
+                from: origin, to: code, distanceKm: distance,
+                passengersPerDay: outbound + inbound,
+                candidateSpecs: ownedSpecs.isEmpty ? eraSpecs : ownedSpecs,
+                catalog: catalog)
             out.append(MarketOpportunity(
                 origin: origin, destination: code,
                 destinationCity: catalog.airport(code)?.city ?? code.raw,
@@ -241,7 +366,9 @@ extension GameState {
                 expectedDailyPassengers: Int((outbound + inbound).rounded()),
                 referenceFare: Money(rounding: fare),
                 incumbents: carrierCounts[Route.market(origin, code)] ?? 0,
-                servableNow: servable, servableByEra: servableByEra))
+                servableNow: servable, servableByEra: servableByEra,
+                bestAirframe: result?.spec.code,
+                monthlyAfterAirframe: result?.monthly ?? .zero))
         }
         // Demand first, then reachability, then code — deterministic, and the
         // order the route sheet's own header has always claimed.

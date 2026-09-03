@@ -5,6 +5,33 @@ Active task list. Format follows the Master Task Rule (see
 
 ---
 
+## AE-042
+**Title:** Trust the advice — BUG-055
+**Purpose:** Answer whether a new player can safely follow Next Moves, and fix
+the recommendation only where evidence demands it.
+**Dependencies:** AE-041 (which found and root-caused BUG-055).
+**Implementation notes:**
+- 2026-09-03: measured before changing anything with a new `ae-advice`
+  executable (audit / follow / sweep / cost). 21 of the 93 pickable homes
+  were given a first recommendation that loses money after its airframe or
+  cannot be flown; the estimator was validated against six months of real
+  ledger on seven pairs first. Root cause CASE B (weak eligibility gate) with
+  CASE A and CASE E; documented in docs/AE042_BUG055_ROOT_CAUSE.md.
+- Shipped the gate, not a new ranking: markets that pay for the airframe they
+  need come first, the passenger order is untouched among them, and the
+  recommendation names the airframe it was judged on. 21 of 93 → 9 of 93
+  dangerous; AE-041's New York campaign 28 of 30 collapses → 0 of 30; the
+  curated starts unchanged.
+- Recorded BUG-056 (the aircraft market sorts by seats whatever the route is
+  for), which the gate deliberately does not fix.
+**Acceptance criteria:** every recommendation at the curated starts and New
+York pays for its aircraft; no curated start regresses; full Core suite green
+with nothing weakened; the corrected advice photographed in CI.
+**Tests:** `NextMovesTests` (6); full Core suite; `EconomyJourneyUITests.testNewYorkAdviceIsWorthFollowing`.
+**Status:** see tasks/CURRENT_PHASE.md.
+
+---
+
 ## AE-041
 **Title:** Profit versus revenue — the rival strategy test
 **Purpose:** Answer with evidence whether rivals should rank markets by

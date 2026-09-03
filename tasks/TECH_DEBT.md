@@ -670,3 +670,29 @@ player-relevant kinds (`isFeedEvent`) regardless of flight-event volume
 — a second small ring, or a per-kind reservation in the existing one —
 with the Munich twin's feed assertion extended to a late entry. No save
 change if the feed is derived; a small one if it is stored.
+
+## TD-033 — The recommendation's estimate is soft on thin routes
+
+**Symptom.** MEASURED (AE-042, docs/AE042_RECOMMENDATION_AUDIT.md §3): the
+figure `marketOpportunities` gates on — a month of the route's own operating
+result less its airframe's lease and payroll — agrees with the ledger in sign
+on every pair sampled, but errs generous, and on the thinnest routes the gap
+approaches the decision. Bergen–London on a 74-seat turboprop is estimated at
+**+$264k a month** and lands at **−$11k** after everything over six months of
+real flying. About $150k of that is airline overhead, which the estimate
+deliberately does not charge to one route; the rest is the estimator assuming
+every scheduled rotation flies (AE-040's limitation) and its demand forecast
+under-reading a thin pair.
+
+**Cost.** The gate reliably rejects routes that lose half a million a month
+or more, which is what BUG-055 was about. It can pass one that lands near
+break-even. On a first route, where the airline's whole overhead rests on one
+market, that difference is the player's cash.
+
+**Fix shape.** Either charge a first route a share of overhead (the honest
+version needs a rule for what "first" means, and none is obvious), or narrow
+the estimator's optimism at its source — the unflown-rotation assumption is
+the larger term and is shared with the rival AI, so correcting it moves both
+and needs its own before/after across the rival scans. Not attempted in
+AE-042: the measurement that would justify a threshold does not exist yet,
+and inventing one was explicitly out of bounds.

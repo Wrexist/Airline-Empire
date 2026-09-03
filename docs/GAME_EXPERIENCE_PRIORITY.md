@@ -84,6 +84,25 @@ not here.
   KEY-48's narrowbody fee line unchanged as designed. A turboprop route's
   fee line is NOT VALIDATED on screen (no journey flies one).
 
+- **ADV-01 · HOME · The game's own advice could bankrupt the player.**
+  MEASURED (AE-042, `ae-advice`): `marketOpportunities` ranked markets by
+  the passengers a starter service would capture and by nothing else, so at
+  **21 of the 93 homes a player can pick** the first suggestion lost money
+  after the airframe it needed or could not be flown. Manchester was told to
+  fly London — 243 km, 96% of revenue in airport fees, −$1.18M a month in six
+  months of real ledger, ranked #42 of 45 from that home; London was told to
+  fly Paris, ranked #44 of 44. AE-041's scripted New York campaign following
+  that advice collapsed in 28 of 30 seeds. ROOT CAUSE (BUG-055): the
+  eligibility filter asked whether an aircraft could fly a market, never
+  whether the market could pay for the aircraft; the fare rises with distance
+  and the movement fees do not, so a passenger ranking sorts by fee share
+  descending. **FIXED**: markets that pay for their airframe come first, the
+  passenger order among them is unchanged, and the recommendation names the
+  airframe it was judged on. 21 of 93 → 9 of 93 dangerous, the New York
+  campaign 28 of 30 collapses → 0 of 30, the curated starts unchanged.
+  **OBSERVED** (docs/AE042_FINAL_REPORT.md §10). The residual nine are
+  BUG-056: the aircraft market sorts by seats whatever the route is for.
+
 ## P1
 
 *(TD-026's economy residual — Stockholm and Barcelona unreached — is

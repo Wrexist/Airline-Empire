@@ -646,6 +646,28 @@ struct NextMovesCard: View {
         return Array((servable.isEmpty ? ranked : servable).prefix(2))
     }
 
+    /// Core ranks these and gates them on whether they pay for the airframe
+    /// they need; a home where none does is a real state (AE-042 measured one
+    /// of the ninety-three pickable homes in that position), and saying so is
+    /// better than calling the least bad option strong.
+    private var anyMarketPays: Bool {
+        opportunities.contains(\.paysForItsAirframe)
+    }
+
+    /// The one line a recommendation owes the player beyond its size: what it
+    /// takes to fly, and what a month of it is worth after that aircraft.
+    /// AE-042 measured the gap this closes — at nine of the ninety-three
+    /// homes a market that keeps $141k a month on a ninety-seat regional jet
+    /// loses $703k on the narrowbody the aircraft market lists first.
+    private func airframeLine(_ market: MarketOpportunity) -> String? {
+        guard let code = market.bestAirframe,
+              let spec = catalog.aircraftType(code) else { return nil }
+        guard market.paysForItsAirframe else {
+            return "No aircraft you can fly today covers its own lease here."
+        }
+        return "Best on a \(spec.seats)-seat \(spec.model) — about \(market.monthlyAfterAirframe.compact) a month after its lease."
+    }
+
     var body: some View {
         let idle = idleCount
         let markets = opportunities
@@ -667,8 +689,10 @@ struct NextMovesCard: View {
                         .accessibilityElement(children: .combine)
                     }
                     if !markets.isEmpty {
-                        Text(idle > 0 ? "Or grow the network:"
-                                      : "Strong open markets from your bases:")
+                        Text(idle > 0
+                             ? (anyMarketPays ? "Or grow the network:" : "Nothing here pays for its own aircraft yet:")
+                             : (anyMarketPays ? "Strong open markets from your bases:"
+                                              : "No market from your bases pays for its own aircraft yet:"))
                             .font(.caption)
                             .foregroundStyle(AETheme.mutedText)
                         ForEach(markets, id: \.destination) { market in
@@ -682,6 +706,13 @@ struct NextMovesCard: View {
                                         Text("≈\(market.expectedDailyPassengers) passengers/day · \(market.distanceKm) km · \(market.incumbents == 0 ? "no competition yet" : "\(market.incumbents) rival\(market.incumbents == 1 ? "" : "s") already here")")
                                             .font(.caption)
                                             .foregroundStyle(AETheme.mutedText)
+                                        if let line = airframeLine(market) {
+                                            Text(line)
+                                                .font(.caption)
+                                                .foregroundStyle(market.paysForItsAirframe
+                                                                 ? AETheme.mutedText : AETheme.caution)
+                                                .fixedSize(horizontal: false, vertical: true)
+                                        }
                                     }
                                     Spacer()
                                     Image(systemName: "chevron.right")

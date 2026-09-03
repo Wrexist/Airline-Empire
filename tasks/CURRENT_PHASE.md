@@ -1,5 +1,71 @@
 # Current Phase
 
+**AE-042 — Trust the advice.**
+2026-09-03.
+
+The brief: AE-041 left BUG-055 open at P1 — the game's own Next Moves card
+could recommend routes that bankrupt the player. Investigate the
+recommendation pipeline, measure the baseline, and fix the ranking only if
+the evidence supports it.
+
+Read first (docs/AE042_RECOMMENDATION_PIPELINE.md): one ranking feeds four
+surfaces — the onboarding suggestions, the Next Moves card, the map coach and
+the route sheet's prefill — and it scores markets as
+`pool / (1 + incumbents)`, the passengers a starter service would capture,
+and nothing else. Aircraft enter only as a boolean range-and-runway gate.
+Fees, fuel, crew, capacity, rotations, lease price and cash appear nowhere.
+It is the rule the rival AI abandoned in AE-039.
+
+Measured before changing anything (docs/AE042_NEXT_MOVES_BASELINE.md; a new
+`ae-advice` executable that reads the real read model and follows its advice
+through real commands): at **21 of the 93 homes a player can pick**, Home's
+first suggestion loses money after the airframe it needs or cannot be flown
+at all. Manchester is told to fly London — 243 km, **96% of revenue in
+airport fees**, **−$1.18M a month** in six months of real ledger — a market
+ranked #42 of 45 from that home. London's first suggestion is Paris, #44 of
+44. Mean distance of the dangerous recommendations 658 km against 2,348 km
+for the safe ones: the fare rises with distance and the two movement fees do
+not, so a passenger ranking sorts, in effect, by fee share descending. The
+estimator was checked against the ledger on seven pairs first and agrees in
+sign on all seven, erring generous.
+
+Root cause (docs/AE042_BUG055_ROOT_CAUSE.md): **CASE B** — the eligibility
+filter asks "can something fly this?" and never "can this pay for the
+aircraft it needs?" — with **CASE A** as the reason the traps surface first
+and **CASE E** at fleetless homes, where the filter admits markets no era
+airframe can fly. Not TD-031: the economy is doing what it is calibrated to
+do, and the defect is that the advice walks the player into it.
+
+Shipped: `marketOpportunities` puts markets that pay for the airframe they
+need ahead of those that do not, using the estimator AE-040 corrected and
+AE-041 shipped for rivals, less the airframe's lease and the crew and route
+payroll the economy charges. **The ranking is unchanged** — among markets
+that pay, still passengers per incumbent — and the gate reorders rather than
+deletes, so no home is left without advice. A recommendation now carries the
+airframe it was judged on, and the card names it. Three designs were measured
+first; ranking by value was rejected because it sends every home to its
+longest reachable route at one rotation a day.
+
+Measured after (docs/AE042_RECOMMENDATION_AUDIT.md): homes given dangerous or
+unflyable advice **21 of 93 → 9 of 93**, and the nine that remain are BUG-056
+— markets that pay on the airframe the advice names and lose on the larger
+one the aircraft market lists first. AE-041's scripted New York campaign,
+unchanged except for the advice: **28 of 30 collapses → 0 of 30**. Following
+the advice for 730 days across 30 seeds: mean cash up 9–37% at all four
+homes. Stockholm, Barcelona, Munich — the worlds the AE-039 and AE-041 twins
+and journeys are pinned on — **unchanged**. The full Core suite passes at 451
+before the new tests and 457 with them, nothing weakened, no seed moved.
+
+Also found and recorded, not fixed: **BUG-056** — the aircraft market sorts
+by seats descending whatever the route is for.
+
+**Status:** Core MEASURED and TESTED; App: see docs/AE042_FINAL_REPORT.md §10
+for the CI run and the frames inspected.
+
+---
+
+# Previous Phase
+
 **AE-041 — Profit versus revenue: the rival strategy test.**
 2026-09-03.
 
