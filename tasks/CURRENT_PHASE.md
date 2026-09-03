@@ -78,6 +78,17 @@ these runners cannot take, so the two launch-heavy classes now get a
 runner each with no cloning, and only the proven pair — the arrival
 beside the shell, green in 22 minutes — keeps two clones.
 
+MEASURED, run 127 (the three shards): the campaign class **1,225 s →
+186.6 s**, its UI step 6 min 17 s; the economy shard green in 12 min
+02 s; not one launch or query timeout in either log. The campaign shard
+stopped on one real assertion, and on the way it measured two harness
+costs of the harness's own making, both now fixed and both recorded in
+docs/UI_RUNTIME_VALIDATION.md §1: `foundAirline` spent **41 s** asking
+`waitForTab("Home")` on a screen that has no tabs, and the "World seed"
+tap was computed from a frame mid-scroll ({210, 738}), landed in the gap
+above the pinned Found bar, and left the disclosure shut — the failure
+frame still reads "World seed >" with the chevron unturned.
+
 ---
 
 # Previous Phase

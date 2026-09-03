@@ -51,6 +51,7 @@ established it:
 | 123 | one job, xcodebuild's own distribution, 2 clones | green in 48 min — three classes (39 min between them) on one clone, the fourth finished and left the other idle for 25 |
 | 125 | one job, 3 parallel workers | failed — two of three test runners died before connecting ("Timed out waiting for AX loaded notification"), the survivor starved, seven journeys lost to launch and query timeouts |
 | 126 | two named shards, 2 clones each | arrival + shell green in 22 min; campaign + economy starved at 30 min — three journeys on "Timed out while requesting launch progress" and "Timed out while evaluating UI query" |
+| 127 | three named shards, no cloning on the two launch-heavy ones | campaign class **186.6 s** (1,225 s in run 123), UI step 6 min 17 s, one real assertion failure; economy shard **green**, UI step 12 min 02 s. No starvation on either: not one launch or query timeout in the whole log |
 
 What the runners cannot take is simultaneous app launches: the shard
 whose second class was a single long journey passed, the shard with ten
@@ -63,6 +64,28 @@ survive that.
 **The week control, MEASURED.** The Munich arrival went from 981 s
 (run 123) to **495 s** (run 126) and stayed green — half the journey was
 simulator settling between sunrise taps.
+
+**Two harness costs run 127 exposed, MEASURED.** Neither was an
+assertion about the app, and the shard split is what made both legible:
+
+- `foundAirline` opened by asking `waitForTab("Home")` — four
+  accessibility queries over the founding screen's hierarchy — to decide
+  whether a relaunch had come back into a playing shell. On run 127's
+  runner that first poll took **41 s** (t = 9.24 s to t = 50.62 s in the
+  log; the cell query 12 s, the static-text query 12 s more) to conclude
+  what one query for the new-game screen's own button answers at once.
+  The cheap question is asked first now.
+- The "World seed" disclosure is the last row of a long scroll, just
+  above the pinned Found bar, so the tap has to scroll it into view.
+  XCUITest computed the hit point from the frame mid-scroll — `Computed
+  hit point {210, 738} after scrolling to visible` for a row that had
+  settled about thirty points higher — tapped the gap above the pinned
+  bar, and the disclosure never opened. 👁 The failure frame
+  (`KEY-SEED-FIELD-MISSING`, run 127 shard 1) still reads "World seed >"
+  with the chevron unturned, which is what proves it was the tap and not
+  the field. The tap is confirmed and repeated up to three times now;
+  the second needs no scroll, so it lands where the row is. The
+  assertion behind it is unchanged.
 
 ## 2. Test inventory
 
