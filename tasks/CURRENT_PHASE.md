@@ -65,8 +65,13 @@ pull request's own run, on a slower runner) timed out on accessibility
 queries and the campaign's sunrise loop. Shipped: a UI-journey-only
 "Advance seven mornings" control (`-AEUITestSunriseWeek`, the same
 engine calls with one refresh), `advanceMornings` taking weeks while a
-week fits, and three xcodebuild workers requested explicitly
-(docs/UI_RUNTIME_VALIDATION.md §1). Measured on the next run: MEASURE_ME.
+week fits (one date read per call, not per tap), and the UI job split
+into two named shards of two classes each, two cloned simulators per
+shard (docs/UI_RUNTIME_VALIDATION.md §1). The first attempt at the
+second half — three xcodebuild workers on one runner — was a regression:
+run 125 lost two of three test runners to "Timed out waiting for AX
+loaded notification" and failed seven journeys on starvation. Measured
+on the next run: MEASURE_ME.
 
 ---
 

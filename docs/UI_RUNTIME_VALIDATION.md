@@ -36,8 +36,22 @@ after that, so no journey lands past the date it asked for. Before it,
 the two long journeys tapped the sunrise about ninety and a hundred and
 ten times, each tap several seconds of settling; run 123's UI step took
 45 minutes with both on one simulator clone. The player never sees the
-control; nothing else about the app changes. The UI step also asks
-xcodebuild for three workers explicitly, since run 123 used two.
+control, and the measurement pass opts out of the flag so its numbers
+stay comparable with the ones already recorded.
+
+**Two shards (2026-09-03).** The UI job is a two-way matrix, and the
+split is named rather than left to xcodebuild: shard 1 runs the campaign
+and economy journeys, shard 2 the Munich arrival and the shell, two
+cloned simulators each, with the measurement pass on shard 2. XCUITest
+distributes by test class, and in run 123 it put three classes (39
+minutes between them) on one clone and the fourth on the other, which
+sat idle for 25 — the imbalance, not the total work, was most of the 48
+minutes. Asking for three workers instead (run 125) was worse, not
+better: two of the three test runners died before connecting ("Timed out
+waiting for AX loaded notification"), the survivor was starved, and
+seven journeys failed on launch and query timeouts that had nothing to
+do with the app. Three cloned simulators do not fit on a three-core
+runner; two do.
 
 ## 2. Test inventory
 

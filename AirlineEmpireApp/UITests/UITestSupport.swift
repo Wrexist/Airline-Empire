@@ -26,10 +26,18 @@ class AEUITestCase: XCTestCase {
         // The week control beside the sunrise, for the journeys only: the
         // two long journeys tapped the sunrise ninety and a hundred and ten
         // times, at several seconds of simulator settling each, and run
-        // 123's UI step took 45 minutes on one clone. Seven mornings per
-        // tap is the same engine calls with one refresh at the end.
-        app.launchArguments.append("-AEUITestSunriseWeek")
+        // 123's UI step took 48 minutes. Seven mornings per tap is the same
+        // engine calls with one refresh at the end. The measurement pass
+        // opts out (below): its numbers are only comparable with the ones
+        // already recorded if the screen it measures is the shipped one.
+        if wantsSunriseWeek {
+            app.launchArguments.append("-AEUITestSunriseWeek")
+        }
     }
+
+    /// Whether this class wants the journeys' week control on screen.
+    /// `PerformanceBaselineUITests` says no — see `setUp`.
+    var wantsSunriseWeek: Bool { true }
 
     override func tearDown() {
         app = nil
@@ -843,26 +851,31 @@ class AEUITestCase: XCTestCase {
         openTabIfNeeded("Home")
         let sunrise = app.buttons["Advance to next morning"]
         guard sunrise.waitForExistence(timeout: 8) else { return false }
-        let week = app.buttons["Advance seven mornings"]
         let arrived = app.staticTexts.matching(NSPredicate(
             format: "label BEGINSWITH %@", datePrefix)).firstMatch
-        let target = Self.earliestDate(matching: datePrefix)
+
+        // The weeks first, counted once. Reading the date on every
+        // iteration would put an accessibility query between every tap,
+        // which is the cost this is here to remove; and `(days - 1) / 7`
+        // always stops at least a day short, so the day-by-day approach
+        // below — the part the journeys' caps were written for — is intact
+        // and no journey can land past the date it asked for.
+        let week = app.buttons["Advance seven mornings"]
+        if !arrived.exists, week.exists,
+           let today = currentHomeDate(),
+           let target = Self.earliestDate(matching: datePrefix) {
+            let weeks = max(0, (Self.days(from: today, to: target) - 1) / 7)
+            for _ in 0..<weeks { week.tap() }
+        }
+
         var taps = 0
         while taps < cap, !arrived.exists {
-            // A week at a time while a whole week fits before the target —
-            // the same seven engine calls a player's seven taps make, with
-            // one screen refresh instead of seven simulator settles. Never
-            // past the target: a week is taken only when at least seven
-            // days remain, so the day-by-day approach at the end is intact.
-            if let target, week.exists, let today = currentHomeDate(),
-               Self.days(from: today, to: target) >= 7 {
-                week.tap()
-            } else {
-                sunrise.tap()
-            }
+            sunrise.tap()
             // No fixed pause: `tap()` already waits for the app to go idle,
             // and the `arrived.exists` query at the top of the loop is a
-            // second synchronisation point.
+            // second synchronisation point. The campaign tapped this control
+            // ninety times, so half a second each was half a minute of the
+            // suite spent asleep.
             taps += 1
         }
         return arrived.exists

@@ -181,8 +181,33 @@ jobs:
 
   # ── 3 · Does the app compile? ──────────────────────────────────────────────
   app:
-    name: iOS app (xcodebuild)
+    name: iOS app (xcodebuild) · ${{ matrix.name }}
     runs-on: macos-26
+    # Two shards, and the split is written down rather than left to
+    # xcodebuild. XCUITest distributes by test *class*, and its own
+    # distribution is what made run 123's UI pass 48 minutes: three classes
+    # (the campaign, the shell and the Munich arrival — 39 minutes between
+    # them) landed on one cloned simulator while the fourth finished on the
+    # other and left it idle for 25. Naming the classes per shard fixes the
+    # balance. Two clones per shard is what a three-core runner can actually
+    # boot: run 125 asked for three workers, two of the three test runners
+    # died before connecting ("Timed out waiting for AX loaded
+    # notification"), the survivor was starved, and seven journeys failed on
+    # launch and query timeouts that had nothing to do with the app.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: 1
+            name: campaign + economy
+            tests: >-
+              -only-testing:AirlineEmpireUITests/CampaignUITests
+              -only-testing:AirlineEmpireUITests/EconomyJourneyUITests
+          - shard: 2
+            name: arrival + shell
+            tests: >-
+              -only-testing:AirlineEmpireUITests/HorizonArrivalUITests
+              -only-testing:AirlineEmpireUITests/ShellAndMapUITests
     # Measured on runs 112–118: build-for-testing ≈ 2 min, the measurement
     # pass 5–11 min, the parallel UI pass 32 min on a normal runner and
     # 58+ min on a slow one (runs 114 and 118 ran every journey 1.3–2×
@@ -192,7 +217,7 @@ jobs:
     # UI step below carries its own timeout so an overrun ends the tests
     # and still exports what they photographed; this cap only has to
     # outlast that.
-    timeout-minutes: 75
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
         with:
@@ -324,7 +349,7 @@ jobs:
       # docs/MAP_P0_PERFORMANCE_REPORT.md. They run first, alone, on an
       # otherwise quiet machine.
       - name: Measure (alone, so the numbers stay comparable)
-        if: steps.changes.outputs.build == 'true'
+        if: steps.changes.outputs.build == 'true' && matrix.shard == 2
         working-directory: AirlineEmpireApp
         run: |
           set -o pipefail
@@ -346,7 +371,7 @@ jobs:
         # fails and the evidence steps below still run on the result bundle
         # as it stands. Run 118 lost every frame of a new journey to the job
         # cap instead.
-        timeout-minutes: 52
+        timeout-minutes: 30
         run: |
           set -o pipefail
           xcodebuild \
@@ -354,10 +379,9 @@ jobs:
             -scheme AirlineEmpire \
             -configuration Debug \
             -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
-            -skip-testing:AirlineEmpireUITests/PerformanceBaselineUITests \
+            ${{ matrix.tests }} \
             -parallel-testing-enabled YES \
-            -parallel-testing-worker-count 3 \
-            -maximum-concurrent-test-simulator-destinations 3 \
+            -maximum-concurrent-test-simulator-destinations 2 \
             -resultBundlePath UITestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO \
             test-without-building 2>&1 | tee -a ui-test-output.txt
@@ -397,7 +421,7 @@ jobs:
         if: always() && steps.changes.outputs.build == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: ui-screenshots
+          name: ui-screenshots-shard${{ matrix.shard }}
           path: |
             AirlineEmpireApp/UITestResults.xcresult
             AirlineEmpireApp/UITestResults-baseline.xcresult
