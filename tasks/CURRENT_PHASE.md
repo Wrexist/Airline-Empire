@@ -66,12 +66,17 @@ queries and the campaign's sunrise loop. Shipped: a UI-journey-only
 "Advance seven mornings" control (`-AEUITestSunriseWeek`, the same
 engine calls with one refresh), `advanceMornings` taking weeks while a
 week fits (one date read per call, not per tap), and the UI job split
-into two named shards of two classes each, two cloned simulators per
-shard (docs/UI_RUNTIME_VALIDATION.md §1). The first attempt at the
-second half — three xcodebuild workers on one runner — was a regression:
-run 125 lost two of three test runners to "Timed out waiting for AX
-loaded notification" and failed seven journeys on starvation. Measured
-on the next run: MEASURE_ME.
+into named shards (docs/UI_RUNTIME_VALIDATION.md §1). MEASURED, run 126:
+the Munich arrival **981 s → 495 s** and green — half of it had been
+simulator settling between sunrise taps. Two arrangements were measured
+and rejected on the way: three xcodebuild workers on one runner (run
+125: two of three test runners died on "Timed out waiting for AX loaded
+notification", seven journeys lost to starvation) and two shards of two
+classes each (run 126: the shard with ten launch-heavy tests across two
+clones starved at the 30-minute cap). Simultaneous app launches are what
+these runners cannot take, so the two launch-heavy classes now get a
+runner each with no cloning, and only the proven pair — the arrival
+beside the shell, green in 22 minutes — keeps two clones.
 
 ---
 

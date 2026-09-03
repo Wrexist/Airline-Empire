@@ -183,31 +183,47 @@ jobs:
   app:
     name: iOS app (xcodebuild) · ${{ matrix.name }}
     runs-on: macos-26
-    # Two shards, and the split is written down rather than left to
-    # xcodebuild. XCUITest distributes by test *class*, and its own
-    # distribution is what made run 123's UI pass 48 minutes: three classes
-    # (the campaign, the shell and the Munich arrival — 39 minutes between
-    # them) landed on one cloned simulator while the fourth finished on the
-    # other and left it idle for 25. Naming the classes per shard fixes the
-    # balance. Two clones per shard is what a three-core runner can actually
-    # boot: run 125 asked for three workers, two of the three test runners
-    # died before connecting ("Timed out waiting for AX loaded
-    # notification"), the survivor was starved, and seven journeys failed on
-    # launch and query timeouts that had nothing to do with the app.
+    # The split is written down rather than left to xcodebuild, and each of
+    # the two long journeys gets a runner to itself.
+    #
+    # Three measurements got it here. Run 123: XCUITest distributes by test
+    # class and put three classes on one cloned simulator (39 minutes) while
+    # the fourth finished on the other and left it idle for 25 — the
+    # imbalance, not the total work, was most of the 48 minutes. Run 125:
+    # asking for three parallel workers put three simulators on a three-core
+    # runner, two test runners died before connecting ("Timed out waiting for
+    # AX loaded notification") and seven journeys failed on starvation. Run
+    # 126, two named shards of two classes each: the shard whose second class
+    # was a single long journey passed in 22 minutes (the Munich arrival
+    # halved, 981 s to 495 s, by the week control), and the shard with ten
+    # launch-heavy tests across two clones starved anyway — three journeys
+    # died on "Timed out while requesting launch progress" and "Timed out
+    # while evaluating UI query", none of them an assertion about the app.
+    #
+    # Simultaneous app launches are what these runners cannot take. So the
+    # two launch-heavy classes now run one class to a runner with no cloning
+    # at all, and only the pair that already proved itself — one long journey
+    # beside the shell — keeps two clones.
     strategy:
       fail-fast: false
       matrix:
         include:
           - shard: 1
-            name: campaign + economy
-            tests: >-
-              -only-testing:AirlineEmpireUITests/CampaignUITests
-              -only-testing:AirlineEmpireUITests/EconomyJourneyUITests
+            name: campaign
+            tests: -only-testing:AirlineEmpireUITests/CampaignUITests
+            parallel: -parallel-testing-enabled NO
           - shard: 2
+            name: economy
+            tests: -only-testing:AirlineEmpireUITests/EconomyJourneyUITests
+            parallel: -parallel-testing-enabled NO
+          - shard: 3
             name: arrival + shell
             tests: >-
               -only-testing:AirlineEmpireUITests/HorizonArrivalUITests
               -only-testing:AirlineEmpireUITests/ShellAndMapUITests
+            parallel: >-
+              -parallel-testing-enabled YES
+              -maximum-concurrent-test-simulator-destinations 2
     # Measured on runs 112–118: build-for-testing ≈ 2 min, the measurement
     # pass 5–11 min, the parallel UI pass 32 min on a normal runner and
     # 58+ min on a slow one (runs 114 and 118 ran every journey 1.3–2×
@@ -349,7 +365,7 @@ jobs:
       # docs/MAP_P0_PERFORMANCE_REPORT.md. They run first, alone, on an
       # otherwise quiet machine.
       - name: Measure (alone, so the numbers stay comparable)
-        if: steps.changes.outputs.build == 'true' && matrix.shard == 2
+        if: steps.changes.outputs.build == 'true' && matrix.shard == 3
         working-directory: AirlineEmpireApp
         run: |
           set -o pipefail
@@ -380,8 +396,7 @@ jobs:
             -configuration Debug \
             -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
             ${{ matrix.tests }} \
-            -parallel-testing-enabled YES \
-            -maximum-concurrent-test-simulator-destinations 2 \
+            ${{ matrix.parallel }} \
             -resultBundlePath UITestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO \
             test-without-building 2>&1 | tee -a ui-test-output.txt

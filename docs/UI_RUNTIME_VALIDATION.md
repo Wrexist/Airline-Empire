@@ -39,19 +39,30 @@ ten times, each tap several seconds of settling; run 123's UI step took
 control, and the measurement pass opts out of the flag so its numbers
 stay comparable with the ones already recorded.
 
-**Two shards (2026-09-03).** The UI job is a two-way matrix, and the
-split is named rather than left to xcodebuild: shard 1 runs the campaign
-and economy journeys, shard 2 the Munich arrival and the shell, two
-cloned simulators each, with the measurement pass on shard 2. XCUITest
-distributes by test class, and in run 123 it put three classes (39
-minutes between them) on one clone and the fourth on the other, which
-sat idle for 25 — the imbalance, not the total work, was most of the 48
-minutes. Asking for three workers instead (run 125) was worse, not
-better: two of the three test runners died before connecting ("Timed out
-waiting for AX loaded notification"), the survivor was starved, and
-seven journeys failed on launch and query timeouts that had nothing to
-do with the app. Three cloned simulators do not fit on a three-core
-runner; two do.
+**Three shards (2026-09-03), MEASURED.** The UI job is a three-way
+matrix and the split is written down rather than left to xcodebuild:
+the campaign journeys on one runner, the economy journeys on another,
+both with no simulator cloning at all, and the Munich arrival beside the
+shell on a third with two clones and the measurement pass. Three runs
+established it:
+
+| Run | Arrangement | Result |
+| --- | --- | --- |
+| 123 | one job, xcodebuild's own distribution, 2 clones | green in 48 min — three classes (39 min between them) on one clone, the fourth finished and left the other idle for 25 |
+| 125 | one job, 3 parallel workers | failed — two of three test runners died before connecting ("Timed out waiting for AX loaded notification"), the survivor starved, seven journeys lost to launch and query timeouts |
+| 126 | two named shards, 2 clones each | arrival + shell green in 22 min; campaign + economy starved at 30 min — three journeys on "Timed out while requesting launch progress" and "Timed out while evaluating UI query" |
+
+What the runners cannot take is simultaneous app launches: the shard
+whose second class was a single long journey passed, the shard with ten
+launch-heavy tests across two clones did not. So the launch-heavy
+classes now get a runner each, and only the pair that proved itself
+keeps two clones. Runner speed varies about 1.6× between runs (run 126's
+shell class took 818 s where run 123's took 505 s), so any budget has to
+survive that.
+
+**The week control, MEASURED.** The Munich arrival went from 981 s
+(run 123) to **495 s** (run 126) and stayed green — half the journey was
+simulator settling between sunrise taps.
 
 ## 2. Test inventory
 
