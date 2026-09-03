@@ -1030,12 +1030,19 @@ class AEUITestCase: XCTestCase {
     /// Found an airline and arrive in the shell. Every journey starts here.
     @discardableResult
     func foundAirline(seed: String? = nil, home: (code: String, city: String)? = nil) -> Bool {
-        // A relaunch inside one test may come back to a shell that is already
-        // playing; that is a success, not a missing button.
-        if waitForTab("Home", timeout: 3) != nil { return true }
+        // Ask the cheap question first. A relaunch inside one test may come
+        // back to a shell that is already playing, and that is a success —
+        // but `waitForTab` asks four accessibility queries per poll, and on
+        // the founding screen's hierarchy run 127 spent forty-one seconds
+        // on the first poll alone (the cell query twelve seconds, the
+        // static-text query twelve more) before concluding what one query
+        // for the new-game screen's own button answers immediately.
         let found = app.buttons["Found Skyline Air"]
-        guard require(found, "the Found button on the new-game screen") else {
-            return false
+        if !found.waitForExistence(timeout: 15) {
+            if waitForTab("Home", timeout: 3) != nil { return true }
+            guard require(found, "the Found button on the new-game screen") else {
+                return false
+            }
         }
         // The campaign journey founds a *specific* world: the seed field is
         // a product feature ("share one for a challenge run"), and the same
@@ -1044,21 +1051,40 @@ class AEUITestCase: XCTestCase {
         if let seed {
             let disclosure = app.buttons["World seed"]
             if disclosure.waitForExistence(timeout: 5) {
-                disclosure.tap()
                 let field = app.textFields["Seed number"]
-                if field.waitForExistence(timeout: 5) {
-                    field.tap()
-                    field.typeText(seed)
-                    // Collapse the disclosure again: it keeps the typed seed
-                    // (the collapsed row echoes it) and puts the keyboard
-                    // away, so the Found button below is hittable.
+                // The disclosure is the last row of a long scroll, sitting
+                // just above the pinned Found bar, so the first tap has to
+                // scroll it into view — and run 127 computed its hit point
+                // from the frame mid-scroll ({210, 738} for a row that
+                // settled roughly thirty points higher), tapped the gap
+                // above the pinned bar, and the disclosure stayed shut. The
+                // frame the failure screenshot caught still read "World
+                // seed >", chevron unturned. A second tap needs no scroll,
+                // so it lands where the row actually is.
+                //
+                // This waits for the tap to take; it does not relax what the
+                // journey asserts. If three taps cannot open the disclosure,
+                // the failure below is still the failure.
+                var opened = false
+                for _ in 0..<3 {
                     disclosure.tap()
-                    Thread.sleep(forTimeInterval: 0.5)
-                } else {
+                    if field.waitForExistence(timeout: 5) {
+                        opened = true
+                        break
+                    }
+                }
+                guard opened else {
                     capture(Self.logPrefix + "SEED-FIELD-MISSING")
                     XCTFail("The World seed field did not appear after expanding the disclosure.")
                     return false
                 }
+                field.tap()
+                field.typeText(seed)
+                // Collapse the disclosure again: it keeps the typed seed
+                // (the collapsed row echoes it) and puts the keyboard
+                // away, so the Found button below is hittable.
+                disclosure.tap()
+                Thread.sleep(forTimeInterval: 0.5)
             }
         }
         // A home beyond the curated three: the "Somewhere else" card opens
