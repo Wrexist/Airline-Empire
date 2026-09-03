@@ -160,6 +160,14 @@ public struct SolvencySystem: SimulationSystem {
             _ = state.world.releaseSlots(airline: airline.id, airport: route.destination,
                                          count: movements)
             state.routes[route.id] = nil
+            // A collapse empties markets the same way a closure does, and
+            // the record must say so: the feed only ever carried the
+            // collapse itself, never which city pairs it freed.
+            state.world.recordMarketMove(MarketMove(
+                at: state.clock.now, airline: airline.id, origin: route.origin,
+                destination: route.destination, kind: .left))
+            context.emit(.marketLeft(airline: airline.id, origin: route.origin,
+                                     destination: route.destination))
         }
         for aircraft in state.fleet(of: airline.id) {
             state.aircraft[aircraft.id] = nil

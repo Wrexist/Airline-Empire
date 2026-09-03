@@ -1,4 +1,4 @@
-# Game experience priority list — AE-033 audit
+# Game experience priority list — AE-033 audit, AE-037 and AE-038 updates
 
 > The ranked output of the full runtime audit (map harvest + player
 > journey + screen-by-screen). Every item carries how it was found.
@@ -14,11 +14,81 @@ reviewer would notice. P3 = polish. The two AE-034 P0s (drag rebuild
 cost, label churn) were fixed this phase and live in the perf report,
 not here.
 
+## P0
+
+- **RIV-01 · WORLD · No rival ever met the player.** MEASURED (AE-037,
+  `ae-rival-probe`): five years from three curated starts, zero contested
+  player markets, zero rivals with a second route, three of five rivals
+  collapsed. ROOT CAUSE: BUG-042 (an idle aircraft always joined the one
+  full route) and BUG-043 (the cast founded at the five most populous
+  airports, all in Asia). **FIXED** at the source; rivals now build hub
+  networks in the player's region and fight each other. Rival-initiated
+  entry into a pair the player already flies remains unreached (TD-026).
+- **RIV-02 · ROUTES/HOME · A contested market's consequences had no
+  cause on screen.** MEASURED: entering London–Paris under two incumbents
+  drew a fare cut and an extra rotation the next morning, thirty-two
+  frequency increases, a settled third of the market and a monthly loss —
+  and not one event. **FIXED** (BUG-044): `MarketCompetition` standing /
+  share / edge on the route, `CompetitionSummary` headline on Home and the
+  World hub, `marketEntered` / `marketLeft` in the feed, the market-move
+  record (save v12). **OBSERVED** (runs 112–116: KEY-40, 42–48,
+  50–53 — `docs/RIVAL_PRESSURE_AUDIT.md` §8).
+- **RIV-03 · HOME · The guided route sheet could open empty.** OBSERVED
+  (run 116, `FEB-ROUTE-SHEET-STUCK-1` against `KEY-32`): a suggestion tap
+  produced a sheet with nothing picked, and the campaign opened an
+  unflyable route from it. **FIXED** (BUG-045): item-driven presentation.
+  **OBSERVED** (run 117, `KEY-32b`: the suggested Paris and Istanbul routes
+  on the board, nothing else).
+
+- **RIV-04 · WORLD · The world never moved first.** MEASURED (AE-038,
+  `ae-rival-scan`, 240 campaigns): rivals entered a pair the player flew
+  at one of eight homes, because a contested pair scored half per
+  incumbent. **FIXED**: `DemandSystem.poolAvailableToEntrant` — the
+  engine's own split — in the AI's market scoring; 30 → 95 world-initiated
+  entries across the same campaigns. **OBSERVED** (run 119, KEY-R2:
+  "SwiftJet entered your … market yesterday" on Home two days after
+  founding in New York; KEY-R3/R4/R7 the split, the why, the response).
+  AE-039 found that entry to be an artefact of the passenger ranking —
+  see RIV-07.
+- **RIV-05 · ROUTES · The frequency advice named the wrong cost.**
+  MEASURED (AE-038): "another rotation needs another aircraft" on a pair
+  where the one aircraft had a rotation to spare. **FIXED** (BUG-046);
+  **OBSERVED** (run 119, KEY-R4 and R7).
+- **RIV-06 · HOME · Two wordings the New York frames found.** The pair in
+  the rival's orientation (BUG-047) and a month-old entry outranking the
+  live fight (BUG-048). **FIXED**, **OBSERVED** (run 120, KEY-R2, KEY-R4).
+- **RIV-07 · WORLD · The world could not reach the curated European
+  starts.** MEASURED (AE-039): the horizon was not the cause — at 24, 48
+  and 93 airports the rivals reached the same pairs as at 16 — the
+  passenger ranking was. **FIXED** in the ranking (airframe-day revenue):
+  Munich reached on day 61 in every seed, Singapore in year two.
+  Stockholm and Barcelona still not within two years (TD-026's residual
+  is now an economy question: TD-029, TD-030). **OBSERVED** (run 121,
+  KEY-HZ2 … HZ6: PacificBlue arrives on Munich–Istanbul on 3 March).
+- **RIV-08 · ROUTES · Fare advice named the costly answer.** MEASURED
+  (AE-039): matching a cheaper rival bought share and cost money; another
+  rotation earned more. **FIXED** (BUG-049), **OBSERVED** (run 121,
+  KEY-HZ5-response-line).
+
+- **ECON-01 · WORLD/ROUTES · A movement cost the same whatever landed.**
+  MEASURED (AE-040, `ae-fee-baseline`): the 68-seat turboprop's airport
+  fees were 1.7–1.9× the narrowbody's as a share of revenue on the same
+  pair; no turboprop route in the world paid for its lease; the regional
+  archetype had no market from its European home; the player paid the
+  same (parity to the cent). **FIXED** (BUG-051: the movement fee scales
+  with seats, anchored at 180) and the AI's estimator brought to the
+  ledger's maintenance rule (BUG-052). Before/after:
+  docs/BALANCING.md F-007. **OBSERVED** (run 123, KEY-HZ5: the fee
+  row's new caption "Each flight pays $2,249 at Munich and $1,738 at
+  Istanbul for a 184-seat aircraft, plus $15–$23 per passenger landed.");
+  KEY-48's narrowbody fee line unchanged as designed. A turboprop route's
+  fee line is NOT VALIDATED on screen (no journey flies one).
+
 ## P1
 
-*(none open — the P0/P1 class found by the baseline was the map
-interaction cost, fixed and verified this phase; the journey audit found
-no other P0/P1.)*
+*(TD-026's economy residual — Stockholm and Barcelona unreached — is
+re-measured after AE-040 in docs/AE040_FEE_ECONOMY_REPORT.md §9; TD-031
+holds the reference P&L reconciliation.)*
 
 ## P2
 

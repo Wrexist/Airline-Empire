@@ -251,6 +251,7 @@ struct MapSelectionPanel: View {
 /// true thing it can — which for a new airline is "here is where to begin",
 /// and for an established one is what the current overlay found.
 struct MapIdlePanel: View {
+    @Environment(GameController.self) private var controller
     let model: MapModel
     let overlay: MapOverlay
     let openRoute: (FirstRouteSuggestion) -> Void
@@ -363,12 +364,25 @@ struct MapIdlePanel: View {
                             : "Every route is carrying its weight.",
                         tint: weak > 0 ? AETheme.caution : AETheme.positive)
         case .competition:
-            let contested = model.airports.filter {
+            // Shared *pairs* are the fight; shared airports are presence.
+            // The old line counted airports, which reads as competition and
+            // is not: no demand is shared at an airport (AE-037).
+            if let summary = controller.competitionSummary, summary.contestedRoutes > 0 {
+                let losing = summary.trailingRoutes
+                return Hint(icon: "person.2.fill",
+                            text: losing > 0
+                                ? "\(summary.contestedRoutes) of your routes \(summary.contestedRoutes == 1 ? "is" : "are") contested — you are losing \(losing)."
+                                : summary.contestedRoutes == 1
+                                    ? "One of your routes is contested; you hold your own on it."
+                                    : "\(summary.contestedRoutes) of your routes are contested; you hold your own on each.",
+                            tint: losing > 0 ? AETheme.caution : AETheme.accent)
+            }
+            let shared = model.airports.filter {
                 $0.servedByPlayer && $0.competitorCount > 0
             }.count
             return Hint(icon: "person.2.fill",
-                        text: contested > 0
-                            ? "You share \(contested) of your airports with a rival."
+                        text: shared > 0
+                            ? "Rivals fly from \(shared) of your airports, but not on your routes — yet."
                             : "Nobody else flies where you fly.",
                         tint: AETheme.accent)
         case .disruption:

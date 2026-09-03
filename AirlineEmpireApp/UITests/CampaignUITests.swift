@@ -201,6 +201,149 @@ final class CampaignUITests: AEUITestCase {
             openTab("Home")
         }
 
+        // ── The fight: London–Berlin under an incumbent (AE-037, AE-039) ───
+        // The Core twin (RivalPressureCampaignTests) measures this exact
+        // move on this seed: Aurora Atlantic flies LHR–BER from day 18;
+        // entering under its fare is answered the next morning with a cut
+        // to its premium floor and an extra rotation ($146/3× → $128/4×),
+        // it then climbs to twenty a day, and a week on the player holds
+        // 54% at full load. COMP-01 … COMP-04 are these states, photographed.
+        guard openAircraftMarket() else { return }
+        guard leaseAnAircraft() else { return }
+        guard openAirlineSection("Routes") else { return }
+        let addFight = app.buttons["Open route"]
+        guard require(addFight, "the Open route toolbar action (fight)") else { return }
+        addFight.tap()
+        // From: London. The picker is a menu whose label leads with "From".
+        let fromPicker = app.buttons.matching(NSPredicate(
+            format: "label BEGINSWITH %@", "From")).firstMatch
+        guard fromPicker.waitForExistence(timeout: 8) else {
+            capture(Self.logPrefix + "NO-FROM-PICKER")
+            XCTFail("The route sheet's From picker never appeared.")
+            return
+        }
+        fromPicker.tap()
+        let london = app.buttons.matching(NSPredicate(
+            format: "label BEGINSWITH %@", "LHR")).firstMatch
+        guard london.waitForExistence(timeout: 6) else {
+            capture(Self.logPrefix + "NO-LHR-ORIGIN")
+            XCTFail("London is not offered as an origin although ARN–LHR is flown — the From picker lists airports the airline serves.")
+            return
+        }
+        london.tap()
+        let fightSearch = app.searchFields.firstMatch
+        guard fightSearch.waitForExistence(timeout: 8) else {
+            capture(Self.logPrefix + "NO-FIGHT-SEARCH")
+            XCTFail("The route sheet's search field never appeared for the fight.")
+            return
+        }
+        fightSearch.tap()
+        // Berlin, not Paris: since AE-039 ranks markets by what an airframe
+        // day sells, no rival flies the fee-dominated London–Paris; Aurora
+        // Atlantic opens London–Berlin on day 18 of this seed
+        // (docs/HORIZON_AUDIT.md §5).
+        fightSearch.typeText("Berlin")
+        Thread.sleep(forTimeInterval: 1)
+        let paris = app.buttons.matching(NSPredicate(
+            format: "identifier == %@ AND label CONTAINS %@",
+            "ae-route-destination", "Berlin")).firstMatch
+        guard paris.waitForExistence(timeout: 8) else {
+            capture(Self.logPrefix + "NO-BERLIN-ROW")
+            XCTFail("Searching for Berlin from London produced no destination row.")
+            return
+        }
+        // COMP-01: the row says who is already there before anything is
+        // committed ("1 airline already flies it").
+        XCTAssertTrue(paris.label.contains("already fly") || paris.label.contains("already flies"), """
+            The London–Berlin row does not say that an airline already flies it: \
+            "\(paris.label)". The Core twin has Aurora Atlantic on this pair \
+            on this seed from day 18.
+            """)
+        checkpoint("40-contested-market-row")
+        paris.tap()
+        // At the market fare, not under it. Run 112 tried the fare slider
+        // here and the drag landed on the pinned commit bar under the
+        // keyboard: the route opened at the reference fare before the
+        // journey had looked, and the "missing commit bar" frame was the
+        // Routes board with LHR–CDG already on it. The Core twin measures
+        // the undercut variant (0.88×, answered with a fare cut the next
+        // morning); at parity the incumbents answer with capacity, which
+        // is what the frames a week on show.
+        let openFight = app.buttons.matching(identifier: "ae-route-open").firstMatch
+        if openFight.waitForExistence(timeout: 8) {
+            checkpoint("41-fight-commit")
+            openFight.tap()
+            Thread.sleep(forTimeInterval: 1)
+        } else if app.buttons["Done"].exists || app.buttons["Cancel"].exists {
+            capture(Self.logPrefix + "NO-FIGHT-COMMIT-BAR")
+            XCTFail("Picking Paris from London produced no commit bar.")
+            return
+        }
+        assignAllBareRoutes()
+
+        // The day of entry: the rivals' offers before they answer.
+        guard openContestedRouteDetail() else { return }
+        checkpoint("42-contested-route-on-entry")
+        app.navigationBars.buttons.firstMatch.tap()
+
+        // A week on: the answer (COMP-04), the split (COMP-03), and the
+        // sentence that says where the player stands and why.
+        guard advanceMornings(until: "2030-02-09", cap: 12) else {
+            XCTFail("The sunrise control could not reach February 9.")
+            return
+        }
+        checkpoint("43-home-rival-pressure")
+        // Runs 113 and 114 both photographed the card on screen here and
+        // then stopped on the query against it — by identifier in 113, by
+        // identifier or the RIVALS header in 114 — with no frame of what
+        // XCUITest was actually looking at. Three shapes are tried; when
+        // none matches, the labels Home exposes go to the log and a frame
+        // is kept, and the journey carries on: the screens after this one
+        // are the evidence this journey exists for, and a query that
+        // cannot see a card the frame shows must not hide them. The
+        // failure is still recorded.
+        let rivalsHeader = app.staticTexts["RIVALS"]
+        let rivalsLink = app.descendants(matching: .any)
+            .matching(identifier: "ae-rival-pressure").firstMatch
+        let rivalsLine = app.descendants(matching: .any).matching(NSPredicate(
+            format: "label CONTAINS[c] %@", "contested")).firstMatch
+        let cardFound = rivalsHeader.waitForExistence(timeout: 6)
+            || rivalsLink.exists || rivalsLine.exists
+        if !cardFound {
+            capture(Self.logPrefix + "43-NO-RIVAL-CARD-QUERY")
+            let labels = app.staticTexts.allElementsBoundByIndex
+                .prefix(48).map(\.label)
+            print("AE-UI Home static texts at KEY-43: \(labels)")
+        }
+        continueAfterFailure = true
+        XCTAssertTrue(cardFound, """
+            Home carries no rival-pressure card a week into a contested \
+            market — the one competitive fact the screen exists to show.
+            """)
+        guard openContestedRouteDetail() else { return }
+        let standing = app.descendants(matching: .any)
+            .matching(identifier: "ae-route-standing").firstMatch
+        let standingLine = app.descendants(matching: .any).matching(NSPredicate(
+            format: "label CONTAINS %@ OR label CONTAINS %@ OR label CONTAINS %@",
+            "even fight", "lead this market", "losing this market")).firstMatch
+        let standingFound = standing.waitForExistence(timeout: 8) || standingLine.exists
+        if !standingFound {
+            capture(Self.logPrefix + "44-NO-STANDING-QUERY")
+        }
+        XCTAssertTrue(standingFound, """
+            The route screen for a contested pair does not say where the \
+            player stands — no standing sentence rendered.
+            """)
+        checkpoint("44-contested-route-after-a-week")
+        app.navigationBars.buttons.firstMatch.tap()
+
+        // COMP-06: the World hub and the Competitors screen, live.
+        openTab("World")
+        checkpoint("45-world-hub-with-competition")
+        guard openCompetitors() else { return }
+        checkpoint("46-competitors-screen")
+        app.navigationBars.buttons.firstMatch.tap()
+
         // CAUSALITY: the gate counts routes that made money, so the campaign
         // has to actually be flying four of them. A silent three is what run
         // 102 carried into March.
@@ -269,8 +412,163 @@ final class CampaignUITests: AEUITestCase {
             next goal — "To reach National" is missing, and a campaign \
             without a next goal ends here.
             """)
+        app.navigationBars.buttons.firstMatch.tap()
+
     }
 
+    /// The route screen for the board row whose label carries `code`, with
+    /// its competition section on screen.
+    private func openRouteDetail(containing code: String) -> Bool {
+        guard openAirlineSection("Routes") else { return false }
+        let row = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == %@ AND label CONTAINS %@",
+                                  "ae-route-row", code)).firstMatch
+        guard row.waitForExistence(timeout: 8) else {
+            capture(Self.logPrefix + "NO-\(code)-ROW-ON-BOARD")
+            XCTFail("The Routes board shows no \(code) row.")
+            return false
+        }
+        guard tapWhenReady(row) else {
+            capture(Self.logPrefix + "\(code)-ROW-NO-TAP")
+            XCTFail("The \(code) row did not accept a tap.")
+            return false
+        }
+        let header = app.staticTexts["WHO ELSE FLIES THIS"]
+        if header.waitForExistence(timeout: 8) { return true }
+        return scrollUntil(header, "the competition section on the route screen")
+    }
+
+
+    /// The route detail for the contested London pair, from wherever the
+    /// tab was left. The campaign fights over London–Berlin; the retreat
+    /// fixture was saved from the older London–Paris fight, so the far end
+    /// is a parameter — run 121's retreat journey asked for a BER row in a
+    /// world that only ever flew CDG.
+    private func openContestedRouteDetail(farEnd: String = "BER") -> Bool {
+        guard openAirlineSection("Routes") else { return false }
+        // Both ends, not one: on 9 Feb the board sorts Stockholm–London
+        // above London–Paris, and run 115's "any row with LHR in it" opened
+        // ARN–LHR — the frame it kept says "Nobody. This market is yours
+        // alone" under a route that was never contested.
+        let row = app.descendants(matching: .any)
+            .matching(NSPredicate(
+                format: "identifier == %@ AND label CONTAINS %@ AND label CONTAINS %@",
+                "ae-route-row", "LHR", farEnd)).firstMatch
+        guard row.waitForExistence(timeout: 8) else {
+            capture(Self.logPrefix + "NO-LHR-\(farEnd)-ROW")
+            XCTFail("The Routes board shows no LHR–\(farEnd) row after the fight was opened.")
+            return false
+        }
+        guard tapWhenReady(row) else {
+            capture(Self.logPrefix + "LHR-\(farEnd)-ROW-NO-TAP")
+            XCTFail("The LHR–\(farEnd) row did not accept a tap.")
+            return false
+        }
+        let header = app.staticTexts["WHO ELSE FLIES THIS"]
+        if header.waitForExistence(timeout: 8) { return true }
+        // The section may be below the fold on a small phone.
+        return scrollUntil(header, "the competition section on the route screen")
+    }
+
+    /// The Competitors screen from the World hub. Its card's label is the
+    /// whole card (title, badge, subtitle, live line), matched by prefix as
+    /// `openProgression()` does.
+    private func openCompetitors() -> Bool {
+        openTab("World")
+        let card = app.buttons.matching(NSPredicate(
+            format: "label BEGINSWITH %@", "Competitors")).firstMatch
+        if card.waitForExistence(timeout: 8) {
+            card.tap()
+        } else if app.staticTexts["Competitors"].waitForExistence(timeout: 4) {
+            app.staticTexts["Competitors"].tap()
+        } else {
+            capture(Self.logPrefix + "NO-COMPETITORS-CARD")
+            XCTFail("The World hub shows no Competitors card in any shape.")
+            return false
+        }
+        let rival = app.descendants(matching: .any)
+            .matching(identifier: "ae-rival-card").firstMatch
+        guard rival.waitForExistence(timeout: 8) else {
+            capture(Self.logPrefix + "NO-RIVAL-CARDS")
+            XCTFail("The Competitors screen rendered no rival card.")
+            return false
+        }
+        return true
+    }
+
+    /// A world the engine built, opened through the game's own codec.
+    ///
+    /// `ae-rival-probe` writes these after driving the seed-2039 campaign —
+    /// the same script the Core twin proves — for a chosen number of days;
+    /// the app loads them under `-AEUITestLoadSave`. A late-game world is
+    /// ~1,800 sunrise taps away and a rival's retreat lands on day 248, so
+    /// both are photographed from saves rather than not at all.
+    private func launchFromFixture(_ name: String) -> Bool {
+        guard let url = Bundle(for: CampaignUITests.self)
+            .url(forResource: name, withExtension: "json") else {
+            XCTFail("The fixture \(name).json is not in the UI test bundle.")
+            return false
+        }
+        launch(appearance: .light, arguments: ["-AEUITestLoadSave", url.path])
+        guard waitForTab("Home", timeout: 25) != nil else {
+            capture(Self.logPrefix + "FIXTURE-NOT-LOADED-\(name)")
+            XCTFail("The app did not reach the shell from \(name).json.")
+            return false
+        }
+        return true
+    }
+
+    /// COMP-05: the morning after a rival pulls out of the player's market.
+    ///
+    /// On seed 2039 the regional incumbent closes London–Paris on day 248,
+    /// two hundred days after the player entered it. The fixture is that
+    /// campaign saved on day 249; Home must say so.
+    func testARivalsRetreatIsOnHomeTheMorningAfter() throws {
+        guard launchFromFixture("rival-pressure-retreat") else { return }
+        let card = app.descendants(matching: .any)
+            .matching(identifier: "ae-rival-pressure").firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 10), """
+            Home shows no rival-pressure card the morning after a rival left \
+            the player's market.
+            """)
+        let line = app.descendants(matching: .any).matching(NSPredicate(
+            format: "label CONTAINS %@", "pulled out")).firstMatch
+        XCTAssertTrue(line.waitForExistence(timeout: 6), """
+            The card does not name the retreat — expected a line saying a \
+            rival pulled out of a market.
+            """)
+        checkpoint("47-rival-retreat-on-home")
+        guard openContestedRouteDetail(farEnd: "CDG") else { return }
+        checkpoint("48-market-after-retreat")
+    }
+
+    /// COMP-07: five simulated years in, with the competitor density the
+    /// simulation actually produces — every screen the competition lives on.
+    func testLateGameCompetitionFromASavedWorld() throws {
+        guard launchFromFixture("rival-pressure-late-game") else { return }
+        checkpoint("50-late-game-home")
+        openTab("World")
+        checkpoint("51-late-game-world-hub")
+        guard openCompetitors() else { return }
+        checkpoint("52-late-game-competitors")
+        let cards = app.descendants(matching: .any).matching(identifier: "ae-rival-card")
+        XCTAssertGreaterThanOrEqual(cards.count, 3, """
+            The late-game Competitors screen shows \(cards.count) rival cards; \
+            the saved world has five rivals.
+            """)
+        app.navigationBars.buttons.firstMatch.tap()
+        openTab("Map")
+        Thread.sleep(forTimeInterval: 2)
+        let layer = app.buttons["Map layer"]
+        if layer.waitForExistence(timeout: 6) {
+            layer.tap()
+            let rivals = app.buttons.matching(NSPredicate(
+                format: "label BEGINSWITH %@", "Rivals")).firstMatch
+            if rivals.waitForExistence(timeout: 4) { rivals.tap() }
+            Thread.sleep(forTimeInterval: 1)
+        }
+        checkpoint("53-late-game-map-rivals")
+    }
 
     /// Every tab reachable, and each renders something.
     ///

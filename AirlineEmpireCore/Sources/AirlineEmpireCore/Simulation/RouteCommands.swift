@@ -85,6 +85,11 @@ public struct OpenRouteCommand: Command, Equatable {
             distanceKm: Geo.distanceKm(from: originSpec.coordinate, to: destSpec.coordinate),
             dailyRoundTrips: dailyRoundTrips, ticketPrice: ticketPrice)
         context.emit(.routeOpened(id: id, origin: origin, destination: destination))
+        state.world.recordMarketMove(MarketMove(
+            at: state.clock.now, airline: airline, origin: origin,
+            destination: destination, kind: .entered))
+        context.emit(.marketEntered(airline: airline, origin: origin,
+                                    destination: destination))
     }
 }
 
@@ -138,6 +143,11 @@ public struct CloseRouteCommand: Command, Equatable {
         _ = state.world.releaseSlots(airline: airline, airport: r.destination, count: movements)
         state.routes[route] = nil
         context.emit(.routeClosed(id: route))
+        state.world.recordMarketMove(MarketMove(
+            at: state.clock.now, airline: airline, origin: r.origin,
+            destination: r.destination, kind: .left))
+        context.emit(.marketLeft(airline: airline, origin: r.origin,
+                                 destination: r.destination))
     }
 }
 

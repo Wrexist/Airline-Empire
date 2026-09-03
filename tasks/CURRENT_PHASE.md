@@ -1,5 +1,332 @@
 # Current Phase
 
+**AE-040 — The fee economy and the regional archetype.**
+2026-09-02.
+
+The brief: AE-039 left one red flag — the regional archetype had no
+profitable market anywhere at hub fees (TD-029), the profit-based rival
+ranking was withheld because of it (TD-030), and KEY-48 showed a
+player's short route with "airport fees take 96% of the revenue". Is the
+fee model wrong, wrongly applied, or right and incompatible? Measure
+first.
+
+Measured (docs/FEE_ECONOMY_BASELINE.md, `ae-fee-baseline`, a new
+headless executable that flies single routes through the real pipeline
+and reads the ledger back): fees are the largest direct cost on every
+route under 1,600 km for every aircraft, and the share is a per-flight
+ratio that is worst for the smallest cabin — the 68-seat turboprop's fee
+share is 1.7–1.9× the 180-seat narrowbody's on the same pair, because
+the two movement fees are the same money whatever lands. No turboprop
+route in a forty-route battery paid for its lease. The regional
+archetype's own evaluation from its European home (Paris) found all
+sixteen candidates losing on money alone (docs/REGIONAL_ARCHETYPE_AUDIT.md).
+The player pays the same to the cent (parity MEASURED). Beside that,
+the AI's profit estimator charged maintenance at the type's hourly rate
+where the ledger books a 60-hour check per 500–650 flight hours: 9.8×
+(docs/FEE_ECONOMY_ESTIMATOR_AUDIT.md).
+
+Root cause (docs/FEE_ECONOMY_FIX_DECISION.md): CASE F — two formulas
+applied to the wrong thing. (1) The movement fee scaled with nothing;
+real landing charges follow aircraft weight. (2) The estimator and the
+ledger used two definitions of maintenance. Rejected: a global fee cut
+(moves the calibrated anchor, leaves the size gap), a regional-only
+discount (breaks parity), AI-only compensation (the losses are real), an
+arbitrary multiplier (no unit), and re-levelling the ledger's
+maintenance (a whole-economy recalibration, recorded as TD-031).
+
+Shipped: `AirportSpec.movementFee(for:ops:)` — the quoted fee in
+proportion to the aircraft's seats over a 180-seat reference cabin
+(`OpsTuning.movementFeeReferenceSeats`), integer cents, used by the
+flight system and the estimator; the 180-seat narrowbody pays exactly
+what it paid. `FleetEconomics.expectedMaintenancePerDay` — the fleet
+system's check rule integrated — replaces the estimator's hourly line.
+No level changed, no save-format change, no archetype or player branch.
+
+Measured after (docs/AE040_FEE_ECONOMY_REPORT.md §8): narrowbody rows
+unchanged to the cent; the turboprop's fee share halved; its profitable
+candidates 40 → 374 of 542 worldwide and 0 → 11 from Paris; across 150
+two-year campaigns the regional rival is alive in 150 (from 120), with
+four earning routes from Paris where it had two losing ones, and the
+cast's collapses fell from 30 to 0. The two regional-jet archetypes
+gained 12–17 margin points (correct by the rule; inside the battery's
+60% line). The re-run found BUG-053 — a rival holding an airframe it
+could not place stopped managing routes and growing — fixed in the
+decision loop. TD-030 re-measured and still withheld: the regional
+archetype now functions on the profit basis, but it reaches fewer player
+markets at the shipped horizon (31 entries against 60). Full Core suite
+450 green.
+
+**Status:** DONE — Core MEASURED, TESTED (450); App OBSERVED (run 123: 19 of 19 journeys, the fee-terms caption on KEY-HZ5). Final report: docs/AE040_FEE_ECONOMY_REPORT.md.
+
+**Addendum (2026-09-03): the UI step's 45 minutes.** Run 123's UI pass
+put both fifteen-minute journeys on one simulator clone, and each of
+their ~100 sunrise taps cost several seconds of settling; run 124 (the
+pull request's own run, on a slower runner) timed out on accessibility
+queries and the campaign's sunrise loop. Shipped: a UI-journey-only
+"Advance seven mornings" control (`-AEUITestSunriseWeek`, the same
+engine calls with one refresh), `advanceMornings` taking weeks while a
+week fits (one date read per call, not per tap), and the UI job split
+into named shards (docs/UI_RUNTIME_VALIDATION.md §1). MEASURED, run 126:
+the Munich arrival **981 s → 495 s** and green — half of it had been
+simulator settling between sunrise taps. Two arrangements were measured
+and rejected on the way: three xcodebuild workers on one runner (run
+125: two of three test runners died on "Timed out waiting for AX loaded
+notification", seven journeys lost to starvation) and two shards of two
+classes each (run 126: the shard with ten launch-heavy tests across two
+clones starved at the 30-minute cap). Simultaneous app launches are what
+these runners cannot take, so the two launch-heavy classes now get a
+runner each with no cloning, and only the proven pair — the arrival
+beside the shell, green in 22 minutes — keeps two clones.
+
+MEASURED, run 127 (the three shards): the campaign class **1,225 s →
+186.6 s**, its UI step 6 min 17 s; the economy shard green in 12 min
+02 s; not one launch or query timeout in either log. The campaign shard
+stopped on one real assertion, and on the way it measured two harness
+costs of the harness's own making, both now fixed and both recorded in
+docs/UI_RUNTIME_VALIDATION.md §1: `foundAirline` spent **41 s** asking
+`waitForTab("Home")` on a screen that has no tabs, and the "World seed"
+tap was computed from a frame mid-scroll ({210, 738}), landed in the gap
+above the pinned Found bar, and left the disclosure shut — the failure
+frame still reads "World seed >" with the chevron unturned.
+
+**Run 129: green.** All 19 journeys and both measurements pass, Core 450
+green beside them, and the whole run finishes in **28 min 41 s** against
+run 123's 48. `testTheCampaignReachesTheRegionalEra` passed (765.7 s) —
+the first time it has run to the era since the split. Campaign 6/6 in
+909.9 s, economy 4/4 in 457.8 s, the Munich arrival 439.2 s (981 s in
+run 123), the shell class 585.5 s. What is left is measured and named in
+docs/UI_RUNTIME_VALIDATION.md §1: the campaign journey's own 1,907 UI
+interactions (765.7 s, no longer sunrise taps) and 5–8 minutes of
+simulator boot per shard, which is runner cost under
+`test-without-building` rather than test cost. A fourth macOS shard
+would buy perhaps five minutes at 10× billing; it is not taken.
+
+---
+
+# Previous Phase
+
+**AE-039 — The horizon.**
+2026-09-02.
+
+The brief: AE-038 left the curated European starts silent — no rival
+ever came to Stockholm, Barcelona or Munich — and named the sixteen-nearest
+candidate horizon as the suspect. Measure before changing it.
+
+Measured, and the suspect cleared: `ae-rival-scan --limit` ran the same
+150 two-year campaigns at horizons of 16, 24, 48 and all 93 airports, and
+the rivals reached exactly the same player pairs at every size (New York
+30 of 30, the rest 0). `--horizon`, which asks the AI's own evaluation
+(`CompetitorAISystem.candidateMarkets`, exposed for it) why each rival can
+or cannot reach each player pair, showed why: the ranking by passengers
+puts a 370 km pair with 2,000 passengers above a 1,400 km pair with 700
+for ever, though one airframe fills on either and earns twice the fare
+on the longer. Stockholm was outside every horizon *and* outscored
+(CASE E); Munich and Singapore inside and outscored (CASE B); Barcelona
+four places outside London's list (CASE A → B). Five years changed
+nothing. Cases and numbers: docs/HORIZON_AUDIT.md §2–3.
+
+The change: the ranking, not the list. Candidates are scored by what one
+airframe day sells on the market — the demand engine's entrant pool,
+capped by the airframe's seats over the rotations the scheduler's day
+allows, at the archetype's fare (`airframeDayValue`). The horizon stays
+sixteen; eligibility, slots and the passenger floor are untouched. The
+profit basis (the same less the flight system's costs) was measured
+too: it reaches Stockholm at a horizon of 24, and it is withheld
+(TD-030) because no market is profitable for the regional archetype's
+turboprops at hub fees (TD-029) and three archetype runs cross the
+balance battery's margin line.
+
+What the world does now, MEASURED across 30 seeds: PacificBlue, the
+low-cost carrier based at Istanbul, opens Munich–Istanbul on day 61 of
+every seed at $142 against the player's $167; a month later the player
+holds 39%, trailing on fare, with a rotation to spare; a tenth off the
+fare buys share and costs money, another rotation earns more (BUG-049,
+the advice line now says so). Singapore is reached in the second year
+(Jakarta–Singapore, days 509–551). Stockholm and Barcelona are not
+reached within two years on the shipped basis. New York's AE-038
+arrival turned out to be an artefact of the passenger ranking — the
+entrant lost $277k a month on the pair — and no longer happens; the
+London–Paris fight of AE-037 likewise has no incumbent now, so the
+campaign fights on London–Berlin under Aurora Atlantic (answered the next
+morning with a cut to its premium floor and a rotation). Ten-year world
+and the archetype battery pass unchanged.
+
+Twins: `HorizonTests` (the shipped horizon, range, eligibility, scoring,
+cost), `MunichHorizonTests` (the arrival, the headline, the feed, the
+split, three responses over a year), `RivalPressureCampaignTests`
+re-pinned on London–Berlin, `RivalsComeToYouTests` reduced to the
+entrant-pool arithmetic. Journeys: `HorizonArrivalUITests` (Munich,
+HORIZON-KEY-01 … 06) replaces the New York journey; the campaign fights
+Berlin.
+
+Run 121 (commit 8a12d58): Core 439 passed; 17 of 19 journeys passed,
+and every HORIZON-KEY frame was looked at (docs/HORIZON_AUDIT.md §8).
+The two failures were harness queries — a Stepper label asked for as a
+static text, and the campaign's contested-route helper retargeted to
+Berlin while the retreat fixture flies Paris — both fixed. The frames
+also found BUG-050: a rival that was flying a pair before the player
+opened it read as having "entered your market"; fixed in the read model
+with `RivalMove.Relevance.beforePlayerJoined`.
+
+Run 122 (commit 44bfbca): Core 441 passed, release build clean, 19 of
+19 journeys passed; BUG-050's sentence photographed (KEY-46).
+
+**Status:** DONE — Core MEASURED, TESTED; App OBSERVED (runs 121 and 122).
+
+---
+
+# Previous Phase
+
+**AE-038 — Rivals that come to you.**
+2026-09-02.
+
+The brief: AE-037 proved the player can see a contest — and every contest
+it photographed was the player's doing (TD-026). Does the world ever move
+first? Read the rival decision loop first (docs/RIVALS_THAT_COME_TO_YOU_AUDIT.md
+§1): rivals pick markets on their own from the sixteen airports nearest
+their airframe, scored — until this phase — at half value per incumbent.
+Then measured: `ae-rival-scan` (new executable) ran 240 two-year campaigns
+from eight homes and found the world coming to the player at **one home
+only**, New York, where the regional rival based at Chicago takes the
+guided first route JFK–ORD on day 17 of every seed. Not for want of
+sight — from Singapore five rivals can see the player's home — but
+because the halving made any contested pair worth less than any open one.
+
+The extension, the smallest that fits the architecture:
+`DemandSystem.poolAvailableToEntrant` — the demand engine's own split
+applied to one hypothetical extra offer against the incumbents' real
+fares and quality — replaces the halving in `CompetitorAISystem.bestMarket`.
+An open pair scores exactly as before; one incumbent leaves two thirds of
+the pool, not half. Same rules for everyone, no reference to the player.
+Rescanned: world-initiated entries 30 → 95 (New York on day 3 now, São
+Paulo on days 4 and 33, Dubai on five seeds); every Core test green
+(433). Stockholm, Barcelona and Munich still see none: no rival base can
+see Stockholm, and the horizon is the residual (TD-026, narrowed).
+
+The scenario: `RivalsComeToYouTests` pins the New York arc over a year —
+the entry, the Home headline and feed event the next morning, the even
+split and schedule edge a month on, and four responses: nothing (42% by
+day 90), one more rotation on the aircraft already there (half again the
+route's profit), a fare cut alone (less than nothing), both. The advice
+on that screen said the rotation needed another aircraft; it did not
+(BUG-046, fixed: `MarketCompetition.spareRotationsToday`). The founding
+helper can now pick any home; `RivalArrivalUITests` plays New York in
+the simulator and photographs RIVAL-KEY-01 … 07. RIVAL-KEY-08 (a
+retreat) is not reached within the year on that pair.
+
+**Observed (run 119, 91 frames decoded and read; 19 of 19 journeys, 433
+Core):** Home two days after founding in New York — *"SwiftJet entered
+your … market yesterday"* — with nothing on it the day before; the route
+the morning after (52%, the rival at the same fare); a month on (49%,
+"mostly because they fly more often", **"your aircraft on this route can
+fly one more rotation today"**, 2,177 wanting to fly against 3,637 before);
+the response taken (3×/day) and the fortnight after it ($963k in seventeen
+days against $356k the whole previous month; SwiftJet at 4×; Home and the
+World hub saying "an even fight"). Two wordings the frames found are
+fixed and pinned (BUG-047 the pair's orientation, BUG-048 a month-old
+entry outranking the fight). Run 118 was lost to a slow runner and the
+job cap; the UI step now has its own timeout so an overrun still exports.
+
+**Status:** done. Run 120 green — 19 of 19 journeys, 433 Core tests —
+with both wordings OBSERVED fixed ("SwiftJet entered your JFK–ORD market
+yesterday"; a month on, "One of your routes is contested — an even fight
+so far"). RIVAL-KEY-01 … 07 OBSERVED from the live simulator; RIVAL-KEY-08
+(a retreat) MEASURED as rare and not photographed. Residual: the
+sixteen-nearest horizon (TD-026, narrowed).
+
+---
+
+# Previous Phase
+
+**AE-037 — Rival pressure. (Make the world push back.)**
+2026-09-01.
+
+The brief: the Core has competitors, price competition and reputation —
+can the player *see* any of it? Measure first. `ae-rival-probe` (new
+executable) replays the seed-2039 campaign and diffs every rival's state
+day by day, and the answer was worse than "invisible": from Stockholm,
+Barcelona and Singapore alike, **no rival ever entered a player market in
+five years, and no rival ever opened a second route.** Two structural
+causes, both fixed at the source with one guard each (BUG-042: an AI's
+idle aircraft always joined its one full route, sixteen airframes on a
+pair that could use ten, three of five rivals collapsing under bills for
+parked metal; BUG-043: the cast was founded at Tokyo, Jakarta, Delhi,
+Shanghai and Seoul, and an AI only expands from where its aircraft sit).
+With both in, rivals build real hub networks — Istanbul, London, Paris for
+a Stockholm player — and fight each other by day 11. They still never
+enter a pair the player already flies: the scoring halves a market per
+incumbent and an open one always remains. Recorded as TD-026, not
+rewritten: competition on the player's pairs is player-initiated, which
+the design lists as intended.
+
+So the phase measured the fight that exists. Entering London–Paris under
+two incumbents at 0.88× reference: the premium rival cut its fare and added
+a rotation **the next morning**, both climbed to twenty rotations a day
+over four months, the player held an exact third of the market at full
+load and lost ~$90k every month, and the regional rival gave up on day
+248. Of those rival moves, the feed carried **none** — price and frequency
+commands emit no event, and a rival's route events were (correctly)
+filtered as its private business (BUG-044, P0 by this phase's ranking).
+
+**Shipped:** `world.marketMoves` (save v12, migrated), `marketEntered` /
+`marketLeft` events admitted to the feed only on the player's own pairs,
+`MarketCompetition` and `CompetitionSummary` — standing against an even
+split, the dominant attractiveness term as the *why* from the demand
+engine's own factors, and one prioritised headline. Route detail leads its
+competition section with the standing sentence, a share bar and the named
+response; Home carries one rival fact only when there is one; the World
+hub's badge and line are about the player; Competitors is ordered by
+pressure with contested routes as links; the map hint counts contested
+routes. `RivalPressureCampaignTests` is the deterministic twin of the UI
+journey's fight; two probe-written saves (day 249, day 1825) let the
+retreat and the late game be photographed. Core: 415 → 427 tests, all
+green on Linux; release builds clean with warnings as errors. Evidence:
+`docs/RIVAL_PRESSURE_AUDIT.md`.
+
+**Observed (runs 112–113, 138 frames decoded and read):** the route
+sheet's "2 airlines already fly it" for London–Paris from London; the
+route screen's standing sentence, share bar, per-rival share and the
+named response ("An even fight — 51% of today's passengers against 1
+rival, mostly because they fly more often" / "Answer with frequency");
+Home's one rival fact on three worlds ("SwiftJet pulled out of CDG–LHR
+yesterday — the market is yours again", "One of your routes is contested
+— an even fight so far", "SwiftJet added 2 routes this month, at
+airports you serve"); the World hub's "1 contested" badge and line; the
+Competitors screen's position strip, contested-route link and
+pressure-ordered rivals; the map hint. Three defects the frames found are
+fixed (a grounded rival read as sharing an airport; the morning of entry
+read as "losing at 0%"; a rival's expansion outranked the player's own
+fight on Home). UI: 17 of 18 journeys green in run 113, the campaign
+stopping on its own identifier query with the card in frame; run 114
+(16 of 18 green, KEY-43 now showing the player's own fight leading Home)
+was cut by the macOS job's 45-minute cap with the campaign and the
+flight journey still running — both "failures" carry the cancellation's
+timestamp. The cap is 60 minutes, CI now prints assertion texts from the
+result bundle, and the campaign carries on past a failed card query so
+KEY-44 … 46 get photographed. Run 115 (53 minutes, 17 of 18 green,
+flight journey back to green): the World hub's "1 contested" line and
+the Competitors screen during the fight (SwiftJet's two openings at
+Paris, Aurora's at London, LHR–CDG even at 31%) are OBSERVED; the one
+red was the journey opening Stockholm–London instead of London–Paris
+(row query matched the first LHR row; fixed to require both codes).
+Run 116 (36 minutes, 17 of 18 green): KEY-44 OBSERVED on London–Paris
+— "An even fight — 31% … mostly because they fly more often", SwiftJet
+at 4×/day a week after entry — so every COMP state is now photographed
+from the live campaign or a save. Its one red found BUG-045: the guided
+route sheet from Home could present before its suggestion landed and
+open empty, and the campaign opened Stockholm–Tokyo from it (bare all
+spring). Fixed with item-driven presentation; `NextMovesServabilityTests`
+pins that the card's ranking was never the problem. **Run 117: green —
+18 of 18 journeys, 430 Core tests on Linux and CI, no failure texts;**
+KEY-32b shows the suggested Paris and Istanbul routes on the board and
+no unflyable one. Remaining script gap: the journey acquires two
+airframes for three February openings, so Istanbul sits without an
+aircraft (the gate passes on four earning routes).
+
+---
+
+# Previous Phase
+
 **AE-033 — The command map. (Immersion & professional UX pass.)**
 2026-08-31.
 

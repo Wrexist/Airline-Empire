@@ -94,25 +94,30 @@ struct OperationsView: View {
         return "Now: \(Vocab.worldEvent(event.kind, state: snapshot))"
     }
 
-    /// The rival to watch: the largest network among living AI airlines.
+    /// What the competition is doing to *this* airline, not merely who is
+    /// biggest: the same headline Home carries, else the rival that touches
+    /// the player's network most (AE-037; the AE-033 audit's EXP-05 asked
+    /// for one live fact per card, and "biggest rival, 1 route" was live
+    /// but never about the player).
     private var competitorLive: String? {
-        guard let snapshot = controller.snapshot else { return nil }
-        let rivals = snapshot.airlines.values.filter {
-            $0.kind == .ai && $0.status == .active
+        guard let summary = controller.competitionSummary else { return nil }
+        if let headline = summary.headline { return Vocab.headline(headline) }
+        guard let biggest = summary.biggestRival, biggest.routes > 0 else { return nil }
+        if biggest.sharedAirports > 0 {
+            return "\(biggest.name) shares \(biggest.sharedAirports) airport\(biggest.sharedAirports == 1 ? "" : "s") with you · \(biggest.routes) route\(biggest.routes == 1 ? "" : "s")"
         }
-        guard let biggest = rivals.max(by: {
-            snapshot.routes(of: $0.id).count < snapshot.routes(of: $1.id).count
-        }) else { return nil }
-        let routes = snapshot.routes(of: biggest.id).count
-        guard routes > 0 else { return nil }
-        return "Biggest rival: \(biggest.name), \(routes) route\(routes == 1 ? "" : "s")"
+        return "Biggest rival: \(biggest.name), \(biggest.routes) route\(biggest.routes == 1 ? "" : "s") — nowhere near you"
     }
 
     private var competitorBadge: (String, Color)? {
-        guard let snapshot = controller.snapshot else { return nil }
-        let alive = snapshot.airlines.values.filter {
-            $0.kind == .ai && $0.status == .active
-        }.count
+        guard let summary = controller.competitionSummary else { return nil }
+        if summary.trailingRoutes > 0 {
+            return ("losing \(summary.trailingRoutes)", AETheme.negative)
+        }
+        if summary.contestedRoutes > 0 {
+            return ("\(summary.contestedRoutes) contested", AETheme.caution)
+        }
+        let alive = summary.rivals.filter { $0.status == .active }.count
         return ("\(alive) flying", AETheme.mutedText)
     }
 
@@ -318,26 +323,25 @@ struct WorldEventsView: View {
 }
 
 /// Rivals as characters rather than as a table: what kind of airline each one
-/// is, how it plays, and — the reason this screen exists — how many markets
-/// you are both in.
+/// is, how it plays, and — the reason this screen exists — where it meets
+/// you: the pairs you both fly, whether you are winning them, and what it
+/// did near you this month (AE-037). Ordered by how much of your network
+/// each one touches, not alphabetically.
 struct CompetitorsView: View {
     @Environment(GameController.self) private var controller
 
     var body: some View {
         ScrollView {
             VStack(spacing: AETheme.spacingM) {
-                if let snapshot = controller.snapshot, let player = snapshot.playerAirline {
-                    let rivals = snapshot.orderedAirlineIDs.compactMap { id -> Airline? in
-                        guard let airline = snapshot.airlines[id], airline.kind == .ai
-                        else { return nil }
-                        return airline
-                    }
-                    if rivals.isEmpty {
+                if let snapshot = controller.snapshot,
+                   let summary = controller.competitionSummary {
+                    if summary.rivals.isEmpty {
                         EmptyStateView(icon: "person.2.slash", title: "No rivals",
                                        message: "This world has no competing airlines.")
                     } else {
-                        ForEach(rivals.sorted(by: rivalOrder), id: \.id) { rival in
-                            rivalCard(rival, snapshot: snapshot, player: player)
+                        overview(summary)
+                        ForEach(summary.rivals, id: \.airline) { rival in
+                            rivalCard(rival, summary: summary, snapshot: snapshot)
                         }
                     }
                 } else {
@@ -352,20 +356,79 @@ struct CompetitorsView: View {
         .navigationTitle("Competitors")
         .navigationBarTitleDisplayMode(.inline)
         .aeTimeToolbar()
+        .navigationDestination(for: RouteID.self) { RouteDetailView(routeID: $0) }
+        .navigationDestination(for: AircraftID.self) { AircraftDetailView(aircraftID: $0) }
     }
 
-    /// Live rivals first, biggest first; the collapsed sink to the bottom.
-    private func rivalOrder(_ lhs: Airline, _ rhs: Airline) -> Bool {
-        if (lhs.status == .collapsed) != (rhs.status == .collapsed) {
-            return rhs.status == .collapsed
+    /// The network's competitive position in one strip, and every contested
+    /// route as a link to where the fight is.
+    @ViewBuilder
+    private func overview(_ summary: CompetitionSummary) -> some View {
+        AEMetricStrip([
+            AEMetric("contested routes", "\(summary.contestedRoutes)",
+                     tint: summary.contestedRoutes > 0 ? AETheme.caution : nil,
+                     emphasised: true),
+            AEMetric("leading", "\(summary.leadingRoutes)",
+                     tint: summary.leadingRoutes > 0 ? AETheme.positive : nil),
+            AEMetric("losing", "\(summary.trailingRoutes)",
+                     tint: summary.trailingRoutes > 0 ? AETheme.negative : nil),
+            AEMetric("rivals flying", "\(summary.rivals.filter { $0.status == .active }.count)"),
+        ])
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Competitive position")
+        if !summary.contested.isEmpty {
+            AEPanel {
+                VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                    AESectionHeader(text: "Where you are fighting", systemImage: "arrow.left.arrow.right")
+                    ForEach(summary.contested, id: \.routeID) { market in
+                        NavigationLink(value: market.routeID) {
+                            HStack {
+                                Text(Vocab.pair(market.origin, market.destination))
+                                    .font(.subheadline.weight(.medium))
+                                Spacer()
+                                Text(standingWord(market))
+                                    .font(.caption)
+                                    .foregroundStyle(standingTint(market.standing))
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundStyle(AETheme.mutedText)
+                            }
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.aePress)
+                        .accessibilityIdentifier("ae-contested-route")
+                    }
+                }
+            }
         }
-        return lhs.name < rhs.name
     }
 
-    private func rivalCard(_ rival: Airline, snapshot: GameState,
-                           player: Airline) -> some View {
-        let overlap = sharedMarkets(rival, snapshot: snapshot, player: player)
-        return AECard(tint: overlap > 0 ? AETheme.accent.opacity(0.12) : nil) {
+    private func standingWord(_ market: MarketCompetition) -> String {
+        let share = market.playerShareToday.map { " · \(Format.percent($0))" } ?? ""
+        switch market.standing {
+        case .leading: return "leading\(share)"
+        case .trailing: return "losing\(share)"
+        case .even: return "even\(share)"
+        case .tooEarly: return "new"
+        case .alone: return ""
+        }
+    }
+
+    private func standingTint(_ standing: MarketCompetition.Standing) -> Color {
+        switch standing {
+        case .leading: AETheme.positive
+        case .trailing: AETheme.negative
+        default: AETheme.mutedText
+        }
+    }
+
+    private func rivalCard(_ rival: RivalStanding, summary: CompetitionSummary,
+                           snapshot: GameState) -> some View {
+        let moves = summary.recentMoves.filter { $0.airline == rival.airline }
+        return AECard(tint: rival.marketsWherePlayerTrails > 0
+                      ? AETheme.caution.opacity(0.12)
+                      : rival.sharedMarkets > 0 ? AETheme.accent.opacity(0.12) : nil) {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 HStack {
                     Circle()
@@ -374,8 +437,8 @@ struct CompetitorsView: View {
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(rival.name).font(.headline)
-                        if let profile = rival.aiProfile {
-                            Text(Vocab.archetypeDetail(profile.archetype))
+                        if let archetype = rival.archetype {
+                            Text(Vocab.archetypeDetail(archetype))
                                 .font(.caption)
                                 .foregroundStyle(AETheme.mutedText)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -385,29 +448,43 @@ struct CompetitorsView: View {
                     if rival.status == .collapsed {
                         AEBadge(text: "collapsed", color: AETheme.negative,
                                 icon: "xmark.octagon")
-                    } else if let profile = rival.aiProfile {
-                        AEBadge(text: Vocab.archetype(profile.archetype), color: AETheme.fare)
+                    } else if let archetype = rival.archetype {
+                        AEBadge(text: Vocab.archetype(archetype), color: AETheme.fare)
                     }
                 }
                 if rival.status != .collapsed {
                     HStack(spacing: AETheme.spacingS) {
-                        AEBadge(text: "\(snapshot.fleet(of: rival.id).count) aircraft",
-                                color: .secondary)
-                        AEBadge(text: "\(snapshot.routes(of: rival.id).count) routes",
-                                color: .secondary)
-                        AEBadge(text: "rep \(Format.percent(rival.reputation.score))",
+                        AEBadge(text: "\(rival.fleet) aircraft", color: .secondary)
+                        AEBadge(text: "\(rival.routes) routes", color: .secondary)
+                        AEBadge(text: "rep \(Format.percent(rival.reputationScore))",
                                 color: AETheme.accent)
                     }
-                    if overlap > 0 {
-                        Label(overlap == 1
-                              ? "You compete on 1 market."
-                              : "You compete on \(overlap) markets.",
-                              systemImage: "arrow.left.arrow.right")
+                    if rival.sharedMarkets > 0 {
+                        Label(overlapLine(rival), systemImage: "arrow.left.arrow.right")
                             .font(.subheadline.weight(.medium))
-                            .foregroundStyle(AETheme.accent)
+                            .foregroundStyle(rival.marketsWherePlayerTrails > 0
+                                             ? AETheme.negative : AETheme.accent)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else if rival.routes == 0 {
+                        // Run 112 photographed a rival with no aircraft and no
+                        // routes described as sharing an airport with the
+                        // player: its home. Grounded is the fact.
+                        Text("Grounded — flying nothing at the moment.")
+                            .font(.subheadline)
+                            .foregroundStyle(AETheme.mutedText)
+                    } else if rival.sharedAirports > 0 {
+                        Text("You share \(rival.sharedAirports) airport\(rival.sharedAirports == 1 ? "" : "s") but no city pair — presence, not a fight.")
+                            .font(.subheadline)
+                            .foregroundStyle(AETheme.mutedText)
+                            .fixedSize(horizontal: false, vertical: true)
                     } else {
                         Text("You do not fly anywhere they fly.")
                             .font(.subheadline)
+                            .foregroundStyle(AETheme.mutedText)
+                    }
+                    if rival.marketsEnteredRecently > 0 || rival.marketsLeftRecently > 0 {
+                        Text(growthLine(rival))
+                            .font(.caption)
                             .foregroundStyle(AETheme.mutedText)
                     }
                 } else {
@@ -415,18 +492,41 @@ struct CompetitorsView: View {
                         .font(.subheadline)
                         .foregroundStyle(AETheme.mutedText)
                 }
+                // What they did near you this month — from the world's own
+                // record, so it survives a save and a fortnight of flying.
+                ForEach(Array(moves.prefix(3).enumerated()), id: \.offset) { _, move in
+                    Label(Vocab.move(move), systemImage: move.kind == .entered
+                          ? "plus.circle" : "minus.circle")
+                        .font(.caption)
+                        .foregroundStyle(move.relevance == .onPlayerMarket
+                                         ? (move.kind == .entered ? AETheme.caution : AETheme.positive)
+                                         : AETheme.mutedText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
+        .accessibilityIdentifier("ae-rival-card")
     }
 
-    private func sharedMarkets(_ rival: Airline, snapshot: GameState,
-                               player: Airline) -> Int {
-        let mine = snapshot.routes(of: player.id)
-        let theirs = snapshot.routes(of: rival.id)
-        return mine.filter { route in
-            theirs.contains { $0.sameMarket(origin: route.origin,
-                                            destination: route.destination) }
-        }.count
+    private func overlapLine(_ rival: RivalStanding) -> String {
+        let markets = "\(rival.sharedMarkets) market\(rival.sharedMarkets == 1 ? "" : "s")"
+        if rival.marketsWherePlayerTrails > 0 {
+            return rival.marketsWherePlayerTrails == rival.sharedMarkets
+                ? "You compete on \(markets) and are losing \(rival.sharedMarkets == 1 ? "it" : "all of them")."
+                : "You compete on \(markets) and are losing \(rival.marketsWherePlayerTrails)."
+        }
+        return "You compete on \(markets)."
+    }
+
+    private func growthLine(_ rival: RivalStanding) -> String {
+        var parts: [String] = []
+        if rival.marketsEnteredRecently > 0 {
+            parts.append("opened \(rival.marketsEnteredRecently) route\(rival.marketsEnteredRecently == 1 ? "" : "s")")
+        }
+        if rival.marketsLeftRecently > 0 {
+            parts.append("dropped \(rival.marketsLeftRecently)")
+        }
+        return "This month: " + parts.joined(separator: ", ") + "."
     }
 }
 

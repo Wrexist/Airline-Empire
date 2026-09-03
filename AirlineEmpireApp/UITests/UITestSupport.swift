@@ -23,7 +23,21 @@ class AEUITestCase: XCTestCase {
         super.setUp()
         continueAfterFailure = false
         app = XCUIApplication()
+        // The week control beside the sunrise, for the journeys only: the
+        // two long journeys tapped the sunrise ninety and a hundred and ten
+        // times, at several seconds of simulator settling each, and run
+        // 123's UI step took 48 minutes. Seven mornings per tap is the same
+        // engine calls with one refresh at the end. The measurement pass
+        // opts out (below): its numbers are only comparable with the ones
+        // already recorded if the screen it measures is the shipped one.
+        if wantsSunriseWeek {
+            app.launchArguments.append("-AEUITestSunriseWeek")
+        }
     }
+
+    /// Whether this class wants the journeys' week control on screen.
+    /// `PerformanceBaselineUITests` says no — see `setUp`.
+    var wantsSunriseWeek: Bool { true }
 
     override func tearDown() {
         app = nil
@@ -839,17 +853,72 @@ class AEUITestCase: XCTestCase {
         guard sunrise.waitForExistence(timeout: 8) else { return false }
         let arrived = app.staticTexts.matching(NSPredicate(
             format: "label BEGINSWITH %@", datePrefix)).firstMatch
+
+        // The weeks first, counted once. Reading the date on every
+        // iteration would put an accessibility query between every tap,
+        // which is the cost this is here to remove; and `(days - 1) / 7`
+        // always stops at least a day short, so the day-by-day approach
+        // below — the part the journeys' caps were written for — is intact
+        // and no journey can land past the date it asked for.
+        let week = app.buttons["Advance seven mornings"]
+        if !arrived.exists, week.exists,
+           let today = currentHomeDate(),
+           let target = Self.earliestDate(matching: datePrefix) {
+            let weeks = max(0, (Self.days(from: today, to: target) - 1) / 7)
+            for _ in 0..<weeks { week.tap() }
+        }
+
         var taps = 0
         while taps < cap, !arrived.exists {
             sunrise.tap()
             // No fixed pause: `tap()` already waits for the app to go idle,
             // and the `arrived.exists` query at the top of the loop is a
-            // second synchronisation point. The campaign taps this control
+            // second synchronisation point. The campaign tapped this control
             // ninety times, so half a second each was half a minute of the
             // suite spent asleep.
             taps += 1
         }
         return arrived.exists
+    }
+
+    /// The date Home shows, read back from the header ("2030-02-09").
+    private func currentHomeDate() -> DateComponents? {
+        let header = app.staticTexts.matching(NSPredicate(
+            format: "label MATCHES %@", "^[0-9]{4}-[0-9]{2}-[0-9]{2}.*")).firstMatch
+        guard header.exists else { return nil }
+        return Self.date(from: String(header.label.prefix(10)))
+    }
+
+    /// "2030-02-09" → components; nil for anything else.
+    static func date(from text: String) -> DateComponents? {
+        let parts = text.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3 else { return nil }
+        return DateComponents(year: parts[0], month: parts[1], day: parts[2])
+    }
+
+    /// The first calendar day a Home date could start with the prefix the
+    /// journeys pass: "2030-02" is 1 February, "2030-01-2" is 20 January,
+    /// "2030-03-04" is itself.
+    static func earliestDate(matching prefix: String) -> DateComponents? {
+        let parts = prefix.split(separator: "-", omittingEmptySubsequences: false).map(String.init)
+        guard let year = parts.first.flatMap({ Int($0) }), parts.count <= 3 else { return nil }
+        func earliest(_ text: String?, width: Int, floor: Int) -> Int? {
+            guard let text, !text.isEmpty else { return floor }
+            guard text.count <= width, let value = Int(text.padding(toLength: width, withPad: "0", startingAt: 0)) else { return nil }
+            return max(floor, value)
+        }
+        guard let month = earliest(parts.count > 1 ? parts[1] : nil, width: 2, floor: 1),
+              let day = earliest(parts.count > 2 ? parts[2] : nil, width: 2, floor: 1) else { return nil }
+        return DateComponents(year: year, month: month, day: day)
+    }
+
+    /// Whole days from one calendar date to another (the game calendar is
+    /// Gregorian, no daylight saving).
+    static func days(from a: DateComponents, to b: DateComponents) -> Int {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        guard let da = calendar.date(from: a), let db = calendar.date(from: b) else { return 0 }
+        return calendar.dateComponents([.day], from: da, to: db).day ?? 0
     }
 
     /// Whether a route detail is in front of us — it offers either an
@@ -960,13 +1029,20 @@ class AEUITestCase: XCTestCase {
 
     /// Found an airline and arrive in the shell. Every journey starts here.
     @discardableResult
-    func foundAirline(seed: String? = nil) -> Bool {
-        // A relaunch inside one test may come back to a shell that is already
-        // playing; that is a success, not a missing button.
-        if waitForTab("Home", timeout: 3) != nil { return true }
+    func foundAirline(seed: String? = nil, home: (code: String, city: String)? = nil) -> Bool {
+        // Ask the cheap question first. A relaunch inside one test may come
+        // back to a shell that is already playing, and that is a success —
+        // but `waitForTab` asks four accessibility queries per poll, and on
+        // the founding screen's hierarchy run 127 spent forty-one seconds
+        // on the first poll alone (the cell query twelve seconds, the
+        // static-text query twelve more) before concluding what one query
+        // for the new-game screen's own button answers immediately.
         let found = app.buttons["Found Skyline Air"]
-        guard require(found, "the Found button on the new-game screen") else {
-            return false
+        if !found.waitForExistence(timeout: 15) {
+            if waitForTab("Home", timeout: 3) != nil { return true }
+            guard require(found, "the Found button on the new-game screen") else {
+                return false
+            }
         }
         // The campaign journey founds a *specific* world: the seed field is
         // a product feature ("share one for a challenge run"), and the same
@@ -975,21 +1051,66 @@ class AEUITestCase: XCTestCase {
         if let seed {
             let disclosure = app.buttons["World seed"]
             if disclosure.waitForExistence(timeout: 5) {
-                disclosure.tap()
                 let field = app.textFields["Seed number"]
-                if field.waitForExistence(timeout: 5) {
-                    field.tap()
-                    field.typeText(seed)
-                    // Collapse the disclosure again: it keeps the typed seed
-                    // (the collapsed row echoes it) and puts the keyboard
-                    // away, so the Found button below is hittable.
+                // The disclosure is the last row of a long scroll, sitting
+                // just above the pinned Found bar, so the first tap has to
+                // scroll it into view — and run 127 computed its hit point
+                // from the frame mid-scroll ({210, 738} for a row that
+                // settled roughly thirty points higher), tapped the gap
+                // above the pinned bar, and the disclosure stayed shut. The
+                // frame the failure screenshot caught still read "World
+                // seed >", chevron unturned. A second tap needs no scroll,
+                // so it lands where the row actually is.
+                //
+                // This waits for the tap to take; it does not relax what the
+                // journey asserts. If three taps cannot open the disclosure,
+                // the failure below is still the failure.
+                var opened = false
+                for _ in 0..<3 {
                     disclosure.tap()
-                    Thread.sleep(forTimeInterval: 0.5)
-                } else {
+                    if field.waitForExistence(timeout: 5) {
+                        opened = true
+                        break
+                    }
+                }
+                guard opened else {
                     capture(Self.logPrefix + "SEED-FIELD-MISSING")
                     XCTFail("The World seed field did not appear after expanding the disclosure.")
                     return false
                 }
+                field.tap()
+                field.typeText(seed)
+                // Collapse the disclosure again: it keeps the typed seed
+                // (the collapsed row echoes it) and puts the keyboard
+                // away, so the Found button below is hittable.
+                disclosure.tap()
+                Thread.sleep(forTimeInterval: 0.5)
+            }
+        }
+        // A home beyond the curated three: the "Somewhere else" card opens
+        // the whole-world picker (UI-025). AE-038's world-initiated rival
+        // lives in New York, which no curated start offers.
+        if let home {
+            let anywhere = app.buttons.matching(NSPredicate(
+                format: "label CONTAINS %@", "Somewhere else")).firstMatch
+            guard require(anywhere, "the Somewhere-else home card") else { return false }
+            anywhere.tap()
+            let search = app.searchFields.firstMatch
+            guard require(search, "the home picker's search field", timeout: 8) else { return false }
+            search.tap()
+            search.typeText(home.code)
+            let row = app.buttons.matching(NSPredicate(
+                format: "label CONTAINS %@ AND label CONTAINS %@", home.code, home.city)).firstMatch
+            guard require(row, "the \(home.code) row in the home picker", timeout: 8) else { return false }
+            row.tap()
+            // The choice card is one button whose label is its whole text,
+            // so the city may be a button label rather than a static text.
+            let chosen = app.descendants(matching: .any).matching(NSPredicate(
+                format: "label CONTAINS %@ AND label CONTAINS %@", home.city, home.code)).firstMatch
+            if !chosen.waitForExistence(timeout: 6) {
+                capture(Self.logPrefix + "HOME-NOT-CHOSEN-\(home.code)")
+                XCTFail("Picking \(home.code) did not put \(home.city) on the home card.")
+                return false
             }
         }
         found.tap()

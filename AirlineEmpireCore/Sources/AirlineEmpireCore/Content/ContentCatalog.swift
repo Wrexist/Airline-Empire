@@ -432,6 +432,13 @@ public struct OpsTuning: Equatable, Codable, Sendable {
     /// cancelled this long after its planned departure — no stale-flight
     /// pileups, no burst-flying when an aircraft returns to service.
     public let scheduledFlightExpiryMinutes: Int64
+    /// The cabin size an airport's `movementFee` is quoted for. A movement
+    /// is charged in proportion to the aircraft's seats over this number,
+    /// so a 68-seat turboprop pays 38% of the quoted fee and a 298-seat
+    /// widebody 166% — the way real landing charges follow aircraft weight.
+    /// Anchored at the reference narrowbody so the calibrated anchor route
+    /// pays exactly what it did (AE-040, docs/FEE_ECONOMY_FIX_DECISION.md).
+    public let movementFeeReferenceSeats: Int
 
     public init(operatingDayStartMinute: Int64, operatingDayMinutes: Int64,
                 boardingMinutes: Int64, flightOverheadMinutes: Int64,
@@ -439,7 +446,8 @@ public struct OpsTuning: Equatable, Codable, Sendable {
                 cancellationShareOfDisruptions: Double,
                 crewCostPerBlockHourCockpit: Money, crewCostPerBlockHourCabin: Money,
                 baseFuelPricePerTon: Money, wearPerFlightHour: Double,
-                scheduledFlightExpiryMinutes: Int64) {
+                scheduledFlightExpiryMinutes: Int64,
+                movementFeeReferenceSeats: Int) {
         self.operatingDayStartMinute = operatingDayStartMinute
         self.operatingDayMinutes = operatingDayMinutes
         self.boardingMinutes = boardingMinutes
@@ -452,6 +460,7 @@ public struct OpsTuning: Equatable, Codable, Sendable {
         self.baseFuelPricePerTon = baseFuelPricePerTon
         self.wearPerFlightHour = wearPerFlightHour
         self.scheduledFlightExpiryMinutes = scheduledFlightExpiryMinutes
+        self.movementFeeReferenceSeats = movementFeeReferenceSeats
     }
 
     public static let standard = OpsTuning(
@@ -462,7 +471,7 @@ public struct OpsTuning: Equatable, Codable, Sendable {
         crewCostPerBlockHourCockpit: Money.dollars(180),
         crewCostPerBlockHourCabin: Money.dollars(45),
         baseFuelPricePerTon: Money(cents: 65_000), wearPerFlightHour: 0.00035,
-        scheduledFlightExpiryMinutes: 240)
+        scheduledFlightExpiryMinutes: 240, movementFeeReferenceSeats: 180)
 }
 
 /// Fleet economy constants (docs/AIRCRAFT.md documents each).

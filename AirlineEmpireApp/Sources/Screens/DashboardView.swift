@@ -6,8 +6,14 @@ import AirlineEmpireCore
 struct DashboardView: View {
     @Environment(GameController.self) private var controller
     @Environment(\.dynamicTypeSize) private var typeSize
-    @State private var guidedRoute: FirstRouteSuggestion?
-    @State private var showingGuidedSheet = false
+    /// The suggestion whose route sheet is up. Item-driven, not a Bool
+    /// beside an optional: run 116 photographed the guided sheet opening
+    /// *empty* — From Stockholm, nothing picked, the whole ranked list —
+    /// because `isPresented` flipped before the optional had landed and the
+    /// sheet's `if let` took its else branch; the journey then opened a
+    /// route no aircraft could fly. `sheet(item:)` cannot present without
+    /// the value (BUG-045).
+    @State private var guidedRoute: GuidedRoute?
     @State private var showingSettings = false
 
     var body: some View {
@@ -33,8 +39,7 @@ struct DashboardView: View {
                            let onboarding = snapshot.onboardingModel(catalog: catalog),
                            !onboarding.isComplete {
                             OnboardingCard(model: onboarding) { suggestion in
-                                guidedRoute = suggestion
-                                showingGuidedSheet = true
+                                guidedRoute = GuidedRoute(suggestion)
                             }
                         } else if let catalog = controller.catalog,
                                   snapshot.playerAirline != nil {
@@ -45,10 +50,13 @@ struct DashboardView: View {
                             // the map coach uses, same guided-route flow the
                             // checklist used.
                             NextMovesCard(snapshot: snapshot, catalog: catalog) { suggestion in
-                                guidedRoute = suggestion
-                                showingGuidedSheet = true
+                                guidedRoute = GuidedRoute(suggestion)
                             }
                         }
+                        // One competitive fact, only when the world has one
+                        // (AE-037). Not a feed: the most decision-relevant
+                        // thing a rival did or is doing to this airline.
+                        RivalPressureCard()
                         // The pulse comes before the history. This block
                         // used to sit fifth, below yesterday's digest and next
                         // week's calendar — so "how is my airline doing right
@@ -79,12 +87,8 @@ struct DashboardView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingGuidedSheet) {
-                if let guidedRoute {
-                    OpenRouteSheet(suggestion: guidedRoute)
-                } else {
-                    OpenRouteSheet()
-                }
+            .sheet(item: $guidedRoute) { guided in
+                OpenRouteSheet(suggestion: guided.suggestion)
             }
             .sheet(isPresented: $showingSettings) {
                 NavigationStack { SettingsView() }
@@ -697,6 +701,87 @@ struct NextMovesCard: View {
     }
 }
 
+/// The one thing the competition is doing to this airline, when there is
+/// one. Measured before it existed (docs/RIVAL_PRESSURE_AUDIT.md §3): a
+/// rival could enter the player's city pair, cut its fare the next morning
+/// and climb to twenty rotations a day, and Home said nothing, because the
+/// feed drops a rival's route events and price moves emit no event at all.
+///
+/// Reads `CompetitionSummary.headline` — Core's one pick, by priority — and
+/// renders nothing in a quiet world, which is most of the early game. Tapping
+/// opens the route it is about, or the Competitors screen.
+struct RivalPressureCard: View {
+    @Environment(GameController.self) private var controller
+
+    var body: some View {
+        if let summary = controller.competitionSummary,
+           let headline = summary.headline,
+           let snapshot = controller.snapshot {
+            AECard(tint: tint(headline).opacity(0.12)) {
+                VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                    AESectionHeader(text: "Rivals", systemImage: "person.2.fill")
+                    // The identifier rides the link, which is the element
+                    // XCUITest can see; on the card's container it matched
+                    // nothing in run 112 while the card was on screen.
+                    if let route = route(for: headline, snapshot: snapshot) {
+                        NavigationLink(value: route) { line(headline) }
+                            .buttonStyle(.aePress)
+                            .accessibilityIdentifier("ae-rival-pressure")
+                    } else {
+                        NavigationLink { CompetitorsView() } label: { line(headline) }
+                            .buttonStyle(.aePress)
+                            .accessibilityIdentifier("ae-rival-pressure")
+                    }
+                }
+            }
+        }
+    }
+
+    private func line(_ headline: CompetitionSummary.Headline) -> some View {
+        HStack(alignment: .top, spacing: AETheme.spacingS) {
+            Text(Vocab.headline(headline))
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.primary)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(AETheme.mutedText)
+                .accessibilityHidden(true)
+        }
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+    }
+
+    /// The player's route the headline is about, when it is about one.
+    private func route(for headline: CompetitionSummary.Headline,
+                       snapshot: GameState) -> RouteID? {
+        guard let player = snapshot.playerAirline?.id else { return nil }
+        switch headline {
+        case .rivalEnteredYourMarket(let move), .rivalLeftYourMarket(let move):
+            return snapshot.routes(of: player).first {
+                $0.sameMarket(origin: move.origin, destination: move.destination)
+            }?.id
+        case .trailing:
+            return controller.competitionSummary?.contested
+                .first { $0.standing == .trailing }?.routeID
+        case .fighting(let contested) where contested == 1:
+            return controller.competitionSummary?.contested.first?.routeID
+        case .rivalExpanding, .leading, .fighting:
+            return nil
+        }
+    }
+
+    private func tint(_ headline: CompetitionSummary.Headline) -> Color {
+        switch headline {
+        case .rivalEnteredYourMarket, .trailing: AETheme.caution
+        case .rivalLeftYourMarket, .leading: AETheme.positive
+        case .rivalExpanding, .fighting: AETheme.accent
+        }
+    }
+}
+
 /// One feed line per SimEvent; unhandled kinds render nothing rather than
 /// noise (curation over completeness).
 struct EventRow: View {
@@ -738,6 +823,13 @@ struct EventRow: View {
         case .aircraftDelivered(let id), .aircraftOrdered(let id, _, _),
              .maintenanceStarted(let id, _, _), .maintenanceCompleted(let id):
             return liveAircraft(id).map(Subject.aircraft) ?? .none
+        case .marketEntered(_, let origin, let destination),
+             .marketLeft(_, let origin, let destination):
+            // A rival's move on your pair leads to your route on that pair.
+            guard let snapshot, let player else { return .none }
+            return snapshot.routes(of: player).first {
+                $0.sameMarket(origin: origin, destination: destination)
+            }.map { Subject.route($0.id) } ?? .none
         default:
             return .none
         }
@@ -818,6 +910,10 @@ struct EventRow: View {
         case .flightDelayed, .worldEventStarted, .worldEventForecast,
              .maintenanceStarted:
             return AETheme.caution
+        case .marketEntered(let airline, _, _):
+            return airline == player ? AETheme.mutedText : AETheme.caution
+        case .marketLeft(let airline, _, _):
+            return airline == player ? AETheme.mutedText : AETheme.positive
         default:
             return AETheme.mutedText
         }
@@ -855,6 +951,14 @@ struct EventRow: View {
             "\(aircraftName(id) ?? "An aircraft") is back in service"
         case .routeOpened(_, let origin, let destination):
             "Route opened: \(origin.raw)–\(destination.raw)"
+        // Your own entry is already the line above; a rival's is news only
+        // on your pair, which the feed filter has already decided.
+        case .marketEntered(let airline, let origin, let destination):
+            airline == player ? nil
+                : "\(Vocab.airlineName(airline, state: snapshot)) entered your \(Vocab.pair(origin, destination)) market"
+        case .marketLeft(let airline, let origin, let destination):
+            airline == player ? nil
+                : "\(Vocab.airlineName(airline, state: snapshot)) pulled out of \(Vocab.pair(origin, destination)) — the market is yours again"
         case .milestoneReached(let code):
             "Milestone: \(Vocab.milestone(code))"
         case .achievementUnlocked(let code):
@@ -908,6 +1012,7 @@ struct EventRow: View {
         case .aircraftDelivered, .aircraftOrdered: "airplane.circle"
         case .maintenanceStarted, .maintenanceCompleted: "wrench"
         case .routeOpened: "point.topleft.down.to.point.bottomright.curvepath"
+        case .marketEntered, .marketLeft: "person.2.fill"
         case .milestoneReached, .achievementUnlocked, .eraAdvanced,
              .capabilityCompleted: "star"
         case .missionOffered, .missionCompleted, .missionExpired: "target"
@@ -928,4 +1033,12 @@ private extension String {
         guard let first else { return self }
         return first.lowercased() + dropFirst()
     }
+}
+
+/// A first-route suggestion as a sheet item: `sheet(item:)` needs identity,
+/// and Core's value type has none of its own.
+private struct GuidedRoute: Identifiable {
+    let suggestion: FirstRouteSuggestion
+    var id: String { "\(suggestion.origin.raw)-\(suggestion.destination.raw)" }
+    init(_ suggestion: FirstRouteSuggestion) { self.suggestion = suggestion }
 }

@@ -630,8 +630,11 @@ extension AudioCue {
         // Deliberately silent: calendar ticks, command receipts, and the
         // founding of the airline (the app plays its own confirmation there,
         // synchronised with the screen the player is looking at).
+        // Market moves are silent too: a rival's entry is a line on Home and
+        // a fact on the route, not an interruption (the AE-037 noise budget).
         case .dayStarted, .weekStarted, .monthStarted, .seasonChanged,
-             .wakeFired, .commandApplied, .airlineFounded:
+             .wakeFired, .commandApplied, .airlineFounded,
+             .marketEntered, .marketLeft:
             return nil
         }
     }

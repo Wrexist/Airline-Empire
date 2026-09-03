@@ -10,6 +10,11 @@ import XCTest
 /// that is not comparable is not a benchmark.
 final class PerformanceBaselineUITests: AEUITestCase {
 
+    /// No test-only control on screen while the shipped screen is being
+    /// measured: these numbers are compared with figures already recorded
+    /// in docs/MAP_P0_PERFORMANCE_REPORT.md.
+    override var wantsSunriseWeek: Bool { false }
+
 
     /// The map's interaction baseline: drag it, zoom it, and measure it.
     ///

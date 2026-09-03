@@ -101,13 +101,35 @@ public struct DemandSystem: SimulationSystem {
     /// anyone (no assigned aircraft).
     private func offerQuality(route: Route, state: GameState,
                               catalog: ContentCatalog) -> Double? {
+        Self.offerQualityTerms(route: route, state: state, catalog: catalog)?.product
+    }
+
+    /// The non-price terms of an offer's attractiveness, kept apart so a
+    /// competition read model can say *which* of them is winning a market
+    /// with the demand engine's own arithmetic rather than a second opinion
+    /// (docs/RIVAL_PRESSURE_AUDIT.md §5). Nil when the route cannot carry
+    /// anyone (no assigned aircraft).
+    public struct OfferQualityTerms: Equatable, Sendable {
+        /// Frequency, with hard diminishing returns beyond ~4/day
+        /// (docs/GAME_BALANCE.md §5 anti-frequency-spam).
+        public let schedule: Double
+        /// The first assigned aircraft's cabin.
+        public let comfort: Double
+        /// Completion and punctuality, from the route's own record.
+        public let operations: Double
+        /// The airline's blended reputation as a demand multiplier.
+        public let reputation: Double
+
+        public var product: Double { schedule * comfort * operations * reputation }
+    }
+
+    public static func offerQualityTerms(route: Route, state: GameState,
+                                         catalog: ContentCatalog) -> OfferQualityTerms? {
         let tuning = catalog.tuning.demand
         guard let firstAircraft = route.assignedAircraft.sorted()
             .compactMap({ state.aircraft[$0] }).first,
             let spec = catalog.aircraftType(firstAircraft.typeCode) else { return nil }
 
-        // Frequency helps with hard diminishing returns beyond ~4/day
-        // (docs/GAME_BALANCE.md §5 anti-frequency-spam).
         let trips = Double(min(route.dailyRoundTrips, tuning.scheduleQualityTripCap))
         let schedule = pow(trips / tuning.scheduleQualityReferenceTrips,
                            tuning.scheduleQualityExponent)
@@ -117,7 +139,8 @@ public struct DemandSystem: SimulationSystem {
             * (route.stats.completionRate * 0.5 + route.stats.punctuality * 0.5)
         let reputation = state.airlines[route.airline]?.reputation
             .demandMultiplier(tuning: catalog.tuning.reputation) ?? 1.0
-        return schedule * comfort * operations * reputation
+        return OfferQualityTerms(schedule: schedule, comfort: comfort,
+                                 operations: operations, reputation: reputation)
     }
 
     /// Passengers a single operator could expect to carry per day on a
@@ -136,6 +159,44 @@ public struct DemandSystem: SimulationSystem {
         let leisure = exp(tuning.priceSensitivityLeisure * (1 - fareRatio)) * quality
         return pool.business * (business / (out + business))
             + pool.leisure * (leisure / (out + leisure))
+    }
+
+    /// The pool a new entrant could plan against on a pair, given who is
+    /// already flying it: the demand engine's own split, applied to one
+    /// hypothetical extra offer against the incumbents' actual fares and
+    /// quality, expressed in pool units so it compares directly with an
+    /// empty pair's `pool.total`. Empty pair: the whole pool. One incumbent
+    /// at the same fare and quality: roughly two thirds of it (the outside
+    /// option shrinks as offers multiply), never half — which is what the
+    /// competitor AI assumed until AE-038 measured that the halving kept
+    /// every rival out of every pair the player flew except the largest
+    /// (TD-026, docs/RIVALS_THAT_COME_TO_YOU_AUDIT.md). Incumbents that
+    /// cannot carry anyone (no aircraft) attract nothing, as in `allocate`.
+    public static func poolAvailableToEntrant(
+        pool: SegmentDemand, fareRatio: Double, quality: Double,
+        incumbents: [Route], state: GameState, catalog: ContentCatalog) -> Double {
+        guard quality > 0, pool.total > 0 else { return 0 }
+        let tuning = catalog.tuning.demand
+        guard let first = incumbents.first,
+              let distance = catalog.distanceKm(first.origin, first.destination)
+        else { return pool.total }
+        let refFare = referenceFare(distanceKm: distance, tuning: tuning)
+        var rivalsBusiness = 0.0, rivalsLeisure = 0.0
+        for route in incumbents {
+            guard let rivalQuality = offerQualityTerms(route: route, state: state,
+                                                       catalog: catalog)?.product
+            else { continue }
+            let ratio = route.ticketPrice.asDouble / refFare
+            rivalsBusiness += exp(tuning.priceSensitivityBusiness * (1 - ratio)) * rivalQuality
+            rivalsLeisure += exp(tuning.priceSensitivityLeisure * (1 - ratio)) * rivalQuality
+        }
+        let out = tuning.outsideOptionWeight
+        let business = exp(tuning.priceSensitivityBusiness * (1 - fareRatio)) * quality
+        let leisure = exp(tuning.priceSensitivityLeisure * (1 - fareRatio)) * quality
+        // Each segment: what the entrant takes with the incumbents there,
+        // over what it would take alone — the pool scaled by that ratio.
+        return pool.business * ((out + business) / (out + business + rivalsBusiness))
+            + pool.leisure * ((out + leisure) / (out + leisure + rivalsLeisure))
     }
 
     /// Service quality of a representative starter operation, used for
@@ -159,7 +220,9 @@ public struct DemandSystem: SimulationSystem {
 
     /// The day's directional demand pool, by segment.
     /// `tourismBoost` is the destination-region event boost (0 = none).
-    static func demandPool(from: AirportCode, to: AirportCode, date: GameDate,
+    /// Public since AE-040 so `ae-fee-baseline` can compare the AI's own
+    /// forecast with the ledger; nothing in the app calls it.
+    public static func demandPool(from: AirportCode, to: AirportCode, date: GameDate,
                            economicIndex: Double, tourismBoost: Double = 0,
                            catalog: ContentCatalog) -> SegmentDemand {
         guard let origin = catalog.airport(from), let destination = catalog.airport(to)

@@ -35,12 +35,16 @@ public struct CompetitorAISystem: SimulationSystem {
             return
         }
 
-        // 2. Put idle aircraft to work.
+        // 2. Put idle aircraft to work. A slot that placed an airframe is
+        // spent; one that could not — no market in range worth opening —
+        // goes on to the network, or an unplaceable airframe would freeze
+        // the airline's pricing for good (AE-040, BUG-053: SwiftJet's
+        // fourth turboprop at Osaka had nowhere to go, and the airline
+        // never answered an undercut on Tokyo–Osaka).
         if let idle = state.fleet(of: airlineID).first(where: {
             $0.isOperational && $0.assignedRoute == nil && $0.activeFlight == nil
-        }) {
-            employ(idle, airlineID: airlineID, profile: profile,
-                   state: &state, context: context, tuning: tuning)
+        }), employ(idle, airlineID: airlineID, profile: profile,
+                   state: &state, context: context, tuning: tuning) {
             return
         }
 
@@ -106,24 +110,32 @@ public struct CompetitorAISystem: SimulationSystem {
 
     // MARK: Network
 
+    /// Returns whether the airframe was put to work.
+    @discardableResult
     private func employ(_ aircraft: Aircraft, airlineID: AirlineID, profile: AIProfile,
-                        state: inout GameState, context: SimContext, tuning: AITuning) {
-        // Prefer thickening an existing route that is running hot.
+                        state: inout GameState, context: SimContext, tuning: AITuning) -> Bool {
+        // Prefer thickening an existing route that is running hot — but only
+        // one whose assigned aircraft cannot already fly its frequency. A
+        // route pinned at full load is hot forever, and a route at the
+        // frequency cap absorbed every airframe its airline ever bought:
+        // measured over five years, no rival opened a second route and one
+        // carried sixteen aircraft on a pair that could use ten
+        // (docs/RIVAL_PRESSURE_AUDIT.md §3, BUG-042).
         if let hot = state.routes(of: airlineID).first(where: {
             $0.stats.loadFactor > tuning.expandLoadFactor && $0.stats.seatsFlown > 0
+                && routeNeedsAnotherAircraft($0, state: state, context: context)
         }), routeServableBy(aircraft, route: hot, state: state, context: context) {
-            issue(AssignAircraftToRouteCommand(airline: airlineID, route: hot.id,
-                                               aircraftID: aircraft.id),
-                  state: &state, context: context)
-            return
+            return issue(AssignAircraftToRouteCommand(airline: airlineID, route: hot.id,
+                                                      aircraftID: aircraft.id),
+                         state: &state, context: context)
         }
         // Otherwise open the best new market from an airport we sit at.
-        guard let spec = context.catalog.aircraftType(aircraft.typeCode) else { return }
+        guard let spec = context.catalog.aircraftType(aircraft.typeCode) else { return false }
         let airline = state.airlines[airlineID]!
         guard let candidate = bestMarket(from: aircraft.location, airline: airline,
                                          spec: spec, profile: profile,
                                          state: state, context: context, tuning: tuning)
-        else { return }
+        else { return false }
         let reference = DemandSystem.referenceFare(
             distanceKm: candidate.distanceKm, tuning: context.catalog.tuning.demand)
         let fare = Money(rounding: reference * profile.priceFactor)
@@ -141,44 +153,96 @@ public struct CompetitorAISystem: SimulationSystem {
                                                    aircraftID: aircraft.id),
                       state: &state, context: context)
             }
+            return true
+        }
+        return false
+    }
+
+    /// One airport considered from where an airframe sits: scored, or the
+    /// reason it was not.
+    public struct MarketCandidate: Equatable, Sendable {
+        public enum Verdict: Equatable, Sendable {
+            case scored(Double)
+            case regionExcluded
+            case ineligible
+            case alreadyServed
+            case noSlots
+            /// Too few passengers for an entrant (`minViableDailyDemand`).
+            case belowFloor(Double)
+            /// Enough passengers, but one airframe is worth nothing on it
+            /// (on the profit basis: would lose money).
+            case unprofitable(Double)
+        }
+        public let destination: AirportCode
+        public let distanceKm: Int
+        /// Position in the distance-ordered list from the origin, from 1.
+        public let nearestRank: Int
+        public let verdict: Verdict
+
+        public var score: Double? {
+            if case .scored(let value) = verdict { return value }
+            return nil
         }
     }
 
-    private struct MarketCandidate {
-        let destination: AirportCode
-        let distanceKm: Int
-        let score: Double
+    /// The airports an airline would consider from `origin` — the horizon —
+    /// in the order the AI walks them.
+    ///
+    /// The sixteen nearest airports by great-circle distance
+    /// (`candidateMarketLimit`), as built. AE-039 measured whether the
+    /// world needed more: at 24, 48 and all 93 the rivals reached exactly
+    /// the same player pairs as at 16, because the ranking, not the list,
+    /// decided (docs/HORIZON_AUDIT.md §3). The horizon stays.
+    public static func horizon(from origin: AirportCode, catalog: ContentCatalog,
+                               tuning: AITuning) -> [(AirportSpec, Int)] {
+        catalog.nearestAirports(to: origin, limit: tuning.candidateMarketLimit)
     }
 
-    /// Deterministic candidate scoring: expected pool split by incumbents,
-    /// gated by eligibility and archetype geography.
-    private func bestMarket(from origin: AirportCode, airline: Airline,
-                            spec: AircraftTypeSpec, profile: AIProfile,
-                            state: GameState, context: SimContext,
-                            tuning: AITuning) -> MarketCandidate? {
-        let catalog = context.catalog
-        guard let originSpec = catalog.airport(origin) else { return nil }
-        var best: MarketCandidate?
-        for (destinationSpec, distance) in catalog.nearestAirports(
-            to: origin, limit: tuning.candidateMarketLimit) {
+    /// Every candidate in the horizon from `origin`, with its verdict — the
+    /// AI's own evaluation, exposed so a diagnostic or a test can ask why a
+    /// market was or was not chosen without a second implementation.
+    /// `limit` overrides the horizon size (a diagnostic asks for the whole
+    /// world to see what lies beyond).
+    public static func candidateMarkets(from origin: AirportCode, airline: Airline,
+                                        spec: AircraftTypeSpec, profile: AIProfile,
+                                        state: GameState, catalog: ContentCatalog,
+                                        tuning: AITuning,
+                                        limit: Int? = nil) -> [MarketCandidate] {
+        guard let originSpec = catalog.airport(origin) else { return [] }
+        // The offer this airline would put on a new pair: a starter
+        // operation at its archetype's fare, carrying its own reputation.
+        let entrantQuality = DemandSystem.representativeStarterQuality(
+            tuning: catalog.tuning.demand)
+            * airline.reputation.demandMultiplier(tuning: catalog.tuning.reputation)
+        let considered = limit.map { catalog.nearestAirports(to: origin, limit: $0) }
+            ?? horizon(from: origin, catalog: catalog, tuning: tuning)
+        var out: [MarketCandidate] = []
+        out.reserveCapacity(considered.count)
+        for (rank, (destinationSpec, distance)) in considered.enumerated() {
             let destination = destinationSpec.code
+            func candidate(_ verdict: MarketCandidate.Verdict) -> MarketCandidate {
+                MarketCandidate(destination: destination, distanceKm: distance,
+                                nearestRank: rank + 1, verdict: verdict)
+            }
             if profile.homeRegionOnly && destinationSpec.region != originSpec.region {
-                continue
+                out.append(candidate(.regionExcluded)); continue
             }
             guard catalog.routeEligibility(from: origin, to: destination,
                                            aircraftRangeKm: spec.rangeKm,
                                            aircraftRunwayRequirement: spec.runwayRequirement)
-                .isEmpty else { continue }
+                .isEmpty else { out.append(candidate(.ineligible)); continue }
             // Already served by us?
             if state.routes.values.contains(where: {
                 $0.airline == airline.id
                     && $0.sameMarket(origin: origin, destination: destination)
-            }) { continue }
+            }) { out.append(candidate(.alreadyServed)); continue }
             // Slots for the initial frequency at both ends?
             let movements = Route.dailySlotMovements(roundTrips: tuning.initialRoundTrips)
             if state.world.slotsUsed(at: origin) + movements > originSpec.slotCapacityPerDay
                 || state.world.slotsUsed(at: destination) + movements
-                    > destinationSpec.slotCapacityPerDay { continue }
+                    > destinationSpec.slotCapacityPerDay {
+                out.append(candidate(.noSlots)); continue
+            }
 
             let pool = DemandSystem.demandPool(from: origin, to: destination,
                                                date: state.currentDate,
@@ -186,15 +250,140 @@ public struct CompetitorAISystem: SimulationSystem {
                                                catalog: catalog)
             let incumbents = state.routes.values.filter {
                 $0.sameMarket(origin: origin, destination: destination)
-            }.count
-            let score = pool.total / Double(incumbents + 1)
-            guard score >= tuning.minViableDailyDemand else { continue }
-            if best == nil || score > best!.score {
-                best = MarketCandidate(destination: destination,
-                                       distanceKm: distance, score: score)
+            }
+            let passengers = DemandSystem.poolAvailableToEntrant(
+                pool: pool, fareRatio: profile.priceFactor, quality: entrantQuality,
+                incumbents: incumbents, state: state, catalog: catalog)
+            guard passengers >= tuning.minViableDailyDemand else {
+                out.append(candidate(.belowFloor(passengers))); continue
+            }
+            let score = airframeDayValue(
+                distanceKm: distance, passengersPerDay: passengers, spec: spec,
+                fareRatio: profile.priceFactor, serviceTier: airline.serviceTier,
+                origin: originSpec, destination: destinationSpec, state: state,
+                catalog: catalog)
+            guard score > 0 else { out.append(candidate(.unprofitable(score))); continue }
+            out.append(candidate(.scored(score)))
+        }
+        return out
+    }
+
+    /// What a candidate market is ranked by.
+    public enum RankingBasis: Sendable {
+        /// The revenue one airframe day sells on the market: the passengers
+        /// the demand engine leaves an entrant, capped by the airframe's
+        /// seats over the rotations the scheduler's day allows, at the
+        /// archetype's fare. Shipped.
+        case revenue
+        /// The same, less the fuel, fees, crew, maintenance and service the
+        /// flight system posts. Measured in AE-039 and not shipped: it
+        /// reaches Stockholm, but no market in the world is profitable for
+        /// the regional archetype's turboprops at hub fees, so that rival
+        /// never flies, and the archetypes that do fly only their best
+        /// markets cross the balance battery's margin line
+        /// (docs/HORIZON_AUDIT.md §4).
+        case profit
+    }
+
+    /// The shipped basis; the scan and probe executables set `.profit` to
+    /// re-measure the alternative. Tooling only — nothing in the app or the
+    /// simulation writes it.
+    nonisolated(unsafe) public static var rankingBasis: RankingBasis = .revenue
+
+    /// What one airframe of `spec` would sell on a market per day, in
+    /// dollars — and, on the `.profit` basis, what it would keep after the
+    /// fuel, fees, crew, maintenance and service the flight system posts
+    /// per flight (`FlightOpsSystem`) — for as many rotations as the
+    /// scheduler's own day allows.
+    ///
+    /// AE-039 measured that ranking by passengers alone made every hub
+    /// chase its shortest large pairs first — a 370 km pair with 2,000
+    /// passengers outranked a 1,400 km pair with 700 forever, though one
+    /// airframe fills on either and earns twice the fare on the longer —
+    /// so second-tier cities never came up, at any horizon size
+    /// (docs/HORIZON_AUDIT.md §3). This is the question `employ` is
+    /// actually asking: where does this airframe sell the most?
+    public static func airframeDayValue(distanceKm: Int, passengersPerDay: Double,
+                                        spec: AircraftTypeSpec, fareRatio: Double,
+                                        serviceTier: ServiceTier,
+                                        origin: AirportSpec, destination: AirportSpec,
+                                        state: GameState, catalog: ContentCatalog,
+                                        rotationsPerDay: Int? = nil,
+                                        basis: RankingBasis = rankingBasis) -> Double {
+        let ops = catalog.tuning.ops
+        let rotations = rotationsPerDay ?? FlightSchedulingSystem.roundTripsPerAircraftPerDay(
+            distanceKm: distanceKm, spec: spec, ops: ops)
+        guard rotations > 0 else { return 0 }
+        let flights = Double(rotations * 2)
+        let carried = min(passengersPerDay, flights * Double(spec.seats))
+        let fare = DemandSystem.referenceFare(distanceKm: distanceKm,
+                                             tuning: catalog.tuning.demand) * fareRatio
+        let revenue = carried * fare
+        guard basis == .profit else { return revenue }
+
+        let blockHours = Double(FlightSchedulingSystem.flightMinutes(
+            distanceKm: distanceKm, cruiseSpeedKmh: spec.cruiseSpeedKmh,
+            overheadMinutes: ops.flightOverheadMinutes)) / 60
+        let fuel = flights * spec.fuelBurnKgPerKm * Double(distanceKm) / 1000
+            * state.world.fuelPricePerTon.asDouble
+        // The flight system's own fee arithmetic: movements for this
+        // airframe's size, passengers at the arrival end (half land at each).
+        let movementFees = flights * (origin.movementFee(for: spec, ops: ops).asDouble
+                                      + destination.movementFee(for: spec, ops: ops).asDouble)
+        let passengerFees = carried / 2
+            * (origin.passengerFee.asDouble + destination.passengerFee.asDouble)
+        let crew = flights * blockHours
+            * (Double(spec.crewCockpit) * ops.crewCostPerBlockHourCockpit.asDouble
+               + Double(spec.crewCabin) * ops.crewCostPerBlockHourCabin.asDouble)
+        // Maintenance as the fleet system will book it — checks, not hours
+        // (AE-040: the hourly rate here was ten times the ledger).
+        let maintenance = FleetEconomics.expectedMaintenancePerDay(
+            type: spec, ageYears: 0, blockHoursPerDay: flights * blockHours,
+            fleet: catalog.tuning.fleet, ops: ops)
+        let service = carried * catalog.tuning.reputation.serviceCostPerPax(serviceTier).asDouble
+        return revenue - fuel - movementFees - passengerFees - crew - maintenance - service
+    }
+
+    /// Deterministic candidate scoring: the pool an entrant could plan
+    /// against with the incumbents' real offers in the way, gated by
+    /// eligibility and archetype geography.
+    ///
+    /// Until AE-038 the score halved per incumbent (`pool / (n + 1)`), and
+    /// the seed scan measured what that did: across 240 two-year campaigns
+    /// from eight homes, no rival ever entered a pair the player flew
+    /// except New York–Chicago, the one pair large enough to win at half
+    /// value — even from Singapore, where five rivals had the player's
+    /// home in their candidate set (docs/RIVALS_THAT_COME_TO_YOU_AUDIT.md).
+    /// The demand engine gives a second entrant nearer two thirds than a
+    /// half, so the AI now asks the engine, and an open pair still scores
+    /// exactly as before.
+    private func bestMarket(from origin: AirportCode, airline: Airline,
+                            spec: AircraftTypeSpec, profile: AIProfile,
+                            state: GameState, context: SimContext,
+                            tuning: AITuning) -> MarketCandidate? {
+        var best: MarketCandidate?
+        for candidate in Self.candidateMarkets(from: origin, airline: airline, spec: spec,
+                                               profile: profile, state: state,
+                                               catalog: context.catalog, tuning: tuning) {
+            guard let score = candidate.score else { continue }
+            if best == nil || score > best!.score! {
+                best = candidate
             }
         }
         return best
+    }
+
+    /// Whether the route's frequency target exceeds what its assigned
+    /// aircraft can fly in a day — the scheduler's own capacity arithmetic.
+    private func routeNeedsAnotherAircraft(_ route: Route, state: GameState,
+                                           context: SimContext) -> Bool {
+        let assigned = route.assignedAircraft.sorted().compactMap { state.aircraft[$0] }
+        guard let first = assigned.first,
+              let spec = context.catalog.aircraftType(first.typeCode) else { return true }
+        let perAircraft = FlightSchedulingSystem.roundTripsPerAircraftPerDay(
+            distanceKm: route.distanceKm, spec: spec, ops: context.catalog.tuning.ops)
+        guard perAircraft > 0 else { return false }
+        return perAircraft * assigned.count < route.dailyRoundTrips
     }
 
     private func routeServableBy(_ aircraft: Aircraft, route: Route,

@@ -19,6 +19,9 @@ struct AirlineEmpireApp: App {
                     // Decoding the palette is milliseconds, but it is still
                     // not work to do while the player waits for a screen.
                     controller.feedback.prepare()
+                    // UI tests only: open a save the engine wrote, so the
+                    // late game can be photographed (AE-037 COMP-07).
+                    controller.loadFixtureIfRequested()
                 }
                 // `initial: true` is load-bearing, and it is BUG-040's fix.
                 // `onChange` does not fire for the value that is already

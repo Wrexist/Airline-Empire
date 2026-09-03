@@ -442,6 +442,18 @@ extension Vocab {
 }
 
 extension Vocab {
+    /// The reason behind the fee line: what each end charges a flight of
+    /// this aircraft's size, and what each passenger pays to land. Stated
+    /// as the charges, not as a judgement (AE-040, Phase 13).
+    static func feeTerms(_ terms: FeeTerms, origin: String, destination: String) -> String {
+        let low = min(terms.originPassenger, terms.destinationPassenger)
+        let high = max(terms.originPassenger, terms.destinationPassenger)
+        let perPassenger = low == high
+            ? "\(Format.money(low)) per passenger"
+            : "\(Format.money(low))–\(Format.money(high)) per passenger"
+        return "Each flight pays \(Format.money(terms.originMovement)) at \(origin) and \(Format.money(terms.destinationMovement)) at \(destination) for a \(terms.seats)-seat aircraft, plus \(perPassenger) landed."
+    }
+
     /// A world event's severity as a word (MASTER PROMPT 4 §16).
     ///
     /// `WorldEvent.severity` is 0…1 "within the kind's semantics" — so it is
@@ -632,5 +644,139 @@ extension Vocab {
 
     static func airportDisplay(_ spec: AirportSpec) -> String {
         airportDisplay(name: spec.name, city: spec.city)
+    }
+}
+
+// MARK: - Competition (AE-037)
+
+extension Vocab {
+    /// A city pair the way the game names it everywhere else: codes.
+    static func pair(_ origin: AirportCode, _ destination: AirportCode) -> String {
+        "\(origin.raw)–\(destination.raw)"
+    }
+
+    /// Where the player stands on one contested pair, in one sentence. Core
+    /// decided the standing and the edge (`MarketCompetition`) from the demand
+    /// engine's own split; this only chooses the words.
+    static func standing(_ model: MarketCompetition) -> String? {
+        switch model.standing {
+        case .alone:
+            return nil
+        case .tooEarly:
+            return "Contested — the market has not split a day between you yet."
+        case .leading, .even, .trailing:
+            guard let share = model.playerShareToday, let even = model.evenShare else {
+                return nil
+            }
+            let carriers = Int((1 / even).rounded())
+            let lead: String
+            switch model.standing {
+            case .leading: lead = "You lead this market"
+            case .trailing: lead = "You are losing this market"
+            default: lead = "An even fight"
+            }
+            let split = "\(Format.percent(share)) of today's passengers against \(carriers - 1) rival\(carriers == 2 ? "" : "s")"
+            guard let edge = model.edge else { return "\(lead) — \(split)." }
+            return "\(lead) — \(split), \(edgeClause(edge))."
+        }
+    }
+
+    /// The term that separates the player from the strongest rival, read
+    /// after the standing.
+    private static func edgeClause(_ edge: MarketCompetition.Edge) -> String {
+        switch edge {
+        case .fare(let ahead):
+            return ahead ? "mostly because your fare is lower"
+                         : "mostly because their fare is lower"
+        case .schedule(let ahead):
+            return ahead ? "mostly because you fly more often"
+                         : "mostly because they fly more often"
+        case .reputation(let ahead):
+            return ahead ? "mostly on reputation" : "mostly because their reputation is stronger"
+        case .comfort(let ahead):
+            return ahead ? "mostly on cabin comfort" : "mostly because their cabin is more comfortable"
+        case .operations(let ahead):
+            return ahead ? "mostly because you run on time" : "mostly because they run on time"
+        }
+    }
+
+    /// The one control on the route screen that answers the edge — the
+    /// player's response, named rather than implied. Nil when the player
+    /// is ahead or nothing dominates.
+    static func competitiveResponse(_ model: MarketCompetition) -> String? {
+        guard model.standing == .trailing || model.standing == .even,
+              let edge = model.edge, !edge.playerAhead else { return nil }
+        switch edge {
+        case .fare:
+            // Measured on Munich–Istanbul (AE-039, `MunichHorizonTests`): a
+            // tenth off the fare took the share from 35% to 40% and the
+            // route's month from $2.0M to $1.7M; one more rotation on the
+            // aircraft already there took it to 38% and $2.2M. Both are
+            // answers; they buy different things (BUG-049).
+            return model.spareRotationsToday > 0
+                ? "They are cheaper. Another rotation keeps the money; matching the fare keeps the share."
+                : "Answer with the fare below, or accept a smaller share at a better price."
+        case .schedule:
+            // Measured (AE-038): a lone narrowbody on New York–Chicago had a
+            // third rotation in it, and taking it was worth half again the
+            // route's profit — the old line said it needed another aircraft.
+            return model.spareRotationsToday > 0
+                ? "Answer with frequency: your aircraft on this route can fly \(model.spareRotationsToday == 1 ? "one more rotation" : "\(model.spareRotationsToday) more rotations") today."
+                : "Answer with frequency: another rotation needs another aircraft on this route."
+        case .reputation:
+            return "Reputation moves in weeks — on-time flying and service, not this route alone."
+        case .comfort:
+            return "A newer cabin on this route would close the gap; a fare cut is the faster lever."
+        case .operations:
+            return "Cancellations and delays on this route are costing passengers — check its aircraft."
+        }
+    }
+
+    /// One rival's move, as a line of news.
+    static func move(_ move: RivalMove) -> String {
+        let pair = pair(move.origin, move.destination)
+        let when = move.daysAgo == 0 ? "today"
+            : move.daysAgo == 1 ? "yesterday" : "\(move.daysAgo) days ago"
+        switch (move.kind, move.relevance) {
+        case (.entered, .onPlayerMarket):
+            return "\(move.name) entered your \(pair) market \(when)."
+        case (.left, .onPlayerMarket):
+            return move.airlineCollapsed
+                ? "\(move.name) collapsed — \(pair) is yours again (\(when))."
+                : "\(move.name) pulled out of \(pair) \(when) — the market is yours again."
+        case (.entered, .beforePlayerJoined):
+            // The rival was there first: run 121 read "entered your
+            // LHR–BER market 21 days ago" over a pair the player had
+            // walked into three weeks later (BUG-050).
+            return "\(move.name) was already flying \(pair) when you opened it (\(when))."
+        case (.left, .beforePlayerJoined):
+            return "\(move.name) dropped \(pair) \(when), before you opened it."
+        case (.entered, .atPlayerAirport):
+            return "\(move.name) opened \(pair) \(when) — an airport you serve."
+        case (.left, .atPlayerAirport):
+            return "\(move.name) dropped \(pair) \(when)."
+        }
+    }
+
+    /// Home's one competitive fact. Nil when the world has nothing to say.
+    static func headline(_ headline: CompetitionSummary.Headline) -> String {
+        switch headline {
+        case .rivalEnteredYourMarket(let move), .rivalLeftYourMarket(let move):
+            return self.move(move)
+        case .trailing(let routes, let contested):
+            return routes == 1
+                ? "You are losing 1 of your \(contested) contested route\(contested == 1 ? "" : "s") — see why."
+                : "You are losing \(routes) of your \(contested) contested routes — see why."
+        case .rivalExpanding(let rival):
+            return "\(rival.name) added \(rival.marketsEnteredRecently) routes this month, \(rival.sharedAirports == 1 ? "at an airport you serve" : "at airports you serve")."
+        case .fighting(let contested):
+            return contested == 1
+                ? "One of your routes is contested — an even fight so far."
+                : "\(contested) of your routes are contested — holding your own on each."
+        case .leading(let contested):
+            return contested == 1
+                ? "You lead your one contested market."
+                : "You lead on all \(contested) of your contested markets."
+        }
     }
 }

@@ -450,3 +450,169 @@ build step is now `build-for-testing` and both passes are
 **Expected.** one build + ~113 s serial + ~485 s parallel. NOT VALIDATED
 until a run reports it; the class durations above are MEASURED from run
 103 and the 9 m 55 s overhead is MEASURED from the first attempt.
+
+
+## TD-026 — Rivals do not enter a pair the player already flies
+
+**Symptom.** MEASURED (AE-037, `ae-rival-probe`, five years from three
+homes with the BUG-042/043 fixes in): no rival ever opened a route on a
+pair the player was flying. Every player-rival contest in the game is the
+player's doing.
+
+**Root cause.** `CompetitorAISystem.bestMarket` scores candidates as
+`demandPool / (incumbents + 1)`. Halving a market per incumbent means a
+contested pair only wins against *every* open candidate among the sixteen
+nearest airports — which, with 94 airports and five rivals of at most five
+routes each, never happens except on the world's largest pairs
+(London–Paris is contested rival-to-rival by day 4). The design accepts
+contested markets at half value; it did not anticipate that there would
+always be an open one.
+
+**Why it is debt and not a bug here.** AE-037 was explicitly not to
+rewrite the AI, and the demand engine's real split gives a second entrant
+roughly two thirds of a monopolist's take, not a half — so the honest fix
+is to score with `DemandSystem.expectedCapturedPassengers` against the
+incumbents' actual offers, which is a scoring change with balance
+consequences (`tenYearWorldRemainsStableAndContested`'s HHI bound, the
+AI collapse rate). That is a phase's work, and it is the recommended next
+one.
+
+**Expected.** A rival entering the player's Stockholm–London when the
+player is the only carrier on a large pair; the Home headline
+`rivalEnteredYourMarket` firing in a plain campaign without the player
+picking the fight. NOT VALIDATED.
+
+**AE-039 (2026-09-02): the horizon half measured and dismissed.** At 24,
+48 and all 93 airports the rivals reached exactly the same player pairs
+as at 16 (docs/HORIZON_AUDIT.md §3.1): the distance list was never the
+binding constraint, the passenger ranking was. Ranking by airframe-day
+revenue (shipped) brings the world to Munich on day 61 and to Singapore
+in year two; Stockholm and Barcelona are still not reached within two
+years — Stockholm is reached only on the profit basis at a horizon of
+24, which this phase measured and withheld (TD-030). What remains of
+TD-026 is now an economy question, not a horizon one.
+
+**AE-038 (2026-09-02): narrowed, not closed.** The scoring half is done:
+`DemandSystem.poolAvailableToEntrant` replaces the halving, and across
+240 scanned campaigns world-initiated entries rose from 30 (New York
+only) to 95 (New York, São Paulo, Dubai) with every Core test green
+(docs/RIVALS_THAT_COME_TO_YOU_AUDIT.md §2.1). What remains is the
+**candidate horizon**: a rival scores only the sixteen airports nearest
+to where its airframe sits, so it can only come to a pair whose far end
+is one of its bases, and no rival base can see Stockholm at all. From
+the curated European starts the world still does not move first within
+two years. Fix shape: a demand-ranked horizon (the top N pairs by pool
+from the base, within the airframe's range) beside or instead of the
+nearest sixteen — a change to where every rival flies, to be measured
+with `ae-rival-scan` and the ten-year world test before it is kept.
+
+## TD-027 — The route record has no opening date
+
+**Symptom.** "Since you arrived, Aurora added sixteen daily rotations" is
+a sentence the game cannot say: `Route` has no `openedAt`, and rival
+frequency and fare changes are not recorded anywhere (the market-move
+record deliberately keeps entries and exits only, so that a fortnight of
+weekly frequency pushes cannot roll the record over).
+
+**Cost.** The route screen shows rivals' *current* offers and the split;
+the UI journey photographs the day of entry and a week later to show the
+change, but the screen itself cannot narrate it.
+
+**Fix shape.** `Route.openedAt` (save bump) plus a per-route "offer at
+your entry" snapshot for contested pairs — small state, one migration.
+Worth doing when TD-026 makes rival responses a routine sight.
+
+## TD-028 — Two save fixtures ride the UI test bundle
+
+**What.** `AirlineEmpireApp/UITests/Fixtures/rival-pressure-retreat.json`
+(day 249 of the seed-2039 fight campaign) and
+`rival-pressure-late-game.json` (day 1825), ~400 KB each, written by
+`ae-rival-probe --save` and loaded under `-AEUITestLoadSave`. They are how
+COMP-05 and COMP-07 are photographed: a rival's retreat lands on day 248
+and the late game is ~1,800 sunrise taps away.
+
+**Debt.** Save format v12 is baked into the files. A future format bump
+still loads them (the migration chain runs on load), but any change to
+the campaign script, the cast rule or the AI makes them a *different*
+world from the one `RivalPressureCampaignTests` measures. Regenerate with
+`swift run -c release ae-rival-probe 2039 249 ARN LHR-CDG:0.88 --save …`
+and `… 1825 …` whenever the twin's numbers move.
+
+## TD-029 — The regional archetype has no profitable market at hub fees
+
+**RESOLVED 2026-09-02 (AE-040):** the cause was BUG-051, the movement fee
+not scaling with the aircraft, not the archetype. After the fix the
+turboprop has 374 profitable candidates of 542 worldwide (40 before), 11
+from Paris (0), and the regional rival is alive in 150 of 150 campaigns
+with earning routes (docs/REGIONAL_ARCHETYPE_AUDIT.md §5).
+
+**Symptom.** MEASURED (AE-039, `ae-rival-scan --horizon --profit`): with
+markets scored by what an airframe day keeps after the flight system's
+own costs, SwiftJet — the regional archetype, 70-seat turboprops at the
+reference fare — has zero viable candidates from Paris, Chicago or
+anywhere else in the world it can reach. The ledger agrees: its
+New York–Chicago lost $277k a month at 100% load, Chicago–Toronto $953k.
+Under the shipped revenue ranking it still flies (and still loses), as it
+did under the passenger ranking; AE-037 saw it grounded or collapsed in
+the late game.
+
+**Cause.** `AirportSpec.movementFee` at large airports against a 70-seat
+cabin; the archetype's preferred categories are turboprop and regional
+jet, its geography its home region, its fare factor 1.0.
+
+**Fix shape.** An economy decision: lower fees at smaller airports (the
+catalog has few), a higher regional fare factor, or a different starter
+type. Any of them changes the player's economics on the same routes.
+Out of scope for a horizon phase.
+
+## TD-030 — The profit ranking, measured and withheld
+
+**Re-measured 2026-09-02 (AE-040):** on the corrected economy the
+regional archetype functions on the profit basis (150 of 150 alive), but
+at the shipped horizon the basis reaches fewer player markets than the
+shipped one (31 world-initiated entries against 60 across 150 campaigns;
+Singapore's arrival does not happen). Still withheld; recommended as a
+phase of its own together with the horizon-24 measurement
+(docs/AE040_FEE_ECONOMY_REPORT.md §9, §16).
+
+`CompetitorAISystem.airframeDayValue(basis: .profit)` — the revenue
+basis less the flight system's costs — reaches the curated first start:
+with a horizon of 24, PacificBlue enters Stockholm–Istanbul on day 187 of
+every scripted seed (docs/HORIZON_AUDIT.md §4). It is not shipped because
+it freezes the regional archetype (TD-029) and puts three of fifteen
+archetype runs over the balance battery's 60% margin line (64–65%), and a
+test is not weakened to go green. The scan and probe carry `--profit` so
+the measurement can be repeated once TD-029 is decided.
+
+## TD-031 — The reference route P&L was never reconciled line by line
+
+**Symptom.** MEASURED (AE-040, docs/FEE_ECONOMY_BASELINE.md §6.4):
+docs/GAME_BALANCE.md §4 gives the per-flight P&L the economy was to be
+tuned against (narrowbody, 1,100 km, 78% load: fuel $4.9k, crew $2.3k,
+airport/handling $3.2k, maintenance $2.4k, ownership $3.1k, overhead
+$1.3k on $18.1k of revenue, ~5% margin). The game's anchor fixture lands
+near the total ($16.5k against $17.2k) with none of the lines in place:
+fees 1.6× the anchor, ownership 2×, fuel ½, crew ½, maintenance ⅒
+(the fleet system's checks book about $0.2k per flight against a
+$2.4k reserve). The anchor test only requires a positive result.
+
+**Cost.** Fees lead every cost line under 1,600 km for every aircraft and
+short haul under 400 km is fee-bound for everyone (the arrival passenger
+fee alone is 40–45% of a $60–69 fare at LHR, CDG or JFK); fuel, the cost
+the design expects to lead and the one the world's fuel walk moves, is
+4–12% of revenue on short routes, so fuel shocks under-bite. The
+composition is what the batteries are calibrated on, so no single line
+can be moved alone without moving the anchor's margin.
+
+**Fix shape.** A reconciliation pass on the reference P&L as a whole —
+fee level, fuel price or burn, crew rates, the maintenance check cadence,
+lease rates — one anchor at a time against `BalanceTests`, with the
+per-line test §4 promised (±10%). A whole-economy phase; AE-040 fixed the
+fee *scale* (BUG-051) and left every level where it was.
+
+**Also seen (MEASURED, AE-040):** no aircraft can fly a round trip longer
+than about eight hours one way because the scheduler needs the whole
+round trip inside the 18-hour operating day (LHR–SIN has zero rotations
+for every type); a full schedule loses 6–25% of its rotations to delay
+cascades and expiry; widebodies are era-locked for the player and not
+for rivals.

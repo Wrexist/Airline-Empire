@@ -52,7 +52,7 @@ struct LiveryMigrationTests {
 
     @Test("The version bumped, and the chain still reaches back to v9")
     func chainIsContiguous() {
-        #expect(SaveFormat.currentVersion == 11)
+        #expect(SaveFormat.currentVersion == 12)
         #expect(MigrationChain.standard.minimumSupportedVersion == 9)
     }
 

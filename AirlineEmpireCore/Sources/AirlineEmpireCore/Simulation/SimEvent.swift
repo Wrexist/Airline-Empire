@@ -39,6 +39,13 @@ public enum SimEventKind: Equatable, Codable, Sendable {
     // Routes & flights (Phase 6)
     case routeOpened(id: RouteID, origin: AirportCode, destination: AirportCode)
     case routeClosed(id: RouteID)
+    /// Competition (AE-037). `routeOpened` carries no airline and
+    /// `routeClosed` names a route already deleted, so neither can say *who*
+    /// entered or left *whose* market. These can, and they are the only
+    /// route events a rival's business is allowed to put in the player's
+    /// feed — when the pair is one the player flies.
+    case marketEntered(airline: AirlineID, origin: AirportCode, destination: AirportCode)
+    case marketLeft(airline: AirlineID, origin: AirportCode, destination: AirportCode)
     case aircraftAssigned(aircraft: AircraftID, route: RouteID)
     case aircraftUnassigned(aircraft: AircraftID, route: RouteID)
     case flightDeparted(id: FlightID, route: RouteID)

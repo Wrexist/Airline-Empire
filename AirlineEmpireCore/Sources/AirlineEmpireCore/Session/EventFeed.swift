@@ -31,7 +31,9 @@ extension GameState {
             return id
         case .loanTaken(let airline, _, _),
              .loanRepaidEarly(let airline, _),
-             .statementClosed(let airline, _, _, _):
+             .statementClosed(let airline, _, _, _),
+             .marketEntered(let airline, _, _),
+             .marketLeft(let airline, _, _):
             return airline
 
         // Fleet events name an aircraft; its owner is the subject.
@@ -104,6 +106,16 @@ extension GameState {
         switch event.kind {
         case .airlineFounded, .airlineEnteredAdministration, .airlineCollapsed:
             return true
+        // A rival entering or leaving a city pair is news exactly when it is
+        // *your* city pair: the demand engine splits that market between you
+        // from the next morning. Their moves elsewhere stay their business
+        // (docs/RIVAL_PRESSURE_AUDIT.md §4 — the noise budget).
+        case .marketEntered(_, let origin, let destination),
+             .marketLeft(_, let origin, let destination):
+            return routes.values.contains {
+                $0.airline == airline
+                    && $0.sameMarket(origin: origin, destination: destination)
+            }
         default:
             return false
         }

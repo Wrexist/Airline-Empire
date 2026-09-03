@@ -189,10 +189,16 @@ public struct FlightOpsSystem: SimulationSystem {
         state.ledger.post(airline: owner, category: .fuel, amount: -fuelCost,
                           at: context.current, memo: "Fuel \(flight.from)-\(flight.to)")
 
+        // Movements are charged for what landed: the airport's quoted fee
+        // scales with the aircraft's seats (AE-040 — a 68-seat turboprop
+        // paid the same as a 180-seat narrowbody and could not clear its
+        // fees on any route in the world, docs/FEE_ECONOMY_BASELINE.md).
         var fees = Money.zero
-        if let fromSpec = catalog.airport(flight.from) { fees = fees + fromSpec.movementFee }
+        if let fromSpec = catalog.airport(flight.from) {
+            fees = fees + fromSpec.movementFee(for: spec, ops: ops)
+        }
         if let toSpec = catalog.airport(flight.to) {
-            fees = fees + toSpec.movementFee
+            fees = fees + toSpec.movementFee(for: spec, ops: ops)
             fees = fees + toSpec.passengerFee * Int64(flight.passengers)
         }
         state.ledger.post(airline: owner, category: .airportFees, amount: -fees,

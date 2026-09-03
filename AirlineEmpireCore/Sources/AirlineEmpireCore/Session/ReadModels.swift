@@ -64,6 +64,30 @@ public struct RouteCardModel: Equatable, Sendable {
     /// not flying (AE-033 audit §6.2). A screen that knows the record is
     /// empty can say so instead of inventing a perfect one.
     public let hasFlown: Bool
+    /// What the airports charge this route per flight, for the size of
+    /// aircraft it flies — nil until an aircraft is assigned. The fee line
+    /// on the route screen had a number and no reason (AE-040); this is
+    /// the reason, from the same content the flight system charges.
+    public var feeTerms: FeeTerms? = nil
+}
+
+/// The airport charges behind a route's fee line: each end's movement fee
+/// for the assigned aircraft's size, and each end's per-passenger fee.
+public struct FeeTerms: Equatable, Sendable {
+    public let originMovement: Money
+    public let destinationMovement: Money
+    public let originPassenger: Money
+    public let destinationPassenger: Money
+    public let seats: Int
+
+    public init(originMovement: Money, destinationMovement: Money,
+                originPassenger: Money, destinationPassenger: Money, seats: Int) {
+        self.originMovement = originMovement
+        self.destinationMovement = destinationMovement
+        self.originPassenger = originPassenger
+        self.destinationPassenger = destinationPassenger
+        self.seats = seats
+    }
 }
 
 public struct FleetCardModel: Equatable, Sendable {
@@ -162,8 +186,25 @@ extension GameState {
                 // some flight flew, or some cost posted. All-zero means the
                 // route has not yet lived through a close.
                 hasClosedMonth: route.economicsLastMonth != RouteMonthEconomics(),
-                hasFlown: route.stats.totalFlights > 0)
+                hasFlown: route.stats.totalFlights > 0,
+                feeTerms: feeTerms(for: route, catalog: catalog))
         }
+    }
+
+    /// The airport charges a route pays per flight, for its first assigned
+    /// aircraft's size (the type the scheduler times the route to).
+    public func feeTerms(for route: Route, catalog: ContentCatalog) -> FeeTerms? {
+        guard let first = route.assignedAircraft.sorted().first,
+              let aircraft = aircraft[first],
+              let spec = catalog.aircraftType(aircraft.typeCode),
+              let origin = catalog.airport(route.origin),
+              let destination = catalog.airport(route.destination) else { return nil }
+        let ops = catalog.tuning.ops
+        return FeeTerms(originMovement: origin.movementFee(for: spec, ops: ops),
+                        destinationMovement: destination.movementFee(for: spec, ops: ops),
+                        originPassenger: origin.passengerFee,
+                        destinationPassenger: destination.passengerFee,
+                        seats: spec.seats)
     }
 
     /// Fleet cards for an airline, deterministic order.

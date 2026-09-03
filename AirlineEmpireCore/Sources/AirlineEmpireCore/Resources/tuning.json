@@ -134,6 +134,7 @@
   "delayMinutesMax": 240,
   "delayMinutesMin": 45,
   "flightOverheadMinutes": 20,
+  "movementFeeReferenceSeats": 180,
   "operatingDayMinutes": 1080,
   "operatingDayStartMinute": 360,
   "scheduledFlightExpiryMinutes": 240,

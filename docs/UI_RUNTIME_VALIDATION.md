@@ -26,6 +26,92 @@ credential the agent doing the interface work does not have (TD-020).
 Seven tests, one device, portrait. That is the whole of it — small, and worth
 not overstating.
 
+**The week control (2026-09-03).** Under `-AEUITestSunriseWeek`, which
+every journey launches with, the speed bar carries a second control beside
+the sunrise, "Advance seven mornings" — seven of the same engine calls a
+player's seven taps make, with one screen refresh at the end instead of
+seven simulator settles. `advanceMornings(until:)` takes a week whenever
+at least seven days remain before its target date and single mornings
+after that, so no journey lands past the date it asked for. Before it,
+the two long journeys tapped the sunrise about ninety and a hundred and
+ten times, each tap several seconds of settling; run 123's UI step took
+45 minutes with both on one simulator clone. The player never sees the
+control, and the measurement pass opts out of the flag so its numbers
+stay comparable with the ones already recorded.
+
+**Three shards (2026-09-03), MEASURED.** The UI job is a three-way
+matrix and the split is written down rather than left to xcodebuild:
+the campaign journeys on one runner, the economy journeys on another,
+both with no simulator cloning at all, and the Munich arrival beside the
+shell on a third with two clones and the measurement pass. Three runs
+established it:
+
+| Run | Arrangement | Result |
+| --- | --- | --- |
+| 123 | one job, xcodebuild's own distribution, 2 clones | green in 48 min — three classes (39 min between them) on one clone, the fourth finished and left the other idle for 25 |
+| 125 | one job, 3 parallel workers | failed — two of three test runners died before connecting ("Timed out waiting for AX loaded notification"), the survivor starved, seven journeys lost to launch and query timeouts |
+| 126 | two named shards, 2 clones each | arrival + shell green in 22 min; campaign + economy starved at 30 min — three journeys on "Timed out while requesting launch progress" and "Timed out while evaluating UI query" |
+| 127 | three named shards, no cloning on the two launch-heavy ones | campaign class **186.6 s** (1,225 s in run 123), UI step 6 min 17 s, one real assertion failure; economy shard **green**, UI step 12 min 02 s. No starvation on either: not one launch or query timeout in the whole log |
+| 129 | the same three shards, with the two harness costs below fixed | **green — all 19 journeys and both measurements**, and the whole run 28 min 41 s wall clock against run 123's 48. Campaign 6/6 in 909.9 s; economy 4/4 in 457.8 s; the Munich arrival **439.2 s**; the shell class 585.5 s across its clone |
+
+What the runners cannot take is simultaneous app launches: the shard
+whose second class was a single long journey passed, the shard with ten
+launch-heavy tests across two clones did not. So the launch-heavy
+classes now get a runner each, and only the pair that proved itself
+keeps two clones. Runner speed varies about 1.6× between runs (run 126's
+shell class took 818 s where run 123's took 505 s), so any budget has to
+survive that.
+
+**The week control, MEASURED.** The Munich arrival went from 981 s
+(run 123) to **495 s** (run 126) to **439.2 s** (run 129) and stayed
+green — half that journey was simulator settling between sunrise taps.
+
+**Where the remaining time is, run 129 (MEASURED).** The three UI shards
+are 19 min 25 s, 16 min 17 s and 19 min 08 s of test step, and the run
+finishes in 28 min 41 s. Two things account for nearly all of what is
+left, and neither is a shard arrangement:
+
+- **The campaign journey itself: 765.7 s of the campaign shard's
+  909.9 s.** It is no longer paying for sunrise taps — 24 single
+  mornings and 4 week jumps in the whole journey — but for **1,907
+  individual UI interactions** at about 0.4 s each, and its two largest
+  single waits are only 34 s and 14 s. No split takes that shard below
+  roughly a quarter of an hour; only a shorter journey would.
+- **Simulator boot and install, 5–8 min per shard.** On the economy
+  shard 8 min 13 s passed between xcodebuild resolving its destination
+  and the runner saying "Running tests"; the tests themselves were
+  457.8 s. This is `test-without-building` — nothing is compiling in
+  that window — so it is runner cost, not test cost, and it is paid once
+  per shard. Cloning a second simulator adds roughly four minutes more,
+  which is why only one shard clones.
+
+Total macOS work is about 69 minutes over three runners, so a perfectly
+balanced three-way split lands near 23 minutes. Going materially below
+that needs a fourth macOS shard — at 10× billing, a cost decision, not a
+technical one — or a shorter campaign journey. Neither is taken here.
+
+**Two harness costs run 127 exposed, MEASURED.** Neither was an
+assertion about the app, and the shard split is what made both legible:
+
+- `foundAirline` opened by asking `waitForTab("Home")` — four
+  accessibility queries over the founding screen's hierarchy — to decide
+  whether a relaunch had come back into a playing shell. On run 127's
+  runner that first poll took **41 s** (t = 9.24 s to t = 50.62 s in the
+  log; the cell query 12 s, the static-text query 12 s more) to conclude
+  what one query for the new-game screen's own button answers at once.
+  The cheap question is asked first now.
+- The "World seed" disclosure is the last row of a long scroll, just
+  above the pinned Found bar, so the tap has to scroll it into view.
+  XCUITest computed the hit point from the frame mid-scroll — `Computed
+  hit point {210, 738} after scrolling to visible` for a row that had
+  settled about thirty points higher — tapped the gap above the pinned
+  bar, and the disclosure never opened. 👁 The failure frame
+  (`KEY-SEED-FIELD-MISSING`, run 127 shard 1) still reads "World seed >"
+  with the chevron unturned, which is what proves it was the tap and not
+  the field. The tap is confirmed and repeated up to three times now;
+  the second needs no scroll, so it lands where the row is. The
+  assertion behind it is unchanged.
+
 ## 2. Test inventory
 
 | Test | Asserts |

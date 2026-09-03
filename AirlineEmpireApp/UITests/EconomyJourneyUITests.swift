@@ -206,11 +206,19 @@ final class EconomyJourneyUITests: AEUITestCase {
 
         // ── Run the clock ──────────────────────────────────────────────────
         openTab("Map")
+        // Run 114 ended this journey between the route frame and the
+        // flight frame with nothing photographed in between: the map, its
+        // framing button and the speed control are the only steps there.
+        // One frame of the map as the clock is about to start, so the next
+        // silent stop has a picture.
+        checkpoint("80b-map-before-the-clock")
         let frameNetwork = app.buttons["Frame my network"]
-        if frameNetwork.waitForExistence(timeout: 5) { frameNetwork.tap() }
+        if frameNetwork.waitForExistence(timeout: 5), frameNetwork.isHittable {
+            frameNetwork.tap()
+        }
 
         let fast = app.buttons["Sixteen times speed"]
-        require(fast, "the 16x speed control")
+        guard require(fast, "the 16x speed control") else { return }
         fast.tap()
 
         // At 16x the world runs 64 game-minutes a real second, so a game day

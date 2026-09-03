@@ -19,7 +19,9 @@ public enum SaveFormat {
     /// Pre-release policy (docs/PERSISTENCE_ARCHITECTURE.md §5): superseded
     /// pre-release versions are refused, not migrated, until first TestFlight.
     /// v10 shipped to TestFlight, so it migrates rather than refuses.
-    public static let currentVersion = 11
+    /// v12 added `world.marketMoves` (AE-037: who entered and left which
+    /// city pair, the record competition needs and the event log cannot keep).
+    public static let currentVersion = 12
 }
 
 public struct SaveEnvelope: Codable, Sendable {

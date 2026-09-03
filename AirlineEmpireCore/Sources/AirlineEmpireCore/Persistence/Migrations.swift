@@ -35,6 +35,7 @@ public struct MigrationChain: Sendable {
     public static let standard = MigrationChain([
         MigrationV9AddProgression(),
         MigrationV10AddLivery(),
+        MigrationV11AddMarketMoves(),
     ])
 
     public func migrate(payload: [String: Any], from version: Int) throws -> [String: Any] {
@@ -102,5 +103,23 @@ public struct MigrationV10AddLivery: SaveMigration {
             airlines[key] = airline
         }
         payload["airlines"] = airlines
+    }
+}
+
+/// v11 → v12: the world gained `marketMoves`, the bounded record of who
+/// entered and left which city pair (AE-037). An older save starts with an
+/// empty record: the routes it holds are still there, so the current
+/// competitive picture is intact and only the history of how it came to be
+/// is missing — which is exactly what a v11 world never had.
+public struct MigrationV11AddMarketMoves: SaveMigration {
+    public let fromVersion = 11
+
+    public init() {}
+
+    public func migrate(_ payload: inout [String: Any]) throws {
+        guard var world = payload["world"] as? [String: Any],
+              world["marketMoves"] == nil else { return }
+        world["marketMoves"] = [Any]()
+        payload["world"] = world
     }
 }

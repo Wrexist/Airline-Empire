@@ -1076,3 +1076,318 @@ baseline green with numbers matching run 85). Not claimed fixed until a
 run shows the lease tests green.
 **Verified:** run 87 (commit ede33c8) — **all 16 UI tests green**, all
 three lease-dependent journeys included. FIXED.
+
+## BUG-042 — A rival's idle aircraft always went onto its one full route
+
+**Severity:** P1 (world). Every AI airline was a single-route airline for
+the life of a game, so the "competitor expansion" the design promises never
+happened anywhere.
+**Found:** 2026-09-01, AE-037 — by `ae-rival-probe`, the first tool to diff
+rival state day by day. Five years from Stockholm: every rival opened
+exactly one route in its first week and never another; one carried
+sixteen aircraft on a pair the scheduler could use ten on; three of five
+collapsed under lease bills for aircraft that flew nothing.
+**Root cause:** `CompetitorAISystem.employ` preferred thickening a "hot"
+route (lifetime load > 0.82) over opening a market, with no check that the
+route could use another airframe. A trunk route pinned at full load is hot
+forever, and once `manageRoutes` had pushed it to the 20-rotation cap, every
+new aircraft was assigned to it and sat on the ground.
+**Fix layer:** Core, one guard. `routeNeedsAnotherAircraft` asks the
+scheduler's own capacity arithmetic (`FlightSchedulingSystem.
+roundTripsPerAircraftPerDay`, extracted rather than copied) whether the
+assigned aircraft already cover the frequency target; a covered route no
+longer absorbs aircraft, so the idle airframe opens the best new market.
+**Regression cover:** `CompetitionTests.rivalOpensASecondMarket` — three of
+five rivals fly two or more routes within 120 days, and no AI route carries
+more than one aircraft beyond what it can use.
+**Status:** FIXED, MEASURED (probe: rivals reach five routes each; the
+Stockholm cast's collapses fall from two in two years to zero in the
+fight campaign, one in the plain one).
+
+## BUG-043 — The competitor cast was founded where the player would never go
+
+**Severity:** P1 (world). Combined with BUG-042 it meant a European start
+never met a rival at all: MEASURED zero contested player markets in five
+years from Stockholm, Barcelona *and* Singapore.
+**Found:** 2026-09-01, AE-037, same probe.
+**Root cause:** `WorldSetup.createCompetitors` took the world's most
+populous large airports outright — Tokyo, Jakarta, Delhi, Shanghai, Seoul —
+and an AI expands only from where its aircraft sit, among its sixteen
+nearest airports. No rival ever had a reason to be within 5,000 km of
+Stockholm. The Barcelona curated start's blurb promises "real competition";
+the Singapore one says "so do your rivals". Neither was true.
+**Fix layer:** Core, world population. At least half the cast (⌈n/2⌉) is
+founded at the busiest large airports of the player's own region, the rest
+at the busiest anywhere. From Stockholm the nearby rivals are Istanbul,
+London and Paris — exactly the markets the guided first route and the Next
+Moves ranking send the player to.
+**Regression cover:** `CompetitionTests.castIsFoundedNearThePlayer`.
+**Status:** FIXED, MEASURED. Rival routes now touch the player's airports
+from day 3 (London–Paris while the player flies Stockholm–London). Note what
+this does *not* change: rivals still do not enter a pair the player already
+flies unless it is one of the world's largest — the AI halves a market's
+value per incumbent and there are always open markets left. Competition on
+the player's own pairs is player-initiated (the fight in
+`RivalPressureCampaignTests`), which the design lists as intended
+("fight, flank or cede"); recorded as TD-026, not a bug.
+
+## BUG-044 — Everything a rival did to the player's market was invisible
+
+**Severity:** P0 by the AE-037 ranking: the player suffered the consequence
+(a third of a market at full load, a monthly loss) with no way to know why.
+**Found:** 2026-09-01, AE-037 — measured on the London–Paris fight. Of the
+rivals' responses over four months (a fare cut, thirty-two frequency
+increases, one retreat), the feed carried **none**: `SetRoutePrice` and
+`SetRouteFrequency` emit no event at all; a rival's `routeOpened` names no
+airline and is filtered as its private business (BUG-004's rule, correct
+for the events it had); `routeClosed` names a route that no longer exists
+and so can never be attributed (BUG-007). The route screen listed the
+rivals' fares and frequencies as state, but said nothing about the split,
+the standing or the cause.
+**Fix layer:** Core + App.
+- Core: `world.marketMoves`, a bounded record of who entered and left which
+  pair (written by the open/close commands and the collapse path; save v12
+  with a migration), plus two events, `marketEntered` / `marketLeft`, which
+  the feed admits exactly when the pair is one the player flies.
+- Core: `MarketCompetition` (per route: rivals with share, standing against
+  an even split, the dominant attractiveness term as the *why*) and
+  `CompetitionSummary` (contested/leading/trailing counts, the rival that
+  touches the player most, recent moves, and one prioritised headline).
+- App: the route screen's competition section (standing sentence, share
+  bar, per-rival share, the named response); a Home card that renders only
+  the headline and nothing in a quiet world; the World hub's live line and
+  badge; the Competitors screen re-ordered by pressure with contested
+  routes as links; the map's Rivals overlay hint counting contested routes
+  rather than shared airports.
+**Regression cover:** `CompetitionTests` (11), `RivalPressureCampaignTests`
+(the seed-2039 fight, day by day), and the campaign UI journey's COMP
+checkpoints.
+**Status:** FIXED — TESTED in Core, **OBSERVED** on every screen (runs
+112–116: the route on entry and a week on, Home, the World hub, the
+Competitors screen, the retreat and the late game — see
+docs/RIVAL_PRESSURE_AUDIT.md §8 for what each frame showed).
+
+## BUG-045 — The guided route sheet could open empty
+
+**Severity:** P1. Home's strongest guidance surface — tap a suggested
+market, get its route sheet — sometimes handed the player a blank sheet
+instead: From their home, nothing picked, the whole ranked list.
+**Found:** 2026-09-02, AE-037 — run 116's `FEB-ROUTE-SHEET-STUCK-1` frame,
+read against `KEY-32`: Home on 1 Feb offered ARN → CDG and ARN → IST, the
+journey tapped the first, and the sheet that came up had no destination.
+The route it eventually opened was Stockholm–Tokyo, 8,168 km, for a fleet
+of 5,700 km narrowbodies; it sat bare through March. Run 112's
+`FEB-ROUTE-SHEET-STUCK-1` was the same defect, then read as harness
+flakiness.
+**Root cause:** `DashboardView` presented the sheet with
+`.sheet(isPresented:)` driven by a Bool set in the same statement as a
+separate optional `guidedRoute`, and the sheet's body did
+`if let guidedRoute … else OpenRouteSheet()`. SwiftUI can evaluate the
+sheet content with the optional still nil on the presentation that flips
+the Bool, and the else branch renders a plain sheet. A deliberate fallback
+made the race invisible.
+**Why nothing caught it:** the plain sheet is a legitimate screen, so
+nothing on it was wrong; the journey photographed it as "stuck" and moved
+on; Core never sees SwiftUI presentation.
+**Fix layer:** App. `.sheet(item:)` on the optional itself, with a private
+`Identifiable` wrapper — a sheet that cannot present without its value.
+The else branch is gone.
+**Regression cover:** the campaign journey's February (two suggestion
+taps, `FEB-*` frames on any miss) and its "no bare routes at the end of
+February" assertion, which is what failed in run 116.
+`NextMovesServabilityTests` pins the other half of the diagnosis: the
+card's ranking from Stockholm on 1 Feb is all within the fleet's reach,
+so the unflyable route was the sheet's doing, not the card's.
+**Status:** FIXED — **OBSERVED** in run 117 (`KEY-32b`: both suggestions
+became the routes the card named, ARN–CDG earning $478k by 9 Feb, no
+Tokyo, no `FEB-*` frame; 18 of 18 journeys green).
+
+## BUG-046 — The route's frequency advice said a rotation needed an aircraft it already had
+
+**Severity:** P2. Misleading competitive advice on the one lever the
+measurement says works.
+**Found:** 2026-09-02, AE-038 — `RivalsComeToYouTests` on seed 2030 from
+New York: with SwiftJet at three rotations against the player's two on
+JFK–ORD, the route screen's response line read *"Answer with frequency:
+another rotation needs another aircraft on this route."* The Linux twin
+then set the frequency to three on the one leased narrowbody already
+there, the scheduler flew it, and the route's profit rose from about
+$1.3M to about $1.9M a month for the rest of the year (docs/RIVALS_THAT_COME_TO_YOU_AUDIT.md §4).
+**Root cause:** `Vocab.competitiveResponse` had one sentence for the
+schedule edge and no way to know whether the assigned aircraft could fly
+another rotation; `MarketCompetition` carried the standing, the share and
+the why, but not the capacity fact the advice turns on.
+**Why nothing caught it:** AE-037's frames were of London–Paris where
+the incumbents flew twenty rotations and the player's response genuinely
+needed more aircraft; the sentence was true there.
+**Fix layer:** Core + App. `MarketCompetition.spareRotationsToday` — the
+scheduler's own per-aircraft capacity times aircraft on the route, minus
+the frequency — and the advice reads it: *"your aircraft on this route can
+fly one more rotation today"* when it can, the old sentence when it cannot.
+**Regression cover:** `RivalsComeToYouTests` asserts a spare rotation on
+the pair a month after entry; `CompetitionTests` covers the model.
+**Status:** FIXED — TESTED, **OBSERVED** (run 119, KEY-R4: *"your
+aircraft on this route can fly one more rotation today"*, and KEY-R7 after
+the third rotation: *"another rotation needs another aircraft"*).
+
+## BUG-047 — A rival's move named the pair the rival's way round
+
+**Severity:** P3. Wording.
+**Found:** 2026-09-02, AE-038 — run 119's KEY-R2: *"SwiftJet entered your
+ORD–JFK market yesterday."* on Home, above a route the player opened as
+JFK–ORD and sees as JFK–ORD everywhere else.
+**Root cause:** `world.marketMoves` records the rival's route orientation;
+`competitionSummary` handed it through unchanged.
+**Fix layer:** Core. On the player's own pair the move takes the
+orientation of the player's route.
+**Regression cover:** `RivalsComeToYouTests` — the headline's pair equals
+the player's first route.
+**Status:** FIXED — TESTED, **OBSERVED** (run 120, KEY-R2: *"SwiftJet
+entered your JFK–ORD market yesterday."*).
+
+## BUG-048 — A month-old entry still led Home over a live fight
+
+**Severity:** P3. Priority, not correctness: the sentence was true.
+**Found:** 2026-09-02, AE-038 — run 119's KEY-R4-home-a-month-on:
+*"SwiftJet entered your ORD–JFK market 30 days ago."* while the route
+screen said "An even fight — 49% … mostly because they fly more often."
+**Root cause:** the headline let the most recent move on a player pair lead
+for the whole thirty-day window the Competitors screen keeps.
+**Fix layer:** Core. `CompetitionSummary.headlineMoveWindowDays = 14`: a
+move leads for a fortnight, then the standing of the fight takes over.
+**Regression cover:** `RivalsComeToYouTests` — the headline a month after
+entry is `fighting`.
+**Status:** FIXED — TESTED, **OBSERVED** (run 120, KEY-R4: *"One of your
+routes is contested — an even fight so far."* a month after the entry).
+
+## BUG-049 — The fare advice named one answer where the measurement found two
+
+**Severity:** P2. Misleading competitive advice, on the lever the player is
+about to pull.
+**Found:** 2026-09-02, AE-039 — `MunichHorizonTests`: a month after
+PacificBlue came to Munich–Istanbul at $142 against the player's $167 the
+route screen read *"Answer with the fare below, or accept a smaller share
+at a better price."* The twin then measured both answers over the
+following months: a tenth off the fare took the share from 35% to 40% and
+the route's month from about $2.0M to $1.7M; one more rotation on the
+aircraft already there took it to 38% and $2.2M. The advice had named the
+answer that costs money and left out the one that makes it.
+**Root cause:** `Vocab.competitiveResponse` had one sentence for the fare
+edge whatever the capacity fact; `MarketCompetition.spareRotationsToday`
+(BUG-046) was only consulted for the schedule edge.
+**Fix layer:** App. With a rotation to spare: *"They are cheaper. Another
+rotation keeps the money; matching the fare keeps the share."* Without
+one, the old sentence.
+**Regression cover:** `MunichHorizonTests` measures both responses; the
+Munich journey photographs the line (HORIZON-KEY-05).
+**Status:** FIXED — TESTED, OBSERVED (run 121, KEY-HZ5-response-line).
+
+## BUG-050 — A rival that was there first "entered your market"
+
+**Severity:** P3. A false sentence on the Competitors screen, and for a
+fortnight after the player opens a pair it can lead Home.
+**Found:** 2026-09-02, AE-039 — run 121's KEY-46 (Competitors, 9 Feb):
+*"Aurora Atlantic entered your LHR–BER market 21 days ago."* Aurora
+opened London–Berlin on 19 January; the player opened it on 1 February,
+into a market the route sheet had already marked *"1 airline already
+flies it"*. The player entered Aurora's market, not the other way round.
+**Root cause:** `WorldState.competitionSummary` classified a rival's move
+as `.onPlayerMarket` when the pair is one of the player's routes *now*;
+it never asked whether the player was flying the pair when the move
+happened. The world's move record carries the player's own entries and
+exits, so the question was answerable.
+**Fix layer:** Core read model. A rival's move on a pair the player was
+not yet flying is `RivalMove.Relevance.beforePlayerJoined`; it does not
+lead Home, and the Competitors screen reads *"Aurora Atlantic was already
+flying LHR–BER when you opened it (21 days ago)."* A rival's exit after
+the player joined stays a move on the player's market. Save format
+unchanged.
+**Regression cover:** `CompetitionTests.aRivalThereFirstIsNotAnEntryIntoYourMarket`.
+**Status:** FIXED — TESTED, OBSERVED (run 122, KEY-46: *"Aurora Atlantic
+was already flying LHR–BER when you opened it (21 days ago)."*).
+
+## Finding — New York's arrival was an artefact of ranking by passengers
+
+Not a bug entry of its own; recorded so the AE-038 evidence reads right.
+SwiftJet's entry into New York–Chicago on day 3 (AE-038, OBSERVED in runs
+119–120) happened because the AI ranked candidate markets by passengers
+alone. The ledger says the regional rival's 70-seat turboprops lost $277k
+a month on that pair at 100% load (and $953k on Chicago–Toronto). Once
+markets are ranked by what an airframe day sells (AE-039), SwiftJet does
+not open it, and no other rival can see New York–Chicago as its best
+market. The world-initiated twin and journey moved to Munich
+(`MunichHorizonTests`, `HorizonArrivalUITests`); the New York ones were
+removed. The founding helper's any-home picker stays.
+
+## BUG-051 — A movement cost the same whatever landed
+
+**Severity:** P1. An entire airline archetype could not function, and a
+player flying the same aircraft paid the same.
+**Found:** 2026-09-02, AE-040 — `ae-fee-baseline`: on every pair in a
+forty-route battery the 68-seat turboprop's airport fees were 1.7–1.9×
+the 180-seat narrowbody's as a share of revenue (LHR–CDG 157% vs 85%,
+JFK–ORD 75% vs 40%), and no turboprop route in the world paid for its
+lease; the regional archetype had 40 profitable candidates out of 542 at
+28 of 88 homes (docs/FEE_ECONOMY_BASELINE.md §6, docs/REGIONAL_ARCHETYPE_AUDIT.md
+§2). Previously recorded as TD-029 from the symptoms (SwiftJet's
+JFK–ORD −$277k a month, KEY-48's "airport fees take 96% of the
+revenue").
+**Root cause:** `AirportSpec.movementFee` was charged per arrival for
+both ends with no term for the aircraft: a 68-seat cabin and a 422-seat
+one paid the same two movements. Real landing charges follow aircraft
+weight; the game's passenger fee already followed passengers, the
+movement fee followed nothing. CASE B, wrong scale.
+**Fix layer:** Core. `AirportSpec.movementFee(for:ops:)` — the quoted fee
+in proportion to seats over `OpsTuning.movementFeeReferenceSeats` (180,
+new tuning constant), integer cents — used by `FlightOpsSystem.arrive`
+and the AI's estimator. The 180-seat narrowbody pays exactly what it
+paid; the anchor economy does not move. No save-format change.
+**Regression cover:** `FeeEconomyTests` (scale, once-per-arrival posting,
+the category, the two types on one pair, long haul not subsidised, the
+archetype's markets from Paris and in the standard cast).
+**Status:** FIXED — AUTHORED; TESTED and MEASURED pending this phase's
+batteries (docs/AE040_FEE_ECONOMY_REPORT.md).
+
+## BUG-052 — The AI's profit estimate charged maintenance ten times what the ledger books
+
+**Severity:** P2 (AI only; the withheld profit ranking's view of the
+world).
+**Found:** 2026-09-02, AE-040 — `ae-fee-baseline --months 12` against
+`airframeDayValue(basis: .profit)` over forty routes: fuel, fees and crew
+within 4–8% (the scheduled rotations that do not fly), service and
+revenue exact, maintenance 9.8× (docs/FEE_ECONOMY_ESTIMATOR_AUDIT.md).
+**Root cause:** the estimator charged `maintenancePerFlightHour` for every
+block hour; `FleetSystem` charges a 60-hour check each time condition
+falls by 0.25, which at real utilisation is one check per 500–650 flight
+hours. Two definitions of the same cost (CASE D).
+**Fix layer:** Core AI. `FleetEconomics.expectedMaintenancePerDay` — the
+fleet system's constants integrated: check cost × (daily decay + wear ×
+hours flown) / (1 − threshold) — replaces the hourly line in the
+estimator. The ledger is unchanged.
+**Regression cover:** `FeeEconomyTests.expectedMaintenanceMatchesTheLedger`
+(two years, within one check), `estimateMatchesTheLedgerOnActualPassengers`.
+**Status:** FIXED — AUTHORED; TESTED pending.
+
+## BUG-053 — An airframe the AI could not place froze its pricing for good
+
+**Severity:** P2. A rival with an idle aircraft and nowhere to put it
+stopped answering undercuts, pushing frequency and trimming losers —
+all of route management — until the aircraft found a market.
+**Found:** 2026-09-02, AE-040 — the full Core suite after the fee fix:
+`CompetitorAITests.aiRespondsToUndercutting` failed because its target,
+SwiftJet on Tokyo–Osaka, held its fare at $71.72 through three decision
+cycles of a 40% undercut. Diagnostic: the healthier archetype had bought
+a fourth turboprop that could reach nothing in its region it did not
+already fly, so every decision slot found an idle airframe, tried to
+employ it, and returned.
+**Root cause:** `CompetitorAISystem.decide` returned after *attempting*
+to employ an idle aircraft, whether or not the attempt placed it. Latent
+since Phase 10; reached only once an archetype could afford an aircraft
+with nowhere to go.
+**Fix layer:** Core AI. `employ` reports whether it placed the airframe;
+a slot that placed one is spent as before, a slot that could not goes on
+to route management and growth.
+**Regression cover:** `aiRespondsToUndercutting` (the failing case), the
+AI suites and campaign twins re-run green (27 tests), the full suite and
+the scans re-run after the change.
+**Status:** FIXED — TESTED.
