@@ -28,6 +28,19 @@
 // Scope is deliberately narrow: the project's own `AE`-prefixed types and
 // `ae`-prefixed view modifiers. Apple's API is the compiler's business.
 //
+// ## The second check, and why it is also here
+//
+// On 2026-09-03 the same thing happened again, one rung up. `contains(\.flag)`
+// parses, and reads like the `filter(\.flag)` used a dozen places in this
+// target, but does not type-check: `filter` takes a predicate, so a key path
+// converts, while the unlabeled `contains(_:)` wants an *element*. Three
+// simulator shards died on it. So the second check below answers one more
+// question the parse cannot: is a key path being handed to a member whose
+// unlabeled overload takes an element rather than a predicate.
+//
+// The same test for adding a rule here applies: it must be answerable by
+// reading the sources, and it must be a mistake that reaches the macOS runner.
+//
 // Usage: node scripts/check-app-symbols.mjs
 
 import { readdirSync, readFileSync, statSync } from 'node:fs'
@@ -98,6 +111,20 @@ for (const file of files) {
         })
       }
     }
+    // A key path handed to a member whose unlabeled overload takes an element,
+    // not a predicate. `filter(\.flag)` is fine; `contains(\.flag)` is not.
+    for (const [, name, path] of line.matchAll(
+      /\.\s*(contains|remove|append|firstIndex|lastIndex)\s*\(\s*(\\\.[A-Za-z0-9_.]+)\s*\)/g,
+    )) {
+      problems.push({
+        file: relative(REPO_ROOT, file),
+        line: index + 1,
+        message:
+          `passes the key path '${path}' to '${name}(_:)', whose unlabeled form takes an ` +
+          `element, not a predicate — write '${name} { $0${path.slice(1)} }' or use the ` +
+          `'where:' form`,
+      })
+    }
   })
 }
 
@@ -109,11 +136,11 @@ for (const problem of problems) {
 }
 
 if (unique.size) {
-  console.error('✗ The app target uses symbols it does not declare:\n')
+  console.error('\u2717 The app target will not compile:\n')
   for (const problem of unique.values()) {
-    console.error(`  ${problem.file}:${problem.line} — ${problem.message}`)
+    console.error(`  ${problem.file}:${problem.line} \u2014 ${problem.message}`)
   }
-  console.error('\n  Every one of these is a "cannot find X in scope" on the macOS runner.')
+  console.error('\n  Every one of these is an error on the macOS runner, found here for free.')
   process.exit(1)
 }
 

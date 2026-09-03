@@ -651,7 +651,20 @@ struct NextMovesCard: View {
     /// of the ninety-three pickable homes in that position), and saying so is
     /// better than calling the least bad option strong.
     private var anyMarketPays: Bool {
-        opportunities.contains(\.paysForItsAirframe)
+        opportunities.contains { $0.paysForItsAirframe }
+    }
+
+    /// The heading over the markets, which has to stay true when none of them
+    /// pays for the aircraft it needs — a real state at one of the ninety-three
+    /// homes a player can pick.
+    private func marketsHeading(idleWarningAbove: Bool) -> String {
+        if anyMarketPays {
+            return idleWarningAbove ? "Or grow the network:"
+                                    : "Strong open markets from your bases:"
+        }
+        return idleWarningAbove
+            ? "Nothing here pays for its own aircraft yet:"
+            : "No market from your bases pays for its own aircraft yet:"
     }
 
     /// The one line a recommendation owes the player beyond its size: what it
@@ -689,10 +702,7 @@ struct NextMovesCard: View {
                         .accessibilityElement(children: .combine)
                     }
                     if !markets.isEmpty {
-                        Text(idle > 0
-                             ? (anyMarketPays ? "Or grow the network:" : "Nothing here pays for its own aircraft yet:")
-                             : (anyMarketPays ? "Strong open markets from your bases:"
-                                              : "No market from your bases pays for its own aircraft yet:"))
+                        Text(marketsHeading(idleWarningAbove: idle > 0))
                             .font(.caption)
                             .foregroundStyle(AETheme.mutedText)
                         ForEach(markets, id: \.destination) { market in
