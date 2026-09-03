@@ -48,7 +48,13 @@ jobs:
     # a GitHub runner has no such problem, so the container is simpler and
     # reproducible.
     container: swift:6.0.3-jammy
-    timeout-minutes: 30
+    # MEASURED, not chosen: the debug suite took 26 min 34 s (run 130) and
+    # 27 min 01 s (run 131) at 450 tests, and 29 min 12 s at 451 in run 132
+    # after AE-041's fix left the rivals holding the routes they used to
+    # close (a 5% larger ten-year world). At 30 the release build that
+    # follows was cancelled with every test green. Forty-five leaves the
+    # step room to grow and still fails a hung run inside the hour.
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: AirlineEmpireCore

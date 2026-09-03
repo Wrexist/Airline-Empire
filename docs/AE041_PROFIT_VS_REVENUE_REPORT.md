@@ -211,7 +211,51 @@ buy-and-sell behind them) and touched nothing the player sees: the same
 
 ## 8. Screenshots inspected
 
-(§8 is filled from the CI run.)
+The strategy did not change and no new rival scenario ships, so no
+journey was extended; the evidence the phase needs from the app is that
+the Munich arrival still photographs as it did (§5). Two CI runs carry
+that evidence, one before this phase's commit and one on it.
+
+**Run 131** (commit 0579b9f, main — the code this phase started from;
+UI shards all green; 41 frames in the arrival shard, decoded with
+`scripts/decode-ci-screenshots.py`):
+
+| Frame | What was visible | Verdict |
+| --- | --- | --- |
+| KEY-HZ2-home-rival-entered | **Home, 2030-03-04**, Startup era, $5.0M: RIVALS card *"PacificBlue entered your MUC–IST market yesterday."* under Next moves (MUC → FCO ≈944 passengers/day, MUC → MAD ≈921, "no competition yet"); Fleet 3, Routes 3 | OBSERVED — the day-61 arrival on the pre-change build, as the twin measures |
+| KEY-HZ3-route-morning-after-entry | **MUC–IST, 4 Mar**: 1,547 km, 2× round trips, load 100%, punctuality 94%; WHO ELSE FLIES THIS: *"An even fight — 43% of today's passengers against 1 rival, mostly because their fare is lower."*; PacificBlue · their hub · 2×/day · reputation 70% · 57% of today · **$142 · 15% under you**; *"They are cheaper. Another rotation keeps the money…"* | OBSERVED — the split, the rival's offer and the reason the morning after |
+
+**Run 132** (commit a2e8681, this branch, dispatched by hand): campaign
+shard 6 of 6 green (23 min 50 s), economy shard 4 of 4 green (17 min
+19 s), Core 451 of 451 passed in 28 min 09 s of test time. The arrival +
+shell shard failed three of nine tests on the runner-starvation
+signature docs/UI_RUNTIME_VALIDATION.md §1 records from runs 125 and
+126 — *"Failed to tap SearchField (First Match): Timed out while
+synthesizing event"* on the Munich journey's first route search on day
+1, *"Timed out while evaluating UI query"* and *"Timed out while
+fetching attributes … XC_kAXXCAttributeFocusedApplications"* on two
+shell tests that touch nothing this phase changed — with a shell test
+that takes 101 s on a healthy runner taking 523 s. No HORIZON-KEY frame
+exists from it: the journey died before its first sunrise, so the AI
+change (which first acts on day 61) cannot be what it measured. The
+Core job's tests passed and its release build was then cancelled by the
+job's 30-minute limit (§11.1). Frames from the branch build that were
+looked at:
+
+| Frame | What was visible | Verdict |
+| --- | --- | --- |
+| KEY-60-light-home | **Home, 2030-01-01**, Startup era, $60.0M: the five-step "Get your airline flying" checklist, Fleet 0, Routes 0, Fuel $650/t, Economy 1.00 | OBSERVED — the app boots and renders on the branch build |
+| KEY-91-route-detail | **ARN–LHR, 1 Jan**: 1,462 km, *"No aircraft assigned, so this route is not flying."*, 2× round trips, WHO ELSE FLIES THIS *"Nobody. This market is yours alone — for now."* | OBSERVED — the route screen and the competition section render |
+
+Classification of run 132's UI failure: infrastructure (runner
+starvation), by the signature, by the tests it hit (two unchanged shell
+tests and a journey on day 1), and by the same shard's green run 131
+on the same code path seventy minutes earlier. One redispatch, after
+the core job's timeout fix, is in §8.1.
+
+### 8.1 Run 133
+
+(filled in from the redispatch)
 
 ## 9. Bugs found
 
