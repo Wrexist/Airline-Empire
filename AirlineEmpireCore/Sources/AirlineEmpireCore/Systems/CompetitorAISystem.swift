@@ -27,7 +27,7 @@ public struct CompetitorAISystem: SimulationSystem {
 
     private func decide(airlineID: AirlineID, profile: AIProfile,
                         state: inout GameState, context: SimContext, tuning: AITuning) {
-        let runway = cashRunwayMonths(airlineID, state: state, context: context)
+        let (runway, monthlyCosts) = cashRunway(airlineID, state: state, context: context)
 
         // 1. Survival: deep trouble -> shed the worst loss-maker and idle metal.
         if runway < tuning.retrenchRunwayMonths {
@@ -52,11 +52,18 @@ public struct CompetitorAISystem: SimulationSystem {
         manageRoutes(airlineID, profile: profile, state: &state,
                      context: context, tuning: tuning)
 
-        // 4. Grow when healthy.
+        // 4. Grow when healthy — and only by an outlay that leaves the
+        // airline above its own retrench line. AE-041 measured the
+        // conservative archetype buying a used airframe on a six-month
+        // runway, landing on one month, and retrenching a week later:
+        // closing the full, earning route it had just opened and selling
+        // the airframe it had just bought, in 143 of 150 campaigns
+        // (BUG-054, docs/AE041_ECONOMIC_CREDIBILITY.md §3).
         if runway >= profile.expandRunwayMonths,
            state.fleet(of: airlineID).count < tuning.maxFleetPerAirline {
             acquireAircraft(airlineID, profile: profile, state: &state,
-                            context: context)
+                            context: context,
+                            cashFloor: Money(rounding: monthlyCosts * profile.expandRunwayMonths))
         }
     }
 
@@ -64,6 +71,12 @@ public struct CompetitorAISystem: SimulationSystem {
 
     private func cashRunwayMonths(_ airlineID: AirlineID, state: GameState,
                                   context: SimContext) -> Double {
+        cashRunway(airlineID, state: state, context: context).months
+    }
+
+    /// Months of cash at the airline's monthly costs, and those costs.
+    private func cashRunway(_ airlineID: AirlineID, state: GameState,
+                            context: SimContext) -> (months: Double, monthlyCosts: Double) {
         let balance = state.ledger.balance(of: airlineID).asDouble
         let costs: Double
         if let statement = state.finance.byAirline[airlineID]?.latest {
@@ -81,13 +94,16 @@ public struct CompetitorAISystem: SimulationSystem {
             }
             costs = max(1, estimate)
         }
-        return balance / costs
+        return (balance / costs, costs)
     }
 
     private func retrench(_ airlineID: AirlineID, state: inout GameState,
                           context: SimContext) {
-        // Close the biggest loss-maker (closed month figures).
-        let routes = state.routes(of: airlineID)
+        // Close the biggest loss-maker (closed month figures) — among the
+        // routes that flew a closed month. A route opened in the last days
+        // of a month has a closed month of costs and no revenue, and read
+        // as the worst loss-maker while it was flying full (BUG-054).
+        let routes = state.routes(of: airlineID).filter { $0.economicsLastMonth.revenueCents > 0 }
         if let worst = routes.min(by: {
             $0.economicsLastMonth.directOperatingProfit < $1.economicsLastMonth.directOperatingProfit
         }), worst.economicsLastMonth.directOperatingProfit < .zero {
@@ -442,8 +458,12 @@ public struct CompetitorAISystem: SimulationSystem {
 
     // MARK: Fleet
 
+    /// `cashFloor` is what must still be in the bank after the signing or
+    /// the purchase; an outlay that would breach it waits for a richer
+    /// month, or is borrowed for, as the archetype allows.
     private func acquireAircraft(_ airlineID: AirlineID, profile: AIProfile,
-                                 state: inout GameState, context: SimContext) {
+                                 state: inout GameState, context: SimContext,
+                                 cashFloor: Money) {
         let catalog = context.catalog
         // Cheapest type in the preferred categories (deterministic order).
         let candidates = catalog.orderedAircraftTypeCodes
@@ -451,25 +471,30 @@ public struct CompetitorAISystem: SimulationSystem {
             .filter { profile.preferredCategories.contains($0.category) }
             .sorted { ($0.listPrice, $0.code) < ($1.listPrice, $1.code) }
         guard let type = candidates.first else { return }
+        let balance = state.ledger.balance(of: airlineID)
 
-        if profile.prefersLeasing {
+        if profile.prefersLeasing, balance - type.leaseMonthly >= cashFloor {
             if issue(LeaseAircraftCommand(lessee: airlineID, type: type.code,
                                           termMonths: 60),
                      state: &state, context: context) { return }
         }
-        if issue(BuyUsedAircraftCommand(buyer: airlineID, type: type.code,
-                                        ageYears: profile.usedAgeYears),
-                 state: &state, context: context) { return }
-
-        // Can't afford it outright: borrow if the archetype tolerates debt.
-        let airline = state.airlines[airlineID]!
         let price = FleetEconomics.usedPrice(
             type: type, ageYears: Double(profile.usedAgeYears),
             condition: FleetEconomics.usedMarketCondition(
                 ageYears: Double(profile.usedAgeYears), tuning: catalog.tuning.fleet),
             tuning: catalog.tuning.fleet)
-        let need = price - state.ledger.balance(of: airlineID)
-            + Money(rounding: price.asDouble * 0.2)
+        if balance - price >= cashFloor,
+           issue(BuyUsedAircraftCommand(buyer: airlineID, type: type.code,
+                                        ageYears: profile.usedAgeYears),
+                 state: &state, context: context) { return }
+
+        // Affordable, but it would breach the floor: wait for a richer
+        // month. Not affordable at all: borrow if the archetype tolerates
+        // debt, sized to the purchase as before (the leveraged archetypes'
+        // growth is what the campaign twins and journeys are pinned on).
+        guard balance < price else { return }
+        let airline = state.airlines[airlineID]!
+        let need = price - balance + Money(rounding: price.asDouble * 0.2)
         guard need > .zero,
               CreditMath.debtRatio(of: airline, state: state, additional: need)
                   <= profile.maxComfortableDebtRatio else { return }

@@ -5,6 +5,37 @@ Active task list. Format follows the Master Task Rule (see
 
 ---
 
+## AE-041
+**Title:** Profit versus revenue — the rival strategy test
+**Purpose:** Answer with evidence whether rivals should rank markets by
+airframe-day profit with a horizon of 24 instead of the shipped
+airframe-day revenue at sixteen (AE-040's recommendation, TD-030).
+**Dependencies:** AE-040 (the corrected fee scale and estimator).
+**Implementation notes:**
+- 2026-09-03: four configurations × 150 campaigns (seeds 2030–2059,
+  five curated starts, two years), followed through the rivals' own
+  ledgers with the extended `ae-rival-scan` (`--player`, `--follow`,
+  `--openings`, the opening classifier). Profit / 24 reaches Stockholm
+  (day 187, every seed) and loses Munich and Singapore for five years;
+  it also fails the archetype battery's margin line (three runs at 65%).
+  Revenue / 16 stays. Decision and numbers:
+  docs/AE041_PROFIT_VS_REVENUE_REPORT.md, docs/AE041_STRATEGY_BASELINE.md,
+  docs/AE041_CURATED_START_AUDIT.md, docs/AE041_ECONOMIC_CREDIBILITY.md.
+- Found and fixed BUG-054 (a rival bought an airframe on a six-month
+  runway and retrenched a week later, closing the full route it had just
+  opened; 143 of 150 campaigns) in the AI decision loop, with
+  `RivalCredibilityTests` as its twin. Found and recorded BUG-055 (the
+  Next Moves ranking sends the New York player to two fee-bound pairs
+  and the scripted campaign collapses on day 430; 28 of 30 seeds) and
+  TD-032 (a rival's entry can roll off the 512-event feed in a day).
+**Acceptance criteria:** the question answered with a table, every
+battery green on what ships, no test weakened, the Munich arrival
+unchanged on screen.
+**Tests:** Core suite green (count in the report); UI 19 journeys (CI).
+**Status:** see tasks/CURRENT_PHASE.md.
+
+---
+
 ## AE-023
 **Title:** macOS queue — compile, validate, and polish the authored app
 **Purpose:** Take the app target from AUTHORED to PRODUCTION READY: generate

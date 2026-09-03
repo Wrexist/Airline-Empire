@@ -482,6 +482,18 @@ player is the only carrier on a large pair; the Home headline
 `rivalEnteredYourMarket` firing in a plain campaign without the player
 picking the fight. NOT VALIDATED.
 
+**AE-041 (2026-09-03): the economy half measured, and it is not the
+economy.** Stockholm is reached only by the profit basis at a horizon
+of 24, and that configuration loses Munich and Singapore for five
+years, so it did not ship (TD-030 closed). Barcelona is two places
+outside the only list in which it would win, on either basis. What
+remains of TD-026 is therefore two curated starts the shipped world
+does not come to within two years, by measured geography and ranking,
+with no cheaper lever than a horizon tuned to one city
+(docs/AE041_CURATED_START_AUDIT.md §1–2). New York's silence is not
+this item at all: the scripted player following the game's Next Moves
+card collapses on day 430 (BUG-055).
+
 **AE-039 (2026-09-02): the horizon half measured and dismissed.** At 24,
 48 and all 93 airports the rivals reached exactly the same player pairs
 as at 16 (docs/HORIZON_AUDIT.md §3.1): the distance list was never the
@@ -567,6 +579,24 @@ Out of scope for a horizon phase.
 
 ## TD-030 — The profit ranking, measured and withheld
 
+**CLOSED 2026-09-03 (AE-041):** the decision was made on evidence
+rather than deferred again. Four configurations — revenue and profit
+bases at horizons 16 and 24 — were run across the same 150 campaigns
+each (docs/AE041_STRATEGY_BASELINE.md). Profit / 24 reaches Stockholm
+on day 187 of every seed and never reaches Munich or Singapore, in two
+years or five; profit / 16 reaches Munich four months later than the
+shipped basis and never Singapore; the shipped revenue / 16 reaches
+Munich (day 61) and Singapore (year two). Every entry on every basis
+earned by the rival's own ledger. The profit basis now passes the
+balance battery (archetype parity and the ten-year world, both bases)
+— the AE-039 reason for withholding is gone — but it covers one curated
+start where the shipped basis covers two, and it loses the day-61 Munich
+arrival the app photographs. Decision: keep revenue / 16
+(docs/AE041_PROFIT_VS_REVENUE_REPORT.md §4). `rankingBasis` stays for
+the scan and probe. What the profit basis was better at — never opening
+a market it later closed — turned out to be BUG-054 and one thin
+turboprop pair, and the bug is fixed on the shipped basis.
+
 **Re-measured 2026-09-02 (AE-040):** on the corrected economy the
 regional archetype functions on the profit basis (150 of 150 alive), but
 at the shipped horizon the basis reaches fewer player markets than the
@@ -616,3 +646,27 @@ round trip inside the 18-hour operating day (LHR–SIN has zero rotations
 for every type); a full schedule loses 6–25% of its rotations to delay
 cascades and expiry; widebodies are era-locked for the player and not
 for rivals.
+
+## TD-032 — The feed is an event-count window, and a rival's entry can roll off it in a day
+
+**Symptom.** MEASURED (AE-041, `MunichHorizonTests` run on the profit
+basis, where the arrival lands on day 201 instead of 61): the Home
+headline says PacificBlue entered Munich–Istanbul, and the feed does not
+— `marketEntered` is no longer in `eventLog.recent` the next morning.
+`BoundedEventLog.defaultCapacity` is 512 events; by day 201 a busier
+world posts more than that in a day, so an entry that lands in the
+morning is gone from the ring by the next. On the shipped basis the
+entry is on day 61 and the twin's feed assertion passes; the same
+window will close on later entries (Singapore's, in year two, is NOT
+VALIDATED either way).
+
+**Cost.** The one world-initiated event the player most needs to see
+can be missing from the one surface that lists events, in exactly the
+worlds busy enough to produce it. EXP-08 is the same shape (fourteen
+events, not fourteen days).
+
+**Fix shape.** A feed that ages by simulated days and keeps the
+player-relevant kinds (`isFeedEvent`) regardless of flight-event volume
+— a second small ring, or a per-kind reservation in the existing one —
+with the Munich twin's feed assertion extended to a late entry. No save
+change if the feed is derived; a small one if it is stored.

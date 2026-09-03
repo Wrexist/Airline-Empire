@@ -1,5 +1,62 @@
 # Current Phase
 
+**AE-041 — Profit versus revenue: the rival strategy test.**
+2026-09-03.
+
+The brief: AE-040 left the profit-based rival ranking functioning
+economically and withheld (TD-030), and recommended measuring it at a
+horizon of 24 — the one configuration AE-039 had seen reach Stockholm —
+against the shipped airframe-day revenue at sixteen. Measure before
+changing anything; do not assume the answer.
+
+Measured (docs/AE041_STRATEGY_BASELINE.md; `ae-rival-scan` extended
+to follow every entry and every rival opening through the rival's own
+ledger): four configurations × 150 campaigns (seeds 2030–2059 × Stockholm,
+Barcelona, Munich, New York, Singapore, two years), the same seeds and
+script for each. Revenue / 16 (shipped) and revenue / 24: 59
+world-initiated entries — Munich on day 61 in 30 of 30, Singapore on
+days 509–551 in 29 of 30 — every one earning by the rival's ledger.
+Profit / 16: 30 (Munich, days 187–215). Profit / 24: 30 (Stockholm,
+PacificBlue on ARN–IST, day 187 in 27 seeds) and never Munich or
+Singapore — not in two years and not in five. Every entry on every
+basis SOUND; rival openings 92% sound on the shipped basis against
+99.8–99.9% on profit, and the whole difference was one bug (below) and
+one thin turboprop pair. The batteries, run on the profit basis for the
+first time: pass at 16; at 24 three archetype runs cross the 60% margin
+line (65.5 / 65.5 / 65.2%) — stop condition 5 for that configuration.
+
+Decision (docs/AE041_PROFIT_VS_REVENUE_REPORT.md §4): **keep revenue /
+16.** Profit / 24 covers one curated start where the shipped basis
+covers two, removes the day-61 Munich arrival the app photographs, and
+fails a battery; profit / 16 keeps Munich four months later and loses
+Singapore for nothing. TD-030 closed on evidence. Nothing in the ranking
+or the horizon changed.
+
+Found on the way and fixed: **BUG-054** — in 143 of 150 shipped-basis
+campaigns the conservative rival bought a used airframe on a six-month
+runway, landed on one month of cash, and a week later retrenched:
+closed the full, earning route it had opened three weeks before (judged
+the worst loss-maker on a closed month of costs with no revenue) and
+sold the airframe it had just bought. Fixed in the decision loop — the
+growth step's outlay now has to leave the archetype's own runway in the
+bank, and retrench judges only routes that flew a closed month — with
+`RivalCredibilityTests` as the twin; the Munich and London–Berlin twins
+unchanged to the day and the dollar. Found and recorded, not fixed:
+**BUG-055** (P1) — the player's Next Moves card ranks markets by
+passengers and from New York names two fee-bound pairs; the scripted
+player who follows it collapses on day 430 in 28 of 30 seeds, in every
+configuration, so New York measures the cast and not the arrival. And
+**TD-032** — a rival's entry can roll off the 512-event feed within a
+day in a busy world (seen at day 201 under the profit basis).
+
+**Status:** DONE at Core — MEASURED (600 two-year and 50 five-year
+campaigns), TESTED (see the report §11); App: the CI run recorded in
+the report §8.
+
+---
+
+# Previous Phase
+
 **AE-040 — The fee economy and the regional archetype.**
 2026-09-02.
 
