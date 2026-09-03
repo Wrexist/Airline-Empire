@@ -356,6 +356,7 @@ jobs:
             -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
             -skip-testing:AirlineEmpireUITests/PerformanceBaselineUITests \
             -parallel-testing-enabled YES \
+            -parallel-testing-worker-count 3 \
             -maximum-concurrent-test-simulator-destinations 3 \
             -resultBundlePath UITestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO \

@@ -26,6 +26,19 @@ credential the agent doing the interface work does not have (TD-020).
 Seven tests, one device, portrait. That is the whole of it — small, and worth
 not overstating.
 
+**The week control (2026-09-03).** Under `-AEUITestSunriseWeek`, which
+every journey launches with, the speed bar carries a second control beside
+the sunrise, "Advance seven mornings" — seven of the same engine calls a
+player's seven taps make, with one screen refresh at the end instead of
+seven simulator settles. `advanceMornings(until:)` takes a week whenever
+at least seven days remain before its target date and single mornings
+after that, so no journey lands past the date it asked for. Before it,
+the two long journeys tapped the sunrise about ninety and a hundred and
+ten times, each tap several seconds of settling; run 123's UI step took
+45 minutes with both on one simulator clone. The player never sees the
+control; nothing else about the app changes. The UI step also asks
+xcodebuild for three workers explicitly, since run 123 used two.
+
 ## 2. Test inventory
 
 | Test | Asserts |

@@ -345,6 +345,15 @@ struct SpeedControl: View {
     @Environment(GameController.self) private var controller
     @Namespace private var indicator
 
+    /// `-AEUITestSunriseWeek` on the command line: the UI journeys ask for
+
+    /// the week control (see the sunrise button).
+
+    private static let sunriseWeekRequested =
+
+        ProcessInfo.processInfo.arguments.contains("-AEUITestSunriseWeek")
+
+
     private static let speeds: [SimSpeed] = [.paused, .x1, .x4, .x16]
 
     var body: some View {
@@ -386,6 +395,25 @@ struct SpeedControl: View {
             }
             .buttonStyle(.aePress)
             .accessibilityLabel("Advance to next morning")
+
+            // For the UI journeys only (`-AEUITestSunriseWeek`): seven
+            // mornings in one tap — the same engine calls, one refresh —
+            // so a journey that needs to cross two months does not spend
+            // ten minutes of simulator settling doing it. Never shown to
+            // a player.
+            if Self.sunriseWeekRequested {
+                Button {
+                    controller.advanceMornings(7)
+                } label: {
+                    Image(systemName: "forward.end")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(AETheme.ember)
+                        .frame(minWidth: 44, minHeight: 38)
+                        .contentShape(Capsule(style: .continuous))
+                }
+                .buttonStyle(.aePress)
+                .accessibilityLabel("Advance seven mornings")
+            }
         }
         .padding(3)
         .aeGlass(in: Capsule(style: .continuous))

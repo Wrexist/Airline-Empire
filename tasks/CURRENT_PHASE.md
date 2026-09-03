@@ -58,6 +58,16 @@ markets at the shipped horizon (31 entries against 60). Full Core suite
 
 **Status:** DONE — Core MEASURED, TESTED (450); App OBSERVED (run 123: 19 of 19 journeys, the fee-terms caption on KEY-HZ5). Final report: docs/AE040_FEE_ECONOMY_REPORT.md.
 
+**Addendum (2026-09-03): the UI step's 45 minutes.** Run 123's UI pass
+put both fifteen-minute journeys on one simulator clone, and each of
+their ~100 sunrise taps cost several seconds of settling; run 124 (the
+pull request's own run, on a slower runner) timed out on accessibility
+queries and the campaign's sunrise loop. Shipped: a UI-journey-only
+"Advance seven mornings" control (`-AEUITestSunriseWeek`, the same
+engine calls with one refresh), `advanceMornings` taking weeks while a
+week fits, and three xcodebuild workers requested explicitly
+(docs/UI_RUNTIME_VALIDATION.md §1). Measured on the next run: MEASURE_ME.
+
 ---
 
 # Previous Phase

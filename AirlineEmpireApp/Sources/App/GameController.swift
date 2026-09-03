@@ -486,6 +486,19 @@ final class GameController {
         }
     }
 
+    /// Several mornings, one refresh: what `count` taps of the sunrise do
+    /// to the world, without the screen catching up between them. The UI
+    /// journeys' week control uses it (`-AEUITestSunriseWeek`).
+    func advanceMornings(_ count: Int) {
+        guard let session, count > 0 else { return }
+        Task {
+            for _ in 0..<count {
+                await session.advanceToNextMorning()
+            }
+            await self.refresh()
+        }
+    }
+
     func dismissAutoPause() {
         autoPauseReason = nil
     }

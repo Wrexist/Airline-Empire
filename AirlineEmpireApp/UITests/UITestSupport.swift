@@ -23,6 +23,12 @@ class AEUITestCase: XCTestCase {
         super.setUp()
         continueAfterFailure = false
         app = XCUIApplication()
+        // The week control beside the sunrise, for the journeys only: the
+        // two long journeys tapped the sunrise ninety and a hundred and ten
+        // times, at several seconds of simulator settling each, and run
+        // 123's UI step took 45 minutes on one clone. Seven mornings per
+        // tap is the same engine calls with one refresh at the end.
+        app.launchArguments.append("-AEUITestSunriseWeek")
     }
 
     override func tearDown() {
@@ -837,19 +843,69 @@ class AEUITestCase: XCTestCase {
         openTabIfNeeded("Home")
         let sunrise = app.buttons["Advance to next morning"]
         guard sunrise.waitForExistence(timeout: 8) else { return false }
+        let week = app.buttons["Advance seven mornings"]
         let arrived = app.staticTexts.matching(NSPredicate(
             format: "label BEGINSWITH %@", datePrefix)).firstMatch
+        let target = Self.earliestDate(matching: datePrefix)
         var taps = 0
         while taps < cap, !arrived.exists {
-            sunrise.tap()
+            // A week at a time while a whole week fits before the target —
+            // the same seven engine calls a player's seven taps make, with
+            // one screen refresh instead of seven simulator settles. Never
+            // past the target: a week is taken only when at least seven
+            // days remain, so the day-by-day approach at the end is intact.
+            if let target, week.exists, let today = currentHomeDate(),
+               Self.days(from: today, to: target) >= 7 {
+                week.tap()
+            } else {
+                sunrise.tap()
+            }
             // No fixed pause: `tap()` already waits for the app to go idle,
             // and the `arrived.exists` query at the top of the loop is a
-            // second synchronisation point. The campaign taps this control
-            // ninety times, so half a second each was half a minute of the
-            // suite spent asleep.
+            // second synchronisation point.
             taps += 1
         }
         return arrived.exists
+    }
+
+    /// The date Home shows, read back from the header ("2030-02-09").
+    private func currentHomeDate() -> DateComponents? {
+        let header = app.staticTexts.matching(NSPredicate(
+            format: "label MATCHES %@", "^[0-9]{4}-[0-9]{2}-[0-9]{2}.*")).firstMatch
+        guard header.exists else { return nil }
+        return Self.date(from: String(header.label.prefix(10)))
+    }
+
+    /// "2030-02-09" → components; nil for anything else.
+    static func date(from text: String) -> DateComponents? {
+        let parts = text.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3 else { return nil }
+        return DateComponents(year: parts[0], month: parts[1], day: parts[2])
+    }
+
+    /// The first calendar day a Home date could start with the prefix the
+    /// journeys pass: "2030-02" is 1 February, "2030-01-2" is 20 January,
+    /// "2030-03-04" is itself.
+    static func earliestDate(matching prefix: String) -> DateComponents? {
+        let parts = prefix.split(separator: "-", omittingEmptySubsequences: false).map(String.init)
+        guard let year = parts.first.flatMap({ Int($0) }), parts.count <= 3 else { return nil }
+        func earliest(_ text: String?, width: Int, floor: Int) -> Int? {
+            guard let text, !text.isEmpty else { return floor }
+            guard text.count <= width, let value = Int(text.padding(toLength: width, withPad: "0", startingAt: 0)) else { return nil }
+            return max(floor, value)
+        }
+        guard let month = earliest(parts.count > 1 ? parts[1] : nil, width: 2, floor: 1),
+              let day = earliest(parts.count > 2 ? parts[2] : nil, width: 2, floor: 1) else { return nil }
+        return DateComponents(year: year, month: month, day: day)
+    }
+
+    /// Whole days from one calendar date to another (the game calendar is
+    /// Gregorian, no daylight saving).
+    static func days(from a: DateComponents, to b: DateComponents) -> Int {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        guard let da = calendar.date(from: a), let db = calendar.date(from: b) else { return 0 }
+        return calendar.dateComponents([.day], from: da, to: db).day ?? 0
     }
 
     /// Whether a route detail is in front of us — it offers either an
