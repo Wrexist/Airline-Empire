@@ -979,3 +979,57 @@ assertion. Then decide between making the journeys robust to a slow runner
 job so it stops competing with the journeys it shares a runner with. Needs a
 before/after over several runs on one tree, which is the only way to measure a
 flake.
+
+---
+
+## TD-038 — Two of the five AI archetypes do not work, and the guard that should say so cannot
+
+**Symptom.** MEASURED (AE-044, `BalanceTests.archetypeParityAndSanity`, nine
+seeds × four years, each archetype founded with $120M). Net worth at the end,
+**before and after** AE-044's estimator fix — this is a pre-existing state, not
+something that phase caused:
+
+| Archetype | baseline | after AE-044 | vs. its $120M start |
+| --- | ---: | ---: | ---: |
+| premium | $441.3M | $464.7M | **3.9×** |
+| conservative | $325.1M | $326.3M | 2.7× |
+| regional | $217.6M | $216.5M | 1.8× |
+| expansionist | $74.4M | $74.0M | **0.6× — it loses money** |
+| lowCost | **$0** | **$0** | **dead** |
+
+So one archetype is not viable at all, a second ends four years poorer than it
+began, and the best ends nearly four times up. That is the dominant-strategy
+question the battery exists to ask, and nothing in the suite currently asks it.
+
+**Why the guard could not say so.** The spread check is
+`max(positive medians) / min(positive medians) < N`, and it has three defects:
+
+1. **An archetype dying makes it easier to pass.** A median of zero is filtered
+   out of `positives`, so losing a strategy *raises* the denominator and
+   *lowers* the ratio. The guard rewards exactly what it exists to catch.
+   AE-044 closed this one with `positives.count >= 4`, which holds identically
+   before and after and fails if a second archetype goes to zero.
+2. **The denominator is a loss-making archetype.** Dividing by expansionist,
+   which ends below its starting capital, makes the ratio hypersensitive: it
+   measures how badly the worst survivor does at least as much as how well the
+   best one does.
+3. **A median of three seeds is noise at this resolution.** The same unmodified
+   code reads **5.772** at three seeds and **5.931** at nine.
+
+**Cost.** The suite reports "balance is fine" while lowCost has been dead for
+as long as the battery has printed numbers, and it reported it while sitting
+1.2% under its own threshold — so the next economic change of any size was
+going to trip it, whatever that change was. AE-044's did.
+
+**Fix shape.** Two separable pieces, and the second is the real one.
+*The instrument*: replace the best/worst ratio with something that survives a
+dead archetype and a small sample — a floor on each archetype's own outcome
+against its starting capital would say more than a ratio between two of them,
+and would not need a threshold plucked from the air. Needs enough seeds to be
+stable, which collides with TD-034's CI budget.
+*The balance*: find out why lowCost cannot survive and why expansionist
+shrinks. `AIProfile` gives lowCost a 0.85 price factor and narrowbody/
+largeNarrowbody preferences, and expansionist the widest category list and the
+highest debt tolerance; either the archetypes or the economy they meet is
+wrong. That is a phase, not a fix, and it should come with a ledger for each
+archetype rather than a net-worth number at year four.

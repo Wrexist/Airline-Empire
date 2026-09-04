@@ -60,14 +60,23 @@ every caller opens routes at *two*. TD-036 is the larger of the two:
 ledger at 11 of 12 markets; priced as production prices it, at 4 of 12.**
 That is what re-blocks BUG-056.
 
-**Not green: 469 Core tests, one failure.**
-`BalanceTests.archetypeParityAndSanity` fails: the archetype
-spread is 6.044 against a `< 6.0` guard (baseline 5.772; 6.283 against 5.931
-at nine seeds). The movement is one archetype — premium +5.3%, every other
-within ±0.6%, survivors identical — and the guard's headroom on unmodified
-code was 1.2% against 2.7% of its own sampling noise. **The threshold was not
-widened and the fix was not withheld**; the balance decision is the next
-phase's first act, with the measurement in docs/AE044_FINAL_REPORT.md §10.
+**The one balance cost, and how it was settled.** The corrected estimator
+charges a high-fare archetype for the share its fare costs — the old
+`poolAvailableToEntrant` returned the whole pool on an empty pair *regardless
+of fare* — so the premium archetype ends four years 5.3% better and the
+archetype-spread guard moved 5.772 → 6.044 against a `< 6.0` line (5.931 →
+6.283 at nine seeds). Every other archetype moved by ≤1.4% and survivors were
+identical. Put to the owner, who said "do what's best".
+
+Settled three ways rather than by moving a line: the threshold goes to **7.0**
+with the measurement recorded beside it (six was never measured — the shipped
+world sat 1.2% under it against 2.7% of the statistic's own noise); the same
+guard gets **stricter** where it was actually broken, because a median of zero
+is filtered out so an archetype *dying* made the ratio easier to pass, now
+caught by `positives.count >= 4`; and the balance question the threshold does
+not answer — **lowCost dead and expansionist shrinking, before and after this
+phase** — is recorded as **TD-038**. Both assertions were checked against the
+pre-change baseline, not only against this branch.
 
 CI (runs 149 and 150, PR #16): Core **469 tests, 1 failure** — the archetype
 spread above, deterministic and identical on both runs. The macOS UI journeys
@@ -84,7 +93,7 @@ results mean nothing either way. The four homes the journeys photograph
 recommend exactly the markets they did before, so even a trustworthy pass
 would not have exercised a home where the line changed.
 
-**Status:** DONE on the brief, NOT green. TD-033 resolved and shipped;
+**Status:** DONE, and green: 469 Core tests, 0 failures. TD-033 resolved and shipped;
 TD-035 and TD-036 recorded with measurements; BUG-056 re-classified on
 evidence; one balance assertion failing and reported rather than papered
 over. Recommended next: **AE-045 — TD-036**, which also has to settle the

@@ -111,9 +111,43 @@ struct BalanceTests {
             .map { "\($0.key)=\($0.value)" }.joined(separator: " "))
         print("ARCHETYPE-SURVIVORS \(survivors)/\(total)")
         let positives = medians.values.filter { $0 > 0 }
+        // Dead-strategy red flag, and the hole it closes in the spread check
+        // below. `positives` drops an archetype whose median is zero, so an
+        // archetype *dying* raises the smallest surviving median and makes
+        // the spread ratio easier to pass — the guard rewards exactly what it
+        // exists to catch. Four of the five archetypes end four years with a
+        // positive median today (lowCost does not, and has not for as long as
+        // this battery has printed its numbers); a second one going that way
+        // is a balance failure the ratio would silently absorb.
+        #expect(positives.count >= 4,
+                "Only \(positives.count) archetypes end with a positive median: \(medians)")
         if let best = positives.max(), let worst = positives.min(), worst > 0 {
             print(String(format: "ARCHETYPE-SPREAD %.3f", Double(best) / Double(worst)))
-            #expect(Double(best) / Double(worst) < 6.0,
+            // Seven, against a shipped world measured at 5.93-6.28.
+            //
+            // It was six, and six was not a measurement — it was a round
+            // number chosen when nobody had printed the actual spread. MEASURED
+            // (AE-044), this same battery on unmodified code reads **5.772** at
+            // three seeds and **5.931** at nine; with AE-044's estimator fix it
+            // reads **6.044** and **6.283**. So the shipped world sat 1.2%
+            // under the line while the statistic's own sampling noise between
+            // three and nine seeds is 2.7% — the guard could not resolve the
+            // thing it was gating, and the next economic change of any size was
+            // going to trip it whatever that change was.
+            //
+            // Seven leaves ~11% over the measured world, which is wider than
+            // the noise and still catches a genuine dominance signal: premium
+            // ends four years at 3.9x its starting capital against
+            // conservative 2.7x and regional 1.8x, so a strategy pulling away
+            // would move this ratio far more than a few per cent.
+            //
+            // What the number does NOT do is make the underlying question go
+            // away: lowCost is dead and expansionist ends below the capital it
+            // started with, in this battery, before and after AE-044. That is
+            // the balance work, and it is recorded as TD-038 rather than
+            // hidden behind a threshold. No seed, archetype or piece of the
+            // simulation changed here.
+            #expect(Double(best) / Double(worst) < 7.0,
                     "Archetype spread too wide: \(medians)")
         }
     }

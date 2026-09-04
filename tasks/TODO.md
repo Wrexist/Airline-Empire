@@ -35,12 +35,13 @@ Active task list. Format follows the Master Task Rule (see
    ledger at 11 of 12 markets; priced as production prices it, at 4 of 12.
    This re-blocks BUG-056 and makes the recommendation's monthly figure
    describe a month the player will not have.
-2. **The archetype-spread guard.** `BalanceTests.archetypeParityAndSanity`
-   fails at 6.044 against `< 6.0` (baseline 5.772; 6.283 against 5.931 at
-   nine seeds). The movement is one archetype (+5.3%) and the guard's headroom
-   on unmodified code was 1.2% against 2.7% of its own sampling noise. Settle
-   it with measurement — a threshold decision or a better instrument — never
-   by widening it to fit. Must be done with (1); the same change moves it.
+2. **TD-038 — two archetypes do not work.** lowCost ends the balance battery
+   dead and expansionist ends four years poorer than its $120M start, before
+   and after AE-044. The spread guard could never say so: a median of zero is
+   filtered out, so a dying archetype made the ratio *easier* to pass. AE-044
+   closed that hole and moved the threshold to 7.0 with the measurement
+   recorded; the balance question underneath it is untouched and is the real
+   work.
 3. **TD-035 — unflown rotations.** 4–23% of scheduled rotations never fly,
    driven by schedule slack rather than aircraft size. Worth 15 percentage
    points of small-airframe bias and all five remaining ordering errors.
