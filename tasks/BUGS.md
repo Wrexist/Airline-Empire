@@ -1548,31 +1548,48 @@ ended the game (docs/AE042_FINAL_REPORT.md §12).
 
 ## BUG-056 — The aircraft market recommends the largest airframe whatever the route is for
 
-**Severity:** P2. **Found:** 2026-09-03, AE-042, while measuring BUG-055.
+**Severity:** P2. **Found:** 2026-09-03, AE-042. **Re-measured:** 2026-09-04,
+AE-043 — smaller and differently shaped than first recorded.
 
-**Repro (MEASURED, `ae-advice sweep --seed 2030`).** The aircraft market
-(`FleetView`) sorts by **seats, descending**, and defaults to a lease, so the
-first row a new player sees is the largest airframe the era allows — a
-184-seat narrowbody at $790k a month. At **9 of the 93 homes** the market Home
-recommends pays well on a small airframe and loses on that one:
-Reykjavík–London **+$141k a month on a 90-seat regional jet, −$703k on the
-184-seat narrowbody**; Bergen–London +$279k on a 74-seat turboprop, −$270k on
-a 95-seat regional jet; Billund, Dublin, Edinburgh, Frankfurt, Gothenburg,
-Hamburg and Palma likewise. Thin markets need small aircraft and the market's
-first row is always the biggest one.
+**Repro (MEASURED, `ae-advice market`).** The aircraft market (`FleetView`)
+sorts by **seats, descending**, defaults to a lease, and does not hide
+era-locked types, so a startup-era player scrolls past **seven unbuyable rows**
+to reach the first one they can take: a 184-seat narrowbody at $790k a month.
+`AircraftShopSheet()` takes no arguments — no route ever reaches it.
 
-**Root cause.** Two surfaces that never consult each other: the
-recommendation is judged on an airframe and the market is sorted without
-reference to any route. `FleetView`'s `@State private var sort: Sort = .seats`.
+**What is really wrong, on six months of real ledger per row (AE-043):**
 
-**Partly mitigated by AE-042:** the recommendation now names the airframe it
-was judged on and what a month on it keeps, so the player is told what to
-lease. The market's own ordering is untouched.
+| Kind | Homes | Evidence |
+| --- | --- | --- |
+| The first buyable row **cannot fly the recommended route** — a runway-class block at the home airport | **4** — BGO, BLL, NCE, VCE | `routeEligibility`, exact |
+| The first buyable row **loses money in the ledger** | **2** — FRA −$248k/mo, KEF −$311k/mo | six months flown |
+| Estimator said the row was wrong and the ledger says it was fine | 5 — HAM, DUB, EDI, GOT, PMI | false positives |
 
-**Fix shape.** Either sort the market by fitness for the route the player
-arrived from (the market is reachable from a route sheet as well as from the
-tab, so the context is not always there), or surface the recommended airframe
-as a filter or a highlight when the player enters the market from a
-recommendation. Needs its own measurement of what a player actually does
-next, and a journey to photograph it.
-**Status:** OPEN — root-caused, MEASURED, partly mitigated.
+So **6 of 93 homes**, not the 9 first recorded, and half of it is a
+flyability problem rather than an economic one. Reykjavík is the one home
+where a smaller aircraft is worth a fortune: **−$311k on the 184-seat
+narrowbody against +$283k on a 90-seat regional jet**, a $594k a month swing.
+
+**Root cause.** Two surfaces that never consult each other: the recommendation
+is judged on an airframe and the market is sorted without reference to any
+route. Compounded by the checklist teaching `acquireAircraft` **before**
+`openRoute`, so the first purchase happens when no route exists at all.
+
+**Why AE-043 did not fix it.** The fix was built — a pinned "recommended for
+this route" row above an untouched market — and then withheld, because the
+aircraft it pinned is **worse in the ledger at six of the seven homes where
+the comparison is possible**. `CompetitorAISystem.airframeDayValue` takes
+`passengersPerDay` as an input that does not vary with the aircraft, while the
+simulation's captured demand rises with the capacity offered, so the estimator
+is biased against large aircraft by construction: forecast error −2% to −9% on
+small airframes and **+13% to +99% on large ones** on the same pairs. No
+ranking of airframes can be built on it (TD-033).
+
+**Fix shape.** Blocked on TD-033. Once the estimator's demand forecast
+responds to the service offered, Option C from
+docs/AE043_AIRCRAFT_SELECTION_DECISION.md is implemented and measured and can
+be restored. The four runway-blocked homes need no estimator at all and could
+be addressed separately.
+**Status:** OPEN — reproduced, root-caused, re-measured; fix built, measured
+against the ledger, and WITHHELD on stop condition 3
+(docs/AE043_AIRCRAFT_RECOMMENDATION_AUDIT.md).

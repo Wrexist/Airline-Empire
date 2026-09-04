@@ -1,75 +1,70 @@
 # Current Phase
 
-**AE-042 — Trust the advice.**
-2026-09-03.
+**AE-043 — The right aircraft.**
+2026-09-04.
 
-The brief: AE-041 left BUG-055 open at P1 — the game's own Next Moves card
-could recommend routes that bankrupt the player. Investigate the
-recommendation pipeline, measure the baseline, and fix the ranking only if
-the evidence supports it.
+The brief: fix BUG-056 — the aircraft market sorts by seats regardless of the
+route, so it can undermine the recommendation AE-042 made trustworthy. Measure
+before changing anything; do not force the bug closed.
 
-Read first (docs/AE042_RECOMMENDATION_PIPELINE.md): one ranking feeds four
-surfaces — the onboarding suggestions, the Next Moves card, the map coach and
-the route sheet's prefill — and it scores markets as
-`pool / (1 + incumbents)`, the passengers a starter service would capture,
-and nothing else. Aircraft enter only as a boolean range-and-runway gate.
-Fees, fuel, crew, capacity, rotations, lease price and cash appear nowhere.
-It is the rule the rival AI abandoned in AE-039.
+**Outcome: the fix was built, measured against the ledger, and WITHHELD on
+stop condition 3.** BUG-056 is reproduced and root-caused; it is real, and
+smaller and differently shaped than AE-042 recorded. Nothing shipped to the
+product. Final report: docs/AE043_FINAL_REPORT.md.
 
-Measured before changing anything (docs/AE042_NEXT_MOVES_BASELINE.md; a new
-`ae-advice` executable that reads the real read model and follows its advice
-through real commands): at **21 of the 93 homes a player can pick**, Home's
-first suggestion loses money after the airframe it needs or cannot be flown
-at all. Manchester is told to fly London — 243 km, **96% of revenue in
-airport fees**, **−$1.18M a month** in six months of real ledger — a market
-ranked #42 of 45 from that home. London's first suggestion is Paris, #44 of
-44. Mean distance of the dangerous recommendations 658 km against 2,348 km
-for the safe ones: the fare rises with distance and the two movement fees do
-not, so a passenger ranking sorts, in effect, by fee share descending. The
-estimator was checked against the ledger on seven pairs first and agrees in
-sign on all seven, erring generous.
+Read first (docs/AE043_AIRCRAFT_SELECTION_BASELINE.md): `AircraftShopSheet()`
+takes **no arguments** — no route ever reaches the market. Its default sort is
+seats descending, `hidesLocked` is off, so a startup-era player scrolls past
+**seven unbuyable rows** to reach the first they can take, a 184-seat
+narrowbody at $790k a month. AE-042's `bestAirframe` is computed for every
+market and read by exactly one surface, the Next Moves card;
+`FirstRouteSuggestion` — what the onboarding card shows while the player buys
+their first aircraft — has no airframe field at all. And the checklist teaches
+`acquireAircraft` **before** `openRoute`, so the first purchase happens when
+no route exists.
 
-Root cause (docs/AE042_BUG055_ROOT_CAUSE.md): **CASE B** — the eligibility
-filter asks "can something fly this?" and never "can this pay for the
-aircraft it needs?" — with **CASE A** as the reason the traps surface first
-and **CASE E** at fleetless homes, where the filter admits markets no era
-airframe can fly. Not TD-031: the economy is doing what it is calibrated to
-do, and the defect is that the advice walks the player into it.
+Reproduced (docs/AE043_BUG056_ROOT_CAUSE.md, `ae-advice market`): modelling
+the real sheet — largest era-legal type, route unknown — finds **11 of 93**
+homes exposed, not the 9 AE-042 recorded with a model that filtered to
+flyable types. At **four** of them the first buyable row **cannot fly the
+recommended route at all** (a runway-class block at the home airport). The
+right airframe sat at row 11.8 of 14 on average. No static ordering can be
+correct: on thin routes every airframe carries the whole pool so seats are
+pure cost, and on thick ones capacity binds and bigger is better.
 
-Shipped: `marketOpportunities` puts markets that pay for the airframe they
-need ahead of those that do not, using the estimator AE-040 corrected and
-AE-041 shipped for rivals, less the airframe's lease and the crew and route
-payroll the economy charges. **The ranking is unchanged** — among markets
-that pay, still passengers per incumbent — and the gate reorders rather than
-deletes, so no home is left without advice. A recommendation now carries the
-airframe it was judged on, and the card names it. Three designs were measured
-first; ranking by value was rejected because it sends every home to its
-longest reachable route at one rotation a day.
+Built (docs/AE043_AIRCRAFT_SELECTION_DECISION.md): Option C — a pinned
+"Recommended for X–Y" row above an untouched fourteen-row market, drawing on
+one new Core derivation that reuses `airframeResult` with era specs rather
+than owned ones. Ten Core tests, all passing. Against the estimator it worked:
+dangerous first recommendations 9 → 0 across the 93 homes.
 
-Measured after (docs/AE042_RECOMMENDATION_AUDIT.md): homes given dangerous or
-unflyable advice **21 of 93 → 9 of 93**, and the nine that remain are BUG-056
-— markets that pay on the airframe the advice names and lose on the larger
-one the aircraft market lists first. AE-041's scripted New York campaign,
-unchanged except for the advice: **28 of 30 collapses → 0 of 30**. Following
-the advice for 730 days across 30 seeds: mean cash up 9–37% at all four
-homes. Stockholm, Barcelona, Munich — the worlds the AE-039 and AE-041 twins
-and journeys are pinned on — **unchanged**. The full Core suite passes at 451
-before the new tests and 457 with them, nothing weakened, no seed moved.
+**Then the routes were flown** (docs/AE043_AIRCRAFT_RECOMMENDATION_AUDIT.md).
+At **six of the seven** homes where both aircraft can fly the route, the
+pinned airframe is **worse in the ledger** — Hamburg +$158k on the market's
+row against −$93k on the advice, Dublin +$151k against −$75k. The cause is
+structural and is now recorded on TD-033: `airframeDayValue` takes
+`passengersPerDay` as an input that does not vary with the aircraft, while the
+simulation's captured demand rises with the capacity offered, so the estimator
+is biased against large aircraft by construction — forecast error −2% to −9%
+on small airframes and **+13% to +99%** on large ones. Fed the true passenger
+counts its own formula flips to the right answer. The formula is fine; the
+demand input is wrong.
 
-Also found and recorded, not fixed: **BUG-056** — the aircraft market sorts
-by seats descending whatever the route is for.
+On ledger evidence BUG-056 is **6 of 93**, not 11: four homes where the first
+row cannot fly the route (exact, estimator-independent) and two where it loses
+money (Frankfurt, Reykjavík). The other five were the estimator's false
+positives.
 
-**Status:** DONE — Core MEASURED and TESTED (457 of 457, locally and in CI
-run 135, with the release build clean); App RUNTIME VALIDATED and OBSERVED
-(run 135: 20 journeys and both measurements green, the AE042 frames and
-Munich's KEY-HZ2 looked at). Run 134 lost all three simulator shards to a key
-path passed to `contains(_:)`, which `swiftc -parse` accepts and the
-type-checker rejects; `scripts/check-app-symbols.mjs` now catches that class
-on the cheap runner. Run 135's arrival shard failed
-`testARivalComesToMunich()` at the home picker's search field — a screen this
-change does not touch, on a helper that passed in the same run for New York —
-and passed on the one re-run in 471.9 s. Final report:
-docs/AE042_FINAL_REPORT.md.
+AE-042 is unaffected and was re-verified: New York 30 seeds, **0 collapses, 0
+administrations**, player active in all 30, cash $10.4M–$54.8M.
+
+Kept: the `ae-advice market` measurement mode (tooling only). Reverted:
+`AircraftAdvice.swift`, its ten tests, and the `FleetView` section — deleted
+rather than left dormant.
+
+**Status:** DONE — BUG-056 reproduced, root-caused and re-measured; fix
+WITHHELD with evidence. TD-033 is now the blocking constraint and is the
+recommended next phase.
 
 ---
 

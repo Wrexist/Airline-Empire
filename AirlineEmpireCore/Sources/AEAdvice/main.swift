@@ -52,9 +52,19 @@ guard let scenario = catalog.scenario(scenarioCode) else {
 }
 let ticksPerDay = Int(GameCalendar.minutesPerDay / ScenarioBootstrap.standardTickMinutes)
 let defaultHomes: [AirportCode] = ["ARN", "BCN", "SIN", "JFK"]
-let homes: [AirportCode] = (option("--homes")?.split(separator: ",").map {
-    AirportCode(String($0))
-}) ?? defaultHomes
+/// `--homes all` is every airport a player can pick — the same set `sweep`
+/// walks (runway at least medium), so the two modes report over one
+/// population and their counts can be compared line for line.
+let homes: [AirportCode] = {
+    guard let raw = option("--homes") else { return defaultHomes }
+    if raw == "all" {
+        return catalog.orderedAirportCodes
+            .compactMap { catalog.airport($0) }
+            .filter { $0.runwayClass >= .medium }
+            .map(\.code)
+    }
+    return raw.split(separator: ",").map { AirportCode(String($0)) }
+}()
 
 // MARK: - What a recommendation is worth
 
@@ -468,6 +478,104 @@ func sweep(seed: UInt64) {
     for line in dangerous { print("   ✗ \(line)") }
 }
 
+/// The aircraft market's own ordering, reproduced from the shipped view.
+///
+/// `AircraftShopSheet` (App/Screens/FleetView.swift) sorts by seats
+/// descending by default and does **not** hide era-locked types unless the
+/// player flips "Hide what this era cannot buy", which is off by default. So
+/// the rows are every type in the catalog, largest first, and the first one
+/// carrying a commit button is the largest the era allows — chosen without
+/// any reference to the route, because the sheet is never told one.
+@MainActor
+func marketOrder(state: GameState) -> (rows: [AircraftTypeSpec],
+                                       firstBuyable: AircraftTypeSpec?) {
+    let allowed = state.progression.era.allowedCategories
+    let rows = catalog.orderedAircraftTypeCodes
+        .compactMap { catalog.aircraftTypes[$0] }
+        .sorted { $0.seats > $1.seats }
+    return (rows, rows.first { allowed.contains($0.category) })
+}
+
+/// Why a spec cannot serve a pair, in the words the eligibility check uses.
+@MainActor
+func blockedReason(origin: AirportCode, destination: AirportCode,
+                   spec: AircraftTypeSpec) -> String? {
+    let reasons = catalog.routeEligibility(
+        from: origin, to: destination,
+        aircraftRangeKm: spec.rangeKm,
+        aircraftRunwayRequirement: spec.runwayRequirement)
+    guard !reasons.isEmpty else { return nil }
+    return reasons.map { reason in
+        switch reason {
+        case .beyondAircraftRange(let distance, let range): "range \(range) km < \(distance) km"
+        case .runwayTooSmall(let airport, let has, let needs):
+            "runway at \(airport.raw) is \(has), needs \(needs)"
+        case .belowMinimumDistance(let distance, let minimum): "\(distance) km under the \(minimum) km minimum"
+        case .sameAirport: "same airport"
+        case .unknownAirport(let code): "unknown airport \(code.raw)"
+        }
+    }.joined(separator: "; ")
+}
+
+/// BUG-056, measured: for each home, what Core named against what the market
+/// leads to, on the same recommended route.
+@MainActor
+func marketAudit(seed: UInt64, homes: [AirportCode]) {
+    print("== Recommended airframe vs the market's first buyable row · seed \(seed) ==")
+    var worse = 0, examined = 0, unflyableFirstRow = 0
+    for home in homes {
+        let engine = foundedWorld(seed: seed, home: home)
+        let state = engine.state
+        guard let market = recommendations(state).first else {
+            print("   \(home.raw): no recommendation")
+            continue
+        }
+        examined += 1
+        let (rows, firstBuyable) = marketOrder(state: state)
+        let lockedAbove = rows.prefix { spec in
+            !state.progression.era.allowedCategories.contains(spec.category)
+        }.count
+
+        // What Core named for this market, and what it is worth.
+        let named = market.bestAirframe.flatMap { catalog.aircraftTypes[$0] }
+        let namedEconomics = named.flatMap {
+            economics(origin: market.origin, destination: market.destination,
+                      distanceKm: market.distanceKm, spec: $0, state: state)
+        }
+        // What the market's first buyable row is worth on the same route.
+        let firstEconomics = firstBuyable.flatMap {
+            economics(origin: market.origin, destination: market.destination,
+                      distanceKm: market.distanceKm, spec: $0, state: state)
+        }
+        let firstBlocked = firstBuyable.flatMap {
+            blockedReason(origin: market.origin, destination: market.destination, spec: $0)
+        }
+
+        let namedValue = namedEconomics?.afterOwnershipMonthly
+        let firstValue = firstEconomics?.afterOwnershipMonthly
+        if firstBlocked != nil { unflyableFirstRow += 1 }
+        if let n = namedValue, n > 0, (firstValue ?? -1) <= 0 { worse += 1 }
+
+        print("   \(home.raw) → \(market.destination.raw) \(market.distanceKm) km, \(Int(market.expectedDailyPassengers)) pax/day")
+        print("      Core names        \(named?.code.raw ?? "-") \(named.map { "\($0.seats) seats" } ?? "") · \(namedValue.map { money($0) } ?? "-")/mo after its aircraft")
+        print("      market row 1 buyable \(firstBuyable?.code.raw ?? "-") \(firstBuyable.map { "\($0.seats) seats" } ?? "") · \(firstBlocked.map { "CANNOT FLY IT: \($0)" } ?? (firstValue.map { money($0) + "/mo" } ?? "-"))")
+        // Where the answer actually sits in the shipped list. This is the
+        // number that separates "mark it" from "put it first".
+        let namedRow = named.flatMap { spec in rows.firstIndex { $0.code == spec.code } }.map { $0 + 1 }
+        print("      locked rows above it: \(lockedAbove) · Core's airframe is row \(namedRow.map(String.init) ?? "-") of \(rows.count)")
+        if verbose {
+            for spec in rows where state.progression.era.allowedCategories.contains(spec.category) {
+                let e = economics(origin: market.origin, destination: market.destination,
+                                  distanceKm: market.distanceKm, spec: spec, state: state)
+                let blocked = blockedReason(origin: market.origin,
+                                            destination: market.destination, spec: spec)
+                print("        \(spec.code.raw) \(spec.seats) seats · \(blocked.map { "blocked: \($0)" } ?? (e.map { "\(money($0.afterOwnershipMonthly))/mo · \($0.rotations) rot · \(Int($0.carriedPerDay)) carried of \(Int($0.poolPerDay))" } ?? "-"))")
+            }
+        }
+    }
+    print("   homes examined \(examined) · Core's airframe pays where the market's first buyable row does not: \(worse) · first buyable row cannot fly the route: \(unflyableFirstRow)")
+}
+
 // MARK: - main
 
 switch mode {
@@ -506,6 +614,8 @@ case "follow":
     }
 case "sweep":
     for seed in seedRange { sweep(seed: seed) }
+case "market":
+    for seed in seedRange { marketAudit(seed: seed, homes: homes) }
 case "cost":
     // What one call to the ranking costs, at a real start, with the list
     // actually populated — the bench world's player has no opportunities at

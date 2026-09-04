@@ -696,3 +696,55 @@ the larger term and is shared with the rival AI, so correcting it moves both
 and needs its own before/after across the rival scans. Not attempted in
 AE-042: the measurement that would justify a threshold does not exist yet,
 and inventing one was explicitly out of bounds.
+
+## TD-033, re-measured (AE-043, 2026-09-04) — larger, and not about thin routes
+
+**The framing above is wrong in two ways**, both MEASURED over six months of
+real flying on fifteen route-and-airframe combinations
+(docs/AE043_AIRCRAFT_RECOMMENDATION_AUDIT.md §3).
+
+**1. The error is a property of the aircraft, not of the market.** On the same
+pairs, the demand forecast is accurate on a small airframe and far too low on
+a large one:
+
+| Airframe size | Forecast error against what actually flew |
+| --- | --- |
+| 74–95 seats | **−2% to −9%** |
+| 162–184 seats | **+13% to +99%** |
+
+Palma–London: 324 passengers a day forecast, **644** actually carried on a
+184-seat narrowbody. Edinburgh–Paris: 588 forecast, **966** carried.
+
+**2. The mechanism.** `CompetitorAISystem.airframeDayValue` takes
+`passengersPerDay` as an input that does **not depend on the aircraft** — one
+`expectedCapturedPassengers` per market, at `representativeStarterQuality`.
+The simulation does not behave that way: a bigger, more frequent service wins
+a larger share of the market, so captured demand rises with the capacity
+offered. The estimator holds capture fixed while varying seats, and therefore
+sees a larger cabin's extra cost and none of its extra revenue. It is biased
+against large aircraft **by construction**, and the bias grows with the size
+gap.
+
+The arithmetic around it is sound. At Hamburg, fed its own forecast the
+estimator prefers a 95-seat regional jet (16,361/day against 11,313); fed the
+true passenger counts, the same formula prefers the 184-seat narrowbody by
+three to one (31,628 against 10,487). **The formula is fine; the demand input
+is wrong.**
+
+**Cost, restated.** For AE-042's question — which *market* to fly — a
+uniformly low forecast largely cancels across candidates, and that result
+stands. For the question AE-043 asked — which *aircraft* for a market — it
+does not cancel at all, because carrying capacity is exactly what an airframe
+is being judged on. The estimator picked the wrong airframe at **six of the
+seven** homes where both candidates could fly the route.
+
+**Consequence.** No ranking of airframes can be built on `airframeDayValue`
+until its demand term responds to the service offered. BUG-056 is blocked on
+this: AE-043 built the fix, measured it against the ledger, and withheld it.
+
+**Fix shape.** The demand term needs to take the offered capacity and
+frequency as inputs, the way `DemandSystem` already does when it splits a
+market between real services. `poolAvailableToEntrant` and the logit split are
+the existing primitives. Correcting it moves the rival AI too, so it needs the
+full rival scan before/after that AE-039 and AE-041 established, plus the
+AE-042 recommendation battery, plus a re-run of this phase's ledger table.

@@ -5,6 +5,48 @@ Active task list. Format follows the Master Task Rule (see
 
 ---
 
+## AE-043
+**Title:** The right aircraft — BUG-056
+**Purpose:** Make the aircraft-selection experience consistent with the route
+economics Next Moves and the simulation actually evaluate.
+**Dependencies:** AE-042 (which recorded BUG-056).
+**Implementation notes:**
+- 2026-09-04: read the pipeline first (docs/AE043_AIRCRAFT_SELECTION_BASELINE.md).
+  `AircraftShopSheet()` takes no arguments — no route reaches the market. Sorts
+  by seats descending, `hidesLocked` off, so seven unbuyable rows sit above the
+  first buyable one. The checklist buys an aircraft *before* it opens a route.
+- Reproduced with a new `ae-advice market` mode that models the shipped sheet's
+  own ordering: **11 of 93** homes exposed (not 9 — AE-042's model filtered to
+  flyable types, which the real sheet cannot do), and at **four** the first
+  buyable row cannot fly the recommended route. No static sort is correct: on
+  thin routes every airframe carries the whole pool, on thick ones capacity
+  binds.
+- Built Option C — a pinned "Recommended for X–Y" row above an untouched
+  fourteen-row market, one Core derivation reusing `airframeResult` on era
+  specs, ten passing tests. Against the estimator: dangerous first
+  recommendations 9 → 0.
+- **Withheld it.** Six months of real flying per row showed the pinned airframe
+  is worse in the ledger at **6 of the 7** homes where both can fly (Hamburg
+  +$158k vs −$93k; Dublin +$151k vs −$75k). Stop condition 3. All product code
+  reverted; `AircraftAdvice.swift` and its tests deleted rather than left
+  dormant.
+- Root cause of *that*: `airframeDayValue` takes `passengersPerDay` as one
+  figure per market that does not vary with the aircraft, while the simulation's
+  captured demand rises with capacity offered — forecast error −2% to −9% on
+  small airframes, **+13% to +99%** on large ones. Re-measured and re-scoped
+  onto TD-033, which now blocks BUG-056.
+- On ledger evidence BUG-056 is **6 of 93**, not 11: four flyability, two
+  economic, five were the estimator's false positives.
+**Acceptance criteria:** BUG-056 reproduced or disproven; root cause
+documented; at least three designs measured; a fix only if justified; AE-042's
+battery re-run; New York safe; nothing weakened. All met — with the fix
+withheld rather than forced.
+**Tests:** ten written and passing, then removed with the fix; AE-042's 457
+unchanged and re-run; 30-seed New York scan; 18 ledger combinations.
+**Status:** see tasks/CURRENT_PHASE.md. BUG-056 OPEN, blocked on TD-033.
+
+---
+
 ## AE-042
 **Title:** Trust the advice — BUG-055
 **Purpose:** Answer whether a new player can safely follow Next Moves, and fix
