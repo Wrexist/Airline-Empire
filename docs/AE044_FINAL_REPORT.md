@@ -382,14 +382,33 @@ Skylark — about $121k a month after its lease"* and now reads *"Best on a
 NA160. At Manchester the recommended **market** changed (MAN–CAI → MAN–CDG)
 because MAN–CDG now clears the pays-for-its-airframe gate.
 
-**NOT VALIDATED at runtime in this session.** The evidence loop for this
-project is parse → push → CI → simulator → screenshot → LOOK, and the
-simulator half runs on the macOS CI runner, which this container is not.
-What *is* established here: the four homes the UI journeys photograph (ARN,
-BCN, SIN, MUC) recommend exactly the markets they did before
-(`NEXTMOVES-03`), so the journeys' screens address the same content. The
-airframe line's *text* at those homes is not pinned by any test and is not
-verified. **This is the phase's one unvalidated surface.**
+**Partly validated, on CI rather than in this container.** The evidence loop
+is parse → push → CI → simulator → screenshot → LOOK, and the simulator half
+runs on the macOS runner. Run 149 on this branch:
+
+| Journey job | Result |
+| --- | :---: |
+| `iOS app (xcodebuild) · economy` | **pass** |
+| `iOS app (xcodebuild) · campaign` | **pass** |
+| `iOS app (xcodebuild) · arrival + shell` | fail on the first attempt — flaky, see below |
+
+So the app builds for the simulator and two of the three journeys drive it
+through a real session on the changed model. The third is not this change:
+the *same tree* passed that job in run 147 and failed it in run 148 twelve
+minutes later (147's head is what 148 merges), so there is no breaking commit
+behind it. That matches docs/AE043_FINAL_REPORT.md §8.1, which measured the
+same shell test at 78 s, 104 s and 459 s across three runners on identical
+code; run 149's `testColdLaunchBaseline` took 195 s against 69 s on run 148.
+The failed jobs of run 149 were re-run once on that evidence; the outcome is
+recorded on PR #16 rather than here, because a job that disagrees with itself
+on one tree is not settled by a third sample.
+
+**What is still NOT VALIDATED is the line that actually changed.** The four
+homes the journeys photograph (ARN, BCN, SIN, MUC) recommend exactly the
+markets they did before (`NEXTMOVES-03`), which is what keeps the journeys
+addressing the same screens — but it also means none of them exercises a
+*changed* airframe line. Its text is not pinned by any test and no one has
+looked at it. **That is the phase's one unvalidated surface.**
 
 ## 13. Bugs found
 
@@ -425,9 +444,9 @@ BUG-056 is **not** fixed and is not claimed to be (§16).
 | **TESTED** | 12 new tests (`ServiceDemandTests`), 1 updated (`HorizonTests` HORIZON-05, rewired to the new derivation with its meaning unchanged). Full Core suite re-run on a quiet container: **469 tests, 1 failure** — `archetypeParityAndSanity` (§10, real, reported, not weakened). An earlier run also tripped a 300 s time limit; that was a release build compiling on the same four cores and did not recur (§11). |
 | **COMPILED** | `swift build -c release` clean; all eight executables build. |
 | **RUNTIME VALIDATED** | Every measurement above runs the real `GamePipeline.standard()`. |
-| **OBSERVED** | Nothing. No screenshot was taken in this session. |
+| **OBSERVED** | Nothing directly. No screenshot was decoded in this session; the CI journey results in §12 are pass/fail, not frames looked at. |
 | **AUTHORED** | The five AE-044 documents; the `ae-demand` executable; the TD-035/TD-036 entries. |
-| **NOT VALIDATED** | The changed Next Moves airframe line on a simulator (§12). The 9-seed archetype figures are from a temporary edit and are not a shipped test. The archetype spread's behaviour at samples larger than 9. |
+| **NOT VALIDATED** | The changed Next Moves airframe line on a simulator — no journey exercises a home where it changed (§12). The 9-seed archetype figures are from a temporary edit and are not a shipped test. The archetype spread's behaviour at samples larger than 9. |
 
 ## 16. BUG-056 re-evaluation
 
