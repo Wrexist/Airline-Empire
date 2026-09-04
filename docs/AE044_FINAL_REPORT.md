@@ -382,33 +382,33 @@ Skylark — about $121k a month after its lease"* and now reads *"Best on a
 NA160. At Manchester the recommended **market** changed (MAN–CAI → MAN–CDG)
 because MAN–CDG now clears the pays-for-its-airframe gate.
 
-**Partly validated, on CI rather than in this container.** The evidence loop
-is parse → push → CI → simulator → screenshot → LOOK, and the simulator half
-runs on the macOS runner. Run 149 on this branch:
+**NOT VALIDATED — and CI cannot currently validate it.** The evidence loop is
+parse → push → CI → simulator → screenshot → LOOK, and the simulator half runs
+on the macOS runner. It ran. It does not certify anything, because the journey
+jobs do not reliably report on the code they are given:
 
-| Journey job | Result |
-| --- | :---: |
-| `iOS app (xcodebuild) · economy` | **pass** |
-| `iOS app (xcodebuild) · campaign` | **pass** |
-| `iOS app (xcodebuild) · arrival + shell` | fail on the first attempt — flaky, see below |
+| Run | Head | App code vs. previous row | economy | campaign | arrival + shell |
+| --- | --- | --- | :---: | :---: | :---: |
+| 147 (PR #15) | `181a20e` | — | pass | pass | **pass** |
+| 148 (main) | `8c97e69` | **identical** (148 merges 147's head) | pass | pass | **fail** |
+| 149 (PR #16) | `4faf267` | + this phase's change | **pass** | pass | fail |
+| 150 (PR #16) | `ee28f39` | **identical** (two `.md` files, zero code files) | **fail** | pass | fail |
 
-So the app builds for the simulator and two of the three journeys drive it
-through a real session on the changed model. The third is not this change:
-the *same tree* passed that job in run 147 and failed it in run 148 twelve
-minutes later (147's head is what 148 merges), so there is no breaking commit
-behind it. That matches docs/AE043_FINAL_REPORT.md §8.1, which measured the
-same shell test at 78 s, 104 s and 459 s across three runners on identical
-code; run 149's `testColdLaunchBaseline` took 195 s against 69 s on run 148.
-The failed jobs of run 149 were re-run once on that evidence; the outcome is
-recorded on PR #16 rather than here, because a job that disagrees with itself
-on one tree is not settled by a third sample.
+Two of the three journey jobs have now been observed **flipping on byte-identical
+application code** — `arrival + shell` between runs 147 and 148, `economy`
+between runs 149 and 150. `campaign` has passed throughout, which is consistent
+with luck rather than with signal.
 
-**What is still NOT VALIDATED is the line that actually changed.** The four
-homes the journeys photograph (ARN, BCN, SIN, MUC) recommend exactly the
-markets they did before (`NEXTMOVES-03`), which is what keeps the journeys
-addressing the same screens — but it also means none of them exercises a
-*changed* airframe line. Its text is not pinned by any test and no one has
-looked at it. **That is the phase's one unvalidated surface.**
+So the CI journeys neither confirm nor deny this change, and an earlier draft of
+this section which read them as confirmation was wrong. Phase 15's status is
+what it was before CI ran: **the changed airframe line has not been seen by
+anyone.** The four homes the journeys photograph (ARN, BCN, SIN, MUC) recommend
+exactly the markets they did before (`NEXTMOVES-03`), so even a reliable pass
+would not have exercised a home where the line changed.
+
+Recorded as **TD-037**, because it is larger than this phase: the project's
+stated way of validating a UI change does not currently work, and the next
+phase (§18) needs it.
 
 ## 13. Bugs found
 
@@ -419,6 +419,7 @@ looked at it. **That is the phase's one unvalidated surface.**
 | TD-036 | — | The estimate prices the airframe's maximum rotations; every caller opens routes at two | On production's own configuration the airframe ordering agrees with the ledger 4/13; matched to the flown frequency it is 11/12 | **OPEN** (new) |
 | — | — | The player's economics ignored incumbents entirely: the same $22,065/day with 0 and with 3 carriers on the pair while the ledger swung +$37,403 → −$9,439 | A contested market read exactly as valuable as an empty one | **fixed here** (part of TD-033) |
 | — | — | `BalanceTests.archetypeParityAndSanity` sits 1.2% under its own guard on unmodified code, and its 3-vs-9-seed sampling noise is 2.7% | none (test-only) | **OPEN**, §18 |
+| TD-037 | — | Two of the three macOS UI journey jobs flip pass/fail on byte-identical application code | None to the player; the project cannot currently certify any UI change through CI, which is the only simulator it has | **OPEN** (new) |
 
 **A note on numbering.** A parallel session, also labelled AE-044, merged
 `main` a few hours before this branch and took **TD-034** for a different
@@ -488,6 +489,9 @@ forced closed.
   97.2% → 97.8%.
 - **Player fairness** — improved: the advice no longer prices a contested
   market as an empty one.
+- **Validation capability** — degraded and newly measured. The macOS journey
+  jobs cannot certify a UI change (§12, TD-037), which is a problem for this
+  change and a blocker for the phase that fixes BUG-056's UI half.
 - **Regression risk** — moderate and known. One balance assertion fails
   (§10) and must be resolved before this can merge green. The demand change
   touches the shared estimator, so the rival scan and the recommendation
@@ -528,3 +532,13 @@ reason — never by widening it to fit.
 TD-035 is the next-strongest constraint and should follow, not lead: it is
 worth 15 percentage points of small-airframe bias, but its effect is second
 order until the estimate is pricing the right service at all.
+
+**One prerequisite, and it is cheap.** Whatever comes next, if it touches a
+screen it cannot be evidenced today: two of the three macOS journey jobs flip
+on byte-identical code (§12, TD-037), so the project's own validation loop
+returns noise. The first, smallest piece of that is not the flake itself but
+the *log*: the workflow's `What failed` step greps a file that on the
+`arrival + shell` job holds only the measurement pass, so the failing
+assertion never reaches the output and this phase could not read what broke.
+Fixing that is a few lines of workflow and it is the difference between
+diagnosing the flake and guessing at it.

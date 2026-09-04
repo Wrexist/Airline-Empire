@@ -930,3 +930,52 @@ Whichever is chosen, the decision needs the full AE-039/AE-041 rival scan
 before/after, the AE-042 recommendation battery, and the AE-044 ledger
 tables re-run.
 
+
+---
+
+## TD-037 — Two of the three macOS UI journey jobs flip on byte-identical code
+
+**Symptom.** MEASURED (AE-044, CI runs 147–150,
+docs/AE044_FINAL_REPORT.md §12):
+
+| Run | Head | App code vs. previous row | economy | campaign | arrival + shell |
+| --- | --- | --- | :---: | :---: | :---: |
+| 147 (PR #15) | `181a20e` | — | pass | pass | **pass** |
+| 148 (main) | `8c97e69` | **identical** — 148 merges 147's head | pass | pass | **fail** |
+| 149 (PR #16) | `4faf267` | + AE-044's change | **pass** | pass | fail |
+| 150 (PR #16) | `ee28f39` | **identical** — two `.md` files, zero code files | **fail** | pass | fail |
+
+`arrival + shell` flipped between 147 and 148 twelve minutes apart on the same
+tree; `economy` flipped between 149 and 150 on a diff containing no code at
+all. `campaign` has passed throughout, which on this evidence is luck rather
+than signal.
+
+**Cost.** The project's stated way of validating a UI change is
+parse → push → CI → simulator → screenshot → LOOK, and CI is the only
+simulator it has. Right now that loop cannot certify anything: a pass may be
+luck and a failure may be noise, so a real UI regression and a clean change
+look the same. AE-044 shipped a change to a visible recommendation
+(`NextMovesCard.airframeLine` names a different airframe and a different
+monthly figure at several homes) and could not have it looked at. **The next
+phase needs this working**: BUG-056's remaining half is an aircraft-market UI
+problem, and no fix for it can be evidenced without a trustworthy journey.
+
+**Not the same thing as the time limits.** AE-044's sibling entry TD-034 and
+the limit changes that came with it are about the *Core* suite's wall clock on
+ubuntu. This is the *macOS* journey jobs failing their own assertions
+non-deterministically. AE-043 §8.1 measured the contention behind it — the
+same shell test at 78 s, 104 s and 459 s across three runners on identical
+code — and run 149's `testColdLaunchBaseline` took 195 s against 69 s on run
+148, so timing is the likely mechanism; but a slow runner is the *cause* to
+investigate, not the finding.
+
+**Fix shape.** First make the failure legible: the workflow's `What failed`
+step greps `ui-test-output.txt`, which on the `arrival + shell` job contains
+only the measurement pass, so the actual assertion never reaches the log and
+AE-044 could not read what failed. Fix that before anything else — it is a
+few lines of workflow and it is the reason this entry cannot name the failing
+assertion. Then decide between making the journeys robust to a slow runner
+(explicit waits rather than timeouts) and giving the measurement pass its own
+job so it stops competing with the journeys it shares a runner with. Needs a
+before/after over several runs on one tree, which is the only way to measure a
+flake.

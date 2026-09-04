@@ -69,16 +69,20 @@ code was 1.2% against 2.7% of its own sampling noise. **The threshold was not
 widened and the fix was not withheld**; the balance decision is the next
 phase's first act, with the measurement in docs/AE044_FINAL_REPORT.md §10.
 
-CI (run 149, PR #16): Core **469 tests, 1 failure** — the archetype spread
-above. The **economy** and **campaign** UI journeys **pass** on this branch;
-`arrival + shell` fails and is flaky rather than broken — the same tree
-passed it in run 147 and failed in run 148 twelve minutes later, which is
-docs/AE043_FINAL_REPORT.md §8.1's measured 4x contention on that job.
+CI (runs 149 and 150, PR #16): Core **469 tests, 1 failure** — the archetype
+spread above, deterministic and identical on both runs. The macOS UI journeys
+**cannot certify this change**: two of the three flip pass/fail on
+byte-identical application code (`arrival + shell` between runs 147 and 148,
+`economy` between runs 149 and 150, whose diff is two Markdown files and no
+code). Recorded as **TD-037**, and it blocks the next phase more than it
+blocks this one.
 
-Not validated: the changed Next Moves airframe line itself. The four homes
-the journeys photograph recommend exactly the markets they did before, so no
-journey exercises a home where the line changed, and its text is pinned by no
-test.
+Not validated: the changed Next Moves airframe line. It names a different
+airframe and a different monthly figure at several homes, no test pins its
+text, and no one has seen it — CI ran the journeys and, per TD-037, their
+results mean nothing either way. The four homes the journeys photograph
+recommend exactly the markets they did before, so even a trustworthy pass
+would not have exercised a home where the line changed.
 
 **Status:** DONE on the brief, NOT green. TD-033 resolved and shipped;
 TD-035 and TD-036 recorded with measurements; BUG-056 re-classified on

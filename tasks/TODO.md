@@ -49,9 +49,16 @@ Active task list. Format follows the Master Task Rule (see
    aircraft market's first buyable row cannot fly the recommended route.
    `routeEligibility` is arithmetic; this needs no estimator and can be fixed
    at any time.
-5. **Runtime-validate the changed Next Moves airframe line.** It now names a
+5. **TD-037 — the UI journeys cannot certify a change.** Two of the three
+   macOS journey jobs flip pass/fail on byte-identical application code, so
+   the project's parse → push → CI → simulator → screenshot → LOOK loop
+   currently returns noise. Start with the log: the workflow's `What failed`
+   step greps a file that holds only the measurement pass, so the failing
+   assertion never reaches the output. A prerequisite for (4) and for
+   anything else that touches a screen.
+6. **Runtime-validate the changed Next Moves airframe line.** It now names a
    different airframe and a different monthly figure at several homes; no
-   screenshot has been taken.
+   test pins its text and no one has seen it. Blocked on (5).
 
 ---
 
