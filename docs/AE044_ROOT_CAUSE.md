@@ -110,7 +110,7 @@ residual is exactly the engine's two per-direction floor-roundings.
 
 - **Unflown rotations** (value audit §8). A schedule-realism model, not a
   demand model; building one needs constants that do not exist. Recorded as
-  **TD-034** with its measurement. This phase's brief lists "partial
+  **TD-035** with its measurement. This phase's brief lists "partial
   rotations" and "random operational events" as legitimate approximations.
 - **The estimate pricing the airframe's maximum rotations while production
   opens routes at `initialRoundTrips` = 2** (value audit §6). Fixing the
@@ -120,6 +120,6 @@ residual is exactly the engine's two per-direction floor-roundings.
   contract — what one airframe *day* is worth at the rotations the scheduler's
   day allows — is also the steady state the AI's own frequency loop converges
   to (`manageRoutes` raises frequency by one per decision while load > 0.82).
-  Recorded as **TD-035**.
+  Recorded as **TD-036**.
 - **Season, weekday and economic drift after today** (audit §5 A3). Deliberate;
   worth ±13% on Reykjavík–London.

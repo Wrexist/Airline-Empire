@@ -258,7 +258,7 @@ that remain in §6 — every one of which picks a smaller airframe than the
 ledger.
 
 It is **not** in AE-044's scope: it is a schedule-realism model, not a demand
-model, and building one means new constants. It is recorded as **TD-034**
+model, and building one means new constants. It is recorded as **TD-035**
 with this measurement.
 
 ## 9. Classification of every discrepancy found
@@ -272,7 +272,7 @@ with this measurement.
 | Rival path passes *available pool* where *captured share* is meant | demand | ✔ |
 | Player path omits the reputation term the rival path applies | demand | ✔ |
 | Estimate priced at maximum rotations, route opened at two | frequency | ✖ — §6.3; recorded, not changed |
-| Scheduled rotations that never fly | timing | ✖ — §8, TD-034 |
+| Scheduled rotations that never fly | timing | ✖ — §8, TD-035 |
 | Day-0 pool stands for the whole month (season, weekday, economy) | timing | ✖ — deliberate, ±13% on KEF–LHR |
 | First maintenance check falls outside a two-month window | timing | ✖ — AE-040, unchanged |
 | `Int(rounded(.down))` per direction | rounding | ✖ — 0.1–0.4%, harmless |

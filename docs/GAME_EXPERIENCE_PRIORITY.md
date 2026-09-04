@@ -123,7 +123,7 @@ not here.
 
   BUG-056 is now **PARTIALLY FIXED**: the estimator half is repaired, the
   aircraft market is untouched, and the aircraft *recommendation* is
-  re-blocked on **TD-035** — the estimate prices the airframe's maximum
+  re-blocked on **TD-036** — the estimate prices the airframe's maximum
   rotations while the game opens routes at two, which is worth more on this
   question than TD-033 was (11/12 against 4/12).
 

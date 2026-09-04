@@ -9,7 +9,7 @@ second model. Measure before changing anything; do not make the estimator fit
 the old aircraft-market ordering.
 
 **Outcome: TD-033 is RESOLVED and the fix is shipped. BUG-056 is
-re-classified PARTIALLY FIXED and re-blocked on new debt (TD-035). One
+re-classified PARTIALLY FIXED and re-blocked on new debt (TD-036). One
 balance assertion fails and was not weakened.** Final report:
 docs/AE044_FINAL_REPORT.md.
 
@@ -52,10 +52,10 @@ same NA160, opening soundness 97.2% → 97.8%, **0 collapses, 0
 administrations, player alive in 50 of 50**. AE-041's revenue / 16 stands
 and is now pinned by a test.
 
-**Two things this phase deliberately did not do.** TD-034 (4–23% of
+**Two things this phase deliberately did not do.** TD-035 (4–23% of
 scheduled rotations never fly, driven by schedule slack, not aircraft size)
-and **TD-035** — the estimate prices the airframe's *maximum* rotations while
-every caller opens routes at *two*. TD-035 is the larger of the two:
+and **TD-036** — the estimate prices the airframe's *maximum* rotations while
+every caller opens routes at *two*. TD-036 is the larger of the two:
 **priced at the frequency the game actually flies, ordering agrees with the
 ledger at 11 of 12 markets; priced as production prices it, at 4 of 12.**
 That is what re-blocks BUG-056.
@@ -74,9 +74,9 @@ container has no macOS runner, and the four homes the journeys photograph
 recommend exactly the markets they did before.
 
 **Status:** DONE on the brief, NOT green. TD-033 resolved and shipped;
-TD-034 and TD-035 recorded with measurements; BUG-056 re-classified on
+TD-035 and TD-036 recorded with measurements; BUG-056 re-classified on
 evidence; one balance assertion failing and reported rather than papered
-over. Recommended next: **AE-045 — TD-035**, which also has to settle the
+over. Recommended next: **AE-045 — TD-036**, which also has to settle the
 archetype-spread guard.
 
 ---

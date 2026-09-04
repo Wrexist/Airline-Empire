@@ -1601,7 +1601,7 @@ ledger at **8 of 13** controlled markets rather than 4
 
 It is still not enough to build the pinned recommendation on:
 
-- **The economic half is blocked on TD-035.** The estimate prices the
+- **The economic half is blocked on TD-036.** The estimate prices the
   airframe's *maximum* rotations while every caller opens routes at *two*.
   Priced at the frequency the game actually flies, the estimator's ordering
   agrees with the ledger at **11 of 12** markets; priced as production prices
@@ -1615,4 +1615,4 @@ It is still not enough to build the pinned recommendation on:
 
 **Status:** OPEN — reproduced, root-caused, re-measured twice; the estimator
 blocker (TD-033) is resolved, the aircraft market is not. Now blocked on
-TD-035, not TD-033. Not forced closed.
+TD-036, not TD-033. Not forced closed.

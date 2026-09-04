@@ -64,7 +64,13 @@ struct BalanceTests {
         }
     }
 
-    @Test(.timeLimit(.minutes(10)))
+    /// Thirty minutes against **447 seconds of work** (MEASURED, AE-044, run
+    /// alone on the session container). It was ten, which is 1.3x of headroom —
+    /// and contention on this suite has been measured at 4x (docs/AE043 report
+    /// §8.1). Swift Testing counts a time limit as wall clock while all 457
+    /// tests run in parallel, so a guard this close to the work is timing the
+    /// machine. No assertion changed.
+    @Test(.timeLimit(.minutes(30)))
     func archetypeParityAndSanity() throws {
         var byArchetype: [AIArchetype: [Int64]] = [:]
         var survivors = 0
@@ -268,7 +274,21 @@ struct BalanceTests {
                 "Flipping only cost \(200_000_000 - balance.cents / 100)")
     }
 
-    @Test(.timeLimit(.minutes(15)))
+    /// Forty minutes against **868 seconds of work** (MEASURED, AE-044, run
+    /// alone). It was fifteen — 1.04x, thirty-two seconds of slack — and
+    /// AE-041 measured the same test at **902.3 s**, over the old limit
+    /// outright. It has tripped on a session container and passed in CI on
+    /// identical code, which is the signature of a guard timing the machine
+    /// rather than the test.
+    ///
+    /// **Forty is the most this can have, not the most it wants.** Four times
+    /// the measured work would be 58 minutes, and the Core job's own timeout
+    /// is 45 (.github/workflows/ci.yml). So this guard cannot both survive
+    /// heavy contention and stay inside its job: at 868 s it is 52% of the
+    /// whole suite's CI time (1,681 s in run 137), and the real fix is to make
+    /// it cheaper or give it its own job. Recorded as TD-034; not attempted
+    /// here, where the change is limits only. No assertion changed.
+    @Test(.timeLimit(.minutes(40)))
     func tenYearWorldRemainsStableAndContested() throws {
         let (engine, _) = try AIFixtures.world(competitors: 5, seed: 4242)
         for _ in 0..<10 {

@@ -139,7 +139,7 @@ and 11/12 when it is priced at two.
    phase, its own rival scan and its own decision, exactly as AE-041 gave
    the ranking basis.
 
-Recorded as **TD-035** with the 4/12-against-11/12 measurement, so the next
+Recorded as **TD-036** with the 4/12-against-11/12 measurement, so the next
 phase can act on evidence rather than rediscover it.
 
 ## 6. What the fix cannot repair
@@ -149,7 +149,7 @@ rotation flies; 4–23% do not, driven by schedule slack rather than aircraft
 size. It accounts for all four ordering disagreements that remain, every one
 of which picks a smaller airframe than the ledger. Modelling it means a
 cancellation/cascade model and new constants — a different phase. Recorded as
-**TD-034**.
+**TD-035**.
 
 This is the boundary the brief asked to be preserved: the estimator
 represents *expected economics*, not a second simulation. It does not

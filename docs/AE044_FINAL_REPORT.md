@@ -34,7 +34,7 @@ docs/AE044_ESTIMATOR_DECISION.md (Phases 7–9).
   estimator can now rank airframes, but on the configuration production
   actually flies it still does not, because of a **second** mismatch this
   phase found and did not fix: the estimate prices the airframe's maximum
-  rotations while every caller opens routes at two (**TD-035**).
+  rotations while every caller opens routes at two (**TD-036**).
 
 **One thing did not come free.** `BalanceTests.archetypeParityAndSanity`
 now fails: the archetype net-worth spread is 6.044 against a `< 6.0` guard
@@ -146,7 +146,7 @@ go through it.
 `minViableDailyDemand` = 140 and the `poolAvailableToEntrant` quantity it
 gates on · Next Moves' ranking · `representativeStarterQuality` · the fare
 formula, fee levels, aircraft prices, capacities, ranges · the estimator's
-maximum-rotation assumption (§13, TD-035) · the tourism boost.
+maximum-rotation assumption (§13, TD-036) · the tourism boost.
 
 **Kept pure.** `serviceDemand` and `airframeDayEstimate` read state, mutate
 nothing, create no flights, write no ledger entries and consume no RNG
@@ -180,7 +180,7 @@ the phase's stated target and it is met exactly (−8.3% → −0.0%).
 flown-flight completion the residual is +0% to +5%; at 77–85% it is +20% to
 +45%. Correcting the demand moved six rows from demand-bound to
 capacity-bound and so exposed more of it. Measured and recorded as
-**TD-034**; the brief lists partial rotations and random operational events
+**TD-035**; the brief lists partial rotations and random operational events
 as legitimate approximations.
 
 **The estimator is now the engine's allocation, not an approximation of
@@ -214,7 +214,7 @@ the airframe's lease and payroll — with each airframe flown for a month.
 | **agreement** | | | | **4/13** | **8/13** |
 
 All five remaining disagreements pick a **smaller** airframe than the ledger
-pays best on — the signature of TD-034, not of TD-033.
+pays best on — the signature of TD-035, not of TD-033.
 
 **The AE-043 examples specifically.** Hamburg: the old estimator named a
 95-seat KT95 and the ledger's best is a 162-seat NA160; the new estimator
@@ -396,10 +396,16 @@ verified. **This is the phase's one unvalidated surface.**
 | ID | Priority | Root cause | Player impact | Status |
 | --- | --- | --- | --- | --- |
 | TD-033 | — | `airframeDayValue` took `passengersPerDay` as a caller constant while costing the airframe | The recommendation could not rank aircraft; it preferred the smallest cabin that cleared the seat cap, whatever the market | **RESOLVED** |
-| TD-034 | — | The estimator assumes every scheduled rotation flies; 4–23% do not, driven by schedule slack | Small, tightly-scheduled airframes over-valued by 15%; five of thirteen ordering errors | **OPEN** (new) |
-| TD-035 | — | The estimate prices the airframe's maximum rotations; every caller opens routes at two | On production's own configuration the airframe ordering agrees with the ledger 4/13; matched to the flown frequency it is 11/12 | **OPEN** (new) |
+| TD-035 | — | The estimator assumes every scheduled rotation flies; 4–23% do not, driven by schedule slack | Small, tightly-scheduled airframes over-valued by 15%; five of thirteen ordering errors | **OPEN** (new) |
+| TD-036 | — | The estimate prices the airframe's maximum rotations; every caller opens routes at two | On production's own configuration the airframe ordering agrees with the ledger 4/13; matched to the flown frequency it is 11/12 | **OPEN** (new) |
 | — | — | The player's economics ignored incumbents entirely: the same $22,065/day with 0 and with 3 carriers on the pair while the ledger swung +$37,403 → −$9,439 | A contested market read exactly as valuable as an empty one | **fixed here** (part of TD-033) |
 | — | — | `BalanceTests.archetypeParityAndSanity` sits 1.2% under its own guard on unmodified code, and its 3-vs-9-seed sampling noise is 2.7% | none (test-only) | **OPEN**, §18 |
+
+**A note on numbering.** A parallel session, also labelled AE-044, merged
+`main` a few hours before this branch and took **TD-034** for a different
+finding (one Core test is half the suite's CI time). This phase's two new
+entries are therefore **TD-035** and **TD-036**; nothing here contradicts that
+work, and its time-limit changes are merged into this branch.
 
 ## 14. Bugs fixed
 
@@ -420,7 +426,7 @@ BUG-056 is **not** fixed and is not claimed to be (§16).
 | **COMPILED** | `swift build -c release` clean; all eight executables build. |
 | **RUNTIME VALIDATED** | Every measurement above runs the real `GamePipeline.standard()`. |
 | **OBSERVED** | Nothing. No screenshot was taken in this session. |
-| **AUTHORED** | The five AE-044 documents; the `ae-demand` executable; the TD-034/TD-035 entries. |
+| **AUTHORED** | The five AE-044 documents; the `ae-demand` executable; the TD-035/TD-036 entries. |
 | **NOT VALIDATED** | The changed Next Moves airframe line on a simulator (§12). The 9-seed archetype figures are from a temporary edit and are not a shipped test. The archetype spread's behaviour at samples larger than 9. |
 
 ## 16. BUG-056 re-evaluation
@@ -439,12 +445,12 @@ issue is recorded.
   configuration production actually flies — the estimate priced at maximum
   rotations, the route opened at two — the agreement is still 4/13, because
   both halves of the estimate describe an operation the game does not fly
-  (TD-035).
+  (TD-036).
 - The **UI half** is untouched and unmeasured this phase: `AircraftShopSheet()`
   still takes no arguments, still sorts by seats descending, still shows
   seven unbuyable rows first.
 
-**BUG-056 stays OPEN**, re-blocked on TD-035 rather than TD-033. It is not
+**BUG-056 stays OPEN**, re-blocked on TD-036 rather than TD-033. It is not
 forced closed.
 
 ## 17. Release impact
@@ -455,9 +461,9 @@ forced closed.
 - **Recommendation credibility** — improved for market choice (the player's
   economics now respond to competition at all) and improved-but-incomplete
   for aircraft choice. The monthly figure printed beside a recommendation is
-  still the *mature* month, not the player's first (TD-035).
+  still the *mature* month, not the player's first (TD-036).
 - **Aircraft-choice credibility** — better, not yet trustworthy. Do not
-  build a pinned aircraft recommendation on it until TD-035 is decided.
+  build a pinned aircraft recommendation on it until TD-036 is decided.
 - **Rival credibility** — unchanged to slightly better: both curated
   arrivals intact on the same days with the same airframe, opening soundness
   97.2% → 97.8%.
@@ -472,9 +478,9 @@ forced closed.
 
 ## 18. ONE recommended next master prompt
 
-### AE-045 — TD-035: the service the estimate is actually pricing
+### AE-045 — TD-036: the service the estimate is actually pricing
 
-**Not AE-045-as-BUG-056**, and not TD-034 either. The evidence points at
+**Not AE-045-as-BUG-056**, and not TD-035 either. The evidence points at
 one constraint and it is the same one twice.
 
 The strongest measured fact in this phase is not the fix; it is §7's third
@@ -500,6 +506,6 @@ resolve the archetype-spread guard with a measured threshold or a better
 instrument, documenting the previous limit, the measured work and the
 reason — never by widening it to fit.
 
-TD-034 is the next-strongest constraint and should follow, not lead: it is
+TD-035 is the next-strongest constraint and should follow, not lead: it is
 worth 15 percentage points of small-airframe bias, but its effect is second
 order until the estimate is pricing the right service at all.

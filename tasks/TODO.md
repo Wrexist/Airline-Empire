@@ -29,7 +29,7 @@ Active task list. Format follows the Master Task Rule (see
   `AE044_ROOT_CAUSE`, `AE044_ESTIMATOR_DECISION`, `AE044_FINAL_REPORT`.
 
 ### Next, in order
-1. **TD-035 — what service the estimate is pricing.** The estimate prices the
+1. **TD-036 — what service the estimate is pricing.** The estimate prices the
    airframe's *maximum* rotations; every caller opens routes at *two*. Priced
    at the frequency the game actually flies, airframe ordering agrees with the
    ledger at 11 of 12 markets; priced as production prices it, at 4 of 12.
@@ -41,7 +41,7 @@ Active task list. Format follows the Master Task Rule (see
    on unmodified code was 1.2% against 2.7% of its own sampling noise. Settle
    it with measurement — a threshold decision or a better instrument — never
    by widening it to fit. Must be done with (1); the same change moves it.
-3. **TD-034 — unflown rotations.** 4–23% of scheduled rotations never fly,
+3. **TD-035 — unflown rotations.** 4–23% of scheduled rotations never fly,
    driven by schedule slack rather than aircraft size. Worth 15 percentage
    points of small-airframe bias and all five remaining ordering errors.
    Second order until (1).
