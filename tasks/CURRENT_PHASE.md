@@ -1,5 +1,147 @@
 # Current Phase
 
+**AE-043 — The right aircraft.**
+2026-09-04.
+
+The brief: fix BUG-056 — the aircraft market sorts by seats regardless of the
+route, so it can undermine the recommendation AE-042 made trustworthy. Measure
+before changing anything; do not force the bug closed.
+
+**Outcome: the fix was built, measured against the ledger, and WITHHELD on
+stop condition 3.** BUG-056 is reproduced and root-caused; it is real, and
+smaller and differently shaped than AE-042 recorded. Nothing shipped to the
+product. Final report: docs/AE043_FINAL_REPORT.md.
+
+Read first (docs/AE043_AIRCRAFT_SELECTION_BASELINE.md): `AircraftShopSheet()`
+takes **no arguments** — no route ever reaches the market. Its default sort is
+seats descending, `hidesLocked` is off, so a startup-era player scrolls past
+**seven unbuyable rows** to reach the first they can take, a 184-seat
+narrowbody at $790k a month. AE-042's `bestAirframe` is computed for every
+market and read by exactly one surface, the Next Moves card;
+`FirstRouteSuggestion` — what the onboarding card shows while the player buys
+their first aircraft — has no airframe field at all. And the checklist teaches
+`acquireAircraft` **before** `openRoute`, so the first purchase happens when
+no route exists.
+
+Reproduced (docs/AE043_BUG056_ROOT_CAUSE.md, `ae-advice market`): modelling
+the real sheet — largest era-legal type, route unknown — finds **11 of 93**
+homes exposed, not the 9 AE-042 recorded with a model that filtered to
+flyable types. At **four** of them the first buyable row **cannot fly the
+recommended route at all** (a runway-class block at the home airport). The
+right airframe sat at row 11.8 of 14 on average. No static ordering can be
+correct: on thin routes every airframe carries the whole pool so seats are
+pure cost, and on thick ones capacity binds and bigger is better.
+
+Built (docs/AE043_AIRCRAFT_SELECTION_DECISION.md): Option C — a pinned
+"Recommended for X–Y" row above an untouched fourteen-row market, drawing on
+one new Core derivation that reuses `airframeResult` with era specs rather
+than owned ones. Ten Core tests, all passing. Against the estimator it worked:
+dangerous first recommendations 9 → 0 across the 93 homes.
+
+**Then the routes were flown** (docs/AE043_AIRCRAFT_RECOMMENDATION_AUDIT.md).
+At **six of the seven** homes where both aircraft can fly the route, the
+pinned airframe is **worse in the ledger** — Hamburg +$158k on the market's
+row against −$93k on the advice, Dublin +$151k against −$75k. The cause is
+structural and is now recorded on TD-033: `airframeDayValue` takes
+`passengersPerDay` as an input that does not vary with the aircraft, while the
+simulation's captured demand rises with the capacity offered, so the estimator
+is biased against large aircraft by construction — forecast error −2% to −9%
+on small airframes and **+13% to +99%** on large ones. Fed the true passenger
+counts its own formula flips to the right answer. The formula is fine; the
+demand input is wrong.
+
+On ledger evidence BUG-056 is **6 of 93**, not 11: four homes where the first
+row cannot fly the route (exact, estimator-independent) and two where it loses
+money (Frankfurt, Reykjavík). The other five were the estimator's false
+positives.
+
+AE-042 is unaffected and was re-verified: New York 30 seeds, **0 collapses, 0
+administrations**, player active in all 30, cash $10.4M–$54.8M.
+
+Kept: the `ae-advice market` measurement mode (tooling only). Reverted:
+`AircraftAdvice.swift`, its ten tests, and the `FleetView` section — deleted
+rather than left dormant.
+
+CI: run 136 failed twice and neither was the product — the New York campaign
+test tripped a five-minute wall-clock guard *after* every assertion passed (it
+does 65.05 s of work; Swift Testing times the limit as wall clock across a
+457-test parallel suite), and the arrival shard starved on three AX timeouts
+with one test running 4.4× slow. The guard is raised to ten minutes with the
+measurement recorded; no assertion changed. **Run 137 is green: 457 Core
+tests, 20 journeys, both measurements, 0 failures on any shard.**
+
+**Status:** DONE — BUG-056 reproduced, root-caused and re-measured; fix
+WITHHELD with evidence; CI green. TD-033 is now the blocking constraint and is
+the recommended next phase.
+
+---
+
+# Previous Phase
+
+**AE-041 — Profit versus revenue: the rival strategy test.**
+2026-09-03.
+
+The brief: AE-040 left the profit-based rival ranking functioning
+economically and withheld (TD-030), and recommended measuring it at a
+horizon of 24 — the one configuration AE-039 had seen reach Stockholm —
+against the shipped airframe-day revenue at sixteen. Measure before
+changing anything; do not assume the answer.
+
+Measured (docs/AE041_STRATEGY_BASELINE.md; `ae-rival-scan` extended
+to follow every entry and every rival opening through the rival's own
+ledger): four configurations × 150 campaigns (seeds 2030–2059 × Stockholm,
+Barcelona, Munich, New York, Singapore, two years), the same seeds and
+script for each. Revenue / 16 (shipped) and revenue / 24: 59
+world-initiated entries — Munich on day 61 in 30 of 30, Singapore on
+days 509–551 in 29 of 30 — every one earning by the rival's ledger.
+Profit / 16: 30 (Munich, days 187–215). Profit / 24: 30 (Stockholm,
+PacificBlue on ARN–IST, day 187 in 27 seeds) and never Munich or
+Singapore — not in two years and not in five. Every entry on every
+basis SOUND; rival openings 92% sound on the shipped basis against
+99.8–99.9% on profit, and the whole difference was one bug (below) and
+one thin turboprop pair. The batteries, run on the profit basis for the
+first time: pass at 16; at 24 three archetype runs cross the 60% margin
+line (65.5 / 65.5 / 65.2%) — stop condition 5 for that configuration.
+
+Decision (docs/AE041_PROFIT_VS_REVENUE_REPORT.md §4): **keep revenue /
+16.** Profit / 24 covers one curated start where the shipped basis
+covers two, removes the day-61 Munich arrival the app photographs, and
+fails a battery; profit / 16 keeps Munich four months later and loses
+Singapore for nothing. TD-030 closed on evidence. Nothing in the ranking
+or the horizon changed.
+
+Found on the way and fixed: **BUG-054** — in 143 of 150 shipped-basis
+campaigns the conservative rival bought a used airframe on a six-month
+runway, landed on one month of cash, and a week later retrenched:
+closed the full, earning route it had opened three weeks before (judged
+the worst loss-maker on a closed month of costs with no revenue) and
+sold the airframe it had just bought. Fixed in the decision loop — the
+growth step's outlay now has to leave the archetype's own runway in the
+bank, and retrench judges only routes that flew a closed month — with
+`RivalCredibilityTests` as the twin; the Munich and London–Berlin twins
+unchanged to the day and the dollar. Found and recorded, not fixed:
+**BUG-055** (P1) — the player's Next Moves card ranks markets by
+passengers and from New York names two fee-bound pairs; the scripted
+player who follows it collapses on day 430 in 28 of 30 seeds, in every
+configuration, so New York measures the cast and not the arrival. And
+**TD-032** — a rival's entry can roll off the 512-event feed within a
+day in a busy world (seen at day 201 under the profit basis).
+
+**Status:** DONE — Core MEASURED (about 1,500 campaigns: 600 for the
+matrix run twice, 150 after the fix, 75 for the fix variants, 50 over
+five years, the diagnostics), TESTED (451 green on CI, run 133, the
+release build clean); App OBSERVED (run 133: 19 of 19 journeys, the
+Munich arrival's frames unchanged from run 131). Run 132 on the way
+found the Core job's 30-minute limit had no headroom for a suite two
+minutes longer (raised to 45 with the measurement beside it) and the
+arrival shard starved once on the runner (the documented signature; the
+redispatch was green). Final report:
+docs/AE041_PROFIT_VS_REVENUE_REPORT.md.
+
+---
+
+# Previous Phase
+
 **AE-040 — The fee economy and the regional archetype.**
 2026-09-02.
 

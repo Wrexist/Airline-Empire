@@ -482,6 +482,18 @@ player is the only carrier on a large pair; the Home headline
 `rivalEnteredYourMarket` firing in a plain campaign without the player
 picking the fight. NOT VALIDATED.
 
+**AE-041 (2026-09-03): the economy half measured, and it is not the
+economy.** Stockholm is reached only by the profit basis at a horizon
+of 24, and that configuration loses Munich and Singapore for five
+years, so it did not ship (TD-030 closed). Barcelona is two places
+outside the only list in which it would win, on either basis. What
+remains of TD-026 is therefore two curated starts the shipped world
+does not come to within two years, by measured geography and ranking,
+with no cheaper lever than a horizon tuned to one city
+(docs/AE041_CURATED_START_AUDIT.md §1–2). New York's silence is not
+this item at all: the scripted player following the game's Next Moves
+card collapses on day 430 (BUG-055).
+
 **AE-039 (2026-09-02): the horizon half measured and dismissed.** At 24,
 48 and all 93 airports the rivals reached exactly the same player pairs
 as at 16 (docs/HORIZON_AUDIT.md §3.1): the distance list was never the
@@ -567,6 +579,24 @@ Out of scope for a horizon phase.
 
 ## TD-030 — The profit ranking, measured and withheld
 
+**CLOSED 2026-09-03 (AE-041):** the decision was made on evidence
+rather than deferred again. Four configurations — revenue and profit
+bases at horizons 16 and 24 — were run across the same 150 campaigns
+each (docs/AE041_STRATEGY_BASELINE.md). Profit / 24 reaches Stockholm
+on day 187 of every seed and never reaches Munich or Singapore, in two
+years or five; profit / 16 reaches Munich four months later than the
+shipped basis and never Singapore; the shipped revenue / 16 reaches
+Munich (day 61) and Singapore (year two). Every entry on every basis
+earned by the rival's own ledger. The profit basis now passes the
+balance battery (archetype parity and the ten-year world, both bases)
+— the AE-039 reason for withholding is gone — but it covers one curated
+start where the shipped basis covers two, and it loses the day-61 Munich
+arrival the app photographs. Decision: keep revenue / 16
+(docs/AE041_PROFIT_VS_REVENUE_REPORT.md §4). `rankingBasis` stays for
+the scan and probe. What the profit basis was better at — never opening
+a market it later closed — turned out to be BUG-054 and one thin
+turboprop pair, and the bug is fixed on the shipped basis.
+
 **Re-measured 2026-09-02 (AE-040):** on the corrected economy the
 regional archetype functions on the profit basis (150 of 150 alive), but
 at the shipped horizon the basis reaches fewer player markets than the
@@ -616,3 +646,105 @@ round trip inside the 18-hour operating day (LHR–SIN has zero rotations
 for every type); a full schedule loses 6–25% of its rotations to delay
 cascades and expiry; widebodies are era-locked for the player and not
 for rivals.
+
+## TD-032 — The feed is an event-count window, and a rival's entry can roll off it in a day
+
+**Symptom.** MEASURED (AE-041, `MunichHorizonTests` run on the profit
+basis, where the arrival lands on day 201 instead of 61): the Home
+headline says PacificBlue entered Munich–Istanbul, and the feed does not
+— `marketEntered` is no longer in `eventLog.recent` the next morning.
+`BoundedEventLog.defaultCapacity` is 512 events; by day 201 a busier
+world posts more than that in a day, so an entry that lands in the
+morning is gone from the ring by the next. On the shipped basis the
+entry is on day 61 and the twin's feed assertion passes; the same
+window will close on later entries (Singapore's, in year two, is NOT
+VALIDATED either way).
+
+**Cost.** The one world-initiated event the player most needs to see
+can be missing from the one surface that lists events, in exactly the
+worlds busy enough to produce it. EXP-08 is the same shape (fourteen
+events, not fourteen days).
+
+**Fix shape.** A feed that ages by simulated days and keeps the
+player-relevant kinds (`isFeedEvent`) regardless of flight-event volume
+— a second small ring, or a per-kind reservation in the existing one —
+with the Munich twin's feed assertion extended to a late entry. No save
+change if the feed is derived; a small one if it is stored.
+
+## TD-033 — The recommendation's estimate is soft on thin routes
+
+**Symptom.** MEASURED (AE-042, docs/AE042_RECOMMENDATION_AUDIT.md §3): the
+figure `marketOpportunities` gates on — a month of the route's own operating
+result less its airframe's lease and payroll — agrees with the ledger in sign
+on every pair sampled, but errs generous, and on the thinnest routes the gap
+approaches the decision. Bergen–London on a 74-seat turboprop is estimated at
+**+$264k a month** and lands at **−$11k** after everything over six months of
+real flying. About $150k of that is airline overhead, which the estimate
+deliberately does not charge to one route; the rest is the estimator assuming
+every scheduled rotation flies (AE-040's limitation) and its demand forecast
+under-reading a thin pair.
+
+**Cost.** The gate reliably rejects routes that lose half a million a month
+or more, which is what BUG-055 was about. It can pass one that lands near
+break-even. On a first route, where the airline's whole overhead rests on one
+market, that difference is the player's cash.
+
+**Fix shape.** Either charge a first route a share of overhead (the honest
+version needs a rule for what "first" means, and none is obvious), or narrow
+the estimator's optimism at its source — the unflown-rotation assumption is
+the larger term and is shared with the rival AI, so correcting it moves both
+and needs its own before/after across the rival scans. Not attempted in
+AE-042: the measurement that would justify a threshold does not exist yet,
+and inventing one was explicitly out of bounds.
+
+## TD-033, re-measured (AE-043, 2026-09-04) — larger, and not about thin routes
+
+**The framing above is wrong in two ways**, both MEASURED over six months of
+real flying on fifteen route-and-airframe combinations
+(docs/AE043_AIRCRAFT_RECOMMENDATION_AUDIT.md §3).
+
+**1. The error is a property of the aircraft, not of the market.** On the same
+pairs, the demand forecast is accurate on a small airframe and far too low on
+a large one:
+
+| Airframe size | Forecast error against what actually flew |
+| --- | --- |
+| 74–95 seats | **−2% to −9%** |
+| 162–184 seats | **+13% to +99%** |
+
+Palma–London: 324 passengers a day forecast, **644** actually carried on a
+184-seat narrowbody. Edinburgh–Paris: 588 forecast, **966** carried.
+
+**2. The mechanism.** `CompetitorAISystem.airframeDayValue` takes
+`passengersPerDay` as an input that does **not depend on the aircraft** — one
+`expectedCapturedPassengers` per market, at `representativeStarterQuality`.
+The simulation does not behave that way: a bigger, more frequent service wins
+a larger share of the market, so captured demand rises with the capacity
+offered. The estimator holds capture fixed while varying seats, and therefore
+sees a larger cabin's extra cost and none of its extra revenue. It is biased
+against large aircraft **by construction**, and the bias grows with the size
+gap.
+
+The arithmetic around it is sound. At Hamburg, fed its own forecast the
+estimator prefers a 95-seat regional jet (16,361/day against 11,313); fed the
+true passenger counts, the same formula prefers the 184-seat narrowbody by
+three to one (31,628 against 10,487). **The formula is fine; the demand input
+is wrong.**
+
+**Cost, restated.** For AE-042's question — which *market* to fly — a
+uniformly low forecast largely cancels across candidates, and that result
+stands. For the question AE-043 asked — which *aircraft* for a market — it
+does not cancel at all, because carrying capacity is exactly what an airframe
+is being judged on. The estimator picked the wrong airframe at **six of the
+seven** homes where both candidates could fly the route.
+
+**Consequence.** No ranking of airframes can be built on `airframeDayValue`
+until its demand term responds to the service offered. BUG-056 is blocked on
+this: AE-043 built the fix, measured it against the ledger, and withheld it.
+
+**Fix shape.** The demand term needs to take the offered capacity and
+frequency as inputs, the way `DemandSystem` already does when it splits a
+market between real services. `poolAvailableToEntrant` and the logit split are
+the existing primitives. Correcting it moves the rival AI too, so it needs the
+full rival scan before/after that AE-039 and AE-041 established, plus the
+AE-042 recommendation battery, plus a re-run of this phase's ledger table.

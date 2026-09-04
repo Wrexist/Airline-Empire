@@ -8,6 +8,101 @@ import XCTest
 final class EconomyJourneyUITests: AEUITestCase {
 
 
+    /// AE-042: the advice a new player is given at New York, photographed.
+    ///
+    /// BUG-055 measured what Home used to say here. Its two suggestions were
+    /// Chicago and Toronto, and Toronto — 589 km, 2,926 passengers a day, and
+    /// 63% of its revenue going to airport fees — lost $214k a month after
+    /// the aircraft it needed. A scripted campaign that followed that advice
+    /// went into administration and collapsed on day 430 in 28 of 30 seeds
+    /// (docs/AE042_NEXT_MOVES_BASELINE.md). The ranking has since been gated
+    /// on whether a market pays for the aircraft that flies it.
+    ///
+    /// This journey founds the same start in the simulator, photographs what
+    /// Home now recommends, follows it with real commands, and comes back at
+    /// the day the old advice was fatal. `NextMovesTests` measures the same
+    /// world headlessly; this proves the player can see it.
+    func testNewYorkAdviceIsWorthFollowing() throws {
+        launch(appearance: .light)
+        guard foundAirline(seed: "2030", home: (code: "JFK", city: "New York")) else { return }
+
+        // ── AE042-KEY-01 · what Home offers a brand-new airline ────────────
+        openTab("Home")
+        let card = app.descendants(matching: .any)
+            .matching(identifier: "ae-next-moves").firstMatch
+        if !card.waitForExistence(timeout: 10) {
+            // Before the first aircraft the checklist owns the screen and
+            // carries the same suggestions; either surface is the advice.
+            capture(Self.logPrefix + "AE042-NO-NEXT-MOVES-CARD")
+        }
+        checkpoint("AE042-1-home-first-advice")
+
+        // Toronto was the second suggestion and the trap. It must not be
+        // among what Home offers now.
+        let toronto = app.buttons.matching(NSPredicate(
+            format: "label CONTAINS %@ AND label CONTAINS %@", "JFK", "YYZ")).firstMatch
+        XCTAssertFalse(toronto.exists, """
+            Home still offers New York–Toronto, the market BUG-055 was found \
+            on: 589 km, 63% of revenue in airport fees, −$214k a month after \
+            the aircraft it needs.
+            """)
+
+        // ── AE042-KEY-02 · the aircraft, then the first recommended route ──
+        guard openAircraftMarket() else { return }
+        guard leaseAnAircraft() else { return }
+        checkpoint("AE042-2-after-the-aircraft")
+
+        openTab("Home")
+        let suggestion = app.buttons.matching(NSPredicate(
+            format: "label CONTAINS %@", "→")).firstMatch
+        guard tapWhenReady(suggestion) else {
+            capture(Self.logPrefix + "AE042-SUGGESTION-NO-TAP")
+            XCTFail("Home's first recommendation did not accept a tap.")
+            return
+        }
+        let commit = app.buttons.matching(identifier: "ae-route-open").firstMatch
+        guard require(commit, "the route sheet's commit bar", timeout: 8) else { return }
+        checkpoint("AE042-3-route-sheet-for-the-recommendation")
+        commit.tap()
+        Thread.sleep(forTimeInterval: 1)
+
+        guard openAirlineSection("Routes") else { return }
+        let bare = assignAllBareRoutes()
+        XCTAssertEqual(bare, 0, "\(bare) route(s) have no aircraft after taking the advice.")
+        checkpoint("AE042-4-route-after-assignment")
+
+        // ── AE042-KEY-05 · the first closed month ─────────────────────────
+        guard advanceMornings(until: "2030-02-02", cap: 40) else {
+            XCTFail("The sunrise control could not reach February.")
+            return
+        }
+        openTab("Home")
+        checkpoint("AE042-5-home-after-first-month")
+        openTab("Finance")
+        checkpoint("AE042-6-finance-first-statement")
+
+        // ── AE042-KEY-07 · the day the old advice was fatal ───────────────
+        // The scripted campaign that followed the old recommendations went
+        // into administration and collapsed on day 430. This walks past it.
+        guard advanceMornings(until: "2031-03-10", cap: 70) else {
+            XCTFail("The sunrise control could not reach March 2031.")
+            return
+        }
+        openTab("Home")
+        checkpoint("AE042-7-home-past-the-old-collapse-day")
+        // Still playing: a collapsed airline is on the game-over screen and
+        // has no tabs at all.
+        XCTAssertNotNil(waitForTab("Home", timeout: 10), """
+            The airline is no longer playable past day 430 — the window in \
+            which the pre-AE-042 advice bankrupted this start.
+            """)
+        openTab("Finance")
+        checkpoint("AE042-8-finance-past-the-old-collapse-day")
+        openTab("Airline")
+        _ = openAirlineSection("Routes")
+        checkpoint("AE042-9-network-past-the-old-collapse-day")
+    }
+
     /// The first month closes with a statement — the state no automation has
     /// ever seen (AE-034 "The First Month").
     ///

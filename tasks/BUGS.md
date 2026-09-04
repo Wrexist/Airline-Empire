@@ -1391,3 +1391,205 @@ to route management and growth.
 AI suites and campaign twins re-run green (27 tests), the full suite and
 the scans re-run after the change.
 **Status:** FIXED — TESTED.
+
+---
+
+## BUG-054 — A rival bought an airframe on a six-month runway, then retrenched a week later
+
+**Severity:** P2. In 143 of 150 two-year campaigns on the shipped
+ranking the conservative archetype opened its third route, flew it full
+for three weeks, closed it, and sold the airframe it had bought the week
+before — an airline that looks, from the outside, like it cannot make
+up its mind, and pays the used-market spread for the privilege.
+**Found:** 2026-09-03, AE-041 — the scan's new opening classifier
+(`rival openings … CLOSED BEFORE A FULL MONTH 143`) and
+`ae-rival-scan 730 2039 ARN --follow "Crown Meridian"`
+(docs/AE041_ECONOMIC_CREDIBILITY.md §3).
+**Repro (MEASURED, seed 2039, Stockholm cast):** day 58 Crown Meridian
+opens Tokyo–Beijing with its fifth airframe (cash $23.0M, runway 14.8
+months on the February statement). Day 72, its decision slot: runway
+6.10 months ≥ the archetype's 6.0, so it buys a sixth AV90 for $19.9M
+and is left with $4.3M — 1.09 months. Day 79, next slot: runway 1.30 <
+1.5, retrench: the "worst loss-maker" by last closed month is
+Tokyo–Beijing, whose closed month is two days of February (−$29k, no
+revenue) while the route is flying 74 flights at 95% load and +$734k in
+the month under way; the route is closed and the week-old airframe sold.
+**Root cause:** two rules in `CompetitorAISystem`. The growth step
+tested the runway *before* the outlay and nothing after it, so an
+archetype whose airframe costs five months of its outgoings always
+landed at the retrench line; and `retrench` ranked routes by
+`economicsLastMonth` whether or not that month had been flown.
+**Fix layer:** Core AI, the decision loop only. `acquireAircraft` takes
+a cash floor — the archetype's own expansion runway in months of the
+latest statement's costs — and a signing or purchase that would leave
+less waits (a loan, where the archetype tolerates debt, is sized to hold
+the floor); `retrench` chooses among routes with a closed month of
+revenue. A floor at the retrench line alone was measured first and left
+one buy-and-sell a campaign (the next statement's costs pulled the
+runway back under the line); the archetype's own threshold left none.
+**Regression cover:** `RivalCredibilityTests.aRivalDoesNotBuyAnAirframeAndRetrenchAWeekLater`
+— seed 2039, 150 days: no rival route with a real schedule closes, no
+rival airframe goes within a month of arriving, Tokyo–Beijing is still
+flown. The AI, horizon, Munich and campaign suites re-run green.
+**Measured after (25 campaigns, seeds 2030–2034 × five starts):**
+early closures 143 per 150 → 0 of 25; airframes disposed of within
+thirty days 25 → 0; world-initiated entries unchanged (Munich day 61 in
+5 of 5, Singapore days 509–537 in 5 of 5). Full 150-campaign figures:
+docs/AE041_PROFIT_VS_REVENUE_REPORT.md §7.
+**Status:** FIXED — TESTED.
+
+---
+
+## BUG-055 — The player's Next Moves card ranks markets by passengers, and from New York it recommends two routes that cannot pay for an aircraft
+
+**Severity:** P1 (a player who follows the game's guidance from a
+curated start collapses). **Found:** 2026-09-03, AE-041 — the scan's
+`--player` narration, added because every New York campaign ended with
+zero player routes.
+**Repro (MEASURED, seed 2030, New York, the scripted campaign; 28 of 30
+seeds in every configuration):** day 1 New York–Chicago ($59M cash).
+Day 31: a used narrowbody and a lease, and the two markets the Next
+Moves card names — New York–Boston at $61 and New York–Toronto at $85 —
+opened at two rotations each ($8.3M left). −$811k a month; administration
+(fire sale of one aircraft) and collapse on day 430.
+`ae-fee-baseline --pairs JFK-BOS,JFK-YYZ,JFK-ORD --types PA184 --rotations 2 --months 3`:
+Boston $1.29M revenue, fees $1.15M (89%), direct operating profit $16k,
+−$1.17M a month after the $790k lease; Toronto $1.81M, direct $439k,
+−$747k after everything; Chicago $2.78M, direct $1.24M, +$47k.
+**Root cause:** `GameState.marketOpportunities` scores a market by the
+passengers an entrant captures over the incumbents (`pool / (1 +
+incumbents)`) — the passenger ranking the rival AI abandoned in AE-039
+because it puts every short large pair ahead of every longer one. Short
+pairs at hub fees are fee-bound for everyone (TD-031: the arrival
+passenger fee alone is 40–45% of a $60–69 fare), so the card's top two
+from New York are exactly the pairs no aircraft pays for. From Stockholm
+and Munich the same rule happens to name pairs that pay (London,
+Istanbul, Cairo), which is why the campaign twins never met it.
+**Fix shape:** rank the player's opportunities by what one airframe day
+sells — `CompetitorAISystem.airframeDayValue` on the revenue basis with
+the fleet's own airframe (or the era's, before any is owned) — the rule
+the rivals use, so the two cannot drift apart. Not done in AE-041: the
+change re-pins the February picks of every campaign twin and journey
+(`MunichHorizonTests` requires Munich–Istanbul among them;
+`CampaignUITests` fights London–Berlin from Stockholm; TD-028's save
+fixtures are worlds built on those picks), and a phase that changes them
+must re-photograph them. Recommended as the next phase
+(docs/AE041_PROFIT_VS_REVENUE_REPORT.md §16).
+**Status:** OPEN — root-caused, MEASURED, fix designed.
+
+---
+
+## BUG-055 — The game's own advice recommended routes that cannot pay for the aircraft they need
+
+**Severity:** P1 (a player who follows the game's guidance from a curated
+start can be bankrupted by it). **Found:** 2026-09-03, AE-041, measuring the
+New York campaign. **Root-caused and fixed:** 2026-09-03, AE-042.
+
+**Repro (MEASURED).** Found an airline anywhere and read Home. At **21 of the
+93 homes a player can pick**, the first suggestion either loses money after
+the airframe it needs or cannot be flown by anything the era sells:
+Manchester is told to fly London (243 km, **96% of revenue in airport fees**,
+**−$1.18M a month** in the ledger over six months), London is told to fly
+Paris (347 km, 85% in fees, **−$1.38M**), New York's second suggestion is
+Toronto (−$494k) and Singapore's is Kuala Lumpur (−$684k). London's first
+suggestion ranks **#44 of 44** of its own markets by what they keep;
+Manchester's ranks #42 of 45. From Nadi both suggestions are beyond every
+era airframe's range and the card shows them anyway. AE-041's scripted New
+York campaign following that advice went into administration and collapsed
+on day 430 in **28 of 30 seeds** (`ae-rival-scan 730 2030-2059 JFK --player`).
+
+**Root cause.** `GameState.marketOpportunities` scored markets as
+`pool / (1 + incumbents)` — the passengers a starter service would capture,
+and nothing else. Aircraft entered only as a boolean range-and-runway gate;
+fees, fuel, crew, maintenance, capacity, rotations, lease and cash appeared
+nowhere. Because the reference fare rises with distance while the two
+movement fees are charged per flight and do not, passengers-per-day is
+highest exactly where the fee share is worst, so the ranking was not merely
+imprecise at the short end — it was close to inverted. This is the rule the
+rival AI stopped using in AE-039 for the same reason
+(docs/AE042_BUG055_ROOT_CAUSE.md: CASE B, with CASE A as its cause and CASE E
+at fleetless homes).
+
+**Fix layer:** Core, the session read model only. `marketOpportunities` now
+puts markets that pay for the airframe they need ahead of those that do not,
+using `CompetitorAISystem.airframeDayValue(basis: .profit)` — the estimator
+AE-040 corrected and AE-041 shipped for rivals — less the airframe's lease
+and the crew and route payroll the economy charges. **The ranking itself is
+unchanged**: among markets that pay, the order is still passengers per
+incumbent. The gate reorders rather than deletes, so a home where nothing
+pays still gets advice and no player is stranded. `MarketOpportunity` carries
+the airframe it was judged on and the monthly figure, and the Next Moves card
+names them. No tuning value, fee, fare, demand parameter, rival behaviour or
+save format was touched.
+
+**Measured after.** Homes given advice that loses money or cannot be flown:
+**21 of 93 → 9 of 93**, and the nine that remain are BUG-056, not this. The
+AE-041 campaign, script unchanged and only the advice different: **28 of 30
+collapses → 0 of 30**. Following the advice for 730 days over 30 seeds at
+four homes: mean cash at New York $343.6M → $469.4M, Stockholm $282.2M →
+$386.2M, Barcelona $222.8M → $255.7M, Singapore $432.4M → $471.0M. The three
+curated starts and Munich — the worlds the AE-039 and AE-041 twins and the UI
+journeys are pinned on — are **unchanged**.
+
+**Regression cover:** `NextMovesTests` (six tests): every recommended market
+pays for its aircraft at seven homes; the five measured traps are gone from
+the advice and still listed honestly in the route sheet; the curated starts'
+advice is unchanged; a recommendation names a flyable airframe; a home where
+nothing pays still gets advice; and a New York campaign that follows Home's
+advice through real commands for 500 days ends active, with no
+administration and more cash than it started with.
+**Status:** FIXED — TESTED (457 of 457, locally and in CI run 135) and
+OBSERVED: the New York journey's frames show the card offering Mexico City and
+Miami with the airframe named and a positive month, Toronto gone, and the
+player solvent and debt-free at day 435, five days past where the old advice
+ended the game (docs/AE042_FINAL_REPORT.md §12).
+
+---
+
+## BUG-056 — The aircraft market recommends the largest airframe whatever the route is for
+
+**Severity:** P2. **Found:** 2026-09-03, AE-042. **Re-measured:** 2026-09-04,
+AE-043 — smaller and differently shaped than first recorded.
+
+**Repro (MEASURED, `ae-advice market`).** The aircraft market (`FleetView`)
+sorts by **seats, descending**, defaults to a lease, and does not hide
+era-locked types, so a startup-era player scrolls past **seven unbuyable rows**
+to reach the first one they can take: a 184-seat narrowbody at $790k a month.
+`AircraftShopSheet()` takes no arguments — no route ever reaches it.
+
+**What is really wrong, on six months of real ledger per row (AE-043):**
+
+| Kind | Homes | Evidence |
+| --- | --- | --- |
+| The first buyable row **cannot fly the recommended route** — a runway-class block at the home airport | **4** — BGO, BLL, NCE, VCE | `routeEligibility`, exact |
+| The first buyable row **loses money in the ledger** | **2** — FRA −$248k/mo, KEF −$311k/mo | six months flown |
+| Estimator said the row was wrong and the ledger says it was fine | 5 — HAM, DUB, EDI, GOT, PMI | false positives |
+
+So **6 of 93 homes**, not the 9 first recorded, and half of it is a
+flyability problem rather than an economic one. Reykjavík is the one home
+where a smaller aircraft is worth a fortune: **−$311k on the 184-seat
+narrowbody against +$283k on a 90-seat regional jet**, a $594k a month swing.
+
+**Root cause.** Two surfaces that never consult each other: the recommendation
+is judged on an airframe and the market is sorted without reference to any
+route. Compounded by the checklist teaching `acquireAircraft` **before**
+`openRoute`, so the first purchase happens when no route exists at all.
+
+**Why AE-043 did not fix it.** The fix was built — a pinned "recommended for
+this route" row above an untouched market — and then withheld, because the
+aircraft it pinned is **worse in the ledger at six of the seven homes where
+the comparison is possible**. `CompetitorAISystem.airframeDayValue` takes
+`passengersPerDay` as an input that does not vary with the aircraft, while the
+simulation's captured demand rises with the capacity offered, so the estimator
+is biased against large aircraft by construction: forecast error −2% to −9% on
+small airframes and **+13% to +99% on large ones** on the same pairs. No
+ranking of airframes can be built on it (TD-033).
+
+**Fix shape.** Blocked on TD-033. Once the estimator's demand forecast
+responds to the service offered, Option C from
+docs/AE043_AIRCRAFT_SELECTION_DECISION.md is implemented and measured and can
+be restored. The four runway-blocked homes need no estimator at all and could
+be addressed separately.
+**Status:** OPEN — reproduced, root-caused, re-measured; fix built, measured
+against the ledger, and WITHHELD on stop condition 3
+(docs/AE043_AIRCRAFT_RECOMMENDATION_AUDIT.md).

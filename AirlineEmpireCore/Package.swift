@@ -24,6 +24,11 @@ let package = Package(
         // route actually paid, against what the AI's estimator would have
         // said (docs/FEE_ECONOMY_BASELINE.md).
         .executable(name: "ae-fee-baseline", targets: ["AEFeeBaseline"]),
+        // Reads the game's own advice — `marketOpportunities`, narrowed the
+        // way Home narrows it — and asks what following it is worth: the
+        // economics of each recommendation, and a campaign that does what it
+        // says (docs/AE042_NEXT_MOVES_BASELINE.md).
+        .executable(name: "ae-advice", targets: ["AEAdvice"]),
     ],
     targets: [
         // Swift 6 language mode: strict concurrency is on by default.
@@ -60,6 +65,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "AEFeeBaseline",
+            dependencies: ["AirlineEmpireCore"]
+        ),
+        .executableTarget(
+            name: "AEAdvice",
             dependencies: ["AirlineEmpireCore"]
         ),
     ]

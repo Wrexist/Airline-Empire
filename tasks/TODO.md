@@ -5,6 +5,106 @@ Active task list. Format follows the Master Task Rule (see
 
 ---
 
+## AE-043
+**Title:** The right aircraft — BUG-056
+**Purpose:** Make the aircraft-selection experience consistent with the route
+economics Next Moves and the simulation actually evaluate.
+**Dependencies:** AE-042 (which recorded BUG-056).
+**Implementation notes:**
+- 2026-09-04: read the pipeline first (docs/AE043_AIRCRAFT_SELECTION_BASELINE.md).
+  `AircraftShopSheet()` takes no arguments — no route reaches the market. Sorts
+  by seats descending, `hidesLocked` off, so seven unbuyable rows sit above the
+  first buyable one. The checklist buys an aircraft *before* it opens a route.
+- Reproduced with a new `ae-advice market` mode that models the shipped sheet's
+  own ordering: **11 of 93** homes exposed (not 9 — AE-042's model filtered to
+  flyable types, which the real sheet cannot do), and at **four** the first
+  buyable row cannot fly the recommended route. No static sort is correct: on
+  thin routes every airframe carries the whole pool, on thick ones capacity
+  binds.
+- Built Option C — a pinned "Recommended for X–Y" row above an untouched
+  fourteen-row market, one Core derivation reusing `airframeResult` on era
+  specs, ten passing tests. Against the estimator: dangerous first
+  recommendations 9 → 0.
+- **Withheld it.** Six months of real flying per row showed the pinned airframe
+  is worse in the ledger at **6 of the 7** homes where both can fly (Hamburg
+  +$158k vs −$93k; Dublin +$151k vs −$75k). Stop condition 3. All product code
+  reverted; `AircraftAdvice.swift` and its tests deleted rather than left
+  dormant.
+- Root cause of *that*: `airframeDayValue` takes `passengersPerDay` as one
+  figure per market that does not vary with the aircraft, while the simulation's
+  captured demand rises with capacity offered — forecast error −2% to −9% on
+  small airframes, **+13% to +99%** on large ones. Re-measured and re-scoped
+  onto TD-033, which now blocks BUG-056.
+- On ledger evidence BUG-056 is **6 of 93**, not 11: four flyability, two
+  economic, five were the estimator's false positives.
+**Acceptance criteria:** BUG-056 reproduced or disproven; root cause
+documented; at least three designs measured; a fix only if justified; AE-042's
+battery re-run; New York safe; nothing weakened. All met — with the fix
+withheld rather than forced.
+**Tests:** ten written and passing, then removed with the fix; AE-042's 457
+unchanged and re-run; 30-seed New York scan; 18 ledger combinations.
+**Status:** see tasks/CURRENT_PHASE.md. BUG-056 OPEN, blocked on TD-033.
+
+---
+
+## AE-042
+**Title:** Trust the advice — BUG-055
+**Purpose:** Answer whether a new player can safely follow Next Moves, and fix
+the recommendation only where evidence demands it.
+**Dependencies:** AE-041 (which found and root-caused BUG-055).
+**Implementation notes:**
+- 2026-09-03: measured before changing anything with a new `ae-advice`
+  executable (audit / follow / sweep / cost). 21 of the 93 pickable homes
+  were given a first recommendation that loses money after its airframe or
+  cannot be flown; the estimator was validated against six months of real
+  ledger on seven pairs first. Root cause CASE B (weak eligibility gate) with
+  CASE A and CASE E; documented in docs/AE042_BUG055_ROOT_CAUSE.md.
+- Shipped the gate, not a new ranking: markets that pay for the airframe they
+  need come first, the passenger order is untouched among them, and the
+  recommendation names the airframe it was judged on. 21 of 93 → 9 of 93
+  dangerous; AE-041's New York campaign 28 of 30 collapses → 0 of 30; the
+  curated starts unchanged.
+- Recorded BUG-056 (the aircraft market sorts by seats whatever the route is
+  for), which the gate deliberately does not fix.
+**Acceptance criteria:** every recommendation at the curated starts and New
+York pays for its aircraft; no curated start regresses; full Core suite green
+with nothing weakened; the corrected advice photographed in CI.
+**Tests:** `NextMovesTests` (6); full Core suite; `EconomyJourneyUITests.testNewYorkAdviceIsWorthFollowing`.
+**Status:** see tasks/CURRENT_PHASE.md.
+
+---
+
+## AE-041
+**Title:** Profit versus revenue — the rival strategy test
+**Purpose:** Answer with evidence whether rivals should rank markets by
+airframe-day profit with a horizon of 24 instead of the shipped
+airframe-day revenue at sixteen (AE-040's recommendation, TD-030).
+**Dependencies:** AE-040 (the corrected fee scale and estimator).
+**Implementation notes:**
+- 2026-09-03: four configurations × 150 campaigns (seeds 2030–2059,
+  five curated starts, two years), followed through the rivals' own
+  ledgers with the extended `ae-rival-scan` (`--player`, `--follow`,
+  `--openings`, the opening classifier). Profit / 24 reaches Stockholm
+  (day 187, every seed) and loses Munich and Singapore for five years;
+  it also fails the archetype battery's margin line (three runs at 65%).
+  Revenue / 16 stays. Decision and numbers:
+  docs/AE041_PROFIT_VS_REVENUE_REPORT.md, docs/AE041_STRATEGY_BASELINE.md,
+  docs/AE041_CURATED_START_AUDIT.md, docs/AE041_ECONOMIC_CREDIBILITY.md.
+- Found and fixed BUG-054 (a rival bought an airframe on a six-month
+  runway and retrenched a week later, closing the full route it had just
+  opened; 143 of 150 campaigns) in the AI decision loop, with
+  `RivalCredibilityTests` as its twin. Found and recorded BUG-055 (the
+  Next Moves ranking sends the New York player to two fee-bound pairs
+  and the scripted campaign collapses on day 430; 28 of 30 seeds) and
+  TD-032 (a rival's entry can roll off the 512-event feed in a day).
+**Acceptance criteria:** the question answered with a table, every
+battery green on what ships, no test weakened, the Munich arrival
+unchanged on screen.
+**Tests:** Core suite green (count in the report); UI 19 journeys (CI).
+**Status:** see tasks/CURRENT_PHASE.md.
+
+---
+
 ## AE-023
 **Title:** macOS queue — compile, validate, and polish the authored app
 **Purpose:** Take the app target from AUTHORED to PRODUCTION READY: generate

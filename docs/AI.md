@@ -31,8 +31,11 @@ order per slot:
 
 1. **Survive** (cash runway < 1.5 months of costs, measured from the last
    statement or a structural estimate): close the worst loss-maker
-   (negative closed-month direct P&L), shed idle metal (return leases,
-   sell owned).
+   (negative closed-month direct P&L, among routes that flew a closed
+   month — a route opened in a month's last days has a closed month of
+   costs and no revenue, and AE-041 found it read as the worst
+   loss-maker while flying full, BUG-054), shed idle metal (return
+   leases, sell owned).
 2. **Employ idle aircraft**: thicken a hot route (load > 0.82) it can
    serve **and that cannot already fly its frequency with the aircraft it
    has** (the scheduler's own capacity arithmetic; AE-037 BUG-042 — a
@@ -50,7 +53,9 @@ order per slot:
    city a thousand kilometres from a hub never came up at any horizon
    size (docs/HORIZON_AUDIT.md). The profit basis — the same less the
    flight system's costs — is measured, kept behind `rankingBasis` for
-   the scan and probe, and not shipped (TD-030). Its cost lines are the
+   the scan and probe, and not shipped: AE-041 compared both bases at
+   horizons 16 and 24 across 600 campaigns and kept the revenue basis at
+   sixteen (docs/AE041_PROFIT_VS_REVENUE_REPORT.md; TD-030 closed). Its cost lines are the
    flight system's own arithmetic ahead of time: fuel, the seat-scaled
    movement fees, the arrival passenger fee, crew, onboard service, and
    maintenance as the fleet system books it — checks per condition lost,
@@ -60,8 +65,14 @@ order per slot:
 3. **Tune the network**: respond to >12% undercuts per archetype policy;
    push frequency on >0.82 loads; trim on <0.35; close persistent losers.
 4. **Grow** (runway ≥ archetype threshold, fleet < cap 40): lease or buy
-   used per preference; if short of cash and within the archetype's debt
-   comfort, take a loan sized to the purchase and buy.
+   used per preference — by an outlay that leaves the archetype's
+   threshold in the bank afterwards (AE-041, BUG-054: the conservative
+   archetype spent six months of runway down to one in a slot and
+   retrenched the next, closing the route it had just opened and selling
+   the airframe it had just bought, in 143 of 150 campaigns); a signing
+   or purchase that would breach it waits for a richer month. If short
+   of cash and within the archetype's debt comfort, take a loan sized to
+   the purchase and the floor, and buy.
 
 Everything is deterministic: sorted iteration, no RNG in decisions (the
 world's randomness reaches AI only through outcomes).

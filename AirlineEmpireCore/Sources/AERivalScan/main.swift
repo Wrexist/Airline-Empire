@@ -18,6 +18,14 @@ import AirlineEmpireCore
 // player's airports, price and frequency moves against the player, and
 // collapses. Nothing here changes the simulation; every line is MEASURED
 // from the real engine.
+//
+// AE-041 (docs/AE041_STRATEGY_BASELINE.md) added the rival's side of every
+// move: each world-initiated entry followed through the rival's own ledger
+// (`⇒ RIVAL LEDGER`), every rival opening anywhere classified by its later
+// months (`rival openings N: SOUND … BAD OPENING …`), routes opened and
+// closed, idle airframes, airframes gone within thirty days, the scripted
+// player's fate, and three narrations: `--player`, `--follow NAME`,
+// `--openings`.
 
 let arguments = CommandLine.arguments
 let days = Int(arguments.count > 1 ? arguments[1] : "730") ?? 730
@@ -34,6 +42,20 @@ let homes: [AirportCode] = (arguments.count > 3 ? arguments[3] : "ARN")
 let horizonMode = arguments.contains("--horizon")
 /// `--rivals`: print every rival's end state after each campaign (AE-040).
 let rivalsMode = arguments.contains("--rivals")
+/// `--player`: narrate the scripted player's own campaign — every route it
+/// opens or loses, and the day its status changes — with cash and fleet
+/// (AE-041: the New York script ended every campaign with no routes).
+let playerMode = arguments.contains("--player")
+/// `--openings`: list every rival opening in order — the day, the rival,
+/// the pair and the AI's own profit estimate at the rotations it opened
+/// with — to read the order a hub works through its markets.
+let openingsMode = arguments.contains("--openings")
+/// `--follow NAME`: narrate one rival's campaign the way `--player` narrates
+/// the player's — every route opened or lost, with the airline's cash and
+/// each surviving route's last closed month on the day of a loss.
+let followName: String? = arguments.firstIndex(of: "--follow").flatMap {
+    arguments.indices.contains($0 + 1) ? arguments[$0 + 1] : nil
+}
 /// `--limit N`: run with a candidate horizon of N airports instead of the
 /// shipped `candidateMarketLimit`, for the AE-039 horizon sweep. The
 /// shipped tuning file is not touched; the catalog is rebuilt in memory.
@@ -93,6 +115,81 @@ struct CampaignResult {
     var horizon: [String] = []
     /// `--rivals`: every rival's end state (AE-040).
     var rivalStates: [String] = []
+    /// AE-041: what each world-initiated entry cost or earned the rival —
+    /// the AI's estimate on the day it opened, and the route's own ledger
+    /// a month, a quarter and half a year on, and at the end.
+    var entryEconomics: [String] = []
+    /// AE-041: every rival route opened and closed over the campaign
+    /// (any pair, not only the player's), and the rival airframes idle
+    /// on the last day.
+    var rivalRoutesOpened = 0
+    var rivalRoutesClosed = 0
+    var idleRivalAircraft = 0
+    /// AE-041: rival airframes acquired and gone again within thirty days
+    /// while the airline lived — bought and sold, or leased and returned,
+    /// the retrench churn of BUG-054.
+    var quickDisposals = 0
+    /// AE-041: the scripted player's own fate — status at the end, cash,
+    /// and the day it went into administration or collapsed, if it did.
+    var playerFate = ""
+    /// `--player`: the player's route openings, closures and status changes.
+    var playerStory: [String] = []
+    /// AE-041: every rival opening classified by its own later ledger, and
+    /// the ones that were not plainly sound, one line each.
+    var openingSummary = ""
+    var openingVerdicts: [String] = []
+}
+
+/// AE-041: every rival opening anywhere, followed through its own ledger —
+/// was the market worth opening by the rival's own later months?
+struct OpeningFollowUp {
+    let day: Int
+    let rival: String
+    let archetype: String
+    let market: String
+    let routeID: RouteID
+    let estimatedProfitPerDay: Double?
+    var directAt90: Int64?
+    var directAt180: Int64?
+    var lastSeenDirect: Int64 = 0
+    var lastSeenMonthsFlown = 0
+    var closedDay: Int?
+    /// The route as last seen before it vanished — what it had flown, how
+    /// full it was, what it was earning, who was on it.
+    var lastSeen: String = ""
+    var earnedAtSomePoint = false
+
+    enum Verdict: String {
+        case sound = "SOUND"
+        case losingButFlown = "LOSS-MAKING, STILL FLOWN"
+        case closedLosing = "BAD OPENING"
+        case closedAfterEarning = "CLOSED AFTER EARNING"
+        case closedEarning = "CLOSED WHILE EARNING"
+        case closedEarly = "CLOSED BEFORE A FULL MONTH"
+        case tooYoung = "TOO YOUNG TO JUDGE"
+    }
+    func verdict(at lastDay: Int) -> Verdict {
+        if closedDay != nil {
+            if lastSeenMonthsFlown == 0 { return .closedEarly }
+            if lastSeenDirect >= 0 { return .closedEarning }
+            return earnedAtSomePoint ? .closedAfterEarning : .closedLosing
+        }
+        if let directAt180 { return directAt180 > 0 ? .sound : .losingButFlown }
+        if let directAt90 { return directAt90 > 0 ? .sound : .losingButFlown }
+        if lastDay - day >= 60 { return lastSeenDirect > 0 ? .sound : .losingButFlown }
+        return .tooYoung
+    }
+}
+
+/// AE-041: one world-initiated entry followed through the rival's ledger.
+struct EntryFollowUp {
+    let day: Int
+    let rival: String
+    let market: String
+    let routeID: RouteID
+    var opening: String
+    var checkpoints: [String] = []
+    var end: String?
 }
 
 /// Why a rival at `base` can or cannot come to the player's pair `base`–`far`:
@@ -232,6 +329,121 @@ func runCampaign(seed: UInt64, home: AirportCode) -> CampaignResult {
     // whether a rival was already there.
     var playerPairs: [Route.Market: (day: Int, contestedAtOpen: Bool)] = [:]
     var pendingImpact: [(market: Route.Market, day: Int, rival: String)] = []
+    var followUps: [EntryFollowUp] = []
+    var openings: [OpeningFollowUp] = []
+    var playerRouteSet: Set<String> = []
+    var playerStatus: AirlineStatus = .active
+    var followedRouteSet: Set<String> = []
+    var rivalAirframes: [AircraftID: (owner: AirlineID, day: Int)] = [:]
+    func narrateFollowed(_ state: GameState, day: Int) {
+        guard let followName, let airline = state.airlines.values.first(where: { $0.name == followName }) else { return }
+        let routesNow = Set(state.routes(of: airline.id).map { "\($0.origin.raw)-\($0.destination.raw)" })
+        let cash = state.ledger.balance(of: airline.id).compact
+        let statement = state.finance.byAirline[airline.id]?.latest
+        let costs = statement.map { (-$0.operatingExpenses.asDouble - $0.financingCost.asDouble) } ?? 0
+        let runway = costs > 0 ? String(format: "%.2f", state.ledger.balance(of: airline.id).asDouble / costs) : "n/a"
+        let opened = routesNow.subtracting(followedRouteSet).sorted()
+        let lost = followedRouteSet.subtracting(routesNow).sorted()
+        for pair in opened {
+            result.playerStory.append("FOLLOW \(followName) D\(String(format: "%03d", day)) opened \(pair) · cash \(cash) · fleet \(state.fleet(of: airline.id).count) · runway \(runway) months")
+        }
+        for pair in lost {
+            let survivors = state.routes(of: airline.id).map { "\($0.origin.raw)-\($0.destination.raw) last month \($0.economicsLastMonth.directOperatingProfit.compact) (rev \(Money(cents: $0.economicsLastMonth.revenueCents).compact)) flights \($0.stats.flightsCompleted)" }
+            result.playerStory.append("FOLLOW \(followName) D\(String(format: "%03d", day)) LOST \(pair) · cash \(cash) · fleet \(state.fleet(of: airline.id).count) (idle \(state.fleet(of: airline.id).filter { $0.assignedRoute == nil }.count)) · runway \(runway) months · statement costs \(Money(rounding: costs).compact) · survivors: \(survivors.joined(separator: "; "))")
+        }
+        if !lost.isEmpty || !opened.isEmpty {
+            // The day before a loss, every route's closed month, so the
+            // retrench choice can be read.
+        }
+        followedRouteSet = routesNow
+        let decisionDay = (state.clock.now.dayIndex + airline.id.raw) % Int64(catalog.tuning.ai.decisionIntervalDays) == 0
+        result.playerStory.append("FOLLOW-DAY \(followName) D\(String(format: "%03d", day)) cash \(cash) · statement opex \(statement?.operatingExpenses.compact ?? "-") financing \(statement?.financingCost.compact ?? "-") revenue \(statement?.operatingRevenue.compact ?? "-") · runway \(runway) · fleet \(state.fleet(of: airline.id).count) idle \(state.fleet(of: airline.id).filter { $0.assignedRoute == nil }.count) · routes \(routesNow.count)\(decisionDay ? " · DECISION DAY" : "")")
+    }
+    var followedYesterday: [String] = []
+
+    func narratePlayer(_ state: GameState, day: Int) {
+        guard playerMode, let me = state.airlines[player] else { return }
+        let routesNow = Set(state.routes(of: player).map { "\($0.origin.raw)-\($0.destination.raw) \($0.dailyRoundTrips)x @\($0.ticketPrice.compact) \($0.assignedAircraft.count)ac" })
+        let cash = state.ledger.balance(of: player).compact
+        for opened in routesNow.subtracting(playerRouteSet).sorted() {
+            result.playerStory.append("PLAYER D\(String(format: "%03d", day)) opened \(opened) · cash \(cash) · fleet \(state.fleet(of: player).count)")
+        }
+        for gone in playerRouteSet.subtracting(routesNow).sorted() {
+            result.playerStory.append("PLAYER D\(String(format: "%03d", day)) lost \(gone) · cash \(cash) · fleet \(state.fleet(of: player).count)")
+        }
+        playerRouteSet = routesNow
+        if me.status != playerStatus {
+            playerStatus = me.status
+            let month = state.finance.byAirline[player]?.latest
+            result.playerStory.append("PLAYER D\(String(format: "%03d", day)) status \(me.status) · cash \(cash) · fleet \(state.fleet(of: player).count) · administrations \(me.administrationCount) · last statement revenue \(month?.operatingRevenue.compact ?? "-") operating profit \(month?.operatingProfit.compact ?? "-") financing \(month?.financingCost.compact ?? "-")")
+        }
+    }
+    func pct(_ value: Double) -> String { String(format: "%.0f%%", value * 100) }
+    /// The AI's own estimate for the pair the rival just opened, recomputed
+    /// on the day of the opening with the rival's airframe and fare, against
+    /// the incumbents that were there before it (its own new route excluded):
+    /// what an airframe day sells and keeps by `airframeDayValue` on both
+    /// bases, at the scheduler's rotations and at the two it opened with.
+    /// The profit-basis airframe-day estimate for a route the rival just
+    /// opened, per day at the rotations it opened with — nil when no
+    /// airframe is assigned yet.
+    func estimatedProfitPerDay(route: Route, state: GameState) -> Double? {
+        guard let rival = state.airlines[route.airline], let profile = rival.aiProfile,
+              let aircraftID = route.assignedAircraft.first, let aircraft = state.aircraft[aircraftID],
+              let spec = catalog.aircraftType(aircraft.typeCode),
+              let origin = catalog.airport(route.origin), let destination = catalog.airport(route.destination)
+        else { return nil }
+        let pool = DemandSystem.demandPool(from: route.origin, to: route.destination, date: state.currentDate,
+                                           economicIndex: state.world.economicIndex, catalog: catalog)
+        let quality = DemandSystem.representativeStarterQuality(tuning: catalog.tuning.demand)
+            * rival.reputation.demandMultiplier(tuning: catalog.tuning.reputation)
+        let incumbents = state.routes.values.filter {
+            $0.sameMarket(origin: route.origin, destination: route.destination) && $0.id != route.id
+        }
+        let passengers = DemandSystem.poolAvailableToEntrant(
+            pool: pool, fareRatio: profile.priceFactor, quality: quality,
+            incumbents: incumbents, state: state, catalog: catalog)
+        return CompetitorAISystem.airframeDayValue(
+            distanceKm: route.distanceKm, passengersPerDay: passengers, spec: spec,
+            fareRatio: profile.priceFactor, serviceTier: rival.serviceTier,
+            origin: origin, destination: destination, state: state, catalog: catalog,
+            rotationsPerDay: route.dailyRoundTrips, basis: .profit)
+    }
+    func estimate(route: Route, state: GameState) -> String {
+        guard let rival = state.airlines[route.airline], let profile = rival.aiProfile,
+              let aircraftID = route.assignedAircraft.first, let aircraft = state.aircraft[aircraftID],
+              let spec = catalog.aircraftType(aircraft.typeCode),
+              let origin = catalog.airport(route.origin), let destination = catalog.airport(route.destination)
+        else { return "no airframe assigned" }
+        let pool = DemandSystem.demandPool(from: route.origin, to: route.destination, date: state.currentDate,
+                                           economicIndex: state.world.economicIndex, catalog: catalog)
+        let quality = DemandSystem.representativeStarterQuality(tuning: catalog.tuning.demand)
+            * rival.reputation.demandMultiplier(tuning: catalog.tuning.reputation)
+        let incumbents = state.routes.values.filter {
+            $0.sameMarket(origin: route.origin, destination: route.destination) && $0.id != route.id
+        }
+        let passengers = DemandSystem.poolAvailableToEntrant(
+            pool: pool, fareRatio: profile.priceFactor, quality: quality,
+            incumbents: incumbents, state: state, catalog: catalog)
+        func value(_ basis: CompetitorAISystem.RankingBasis, rotations: Int?) -> Double {
+            CompetitorAISystem.airframeDayValue(
+                distanceKm: route.distanceKm, passengersPerDay: passengers, spec: spec,
+                fareRatio: profile.priceFactor, serviceTier: rival.serviceTier,
+                origin: origin, destination: destination, state: state, catalog: catalog,
+                rotationsPerDay: rotations, basis: basis)
+        }
+        let rotations = FlightSchedulingSystem.roundTripsPerAircraftPerDay(
+            distanceKm: route.distanceKm, spec: spec, ops: catalog.tuning.ops)
+        return String(format: "%@ (%d seats, %d km) · entrant pool %d pax/day of %d · airframe day at %dx: revenue %d profit %d · at %dx opened: profit %d/day (%@/month)",
+                      spec.code.raw as NSString, spec.seats, route.distanceKm, Int(passengers), Int(pool.total),
+                      rotations, Int(value(.revenue, rotations: nil)), Int(value(.profit, rotations: nil)),
+                      route.dailyRoundTrips, Int(value(.profit, rotations: route.dailyRoundTrips)),
+                      Money(rounding: value(.profit, rotations: route.dailyRoundTrips) * 30).compact as NSString)
+    }
+    func ledger(_ route: Route) -> String {
+        let month = route.economicsLastMonth
+        return "direct \(month.directOperatingProfit.compact) on revenue \(Money(cents: month.revenueCents).compact) fees \(Money(cents: month.feesCents).compact) · load \(pct(route.stats.loadFactor)) · \(route.dailyRoundTrips)x @\(route.ticketPrice.compact) · \(route.assignedAircraft.count) aircraft"
+    }
 
     /// The player's pairs are recorded the moment they exist, before the
     /// world gets its day: a rival that opens the same pair during the
@@ -301,6 +513,16 @@ func runCampaign(seed: UInt64, home: AirportCode) -> CampaignResult {
         if date.month == 1, date.day == 2 { lastExpansionMonth = 1 }
 
         state = engine.state
+        narratePlayer(state, day: day)
+        if let followName, let airline = state.airlines.values.first(where: { $0.name == followName }) {
+            let today = state.routes(of: airline.id).map { "\($0.origin.raw)-\($0.destination.raw) last month \($0.economicsLastMonth.directOperatingProfit.compact) (rev \(Money(cents: $0.economicsLastMonth.revenueCents).compact)) this month \($0.economicsThisMonth.directOperatingProfit.compact) flights \($0.stats.flightsCompleted) · \($0.assignedAircraft.count)ac" }
+            let routesNow = Set(state.routes(of: airline.id).map { "\($0.origin.raw)-\($0.destination.raw)" })
+            if !followedRouteSet.subtracting(routesNow).isEmpty {
+                result.playerStory.append("FOLLOW \(followName) D\(String(format: "%03d", day - 1)) (the day before): \(followedYesterday.joined(separator: "; "))")
+            }
+            narrateFollowed(state, day: day)
+            followedYesterday = today
+        }
         let now = rivalRoutes(state)
         // Pairs the player opened during this day's script, before the
         // world's turn tomorrow.
@@ -317,10 +539,62 @@ func runCampaign(seed: UInt64, home: AirportCode) -> CampaignResult {
                     market: label(shot.1),
                     detail: "@\(shot.2.compact) \(shot.3)x · \(share) · you opened it day \(playerPairs[shot.1]?.day ?? 0)"))
                 pendingImpact.append((shot.1, day, name(shot.0)))
+                if let route = state.routes[id] {
+                    followUps.append(EntryFollowUp(day: day, rival: name(shot.0), market: label(shot.1),
+                                                   routeID: id, opening: estimate(route: route, state: state)))
+                }
             } else if myAirports.contains(shot.1.a) || myAirports.contains(shot.1.b) {
                 result.moves.append(RivalMoveRecord(
                     day: day, rival: name(shot.0), archetype: archetype(shot.0), kind: .airportEntry,
                     market: label(shot.1), detail: "@\(shot.2.compact) \(shot.3)x"))
+            }
+        }
+        for (id, acquired) in rivalAirframes where state.aircraft[id] == nil {
+            if state.airlines[acquired.owner]?.status == .active, day - acquired.day <= 30 {
+                result.quickDisposals += 1
+            }
+            rivalAirframes[id] = nil
+        }
+        for aircraft in state.aircraft.values
+        where state.airlines[aircraft.owner]?.kind == .ai && rivalAirframes[aircraft.id] == nil {
+            rivalAirframes[aircraft.id] = (aircraft.owner, day)
+        }
+        result.rivalRoutesOpened += now.keys.filter { previous[$0] == nil }.count
+        result.rivalRoutesClosed += previous.keys.filter { now[$0] == nil }.count
+        for id in now.keys.sorted() where previous[id] == nil {
+            guard let route = state.routes[id] else { continue }
+            openings.append(OpeningFollowUp(
+                day: day, rival: name(route.airline), archetype: archetype(route.airline),
+                market: label(route.market), routeID: id,
+                estimatedProfitPerDay: estimatedProfitPerDay(route: route, state: state)))
+        }
+        for index in openings.indices where openings[index].closedDay == nil {
+            let opening = openings[index]
+            if let route = state.routes[opening.routeID] {
+                // A closed month is only meaningful once the route has flown
+                // one: the first statement after opening is a partial month.
+                if route.economicsLastMonth.revenueCents > 0 {
+                    openings[index].lastSeenDirect = route.economicsLastMonth.directOperatingProfit.cents
+                    openings[index].lastSeenMonthsFlown = 1
+                    if route.economicsLastMonth.directOperatingProfit.cents > 0 { openings[index].earnedAtSomePoint = true }
+                }
+                let airline = state.airlines[route.airline]
+                openings[index].lastSeen = "flights \(route.stats.flightsCompleted)/\(route.stats.flightsCancelled) cancelled · seats flown \(route.stats.seatsFlown) · load \(pct(route.stats.loadFactor)) · \(route.dailyRoundTrips)x · \(route.assignedAircraft.count) aircraft · this month direct \(route.economicsThisMonth.directOperatingProfit.compact) on \(Money(cents: route.economicsThisMonth.revenueCents).compact) · airline cash \(state.ledger.balance(of: route.airline).compact) fleet \(state.fleet(of: route.airline).count) status \(airline.map { "\($0.status)" } ?? "?")"
+                if day == opening.day + 90 { openings[index].directAt90 = route.economicsLastMonth.directOperatingProfit.cents }
+                if day == opening.day + 180 { openings[index].directAt180 = route.economicsLastMonth.directOperatingProfit.cents }
+            } else {
+                openings[index].closedDay = day
+            }
+        }
+        for index in followUps.indices where followUps[index].end == nil {
+            let followed = followUps[index]
+            if let route = state.routes[followed.routeID] {
+                for offset in [30, 90, 180] where day == followed.day + offset {
+                    followUps[index].checkpoints.append("+\(offset)d: \(ledger(route))")
+                }
+            } else {
+                let collapsed = state.airlines.values.first { $0.name == followed.rival }?.status == .collapsed
+                followUps[index].end = "\(collapsed ? "COLLAPSED" : "CLOSED") on day \(day) (\(day - followed.day) days after opening)"
             }
         }
         for (id, shot) in previous.sorted(by: { $0.key < $1.key }) where now[id] == nil {
@@ -421,6 +695,34 @@ func runCampaign(seed: UInt64, home: AirportCode) -> CampaignResult {
         }
     }
     let final = engine.state
+    for followed in followUps {
+        let end = followed.end ?? final.routes[followed.routeID].map { "alive on day \(days): \(ledger($0))" } ?? "gone"
+        result.entryEconomics.append("D\(String(format: "%03d", followed.day)) \(followed.market) \(followed.rival) · opened with \(followed.opening)\(followed.checkpoints.map { " · " + $0 }.joined()) · \(end)")
+    }
+    var verdicts: [OpeningFollowUp.Verdict: Int] = [:]
+    for opening in openings {
+        let verdict = opening.verdict(at: days)
+        verdicts[verdict, default: 0] += 1
+        if verdict != .sound && verdict != .tooYoung {
+            result.openingVerdicts.append(
+                "\(verdict.rawValue) \(opening.market) \(opening.rival) [\(opening.archetype)] opened D\(String(format: "%03d", opening.day)) est \(opening.estimatedProfitPerDay.map { "\(Int($0))/day" } ?? "n/a")"
+                + (opening.closedDay.map { " · closed D\(String(format: "%03d", $0)) after \($0 - opening.day) days · last seen: \(opening.lastSeen)" } ?? "")
+                + " · last closed month direct \(Money(cents: opening.lastSeenDirect).compact)"
+                + (opening.directAt90.map { " · +90d \(Money(cents: $0).compact)" } ?? "")
+                + (opening.directAt180.map { " · +180d \(Money(cents: $0).compact)" } ?? ""))
+        }
+    }
+    if openingsMode {
+        for opening in openings {
+            result.openingVerdicts.append("OPENED D\(String(format: "%03d", opening.day)) \(opening.market) \(opening.rival) [\(opening.archetype)] est \(opening.estimatedProfitPerDay.map { "\(Int($0))/day" } ?? "n/a") → \(opening.verdict(at: days).rawValue)")
+        }
+    }
+    result.openingSummary = "rival openings \(openings.count): " + [OpeningFollowUp.Verdict.sound, .losingButFlown, .closedLosing, .closedAfterEarning, .closedEarning, .closedEarly, .tooYoung]
+        .map { "\($0.rawValue) \(verdicts[$0] ?? 0)" }.joined(separator: " · ")
+    result.idleRivalAircraft = final.aircraft.values.filter { aircraft in
+        aircraft.assignedRoute == nil && aircraft.isOperational
+            && final.airlines[aircraft.owner]?.kind == .ai
+    }.count
     if rivalsMode {
         // Each rival at the end: what it flies, what it owns, whether its
         // routes pay, and how much of its route revenue the airports took
@@ -450,6 +752,9 @@ func runCampaign(seed: UInt64, home: AirportCode) -> CampaignResult {
         }
     }
     result.playerRoutes = final.routes(of: player).count
+    if let me = final.airlines[player] {
+        result.playerFate = "\(me.status) · cash \(final.ledger.balance(of: player).compact) · fleet \(final.fleet(of: player).count) · administrations \(me.administrationCount)"
+    }
     result.era = "\(final.progression.era)"
     result.rivalsAlive = final.airlines.values.filter { $0.kind == .ai && $0.status == .active }.count
     return result
@@ -477,6 +782,11 @@ for seed in seedRange {
             print("   D\(String(format: "%03d", move.day)) \(move.kind.rawValue) \(move.market) \(move.rival) [\(move.archetype)] \(move.detail)")
         }
         for line in result.playerMonthlyProfitOnWorldEntries { print("   → \(line)") }
+        for line in result.entryEconomics { print("   ⇒ RIVAL LEDGER \(line)") }
+        for line in result.playerStory { print("   \(line)") }
+        print("   \(result.openingSummary)")
+        for line in result.openingVerdicts { print("   ✗ \(line)") }
+        print("   rival routes opened \(result.rivalRoutesOpened) closed \(result.rivalRoutesClosed) · idle rival aircraft at the end \(result.idleRivalAircraft) · airframes gone within 30 days of arriving \(result.quickDisposals) · player \(result.playerFate)")
         for line in result.horizon { print(line) }
         for line in result.rivalStates { print("   " + line) }
     }
