@@ -238,7 +238,7 @@ rather than a re-derivation — and it was run rather than assumed.
 | Cash at day 730 | $14.1M–$54.8M | **$10.4M–$54.8M** | see note |
 | 93-home sweep, market's default | DANGEROUS 9, UNFLYABLE 1 | **DANGEROUS 9, UNFLYABLE 1** | ✓ identical |
 | Curated starts | unchanged | **unchanged** | ✓ |
-| Core suite | 457 of 457 | **457 of 457 in CI**; locally §10.1 | ✓ |
+| Core suite | 457 of 457 | **457 of 457 in CI run 137**; locally §10.1 | ✓ |
 
 *Note:* my extraction reads the lower bound as $10.4M against AE-042's
 $14.1M; the upper bound matches exactly and the load-bearing result (0
@@ -295,7 +295,23 @@ proves it: `testDetailScreensAndSettingsRender` **passed** on the same clone
 in **459.7 s**, against **104.2 s in run 135** and 101 s in run 131 — a 4.4×
 slowdown on byte-identical code. That is the machine, not the app.
 
-One redispatch was spent on this (§10.2).
+### 8.1 Run 137 — green
+
+The one redispatch, with the raised limit and nothing else changed:
+
+| Job | Result |
+| --- | --- |
+| Core | **457 of 457 passed**, 1,681.6 s, release build clean |
+| `followingTheAdviceFromNewYork…` | **passed**, same result line as ever |
+| campaign shard | 6 of 6 |
+| economy shard | 5 of 5 |
+| arrival + shell | **9 of 9**, the Munich arrival 425.7 s |
+| **Failures, all shards** | **0** |
+
+And the starvation canary confirms run 136's diagnosis rather than merely
+assuming it: `testDetailScreensAndSettingsRender` took **78.4 s** here,
+against **459.7 s** in run 136 and 104.2 s in run 135. Same code, three
+runners, a six-fold spread — the machine, exactly as §8 said.
 
 The only compiled change this phase is `AEAdvice/main.swift`, a headless
 measurement tool, **COMPILED** locally in debug and release (the
@@ -331,7 +347,7 @@ TD-031 territory, untouched.
 | Kind | Count | Result |
 | --- | ---: | --- |
 | Core suite, locally | 457 | see below — **no assertion failed**, two time-limit trips |
-| Core suite, CI | **457** | **457 passed** — the authority, §10.1 |
+| Core suite, CI | **457** | **457 passed** in run 137 — the authority, §10.1 |
 | Tests added this phase | 10 | all passed, then **deleted with the fix** |
 | Tests weakened, skipped or deleted to pass | **0** | — |
 | Seeds changed | **0** | — |
@@ -339,6 +355,7 @@ TD-031 territory, untouched.
 | Recommendation scans | 93 homes × 3 acquisition rules | §7 |
 | Market-ordering audits | 93 homes | §2 |
 | Ledger batteries | 18 route × airframe combinations, 6 months each | §6 |
+| CI runs | 2 (136, 137) | 137 green on every job |
 
 ### 10.1 The local suite, reported exactly
 
@@ -401,7 +418,8 @@ worth measuring had it shipped, and moot now.
 | The fix is worse in the ledger at 6 of 7 | MEASURED | §6 |
 | The estimator's bias against large aircraft | MEASURED | §6.1, 15 rows |
 | AE-042 New York is intact | MEASURED | §7 |
-| Core is green | TESTED | 457 of 457 in CI; locally, two time-limit trips under load and no assertion failure — §10.1 |
+| Core is green | TESTED | 457 of 457, CI run 137, 0 failures on any shard |
+| The two run-136 failures were the machine | MEASURED | §8, §8.1 — a six-fold timing spread on identical code |
 | The app is unchanged | READ | empty `git diff` vs the commit CI validated |
 | **Anything rendered this phase** | **NOT VALIDATED** | no UI change, no CI run — §8 |
 | **Anything on a device** | **NOT VALIDATED** | none used |

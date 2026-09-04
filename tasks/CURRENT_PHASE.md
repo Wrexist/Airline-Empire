@@ -62,9 +62,17 @@ Kept: the `ae-advice market` measurement mode (tooling only). Reverted:
 `AircraftAdvice.swift`, its ten tests, and the `FleetView` section — deleted
 rather than left dormant.
 
+CI: run 136 failed twice and neither was the product — the New York campaign
+test tripped a five-minute wall-clock guard *after* every assertion passed (it
+does 65.05 s of work; Swift Testing times the limit as wall clock across a
+457-test parallel suite), and the arrival shard starved on three AX timeouts
+with one test running 4.4× slow. The guard is raised to ten minutes with the
+measurement recorded; no assertion changed. **Run 137 is green: 457 Core
+tests, 20 journeys, both measurements, 0 failures on any shard.**
+
 **Status:** DONE — BUG-056 reproduced, root-caused and re-measured; fix
-WITHHELD with evidence. TD-033 is now the blocking constraint and is the
-recommended next phase.
+WITHHELD with evidence; CI green. TD-033 is now the blocking constraint and is
+the recommended next phase.
 
 ---
 
