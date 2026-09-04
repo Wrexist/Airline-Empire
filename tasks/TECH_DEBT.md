@@ -748,3 +748,139 @@ market between real services. `poolAvailableToEntrant` and the logit split are
 the existing primitives. Correcting it moves the rival AI too, so it needs the
 full rival scan before/after that AE-039 and AE-041 established, plus the
 AE-042 recommendation battery, plus a re-run of this phase's ledger table.
+
+## TD-033 — RESOLVED (AE-044, 2026-09-04)
+
+**Root cause, exactly** (docs/AE044_ROOT_CAUSE.md): `airframeDayValue` took
+`passengersPerDay` as a **caller-supplied constant** while computing capacity,
+revenue and every cost from the **airframe**. With
+`carried = min(passengersPerDay, flights × seats)` fixed across airframes,
+every airframe past the seat cap earns *identical* revenue and pays *strictly
+more* fuel, fees, crew, maintenance and service — so the estimator was
+structurally certain a larger cabin is worse. Five divergences (constant offer
+quality, demand priced at two rotations against costs at the maximum, one
+direction's pool for a two-directional day, *available pool* used where
+*captured share* was meant, and the player path ignoring incumbents entirely)
+were all that one mistake.
+
+**Fixed** (docs/AE044_ESTIMATOR_DECISION.md): `DemandSystem.serviceDemand`
+answers "given this airframe at this frequency at this fare against these
+incumbents, how many passengers?" using `allocate`'s own terms — one segment
+share, one `offerQualityTerms`, both directions — and
+`CompetitorAISystem.airframeDayEstimate` derives the passengers at the same
+rotation count it costs. Both the player's Next Moves and the rivals' market
+choice go through it; `SERVICEDEMAND-10` pins that they cannot drift apart.
+
+**MEASURED before and after** (docs/AE044_AIRFRAME_VALUE_AUDIT.md, 77
+route-and-airframe combinations flown for a month each):
+
+| | before | after |
+| --- | ---: | ---: |
+| demand bias, 162–184 seats | −8.3% | **−0.0%** |
+| demand bias, 68–95 seats | +13.7% | +15.5% |
+| aircraft-size bias (spread) | 22.0 pts | **15.5 pts** |
+| airframe ordering agreement with the ledger | 4/13 | **8/13** |
+| agreement with `DemandSystem.allocate` itself | — | ±2 pax over 336 comparisons |
+
+The residual is **not** a demand bias: it is TD-034 (unflown rotations),
+which the demand fix neither caused nor cured, and it accounts for all five
+remaining ordering errors — every one of which picks a smaller airframe than
+the ledger.
+
+**Cost, recorded rather than hidden:**
+`BalanceTests.archetypeParityAndSanity` fails at a spread of 6.044 against
+its `< 6.0` guard (baseline 5.772). The movement is one archetype — premium
++5.3%, every other within ±0.6%, survival identical — and the guard's own
+headroom on unmodified code was 1.2% at nine seeds against 2.7% of sampling
+noise. The threshold was **not** widened. See AE-044 final report §10 and
+§18.
+
+## TD-034 — The estimator assumes every scheduled rotation flies; 4–23% do not
+
+**Symptom.** MEASURED (AE-044, docs/AE044_AIRFRAME_VALUE_AUDIT.md §8; 70
+route-and-airframe combinations flown for a month each through
+`ae-demand capacity`). `CompetitorAISystem.airframeDayValue` prices
+`rotations × 2` flights a day. The ledger flies fewer:
+
+| Rotations scheduled | Median completion | Range |
+| ---: | ---: | --- |
+| 2 | 97% | 92–100% |
+| 3 | 94% | 77–98% |
+| 4 | 87% | 81–98% |
+| 5 | 84% | 78–94% |
+
+The driver is **schedule slack, not aircraft size**.
+`roundTripsPerAircraftPerDay` packs rotations into the 1,080-minute
+operating day; a 45–240 minute delay on a schedule with 24 minutes of slack
+expires the next flight (`scheduledFlightExpiryMinutes` 240) and the
+cascade eats the rest of the day. Gothenburg–London on a KT95 fits four
+264-minute rotations into 1,080 minutes — 24 minutes of slack — and
+completes **81%**; the same airframe on Hamburg–London has 208 minutes of
+slack and completes **97%**.
+
+**Cost.** Every flight-scaled line of the estimate — fuel, crew, movement
+fees — reads about +4% on a healthy schedule and far more on a tight one,
+and the capacity ceiling `min(pax, flights × seats)` is over-read by the
+same amount. Because a larger cabin carries a longer turnaround, large
+airframes get fewer rotations and *more* slack, so the residual reads as a
+**pro-small bias**: after AE-044 removed the demand bias, this is what is
+left, and it accounts for all four of the twelve controlled markets where
+the estimator still picks a smaller airframe than the ledger pays best on.
+
+**Why AE-044 did not fix it.** It is a schedule-realism model, not a demand
+model. Predicting it means modelling disruption probability
+(`aircraft.currentReliability`), the delay distribution and the expiry
+cascade against the day's remaining slack — new constants, a new mechanism,
+and its own balance regression. AE-044's brief lists "partial rotations"
+and "random operational events" as legitimate approximations, and the
+demand fix neither caused nor cured this.
+
+**Fix shape.** An expected-completion factor derived from the existing
+disruption terms and the schedule's own slack, applied to `flights` inside
+`airframeDayValue` — so the estimate prices the rotations that will fly
+rather than the ones that will be scheduled. Needs the AE-044 batteries
+re-run (`ae-demand capacity`, `frequency`, `airframe`) plus the rival scan,
+because it lowers every estimate and lowers tight schedules most.
+
+## TD-035 — The estimate prices the airframe's maximum rotations; the game opens routes at two
+
+**Symptom.** MEASURED (AE-044, docs/AE044_AIRFRAME_VALUE_AUDIT.md §6).
+`airframeDayValue` defaults to `roundTripsPerAircraftPerDay` — 3 to 5 on the
+short pairs the recommendation lives on. Every production caller then opens
+the route at **two**: the rival at `AITuning.initialRoundTrips`, the player
+at `RoutesView`'s stepper default.
+
+Twelve controlled markets × seven era airframes, each flown for a month,
+ranked the way the product ranks them (a month less the airframe's lease and
+payroll):
+
+| Configuration | Estimator agrees with the ledger |
+| --- | :---: |
+| flown at 2 round trips, priced at maximum rotations — **production today** | **4/12** |
+| flown at 2, priced at 2 | **11/12** |
+| flown at maximum, priced at maximum | 8/12 |
+
+**Cost.** On the aircraft question the mismatch is larger than TD-033 was:
+correcting the demand term alone moves production's own configuration 4/12
+→ 4/12, because both halves of the estimate describe an operation the game
+does not fly. It also makes `monthlyAfterAirframe` — the figure Next Moves
+prints beside a recommendation — describe a busier month than the player's
+first one (Hamburg–London on a PA184: $1.12M a month at four rotations,
+$713k at two).
+
+**Why AE-044 did not change it.** It is not TD-033, and it is not free.
+Maximum rotations is the *documented* contract ("what one airframe **day** is
+worth") and it is where the AI's own frequency loop converges — `manageRoutes`
+raises frequency by one per weekly decision while load stays above 0.82.
+Changing it re-ranks every rival market at once: at a fixed frequency
+revenue scales with distance while rotations no longer fall with it, so long
+routes gain against short ones. That needs its own phase and its own rival
+scan, exactly as AE-041 gave the ranking basis.
+
+**Fix shape.** Either price `initialRoundTrips` (and say so in the
+recommendation's wording), or price the frequency a route would settle at
+under `manageRoutes`' own load rule, or make the caller pass the frequency it
+intends. The middle option is the most faithful and the most expensive.
+Whichever is chosen, the decision needs the full AE-039/AE-041 rival scan
+before/after, the AE-042 recommendation battery, and the AE-044 ledger
+tables re-run.

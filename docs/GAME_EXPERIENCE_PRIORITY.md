@@ -103,6 +103,30 @@ not here.
   **OBSERVED** (docs/AE042_FINAL_REPORT.md §10). The residual nine are
   BUG-056: the aircraft market sorts by seats whatever the route is for.
 
+  **AE-043 re-measured the residual against six months of real ledger** and
+  found it was 6 of 93, not 9 — four homes where the market's first buyable
+  row cannot fly the recommended route at all, two where it loses money, and
+  five estimator false positives. The pinned-recommendation fix was built and
+  **withheld**: at six of the seven homes where both aircraft could fly, the
+  recommended airframe was worse in the ledger, because
+  `airframeDayValue` held captured demand constant while varying seats
+  (TD-033).
+
+  **AE-044 fixed that** (docs/AE044_FINAL_REPORT.md). The estimator's demand
+  is now the demand engine's own allocation for the airframe, the frequency
+  and the incumbents actually there: the bias on 162–184-seat airframes went
+  **−8.3% → −0.0%**, airframe ordering agreement with the ledger **4/13 →
+  8/13**, and the dangerous count on the market's default sort **9 → 7**. The
+  player's economics also stopped ignoring competition entirely — before, a
+  market read the same with three carriers on it as with none, while the
+  ledger swung $47k a day.
+
+  BUG-056 is now **PARTIALLY FIXED**: the estimator half is repaired, the
+  aircraft market is untouched, and the aircraft *recommendation* is
+  re-blocked on **TD-035** — the estimate prices the airframe's maximum
+  rotations while the game opens routes at two, which is worth more on this
+  question than TD-033 was (11/12 against 4/12).
+
 ## P1
 
 *(TD-026's economy residual — Stockholm and Barcelona unreached — is

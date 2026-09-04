@@ -73,18 +73,21 @@ public struct DemandSystem: SimulationSystem {
                 continue
             }
             let ratio = route.ticketPrice.asDouble / refFare
-            business.append(exp(tuning.priceSensitivityBusiness * (1 - ratio)) * quality)
-            leisure.append(exp(tuning.priceSensitivityLeisure * (1 - ratio)) * quality)
+            business.append(Self.utility(fareRatio: ratio, quality: quality,
+                                         sensitivity: tuning.priceSensitivityBusiness))
+            leisure.append(Self.utility(fareRatio: ratio, quality: quality,
+                                        sensitivity: tuning.priceSensitivityLeisure))
         }
 
         let sumB = business.reduce(0, +)
         let sumL = leisure.reduce(0, +)
-        let out = tuning.outsideOptionWeight
 
         for (index, routeID) in routeIDs.enumerated() {
             var route = state.routes[routeID]!
-            let served = pool.business * (sumB > 0 ? business[index] / (out + sumB) : 0)
-                + pool.leisure * (sumL > 0 ? leisure[index] / (out + sumL) : 0)
+            let served = pool.business * Self.share(offer: business[index],
+                                                    everyOffer: sumB, tuning: tuning)
+                + pool.leisure * Self.share(offer: leisure[index],
+                                            everyOffer: sumL, tuning: tuning)
             let pax = Int((served).rounded(.down))
             if route.origin == from {
                 route.demandOutboundToday = pax
@@ -95,6 +98,54 @@ public struct DemandSystem: SimulationSystem {
             }
             state.routes[routeID] = route
         }
+    }
+
+    // MARK: The split, in one place
+
+    /// One offer's attractiveness in one segment: the exponential price
+    /// utility around the reference fare, times the offer's service quality.
+    ///
+    /// Extracted in AE-044 so that `allocate`, the pre-flight estimates and
+    /// the entrant calculations provably use the *same* expression rather
+    /// than four copies of it (docs/AE044_ROOT_CAUSE.md §6).
+    static func utility(fareRatio: Double, quality: Double, sensitivity: Double) -> Double {
+        exp(sensitivity * (1 - fareRatio)) * quality
+    }
+
+    /// The share of one segment's pool an offer wins: its own utility over
+    /// the "don't travel" outside option plus `everyOffer`, the summed
+    /// utility of every offer on the market **including this one**. The
+    /// logit split, and the only one.
+    ///
+    /// `everyOffer` rather than "the others" on purpose: `allocate` has that
+    /// sum already, and reconstructing it as `offer + others` would put a
+    /// floating-point subtract-then-add inside the number the simulation
+    /// then floors into a passenger count. This form is bit-identical to the
+    /// expression AE-044 replaced.
+    static func share(offer: Double, everyOffer: Double, tuning: DemandTuning) -> Double {
+        guard offer > 0 else { return 0 }
+        return offer / (tuning.outsideOptionWeight + everyOffer)
+    }
+
+    /// The incumbents' summed utilities on a market, by segment — the
+    /// denominator term an entrant faces. Offers that cannot carry anyone
+    /// (no assigned aircraft) attract nothing, exactly as in `allocate`.
+    static func incumbentUtilities(_ incumbents: [Route], distanceKm: Int,
+                                   state: GameState,
+                                   catalog: ContentCatalog) -> (business: Double, leisure: Double) {
+        let tuning = catalog.tuning.demand
+        let refFare = referenceFare(distanceKm: distanceKm, tuning: tuning)
+        var business = 0.0, leisure = 0.0
+        for route in incumbents {
+            guard let quality = offerQualityTerms(route: route, state: state,
+                                                  catalog: catalog)?.product else { continue }
+            let ratio = route.ticketPrice.asDouble / refFare
+            business += utility(fareRatio: ratio, quality: quality,
+                                sensitivity: tuning.priceSensitivityBusiness)
+            leisure += utility(fareRatio: ratio, quality: quality,
+                               sensitivity: tuning.priceSensitivityLeisure)
+        }
+        return (business, leisure)
     }
 
     /// Quality multiplier for an offer; nil when the route cannot carry
@@ -125,22 +176,35 @@ public struct DemandSystem: SimulationSystem {
 
     public static func offerQualityTerms(route: Route, state: GameState,
                                          catalog: ContentCatalog) -> OfferQualityTerms? {
-        let tuning = catalog.tuning.demand
         guard let firstAircraft = route.assignedAircraft.sorted()
             .compactMap({ state.aircraft[$0] }).first,
             let spec = catalog.aircraftType(firstAircraft.typeCode) else { return nil }
-
-        let trips = Double(min(route.dailyRoundTrips, tuning.scheduleQualityTripCap))
-        let schedule = pow(trips / tuning.scheduleQualityReferenceTrips,
-                           tuning.scheduleQualityExponent)
-
-        let comfort = tuning.comfortBase + tuning.comfortWeight * spec.comfortBaseline
-        let operations = tuning.operationsBase + tuning.operationsWeight
-            * (route.stats.completionRate * 0.5 + route.stats.punctuality * 0.5)
         let reputation = state.airlines[route.airline]?.reputation
             .demandMultiplier(tuning: catalog.tuning.reputation) ?? 1.0
+        return offerQualityTerms(
+            spec: spec, roundTripsPerDay: route.dailyRoundTrips,
+            operationsScore: route.stats.completionRate * 0.5 + route.stats.punctuality * 0.5,
+            reputationMultiplier: reputation, tuning: catalog.tuning.demand)
+    }
+
+    /// The same four terms for a service that has not been flown yet: an
+    /// airframe of `spec` at `roundTripsPerDay`, with an operations record
+    /// of `operationsScore` (0…1) and a reputation multiplier.
+    ///
+    /// AE-044: the route-based entry point above now *is* this one, so a
+    /// pre-flight estimate and the demand engine cannot value the same offer
+    /// differently (docs/AE044_ROOT_CAUSE.md §6).
+    public static func offerQualityTerms(spec: AircraftTypeSpec, roundTripsPerDay: Int,
+                                         operationsScore: Double,
+                                         reputationMultiplier: Double,
+                                         tuning: DemandTuning) -> OfferQualityTerms {
+        let trips = Double(min(roundTripsPerDay, tuning.scheduleQualityTripCap))
+        let schedule = pow(trips / tuning.scheduleQualityReferenceTrips,
+                           tuning.scheduleQualityExponent)
+        let comfort = tuning.comfortBase + tuning.comfortWeight * spec.comfortBaseline
+        let operations = tuning.operationsBase + tuning.operationsWeight * operationsScore
         return OfferQualityTerms(schedule: schedule, comfort: comfort,
-                                 operations: operations, reputation: reputation)
+                                 operations: operations, reputation: reputationMultiplier)
     }
 
     /// Passengers a single operator could expect to carry per day on a
@@ -154,11 +218,12 @@ public struct DemandSystem: SimulationSystem {
         pool: SegmentDemand, fareRatio: Double, quality: Double,
         tuning: DemandTuning) -> Double {
         guard quality > 0 else { return 0 }
-        let out = tuning.outsideOptionWeight
-        let business = exp(tuning.priceSensitivityBusiness * (1 - fareRatio)) * quality
-        let leisure = exp(tuning.priceSensitivityLeisure * (1 - fareRatio)) * quality
-        return pool.business * (business / (out + business))
-            + pool.leisure * (leisure / (out + leisure))
+        let business = utility(fareRatio: fareRatio, quality: quality,
+                               sensitivity: tuning.priceSensitivityBusiness)
+        let leisure = utility(fareRatio: fareRatio, quality: quality,
+                              sensitivity: tuning.priceSensitivityLeisure)
+        return pool.business * share(offer: business, everyOffer: business, tuning: tuning)
+            + pool.leisure * share(offer: leisure, everyOffer: leisure, tuning: tuning)
     }
 
     /// The pool a new entrant could plan against on a pair, given who is
@@ -180,23 +245,111 @@ public struct DemandSystem: SimulationSystem {
         guard let first = incumbents.first,
               let distance = catalog.distanceKm(first.origin, first.destination)
         else { return pool.total }
-        let refFare = referenceFare(distanceKm: distance, tuning: tuning)
-        var rivalsBusiness = 0.0, rivalsLeisure = 0.0
-        for route in incumbents {
-            guard let rivalQuality = offerQualityTerms(route: route, state: state,
-                                                       catalog: catalog)?.product
-            else { continue }
-            let ratio = route.ticketPrice.asDouble / refFare
-            rivalsBusiness += exp(tuning.priceSensitivityBusiness * (1 - ratio)) * rivalQuality
-            rivalsLeisure += exp(tuning.priceSensitivityLeisure * (1 - ratio)) * rivalQuality
-        }
+        let (rivalsBusiness, rivalsLeisure) = incumbentUtilities(
+            incumbents, distanceKm: distance, state: state, catalog: catalog)
         let out = tuning.outsideOptionWeight
-        let business = exp(tuning.priceSensitivityBusiness * (1 - fareRatio)) * quality
-        let leisure = exp(tuning.priceSensitivityLeisure * (1 - fareRatio)) * quality
+        let business = utility(fareRatio: fareRatio, quality: quality,
+                               sensitivity: tuning.priceSensitivityBusiness)
+        let leisure = utility(fareRatio: fareRatio, quality: quality,
+                              sensitivity: tuning.priceSensitivityLeisure)
         // Each segment: what the entrant takes with the incumbents there,
         // over what it would take alone — the pool scaled by that ratio.
         return pool.business * ((out + business) / (out + business + rivalsBusiness))
             + pool.leisure * ((out + leisure) / (out + leisure + rivalsLeisure))
+    }
+
+    // MARK: What a service would actually carry
+
+    /// What one airframe flying a market would sell in a day, before it
+    /// flies: the market's own pools, the demand engine's own split against
+    /// the offers already there, and the seats the day's flights offer.
+    ///
+    /// `capturedPerDay` is the number `DemandSystem.allocate` would put on
+    /// this route if it existed; `carriedPerDay` is what `FlightOpsSystem`
+    /// would board, which is the smaller of that and the seats flown.
+    public struct ServiceDemand: Equatable, Sendable {
+        /// Both directions of the market's raw pool — mass, not passengers.
+        public let poolPerDay: Double
+        /// The share the logit split awards this offer, both directions.
+        public let capturedPerDay: Double
+        /// Seats the day's flights put on sale: `roundTrips × 2 × seats`.
+        public let seatsPerDay: Double
+
+        public init(poolPerDay: Double, capturedPerDay: Double, seatsPerDay: Double) {
+            self.poolPerDay = poolPerDay
+            self.capturedPerDay = capturedPerDay
+            self.seatsPerDay = seatsPerDay
+        }
+
+        /// What the boarding step would actually sell.
+        public var carriedPerDay: Double { min(capturedPerDay, seatsPerDay) }
+        public var loadFactor: Double {
+            seatsPerDay > 0 ? carriedPerDay / seatsPerDay : 0
+        }
+    }
+
+    /// The demand an entrant's own service would win on a market — the one
+    /// authoritative answer to "given *this* aircraft at *this* frequency
+    /// against *these* incumbents, how many passengers?".
+    ///
+    /// It is `allocate` asked before the fact: the same pools, the same
+    /// `offerQualityTerms`, the same per-segment logit share, both
+    /// directions. MEASURED against the engine day by day over 336
+    /// comparisons it lands within 1.4% of the allocation the engine
+    /// performs, and on day one — before the world has drifted under it —
+    /// 23 of 24 rows fall inside the two-passenger band the engine's own
+    /// per-direction `Int(rounded(.down))` predicts
+    /// (docs/AE044_AIRFRAME_VALUE_AUDIT.md §4).
+    ///
+    /// Before AE-044 the estimator took its passenger figure as an input
+    /// that did not vary with the aircraft, so past the seat cap every
+    /// airframe earned the same revenue and paid a larger cabin's costs —
+    /// biased against large aircraft by construction, and wrong at six of
+    /// the seven homes AE-043 flew (TD-033,
+    /// docs/AE044_ROOT_CAUSE.md §3).
+    ///
+    /// Pure: reads `state`, mutates nothing, consumes no RNG. It does not
+    /// forecast the world after today — no seasonality path, no economic
+    /// drift, no tourism boost, and the incumbents keep today's fares and
+    /// schedules (docs/AE044_DEMAND_ESTIMATOR_AUDIT.md §5).
+    public static func serviceDemand(
+        origin: AirportCode, destination: AirportCode, spec: AircraftTypeSpec,
+        roundTripsPerDay: Int, fareRatio: Double,
+        operationsScore: Double = unprovenOperationsScore,
+        reputationMultiplier: Double = 1.0,
+        incumbents: [Route], state: GameState,
+        catalog: ContentCatalog) -> ServiceDemand {
+        let tuning = catalog.tuning.demand
+        let seats = Double(max(0, roundTripsPerDay) * 2 * spec.seats)
+        guard roundTripsPerDay > 0, let distance = catalog.distanceKm(origin, destination)
+        else { return ServiceDemand(poolPerDay: 0, capturedPerDay: 0, seatsPerDay: 0) }
+
+        let quality = offerQualityTerms(
+            spec: spec, roundTripsPerDay: roundTripsPerDay,
+            operationsScore: operationsScore,
+            reputationMultiplier: reputationMultiplier, tuning: tuning).product
+        let business = utility(fareRatio: fareRatio, quality: quality,
+                               sensitivity: tuning.priceSensitivityBusiness)
+        let leisure = utility(fareRatio: fareRatio, quality: quality,
+                              sensitivity: tuning.priceSensitivityLeisure)
+        let rivals = incumbentUtilities(incumbents, distanceKm: distance,
+                                        state: state, catalog: catalog)
+
+        // Both directions: a day's flights carry passengers each way, and
+        // the pools are not symmetric — leisure is origin's propensity to
+        // travel times the destination's draw.
+        var pool = 0.0, captured = 0.0
+        for (from, to) in [(origin, destination), (destination, origin)] {
+            let segment = demandPool(from: from, to: to, date: state.currentDate,
+                                     economicIndex: state.world.economicIndex,
+                                     catalog: catalog)
+            pool += segment.total
+            captured += segment.business
+                * share(offer: business, everyOffer: business + rivals.business, tuning: tuning)
+                + segment.leisure
+                * share(offer: leisure, everyOffer: leisure + rivals.leisure, tuning: tuning)
+        }
+        return ServiceDemand(poolPerDay: pool, capturedPerDay: captured, seatsPerDay: seats)
     }
 
     /// Service quality of a representative starter operation, used for
@@ -207,9 +360,17 @@ public struct DemandSystem: SimulationSystem {
         let schedule = pow(2.0 / tuning.scheduleQualityReferenceTrips,
                            tuning.scheduleQualityExponent)
         let comfort = tuning.comfortBase + tuning.comfortWeight * 0.55
-        let operations = tuning.operationsBase + tuning.operationsWeight * 0.8
+        let operations = tuning.operationsBase
+            + tuning.operationsWeight * unprovenOperationsScore
         return schedule * comfort * operations
     }
+
+    /// The operations record a service that has not flown yet is credited
+    /// with: neither the perfect 1.0 a brand-new `Route.Stats` reports nor a
+    /// mature route's measured figure. AE-044 gave the constant a name and
+    /// one definition; it is the same 0.8 `representativeStarterQuality` has
+    /// always used, and nothing was re-tuned.
+    public static let unprovenOperationsScore = 0.8
 
     /// Distance-anchored reference fare the market prices against.
     /// Public: the route-opening UI shows it so players price against the

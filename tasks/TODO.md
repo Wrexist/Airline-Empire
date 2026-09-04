@@ -5,6 +5,56 @@ Active task list. Format follows the Master Task Rule (see
 
 ---
 
+## AE-044 — The demand the aircraft actually sells (2026-09-04)
+
+### Done
+- **TD-033 RESOLVED and shipped.** `DemandSystem.serviceDemand` and
+  `CompetitorAISystem.airframeDayEstimate`: the estimator derives the
+  passengers this airframe's own service would win, from the demand engine's
+  own allocation, at the same rotation count it prices capacity and costs at.
+  Player Next Moves and the rival AI both go through it.
+- Measured before/after over 77 flown route-and-airframe months: demand bias
+  on 162–184-seat airframes −8.3% → −0.0%, airframe ordering agreement with
+  the ledger 4/13 → 8/13, dangerous first recommendations on the aircraft
+  market's default sort 9 → 7 across the 93 homes.
+- Rival regression, 50 two-year campaigns: Munich day 61 in 10 of 10 seeds,
+  Singapore in 10 of 10, opening soundness 97.2% → 97.8%, 0 collapses,
+  0 administrations, player alive in 50 of 50. AE-041's revenue / 16 stands
+  and is now pinned by a test.
+- Twelve new Core tests (`ServiceDemandTests`), one existing test rewired to
+  the new derivation, none weakened. New `ae-demand` executable for the
+  controlled batteries. Suite: **469 tests, 1 failure** — the archetype
+  spread guard below.
+- Five documents: `AE044_DEMAND_ESTIMATOR_AUDIT`, `AE044_AIRFRAME_VALUE_AUDIT`,
+  `AE044_ROOT_CAUSE`, `AE044_ESTIMATOR_DECISION`, `AE044_FINAL_REPORT`.
+
+### Next, in order
+1. **TD-035 — what service the estimate is pricing.** The estimate prices the
+   airframe's *maximum* rotations; every caller opens routes at *two*. Priced
+   at the frequency the game actually flies, airframe ordering agrees with the
+   ledger at 11 of 12 markets; priced as production prices it, at 4 of 12.
+   This re-blocks BUG-056 and makes the recommendation's monthly figure
+   describe a month the player will not have.
+2. **The archetype-spread guard.** `BalanceTests.archetypeParityAndSanity`
+   fails at 6.044 against `< 6.0` (baseline 5.772; 6.283 against 5.931 at
+   nine seeds). The movement is one archetype (+5.3%) and the guard's headroom
+   on unmodified code was 1.2% against 2.7% of its own sampling noise. Settle
+   it with measurement — a threshold decision or a better instrument — never
+   by widening it to fit. Must be done with (1); the same change moves it.
+3. **TD-034 — unflown rotations.** 4–23% of scheduled rotations never fly,
+   driven by schedule slack rather than aircraft size. Worth 15 percentage
+   points of small-airframe bias and all five remaining ordering errors.
+   Second order until (1).
+4. **BUG-056's flyability half.** Four homes (BGO, BLL, NCE, VCE) where the
+   aircraft market's first buyable row cannot fly the recommended route.
+   `routeEligibility` is arithmetic; this needs no estimator and can be fixed
+   at any time.
+5. **Runtime-validate the changed Next Moves airframe line.** It now names a
+   different airframe and a different monthly figure at several homes; no
+   screenshot has been taken.
+
+---
+
 ## AE-043
 **Title:** The right aircraft — BUG-056
 **Purpose:** Make the aircraft-selection experience consistent with the route

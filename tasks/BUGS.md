@@ -1590,6 +1590,29 @@ responds to the service offered, Option C from
 docs/AE043_AIRCRAFT_SELECTION_DECISION.md is implemented and measured and can
 be restored. The four runway-blocked homes need no estimator at all and could
 be addressed separately.
-**Status:** OPEN — reproduced, root-caused, re-measured; fix built, measured
-against the ledger, and WITHHELD on stop condition 3
-(docs/AE043_AIRCRAFT_RECOMMENDATION_AUDIT.md).
+
+**Re-evaluated (AE-044, 2026-09-04): PARTIALLY FIXED, and re-blocked.**
+TD-033 is resolved — the estimator's demand now responds to the aircraft, the
+frequency and the incumbents, and is the demand engine's own allocation. On
+the aircraft market's default sort the modelled dangerous count across the 93
+homes falls **9 → 7**, and the estimator's airframe picks agree with the
+ledger at **8 of 13** controlled markets rather than 4
+(docs/AE044_FINAL_REPORT.md §7–8).
+
+It is still not enough to build the pinned recommendation on:
+
+- **The economic half is blocked on TD-035.** The estimate prices the
+  airframe's *maximum* rotations while every caller opens routes at *two*.
+  Priced at the frequency the game actually flies, the estimator's ordering
+  agrees with the ledger at **11 of 12** markets; priced as production prices
+  it, at **4 of 12**. Both halves of the estimate describe an operation the
+  game does not fly.
+- **The four runway-blocked homes are unchanged** (BGO, BLL, NCE, VCE). That
+  half was never estimator-dependent — `routeEligibility` is arithmetic — and
+  can be fixed on its own at any time.
+- **The UI is untouched.** `AircraftShopSheet()` still takes no arguments,
+  still sorts by seats descending, still lists seven unbuyable rows first.
+
+**Status:** OPEN — reproduced, root-caused, re-measured twice; the estimator
+blocker (TD-033) is resolved, the aircraft market is not. Now blocked on
+TD-035, not TD-033. Not forced closed.

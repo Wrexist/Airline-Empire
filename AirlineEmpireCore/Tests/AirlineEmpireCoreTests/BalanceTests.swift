@@ -97,8 +97,16 @@ struct BalanceTests {
         let medians = byArchetype.mapValues { values -> Int64 in
             values.sorted()[values.count / 2]
         }
+        // Printed on every run, not only on failure: the spread is the
+        // headline number a balance change has to be judged against, and
+        // AE-044 had to reconstruct it from a baseline worktree because it
+        // was only ever visible when the guard tripped.
+        print("ARCHETYPE-MEDIANS " + medians.sorted { "\($0.key)" < "\($1.key)" }
+            .map { "\($0.key)=\($0.value)" }.joined(separator: " "))
+        print("ARCHETYPE-SURVIVORS \(survivors)/\(total)")
         let positives = medians.values.filter { $0 > 0 }
         if let best = positives.max(), let worst = positives.min(), worst > 0 {
+            print(String(format: "ARCHETYPE-SPREAD %.3f", Double(best) / Double(worst)))
             #expect(Double(best) / Double(worst) < 6.0,
                     "Archetype spread too wide: \(medians)")
         }

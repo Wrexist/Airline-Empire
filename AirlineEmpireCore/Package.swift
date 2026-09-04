@@ -29,6 +29,11 @@ let package = Package(
         // economics of each recommendation, and a campaign that does what it
         // says (docs/AE042_NEXT_MOVES_BASELINE.md).
         .executable(name: "ae-advice", targets: ["AEAdvice"]),
+        // AE-044's controlled demand battery: holds a market, a fare and a
+        // day fixed, varies exactly one of seats / frequency / incumbents,
+        // flies it through the real pipeline and prints the estimator's
+        // forecast beside the ledger (docs/AE044_AIRFRAME_VALUE_AUDIT.md).
+        .executable(name: "ae-demand", targets: ["AEDemand"]),
     ],
     targets: [
         // Swift 6 language mode: strict concurrency is on by default.
@@ -69,6 +74,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "AEAdvice",
+            dependencies: ["AirlineEmpireCore"]
+        ),
+        .executableTarget(
+            name: "AEDemand",
             dependencies: ["AirlineEmpireCore"]
         ),
     ]

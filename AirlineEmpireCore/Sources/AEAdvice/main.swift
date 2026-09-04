@@ -101,28 +101,30 @@ func economics(origin: AirportCode, destination: AirportCode, distanceKm: Int,
     let rotations = FlightSchedulingSystem.roundTripsPerAircraftPerDay(
         distanceKm: distanceKm, spec: spec, ops: ops)
     guard rotations > 0 else { return nil }
-    let quality = DemandSystem.representativeStarterQuality(tuning: catalog.tuning.demand)
-    func captured(_ from: AirportCode, _ to: AirportCode) -> Double {
-        DemandSystem.expectedCapturedPassengers(
-            pool: DemandSystem.demandPool(from: from, to: to, date: state.currentDate,
-                                          economicIndex: state.world.economicIndex,
-                                          catalog: catalog),
-            fareRatio: 1.0, quality: quality, tuning: catalog.tuning.demand)
+    // AE-044: the demand this airframe's own service would win, against the
+    // incumbents actually on the pair — `GameState.airframeResult`'s own
+    // inputs, so this tool measures the shipped estimator rather than a copy
+    // of the one it replaced (TD-033).
+    let incumbents = state.orderedRouteIDs.compactMap { state.routes[$0] }
+        .filter { $0.sameMarket(origin: origin, destination: destination) }
+    let reputation = state.playerAirline?.reputation
+        .demandMultiplier(tuning: catalog.tuning.reputation) ?? 1.0
+    func estimate(_ basis: CompetitorAISystem.RankingBasis)
+        -> CompetitorAISystem.AirframeDayEstimate {
+        CompetitorAISystem.airframeDayEstimate(
+            origin: originSpec, destination: destinationSpec, distanceKm: distanceKm,
+            spec: spec, fareRatio: 1.0, serviceTier: .standard,
+            reputationMultiplier: reputation, incumbents: incumbents,
+            state: state, catalog: catalog, basis: basis)
     }
-    let pool = captured(origin, destination) + captured(destination, origin)
+    let revenueEstimate = estimate(.revenue)
+    let pool = revenueEstimate.demand.capturedPerDay
     let flights = Double(rotations * 2)
-    let carried = min(pool, flights * Double(spec.seats))
+    let carried = revenueEstimate.demand.carriedPerDay
     let fare = DemandSystem.referenceFare(distanceKm: distanceKm,
                                           tuning: catalog.tuning.demand)
-    // The shipped estimator, on both bases — one economy, not two.
-    let revenue = CompetitorAISystem.airframeDayValue(
-        distanceKm: distanceKm, passengersPerDay: pool, spec: spec, fareRatio: 1.0,
-        serviceTier: .standard, origin: originSpec, destination: destinationSpec,
-        state: state, catalog: catalog, basis: .revenue)
-    let direct = CompetitorAISystem.airframeDayValue(
-        distanceKm: distanceKm, passengersPerDay: pool, spec: spec, fareRatio: 1.0,
-        serviceTier: .standard, origin: originSpec, destination: destinationSpec,
-        state: state, catalog: catalog, basis: .profit)
+    let revenue = revenueEstimate.value
+    let direct = estimate(.profit).value
     let fees = flights * (originSpec.movementFee(for: spec, ops: ops).asDouble
                           + destinationSpec.movementFee(for: spec, ops: ops).asDouble)
         + carried / 2 * (originSpec.passengerFee.asDouble + destinationSpec.passengerFee.asDouble)
