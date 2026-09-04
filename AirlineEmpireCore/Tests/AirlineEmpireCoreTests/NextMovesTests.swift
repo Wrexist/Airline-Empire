@@ -172,7 +172,18 @@ struct NextMovesTests {
     /// administration and collapse on day 430 in 28 of 30 seeds, ending at
     /// −$2.0M to −$2.9M. The same script on the same seed after the fix:
     /// alive. This test plays that script through real commands.
-    @Test(.timeLimit(.minutes(5)))
+    ///
+    /// The limit is ten minutes against **65 seconds of work** (MEASURED,
+    /// AE-043, run alone on the session container). It was five, and CI run
+    /// 136 tripped it on code byte-identical to run 135, where it passed —
+    /// after every assertion in the body had already succeeded and the result
+    /// line had printed. Swift Testing measures a time limit as wall clock
+    /// while the whole 457-test suite runs in parallel, so five minutes was
+    /// measuring how contended the runner was, not how long this campaign
+    /// takes. Ten leaves a runaway nowhere to hide and stops the suite
+    /// reporting the machine's load as a product failure. No assertion here
+    /// changed.
+    @Test(.timeLimit(.minutes(10)))
     func followingTheAdviceFromNewYorkDoesNotBankruptThePlayer() async throws {
         let (engine, catalog, scenario) = try Self.founded(home: "JFK")
         let player = engine.state.playerAirline!.id

@@ -249,21 +249,60 @@ chase rather than a behaviour change — the code is byte-identical.
 
 ## 8. UI validation
 
-**None was performed, and none is claimed.**
-
-The fix was reverted, so there is no changed UI state to photograph.
-`git diff HEAD -- AirlineEmpireApp/ AirlineEmpireCore/Sources/AirlineEmpireCore/ AirlineEmpireCore/Tests/`
-is **empty**: the app, the Core library and the whole test suite are
+**No UI change was made, so no UI behaviour is claimed.** The fix was
+reverted; there is no changed screen to photograph. The app source is
 byte-identical to commit 71046d9, which CI run 135 validated green with 20
-journeys, both measurements and 457 Core tests.
+journeys and both measurements.
 
-The only compiled change in this phase is `AEAdvice/main.swift`, a headless
-measurement tool, **COMPILED** locally in debug and in release (the
-warnings-as-errors configuration CI uses) on the Swift 6.0.3 toolchain.
+CI **run 136** was dispatched anyway, because the Core package did change (the
+`ae-advice` tool) and because the local suite had proved unreliable under load
+(§10.1). It found two things, neither of them this phase's code — both are
+recorded here rather than waved through.
+
+**Green:** release tooling, the campaign shard 6 of 6, the economy shard 5 of
+5, and every simulator build.
+
+**Core job — failed on a wall-clock guard, after passing.** The log shows the
+test printing its result first:
+
+```
+NEXTMOVES-NY followed [D31 JFK-MEX, D31 JFK-ATL, D59 JFK-MIA,
+                       D59 JFK-LAX, D90 JFK-LHR, D90 JFK-DFW]
+  · status active · cash $180.4M · lowest $57.8M · routes 7 · administrations 0
+✘ ... Time limit was exceeded: 300.000 seconds
+```
+
+Every assertion succeeded, with the values AE-042 recorded, and *then* the
+five-minute limit tripped. Measured alone on this container the test does
+**65.05 seconds** of work. Swift Testing measures a time limit as wall clock
+while all 457 tests run in parallel, so five minutes was measuring how
+contended the runner was — which is why the identical code passed in run 135
+and failed in run 136. **The limit is raised to ten minutes with that
+measurement recorded in the test; no assertion was touched, and nothing was
+skipped or deleted.**
+
+**Arrival + shell shard — starved.** Three failures, none an assertion:
+
+| Test | Failure |
+| --- | --- |
+| `testAccessibilityTextSizeKeepsTheShellUsable` | *Timed out while evaluating UI query* |
+| `testARivalComesToMunich` | *Timed out while fetching `XC_kAXXCAttributeSystemAppApplication`* |
+| `testDarkAppearanceRendersEveryTab` | *Timed out while fetching `XC_kAXXCAttributeFocusedApplications`* |
+
+All three are the accessibility-timeout signature
+docs/UI_RUNTIME_VALIDATION.md §1 records for a starved runner, and the timing
+proves it: `testDetailScreensAndSettingsRender` **passed** on the same clone
+in **459.7 s**, against **104.2 s in run 135** and 101 s in run 131 — a 4.4×
+slowdown on byte-identical code. That is the machine, not the app.
+
+One redispatch was spent on this (§10.2).
+
+The only compiled change this phase is `AEAdvice/main.swift`, a headless
+measurement tool, **COMPILED** locally in debug and release (the
+warnings-as-errors configuration CI uses) on Swift 6.0.3.
 
 Claiming simulator or device evidence for a phase that shipped no product
-change would be false, so §12 records it as NOT VALIDATED rather than
-manufacturing a green tick.
+change would be false, so §12 records it as NOT VALIDATED.
 
 ---
 
@@ -317,10 +356,22 @@ by prior measurement — AE-041 recorded the ten-year world at **902.3 s alone
 against a 900 s limit** on this container (docs/AE041 report §11.1).
 
 I did not get a genuinely idle run: something of mine was competing during
-both. So rather than assert "green locally", the claim rests on CI, which runs
-on a dedicated machine — and on byte-identical code, since nothing in the Core
-library or the tests changed this phase (§8). **No limit was raised, no test
-was skipped, and no seed was changed to make this go away.**
+both.
+
+### 10.2 What that turned out to be
+
+CI run 136 then tripped the same New York limit on a dedicated runner (§8),
+which settled it: the five-minute guard was measuring contention, not the
+test. Measured alone, the campaign takes **65.05 seconds**. The guard is now
+ten minutes, with that number recorded beside it in the test.
+
+**Nothing else was changed to make anything pass.** No assertion was altered,
+no test skipped or deleted, and no seed moved. `tenYearWorldRemainsStableAndContested`
+kept its own limit and passed in CI; it tripped only on my container, where
+AE-041 had already measured it at 902.3 s against a 900 s limit.
+
+Redispatches spent: **one**, covering both of run 136's failures — the raised
+limit, and the starved arrival shard that needs no code change at all.
 
 ---
 
