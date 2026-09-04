@@ -388,14 +388,23 @@ bound is 20,000 µs for the whole world and the whole world now costs 2,119
 move at all: 70.98 s → 70.45 s over 10 campaigns × 730 days, which is inside
 the noise.
 
-**One timing in an earlier full-suite run was contention, not cost.**
-`aRivalDoesNotBuyAnAirframeAndRetrenchAWeekLater` reported 958 s against a
-300-second limit in a run where a release build was compiling on the same
-four cores. Measured alone it takes **9.99 s after the change and 10.19 s
-before** — 30× under its limit either way — and it does not fail in the
-clean run. Swift Testing measures a time limit as wall clock across a
-469-test parallel suite, the same category AE-043 recorded on the New York
-campaign. **No time limit was changed.**
+**`aRivalDoesNotBuyAnAirframeAndRetrenchAWeekLater` measures the machine, not
+the code.** It takes **9.5 s** run alone (9.99 s and 10.19 s on two earlier
+measurements, so the figure is stable) against a limit that was 300 s. It
+tripped that limit twice: once locally with a release build compiling on the
+same four cores, and once in **CI run 152**, where the suite's own wall clock
+ran 1,460 s. It passed on runs 147, 148, 149, 150 and 151 — about one failure
+in six.
+
+The limit is now **fifteen minutes**, which is 95× the measured work and above
+the suite's longest wall clock. That is the **fourth** raise for one root
+cause, and the raises are symptom fixes: while
+`tenYearWorldRemainsStableAndContested` (1,460 s) and
+`archetypeParityAndSanity` (1,207 s) occupy a runner, every time limit in the
+suite is a measurement of load, and each will trip in turn. The evidence is
+added to **TD-034**, including that the **4× contention factor those raises
+were sized on is measured too low** — this was >30×. No assertion, seed or
+test logic changed.
 
 ## 12. UI validation
 

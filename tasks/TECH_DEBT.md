@@ -838,6 +838,23 @@ smaller and does not weaken what is asserted. Needs its own before/after: the
 point of the test is that a decade-long world stays sane, and a cheaper version
 has to still show that.
 
+**The 4x contention factor is measured too low (AE-044, CI run 152).** The
+entry above, and the three limits raised with it, were sized on contention of
+**4x** — the widest spread AE-043 had seen on one test across three runners.
+Run 152 beat that badly: `aRivalDoesNotBuyAnAirframeAndRetrenchAWeekLater`
+tripped a **300-second** guard on **9.5 seconds of work** while the suite's own
+wall clock ran 1,460 s. That is **>30x**, and it is the mechanism this entry
+describes seen from the other end — a *short* test starved by the two
+twenty-minute balance tests sharing its runner. It passed on runs 147, 148,
+149, 150 and 151 and failed on 152, so roughly one run in six.
+
+Its limit is now fifteen minutes (AE-044), which is the fourth raise for this
+one root cause. **That is the argument for fixing the cause rather than the
+symptom:** while `tenYearWorldRemainsStableAndContested` and
+`archetypeParityAndSanity` occupy a runner for 1,460 s and 1,207 s, *every*
+time limit in the suite is a measurement of the machine, and each one will
+trip in turn. Giving those two their own job fixes all of them at once.
+
 ---
 
 ## TD-035 — The estimator assumes every scheduled rotation flies; 4–23% do not
