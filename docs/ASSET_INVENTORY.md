@@ -3,6 +3,12 @@
 Every asset the project ships or generates, audited 2026-08-30 (AE-030) against
 the code rather than against documentation.
 
+> **Updated 2026-09-04.** A generated set of fifteen images was added from
+> `docs/AI_ASSET_PROMPTS.md` and integrated. **The shipped count is still one
+> image** — the app icon, now replaced by a new one. Everything else went to
+> `docs/design/` as reference or to the website, so the headline below holds.
+> §7 records what landed where.
+
 **Headline finding: the shipping application contains one image file.**
 Everything else visual is drawn at runtime from code. That is not an oversight
 to correct — it is the property that lets aircraft be recoloured per airline and
@@ -15,8 +21,8 @@ bug.
 
 | Category | Count | On disk | Notes |
 | --- | --- | --- | --- |
-| Raster images (shipped) | **1** | 1.5 MB | the app icon |
-| Raster images (not shipped) | 2 | — | docs + website |
+| Raster images (shipped) | **1** | 1.6 MB | the app icon — replaced 2026-09-04 |
+| Raster images (not shipped) | 17 | 9.4 MB | website 2, references 15 (§7) |
 | Vector/procedural art | 4 planforms | 0 | `AircraftSilhouette`, code |
 | Audio | 58 `.wav` | 8.4 MB | |
 | SF Symbols referenced | 92 call sites | 0 | system-provided |
@@ -195,3 +201,40 @@ be decoration.
 **No third-party artwork, no downloaded images, no manufacturer or airline
 references anywhere in the project.** Aircraft types, manufacturers, airport
 codes and airline names are all fictional. See `docs/ASSET_PROVENANCE.md`.
+
+---
+
+## 7. The generated set (2026-09-04)
+
+Fifteen images generated from the prompts in `docs/AI_ASSET_PROMPTS.md` and
+integrated. Every one is original and fictional; none references a real
+aircraft, airline or airport (§6 still holds).
+
+**Live in the product — 2 files:**
+
+| File | Replaces | Note |
+| --- | --- | --- |
+| `AirlineEmpireApp/…/AppIcon.appiconset/icon-1024.png` | the previous icon, kept at `docs/design/icon-previous-1024.png` | A tail fin with an amber glyph on a dusk gradient. Chosen over the previous terminal-and-tower scene because that one lost its subject at thumbnail size. Passes `check-app-icon.mjs`. |
+| `site/assets/cover.png` | the previous cover, kept at `docs/design/cover-previous.png` | 1200 × 1200, opaque, as `index.html` hardcodes. |
+| `site/assets/icon.png` | *(new)* | A copy of the app icon, now serving the site's favicon and apple-touch-icon — see below. |
+
+**One correction made while integrating.** `site/index.html` used `cover.png`
+for four jobs at once, including the 16-pixel favicon. The new cover is a full
+dusk scene and becomes a smudge at that size, so the favicon and home-screen
+icon now point at `assets/icon.png` instead. The cover keeps the two jobs it is
+good at — the Open Graph card and the hero image on the page. The previous
+cover had the same weakness; this is a fix, not a regression introduced by the
+new art.
+
+**Reference only, not shipped — 15 files under `docs/design/`:**
+
+| Folder | Files | What they are for |
+| --- | --- | --- |
+| `aircraft/` | `turboprop`, `regional-jet`, `narrowbody`, `widebody` | **Tracing references** for the SwiftUI paths in `AircraftSilhouette.swift`. Not drop-in assets: the app draws these shapes in code so it can tint them per airline and rotate them to a heading. Closing the fidelity gap in §5 means tracing these to vectors, not adding image assets. |
+| `store/` | `canvas-iphone`, `canvas-ipad`, `key-art` | Marketing working files. The canvases are backdrops for the six captured screenshots; the key art is for a press kit or product page. |
+| `illustrations/` | six `empty-*` | Empty-state spots. **Still unused**, and still P2 — `EmptyStateView` takes an SF Symbol, so using them needs a code change. The set exists now; whether to adopt it is unchanged and undecided. |
+
+**What did not change.** No `Image("name")` call sites were added, the asset
+catalog still holds one icon and one colorset, and no aircraft, airport, event
+or background art entered the app. The headline finding at the top of this
+document — one shipped image, everything else drawn from code — is still true.

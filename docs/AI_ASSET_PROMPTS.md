@@ -9,6 +9,17 @@ Written for **conversational image models** — ChatGPT / DALL·E, Gemini / Nano
 Banana. No `--ar` flags or weighted tokens anywhere: framing, aspect and
 exclusions are plain sentences, because that is what these models read.
 
+> **Status: all 15 have been generated and integrated.** They live where the
+> index says, the app icon and the website cover are live, and
+> `docs/ASSET_INVENTORY.md` §2 records the result. Keep this file for
+> regenerating any one of them — the prompts are unchanged and still correct.
+>
+> **One thing to expect when you do.** None of these models honours an exact
+> pixel size: the fifteen came back at 1254×1254, 1774×887, 851×1848 and
+> 1672×941 against four different requests. That is normal and not worth
+> fighting in the prompt. Ask for the aspect and the content; fix the pixels
+> afterwards, which §E shows how to do.
+
 ---
 
 ## How to use this file
@@ -35,21 +46,21 @@ mkdir -p docs/design/aircraft docs/design/store docs/design/illustrations
 
 | # | What it makes | Save as | Folder | Size | Alpha |
 | --- | --- | --- | --- | --- | :---: |
-| **01** | Turboprop planform | `turboprop.png` | `docs/design/aircraft/` | 2048² | yes |
-| **02** | Regional jet planform | `regional-jet.png` | `docs/design/aircraft/` | 2048² | yes |
-| **03** | Narrowbody planform | `narrowbody.png` | `docs/design/aircraft/` | 2048² | yes |
-| **04** | Widebody planform | `widebody.png` | `docs/design/aircraft/` | 2048² | yes |
+| **01** | Turboprop planform | `turboprop.png` | `docs/design/aircraft/` | square, ≥1024² | yes |
+| **02** | Regional jet planform | `regional-jet.png` | `docs/design/aircraft/` | square, ≥1024² | yes |
+| **03** | Narrowbody planform | `narrowbody.png` | `docs/design/aircraft/` | square, ≥1024² | yes |
+| **04** | Widebody planform | `widebody.png` | `docs/design/aircraft/` | square, ≥1024² | yes |
 | **05** | Screenshot canvas, iPhone | `canvas-iphone.png` | `docs/design/store/` | 1320 × 2868 | no |
 | **06** | Screenshot canvas, iPad | `canvas-ipad.png` | `docs/design/store/` | 2064 × 2752 | no |
 | **07** | Key art / feature graphic | `key-art.png` | `docs/design/store/` | 1920 × 1080 | no |
 | **08** | Website cover **+ favicon** | `cover.png` | `site/assets/` | 1200 × 1200 | no |
 | **09** | App icon (only for an A/B) | `icon-1024.png` | `AirlineEmpireApp/Resources/Assets.xcassets/AppIcon.appiconset/` | 1024² | **no** |
-| **10** | Empty state — fleet | `empty-fleet.png` | `docs/design/illustrations/` | 2048² | yes |
-| **11** | Empty state — routes | `empty-routes.png` | `docs/design/illustrations/` | 2048² | yes |
-| **12** | Empty state — search | `empty-search.png` | `docs/design/illustrations/` | 2048² | yes |
-| **13** | Empty state — route closed | `empty-route-closed.png` | `docs/design/illustrations/` | 2048² | yes |
-| **14** | Empty state — calm skies | `empty-calm-skies.png` | `docs/design/illustrations/` | 2048² | yes |
-| **15** | Empty state — no rivals | `empty-no-rivals.png` | `docs/design/illustrations/` | 2048² | yes |
+| **10** | Empty state — fleet | `empty-fleet.png` | `docs/design/illustrations/` | square, ≥1024² | yes |
+| **11** | Empty state — routes | `empty-routes.png` | `docs/design/illustrations/` | square, ≥1024² | yes |
+| **12** | Empty state — search | `empty-search.png` | `docs/design/illustrations/` | square, ≥1024² | yes |
+| **13** | Empty state — route closed | `empty-route-closed.png` | `docs/design/illustrations/` | square, ≥1024² | yes |
+| **14** | Empty state — calm skies | `empty-calm-skies.png` | `docs/design/illustrations/` | square, ≥1024² | yes |
+| **15** | Empty state — no rivals | `empty-no-rivals.png` | `docs/design/illustrations/` | square, ≥1024² | yes |
 
 **The six App Store screenshots are not in this list on purpose.** They are
 screen captures from a real mid-game world, never generated — see the rules
@@ -921,7 +932,48 @@ yourself unless you are comfortable in the Swift.
 
 ---
 
-# §E · The rule under all of it
+# §E · Fixing the size after generation
+
+Every one of the fifteen came back at the wrong size, so budget for this step.
+It needs Pillow: `pip install Pillow`.
+
+**Which fix to use depends on what is wrong**, and picking the wrong one
+damages the asset:
+
+| Situation | Do this | Why |
+| --- | --- | --- |
+| Right aspect, wrong pixels, and the image is soft (canvases, gradients) | **Resample** | Nothing to lose in a gradient. |
+| Right aspect, wrong pixels, and the image is detailed (icon, cover) | **Resample down only** | Downscaling sharpens; upscaling invents detail that is not there. |
+| Wrong aspect, and the image must be square (empty states) | **Pad** with transparency | Resampling to square would stretch the drawing. |
+| It is only a tracing reference (the four aircraft) | **Leave it** | Pixel count is irrelevant; the outline is what gets traced. |
+
+```python
+from PIL import Image
+
+# Resample to an exact canvas — for the store backdrops.
+Image.open("in.png").convert("RGB") \
+     .resize((1320, 2868), Image.LANCZOS).save("out.png")
+
+# Downscale and flatten — for the app icon, which must not carry alpha.
+Image.open("in.png").convert("RGB") \
+     .resize((1024, 1024), Image.LANCZOS).save("out.png")
+
+# Pad to square, keeping transparency — for a wide illustration.
+im = Image.open("in.png").convert("RGBA")
+side = max(im.size)
+square = Image.new("RGBA", (side, side), (0, 0, 0, 0))
+square.paste(im, ((side - im.width) // 2, (side - im.height) // 2), im)
+square.save("out.png")
+```
+
+**Never upscale a detailed image to hit a number in the index.** `key-art.png`
+sits at 1672 × 941 rather than 1920 × 1080 for exactly that reason: the aspect
+is right, and inventing a quarter of a million pixels would make it worse, not
+larger.
+
+---
+
+# §F · The rule under all of it
 
 Every asset here is original and fictional. No real aircraft, no real airline,
 no real airport, no borrowed artwork — that is the claim
