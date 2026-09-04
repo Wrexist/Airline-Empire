@@ -298,7 +298,17 @@ struct FeeEconomyTests {
     /// arrival passenger fee alone is 40% of the fare, a finding this
     /// phase records as TD-031 and does not change. The bound was
     /// dropped, not loosened: docs/AE040_FEE_ECONOMY_REPORT.md §12.)
-    @Test(.timeLimit(.minutes(5)))
+    ///
+    /// The limit is ten minutes against **118 seconds of work** (MEASURED,
+    /// AE-044, run alone on the session container). It was five, and that was
+    /// not enough: this is the test that put `main` red on run 131 — and the
+    /// same code passed in run 130, which is the point. Nothing about the test
+    /// changed between them; only the machine did. Swift Testing measures a
+    /// time limit as wall clock while all 457 tests run in parallel, so five
+    /// minutes was measuring how contended the runner was rather than how long
+    /// two simulated years take, and two minutes of work inside a five-minute
+    /// wall leaves only 2.5x for that contention. No assertion here changed.
+    @Test(.timeLimit(.minutes(10)))
     func regionalRivalKeepsMoneyInTheStandardCast() throws {
         let catalog = try ContentCatalog.loadBundled()
         let engine = SimulationEngine(state: Fixtures.newState(seed: 2039),
