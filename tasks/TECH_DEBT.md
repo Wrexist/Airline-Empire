@@ -748,3 +748,44 @@ market between real services. `poolAvailableToEntrant` and the logit split are
 the existing primitives. Correcting it moves the rival AI too, so it needs the
 full rival scan before/after that AE-039 and AE-041 established, plus the
 AE-042 recommendation battery, plus a re-run of this phase's ledger table.
+
+---
+
+## TD-034 — One test is half the Core suite's CI time, and no guard fits it
+
+**Symptom.** MEASURED (AE-044, each test run alone on the session container,
+sequentially, so contention could not distort the number):
+
+| Test | Alone | Guard before | Headroom |
+| --- | ---: | ---: | ---: |
+| `tenYearWorldRemainsStableAndContested` | **868 s** | 900 s | **1.04×** |
+| `archetypeParityAndSanity` | 447 s | 600 s | 1.3× |
+| `regionalRivalKeepsMoneyInTheStandardCast` | 118 s | 300 s | 2.5× |
+| the other six guarded tests | 1–65 s | 300–600 s | 9× – 600× |
+
+The three tight ones have all been raised (AE-044). This entry is about the
+one that a raised limit does not actually solve.
+
+**The structural problem.** `tenYearWorldRemainsStableAndContested` takes 868
+seconds alone — **52% of the whole Core suite's CI time** (1,681 s in run 137)
+in a single test. Swift Testing counts a time limit as wall clock while all 457
+tests run in parallel, and contention on this suite has been measured at **4×**
+(docs/AE043_FINAL_REPORT.md §8.1: the same test running 78 s, 104 s and 459 s
+across three runners on identical code). Four times 868 s is 58 minutes; the
+Core job's own timeout is **45**. So there is no guard value that both survives
+heavy contention and fits inside the job — 40 minutes is the most it can have,
+not the most it wants.
+
+**Cost.** A coin-flip red build. AE-041 measured this same test at **902.3 s**,
+already over its old 900 s limit, and it has tripped locally and passed in CI
+on byte-identical code. Every such failure costs a re-run and, worse, teaches
+everyone to ignore a red suite.
+
+**Fix shape.** Not a limit change — that is exhausted. Either make the test
+cheaper (ten simulated years with five rivals; the assertions are integrity
+checks per year, so a shorter horizon or fewer checkpoints may pin the same
+property), or move it to its own CI job so its wall clock stops competing with
+456 other tests and it gets the full job timeout to itself. The second is
+smaller and does not weaken what is asserted. Needs its own before/after: the
+point of the test is that a decade-long world stays sane, and a cheaper version
+has to still show that.
