@@ -23,7 +23,27 @@ struct RivalCredibilityTests {
     /// BUG-054: no rival closes a route that is flying full and earning
     /// within its first months, and no rival sells an airframe within a
     /// month of buying it. Both were the retrench rule's doing.
-    @Test(.timeLimit(.minutes(5)))
+    ///
+    /// Fifteen minutes against **9.5 seconds of work** (MEASURED, AE-044, run
+    /// alone on the session container; 9.99 s and 10.19 s on two earlier
+    /// measurements, so the figure is stable). It was five, and five was the
+    /// one PR #15 explicitly judged safe at 31x headroom on a **4x** measured
+    /// contention factor.
+    ///
+    /// That 4x is now measured too low. In CI run 152 this test tripped the
+    /// 300-second limit while the suite's own wall clock ran 1,460 s — a
+    /// short test starved past its guard by the two twenty-minute balance
+    /// tests sharing the runner, which is **>30x** contention on 9.5 s of
+    /// work, not 4x. It passed on runs 149, 150 and 151 of the same branch
+    /// and on 147 and 148 of main, so the guard is measuring the machine's
+    /// load on the day, exactly as it did for the three limits PR #15 raised.
+    ///
+    /// Fifteen minutes is 95x the measured work and sits above the suite's
+    /// own longest wall clock, so a starved run cannot trip it, while a
+    /// genuinely hung test is still caught well inside the job's 45-minute
+    /// timeout. **No assertion, seed, or piece of test logic changed.** The
+    /// root cause is not a limit and cannot be fixed by one: TD-034.
+    @Test(.timeLimit(.minutes(15)))
     func aRivalDoesNotBuyAnAirframeAndRetrenchAWeekLater() throws {
         let catalog = try ContentCatalog.loadBundled()
         let spec = try #require(catalog.scenario("entrepreneur"))

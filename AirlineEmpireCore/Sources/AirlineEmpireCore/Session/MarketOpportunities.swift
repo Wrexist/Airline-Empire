@@ -100,18 +100,35 @@ extension GameState {
     /// this airline, after that airframe's lease and the crew it carries.
     ///
     /// The arithmetic is the flight system's own, ahead of time — the same
-    /// `CompetitorAISystem.airframeDayValue` the rivals decide on, corrected
-    /// in AE-040 and measured against six months of ledger on seven pairs in
-    /// AE-042. There is one economy in this game and this is it; nothing is
-    /// re-derived here.
+    /// `CompetitorAISystem.airframeDayEstimate` the rivals decide on,
+    /// corrected in AE-040 and measured against six months of ledger on
+    /// seven pairs in AE-042. There is one economy in this game and this is
+    /// it; nothing is re-derived here.
+    ///
+    /// AE-044: the passenger figure is no longer supplied by the caller.
+    /// It was one number per market, reused for every candidate airframe, so
+    /// past the seat cap every airframe earned the same revenue and paid a
+    /// larger cabin's costs — the estimator could not rank airframes at all
+    /// (TD-033, docs/AE044_ROOT_CAUSE.md). Each airframe is now priced on
+    /// the demand its own service would win, against the incumbents actually
+    /// on the pair.
+    ///
+    /// `incumbents` are the offers already on the pair. The callers below
+    /// index every route by market once and pass the slice, because this is
+    /// called once per candidate market on a model the map rebuilds every
+    /// tick — scanning the route table per market was the shape that made
+    /// the ranking expensive in the first place (docs/MAP_ARCHITECTURE.md §11).
     ///
     /// Returns nil when no available airframe can fly the pair.
     func airframeResult(from origin: AirportCode, to destination: AirportCode,
-                        distanceKm: Int, passengersPerDay: Double,
+                        distanceKm: Int,
                         candidateSpecs: [AircraftTypeSpec],
+                        incumbents: [Route],
                         catalog: ContentCatalog) -> (spec: AircraftTypeSpec, monthly: Money)? {
         guard let originSpec = catalog.airport(origin),
               let destinationSpec = catalog.airport(destination) else { return nil }
+        let reputation = playerAirline?.reputation
+            .demandMultiplier(tuning: catalog.tuning.reputation) ?? 1.0
         // The two monthly costs the economy charges for having this route at
         // all: the crew on its airframe and the route's own payroll
         // (`EconomySystem`). Airline overhead is deliberately left out — it
@@ -126,11 +143,11 @@ extension GameState {
                 from: origin, to: destination,
                 aircraftRangeKm: spec.rangeKm,
                 aircraftRunwayRequirement: spec.runwayRequirement).isEmpty else { continue }
-            let perDay = CompetitorAISystem.airframeDayValue(
-                distanceKm: distanceKm, passengersPerDay: passengersPerDay, spec: spec,
-                fareRatio: 1.0, serviceTier: .standard,
-                origin: originSpec, destination: destinationSpec,
-                state: self, catalog: catalog, basis: .profit)
+            let perDay = CompetitorAISystem.airframeDayEstimate(
+                origin: originSpec, destination: destinationSpec, distanceKm: distanceKm,
+                spec: spec, fareRatio: 1.0, serviceTier: .standard,
+                reputationMultiplier: reputation, incumbents: incumbents,
+                state: self, catalog: catalog, basis: .profit).value
             let monthly = perDay * 30 - spec.leaseMonthly.asDouble - payroll
             if best == nil || monthly > best!.monthly { best = (spec, monthly) }
         }
@@ -192,6 +209,7 @@ extension GameState {
             tuning: catalog.tuning.demand)
 
         let carrierCounts = carrierCountByMarket()
+        let routesByMarket = routesByMarket()
         var scored: [(MarketOpportunity, Double, Double)] = []
         for origin in origins.sorted(by: { $0.raw < $1.raw }) {
             for code in catalog.orderedAirportCodes where code != origin {
@@ -235,6 +253,9 @@ extension GameState {
                     servableNow: servable)
                 // A contested market is worth less than an open one of the
                 // same size; the player still sees it, just ranked lower.
+                // The ranking is unchanged by AE-044 — only the economics
+                // below it are; the third slot is the unpenalised pool, kept
+                // for diagnostics.
                 scored.append((opportunity, pool / Double(1 + incumbents), pool))
             }
         }
@@ -265,12 +286,15 @@ extension GameState {
         // cost is a handful of evaluations rather than one per market.
         var qualifying: [MarketOpportunity] = []
         var rest: [MarketOpportunity] = []
-        for (opportunity, _, pool) in ranked {
+        for (opportunity, _, _) in ranked {
             guard qualifying.count < limit else { break }
             let result = airframeResult(
                 from: opportunity.origin, to: opportunity.destination,
-                distanceKm: opportunity.distanceKm, passengersPerDay: pool,
-                candidateSpecs: candidateSpecs, catalog: catalog)
+                distanceKm: opportunity.distanceKm,
+                candidateSpecs: candidateSpecs,
+                incumbents: routesByMarket[Route.market(opportunity.origin,
+                                                        opportunity.destination)] ?? [],
+                catalog: catalog)
             let priced = MarketOpportunity(
                 origin: opportunity.origin, destination: opportunity.destination,
                 destinationCity: opportunity.destinationCity,
@@ -321,6 +345,7 @@ extension GameState {
             tuning: catalog.tuning.demand)
 
         let carrierCounts = carrierCountByMarket()
+        let routesByMarket = routesByMarket()
         var out: [MarketOpportunity] = []
         for code in catalog.orderedAirportCodes where code != origin {
             guard let distance = catalog.distanceKm(origin, code) else { continue }
@@ -356,8 +381,8 @@ extension GameState {
             // than leaving the player to find out from the ledger.
             let result = airframeResult(
                 from: origin, to: code, distanceKm: distance,
-                passengersPerDay: outbound + inbound,
                 candidateSpecs: ownedSpecs.isEmpty ? eraSpecs : ownedSpecs,
+                incumbents: routesByMarket[Route.market(origin, code)] ?? [],
                 catalog: catalog)
             out.append(MarketOpportunity(
                 origin: origin, destination: code,
@@ -395,6 +420,18 @@ extension GameState {
             carriers[route.market, default: []].insert(route.airline)
         }
         return carriers.mapValues(\.count)
+    }
+
+    /// Every route, grouped by the market it serves, in one deterministic
+    /// pass — the offers an entrant would face, ready for
+    /// `DemandSystem.serviceDemand`.
+    func routesByMarket() -> [Route.Market: [Route]] {
+        var out: [Route.Market: [Route]] = [:]
+        for id in orderedRouteIDs {
+            guard let route = routes[id] else { continue }
+            out[route.market, default: []].append(route)
+        }
+        return out
     }
 
     public func airlinesServing(_ a: AirportCode, _ b: AirportCode) -> Int {

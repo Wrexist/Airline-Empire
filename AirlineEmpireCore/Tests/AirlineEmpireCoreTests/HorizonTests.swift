@@ -127,9 +127,17 @@ struct HorizonTests {
     }
 
     // HORIZON-05: a scored candidate has passed the passenger floor with the
-    // demand engine's entrant pool and carries the airframe-day profit that
-    // pool earns at the archetype's fare; a contested pair's pool is below
-    // the pair's whole pool, an open pair's is all of it.
+    // demand engine's entrant pool, and carries the airframe-day value the
+    // shared estimator gives it; a contested pair's pool is below the pair's
+    // whole pool, an open pair's is all of it.
+    //
+    // AE-044 changed what the score is made of and not what it means. The
+    // floor is still `poolAvailableToEntrant` against `minViableDailyDemand`,
+    // as calibrated. The score is now `airframeDayEstimate`, which derives
+    // the passengers this airframe's own service would win instead of being
+    // handed the pool figure — the pool is market *mass* available, not
+    // passengers captured, and using it as passengers was half of TD-033
+    // (docs/AE044_ROOT_CAUSE.md §1, cases D and E).
     @Test func aScoredCandidateCarriesTheEntrantPool() throws {
         let (state, catalog) = try Self.world(days: 60)
         let (aurora, spec, profile, _) = try Self.rival(named: "Aurora Atlantic", in: state)
@@ -146,22 +154,29 @@ struct HorizonTests {
                                                date: state.currentDate,
                                                economicIndex: state.world.economicIndex,
                                                catalog: catalog)
-            let incumbents = state.routes.values.filter {
+            let incumbents = Array(state.routes.values.filter {
                 $0.sameMarket(origin: aurora.homeAirport, destination: candidate.destination)
-            }
+            })
             let passengers = DemandSystem.poolAvailableToEntrant(
                 pool: pool, fareRatio: profile.priceFactor, quality: quality,
                 incumbents: incumbents, state: state, catalog: catalog)
             #expect(passengers >= tuning.minViableDailyDemand)
             if !incumbents.isEmpty { #expect(passengers < pool.total) } else { #expect(abs(passengers - pool.total) < 0.001) }
-            let expected = CompetitorAISystem.airframeDayValue(
-                distanceKm: candidate.distanceKm, passengersPerDay: passengers, spec: spec,
-                fareRatio: profile.priceFactor, serviceTier: aurora.serviceTier,
+            let estimate = CompetitorAISystem.airframeDayEstimate(
                 origin: try #require(catalog.airport(aurora.homeAirport)),
                 destination: try #require(catalog.airport(candidate.destination)),
+                distanceKm: candidate.distanceKm, spec: spec,
+                fareRatio: profile.priceFactor, serviceTier: aurora.serviceTier,
+                reputationMultiplier: aurora.reputation.demandMultiplier(
+                    tuning: catalog.tuning.reputation),
+                incumbents: incumbents.sorted { $0.id.raw < $1.id.raw },
                 state: state, catalog: catalog)
-            #expect(abs(score - expected) < 0.001)
+            #expect(abs(score - estimate.value) < 0.001)
             #expect(score > 0)
+            // The passengers the score was built on are this airframe's own,
+            // never the market pool handed over as if it were passengers.
+            #expect(estimate.demand.capturedPerDay > 0)
+            #expect(estimate.demand.capturedPerDay < passengers * 2)
             checked += 1
         }
         #expect(checked >= 5)

@@ -264,20 +264,33 @@ public struct CompetitorAISystem: SimulationSystem {
                                                date: state.currentDate,
                                                economicIndex: state.world.economicIndex,
                                                catalog: catalog)
-            let incumbents = state.routes.values.filter {
-                $0.sameMarket(origin: origin, destination: destination)
-            }
+            // In route-id order, not dictionary order: these are summed
+            // into a floating-point utility (`DemandSystem.incumbentUtilities`)
+            // and floating-point addition is not associative, so an
+            // unordered iteration could hand two runs of the same world
+            // different last bits. The project's convention for exactly
+            // this reason is `orderedRouteIDs` (`GameState.swift:51`).
+            let incumbents = state.orderedRouteIDs.compactMap { state.routes[$0] }
+                .filter { $0.sameMarket(origin: origin, destination: destination) }
             let passengers = DemandSystem.poolAvailableToEntrant(
                 pool: pool, fareRatio: profile.priceFactor, quality: entrantQuality,
                 incumbents: incumbents, state: state, catalog: catalog)
             guard passengers >= tuning.minViableDailyDemand else {
                 out.append(candidate(.belowFloor(passengers))); continue
             }
-            let score = airframeDayValue(
-                distanceKm: distance, passengersPerDay: passengers, spec: spec,
-                fareRatio: profile.priceFactor, serviceTier: airline.serviceTier,
-                origin: originSpec, destination: destinationSpec, state: state,
-                catalog: catalog)
+            // The floor above asks whether the market is big enough to be
+            // worth entering (`poolAvailableToEntrant`, in pool units, as
+            // calibrated). The score asks what this airframe would earn on
+            // it, and since AE-044 that question is answered by the demand
+            // engine's own allocation for this airframe at this frequency
+            // rather than by the pool figure (TD-033).
+            let score = airframeDayEstimate(
+                origin: originSpec, destination: destinationSpec, distanceKm: distance,
+                spec: spec, fareRatio: profile.priceFactor,
+                serviceTier: airline.serviceTier,
+                reputationMultiplier: airline.reputation.demandMultiplier(
+                    tuning: catalog.tuning.reputation),
+                incumbents: incumbents, state: state, catalog: catalog).value
             guard score > 0 else { out.append(candidate(.unprofitable(score))); continue }
             out.append(candidate(.scored(score)))
         }
@@ -358,6 +371,62 @@ public struct CompetitorAISystem: SimulationSystem {
             fleet: catalog.tuning.fleet, ops: ops)
         let service = carried * catalog.tuning.reputation.serviceCostPerPax(serviceTier).asDouble
         return revenue - fuel - movementFees - passengerFees - crew - maintenance - service
+    }
+
+    /// One airframe's value on one market, with the passengers derived from
+    /// the demand engine rather than taken as an input.
+    ///
+    /// This is `airframeDayValue` asked properly. The caller no longer
+    /// supplies a passenger figure — which is how the same number came to
+    /// be used for a 68-seat turboprop and a 184-seat narrowbody on the
+    /// same pair (TD-033) — and the demand is priced for the *same*
+    /// service the capacity and the costs are priced for, which is what
+    /// makes the two halves of the estimate describe one operation
+    /// (docs/AE044_ROOT_CAUSE.md §2).
+    public struct AirframeDayEstimate: Equatable, Sendable {
+        /// Rotations the estimate is priced at — the scheduler's own
+        /// maximum for this airframe on this length unless overridden.
+        public let rotationsPerDay: Int
+        public let demand: DemandSystem.ServiceDemand
+        /// Revenue, or profit on the `.profit` basis, for one airframe day.
+        public let value: Double
+
+        public init(rotationsPerDay: Int, demand: DemandSystem.ServiceDemand,
+                    value: Double) {
+            self.rotationsPerDay = rotationsPerDay
+            self.demand = demand
+            self.value = value
+        }
+    }
+
+    /// What one airframe of `spec` is worth on this market per day, demand
+    /// and all. Pure and deterministic: it reads `state`, mutates nothing,
+    /// creates no flights, writes no ledger entries and consumes no RNG.
+    ///
+    /// `incumbents` are the routes already on the pair — pass the real ones;
+    /// an empty array prices an open market, which is what an open market
+    /// is. `reputationMultiplier` is the entrant airline's own
+    /// `Reputation.demandMultiplier`, the term `allocate` applies to every
+    /// offer.
+    public static func airframeDayEstimate(
+        origin: AirportSpec, destination: AirportSpec, distanceKm: Int,
+        spec: AircraftTypeSpec, fareRatio: Double, serviceTier: ServiceTier,
+        reputationMultiplier: Double = 1.0, incumbents: [Route] = [],
+        rotationsPerDay: Int? = nil, state: GameState, catalog: ContentCatalog,
+        basis: RankingBasis = rankingBasis) -> AirframeDayEstimate {
+        let rotations = rotationsPerDay ?? FlightSchedulingSystem.roundTripsPerAircraftPerDay(
+            distanceKm: distanceKm, spec: spec, ops: catalog.tuning.ops)
+        let demand = DemandSystem.serviceDemand(
+            origin: origin.code, destination: destination.code, spec: spec,
+            roundTripsPerDay: rotations, fareRatio: fareRatio,
+            reputationMultiplier: reputationMultiplier, incumbents: incumbents,
+            state: state, catalog: catalog)
+        let value = airframeDayValue(
+            distanceKm: distanceKm, passengersPerDay: demand.capturedPerDay, spec: spec,
+            fareRatio: fareRatio, serviceTier: serviceTier, origin: origin,
+            destination: destination, state: state, catalog: catalog,
+            rotationsPerDay: rotations, basis: basis)
+        return AirframeDayEstimate(rotationsPerDay: rotations, demand: demand, value: value)
     }
 
     /// Deterministic candidate scoring: the pool an entrant could plan

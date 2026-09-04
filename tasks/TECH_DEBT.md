@@ -749,6 +749,54 @@ the existing primitives. Correcting it moves the rival AI too, so it needs the
 full rival scan before/after that AE-039 and AE-041 established, plus the
 AE-042 recommendation battery, plus a re-run of this phase's ledger table.
 
+## TD-033 — RESOLVED (AE-044, 2026-09-04)
+
+**Root cause, exactly** (docs/AE044_ROOT_CAUSE.md): `airframeDayValue` took
+`passengersPerDay` as a **caller-supplied constant** while computing capacity,
+revenue and every cost from the **airframe**. With
+`carried = min(passengersPerDay, flights × seats)` fixed across airframes,
+every airframe past the seat cap earns *identical* revenue and pays *strictly
+more* fuel, fees, crew, maintenance and service — so the estimator was
+structurally certain a larger cabin is worse. Five divergences (constant offer
+quality, demand priced at two rotations against costs at the maximum, one
+direction's pool for a two-directional day, *available pool* used where
+*captured share* was meant, and the player path ignoring incumbents entirely)
+were all that one mistake.
+
+**Fixed** (docs/AE044_ESTIMATOR_DECISION.md): `DemandSystem.serviceDemand`
+answers "given this airframe at this frequency at this fare against these
+incumbents, how many passengers?" using `allocate`'s own terms — one segment
+share, one `offerQualityTerms`, both directions — and
+`CompetitorAISystem.airframeDayEstimate` derives the passengers at the same
+rotation count it costs. Both the player's Next Moves and the rivals' market
+choice go through it; `SERVICEDEMAND-10` pins that they cannot drift apart.
+
+**MEASURED before and after** (docs/AE044_AIRFRAME_VALUE_AUDIT.md, 77
+route-and-airframe combinations flown for a month each):
+
+| | before | after |
+| --- | ---: | ---: |
+| demand bias, 162–184 seats | −8.3% | **−0.0%** |
+| demand bias, 68–95 seats | +13.7% | +15.5% |
+| aircraft-size bias (spread) | 22.0 pts | **15.5 pts** |
+| airframe ordering agreement with the ledger | 4/13 | **8/13** |
+| agreement with `DemandSystem.allocate` itself | — | ±2 pax over 336 comparisons |
+
+The residual is **not** a demand bias: it is TD-034 (unflown rotations),
+which the demand fix neither caused nor cured, and it accounts for all five
+remaining ordering errors — every one of which picks a smaller airframe than
+the ledger.
+
+**Cost, recorded rather than hidden:**
+`BalanceTests.archetypeParityAndSanity` fails at a spread of 6.044 against
+its `< 6.0` guard (baseline 5.772). The movement is one archetype — premium
++5.3%, every other within ±0.6%, survival identical — and the guard's own
+headroom on unmodified code was 1.2% at nine seeds against 2.7% of sampling
+noise. The threshold was **not** widened. See AE-044 final report §10 and
+§18.
+
+---
+
 ---
 
 ## TD-034 — One test is half the Core suite's CI time, and no guard fits it
@@ -789,3 +837,216 @@ property), or move it to its own CI job so its wall clock stops competing with
 smaller and does not weaken what is asserted. Needs its own before/after: the
 point of the test is that a decade-long world stays sane, and a cheaper version
 has to still show that.
+
+**The 4x contention factor is measured too low (AE-044, CI run 152).** The
+entry above, and the three limits raised with it, were sized on contention of
+**4x** — the widest spread AE-043 had seen on one test across three runners.
+Run 152 beat that badly: `aRivalDoesNotBuyAnAirframeAndRetrenchAWeekLater`
+tripped a **300-second** guard on **9.5 seconds of work** while the suite's own
+wall clock ran 1,460 s. That is **>30x**, and it is the mechanism this entry
+describes seen from the other end — a *short* test starved by the two
+twenty-minute balance tests sharing its runner. It passed on runs 147, 148,
+149, 150 and 151 and failed on 152, so roughly one run in six.
+
+Its limit is now fifteen minutes (AE-044), which is the fourth raise for this
+one root cause. **That is the argument for fixing the cause rather than the
+symptom:** while `tenYearWorldRemainsStableAndContested` and
+`archetypeParityAndSanity` occupy a runner for 1,460 s and 1,207 s, *every*
+time limit in the suite is a measurement of the machine, and each one will
+trip in turn. Giving those two their own job fixes all of them at once.
+
+---
+
+## TD-035 — The estimator assumes every scheduled rotation flies; 4–23% do not
+
+**Symptom.** MEASURED (AE-044, docs/AE044_AIRFRAME_VALUE_AUDIT.md §8; 70
+route-and-airframe combinations flown for a month each through
+`ae-demand capacity`). `CompetitorAISystem.airframeDayValue` prices
+`rotations × 2` flights a day. The ledger flies fewer:
+
+| Rotations scheduled | Median completion | Range |
+| ---: | ---: | --- |
+| 2 | 97% | 92–100% |
+| 3 | 94% | 77–98% |
+| 4 | 87% | 81–98% |
+| 5 | 84% | 78–94% |
+
+The driver is **schedule slack, not aircraft size**.
+`roundTripsPerAircraftPerDay` packs rotations into the 1,080-minute
+operating day; a 45–240 minute delay on a schedule with 24 minutes of slack
+expires the next flight (`scheduledFlightExpiryMinutes` 240) and the
+cascade eats the rest of the day. Gothenburg–London on a KT95 fits four
+264-minute rotations into 1,080 minutes — 24 minutes of slack — and
+completes **81%**; the same airframe on Hamburg–London has 208 minutes of
+slack and completes **97%**.
+
+**Cost.** Every flight-scaled line of the estimate — fuel, crew, movement
+fees — reads about +4% on a healthy schedule and far more on a tight one,
+and the capacity ceiling `min(pax, flights × seats)` is over-read by the
+same amount. Because a larger cabin carries a longer turnaround, large
+airframes get fewer rotations and *more* slack, so the residual reads as a
+**pro-small bias**: after AE-044 removed the demand bias, this is what is
+left, and it accounts for all four of the twelve controlled markets where
+the estimator still picks a smaller airframe than the ledger pays best on.
+
+**Why AE-044 did not fix it.** It is a schedule-realism model, not a demand
+model. Predicting it means modelling disruption probability
+(`aircraft.currentReliability`), the delay distribution and the expiry
+cascade against the day's remaining slack — new constants, a new mechanism,
+and its own balance regression. AE-044's brief lists "partial rotations"
+and "random operational events" as legitimate approximations, and the
+demand fix neither caused nor cured this.
+
+**Fix shape.** An expected-completion factor derived from the existing
+disruption terms and the schedule's own slack, applied to `flights` inside
+`airframeDayValue` — so the estimate prices the rotations that will fly
+rather than the ones that will be scheduled. Needs the AE-044 batteries
+re-run (`ae-demand capacity`, `frequency`, `airframe`) plus the rival scan,
+because it lowers every estimate and lowers tight schedules most.
+
+## TD-036 — The estimate prices the airframe's maximum rotations; the game opens routes at two
+
+**Symptom.** MEASURED (AE-044, docs/AE044_AIRFRAME_VALUE_AUDIT.md §6).
+`airframeDayValue` defaults to `roundTripsPerAircraftPerDay` — 3 to 5 on the
+short pairs the recommendation lives on. Every production caller then opens
+the route at **two**: the rival at `AITuning.initialRoundTrips`, the player
+at `RoutesView`'s stepper default.
+
+Twelve controlled markets × seven era airframes, each flown for a month,
+ranked the way the product ranks them (a month less the airframe's lease and
+payroll):
+
+| Configuration | Estimator agrees with the ledger |
+| --- | :---: |
+| flown at 2 round trips, priced at maximum rotations — **production today** | **4/12** |
+| flown at 2, priced at 2 | **11/12** |
+| flown at maximum, priced at maximum | 8/12 |
+
+**Cost.** On the aircraft question the mismatch is larger than TD-033 was:
+correcting the demand term alone moves production's own configuration 4/12
+→ 4/12, because both halves of the estimate describe an operation the game
+does not fly. It also makes `monthlyAfterAirframe` — the figure Next Moves
+prints beside a recommendation — describe a busier month than the player's
+first one (Hamburg–London on a PA184: $1.12M a month at four rotations,
+$713k at two).
+
+**Why AE-044 did not change it.** It is not TD-033, and it is not free.
+Maximum rotations is the *documented* contract ("what one airframe **day** is
+worth") and it is where the AI's own frequency loop converges — `manageRoutes`
+raises frequency by one per weekly decision while load stays above 0.82.
+Changing it re-ranks every rival market at once: at a fixed frequency
+revenue scales with distance while rotations no longer fall with it, so long
+routes gain against short ones. That needs its own phase and its own rival
+scan, exactly as AE-041 gave the ranking basis.
+
+**Fix shape.** Either price `initialRoundTrips` (and say so in the
+recommendation's wording), or price the frequency a route would settle at
+under `manageRoutes`' own load rule, or make the caller pass the frequency it
+intends. The middle option is the most faithful and the most expensive.
+Whichever is chosen, the decision needs the full AE-039/AE-041 rival scan
+before/after, the AE-042 recommendation battery, and the AE-044 ledger
+tables re-run.
+
+
+---
+
+## TD-037 — Two of the three macOS UI journey jobs flip on byte-identical code
+
+**Symptom.** MEASURED (AE-044, CI runs 147–150,
+docs/AE044_FINAL_REPORT.md §12):
+
+| Run | Head | App code vs. previous row | economy | campaign | arrival + shell |
+| --- | --- | --- | :---: | :---: | :---: |
+| 147 (PR #15) | `181a20e` | — | pass | pass | **pass** |
+| 148 (main) | `8c97e69` | **identical** — 148 merges 147's head | pass | pass | **fail** |
+| 149 (PR #16) | `4faf267` | + AE-044's change | **pass** | pass | fail |
+| 150 (PR #16) | `ee28f39` | **identical** — two `.md` files, zero code files | **fail** | pass | fail |
+
+`arrival + shell` flipped between 147 and 148 twelve minutes apart on the same
+tree; `economy` flipped between 149 and 150 on a diff containing no code at
+all. `campaign` has passed throughout, which on this evidence is luck rather
+than signal.
+
+**Cost.** The project's stated way of validating a UI change is
+parse → push → CI → simulator → screenshot → LOOK, and CI is the only
+simulator it has. Right now that loop cannot certify anything: a pass may be
+luck and a failure may be noise, so a real UI regression and a clean change
+look the same. AE-044 shipped a change to a visible recommendation
+(`NextMovesCard.airframeLine` names a different airframe and a different
+monthly figure at several homes) and could not have it looked at. **The next
+phase needs this working**: BUG-056's remaining half is an aircraft-market UI
+problem, and no fix for it can be evidenced without a trustworthy journey.
+
+**Not the same thing as the time limits.** AE-044's sibling entry TD-034 and
+the limit changes that came with it are about the *Core* suite's wall clock on
+ubuntu. This is the *macOS* journey jobs failing their own assertions
+non-deterministically. AE-043 §8.1 measured the contention behind it — the
+same shell test at 78 s, 104 s and 459 s across three runners on identical
+code — and run 149's `testColdLaunchBaseline` took 195 s against 69 s on run
+148, so timing is the likely mechanism; but a slow runner is the *cause* to
+investigate, not the finding.
+
+**Fix shape.** First make the failure legible: the workflow's `What failed`
+step greps `ui-test-output.txt`, which on the `arrival + shell` job contains
+only the measurement pass, so the actual assertion never reaches the log and
+AE-044 could not read what failed. Fix that before anything else — it is a
+few lines of workflow and it is the reason this entry cannot name the failing
+assertion. Then decide between making the journeys robust to a slow runner
+(explicit waits rather than timeouts) and giving the measurement pass its own
+job so it stops competing with the journeys it shares a runner with. Needs a
+before/after over several runs on one tree, which is the only way to measure a
+flake.
+
+---
+
+## TD-038 — Two of the five AI archetypes do not work, and the guard that should say so cannot
+
+**Symptom.** MEASURED (AE-044, `BalanceTests.archetypeParityAndSanity`, nine
+seeds × four years, each archetype founded with $120M). Net worth at the end,
+**before and after** AE-044's estimator fix — this is a pre-existing state, not
+something that phase caused:
+
+| Archetype | baseline | after AE-044 | vs. its $120M start |
+| --- | ---: | ---: | ---: |
+| premium | $441.3M | $464.7M | **3.9×** |
+| conservative | $325.1M | $326.3M | 2.7× |
+| regional | $217.6M | $216.5M | 1.8× |
+| expansionist | $74.4M | $74.0M | **0.6× — it loses money** |
+| lowCost | **$0** | **$0** | **dead** |
+
+So one archetype is not viable at all, a second ends four years poorer than it
+began, and the best ends nearly four times up. That is the dominant-strategy
+question the battery exists to ask, and nothing in the suite currently asks it.
+
+**Why the guard could not say so.** The spread check is
+`max(positive medians) / min(positive medians) < N`, and it has three defects:
+
+1. **An archetype dying makes it easier to pass.** A median of zero is filtered
+   out of `positives`, so losing a strategy *raises* the denominator and
+   *lowers* the ratio. The guard rewards exactly what it exists to catch.
+   AE-044 closed this one with `positives.count >= 4`, which holds identically
+   before and after and fails if a second archetype goes to zero.
+2. **The denominator is a loss-making archetype.** Dividing by expansionist,
+   which ends below its starting capital, makes the ratio hypersensitive: it
+   measures how badly the worst survivor does at least as much as how well the
+   best one does.
+3. **A median of three seeds is noise at this resolution.** The same unmodified
+   code reads **5.772** at three seeds and **5.931** at nine.
+
+**Cost.** The suite reports "balance is fine" while lowCost has been dead for
+as long as the battery has printed numbers, and it reported it while sitting
+1.2% under its own threshold — so the next economic change of any size was
+going to trip it, whatever that change was. AE-044's did.
+
+**Fix shape.** Two separable pieces, and the second is the real one.
+*The instrument*: replace the best/worst ratio with something that survives a
+dead archetype and a small sample — a floor on each archetype's own outcome
+against its starting capital would say more than a ratio between two of them,
+and would not need a threshold plucked from the air. Needs enough seeds to be
+stable, which collides with TD-034's CI budget.
+*The balance*: find out why lowCost cannot survive and why expansionist
+shrinks. `AIProfile` gives lowCost a 0.85 price factor and narrowbody/
+largeNarrowbody preferences, and expansionist the widest category list and the
+highest debt tolerance; either the archetypes or the economy they meet is
+wrong. That is a phase, not a fix, and it should come with a ledger for each
+archetype rather than a net-worth number at year four.

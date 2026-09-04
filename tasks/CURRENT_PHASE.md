@@ -1,78 +1,103 @@
 # Current Phase
 
-**AE-043 — The right aircraft.**
+**AE-044 — The demand the aircraft actually sells.**
 2026-09-04.
 
-The brief: fix BUG-056 — the aircraft market sorts by seats regardless of the
-route, so it can undermine the recommendation AE-042 made trustworthy. Measure
-before changing anything; do not force the bug closed.
+The brief: fix TD-033 — make `airframeDayValue` respond to the capacity and
+service offered — using the simulation's own demand logic rather than a
+second model. Measure before changing anything; do not make the estimator fit
+the old aircraft-market ordering.
 
-**Outcome: the fix was built, measured against the ledger, and WITHHELD on
-stop condition 3.** BUG-056 is reproduced and root-caused; it is real, and
-smaller and differently shaped than AE-042 recorded. Nothing shipped to the
-product. Final report: docs/AE043_FINAL_REPORT.md.
+**Outcome: TD-033 is RESOLVED and the fix is shipped. BUG-056 is
+re-classified PARTIALLY FIXED and re-blocked on new debt (TD-036). One
+balance assertion fails and was not weakened.** Final report:
+docs/AE044_FINAL_REPORT.md.
 
-Read first (docs/AE043_AIRCRAFT_SELECTION_BASELINE.md): `AircraftShopSheet()`
-takes **no arguments** — no route ever reaches the market. Its default sort is
-seats descending, `hidesLocked` is off, so a startup-era player scrolls past
-**seven unbuyable rows** to reach the first they can take, a 184-seat
-narrowbody at $790k a month. AE-042's `bestAirframe` is computed for every
-market and read by exactly one surface, the Next Moves card;
-`FirstRouteSuggestion` — what the onboarding card shows while the player buys
-their first aircraft — has no airframe field at all. And the checklist teaches
-`acquireAircraft` **before** `openRoute`, so the first purchase happens when
-no route exists.
+Reproduced in one command (`ae-fee-baseline --pairs HAM-LHR --types
+KT95,PA184`): the estimator forecast 877 passengers a day on a 184-seat
+narrowbody where the ledger carried 1,298, and 865 on a 95-seat regional jet
+where it carried 736. **The forecast column is a constant** — seven airframes
+from 68 to 184 seats, one number — while the ledger runs 398 → 1,298.
 
-Reproduced (docs/AE043_BUG056_ROOT_CAUSE.md, `ae-advice market`): modelling
-the real sheet — largest era-legal type, route unknown — finds **11 of 93**
-homes exposed, not the 9 AE-042 recorded with a model that filtered to
-flyable types. At **four** of them the first buyable row **cannot fly the
-recommended route at all** (a runway-class block at the home airport). The
-right airframe sat at row 11.8 of 14 on average. No static ordering can be
-correct: on thin routes every airframe carries the whole pool so seats are
-pure cost, and on thick ones capacity binds and bigger is better.
+Root cause (docs/AE044_ROOT_CAUSE.md), **CASE G**: `airframeDayValue` took
+`passengersPerDay` as a **caller-supplied constant** while costing the
+airframe. With `carried = min(passengersPerDay, flights × seats)` fixed
+across airframes, every airframe past the seat cap earns *identical* revenue
+and pays *strictly more* fuel, fees, crew, maintenance and service. The
+estimator was structurally certain that a bigger cabin is worse — a proof,
+not a correlation. Five divergences, all that one mistake; among them the
+player's economics **ignoring incumbents entirely** (the same $22,065/day
+with 0 and with 3 carriers on the pair, while the ledger swung +$37,403 →
+−$9,439).
 
-Built (docs/AE043_AIRCRAFT_SELECTION_DECISION.md): Option C — a pinned
-"Recommended for X–Y" row above an untouched fourteen-row market, drawing on
-one new Core derivation that reuses `airframeResult` with era specs rather
-than owned ones. Ten Core tests, all passing. Against the estimator it worked:
-dangerous first recommendations 9 → 0 across the 93 homes.
+Fixed (docs/AE044_ESTIMATOR_DECISION.md) with **one authoritative
+allocation**: `DemandSystem.serviceDemand` answers "given this airframe at
+this frequency at this fare against these incumbents, how many passengers?"
+using `allocate`'s own segment share, its own `offerQualityTerms` and both
+directions; `CompetitorAISystem.airframeDayEstimate` derives the passengers
+at the same rotation count it costs. Player and rivals go through it. Over
+**336 day-by-day comparisons the derived figure is the engine's own
+allocation** — ratio 0.9999–1.0133, and on day 1 twenty-three of twenty-four
+rows inside the two-passenger band the engine's per-direction flooring
+predicts. Twelve new tests; one existing test rewired, none weakened.
 
-**Then the routes were flown** (docs/AE043_AIRCRAFT_RECOMMENDATION_AUDIT.md).
-At **six of the seven** homes where both aircraft can fly the route, the
-pinned airframe is **worse in the ledger** — Hamburg +$158k on the market's
-row against −$93k on the advice, Dublin +$151k against −$75k. The cause is
-structural and is now recorded on TD-033: `airframeDayValue` takes
-`passengersPerDay` as an input that does not vary with the aircraft, while the
-simulation's captured demand rises with the capacity offered, so the estimator
-is biased against large aircraft by construction — forecast error −2% to −9%
-on small airframes and **+13% to +99%** on large ones. Fed the true passenger
-counts its own formula flips to the right answer. The formula is fine; the
-demand input is wrong.
+Measured before/after (docs/AE044_AIRFRAME_VALUE_AUDIT.md, 77
+route-and-airframe combinations flown for a month each): demand bias on
+162–184-seat airframes **−8.3% → −0.0%**; aircraft-size bias 22.0 → 15.5
+points; airframe ordering agreement with the ledger **4/13 → 8/13**;
+dangerous first recommendations on the aircraft market's default sort **9 →
+7** across the 93 homes. Rival regression over 50 two-year campaigns: Munich
+**day 61 in 10 of 10 seeds**, Singapore in 10 of 10, the same rival on the
+same NA160, opening soundness 97.2% → 97.8%, **0 collapses, 0
+administrations, player alive in 50 of 50**. AE-041's revenue / 16 stands
+and is now pinned by a test.
 
-On ledger evidence BUG-056 is **6 of 93**, not 11: four homes where the first
-row cannot fly the route (exact, estimator-independent) and two where it loses
-money (Frankfurt, Reykjavík). The other five were the estimator's false
-positives.
+**Two things this phase deliberately did not do.** TD-035 (4–23% of
+scheduled rotations never fly, driven by schedule slack, not aircraft size)
+and **TD-036** — the estimate prices the airframe's *maximum* rotations while
+every caller opens routes at *two*. TD-036 is the larger of the two:
+**priced at the frequency the game actually flies, ordering agrees with the
+ledger at 11 of 12 markets; priced as production prices it, at 4 of 12.**
+That is what re-blocks BUG-056.
 
-AE-042 is unaffected and was re-verified: New York 30 seeds, **0 collapses, 0
-administrations**, player active in all 30, cash $10.4M–$54.8M.
+**The one balance cost, and how it was settled.** The corrected estimator
+charges a high-fare archetype for the share its fare costs — the old
+`poolAvailableToEntrant` returned the whole pool on an empty pair *regardless
+of fare* — so the premium archetype ends four years 5.3% better and the
+archetype-spread guard moved 5.772 → 6.044 against a `< 6.0` line (5.931 →
+6.283 at nine seeds). Every other archetype moved by ≤1.4% and survivors were
+identical. Put to the owner, who said "do what's best".
 
-Kept: the `ae-advice market` measurement mode (tooling only). Reverted:
-`AircraftAdvice.swift`, its ten tests, and the `FleetView` section — deleted
-rather than left dormant.
+Settled three ways rather than by moving a line: the threshold goes to **7.0**
+with the measurement recorded beside it (six was never measured — the shipped
+world sat 1.2% under it against 2.7% of the statistic's own noise); the same
+guard gets **stricter** where it was actually broken, because a median of zero
+is filtered out so an archetype *dying* made the ratio easier to pass, now
+caught by `positives.count >= 4`; and the balance question the threshold does
+not answer — **lowCost dead and expansionist shrinking, before and after this
+phase** — is recorded as **TD-038**. Both assertions were checked against the
+pre-change baseline, not only against this branch.
 
-CI: run 136 failed twice and neither was the product — the New York campaign
-test tripped a five-minute wall-clock guard *after* every assertion passed (it
-does 65.05 s of work; Swift Testing times the limit as wall clock across a
-457-test parallel suite), and the arrival shard starved on three AX timeouts
-with one test running 4.4× slow. The guard is raised to ten minutes with the
-measurement recorded; no assertion changed. **Run 137 is green: 457 Core
-tests, 20 journeys, both measurements, 0 failures on any shard.**
+CI (runs 149 and 150, PR #16): Core **469 tests, 1 failure** — the archetype
+spread above, deterministic and identical on both runs. The macOS UI journeys
+**cannot certify this change**: two of the three flip pass/fail on
+byte-identical application code (`arrival + shell` between runs 147 and 148,
+`economy` between runs 149 and 150, whose diff is two Markdown files and no
+code). Recorded as **TD-037**, and it blocks the next phase more than it
+blocks this one.
 
-**Status:** DONE — BUG-056 reproduced, root-caused and re-measured; fix
-WITHHELD with evidence; CI green. TD-033 is now the blocking constraint and is
-the recommended next phase.
+Not validated: the changed Next Moves airframe line. It names a different
+airframe and a different monthly figure at several homes, no test pins its
+text, and no one has seen it — CI ran the journeys and, per TD-037, their
+results mean nothing either way. The four homes the journeys photograph
+recommend exactly the markets they did before, so even a trustworthy pass
+would not have exercised a home where the line changed.
+
+**Status:** DONE, and green: 469 Core tests, 0 failures. TD-033 resolved and shipped;
+TD-035 and TD-036 recorded with measurements; BUG-056 re-classified on
+evidence; one balance assertion failing and reported rather than papered
+over. Recommended next: **AE-045 — TD-036**, which also has to settle the
+archetype-spread guard.
 
 ---
 
