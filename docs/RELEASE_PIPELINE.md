@@ -50,6 +50,7 @@ to point at, and put the date and the run number in when you do.
 | Listing validation, bundle-id agreement, icon check | **Proven** — run against this checkout, 2026-08-28 (the icon check correctly reports the icon as missing) |
 | `xcodebuild` compile of the app | **PROVEN — 2026-08-28**, [CI run 33213797384](https://github.com/Wrexist/Airline-Empire/actions/runs/33213797384). `** BUILD SUCCEEDED **` on `macos-26` / Xcode 26.6 / iPhoneSimulator 26.5 SDK, universal arm64 + x86_64, `com.airlineempire.game`, in 53 seconds. The first Xcode build in this project's history. |
 | Archive, export, signing | **PROVEN — 2026-08-28**, [run 33216345773](https://github.com/Wrexist/Airline-Empire/actions/runs/33216345773). Archive in 71s, export in 16s, a real signed `.ipa` and its dSYMs kept as artefacts. Signing, the API key, the export options and the whole macOS job work. |
+| Signing, on the next release run | **REGRESSED — 2026-09-05**, [run 33935959411](https://github.com/Wrexist/Airline-Empire/actions/runs/33935959411) (release run 6, `ec4ef84`, v1.0.12 build 4). The same automatic path, byte-identical plumbing, refused at `Archive`: *"The selected team does not have a program membership that is eligible for this feature."* The API key answered the preflight in the same run — app record found, build number resolved — so App Store Connect access was intact and Developer Program membership was not. An account state, not a code change. `check-signing-eligibility.mjs` now asks the provisioning half of the API on the 1x runner, and the `Archive` step translates the message if Apple only says it there. |
 | Upload to App Store Connect | **Attempted, refused at validation** — same run. `xcrun altool --validate-app` reached Apple and came back with error 90474 (iPad multitasking orientations). That is the validation step doing its job: the bundle never left for the store. Fixed in `project.yml`, and the rule now runs on the 1x preflight (`check-bundle-config.mjs`). Still unproven: the upload itself and TestFlight processing. |
 | App Store Connect API calls | **PROVEN — 2026-08-28**, same run: `preflight.mjs` and `next-build-number.mjs` both authenticated and answered. The JWT, the client and the resolver work against the live API. |
 | Metadata push, screenshot upload | **Never run.** |
@@ -183,12 +184,13 @@ for why Node in a Swift repository), and none of them ship in the app.
 
 | Script | Does | Needs |
 |---|---|---|
-| `selftest.mjs` | 30 tests over the JWT, the HTTP client, PNG inspection, the app icon and the listing validator | nothing |
+| `selftest.mjs` | 47 tests over the JWT, the HTTP client, signing-eligibility classification, PNG inspection, the app icon and the listing validator | nothing |
 | `validate-metadata.mjs` | Character limits, keyword hygiene, trademarks, URLs, screenshot canvases, bundle-id agreement across three files | nothing |
 | `build-fill-in-sheet.mjs` | Generates `docs/APP_STORE_CONNECT_FILL_IN.md` from `store/`; `--check` fails CI when it is stale | nothing |
 | `check-bundle-config.mjs` | Apple's bundle rules read off `project.yml` — iPad orientations, export compliance, the icon set, the shared scheme — before anything compiles | nothing |
 | `check-app-icon.mjs` | Whether the icon exists, is 1024×1024 and has no alpha — the most common first-upload rejection, caught before the archive | nothing |
 | `preflight.mjs` | Secrets, authentication, app record, version state | the three ASC secrets |
+| `check-signing-eligibility.mjs` | Whether Apple will still sign for this team — bundle id registered, App Store profile usable, distribution certificates unexpired and under Apple's limit of two. Blocks only on Apple's own words about the membership; warns on everything else | the three ASC secrets |
 | `next-build-number.mjs` | The next CFBundleVersion, from Apple or from the clock | optional |
 | `push-metadata.mjs` | Deploys `store/` to a version; dry run by default | the three ASC secrets |
 | `upload-screenshots.mjs` | Reserve → PUT → commit → order, per locale and display type | the three ASC secrets |
@@ -212,6 +214,7 @@ Two conventions run through all of them:
 | `Missing secret(s): …` in preflight | Secret absent or misspelled | `APP_STORE_CONNECT.md` §5 |
 | HTTP 401 from any script | Key id, issuer id and `.p8` are not from the same key | Re-download the key; §3 there |
 | `No App Store Connect app record for …` | The app record does not exist, or the bundle id disagrees | §2 there. The three places the bundle id lives must match |
+| Archive: *"team does not have a program membership that is eligible"* | The Developer Program membership is not active — lapsed, unpaid, a Personal Team, or an unaccepted Program License Agreement. App Store Connect keeps answering normally while this is true, so a green preflight does not clear it | Release run 6, 2026-09-05. `APP_STORE_CONNECT.md` §1. Nothing is consumed by the failure: fix the account, re-run the same version |
 | Archive fails on code signing | Certificate missing, expired, or not all three signing secrets set | §4 there |
 | Export fails with "no profile matching" | The profile is for a different bundle id or a different certificate | Re-download the profile after fixing the certificate |
 | Upload rejected: SDK version | The runner's Xcode is older than Apple's current minimum | `runs-on: macos-26` in the workflow; Apple refuses the upload *after* the compile, which is why the runner is pinned |

@@ -42,6 +42,24 @@ exists) · [`ASO.md`](ASO.md) (what goes in the listing and why).
 **Produces:** the 10-character **Team ID** (Developer portal → Membership).
 → repository secret `APPLE_TEAM_ID`.
 
+**If a build that used to sign stops signing**, with
+*"The selected team does not have a program membership that is eligible for
+this feature"* — that is this section, not §4. Release run 6 (2026-09-05) hit
+it five days after run 5 archived cleanly on identical plumbing. The
+membership, not the pipeline, had changed. Check in this order:
+
+1. Developer portal → **Membership details**: active, or expired?
+2. A banner asking the Account Holder to accept an updated **Program License
+   Agreement**. Provisioning is refused until it is accepted, while App Store
+   Connect carries on answering — which is why the preflight stayed green.
+3. App Store Connect → **Business / Agreements**, anything awaiting review.
+4. `APPLE_TEAM_ID` names the paid team and not a Personal Team.
+5. The API key still holds **App Manager** or Admin; a lesser role can read
+   but not create signing assets.
+
+Manual signing (§4) is not a way round it: the certificate and profile it
+wants are issued by the same membership.
+
 ---
 
 ## 2 · Bundle identifier and app record

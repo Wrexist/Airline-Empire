@@ -197,6 +197,16 @@ Details: [`RELEASE_PIPELINE.md`](RELEASE_PIPELINE.md).
 > `project.yml`, and `check-bundle-config.mjs` now catches that class of
 > rejection on the cheap runner. Re-run 6.3 and it should go through.
 
+> **Run 6, 2026-09-05: blocked on the Apple account, not the app.** The
+> archive was refused with *"The selected team does not have a program
+> membership that is eligible for this feature"* — five days after run 5
+> archived and signed on identical plumbing. Runs 2, 4 and 5 all worked, the
+> API key answered the preflight in the same run, and `swift test` passed on
+> the same commit; only the membership had changed. Work
+> [`APP_STORE_CONNECT.md`](APP_STORE_CONNECT.md) §1 before re-running.
+> Nothing was consumed — no version, no build number, no upload — so 6.1 and
+> 6.3 re-run at the same version once membership reads Active.
+
 **6.1** 🤖 Actions → **iOS TestFlight** → Run workflow. Version `1.0.0`,
 **upload OFF**. This proves signing and export without touching Apple.
 

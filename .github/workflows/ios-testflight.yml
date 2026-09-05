@@ -190,6 +190,23 @@ jobs:
           APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
         run: node scripts/asc/preflight.mjs --version "${{ inputs.version }}"
 
+      # Release run 6 spent a 10x runner to learn that Apple would not sign for
+      # this team. The API key answered the preflight above in the same run —
+      # app record found, build number resolved — because App Store Connect
+      # access and Developer Program membership are separate things, and
+      # nothing here was asking the second one anything. Three read-only GETs
+      # into the provisioning half of the API now do.
+      #
+      # Fail-open by design: this exits non-zero only when Apple says the words
+      # (see the script's header). An under-privileged key 403s here and
+      # archives perfectly well, so a 403 must never stop a release.
+      - name: Can this team still sign?
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+        run: node scripts/asc/check-signing-eligibility.mjs
+
   # ── 2 · The core must be green before anything is archived ─────────────────
   core-tests:
     name: Core tests (ubuntu, 1x)
@@ -391,7 +408,41 @@ jobs:
             PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
             MARKETING_VERSION="${{ inputs.version }}" \
             CURRENT_PROJECT_VERSION="${{ steps.build-number.outputs.value }}" \
-            "${EXTRA[@]}"
+            "${EXTRA[@]}" 2>&1 | tee "$RUNNER_TEMP/archive.log"
+
+      # Apple's signing refusals name no action and read like a build error.
+      # Run 6 (2026-09-05) failed with "The selected team does not have a
+      # program membership that is eligible for this feature", followed by a
+      # "No profiles were found" line that looks like the cause and is the
+      # consequence. Translating it here costs nothing on a job that has
+      # already failed, and the preflight gate above cannot catch what Apple
+      # only says to xcodebuild.
+      - name: Why the archive failed
+        if: failure()
+        run: |
+          LOG="$RUNNER_TEMP/archive.log"
+          [ -f "$LOG" ] || exit 0
+          if grep -qiE 'program membership|not eligible for this feature' "$LOG"; then
+            echo "::error::Apple refused to issue signing assets: this team's Developer Program membership is not eligible. This is an account state, not a code or pipeline problem."
+            cat <<'GUIDANCE'
+          Check, in order:
+            1. developer.apple.com/account -> Membership details. Active? Expired?
+               Any banner asking the Account Holder to accept an updated Program
+               License Agreement? A pending agreement refuses provisioning while
+               App Store Connect keeps answering normally.
+            2. App Store Connect -> Business / Agreements - anything to review.
+            3. APPLE_TEAM_ID must name the paid team, not a Personal Team.
+            4. The API key needs App Manager or Admin to create signing assets.
+
+          Manual signing is not a way round it: the certificate and profile it wants
+          have to be issued by the same membership. The full checklist is
+          docs/APP_STORE_CONNECT.md section 1; manual signing is section 4.
+
+          Nothing was consumed by this failure - no build number, no version, no
+          upload. Re-run the same version once membership reads Active.
+          GUIDANCE
+          fi
+          exit 0
 
       - name: Export the .ipa
         run: |
