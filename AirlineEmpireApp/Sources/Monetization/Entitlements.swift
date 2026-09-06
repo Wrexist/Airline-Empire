@@ -124,7 +124,15 @@ final class Entitlements {
         if let testingOverride { entitlement = testingOverride }
     }
 
-    deinit { updatesTask?.cancel() }
+    // No `deinit` cancelling `updatesTask`. Two reasons, and the first is
+    // that it does not compile: this class is `@MainActor`, `deinit` is not,
+    // and Swift refuses the reference ("main actor-isolated property
+    // 'updatesTask' can not be referenced from a nonisolated context").
+    //
+    // The second is that it was never needed. The listener captures `self`
+    // weakly and returns the moment it is gone, so the task ends with the
+    // object either way — and this object is created once by the scene and
+    // lives as long as the app.
 
     /// Whether StoreKit is the source of truth for this process.
     ///

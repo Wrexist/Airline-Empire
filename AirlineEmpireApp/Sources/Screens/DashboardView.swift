@@ -98,7 +98,12 @@ struct DashboardView: View {
 
     @ViewBuilder
     private var autoPauseBar: some View {
-        if let reason = controller.autoPauseReason {
+        // `.eraCeiling` is deliberately excluded: `EraCeilingBar` is already
+        // docked under every tab for it, so this would be the same news
+        // twice — and this notice carries a Dismiss button that clears the
+        // reason, which would take the explanation away while the clock is
+        // still held (docs/MONETIZATION.md §4.1).
+        if let reason = controller.autoPauseReason, reason != .eraCeiling {
             AutoPauseNotice(reason: reason) { controller.dismissAutoPause() }
                 .padding(.horizontal, AETheme.spacingM)
                 .padding(.bottom, AETheme.spacingS)
