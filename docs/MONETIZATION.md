@@ -260,6 +260,11 @@ has named an airline, chosen a livery and picked a home — the offer lands on
 something they have begun, and declining leads into a real game instead of an
 empty menu.
 
+The nudge fires when the app returns to the foreground **with a game open**,
+not on a timer inside a session: a sheet that interrupts someone mid-decision
+is worse than one that greets them on the way in, and a paywall over the
+new-game menu is an ad rather than an offer.
+
 A gate is never answered with silence. A locked control that does nothing
 when tapped is the defect this codebase has three bug numbers for (BUG-029,
 BUG-030, BUG-032).

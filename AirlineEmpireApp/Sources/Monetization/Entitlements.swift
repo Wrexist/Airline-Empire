@@ -324,8 +324,32 @@ final class Entitlements {
         presentedGate = .direct
     }
 
-    /// Called when the sheet closes without a purchase.
+    /// The periodic, unprompted nudge — the only way the app raises the
+    /// paywall on its own after the first run.
+    ///
+    /// Called when the app returns to the foreground rather than on a timer
+    /// inside a session: a sheet that interrupts someone mid-decision is
+    /// worse than one that greets them on the way in, and coming back to the
+    /// game is the moment a player is between things anyway. Bounded twice
+    /// over by the policy — never sooner than a billing period, and never at
+    /// all after four refusals.
+    func nudgeIfDue() {
+        guard presentedGate == nil else { return }
+        guard PaywallPolicy.shouldNudge(access: access,
+                                        history: paywallHistory) else { return }
+        presentedGate = .direct
+    }
+
+    /// Called whenever the sheet closes, however it closed.
+    ///
+    /// A purchase dismisses the sheet by clearing `presentedGate`, so this
+    /// runs for a buyer too — and counting that as a refusal would be wrong
+    /// twice over: it is the opposite of what happened, and if the player
+    /// later lapses they would resume with a spent nudge budget they never
+    /// used. `purchase()` has already recorded the conversion by then, so the
+    /// only thing left to do here is nothing.
     func paywallDismissed() {
+        guard !isPro else { return }
         recordPaywall(wasPurchase: false)
     }
 

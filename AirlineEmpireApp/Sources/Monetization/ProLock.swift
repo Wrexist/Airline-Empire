@@ -95,41 +95,6 @@ struct ProBadge: View {
     }
 }
 
-extension View {
-    /// Marks a control as gated, and makes tapping it raise the paywall for
-    /// `gate` instead of doing nothing.
-    ///
-    /// Applied to the *whole* control rather than wrapping its action, so a
-    /// row keeps its own hit area and its own accessibility label and gains
-    /// one trait: it is a button that explains itself.
-    @ViewBuilder
-    func aeProGated(_ gate: ProGate, isLocked: Bool) -> some View {
-        if isLocked {
-            modifier(ProGateOverlay(gate: gate))
-        } else {
-            self
-        }
-    }
-}
-
-private struct ProGateOverlay: ViewModifier {
-    let gate: ProGate
-    @Environment(Entitlements.self) private var entitlements
-
-    func body(content: Content) -> some View {
-        content
-            .overlay(alignment: .topTrailing) {
-                ProBadge().padding(AETheme.spacingS)
-            }
-            // A high-priority gesture so the gated row answers with the
-            // paywall rather than performing whatever it normally would.
-            .highPriorityGesture(TapGesture().onEnded {
-                entitlements.present(gate)
-            })
-            .accessibilityHint("Requires Pro. Opens the Pro options.")
-    }
-}
-
 // MARK: - Settings
 
 /// The Pro section of Settings.
