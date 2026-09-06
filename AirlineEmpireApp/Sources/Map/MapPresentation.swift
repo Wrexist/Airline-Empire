@@ -145,6 +145,56 @@ struct InterpolatedFlight {
     }
 }
 
+// MARK: - Following a flight
+
+/// Where a followed flight is *right now*, in map space.
+///
+/// The camera has to be built around this point, and the camera is built
+/// before the frame exists — so this resolves the same interpolation
+/// `MapFrame` will draw with, one flight's worth, ahead of it. One flight per
+/// frame against ~90 airports is a rounding error next to the draw it
+/// precedes; the alternative is handing the whole model to the camera, which
+/// would make a camera that knows about airlines.
+enum MapFollow {
+    static func point(flight followed: FlightID, model: MapModel,
+                      gameMinutes: Double) -> CGPoint? {
+        guard let flight = model.flights.first(where: { $0.id == followed })
+        else { return nil }
+        guard flight.airborne,
+              let from = model.airports.first(where: { $0.code == flight.origin }),
+              let to = model.airports.first(where: { $0.code == flight.destination })
+        else {
+            // Parked: the aircraft is at an airport, and the map's own
+            // position for it is already that airport.
+            return CGPoint(x: CGFloat(flight.position.x),
+                           y: CGFloat(flight.position.y))
+        }
+        let interpolated = InterpolatedFlight.advance(
+            flight, byGameMinutes: gameMinutes,
+            origin: from.position.coordinate,
+            destination: to.position.coordinate)
+        return CGPoint(x: CGFloat(interpolated.position.x),
+                       y: CGFloat(interpolated.position.y))
+    }
+}
+
+/// The last place a followed flight was drawn.
+///
+/// Deliberately *not* `@Observable`, for `MapHitGeometry`'s reason: it is
+/// written from inside the draw and read when a gesture or an arrival ends
+/// the follow. It is what stops the camera teleporting when the flight it was
+/// following lands and leaves the world — the aircraft is gone, but where it
+/// was is still the right place for the camera to be.
+final class MapFollowMemory {
+    private(set) var lastPoint: CGPoint?
+
+    func store(_ point: CGPoint?) {
+        if let point { lastPoint = point }
+    }
+
+    func clear() { lastPoint = nil }
+}
+
 // MARK: - The antimeridian
 
 /// Antimeridian handling lives in `MapMath` (Core), because it is geometry

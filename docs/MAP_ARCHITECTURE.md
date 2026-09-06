@@ -229,6 +229,11 @@ taller than the layout's by the bottom safe area the map bleeds into; a
 viewport centre computed from the shorter one anchors a pinch to the wrong
 world point (BUG-057).
 
+**Reduce Motion.** A camera move is skipped entirely when the setting is on:
+the target is committed before the move begins, so skipping it *is* "go there
+without the travel". The camera is not a `View` and cannot read the
+environment, so the screen sets it (`prefersReducedMotion`).
+
 **The camera animates itself.** A `Canvas` has no animatable data, so
 `withAnimation` around a camera change does nothing but arrive in the next
 frame — every coast, zoom step, framing and edge spring used to be a teleport
@@ -240,6 +245,39 @@ never invalidate the view that is drawing it. `zoom` and `center` remain the
 committed target, which is what gestures, hit-testing and the audio focus
 already reasoned about; the timeline stays awake while a move is in flight,
 so the map still travels with the simulation paused.
+
+### Following a flight
+
+The map's reason to be watched (AE-046, `docs/GAME_DIRECTION.md`). Tap an
+aircraft, press Follow, and the camera rides with it until the player touches
+the map.
+
+The camera holds the flight's **identity**, never its position: where that
+flight is at this instant is a question only the frame can answer, and a
+camera caching a position is a camera one frame behind the thing it follows.
+So each frame resolves the followed flight through `MapFollow.point` — the
+same interpolation `MapFrame` draws with, one flight's worth, run before the
+projector exists because the projector is built around it — and passes it to
+`liveCenter(size:at:focus:)`, where it replaces the committed centre. It is
+not eased toward: the aircraft is already moving smoothly, and easing the
+camera as well produces a camera that trails its target forever.
+
+Three rules make it survivable rather than clever:
+
+- **The finger always wins.** Any drag or pinch calls `stopFollowing`, handing
+  back the last point the frame actually drew, so taking over feels like
+  taking over rather than being thrown across the world.
+- **A landed flight is not followed.** Core removes a flight after its
+  turnaround; the camera holds the last drawn point — which, since BUG-060,
+  is the airport it landed at — and releases.
+- **Nothing is written from inside the draw.** The last drawn point lives in
+  `MapFollowMemory`, a plain class on the same rule as `MapHitGeometry` and
+  `MapRenderCache`.
+
+The flight card became the tracker that makes following worth doing: seats
+sold on this leg, the arrival its schedule implies on the game clock, distance,
+and — when the departure slipped — the weather over either end
+(`MapModel.DelayContext`, derived rather than recorded, and worded to say so).
 
 ### Aircraft between ticks
 

@@ -1,5 +1,51 @@
 # Current Phase
 
+**AE-046 — Follow a flight.** 2026-09-06.
+
+The first phase of Direction II (`docs/GAME_DIRECTION.md`,
+`docs/ROADMAP_DIRECTION_II.md`): the project owner set the game's direction as
+a **cozy builder with a living world map at its centre**, and this is the
+cheapest delight in that plan — tap an aircraft, ride with it, watch the ETA
+count down.
+
+**Outcome: AUTHORED. Core half tested and green; the camera itself needs a
+device.**
+
+Built: `MapCamera` holds a followed flight's *identity* and resolves its
+position per frame through `MapFollow.point` — the same interpolation the
+frame draws with — so the camera can never lag the thing it is following. Any
+drag or pinch releases it, handing back the last drawn point from
+`MapFollowMemory` (a plain class, written from inside the draw on the
+`MapHitGeometry` rule) so taking over does not throw the player across the
+world. The flight card became a live tracker: seats aboard, the arrival its
+schedule implies on the game clock, the leg length, and the weather over
+either end when the departure slipped.
+
+Core gained four read-model facts (`passengers`, `distanceKm`, `arrival`,
+`delayContext`) — all derived per tick from state that already existed, so no
+new state and **no save migration**.
+
+**BUG-060, found by building it.** `.turnaround` is the phase *after* arrival,
+and the map drew those aircraft back at the airport they had taken off from,
+for the whole turn. It surfaced because a follow camera has to hold position
+when its flight lands — riding an aircraft across the Atlantic and being
+snapped back to Stockholm on arrival is how a quiet wrongness becomes loud.
+The map's own test had asserted the bug (`progress == 0` for every parked
+flight); it now distinguishes boarding from turnaround, and a new regression
+test walks two game days and requires that it actually saw one.
+
+**What this phase did not do:** verify any of it on a screen. No simulator
+exists here. The UI-test journey reads the follow state back out of the
+canvas's accessibility value and skips honestly, with a frame attached, where
+a synthetic tap cannot select a moving aircraft.
+
+**Next:** AE-047 — airports that breathe, weather you can see
+(`docs/ROADMAP_DIRECTION_II.md` Phase 26).
+
+---
+
+## Previous phase
+
 **AE-044 — The demand the aircraft actually sells.**
 2026-09-04.
 

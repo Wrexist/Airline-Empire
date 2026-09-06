@@ -211,6 +211,10 @@ struct MapSelectionPanel: View {
     let model: MapModel
     let snapshot: GameState
     let overlay: MapOverlay
+    /// The flight the camera is riding with, so the card can offer the
+    /// opposite of whatever is happening.
+    let followed: FlightID?
+    let toggleFollow: (FlightID) -> Void
     let dismiss: () -> Void
     let openRoute: (FirstRouteSuggestion) -> Void
 
@@ -232,6 +236,8 @@ struct MapSelectionPanel: View {
             case .some(.aircraft(let id)):
                 if let flight = model.flights.first(where: { $0.id == id }) {
                     MapFlightCard(flight: flight, model: model, snapshot: snapshot,
+                                  isFollowing: followed == flight.id,
+                                  toggleFollow: { toggleFollow(flight.id) },
                                   dismiss: dismiss)
                 }
             case .none:

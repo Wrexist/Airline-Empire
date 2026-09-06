@@ -342,6 +342,18 @@ enum Format {
         return names[month - 1]
     }
 
+    /// Game minutes as a phrase a player reads at a glance: "40 min",
+    /// "1h 20m", "2h". Used by anything counting down to an arrival, where
+    /// "80 minutes" is a number and "1h 20m" is a feeling about a flight.
+    static func duration(minutes: Int64) -> String {
+        let total = max(0, minutes)
+        let hours = total / 60
+        let rest = total % 60
+        if hours == 0 { return "\(rest) min" }
+        if rest == 0 { return "\(hours)h" }
+        return "\(hours)h \(rest)m"
+    }
+
     /// A count of days as a phrase, because "1 days" is how a game loses a
     /// player's trust in everything else it says.
     static func days(_ count: Int) -> String {

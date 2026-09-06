@@ -1758,3 +1758,38 @@ aeroplane). It should become the same sheet, but four UI-test journeys drive it
 by matching menu-row labels (`UITestSupport.assignFirstAircraft`), so changing
 it is a test change as much as a UI change and does not belong in a pass that
 cannot run those tests.
+
+---
+
+## BUG-060 — An aircraft turning around was drawn at the airport it left
+**Severity:** P2 (the map states something false, quietly) · **Phase found:**
+AE-046, while building the follow camera, 2026-09-06.
+**Repro:** Watch any aircraft complete a leg. It lands at the destination and,
+for the whole turnaround — 42 minutes on the map's own example airframe — its
+marker sits at the *origin* airport, where it is not.
+**Root cause:** `MapModel`'s flight build handled `.boarding` and
+`.turnaround` in one `case`, positioning both at `flight.from`. That is right
+for boarding and wrong for turnaround: `FlightPhase` is
+`scheduled → boarding → enRoute → turnaround → removed`, and
+`FlightOpsSystem.arrive` sets `.turnaround` **after** the aircraft is on the
+ground at `flight.to`. Two phases share a spelling ("not airborne") and were
+given one meaning ("has not left yet").
+
+It survived because the map's own test asserted it: `flightsCarryProgress`
+checked `if !flight.airborne { #expect(flight.progress == 0) }`, which is the
+buggy behaviour written down as a rule. A test can only catch what it was
+told to look for, and this one had been told the wrong thing.
+
+**Found by:** AE-046's follow camera, which has to hold position when a
+followed flight lands. Riding an aircraft across the Atlantic and having the
+camera snap back to Stockholm on arrival is how a quiet wrongness becomes
+loud.
+**Fix layer:** Core — `.turnaround` is its own case: positioned at
+`destination`, `progress: 1`, keeping the course it landed on, because a
+parked aeroplane pointing back at the airport it just left is the same lie in
+miniature. The test's assertion now distinguishes the two phases and a new
+regression test (`turnaroundAircraftSitAtTheirDestination`) walks two game
+days, requires that it actually saw a turnaround, and pins the position to the
+destination's coordinate.
+**Status:** FIXED 2026-09-06. Core-verified: 29 map-presentation tests green,
+full Core suite re-run.

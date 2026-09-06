@@ -5,7 +5,7 @@ Active task list. Format follows the Master Task Rule (see
 
 ---
 
-## AE-046 — Follow a flight (PLANNED, 2026-09-06)
+## AE-046 — Follow a flight (2026-09-06)
 
 **Purpose.** The first phase of Direction II (`docs/GAME_DIRECTION.md`,
 `docs/ROADMAP_DIRECTION_II.md` Phase 25): make the map worth watching by
@@ -54,9 +54,47 @@ continuous flight clock. None outstanding.
   accessibility value names a followed flight (same probe channel as
   `zoom %.1fx`).
 
-**Status.** NOT STARTED — planned in full, awaiting the go-ahead. The camera
-and card behaviour cannot be verified in this environment (no simulator);
-the Core half can and will be.
+### Done (2026-09-06)
+- **Core read model.** `MapModel.MapFlight` carries `passengers`,
+  `distanceKm`, `arrival` and a derived `delayContext`
+  (`MapModel.DelayContext`: an endpoint closed, or a storm over one, and only
+  for a flight that is actually late). No new state, no save migration.
+- **BUG-060, found while building it.** `.turnaround` — the phase *after*
+  arrival — was drawn at the origin, so every aircraft sat at the wrong
+  airport for the length of its turn. It is now its own case at the
+  destination, and the map test that had asserted the bug now distinguishes
+  the two parked phases.
+- **The follow camera.** `MapCamera.followed` holds the flight's identity;
+  `MapFollow.point` resolves its position per frame with the same
+  interpolation the frame draws with; `liveCenter(size:at:focus:)` rides it.
+  Any drag or pinch releases it through `stopFollowing(landingAt:)`, which is
+  handed the last drawn point from `MapFollowMemory` — a plain class, written
+  from inside the draw on the `MapHitGeometry` rule. A followed flight that
+  lands releases the camera where it landed.
+- **The tracker card.** `MapFlightCard` states seats aboard, the arrival its
+  schedule implies (on the game clock and as a countdown), the leg length,
+  and the weather over either end when the departure slipped. Follow is
+  offered for rivals' aircraft too.
+- **Two new formatters**, in the one place formats live: `Format.duration`
+  and `Vocab.delayContext`.
+- **Tests.** Four new/updated Core tests in `MapPresentationTests`
+  (turnaround position, per-flight facts, the delay context under an
+  engineered storm, and the corrected parked-phase assertion) — 29 map tests
+  green, full Core suite re-run. One new UI-test journey,
+  `testFollowingAFlightRidesTheCamera`, which reads the follow state back out
+  of the canvas's accessibility value and skips honestly with a frame
+  attached where the synthetic tap cannot select a moving aircraft.
+  `openRouteBySearch` moved into `UITestSupport` rather than copied.
+
+### Not verified
+The camera itself. This environment has no simulator: whether the aircraft
+holds still while the world slides under it, whether the ease into the follow
+zoom is pleasant, and whether following at 16× is a blur are all device
+questions. The UI test proves the mode engages and that a drag releases it;
+it cannot prove any of that.
+
+**Status.** AUTHORED 2026-09-06 — Core half verified by tests, app half
+awaiting a device.
 
 ---
 

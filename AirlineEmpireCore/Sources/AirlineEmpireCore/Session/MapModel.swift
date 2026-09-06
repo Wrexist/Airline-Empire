@@ -131,6 +131,36 @@ public struct MapModel: Equatable, Sendable {
         public let delayMinutes: Int64
         public let isFerry: Bool
         public let livery: Livery
+        /// Seats sold on this leg. Zero on a ferry, by definition.
+        public let passengers: Int
+        /// The leg's length, so a screen following the aircraft can say how
+        /// far it has come and how far is left without re-deriving geometry
+        /// the flight already carries.
+        public let distanceKm: Int
+        /// When this leg is on the ground at `destination`: the actual
+        /// departure plus the flying time for an airborne flight, the planned
+        /// departure plus it for one still on stand. It is a schedule, not a
+        /// promise — a delay after this model was built moves it.
+        public let arrival: SimTime
+        /// What is happening at either end that would explain a late flight.
+        ///
+        /// **Derived, not recorded.** `FlightOpsSystem` raises the disruption
+        /// chance from exactly these conditions and does not store which draw
+        /// a flight lost, so this is the weather that explains the delay
+        /// rather than a logged cause. Nil when the flight is on time, or
+        /// when nothing is happening at either end — never a guess dressed as
+        /// a record.
+        public let delayContext: DelayContext?
+    }
+
+    /// Why a flight is probably late (see `MapFlight.delayContext`).
+    public enum DelayContext: Equatable, Sendable {
+        /// An endpoint is shut. The harder of the two, so it wins when both
+        /// are true.
+        case airportClosed(AirportCode)
+        /// A storm over an endpoint's region, with the severity the world
+        /// event carries.
+        case storm(region: WorldRegion, severity: Double)
     }
 
     /// A world event, placed. Events had no geography on screen at all, which
@@ -413,6 +443,33 @@ extension GameState {
             let owner = aircraft.owner
             let livery = airlines[owner]?.livery ?? .default
 
+            // When this leg is down: from the actual departure while it is
+            // flying, from the planned one while it is still on stand.
+            let arrival: SimTime = {
+                if case .enRoute(let actualDeparture) = flight.phase {
+                    return actualDeparture + .minutes(flight.flightMinutes)
+                }
+                return flight.departureTime + .minutes(flight.flightMinutes)
+            }()
+
+            // Weather at either end, and only for a flight that is actually
+            // late — see `MapFlight.delayContext` for why this is derived and
+            // what that costs in precision.
+            let delayContext: MapModel.DelayContext? = {
+                guard flight.delayMinutes > 0 else { return nil }
+                for code in [flight.from, flight.to]
+                where world.isAirportClosed(code, at: clock.now) {
+                    return .airportClosed(code)
+                }
+                for airport in [from, to] {
+                    if let severity = world.activeStorm(in: airport.region,
+                                                        at: clock.now) {
+                        return .storm(region: airport.region, severity: severity)
+                    }
+                }
+                return nil
+            }()
+
             func build(position: Coordinate, heading: Double,
                        airborne: Bool, progress: Double) -> MapModel.MapFlight {
                 MapModel.MapFlight(
@@ -423,7 +480,9 @@ extension GameState {
                     airborne: airborne, progress: progress,
                     flightMinutes: flight.flightMinutes, category: spec.category,
                     delayMinutes: flight.delayMinutes,
-                    isFerry: flight.kind == .ferry, livery: livery)
+                    isFerry: flight.kind == .ferry, livery: livery,
+                    passengers: flight.passengers, distanceKm: flight.distanceKm,
+                    arrival: arrival, delayContext: delayContext)
             }
 
             switch flight.phase {
@@ -437,11 +496,24 @@ extension GameState {
                                                       to: to.coordinate,
                                                       at: fraction),
                              airborne: true, progress: fraction)
-            case .boarding, .turnaround:
+            case .boarding:
                 return build(position: from.coordinate,
                              heading: MapMath.heading(from: from.coordinate,
                                                       to: to.coordinate),
                              airborne: false, progress: 0)
+            case .turnaround:
+                // At the far end, which is where it landed
+                // (tasks/BUGS.md BUG-060). Turnaround is the phase *after*
+                // arrival — `FlightOpsSystem.arrive` sets it — and this drew
+                // the aircraft back at the airport it had taken off from, for
+                // the whole turnaround: a 42-minute turn on the map's own
+                // example airframe. The heading keeps the course it landed
+                // on, because a parked aeroplane pointing at the airport it
+                // has just left is the same lie in miniature.
+                return build(position: to.coordinate,
+                             heading: MapMath.heading(from: from.coordinate,
+                                                      to: to.coordinate),
+                             airborne: false, progress: 1)
             case .scheduled:
                 return nil
             }

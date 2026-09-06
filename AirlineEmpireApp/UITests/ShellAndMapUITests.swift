@@ -303,6 +303,110 @@ final class ShellAndMapUITests: AEUITestCase {
     }
 
 
+    /// Riding with a flight (AE-046).
+    ///
+    /// What this can honestly prove: that a flight can be selected on the map,
+    /// that the card offers to follow it, and that pressing Follow puts the
+    /// camera into follow mode — the canvas publishes which flight it is
+    /// riding with, in the same accessibility value that carries the zoom, so
+    /// the claim is read back from the app rather than photographed and
+    /// assumed (the BUG-039 rule).
+    ///
+    /// What it cannot prove is that following *looks* right: whether the
+    /// aircraft holds still while the world slides under it, whether the ease
+    /// into the follow zoom is pleasant, whether a flight at 16× is a blur.
+    /// Those need a hand and a screen. Where the synthetic tap cannot find an
+    /// aircraft at all, this skips with a frame attached rather than passing —
+    /// a test that proves nothing must say so.
+    func testFollowingAFlightRidesTheCamera() throws {
+        launch(appearance: .light)
+        guard foundAirline() else { return }
+        // A flight to follow has to exist first: an aircraft, a route, an
+        // assignment, and enough game time for something to take off.
+        guard openAircraftMarket(), leaseAnAircraft() else { return }
+        guard openRouteBySearch(city: "London", code: "LHR") else { return }
+        guard assignFirstAircraft() else { return }
+        openTab("Map")
+
+        let map = app.descendants(matching: .any)["ae-map-canvas"]
+        require(map, "the map canvas")
+
+        func value() -> String { map.value as? String ?? "" }
+        func airborne() -> Int {
+            let text = value()
+            guard let range = text.range(of: #"([0-9]+) aircraft in the air"#,
+                                         options: .regularExpression)
+            else { return 0 }
+            return Int(text[range].prefix(while: \.isNumber)) ?? 0
+        }
+
+        // Run the clock until something is actually flying. The map says how
+        // many aircraft are in the air, so this waits on the fact rather than
+        // on a duration.
+        // By its VoiceOver label, not its glyph: the speed pill draws "16×"
+        // and answers to "Sixteen times speed", and a test that taps the
+        // glyph taps nothing.
+        let fast = app.buttons["Sixteen times speed"]
+        if fast.waitForExistence(timeout: 5) { fast.tap() }
+        var waited = 0
+        while airborne() == 0 && waited < 40 {
+            Thread.sleep(forTimeInterval: 1)
+            waited += 1
+        }
+        guard airborne() > 0 else {
+            checkpoint("76-NO-FLIGHT-TO-FOLLOW")
+            throw XCTSkip("""
+                No aircraft reached the air within \(waited) seconds at 16×, \
+                so the follow camera could not be exercised. The assignment \
+                journey succeeded, so this is a pacing question, not a \
+                broken camera. Recorded as NOT VERIFIED.
+                """)
+        }
+
+        // Zoom in so the aircraft is a target a synthetic tap can hit, then
+        // walk a small spiral: an aircraft is a few points wide and moving.
+        let zoomIn = app.buttons["Zoom in"]
+        if zoomIn.waitForExistence(timeout: 5) { for _ in 0..<3 { zoomIn.tap() } }
+        let follow = app.buttons["ae-map-follow"]
+        let offsets: [(CGFloat, CGFloat)] = [
+            (0.5, 0.5), (0.42, 0.45), (0.58, 0.45), (0.5, 0.38),
+            (0.5, 0.6), (0.35, 0.55), (0.65, 0.55),
+        ]
+        for (x, y) in offsets {
+            map.coordinate(withNormalizedOffset: CGVector(dx: x, dy: y)).tap()
+            Thread.sleep(forTimeInterval: 0.4)
+            if follow.exists { break }
+        }
+        guard follow.exists else {
+            checkpoint("76-NO-AIRCRAFT-SELECTED")
+            throw XCTSkip("""
+                Seven taps across the canvas selected no aircraft, so the \
+                flight card never appeared and the follow control was never \
+                reachable. An aircraft marker is a few points wide and moving \
+                under the tap; this is a limitation of synthetic tapping, not \
+                evidence about the camera. Recorded as NOT VERIFIED.
+                """)
+        }
+        checkpoint("76-map-flight-card")
+
+        follow.tap()
+        Thread.sleep(forTimeInterval: 1)
+        XCTAssertTrue(value().contains("following"), """
+            The map does not report following a flight after the Follow \
+            control was pressed. Canvas value: \(value())
+            """)
+        checkpoint("77-map-following-a-flight")
+
+        // A finger on the map takes the camera back — the rule the whole
+        // follow mode rests on.
+        map.swipeLeft()
+        Thread.sleep(forTimeInterval: 1)
+        XCTAssertFalse(value().contains("following"), """
+            A drag did not release the follow camera. Canvas value: \(value())
+            """)
+        checkpoint("78-map-after-releasing-follow")
+    }
+
     /// Selecting an airport on the map: the panel, and the marker art.
     ///
     /// This leg exists because of a gap the AE-033 audit had to record as

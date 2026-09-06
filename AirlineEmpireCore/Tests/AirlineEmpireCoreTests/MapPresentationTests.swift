@@ -212,9 +212,115 @@ struct MapPresentationTests {
             #expect(flight.origin == real.from)
             #expect(flight.destination == real.to)
             #expect(flight.flightMinutes == real.flightMinutes)
-            // A parked aircraft is at its origin and has made no progress.
-            if !flight.airborne { #expect(flight.progress == 0) }
+            // A parked aircraft is at one end or the other, and which one is
+            // the whole of BUG-060: before the leg it waits at the origin,
+            // after it, it sits where it landed. This assertion used to read
+            // `progress == 0` for every parked flight, which is what let a
+            // turnaround be drawn at the airport it had taken off from.
+            if !flight.airborne {
+                switch real.phase {
+                case .boarding: #expect(flight.progress == 0)
+                case .turnaround: #expect(flight.progress == 1)
+                default: Issue.record("a parked flight was neither boarding nor turning around")
+                }
+            }
         }
+    }
+
+    /// BUG-060. `.turnaround` is the phase *after* arrival — `FlightOpsSystem`
+    /// sets it when the aircraft is on the ground at the far end — and the map
+    /// placed it at `origin` for the whole turn. On a 42-minute turn that is
+    /// an aeroplane drawn at the wrong airport for 42 game-minutes, every
+    /// rotation, for every airline on the map.
+    @Test("An aircraft turning around sits at the airport it landed at")
+    func turnaroundAircraftSitAtTheirDestination() async throws {
+        let (session, _, catalog) = try await flyingWorld(seed: 5157)
+        var seen = 0
+        // Turnarounds are a minority of a fleet's minutes, so this walks a
+        // few days rather than trusting one snapshot to contain one.
+        for _ in 0..<8 {
+            await session.advance(ticks: Fixtures.ticksPerDay / 4)
+            let state = await session.snapshot
+            let model = state.mapModel(catalog: catalog)
+            for drawn in model.flights {
+                guard let real = state.flights[drawn.id],
+                      case .turnaround = real.phase,
+                      let destination = catalog.airport(real.to) else { continue }
+                seen += 1
+                let expected = MapPoint(coordinate: destination.coordinate)
+                #expect(abs(drawn.position.x - expected.x) < 0.0001)
+                #expect(abs(drawn.position.y - expected.y) < 0.0001)
+                #expect(drawn.destination == real.to)
+            }
+        }
+        #expect(seen > 0, "no flight turned around in two game days — the test proved nothing")
+    }
+
+    /// Everything the map's flight tracker reads, held to the flight it came
+    /// from (AE-046). A tracker that says 148 aboard when the ledger paid for
+    /// 96 is worse than one that says nothing.
+    @Test("A drawn flight carries its own passengers, distance and arrival")
+    func flightsCarryTheirOwnFacts() async throws {
+        let (session, _, catalog) = try await flyingWorld(seed: 5158)
+        var checked = 0
+        // Walked rather than sampled: a single snapshot can land at an hour
+        // when the whole fleet is between rotations and no flight exists —
+        // which is how the first version of this test passed while asserting
+        // nothing at all.
+        for _ in 0..<8 {
+            await session.advance(ticks: Fixtures.ticksPerDay / 4)
+            let state = await session.snapshot
+            let model = state.mapModel(catalog: catalog)
+            for drawn in model.flights {
+                let real = try #require(state.flights[drawn.id])
+                checked += 1
+                #expect(drawn.passengers == real.passengers)
+                #expect(drawn.distanceKm == real.distanceKm)
+                // A ferry carries nobody, by definition (FlightKind.ferry).
+                if drawn.isFerry { #expect(drawn.passengers == 0) }
+                let expected: SimTime
+                if case .enRoute(let actualDeparture) = real.phase {
+                    expected = actualDeparture + .minutes(real.flightMinutes)
+                } else {
+                    expected = real.departureTime + .minutes(real.flightMinutes)
+                }
+                #expect(drawn.arrival == expected)
+                // An on-time flight never carries an excuse.
+                if drawn.delayMinutes == 0 { #expect(drawn.delayContext == nil) }
+            }
+        }
+        #expect(checked > 0, "no flight was drawn in two game days — the test proved nothing")
+    }
+
+    /// The delay context is *derived* — the ops system does not record which
+    /// disruption draw a flight lost — so the contract it must keep is
+    /// narrow: it names a condition that is genuinely true right now, at an
+    /// end of this flight, and only for a flight that is genuinely late.
+    @Test("A late flight under a storm is told which storm")
+    func lateFlightsNameTheWeatherOverThem() async throws {
+        let (session, _, catalog) = try await flyingWorld(seed: 5159)
+        await session.advance(ticks: Fixtures.ticksPerDay)
+        var state = await session.snapshot
+        // Engineered rather than waited for: storms are seeded and rare, and
+        // a test that waits for one is a test that usually proves nothing.
+        let target = try #require(state.orderedFlightIDs.compactMap {
+            state.flights[$0]
+        }.first { $0.phase != .scheduled })
+        let region = try #require(catalog.airport(target.to)?.region)
+        let now = state.clock.now
+        state.world.activeEvents.append(WorldEvent(
+            id: 9_001, kind: .storm(region: region),
+            beginsAt: SimTime(rawMinutes: max(0, now.rawMinutes - 60)),
+            endsAt: now + .minutes(600),
+            severity: 0.7))
+        // Make it late the way the ops system does: push the departure past
+        // the schedule.
+        state.flights[target.id]?.departureTime = target.scheduledDeparture + .minutes(45)
+
+        let model = state.mapModel(catalog: catalog)
+        let drawn = try #require(model.flights.first { $0.id == target.id })
+        #expect(drawn.delayMinutes == 45)
+        #expect(drawn.delayContext == .storm(region: region, severity: 0.7))
     }
 
     /// The bug this guards: a marker left behind after its flight ended, or a

@@ -610,6 +610,41 @@ class AEUITestCase: XCTestCase {
         return false
     }
 
+    /// Open a route to a named city through the route sheet's own search.
+    ///
+    /// Shared rather than private to one journey: three tests now need a
+    /// route that exists, and `assignFirstAircraft` next door is one
+    /// implementation for exactly the reason two copies of this would drift.
+    func openRouteBySearch(city: String, code: String) -> Bool {
+        app.buttons["Routes"].tap()
+        let openRoute = app.buttons["Open a route"]
+        guard require(openRoute, "the route entry point on an empty board") else { return false }
+        openRoute.tap()
+        let search = app.searchFields.firstMatch
+        guard search.waitForExistence(timeout: 8) else {
+            capture(Self.logPrefix + "NO-ROUTE-SEARCH")
+            XCTFail("The route sheet's search field never appeared.")
+            return false
+        }
+        search.tap()
+        search.typeText(city)
+        Thread.sleep(forTimeInterval: 1)
+        let row = app.buttons.matching(NSPredicate(
+            format: "identifier == %@ AND label CONTAINS %@", "ae-route-destination", code)).firstMatch
+        guard row.waitForExistence(timeout: 8) else {
+            capture(Self.logPrefix + "NO-\(code)-ROW")
+            XCTFail("Searching the route sheet for \(city) produced no \(code) row.")
+            return false
+        }
+        row.tap()
+        let open = app.buttons.matching(identifier: "ae-route-open").firstMatch
+        guard require(open, "the commit bar after picking \(city)", timeout: 8) else { return false }
+        open.tap()
+        Thread.sleep(forTimeInterval: 1)
+        return true
+    }
+
+
     /// Assign the fleet's aircraft to the board's first route, and prove the
     /// assignment took. One implementation for both journeys that need a
     /// working schedule (the flight test and the month-end test), for the

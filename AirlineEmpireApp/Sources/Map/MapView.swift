@@ -37,6 +37,10 @@ struct MapScreen: View {
     /// Plain state (not observable) — the draw reads and writes it without
     /// invalidating the view that is drawing.
     @State private var renderCache = MapRenderCache()
+    /// Where the followed flight was last drawn. Plain state, written from
+    /// inside the draw like `hitGeometry`, and read when the follow ends —
+    /// see `MapFollowMemory`.
+    @State private var followMemory = MapFollowMemory()
     /// Draw-cost and label-churn totals, collected only under
     /// `-AEUITestProbes` and published through the canvas's accessibility
     /// value so a UI test can drag the real map and read real numbers.
@@ -89,6 +93,13 @@ struct MapScreen: View {
                     .onAppear {
                         frameHomeOnce(model)
                         reportFocus()
+                    }
+                    // The camera cannot read the environment itself, so the
+                    // screen tells it. `initial: true` because the setting is
+                    // usually already on when the screen appears — the same
+                    // trap BUG-040 was.
+                    .onChange(of: reduceMotion, initial: true) { _, value in
+                        camera.prefersReducedMotion = value
                     }
                     // The soundscape follows the camera and the selection.
                     // Reported rather than applied: the bed is re-derived on
@@ -143,9 +154,22 @@ struct MapScreen: View {
                 // evaluated here rather than stepped anywhere, which is what
                 // lets a Canvas animate at all (MapCamera).
                 let zoom = camera.liveZoom(at: timeline.date)
+                // Riding with a flight: resolve where it is at this frame's
+                // date, and hold the last known point when it stops existing
+                // — a landed flight leaves the world, and the camera must
+                // stay where it landed rather than snap back to wherever it
+                // was when the follow began.
+                let minutes = reduceMotion ? 0
+                    : controller.predictedGameMinutes(at: timeline.date)
+                let focus: CGPoint? = camera.followed.flatMap { id in
+                    MapFollow.point(flight: id, model: model, gameMinutes: minutes)
+                        ?? followMemory.lastPoint
+                }
+                followMemory.store(focus)
                 let projector = MapProjector(
                     zoom: zoom,
-                    center: camera.liveCenter(size: canvasSize, at: timeline.date),
+                    center: camera.liveCenter(size: canvasSize, at: timeline.date,
+                                              focus: focus),
                     size: canvasSize)
                 let policy = MapDetailPolicy(level: MapZoomLevel(zoom: zoom),
                                              zoom: zoom)
@@ -160,8 +184,7 @@ struct MapScreen: View {
                                      // paused game does not — the world holds
                                      // where the pause found it, which is a
                                      // fraction of a tick past the last one.
-                                     gameMinutes: reduceMotion ? 0
-                                        : controller.predictedGameMinutes(at: timeline.date),
+                                     gameMinutes: minutes,
                                      tick: referenceDate,
                                      settle: camera.settleGeneration,
                                      bottomOcclusion: bottomOcclusion,
@@ -198,6 +221,21 @@ struct MapScreen: View {
             .accessibilityLabel("World map")
             .accessibilityValue(accessibilitySummary(model))
             .accessibilityHint("Double tap an airport, route or aircraft to select it")
+            // A followed flight lands, and Core removes it from the world
+            // after its turnaround. The camera must not keep chasing an id
+            // that no longer resolves, and it must not fall back to the
+            // centre it had when the follow began — an ocean away. It holds
+            // where the aircraft last was, which is the airport it landed at.
+            // Scanned only while following: `flights` is up to 450 entries
+            // late-game and this is evaluated on every body pass, including
+            // the ones a finger drives (baseline §2's multiplier).
+            .onChange(of: camera.followed.map { id in
+                model.flights.contains(where: { $0.id == id })
+            } ?? true) { _, live in
+                guard camera.followed != nil, !live else { return }
+                camera.stopFollowing(landingAt: followMemory.lastPoint)
+                followMemory.clear()
+            }
         }
     }
 
@@ -232,7 +270,16 @@ struct MapScreen: View {
                 model: model,
                 snapshot: snapshot,
                 overlay: overlay,
-                dismiss: { withAnimation(AEMotion.content) { selection = nil } },
+                followed: camera.followed,
+                toggleFollow: { toggleFollow($0) },
+                dismiss: {
+                    // Dismissing the card lets go of the flight too: the card
+                    // is the only way back to "stop following", so leaving the
+                    // camera locked with nothing to unlock it would be a trap.
+                    camera.stopFollowing(landingAt: followMemory.lastPoint)
+                    followMemory.clear()
+                    withAnimation(AEMotion.content) { selection = nil }
+                },
                 openRoute: { routeDraft = RouteDraft(suggestion: $0) })
                 .padding(.horizontal, AETheme.spacingM)
                 .padding(.bottom, AETheme.spacingS)
@@ -244,7 +291,12 @@ struct MapScreen: View {
     private func dragGesture(size: CGSize) -> some Gesture {
         DragGesture()
             .onChanged { value in
-                // Whatever the camera was doing, the finger now decides.
+                // Whatever the camera was doing, the finger now decides —
+                // including riding with a flight. Handing back the last drawn
+                // point is what makes taking over feel like taking over
+                // rather than being thrown across the world.
+                camera.stopFollowing(landingAt: followMemory.lastPoint)
+                followMemory.clear()
                 camera.interruptMove()
                 camera.panOffset = value.translation
             }
@@ -264,10 +316,26 @@ struct MapScreen: View {
                 // The anchor is captured on the first change rather than in an
                 // onBegan, because MagnifyGesture has no onBegan and the first
                 // change still carries a magnification of very nearly 1.
+                camera.stopFollowing(landingAt: followMemory.lastPoint)
+                followMemory.clear()
                 camera.beginPinch(at: value.startLocation, size: size)
                 camera.pinch = value.magnification
             }
             .onEnded { _ in camera.commitZoom(size: size) }
+    }
+
+    /// Ride with a flight, or stop. Selection follows the camera: a followed
+    /// flight stays selected, so the card that offered to stop is still there.
+    private func toggleFollow(_ flight: FlightID) {
+        if camera.followed == flight {
+            camera.stopFollowing(landingAt: followMemory.lastPoint)
+            followMemory.clear()
+        } else {
+            followMemory.clear()
+            camera.beginFollow(flight)
+            selection = .aircraft(flight)
+        }
+        reportFocus()
     }
 
     private func handleTap(at location: CGPoint, model: MapModel) {
@@ -310,6 +378,15 @@ struct MapScreen: View {
                      // buttons and the clamps at either end.
                      String(format: "zoom %.1fx", camera.liveZoom)]
         if events > 0 { parts.append("\(events) world events active") }
+        // Named, so a UI test can prove the follow camera engaged rather than
+        // photographing a map and hoping — the same reason the zoom is here
+        // (BUG-039).
+        if let followed = camera.followed {
+            let flight = model.flights.first { $0.id == followed }
+            parts.append(flight.map {
+                "following \($0.origin.raw) to \($0.destination.raw)"
+            } ?? "following a flight")
+        }
         if let hit = selection { parts.append(describe(hit, model: model)) }
         // The probe's totals ride the same channel as the zoom, and only
         // under the flag: the value a VoiceOver user hears never carries
@@ -378,6 +455,15 @@ final class MapCamera {
     private var pinchAnchor: CGPoint?
     private var pinchWorld: CGPoint?
 
+    /// The flight the camera is riding with, if any.
+    ///
+    /// The camera holds the *identity*, never the position: where that flight
+    /// is at this instant is a question only the frame can answer, and it
+    /// answers it per frame (`MapFollow`). A camera that cached a position
+    /// would be a camera that lags one frame behind the thing it is following,
+    /// which is the one thing a follow camera must not do.
+    private(set) var followed: FlightID?
+
     static let minZoom: CGFloat = 1
     static let maxZoom: CGFloat = 16
 
@@ -407,6 +493,16 @@ final class MapCamera {
 
     private var move: Move?
 
+    /// Whether the player has asked the system for less movement.
+    ///
+    /// Set by the screen rather than read here: a `MapCamera` is not a `View`
+    /// and cannot observe the environment. When it is on, a camera move
+    /// arrives instantly — the target is already committed before the move
+    /// begins, so skipping the move is exactly "go there without the
+    /// travel". AE-045 made these moves animate at all, and animating them
+    /// unconditionally would have taken a setting the rest of the app
+    /// honours and quietly excluded the map from it (`AEMotionModifier`).
+
     /// Durations, in one place so the map's moves agree with each other.
     private enum MoveDuration {
         /// A flick's coast. Long enough to read as deceleration.
@@ -427,8 +523,14 @@ final class MapCamera {
         return !move.isDone(at: Date())
     }
 
+    var prefersReducedMotion = false
+
     private func beginMove(fromZoom: CGFloat, fromCenter: CGPoint,
                            duration: TimeInterval) {
+        guard !prefersReducedMotion else {
+            move = nil
+            return
+        }
         move = Move(fromZoom: fromZoom, fromCenter: fromCenter,
                     start: Date(), duration: duration)
     }
@@ -484,8 +586,16 @@ final class MapCamera {
         return raw
     }
 
-    func liveCenter(size: CGSize, at date: Date) -> CGPoint {
-        centre(at: liveZoom(at: date), base: movedCenter(at: date),
+    /// The centre for a frame drawn at `date`, riding with `focus` when the
+    /// camera is following something.
+    ///
+    /// `focus` replaces the committed centre rather than animating toward it:
+    /// the aircraft is already moving smoothly (its own interpolation), so
+    /// easing the camera toward it as well would produce a camera that trails
+    /// its target and never catches up.
+    func liveCenter(size: CGSize, at date: Date, focus: CGPoint? = nil) -> CGPoint {
+        centre(at: liveZoom(at: date),
+               base: focus ?? movedCenter(at: date),
                size: size, pan: panOffset)
     }
 
@@ -546,6 +656,46 @@ final class MapCamera {
         pinchAnchor = anchor
         pinchWorld = projector.unproject(anchor)
     }
+
+    // MARK: Following
+
+    /// Ride with a flight.
+    ///
+    /// Eases in to a zoom where an aircraft is worth watching, unless the
+    /// player is already closer in than that — arriving *at* the flight is
+    /// part of the gesture, and a follow that also yanked the zoom out would
+    /// undo the player's own framing.
+    func beginFollow(_ flight: FlightID) {
+        settleGeneration += 1
+        followed = flight
+        guard zoom < Self.followZoom else { return }
+        interruptMove()
+        let from = zoom
+        zoom = Self.followZoom
+        beginMove(fromZoom: from, fromCenter: center,
+                  duration: MoveDuration.travel)
+    }
+
+    /// Stop following, leaving the camera where the flight left it.
+    ///
+    /// `landingAt` is the last point the frame actually drew the followed
+    /// flight at. Without it the camera would fall back to the centre it had
+    /// when the follow began — which, after riding an aircraft across an
+    /// ocean, is an ocean away.
+    func stopFollowing(landingAt point: CGPoint?) {
+        guard followed != nil else { return }
+        followed = nil
+        settleGeneration += 1
+        if let point {
+            interruptMove()
+            center = clamp(point)
+            panOffset = .zero
+        }
+    }
+
+    /// Close enough that an aircraft and the coast under it are both worth
+    /// looking at; still wide enough to see where the flight is going.
+    static let followZoom: CGFloat = 6
 
     /// Fold a finished drag into the camera, and let it coast.
     ///
