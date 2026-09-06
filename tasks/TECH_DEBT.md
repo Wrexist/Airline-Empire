@@ -855,6 +855,30 @@ symptom:** while `tenYearWorldRemainsStableAndContested` and
 time limit in the suite is a measurement of the machine, and each one will
 trip in turn. Giving those two their own job fixes all of them at once.
 
+**It now stops releases, not just CI (release run 7, 2026-09-06).** The
+`ios-testflight` workflow runs the whole suite before it archives, on purpose —
+so that the commit being shipped is the commit that passed — with its own
+30-minute job timeout. That cap was set on 2026-08-28 when the suite was 253
+tests and 8m02s. MEASURED `swift test` wall clock since:
+
+| Run | Date | Cap | Wall clock | Outcome |
+| --- | --- | ---: | ---: | --- |
+| CI 153 · Core | 2026-09-04 | 45 min | 27m13s | passed |
+| release 6 · core-tests | 2026-09-05 | 30 min | 20m01s | passed |
+| release 7 · core-tests | 2026-09-06 | 30 min | **29m28s** | **cancelled** |
+
+Run 7's log goes silent for its last twelve minutes, which is what the two
+balance tests look like from outside: they print nothing until they finish, and
+they finished at 1,434.7 s and 1,107.6 s in CI run 153. Nothing hung, and
+nothing regressed — the suite simply outgrew a cap nobody had revisited, while
+CI's identical job had 45 minutes all along.
+
+The release cap is now 45 too, which is an alignment rather than a new number,
+and it is the **fifth** ceiling raised for this one root cause. Each raise buys
+time and none of them is the fix: a suite whose wall clock is dominated by two
+tests will keep pushing every guard, in CI and now in the release path, until
+those two stop sharing a runner with the other 467.
+
 ---
 
 ## TD-035 — The estimator assumes every scheduled rotation flies; 4–23% do not

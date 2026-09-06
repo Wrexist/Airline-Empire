@@ -212,6 +212,7 @@ Two conventions run through all of them:
 | Symptom | Cause | Fix |
 |---|---|---|
 | `Missing secret(s): …` in preflight | Secret absent or misspelled | `APP_STORE_CONNECT.md` §5 |
+| `Core tests` cancelled: *"exceeded the maximum execution time"* | The Core suite outgrew the job's cap — not a hang. Two balance tests are most of its wall clock and print nothing while they run, so the log goes quiet before the cut | Release run 7, 2026-09-06 (29m28s against a 30-minute cap). Raised to 45, matching ci.yml. The cause is `tasks/TECH_DEBT.md` TD-034 |
 | HTTP 401 from any script | Key id, issuer id and `.p8` are not from the same key | Re-download the key; §3 there |
 | `No App Store Connect app record for …` | The app record does not exist, or the bundle id disagrees | §2 there. The three places the bundle id lives must match |
 | Archive: *"team does not have a program membership that is eligible"* | The Developer Program membership is not active — lapsed, unpaid, a Personal Team, or an unaccepted Program License Agreement. App Store Connect keeps answering normally while this is true, so a green preflight does not clear it | Release run 6, 2026-09-05. `APP_STORE_CONNECT.md` §1. Nothing is consumed by the failure: fix the account, re-run the same version |
