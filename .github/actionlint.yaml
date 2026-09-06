@@ -1,0 +1,7 @@
+# actionlint validates `runs-on` against a table of labels baked into the
+# release, and 1.7.7's table predates macos-26. The label is real — every CI
+# run since 112 has used it — so it is declared here rather than the runner
+# being downgraded to satisfy a linter.
+self-hosted-runner:
+  labels:
+    - macos-26

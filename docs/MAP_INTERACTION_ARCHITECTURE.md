@@ -97,7 +97,29 @@ projections and a handful of circles), flights (interpolated after an
 endpoint-bbox precull), trail prefixes (one slerp per flight for the moving
 tip), and label re-projection from memory. All O(visible), none O(world).
 
-## 7. Known limits, stated
+## 7. The camera's own clock (AE-045)
+
+Two things on this screen move without the player's finger on them, and both
+were measured from the wrong clock:
+
+| | Was | Is |
+| --- | --- | --- |
+| Camera moves (coast, zoom step, framing, edge springs) | `withAnimation`, which a `Canvas` cannot animate — the change arrived whole in the next frame | `MapCamera` holds the move (from-value, start date, duration) and the draw evaluates it at the frame's date, ease-out cubic |
+| A flick's coast | 45% of `predictedEndTranslation`, which is measured from the drag's *start* — so a release re-applied 45% of the entire drag | 45% of the momentum: prediction − translation |
+| Aircraft between ticks | real seconds since the last tick, against a base that steps in whole ticks | `clock.now + pendingGameMinutes`, a continuous game clock, capped at 1.5 s of prediction |
+
+The camera's move is *evaluated, never stepped*: reading it is a pure function
+of the date, so no frame writes camera state — the same rule that keeps
+`MapRenderCache` and `MapHitGeometry` out of the invalidation loop. The
+timeline stays unpaused while a move is in flight (`MapCamera.isMoving`), so
+a zoom still travels with the simulation paused; it re-pauses on the next
+publish, 250 ms later at worst.
+
+Gestures are handed the *canvas's* size, not the layout's: the canvas bleeds
+into the bottom safe area, and a viewport centre computed from the shorter
+rectangle anchors a pinch half an inset away from the fingers.
+
+## 8. Known limits, stated
 
 - During a pinch, replayed stroke dashes scale with `s` until the ±25% band
   triggers a rebuild — visible only as slightly stretched dashes mid-pinch.
@@ -105,6 +127,6 @@ tip), and label re-projection from memory. All O(visible), none O(world).
   gesture- and animation-driven invalidations exceed it during interaction,
   which is where responsiveness is felt. Raising it is a hardware-evidence
   decision, recorded in TECH_DEBT.
-- Pan at the world's y-clamp still absorbs the finger silently (baseline
-  §4); the resistance-and-spring treatment the zoom limits have is future
-  work, recorded in TECH_DEBT.
+- Pan at the world's y-clamp resists and springs back (AE-034 follow-up); the
+  spring is an ease-out, not a real spring, so it does not overshoot the way
+  the zoom limit's does.

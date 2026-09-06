@@ -261,10 +261,21 @@ struct MapRouteCard: View {
 
 // MARK: - Aircraft
 
+/// A flight, live: where it is, who is aboard, when it lands, and why it is
+/// late if it is.
+///
+/// This is the map's reason to be watched (AE-046). It used to say a
+/// percentage and "en route", which is the same sentence for a flight ten
+/// minutes out of Stockholm and one on approach to Cairo. Everything added
+/// here is a fact the simulation already had and the map had never asked for:
+/// the seats sold on this leg, the arrival its schedule implies, and the
+/// weather over either end when the departure slipped.
 struct MapFlightCard: View {
     let flight: MapModel.MapFlight
     let model: MapModel
     let snapshot: GameState
+    let isFollowing: Bool
+    let toggleFollow: () -> Void
     let dismiss: () -> Void
 
     var body: some View {
@@ -279,19 +290,56 @@ struct MapFlightCard: View {
                     HStack(spacing: AETheme.spacingS) {
                         MapFact(label: "progress",
                                 value: Format.percent(flight.progress))
-                        MapFact(label: "status", value: statusText,
+                        MapFact(label: arrivalLabel, value: arrivalValue,
                                 tint: flight.delayMinutes > 20
                                     ? AETheme.caution : .white)
+                        if !flight.isFerry {
+                            MapFact(label: "aboard",
+                                    value: Format.count(Int64(flight.passengers)))
+                        }
                     }
                     ProgressView(value: flight.progress)
                         .tint(Vocab.liveryColor(flight.livery))
                 }
+            }
+            // The leg, in the terms a tracker is read in: how far it is, and
+            // when it lands on the game's own clock.
+            Text(legDetail)
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.6))
+                .fixedSize(horizontal: false, vertical: true)
+            if flight.delayMinutes > 0 {
+                Label(delayLine, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(AETheme.caution)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             if flight.isFerry {
                 Label("Repositioning flight — no passengers aboard.",
                       systemImage: "arrow.triangle.swap")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.6))
+            }
+            // Following is offered for anyone's aircraft, not only the
+            // player's: watching a rival cross your market is worth as much
+            // as watching your own, and costs nothing to allow.
+            // Offered while it is flying, and kept while the camera is riding
+            // with it: a flight that lands mid-follow would otherwise take
+            // the only control that stops the camera away with it.
+            if flight.airborne || isFollowing {
+                Button(action: toggleFollow) {
+                    HStack {
+                        Label(isFollowing ? "Stop following" : "Follow this flight",
+                              systemImage: isFollowing ? "xmark.circle" : "scope")
+                            .font(.caption.weight(.semibold))
+                        Spacer()
+                    }
+                    .foregroundStyle(isFollowing ? .white : accent)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.aePress)
+                .accessibilityIdentifier("ae-map-follow")
             }
             if flight.isPlayer {
                 NavigationLink(value: flight.aircraft) {
@@ -321,9 +369,35 @@ struct MapFlightCard: View {
 
     private var accent: Color { Vocab.liveryColor(flight.livery) }
 
-    private var statusText: String {
-        if !flight.airborne { return "on stand" }
-        if flight.delayMinutes > 20 { return "\(flight.delayMinutes) min late" }
-        return "en route"
+    /// Minutes from now until this leg is on the ground. Negative means the
+    /// schedule has been overtaken — the aircraft is still flying past the
+    /// time it was due — which is a thing that happens and must read as
+    /// "any minute now" rather than as a negative number.
+    private var minutesToArrival: Int64 {
+        flight.arrival.rawMinutes - snapshot.clock.now.rawMinutes
+    }
+
+    private var arrivalLabel: String {
+        flight.airborne ? "lands in" : "status"
+    }
+
+    private var arrivalValue: String {
+        guard flight.airborne else { return "on stand" }
+        return minutesToArrival <= 0 ? "any minute"
+                                     : Format.duration(minutes: minutesToArrival)
+    }
+
+    private var legDetail: String {
+        let distance = "\(Format.count(Int64(flight.distanceKm))) km"
+        guard flight.airborne else { return distance }
+        let clock = Format.clock(GameCalendar.date(at: flight.arrival,
+                                                   startYear: snapshot.meta.startYear))
+        return "\(distance) · lands \(clock)"
+    }
+
+    private var delayLine: String {
+        let late = "\(Format.duration(minutes: flight.delayMinutes)) behind schedule"
+        guard let context = flight.delayContext else { return late }
+        return "\(late) · \(Vocab.delayContext(context))"
     }
 }

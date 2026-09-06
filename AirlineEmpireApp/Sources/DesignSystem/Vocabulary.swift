@@ -461,6 +461,25 @@ extension Vocab {
     /// invite exactly the comparison it cannot support ("this storm is 70%,
     /// that strike is 40%, so the storm is worse"). Bands say what a player
     /// can actually use: how hard this one is going to bite.
+    /// Why a flight is probably late, in one phrase.
+    ///
+    /// Hedged on purpose: `MapModel.DelayContext` is derived from conditions
+    /// that are true now rather than from a recorded cause, and the words
+    /// have to carry that. "Storm over Northern Europe" is a fact about the
+    /// world; "delayed by a storm" would be a claim about this flight that
+    /// the simulation never made.
+    static func delayContext(_ context: MapModel.DelayContext) -> String {
+        switch context {
+        case .airportClosed(let code):
+            return "\(code.raw) is closed"
+        case .storm(let area, let value):
+            // Bound to different names than the functions they call: a local
+            // `severity` shadows `Vocab.severity` and the call stops being a
+            // call.
+            return "\(severity(value)) storm over \(region(area))"
+        }
+    }
+
     static func severity(_ value: Double) -> String {
         switch value {
         case ..<0.34: "Mild"

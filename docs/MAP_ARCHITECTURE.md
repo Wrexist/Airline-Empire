@@ -142,8 +142,9 @@ No new dependencies were added.
 ### Layers, back to front
 
 ```text
-ocean → graticule → land → event fields → opportunity arcs
-→ rival routes → player routes → airports → flights → labels
+ocean → graticule → land → night → city lights → event fields
+→ opportunity arcs → rival routes → player routes → airports → flights
+→ labels
 ```
 
 Order *is* the hierarchy: geography never draws over the network, and the
@@ -221,9 +222,117 @@ world point under the gesture's start location and solves for the centre that
 holds it fixed. `MapProjector.unproject` exists for this. Past the zoom limits
 the gesture resists (`pow(overshoot, 0.30)`) rather than stopping dead, and
 springs back on release — a hard clamp reads as a dropped gesture. A flick
-coasts on `predictedEndTranslation` damped to 45%, off under Reduce Motion. A
-double tap zooms in by the same 1.7 step the on-screen buttons use, about the
-point tapped.
+coasts on the *momentum* `predictedEndTranslation` implies — the prediction
+minus the translation already applied — damped to 45%, off under Reduce
+Motion. A double tap zooms in by the same 1.7 step the on-screen buttons use,
+about the point tapped. Every gesture is given the canvas's own size, which is
+taller than the layout's by the bottom safe area the map bleeds into; a
+viewport centre computed from the shorter one anchors a pinch to the wrong
+world point (BUG-057).
+
+**Reduce Motion.** A camera move is skipped entirely when the setting is on:
+the target is committed before the move begins, so skipping it *is* "go there
+without the travel". The camera is not a `View` and cannot read the
+environment, so the screen sets it (`prefersReducedMotion`).
+
+**The camera animates itself.** A `Canvas` has no animatable data, so
+`withAnimation` around a camera change does nothing but arrive in the next
+frame — every coast, zoom step, framing and edge spring used to be a teleport
+(BUG-057). `MapCamera` therefore holds the move itself — where it came from,
+when it started, how long it lasts — and the draw asks what the camera looks
+like *at this frame's date*, ease-out cubic. It is evaluated, never stepped:
+a pure function of the date, so a frame never writes camera state and can
+never invalidate the view that is drawing it. `zoom` and `center` remain the
+committed target, which is what gestures, hit-testing and the audio focus
+already reasoned about; the timeline stays awake while a move is in flight,
+so the map still travels with the simulation paused.
+
+### A world that is doing something (AE-047)
+
+Three layers, each driven by a number the simulation already had and no layer
+had ever drawn. The rule they share is the map's oldest one: **nothing moves
+that does not mean something.**
+
+- **City lights.** Airports, lit by `SolarGeometry.darkness` on the night
+  side, sized by catchment (`prominence`). Airports rather than a city
+  dataset: the content pack already carries ninety-odd places with a size,
+  they are where this world's cities are, and a second dataset would be half a
+  megabyte to say the same thing differently. Drawn per frame rather than
+  cached with the geography — the geography cache is keyed to the game *hour*
+  and dusk moves continuously within one.
+- **Airports that breathe.** A steady halo from `slotPressure` — the fraction
+  of an airport's daily movements already claimed, which Core has always
+  computed and nothing displayed — plus a ring that expands and fades when a
+  movement is actually happening. The movement is *derived from the flights
+  the frame is already drawing*: a flight in the first 7% of its leg is a
+  departure at its origin, one in the last 7% an arrival at its destination.
+  No new state, no event subscription, nothing remembered between frames. The
+  ring is tinted by whose traffic it is — the airline's own livery, a rival's
+  grey, neutral white for everyone else.
+- **Weather with a size.** `severity` is a real 0…1 within a kind and the
+  event field ignored it, so a mild storm and a severe one drew the same
+  circle. Both the field's radius and its strength carry it now, it drifts a
+  few points on a slow seeded wander so a weather system does not read as a
+  stain on the glass, and an airport actually inside a started storm gets a
+  ring — which is the same airport whose late flights the tracker now names
+  that storm over (AE-046).
+
+**The idle clock.** These animations, and the selection breath that predates
+them, read `MapFrame.elapsed` — which used to be measured from the *snapshot*
+and therefore reset every tick: four times a minute at 1×, mid-fade. It is now
+measured from when the screen appeared, so a breath or a ripple runs at its
+own steady rate and tells the player nothing about the simulation's cadence.
+Zero when the world is paused or Reduce Motion is on, so a still map is still.
+
+### Following a flight
+
+The map's reason to be watched (AE-046, `docs/GAME_DIRECTION.md`). Tap an
+aircraft, press Follow, and the camera rides with it until the player touches
+the map.
+
+The camera holds the flight's **identity**, never its position: where that
+flight is at this instant is a question only the frame can answer, and a
+camera caching a position is a camera one frame behind the thing it follows.
+So each frame resolves the followed flight through `MapFollow.point` — the
+same interpolation `MapFrame` draws with, one flight's worth, run before the
+projector exists because the projector is built around it — and passes it to
+`liveCenter(size:at:focus:)`, where it replaces the committed centre. It is
+not eased toward: the aircraft is already moving smoothly, and easing the
+camera as well produces a camera that trails its target forever.
+
+Three rules make it survivable rather than clever:
+
+- **The finger always wins.** Any drag or pinch calls `stopFollowing`, handing
+  back the last point the frame actually drew, so taking over feels like
+  taking over rather than being thrown across the world.
+- **A landed flight is not followed.** Core removes a flight after its
+  turnaround; the camera holds the last drawn point — which, since BUG-060,
+  is the airport it landed at — and releases.
+- **Nothing is written from inside the draw.** The last drawn point lives in
+  `MapFollowMemory`, a plain class on the same rule as `MapHitGeometry` and
+  `MapRenderCache`.
+
+The flight card became the tracker that makes following worth doing: seats
+sold on this leg, the arrival its schedule implies on the game clock, distance,
+and — when the departure slipped — the weather over either end
+(`MapModel.DelayContext`, derived rather than recorded, and worded to say so).
+
+### Aircraft between ticks
+
+The simulation moves in whole 15-minute ticks, so a flight's own truth changes
+once every 3.75 real seconds at 1×; the renderer predicts between them
+(`InterpolatedFlight`). The rule that makes that look like flight is that the
+base and the prediction must measure the same clock. They did not: the
+prediction ran on real time while `flight.progress` stepped in ticks, and the
+difference between the two — Core's fractional tick accumulator — grows and
+resets, so every tick that landed pulled each aircraft *backwards* by whatever
+had accumulated (BUG-058). `GameSession.pendingGameMinutes` is now readable,
+`clock.now + pendingGameMinutes` is the continuous game time, and
+`GameController.predictedGameMinutes(at:)` is the one number the map advances
+by. It only ever moves forwards — including across a pause, which now keeps
+the fraction rather than dropping it — and it is capped at 1.5 real seconds of
+prediction so a stall or a return from the background holds the aircraft still
+instead of flinging them down their routes.
 
 ### Flight trails
 

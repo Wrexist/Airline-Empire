@@ -155,35 +155,6 @@ final class HorizonArrivalUITests: AEUITestCase {
 
     // MARK: - Helpers
 
-    private func openRouteBySearch(city: String, code: String) -> Bool {
-        app.buttons["Routes"].tap()
-        let openRoute = app.buttons["Open a route"]
-        guard require(openRoute, "the route entry point on an empty board") else { return false }
-        openRoute.tap()
-        let search = app.searchFields.firstMatch
-        guard search.waitForExistence(timeout: 8) else {
-            capture(Self.logPrefix + "HZ-NO-ROUTE-SEARCH")
-            XCTFail("The route sheet's search field never appeared.")
-            return false
-        }
-        search.tap()
-        search.typeText(city)
-        Thread.sleep(forTimeInterval: 1)
-        let row = app.buttons.matching(NSPredicate(
-            format: "identifier == %@ AND label CONTAINS %@", "ae-route-destination", code)).firstMatch
-        guard row.waitForExistence(timeout: 8) else {
-            capture(Self.logPrefix + "HZ-NO-\(code)-ROW")
-            XCTFail("Searching the route sheet for \(city) produced no \(code) row.")
-            return false
-        }
-        row.tap()
-        let open = app.buttons.matching(identifier: "ae-route-open").firstMatch
-        guard require(open, "the commit bar after picking \(city)", timeout: 8) else { return false }
-        open.tap()
-        Thread.sleep(forTimeInterval: 1)
-        return true
-    }
-
     private func openRouteDetail(containing code: String) -> Bool {
         guard openAirlineSection("Routes") else { return false }
         let row = app.descendants(matching: .any)

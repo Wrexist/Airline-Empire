@@ -668,6 +668,150 @@ struct AEChoiceCard<Content: View>: View {
     }
 }
 
+// MARK: - Meters and next steps
+
+/// A labelled bar: what it measures, how full it is, and the number.
+///
+/// Written twice before this existed, with different thresholds, in the same
+/// card: the aircraft screen drew 84% condition in green and 94% reliability
+/// in orange, one row under the other (tasks/BUGS.md BUG-059). A player reads
+/// two bars side by side as one comparison, so the thresholds have to be a
+/// property of the component, not of the call site — and where a measure
+/// genuinely has a different healthy range, the call site says so *once*, by
+/// name, instead of picking a colour by hand.
+///
+/// The bar is drawn rather than a `ProgressView` for two reasons: a fixed
+/// 110pt `ProgressView` does not line up with anything else on the screen at
+/// any Dynamic Type size, and the fill can be animated to its value, so a
+/// meter that moves while you watch reads as a thing changing rather than as
+/// a redraw.
+struct AEMeter: View {
+    let label: String
+    /// 0…1. Values outside are clamped rather than drawn past the track.
+    let value: Double
+    /// At or above this the measure is healthy.
+    var good: Double = 0.75
+    /// Below this it is a problem, not a caution.
+    var warn: Double = 0.45
+    /// One quiet line under the bar, where the number needs a consequence.
+    var caption: String? = nil
+
+    private var clamped: Double { min(1, max(0, value)) }
+
+    private var tint: Color {
+        if clamped >= good { return AETheme.positive }
+        if clamped >= warn { return AETheme.caution }
+        return AETheme.negative
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AETheme.spacingXS) {
+            HStack {
+                Text(label).font(AEType.body)
+                Spacer()
+                Text(Format.percent(clamped))
+                    .font(AEType.metricCompact)
+                    .foregroundStyle(tint)
+                    .contentTransition(.numericText())
+            }
+            track
+            if let caption {
+                Text(caption)
+                    .font(AEType.caption)
+                    .foregroundStyle(AETheme.mutedText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .aeAnimation(AEMotion.content, value: clamped)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(label)
+        .accessibilityValue(Format.percent(clamped))
+    }
+
+    private var track: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.primary.opacity(0.10))
+                Capsule()
+                    .fill(tint)
+                    .frame(width: geometry.size.width * clamped)
+            }
+        }
+        .frame(height: 7)
+        .accessibilityHidden(true)
+    }
+}
+
+/// The one thing worth doing next, as something you can press.
+///
+/// A label rather than a button: the caller owns the action, so the same row
+/// can be a `NavigationLink` on a list, a `Button` opening a sheet, or a row
+/// in a card, and none of them has to re-invent the layout. What it fixes is
+/// screens that state a problem and stop — "Idle at ARN. It earns nothing
+/// here" was the truth, printed in orange, next to nothing to press
+/// (tasks/BUGS.md BUG-059). A problem the game can name is a problem the game
+/// can offer to solve.
+///
+/// Three parts, always in this order: what it is about (the icon), what to do
+/// (the title, an imperative), and why it matters (one line). The chevron is
+/// the promise that pressing goes somewhere.
+struct AENextStepLabel: View {
+    let icon: String
+    let title: String
+    let detail: String
+    var tint: Color = AETheme.accent
+    /// Whether this is costing the player something while it waits. The icon
+    /// breathes — the one animation on the row, and the only one it needs:
+    /// a moving thing among still ones is found without being read.
+    var attention: Bool = false
+    /// Off inside a `List`, where the row's `NavigationLink` draws the
+    /// system's own disclosure indicator and a second chevron beside it reads
+    /// as two controls.
+    var showsChevron: Bool = true
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        HStack(spacing: AETheme.spacingM) {
+            Group {
+                if attention && !reduceMotion {
+                    badge.symbolEffect(.pulse)
+                } else {
+                    badge
+                }
+            }
+            .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(AEType.body.weight(.semibold))
+                    .foregroundStyle(.primary)
+                Text(detail)
+                    .font(AEType.secondary)
+                    .foregroundStyle(AETheme.mutedText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: AETheme.spacingS)
+            if showsChevron {
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AETheme.mutedText)
+                    .accessibilityHidden(true)
+            }
+        }
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title). \(detail)")
+    }
+
+    private var badge: some View {
+        Image(systemName: icon)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(tint)
+            .frame(width: 34, height: 34)
+            .background(tint.opacity(0.16), in: Circle())
+    }
+}
+
 // MARK: - Containers below a card
 
 /// A grouped surface for related rows, quieter than `AECard`.

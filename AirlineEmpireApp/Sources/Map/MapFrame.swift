@@ -16,8 +16,22 @@ struct MapFrame {
     let overlay: MapOverlay
     let selection: MapHit?
     let speed: SimSpeed
-    /// Real seconds since the snapshot, for flight interpolation.
+    /// Real seconds on a clock that only the map's own idle animations read —
+    /// the selection breath, an airport's movement ripple. Zero when the
+    /// world is paused or Reduce Motion is on, so a still map is still.
+    ///
+    /// Measured from when the screen appeared, **not** from the snapshot.
+    /// From the snapshot it reset on every tick — every 3.75 real seconds at
+    /// 1× — so anything periodic reading it jumped back to phase zero four
+    /// times a minute, mid-fade. A breath that stutters on the simulation's
+    /// cadence is a breath that tells the player about the tick rate.
     let elapsed: TimeInterval
+    /// Game minutes since the snapshot's clock, for flight interpolation —
+    /// `GameController.predictedGameMinutes`. Not derived from `elapsed`:
+    /// real seconds are the wrong unit for a world that runs on a fractional
+    /// tick accumulator, and deriving it here is what let the two drift apart
+    /// (tasks/BUGS.md BUG-058).
+    let gameMinutes: Double
     /// When the snapshot arrived — the route cache's tick key.
     let tick: Date
     /// The camera's settle generation — the label memory's re-decide signal.
@@ -60,7 +74,8 @@ struct MapFrame {
 
     init(model: MapModel, snapshot: GameState, projector: MapProjector,
          policy: MapDetailPolicy, overlay: MapOverlay, selection: MapHit?,
-         speed: SimSpeed, elapsed: TimeInterval, tick: Date, settle: Int,
+         speed: SimSpeed, elapsed: TimeInterval, gameMinutes: Double,
+         tick: Date, settle: Int,
          bottomOcclusion: CGFloat = 0,
          cache: MapRenderCache) {
         self.model = model
@@ -71,6 +86,7 @@ struct MapFrame {
         self.selection = selection
         self.speed = speed
         self.elapsed = elapsed
+        self.gameMinutes = gameMinutes
         self.tick = tick
         self.settle = settle
         self.bottomOcclusion = bottomOcclusion
@@ -101,6 +117,9 @@ struct MapFrame {
         // (docs/MAP_RUNTIME_BASELINE.md §2, MapRenderCache).
         cache.drawGeography(into: &context, projector: projector,
                             policy: policy, date: snapshot.currentDate)
+        // On the geography, under everything the airline draws: the world's
+        // cities, lit on the night side (AE-047).
+        drawCityLights(&context)
         // Airports are projected first, chosen second, drawn last.
         //
         // Three separate steps because they answer to three different needs,
@@ -151,14 +170,42 @@ struct MapFrame {
                 .map(projector.project)
             guard !points.isEmpty else { continue }
             let tint = eventTint(event)
-            let radius: CGFloat = event.hasStarted ? 26 : 18
+            // Severity is a real number in 0…1 within a kind, and the field
+            // was ignoring it: a mild storm and a severe one drew the same
+            // circle. Size and strength both carry it now, and the word is
+            // still on the card — colour and area are never the only signal
+            // (DESIGN_SYSTEM §9a).
+            let severity = CGFloat(max(0.2, min(1, event.severity)))
+            let base: CGFloat = event.hasStarted ? 24 : 16
+            let radius = base * (0.75 + severity * 0.55)
+            // A weather system that is perfectly still reads as a stain on
+            // the glass. This is a slow wander — a few points over several
+            // seconds, seeded by the event's own id so two storms never drift
+            // in step — not a simulation of anything: the *place* is Core's,
+            // and only the last few points of it are the renderer's.
+            let seed = Double(event.id % 17) * 0.37
+            let drift = CGSize(
+                width: CGFloat(sin(elapsed * 0.22 + seed)) * 5 * severity,
+                height: CGFloat(cos(elapsed * 0.17 + seed * 1.7)) * 3.5 * severity)
             for point in points where projector.isVisible(point, margin: 60) {
-                let rect = CGRect(x: point.x - radius, y: point.y - radius,
+                let centre = CGPoint(x: point.x + drift.width,
+                                     y: point.y + drift.height)
+                let rect = CGRect(x: centre.x - radius, y: centre.y - radius,
                                   width: radius * 2, height: radius * 2)
                 context.fill(Path(ellipseIn: rect), with: .radialGradient(
-                    Gradient(colors: [tint.opacity(event.hasStarted ? 0.30 : 0.16),
-                                      tint.opacity(0)]),
-                    center: point, startRadius: 0, endRadius: radius))
+                    Gradient(colors: [
+                        tint.opacity(Double(severity)
+                                     * (event.hasStarted ? 0.34 : 0.18)),
+                        tint.opacity(0)]),
+                    center: centre, startRadius: 0, endRadius: radius))
+                // A ring on the airport itself once it is actually happening.
+                // The field says "weather here"; this says "this airport is
+                // in it" — which is the airport whose flights the tracker
+                // will now name a storm over (AE-046).
+                if event.hasStarted {
+                    strokeCircle(&context, at: point, radius: 7 + severity * 3,
+                                 color: tint.opacity(0.5), width: 1)
+                }
             }
         }
     }
@@ -361,9 +408,43 @@ struct MapFrame {
     }
 
     private func drawAirports(_ context: inout GraphicsContext) {
+        // One pass over the flights, shared by every marker below.
+        let movements = airportMovements
         for (airport, point) in geometry.airports {
             let radius = policy.radius(airport)
             let isSelected = selection == .airport(airport.code)
+
+            // How busy this place is, always: the fraction of its daily
+            // movements already claimed, which Core computes and no layer has
+            // ever drawn. Only under the network overlay — the others put
+            // their own heat here, and two fields on one marker is a colour
+            // nobody can read.
+            if overlay == .network, airport.slotPressure > 0.12 {
+                let r = radius * 4.5
+                let strength = min(0.22, airport.slotPressure * 0.24)
+                context.fill(
+                    Path(ellipseIn: CGRect(x: point.x - r, y: point.y - r,
+                                           width: r * 2, height: r * 2)),
+                    with: .radialGradient(
+                        Gradient(colors: [trafficTint(airport).opacity(strength),
+                                          trafficTint(airport).opacity(0)]),
+                        center: point, startRadius: 0, endRadius: r))
+            }
+
+            // And what is happening *now*: a ring for a movement in progress,
+            // expanding and fading on the real clock so it reads as a pulse
+            // rather than as a slowly growing circle. `elapsed` freezes with
+            // the pause button and is zero under Reduce Motion, so a still
+            // map is a still map — the same rule the selection breath obeys.
+            if let movement = movements[airport.code], movement > 0.02,
+               elapsed > 0 {
+                let phase = (elapsed / 1.6).truncatingRemainder(dividingBy: 1)
+                let ring = radius + 3 + CGFloat(phase) * 11
+                strokeCircle(&context, at: point, radius: ring,
+                             color: trafficTint(airport)
+                                 .opacity((1 - phase) * 0.55 * movement),
+                             width: 1.2)
+            }
 
             // Overlay-specific field behind the marker, so a heat reading and
             // the airport itself never fight for the same pixels.
@@ -431,6 +512,81 @@ struct MapFrame {
                 context.stroke(cross, with: .color(AETheme.negative), lineWidth: 1.4)
             }
         }
+    }
+
+    /// The colour a place's traffic reads in: the airline's own where it
+    /// flies, a rival's where they are based, and the map's neutral white
+    /// where the traffic is nobody the player knows.
+    private func trafficTint(_ airport: MapModel.MapAirport) -> Color {
+        if airport.servedByPlayer || airport.isPlayerHome { return playerColor }
+        if airport.competitorHubCount > 0 { return AETheme.rivalRoute }
+        return .white
+    }
+
+    /// The world's cities, lit on the dark side.
+    ///
+    /// Airports rather than a city dataset: the content pack already carries
+    /// ninety-odd of them with a catchment size, they are where the game's
+    /// cities *are*, and a second dataset would be 500 KB to say the same
+    /// thing slightly differently. Prominence sets the size,
+    /// `SolarGeometry` decides how lit it is, and the whole layer is invisible at noon —
+    /// which is the honest behaviour and also the cheap one.
+    ///
+    /// Drawn per frame rather than cached with the geography: the cache is
+    /// keyed to the game hour and this changes continuously within one, and
+    /// at ~90 projections it costs what a single route polyline costs.
+    private func drawCityLights(_ context: inout GraphicsContext) {
+        let date = snapshot.currentDate
+        // Below regional zoom a light is smaller than a pixel of meaning;
+        // above it they are what makes the night side read as inhabited.
+        let scale: CGFloat = policy.level == .world ? 0.75
+            : policy.level == .regional ? 1.0 : 1.35
+        for airport in model.airports {
+            let darkness = SolarGeometry.darkness(at: airport.position.coordinate,
+                                                  date: date)
+            guard darkness > 0.08 else { continue }
+            let point = projector.project(airport.position)
+            guard projector.isVisible(point, margin: 20) else { continue }
+            // A quiet town and a capital are not the same light.
+            let radius = (1.4 + CGFloat(airport.prominence) * 5.2) * scale
+            let strength = darkness * (0.28 + airport.prominence * 0.5)
+            context.fill(
+                Path(ellipseIn: CGRect(x: point.x - radius, y: point.y - radius,
+                                       width: radius * 2, height: radius * 2)),
+                with: .radialGradient(
+                    Gradient(colors: [AETheme.cityLight.opacity(strength),
+                                      AETheme.cityLight.opacity(0)]),
+                    center: point, startRadius: 0, endRadius: radius))
+        }
+    }
+
+    /// How much is happening at each airport right now, 0…1 per code.
+    ///
+    /// Derived from the flights the frame is already about to draw: a flight
+    /// in the first moments of its leg is a departure at its origin, one in
+    /// the last is an arrival at its destination. No new state, no events to
+    /// subscribe to, and nothing remembered between frames — the map says
+    /// "something is moving here" exactly while something is.
+    ///
+    /// The windows are fractions of a leg rather than minutes so that a
+    /// forty-minute hop and a transatlantic both read as busy for a
+    /// comparable slice of themselves.
+    private var airportMovements: [AirportCode: Double] {
+        var result: [AirportCode: Double] = [:]
+        let window = 0.07
+        for flight in model.flights where flight.airborne {
+            guard flight.flightMinutes > 0 else { continue }
+            let progress = min(1, flight.progress
+                               + gameMinutes / Double(flight.flightMinutes))
+            if progress < window {
+                let weight = 1 - progress / window
+                result[flight.origin, default: 0] += weight
+            } else if progress > 1 - window {
+                let weight = (progress - (1 - window)) / window
+                result[flight.destination, default: 0] += weight
+            }
+        }
+        return result.mapValues { min(1, $0) }
     }
 
     /// The heat behind an airport for the current overlay, or nil when this
@@ -626,7 +782,7 @@ struct MapFrame {
                                       heading: flight.heading,
                                       progress: flight.progress)
         }
-        return InterpolatedFlight.advance(flight, by: elapsed, speed: speed,
+        return InterpolatedFlight.advance(flight, byGameMinutes: gameMinutes,
                                           origin: catalog.0, destination: catalog.1)
     }
 

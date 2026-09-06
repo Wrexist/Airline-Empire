@@ -131,6 +131,36 @@ public struct MapModel: Equatable, Sendable {
         public let delayMinutes: Int64
         public let isFerry: Bool
         public let livery: Livery
+        /// Seats sold on this leg. Zero on a ferry, by definition.
+        public let passengers: Int
+        /// The leg's length, so a screen following the aircraft can say how
+        /// far it has come and how far is left without re-deriving geometry
+        /// the flight already carries.
+        public let distanceKm: Int
+        /// When this leg is on the ground at `destination`: the actual
+        /// departure plus the flying time for an airborne flight, the planned
+        /// departure plus it for one still on stand. It is a schedule, not a
+        /// promise — a delay after this model was built moves it.
+        public let arrival: SimTime
+        /// What is happening at either end that would explain a late flight.
+        ///
+        /// **Derived, not recorded.** `FlightOpsSystem` raises the disruption
+        /// chance from exactly these conditions and does not store which draw
+        /// a flight lost, so this is the weather that explains the delay
+        /// rather than a logged cause. Nil when the flight is on time, or
+        /// when nothing is happening at either end — never a guess dressed as
+        /// a record.
+        public let delayContext: DelayContext?
+    }
+
+    /// Why a flight is probably late (see `MapFlight.delayContext`).
+    public enum DelayContext: Equatable, Sendable {
+        /// An endpoint is shut. The harder of the two, so it wins when both
+        /// are true.
+        case airportClosed(AirportCode)
+        /// A storm over an endpoint's region, with the severity the world
+        /// event carries.
+        case storm(region: WorldRegion, severity: Double)
     }
 
     /// A world event, placed. Events had no geography on screen at all, which
@@ -200,6 +230,63 @@ public struct MapPoint: Equatable, Sendable {
     public init(coordinate: Coordinate) {
         self.x = (coordinate.longitude + 180) / 360
         self.y = (90 - coordinate.latitude) / 180
+    }
+}
+
+/// Where the sun is over this world, and how dark it is under it.
+///
+/// In Core for `MapMath`'s reason: it is geometry rather than drawing, and
+/// Core is where geometry can be tested. The renderer had it inlined in the
+/// terminator's own path — fine while one layer needed it, and a trap the
+/// moment a second one did (city lights, AE-047): two copies of a declination
+/// formula is how a map ends up with its lights on the wrong side of its own
+/// night.
+///
+/// Deliberately simple astronomy: a circular orbit, no equation of time, no
+/// atmospheric refraction. The calendar is twelve thirty-day months and the
+/// countries are invented; a sub-degree correction would be precision about
+/// nothing.
+public enum SolarGeometry {
+    /// Solar declination in radians — how far north or south the sun stands
+    /// on this date. Zero at the equinoxes, ±23.44° at the solstices.
+    public static func declination(_ date: GameDate) -> Double {
+        let dayOfYear = Double((date.month - 1) * 30) + Double(date.day)
+        return 23.44 * sin(2 * .pi * (dayOfYear - 81) / 365) * .pi / 180
+    }
+
+    /// The longitude the sun stands directly over, in degrees. Noon UTC puts
+    /// it on the prime meridian, and it travels west at 15° an hour.
+    public static func subsolarLongitude(_ date: GameDate) -> Double {
+        let utcHours = Double(date.hour) + Double(date.minute) / 60
+        return (12 - utcHours) * 15
+    }
+
+    /// The sun's angle above the horizon at a place, in degrees. Negative is
+    /// below.
+    public static func elevation(at coordinate: Coordinate,
+                                 date: GameDate) -> Double {
+        let latitude = coordinate.latitude * .pi / 180
+        let declination = declination(date)
+        let hourAngle = (coordinate.longitude - subsolarLongitude(date)) * .pi / 180
+        let sine = sin(latitude) * sin(declination)
+            + cos(latitude) * cos(declination) * cos(hourAngle)
+        return asin(min(1, max(-1, sine))) * 180 / .pi
+    }
+
+    /// Below the horizon by this much, it is fully night: nautical twilight,
+    /// where the horizon itself stops being visible.
+    public static let fullDarkDegrees = 12.0
+
+    /// How dark it is at a place: 0 while the sun is up, 1 once it is
+    /// `fullDarkDegrees` below the horizon, and a ramp between.
+    ///
+    /// The ramp is the point. A hard day/night edge switches a city's lights
+    /// on as the terminator crosses it; fading them through dusk is both what
+    /// happens and what reads as evening.
+    public static func darkness(at coordinate: Coordinate,
+                                date: GameDate) -> Double {
+        let below = -elevation(at: coordinate, date: date)
+        return min(1, max(0, below / fullDarkDegrees))
     }
 }
 
@@ -413,6 +500,33 @@ extension GameState {
             let owner = aircraft.owner
             let livery = airlines[owner]?.livery ?? .default
 
+            // When this leg is down: from the actual departure while it is
+            // flying, from the planned one while it is still on stand.
+            let arrival: SimTime = {
+                if case .enRoute(let actualDeparture) = flight.phase {
+                    return actualDeparture + .minutes(flight.flightMinutes)
+                }
+                return flight.departureTime + .minutes(flight.flightMinutes)
+            }()
+
+            // Weather at either end, and only for a flight that is actually
+            // late — see `MapFlight.delayContext` for why this is derived and
+            // what that costs in precision.
+            let delayContext: MapModel.DelayContext? = {
+                guard flight.delayMinutes > 0 else { return nil }
+                for code in [flight.from, flight.to]
+                where world.isAirportClosed(code, at: clock.now) {
+                    return .airportClosed(code)
+                }
+                for airport in [from, to] {
+                    if let severity = world.activeStorm(in: airport.region,
+                                                        at: clock.now) {
+                        return .storm(region: airport.region, severity: severity)
+                    }
+                }
+                return nil
+            }()
+
             func build(position: Coordinate, heading: Double,
                        airborne: Bool, progress: Double) -> MapModel.MapFlight {
                 MapModel.MapFlight(
@@ -423,7 +537,9 @@ extension GameState {
                     airborne: airborne, progress: progress,
                     flightMinutes: flight.flightMinutes, category: spec.category,
                     delayMinutes: flight.delayMinutes,
-                    isFerry: flight.kind == .ferry, livery: livery)
+                    isFerry: flight.kind == .ferry, livery: livery,
+                    passengers: flight.passengers, distanceKm: flight.distanceKm,
+                    arrival: arrival, delayContext: delayContext)
             }
 
             switch flight.phase {
@@ -437,11 +553,24 @@ extension GameState {
                                                       to: to.coordinate,
                                                       at: fraction),
                              airborne: true, progress: fraction)
-            case .boarding, .turnaround:
+            case .boarding:
                 return build(position: from.coordinate,
                              heading: MapMath.heading(from: from.coordinate,
                                                       to: to.coordinate),
                              airborne: false, progress: 0)
+            case .turnaround:
+                // At the far end, which is where it landed
+                // (tasks/BUGS.md BUG-060). Turnaround is the phase *after*
+                // arrival — `FlightOpsSystem.arrive` sets it — and this drew
+                // the aircraft back at the airport it had taken off from, for
+                // the whole turnaround: a 42-minute turn on the map's own
+                // example airframe. The heading keeps the course it landed
+                // on, because a parked aeroplane pointing at the airport it
+                // has just left is the same lie in miniature.
+                return build(position: to.coordinate,
+                             heading: MapMath.heading(from: from.coordinate,
+                                                      to: to.coordinate),
+                             airborne: false, progress: 1)
             case .scheduled:
                 return nil
             }

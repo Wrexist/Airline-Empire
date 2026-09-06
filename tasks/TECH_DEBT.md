@@ -399,6 +399,13 @@ the same. Not done in AE-034: the P0s were measured problems, this one is a
 READ-level polish item nobody has yet reproduced on a device. Do it with
 eyes on a screen, not blind.
 
+**AE-045:** the resistance itself (`softClampY`) and the release spring landed
+after AE-034, but the spring was a `withAnimation` around a `Canvas`, which
+does not animate — so the camera still *jumped* home from the edge, exactly
+the symptom this item describes. BUG-057 replaced it with a camera-owned,
+date-evaluated ease-out. Remaining: confirm the feel on a device, which is
+what this item asked for in the first place.
+
 ## TD-024 — Cache counter assertions await their first counted run
 
 The render cache counts every rebuild by cause and the probe publishes
