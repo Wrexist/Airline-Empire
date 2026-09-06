@@ -39,6 +39,15 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
+      suite:
+        description: >-
+          smoke runs the ~6-minute subset a pull request gets; full runs
+          every journey class and the performance measurements, on four
+          macOS runners. Full is what you want before a release or after
+          touching the map, the shell or the campaign.
+        type: choice
+        options: [smoke, full]
+        default: full
       ipad:
         description: >-
           Also run the shell journey on an iPad simulator (regular width).
@@ -206,105 +215,216 @@ jobs:
       - name: Audio assets resolve
         run: python3 scripts/audio/check-assets.py
 
+  # ── 0 · What the macOS runners should do, decided on Linux ─────────────────
+  #
+  # macOS bills at 10x. Every decision about whether to spend those minutes,
+  # and on what, is made here on a 1x runner that finishes in seconds.
+  #
+  # Two questions:
+  #
+  #   Should the app be built at all?  Answered by diffing against **the last
+  #   commit CI was green on for this branch**, not against the pull request's
+  #   base. Diffing the base means that once a pull request touches
+  #   `AirlineEmpireApp/`, every later push re-runs the whole macOS suite
+  #   forever — including pushes that change only markdown. That is what
+  #   happened on 2026-09-06: a commit touching one file under `tasks/`
+  #   spent ~90 macOS minutes. Diffing the last *green* head is both cheaper
+  #   and safer than diffing the last push: a change whose run was cancelled
+  #   by `concurrency` is still in the diff, because that run never went
+  #   green.
+  #
+  #   Which journeys?  The subset on a pull request, everything on demand.
+  #   See the matrix below for what is in the subset and why.
+  plan:
+    name: Plan the macOS work
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      build: ${{ steps.decide.outputs.build }}
+      matrix: ${{ steps.decide.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          # The diff below needs history: a shallow clone has no base commit.
+          fetch-depth: 0
+
+      - name: Decide
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          HEAD_SHA: ${{ github.sha }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          SUITE_INPUT: ${{ inputs.suite }}
+        run: |
+          set -euo pipefail
+
+          # ── which suite ──────────────────────────────────────────────────
+          if [ "$EVENT" = "workflow_dispatch" ] && [ "$SUITE_INPUT" = "full" ]; then
+            SUITE=full
+          else
+            SUITE=smoke
+          fi
+          echo "Suite: $SUITE"
+
+          # ── should macOS run at all ──────────────────────────────────────
+          BASE=""
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            echo "Dispatched by hand — building unconditionally."
+          else
+            LAST_GREEN=$(curl -fsS \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${REPO}/actions/workflows/ci.yml/runs?branch=${BRANCH}&status=success&per_page=1" \
+              | jq -r '.workflow_runs[0].head_sha // empty') || LAST_GREEN=""
+            if [ -n "$LAST_GREEN" ] \
+               && git cat-file -e "${LAST_GREEN}^{commit}" 2>/dev/null \
+               && git merge-base --is-ancestor "$LAST_GREEN" "$HEAD_SHA"; then
+              BASE="$LAST_GREEN"
+              echo "Diffing against the last green head on ${BRANCH}: $BASE"
+            elif [ "$EVENT" = "pull_request" ] && [ -n "$PR_BASE" ]; then
+              BASE="$PR_BASE"
+              echo "No usable green head — diffing against the pull request base: $BASE"
+            elif [ -n "$PUSH_BEFORE" ]; then
+              BASE="$PUSH_BEFORE"
+              echo "No usable green head — diffing against the previous push: $BASE"
+            fi
+          fi
+
+          if [ -z "$BASE" ] || ! git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
+            BUILD=true
+            echo "No usable base commit — building."
+          else
+            CHANGED=$(git diff --name-only "$BASE" "$HEAD_SHA")
+            echo "$CHANGED"
+            if printf '%s\n' "$CHANGED" \
+               | grep -Eq '^(AirlineEmpireApp/|AirlineEmpireCore/|\.github/workflows/ci\.yml$)'; then
+              BUILD=true
+            else
+              BUILD=false
+              echo "No app, core or workflow changes since the last green run — no macOS minutes needed."
+            fi
+          fi
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+
+          # ── the matrix ───────────────────────────────────────────────────
+          #
+          # The subset is chosen by value per second, from the per-test costs
+          # measured on run 158 (seconds, on a normal runner):
+          #
+          #   founding reaches every tab           29.1   dead links, five tabs
+          #   home guides to a first aircraft      13.8   the next step exists
+          #   audio cues all decode                18.6   asset integrity
+          #   no screen shows the old glyph        27.5   a cross-screen contract
+          #   acquire an aircraft, open a route   140.8   THE core loop
+          #   section picker is not in dead space  20.4   a frame assertion
+          #   selecting an airport opens a panel   32.6   the map answers a tap
+          #   the clock actually runs              63.2   the simulation moves
+          #                                       ─────
+          #                                       346.1   ≈ 6 min of tests
+          #
+          # ~9 minutes of runner once the build, the boot and the install are
+          # counted; ~15 on the slowest machine measured (runners vary 1.7x,
+          # see the UI step's cap). Three classes, one runner, no cloning.
+          #
+          # What a pull request no longer gets, and gets on `full`: the era
+          # campaign (611 s), the New York advice campaign (355 s), the month
+          # statement (203 s), the Munich arrival (579 s), both appearances,
+          # dynamic type, the follow camera, and the performance baselines.
+          SMOKE=""
+          for T in \
+            CampaignUITests/testFoundingAnAirlineReachesEveryTab \
+            CampaignUITests/testHomeGuidesANewPlayerToTheirFirstAircraft \
+            CampaignUITests/testAudioEngineStartsAndEveryCueDecodes \
+            EconomyJourneyUITests/testNoScreenShowsTheOldCurrencyGlyph \
+            EconomyJourneyUITests/testAcquireAircraftThenOpenARoute \
+            ShellAndMapUITests/testSectionPickerSitsUnderTheNavigationBarNotInDeadSpace \
+            ShellAndMapUITests/testSelectingAnAirportOpensItsPanel \
+            ShellAndMapUITests/testTheClockActuallyRuns
+          do
+            SMOKE="$SMOKE -only-testing:AirlineEmpireUITests/$T"
+          done
+
+          if [ "$SUITE" = full ]; then
+            MATRIX=$(jq -cn '{include: [
+              {shard: 1, name: "campaign",   job: 45, ui: 40, measure: false,
+               tests: "-only-testing:AirlineEmpireUITests/CampaignUITests"},
+              {shard: 2, name: "economy",    job: 45, ui: 40, measure: false,
+               tests: "-only-testing:AirlineEmpireUITests/EconomyJourneyUITests"},
+              {shard: 3, name: "shell + map", job: 60, ui: 40, measure: true,
+               tests: "-only-testing:AirlineEmpireUITests/ShellAndMapUITests"},
+              {shard: 4, name: "arrival",    job: 45, ui: 40, measure: false,
+               tests: "-only-testing:AirlineEmpireUITests/HorizonArrivalUITests"}
+            ]}')
+          else
+            MATRIX=$(jq -cn --arg tests "$SMOKE" '{include: [
+              {shard: 0, name: "smoke", job: 25, ui: 18, measure: false, tests: $tests}
+            ]}')
+          fi
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "$MATRIX" | jq .
+
   # ── 3 · Does the app compile? ──────────────────────────────────────────────
   app:
     name: iOS app (xcodebuild) · ${{ matrix.name }}
+    needs: plan
+    if: needs.plan.outputs.build == 'true'
     runs-on: macos-26
-    # The split is written down rather than left to xcodebuild, and each of
-    # the two long journeys gets a runner to itself.
+    # One class to a runner, and **no simulator cloning anywhere**.
     #
-    # Three measurements got it here. Run 123: XCUITest distributes by test
+    # Four measurements got it here. Run 123: XCUITest distributes by test
     # class and put three classes on one cloned simulator (39 minutes) while
     # the fourth finished on the other and left it idle for 25 — the
     # imbalance, not the total work, was most of the 48 minutes. Run 125:
     # asking for three parallel workers put three simulators on a three-core
     # runner, two test runners died before connecting ("Timed out waiting for
     # AX loaded notification") and seven journeys failed on starvation. Run
-    # 126, two named shards of two classes each: the shard whose second class
-    # was a single long journey passed in 22 minutes (the Munich arrival
-    # halved, 981 s to 495 s, by the week control), and the shard with ten
-    # launch-heavy tests across two clones starved anyway — three journeys
-    # died on "Timed out while requesting launch progress" and "Timed out
-    # while evaluating UI query", none of them an assertion about the app.
+    # 126, two named shards of two classes each: the shard with ten
+    # launch-heavy tests across two clones starved anyway.
     #
-    # Simultaneous app launches are what these runners cannot take. So the
-    # two launch-heavy classes now run one class to a runner with no cloning
-    # at all, and only the pair that already proved itself — one long journey
-    # beside the shell — keeps two clones.
+    # Run 162 removed the last exception, "the pair that already proved
+    # itself". The diff was one markdown file and the same app code had
+    # passed every journey forty minutes earlier, but the second clone's
+    # test runner never came up —
+    #
+    #     Simulator device failed to launch
+    #     com.airlineempire.AirlineEmpireUITests.xctrunner.
+    #     (FBSOpenApplicationServiceErrorDomain Code=1)
+    #
+    # — so both suites piled onto Clone 1 and two journeys died of
+    # starvation: "Failed to get matching snapshots: Timed out while
+    # evaluating UI query", and a stepper tap that did not register. Neither
+    # is an assertion about the app. Asking a degraded runner for a second
+    # simulator is what turns a slow machine into a red build.
+    #
+    # The matrix comes from the `plan` job above: one smoke shard on a pull
+    # request, four class shards on a dispatched `full` run.
+    timeout-minutes: ${{ matrix.job }}
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - shard: 1
-            name: campaign
-            tests: -only-testing:AirlineEmpireUITests/CampaignUITests
-            parallel: -parallel-testing-enabled NO
-          - shard: 2
-            name: economy
-            tests: -only-testing:AirlineEmpireUITests/EconomyJourneyUITests
-            parallel: -parallel-testing-enabled NO
-          - shard: 3
-            name: arrival + shell
-            tests: >-
-              -only-testing:AirlineEmpireUITests/HorizonArrivalUITests
-              -only-testing:AirlineEmpireUITests/ShellAndMapUITests
-            parallel: >-
-              -parallel-testing-enabled YES
-              -maximum-concurrent-test-simulator-destinations 2
-    # Measured on runs 112–118: build-for-testing ≈ 2 min, the measurement
-    # pass 5–11 min, the parallel UI pass 32 min on a normal runner and
-    # 58+ min on a slow one (runs 114 and 118 ran every journey 1.3–2×
-    # slower). 45 cancelled runs 112 and 114, 60 cancelled run 118, each
-    # with the UI pass still going and nothing exported — a cancelled job
-    # skips its `always()` steps and its log is not even retrievable. The
-    # UI step below carries its own timeout so an overrun ends the tests
-    # and still exports what they photographed; this cap only has to
-    # outlast that: 2 (build) + 10 (measurement) + 45 (UI step) + 3
-    # (evidence) + 2 (setup) = 62.
-    timeout-minutes: 65
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
+      # No `fetch-depth: 0` and no change detection here any more: the
+      # `plan` job answered both questions on a 1x runner, and this job does
+      # not start at all when the answer was no.
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-          # Needed by the change detection below: a shallow clone has no base
-          # commit to diff against.
-          fetch-depth: 0
-
-      # Only spend the 10x minutes when something that can affect the build
-      # changed. Done here as a step rather than as the job's `paths:` filter
-      # so the job still reports a status on every pull request — a required
-      # check that silently does not run is a required check that never blocks
-      # anything. Plain git rather than a marketplace action, for master plan
-      # rule 6: this is three lines, and an action here would be a third-party
-      # dependency in the release path.
-      - name: What changed?
-        id: changes
-        env:
-          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
-            echo "build=true" >> "$GITHUB_OUTPUT"
-            echo "Building: dispatched by hand, or no usable base commit to diff against."
-            exit 0
-          fi
-          CHANGED=$(git diff --name-only "$BASE" "${{ github.sha }}")
-          echo "$CHANGED"
-          if echo "$CHANGED" | grep -Eq '^(AirlineEmpireApp/|AirlineEmpireCore/|\.github/workflows/ci\.yml$)'; then
-            echo "build=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "build=false" >> "$GITHUB_OUTPUT"
-            echo "No app, core or workflow changes — skipping the macOS build."
-          fi
 
       - name: Xcode version
-        if: steps.changes.outputs.build == 'true'
         run: xcodebuild -version
 
       # project.yml is the source of truth; the .xcodeproj is generated and
       # git-ignored. That is decision D-002's shape carried into CI: there is
       # no checked-in Xcode project that can drift from the manifest.
       - name: Generate the Xcode project
-        if: steps.changes.outputs.build == 'true'
         working-directory: AirlineEmpireApp
         run: |
           brew install xcodegen
@@ -319,7 +439,6 @@ jobs:
       # splitting the suite into two passes would otherwise have paid that
       # compile twice.
       - name: Build for the simulator
-        if: steps.changes.outputs.build == 'true'
         working-directory: AirlineEmpireApp
         run: |
           set -o pipefail
@@ -345,7 +464,6 @@ jobs:
       # installed simulators without warning, and a hardcoded 'iPhone 16'
       # turns that into a red build with a confusing message.
       - name: Pick a simulator
-        if: steps.changes.outputs.build == 'true'
         id: sim
         run: |
           set -euo pipefail
@@ -393,7 +511,7 @@ jobs:
       # docs/MAP_P0_PERFORMANCE_REPORT.md. They run first, alone, on an
       # otherwise quiet machine.
       - name: Measure (alone, so the numbers stay comparable)
-        if: steps.changes.outputs.build == 'true' && matrix.shard == 3
+        if: matrix.measure
         working-directory: AirlineEmpireApp
         run: |
           set -o pipefail
@@ -409,27 +527,26 @@ jobs:
             test-without-building 2>&1 | tee ui-test-output.txt
 
       - name: Run the UI tests
-        if: always() && steps.changes.outputs.build == 'true'
+        if: always()
         working-directory: AirlineEmpireApp
         # A step timeout, not only the job's: when this overruns, the step
         # fails and the evidence steps below still run on the result bundle
         # as it stands. Run 118 lost every frame of a new journey to the job
         # cap instead.
         #
-        # 45 rather than 30, because 30 was under-provisioned for the
-        # *measured* spread between runners and every shard sat inside one
-        # slow machine of it. Runs 158 and 160 ran byte-identical UI test
-        # code; the measurement pass, which runs the same two tests alone
-        # and serially on both, took 150.5 s on run 158 and 249.5 s on run
-        # 160 — the same work, 1.66× slower. Shard 3's journey pass took
-        # 19.6 min on 158 and was killed at 30 on 160 (19.6 × 1.66 = 32.5).
-        # Shards 1 and 2 nominally take 17.5 and 20.6 min, so at that same
-        # 1.66× they land at 29 and 34: both were one slow runner away from
-        # the identical failure, and neither had done anything wrong either.
-        # A cap is meant to catch a hang, not to lose a green suite to the
-        # machine it was scheduled on — and it costs nothing on a normal
-        # runner, which finishes in twenty.
-        timeout-minutes: 45
+        # The cap comes from the matrix: 18 minutes for the smoke subset
+        # (~6 min of tests) and 40 for a full class shard (longest measured
+        # 19.6 min).
+        #
+        # Both are sized against a *measured* spread between runners, not a
+        # guess. Runs 158 and 160 ran byte-identical UI test code; the
+        # measurement pass, which runs the same two tests alone and serially
+        # on both, took 150.5 s on run 158 and 249.5 s on run 160 — the same
+        # work, 1.66× slower, and 263.2 s on run 162, the slowest seen. A cap
+        # under ~1.75× of the normal time loses green suites to the machine
+        # they were scheduled on, which is exactly how run 160 died at 30
+        # minutes.
+        timeout-minutes: ${{ matrix.ui }}
         run: |
           set -o pipefail
           xcodebuild \
@@ -438,7 +555,7 @@ jobs:
             -configuration Debug \
             -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
             ${{ matrix.tests }} \
-            ${{ matrix.parallel }} \
+            -parallel-testing-enabled NO \
             -resultBundlePath UITestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO \
             test-without-building 2>&1 | tee -a ui-test-output.txt
@@ -449,7 +566,7 @@ jobs:
       # only in the result bundle. Runs 113 and 114 each ended a journey on
       # an assertion nobody could read from the log. Evidence, not a gate.
       - name: Failure messages into the log
-        if: always() && steps.changes.outputs.build == 'true'
+        if: always()
         working-directory: AirlineEmpireApp
         continue-on-error: true
         run: |
@@ -475,7 +592,7 @@ jobs:
       # a green run whose screens are wrong is precisely the case that needs
       # looking at.
       - name: Keep the screenshots
-        if: always() && steps.changes.outputs.build == 'true'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ui-screenshots-shard${{ matrix.shard }}
@@ -502,7 +619,7 @@ jobs:
       # would flood the log. `|| true` throughout: this is evidence, not a
       # gate, and it must never be the reason a green run reports red.
       - name: Screenshots into the log
-        if: always() && steps.changes.outputs.build == 'true'
+        if: always()
         working-directory: AirlineEmpireApp
         continue-on-error: true
         run: |
@@ -574,7 +691,7 @@ jobs:
       # Fifteen lines here puts the verdict where anyone, human or agent,
       # looks first.
       - name: What failed
-        if: always() && steps.changes.outputs.build == 'true'
+        if: always()
         working-directory: AirlineEmpireApp
         continue-on-error: true
         run: |
@@ -588,15 +705,18 @@ jobs:
           # passed on 'Clone 1 of iPhone 16' (1.2 seconds)." when they run in
           # parallel — lower-case, and with the clone between the verdict and
           # the duration. The old pattern demanded "(" right after the
-          # verdict, so shard 3, the one running ten journeys in parallel, has
-          # never listed a single one of them here: its summary showed only
-          # the two measurement tests, which run serially. The job was still
-          # gated correctly on xcodebuild's exit code — this was the evidence
-          # missing, not the gate.
+          # verdict, so the shard that used to run ten journeys across two
+          # clones never listed a single one of them here: its summary showed
+          # only the two measurement tests, which run serially. The job was
+          # still gated correctly on xcodebuild's exit code — this was the
+          # evidence missing, not the gate. Nothing is cloned any more, so
+          # every line should be the first spelling; the second stays because
+          # the pattern should not depend on that remaining true.
           grep -E "Test [Cc]ase .* (passed|failed)" ui-test-output.txt || true
           echo "=== FAILURES ==="
           grep -E "^.*: error: -\[" ui-test-output.txt | head -40 || true
-          # Two passes, so two totals: the measurement pass and the rest.
+          # Up to two passes, so up to two totals: the measurement pass
+          # (full runs only) and the journeys.
           grep -E "Executed [0-9]+ tests?," ui-test-output.txt | tail -2 || true
 
   # ── 4 · The same shell, at regular width ───────────────────────────────────
@@ -743,11 +863,13 @@ jobs:
           # passed on 'Clone 1 of iPhone 16' (1.2 seconds)." when they run in
           # parallel — lower-case, and with the clone between the verdict and
           # the duration. The old pattern demanded "(" right after the
-          # verdict, so shard 3, the one running ten journeys in parallel, has
-          # never listed a single one of them here: its summary showed only
-          # the two measurement tests, which run serially. The job was still
-          # gated correctly on xcodebuild's exit code — this was the evidence
-          # missing, not the gate.
+          # verdict, so the shard that used to run ten journeys across two
+          # clones never listed a single one of them here: its summary showed
+          # only the two measurement tests, which run serially. The job was
+          # still gated correctly on xcodebuild's exit code — this was the
+          # evidence missing, not the gate. Nothing is cloned any more, so
+          # every line should be the first spelling; the second stays because
+          # the pattern should not depend on that remaining true.
           grep -E "Test [Cc]ase .* (passed|failed)" ui-test-output.txt || true
           echo "=== FAILURES ==="
           grep -E "^.*: error: -\[" ui-test-output.txt | head -40 || true
