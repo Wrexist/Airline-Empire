@@ -551,7 +551,17 @@ jobs:
             exit 0
           fi
           echo "=== UI TEST RESULTS ==="
-          grep -E "Test Case .* (passed|failed) \(" ui-test-output.txt || true
+          # Both spellings. xcodebuild prints "Test Case '-[…]' passed
+          # (1.2 seconds)." when tests run serially and "Test case '-[…]'
+          # passed on 'Clone 1 of iPhone 16' (1.2 seconds)." when they run in
+          # parallel — lower-case, and with the clone between the verdict and
+          # the duration. The old pattern demanded "(" right after the
+          # verdict, so shard 3, the one running ten journeys in parallel, has
+          # never listed a single one of them here: its summary showed only
+          # the two measurement tests, which run serially. The job was still
+          # gated correctly on xcodebuild's exit code — this was the evidence
+          # missing, not the gate.
+          grep -E "Test [Cc]ase .* (passed|failed)" ui-test-output.txt || true
           echo "=== FAILURES ==="
           grep -E "^.*: error: -\[" ui-test-output.txt | head -40 || true
           # Two passes, so two totals: the measurement pass and the rest.
@@ -696,7 +706,17 @@ jobs:
             exit 0
           fi
           echo "=== UI TEST RESULTS ==="
-          grep -E "Test Case .* (passed|failed) \(" ui-test-output.txt || true
+          # Both spellings. xcodebuild prints "Test Case '-[…]' passed
+          # (1.2 seconds)." when tests run serially and "Test case '-[…]'
+          # passed on 'Clone 1 of iPhone 16' (1.2 seconds)." when they run in
+          # parallel — lower-case, and with the clone between the verdict and
+          # the duration. The old pattern demanded "(" right after the
+          # verdict, so shard 3, the one running ten journeys in parallel, has
+          # never listed a single one of them here: its summary showed only
+          # the two measurement tests, which run serially. The job was still
+          # gated correctly on xcodebuild's exit code — this was the evidence
+          # missing, not the gate.
+          grep -E "Test [Cc]ase .* (passed|failed)" ui-test-output.txt || true
           echo "=== FAILURES ==="
           grep -E "^.*: error: -\[" ui-test-output.txt | head -40 || true
           grep -E "Executed [0-9]+ tests?," ui-test-output.txt | tail -1 || true
