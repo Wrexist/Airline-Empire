@@ -173,17 +173,32 @@ struct NextMovesTests {
     /// −$2.0M to −$2.9M. The same script on the same seed after the fix:
     /// alive. This test plays that script through real commands.
     ///
-    /// The limit is ten minutes against **65 seconds of work** (MEASURED,
-    /// AE-043, run alone on the session container). It was five, and CI run
-    /// 136 tripped it on code byte-identical to run 135, where it passed —
-    /// after every assertion in the body had already succeeded and the result
-    /// line had printed. Swift Testing measures a time limit as wall clock
-    /// while the whole 457-test suite runs in parallel, so five minutes was
-    /// measuring how contended the runner was, not how long this campaign
-    /// takes. Ten leaves a runaway nowhere to hide and stops the suite
-    /// reporting the machine's load as a product failure. No assertion here
-    /// changed.
-    @Test(.timeLimit(.minutes(10)))
+    /// The limit is thirty minutes against **65 seconds of work** (MEASURED
+    /// twice: AE-043, and again at AE-047 — 65.7 s, run alone).
+    ///
+    /// It has now been raised twice for the same reason, so the reason is
+    /// worth stating properly rather than incrementing the number again.
+    /// **Swift Testing measures `.timeLimit` as wall clock, and this suite
+    /// runs its ~476 tests in parallel**, so what this trait actually
+    /// measures is how contended the runner was while a 24-minute battery
+    /// (`BalanceTests`) sat beside it on four cores. It was five minutes, and
+    /// CI run 136 tripped it on code byte-identical to run 135. It was ten,
+    /// and PR #18 tripped it on Core code byte-identical to the head that had
+    /// passed forty minutes earlier: **same code, same 476 tests, suite total
+    /// 918 s on the run that passed and 1450 s on the run that failed.** In
+    /// both cases every assertion in the body had already succeeded.
+    ///
+    /// Thirty matches what the comparable campaign tests in `BalanceTests`
+    /// already carry (30 and 40), and it keeps the guard's actual job: a
+    /// runaway is an infinite loop, which no limit ever lets through, and a
+    /// genuine 27× slowdown in this campaign would still be caught.
+    ///
+    /// **If this trips again, raising it is the wrong answer.** The right one
+    /// is to stop timing a parallel test by wall clock — drop the trait and
+    /// let the job's own timeout catch a hang, or serialise the campaign
+    /// suite so the number means something. No assertion here has ever
+    /// changed for this.
+    @Test(.timeLimit(.minutes(30)))
     func followingTheAdviceFromNewYorkDoesNotBankruptThePlayer() async throws {
         let (engine, catalog, scenario) = try Self.founded(home: "JFK")
         let player = engine.state.playerAirline!.id
