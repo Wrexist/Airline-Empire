@@ -1329,3 +1329,33 @@ had them for the parallel shard, in seconds:
 airport panel 34.5, light appearance 21.6 (873.3 total). The shard's critical
 path is that 873 s column, and the two clones are 873 vs 579: worth
 rebalancing when a class is next split, but not the reason run 160 failed.
+
+**2026-09-06 (run 161, green — and the follow journey's diagnosis corrected).**
+The raised caps held: shard 3's UI step finished in ~23 minutes and the
+"=== UI TEST RESULTS ===" section listed all twelve tests for the first time
+in this project's history. Six checks green (iPad skipped).
+
+The correction: `testFollowingAFlightRidesTheCamera()` skipped again, but at
+the **other** branch — `76-NO-AIRCRAFT-SELECTED`, not
+`76-NO-FLIGHT-TO-FOLLOW`. So an aircraft *did* reach the air this time, which
+weakens the two leads recorded above: the daily scheduler and BUG-061's
+midnight both delay the first flight, but they do not prevent it. The
+remaining blocker is targeting. The checkpoint screenshot shows the aircraft
+plainly, a small marker on the Stockholm–London line just north-west of
+Gothenburg, at roughly (0.67, 0.51) of the canvas — and the seven-point
+spiral's nearest tap was (0.65, 0.55), a few points low. The map is also
+still framed on the whole network, so the three "Zoom in" taps did not make
+the marker any bigger to aim at.
+
+What that says for a fix: this is not worth solving with a denser spiral. The
+map canvas is a *single* accessibility element carrying a summary string, so
+an aeroplane is unreachable to VoiceOver as well as to a test — a blind
+player cannot select a flight at all. Exposing airborne aircraft as
+accessibility children of the canvas fixes the real gap and gives the journey
+a stable target, in that order of importance. Not attempted from this
+environment: it is SwiftUI that no compiler here can check, and this branch
+has already paid once for an unverifiable edit.
+
+Runner-speed control for the record: the measurement pass took 212.5 s on run
+161, against 150.5 s (run 158) and 249.5 s (run 160) — a middling machine,
+which is why 23 minutes rather than 19.6 or 32.5.
