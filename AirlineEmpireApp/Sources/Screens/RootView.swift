@@ -3,6 +3,7 @@ import AirlineEmpireCore
 
 struct RootView: View {
     @Environment(GameController.self) private var controller
+    @Environment(Entitlements.self) private var entitlements
     /// Read only to publish it below, for the UI tests.
     @Environment(\.colorScheme) private var colorScheme
 
@@ -97,6 +98,21 @@ struct RootView: View {
             Button("OK", role: .cancel) { controller.clearStartupFailure() }
         } message: { message in
             Text(message)
+        }
+        // The paywall mounts here, above the three screen states, for the
+        // same reason the alerts do: a sheet raised from a tab cannot appear
+        // over another sheet, and a purchase that silently fails to be
+        // offered is a purchase that silently fails to happen
+        // (docs/MONETIZATION.md §6).
+        .aePaywall()
+        // The once-only first-run offer, made when the player arrives in the
+        // game rather than before they reach it. By this point they have
+        // named an airline, chosen a livery and picked a home — the offer
+        // lands on something begun, and declining it leads into a real game
+        // instead of back to an empty menu (docs/MONETIZATION.md §6).
+        .onChange(of: state) { previous, current in
+            guard previous == .newGame, current == .playing else { return }
+            entitlements.offerOnFirstRunIfDue()
         }
     }
 
@@ -209,6 +225,16 @@ struct GameShell: View {
             }
         }
         .aeAnimation(AEMotion.content, value: controller.celebration)
+        // The era wall. Docked to the bottom rather than raised as a sheet:
+        // the airline is still there, still readable, still commandable — it
+        // is the *clock* that has stopped, and a modal over the whole game
+        // would say the opposite (docs/MONETIZATION.md §4).
+        .safeAreaInset(edge: .bottom) {
+            if controller.isBeyondEraCeiling {
+                EraCeilingBar()
+            }
+        }
+        .aeAnimation(AEMotion.content, value: controller.isBeyondEraCeiling)
         // A save the player asked for must say whether it worked (UI-012).
         .alert("Save", isPresented: saveOutcomePresented,
                presenting: controller.lastSaveOutcome) { _ in

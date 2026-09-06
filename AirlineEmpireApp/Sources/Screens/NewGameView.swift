@@ -32,6 +32,7 @@ import AirlineEmpireCore
 /// material fallback), over the dusk sky the app icon already uses.
 struct NewGameView: View {
     @Environment(GameController.self) private var controller
+    @Environment(Entitlements.self) private var entitlements
     @State private var airlineName = ""
     @State private var selectedStart = CuratedStart.all[0]
     /// A home chosen from the whole world rather than the three curated ones.
@@ -40,6 +41,9 @@ struct NewGameView: View {
     @State private var pendingDeletion: String?
     @State private var deletionFailure: String?
     @State private var livery: Livery = .default
+    /// Seeded to Entrepreneur, then corrected on appear for a free player —
+    /// see `defaultScenario`. A locked default would have meant the Found
+    /// button refusing the selection the screen arrived showing.
     @State private var scenario: ScenarioCode = "entrepreneur"
     @State private var seedText = ""
     @State private var showsSeed = false
@@ -122,6 +126,14 @@ struct NewGameView: View {
         .onAppear {
             if catalog == nil { catalog = try? ContentCatalog.loadBundled() }
             slots = controller.availableSlots()
+            if !entitlements.access.allowsScenario(scenario) {
+                scenario = defaultScenario
+            }
+        }
+        // Buying Pro from this screen must make the locked pills usable
+        // without a relaunch.
+        .onChange(of: entitlements.access) { _, access in
+            if !access.allowsScenario(scenario) { scenario = defaultScenario }
         }
     }
 
@@ -361,25 +373,63 @@ struct NewGameView: View {
 
     private func difficultyPill(code: ScenarioCode, spec: ScenarioSpec) -> some View {
         let isSelected = code == scenario
+        let isLocked = !entitlements.access.allowsScenario(code)
         let shape = Capsule(style: .continuous)
+        // A locked pill still selects nothing and still does something: it
+        // raises the paywall naming the scenario gate. Silence here would be
+        // the "control that exists and does nothing" defect again
+        // (BUG-029/030/032), and greying it out would hide the reason.
         return Button {
-            withAnimation(.snappy(duration: 0.22)) { scenario = code }
+            if isLocked {
+                entitlements.present(.scenario)
+            } else {
+                withAnimation(.snappy(duration: 0.22)) { scenario = code }
+            }
         } label: {
-            Text(spec.name)
-                .font(.subheadline.weight(isSelected ? .semibold : .regular))
-                .foregroundStyle(isSelected ? .white : .white.opacity(0.65))
-                .frame(maxWidth: .infinity)
-                .frame(minHeight: 44)
-                .contentShape(shape)
-                .aeGlass(in: shape,
-                         tint: isSelected ? AETheme.accent.opacity(0.35) : nil,
-                         interactive: true)
-                .overlay(shape.stroke(isSelected ? AETheme.accent.opacity(0.75) : .clear,
-                                      lineWidth: 1))
+            HStack(spacing: 4) {
+                Text(spec.name)
+                    .font(.subheadline.weight(isSelected ? .semibold : .regular))
+                if isLocked {
+                    Image(systemName: "crown.fill")
+                        .font(.system(size: 9))
+                        .foregroundStyle(AETheme.ember)
+                }
+            }
+            .foregroundStyle(isSelected ? .white
+                             : .white.opacity(isLocked ? 0.5 : 0.65))
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 44)
+            .contentShape(shape)
+            .aeGlass(in: shape,
+                     tint: isSelected ? AETheme.accent.opacity(0.35) : nil,
+                     interactive: true)
+            .overlay(shape.stroke(borderColor(isSelected: isSelected,
+                                              isLocked: isLocked),
+                                  lineWidth: 1))
         }
         .buttonStyle(.aePress)
         .accessibilityLabel(spec.name)
+        .accessibilityHint(isLocked ? "Requires Pro" : "")
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+    }
+
+    private func borderColor(isSelected: Bool, isLocked: Bool) -> Color {
+        if isSelected { return AETheme.accent.opacity(0.75) }
+        if isLocked { return AETheme.ember.opacity(0.35) }
+        return .clear
+    }
+
+    /// The scenario a fresh screen should arrive showing: the player's
+    /// preferred default if they can start it, the free one if they cannot.
+    private var defaultScenario: ScenarioCode {
+        entitlements.access.allowsScenario("entrepreneur")
+            ? "entrepreneur" : ContentAccess.freeScenario
+    }
+
+    /// Whether founding another airline is allowed, given how many saves
+    /// already exist. The free tier keeps one.
+    private var canFoundAnother: Bool {
+        entitlements.access.allowsNewSave(existingSaves: slots.count)
     }
 
     /// What the chosen difficulty actually changes, in its own numbers.
@@ -497,36 +547,61 @@ struct NewGameView: View {
     // MARK: - The one button that matters
 
     private var foundBar: some View {
-        Button {
-            nameFocused = false
-            let seed = UInt64(seedText) ?? UInt64.random(in: 1...UInt64.max / 2)
-            controller.startNewGame(airlineName: effectiveName,
-                                    home: home,
-                                    seed: seed,
-                                    scenario: scenario,
-                                    livery: livery)
-        } label: {
-            HStack(spacing: AETheme.spacingS) {
-                Text("Found \(effectiveName)")
-                    .font(.headline)
-                    .lineLimit(1)
-                Image(systemName: "airplane.departure")
-                    .font(.headline)
-                    .accessibilityHidden(true)
+        VStack(spacing: AETheme.spacingS) {
+            // Said above the button, not discovered by pressing it. A free
+            // player with a save already open needs to know why the button
+            // is about to talk about Pro before they reach for it.
+            if !canFoundAnother {
+                Label("A free airline keeps one save. Pro runs as many as "
+                      + "you like.", systemImage: "crown.fill")
+                    .font(AEType.secondary)
+                    .foregroundStyle(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, AETheme.spacingM)
             }
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: 54)
-            .contentShape(Capsule(style: .continuous))
-            .aeGlass(in: Capsule(style: .continuous),
-                     tint: AETheme.accent.opacity(0.55),
-                     interactive: true)
+
+            Button {
+                nameFocused = false
+                guard canFoundAnother else {
+                    entitlements.present(.saveSlot)
+                    return
+                }
+                let seed = UInt64(seedText) ?? UInt64.random(in: 1...UInt64.max / 2)
+                controller.startNewGame(airlineName: effectiveName,
+                                        home: home,
+                                        seed: seed,
+                                        scenario: scenario,
+                                        livery: livery)
+            } label: {
+                HStack(spacing: AETheme.spacingS) {
+                    Text(canFoundAnother ? "Found \(effectiveName)"
+                         : "Found another airline")
+                        .font(.headline)
+                        .lineLimit(1)
+                    Image(systemName: canFoundAnother
+                          ? "airplane.departure" : "crown.fill")
+                        .font(.headline)
+                        .accessibilityHidden(true)
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 54)
+                .contentShape(Capsule(style: .continuous))
+                .aeGlass(in: Capsule(style: .continuous),
+                         tint: (canFoundAnother ? AETheme.accent : AETheme.ember)
+                            .opacity(0.55),
+                         interactive: true)
+            }
+            .buttonStyle(.aePress)
+            .accessibilityLabel(canFoundAnother ? "Found \(effectiveName)"
+                                : "Found another airline, requires Pro")
+            .accessibilityHint(canFoundAnother
+                               ? "Starts a new game at \(homeCityName)"
+                               : "Opens the Pro options")
         }
-        .buttonStyle(.aePress)
         .padding(.horizontal, AETheme.spacingM)
         .padding(.bottom, AETheme.spacingS)
-        .accessibilityLabel("Found \(effectiveName)")
-        .accessibilityHint("Starts a new game at \(homeCityName)")
     }
 }
 

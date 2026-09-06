@@ -943,11 +943,14 @@ struct EconomyDetailView: View {
 /// confirmations toggle (UIUX_FORENSIC_AUDIT UI-023).
 struct SettingsView: View {
     @Environment(GameController.self) private var controller
+    @Environment(Entitlements.self) private var entitlements
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         @Bindable var preferences = controller.preferences
         return List {
+            ProSection()
+
             Section("Playing") {
                 Toggle("Pause when money runs short", isOn: $preferences.autoPauseOnDanger)
                 Text("Fast-forward stops itself when your airline drops below the overdraft floor, so a collapse never happens while you are looking away.")
