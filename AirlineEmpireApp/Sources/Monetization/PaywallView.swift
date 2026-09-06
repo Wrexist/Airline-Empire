@@ -49,6 +49,12 @@ struct PaywallView: View {
         }
         .toolbar { closeButton }
         .toolbarBackground(.hidden, for: .navigationBar)
+        // The dusk backdrop is a dark surface whatever the system is set to,
+        // and every label on this screen is a semantic colour — so in light
+        // mode `.primary` resolves to black and the whole paywall is black
+        // text on a near-black sky. `NewGameView` pins the scheme for the
+        // same reason and on the same backdrop; a sheet does not inherit it.
+        .preferredColorScheme(.dark)
         .alert("Restore purchases",
                isPresented: restoreFailedPresented) {
             Button("OK", role: .cancel) { entitlements.lastOutcome = nil }
