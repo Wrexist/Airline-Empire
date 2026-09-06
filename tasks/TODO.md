@@ -5,6 +5,37 @@ Active task list. Format follows the Master Task Rule (see
 
 ---
 
+## AE-045 — Free-to-play, and the paywall (2026-09-06)
+
+### Done
+- **D-016 accepted.** Free to start, one Pro entitlement, three products.
+  Full design in `docs/MONETIZATION.md`.
+- Core `Monetization/`: `ProEntitlement`, `ContentAccess`, `PaywallContent`,
+  `PaywallPolicy`. 30 tests, all Linux — the entitlement clock, the four
+  gates, the twenty-nearest radius for all 94 homes, the presentation policy,
+  and every disclosure clause App Review looks for.
+- App `Monetization/`: `Entitlements` (the only file importing StoreKit),
+  `PaywallView`, `PaywallComponents`, `ProLock`. StoreKit test configuration
+  wired into the Debug run action.
+- Gates wired: new-game scenarios, the save-slot limit, the destination list,
+  Settings, and the era ceiling — which stops the clock rather than the
+  simulation, so there is no save-format change.
+- Listing rewritten: it promised "no in-app purchases" in two locales, and
+  the review notes told Apple the same.
+
+### Next — none of it doable on Linux
+- **AE-045.1** Run the paywall on a simulator with the StoreKit configuration.
+  Buy each tier. Confirm the era bar lifts mid-campaign without a reload.
+- **AE-045.2** Photograph the paywall at `AccessibilityL`. It is a dense
+  screen with a two-column grid; run 60 found the chip rows there.
+- **AE-045.3** A UI journey for the free tier (`-AEUITestFree`): found an
+  airline, hit a locked scenario, hit a locked destination, reach the era bar.
+- **AE-045.4** Create the three products in App Store Connect
+  (`MONETIZATION.md` §8). The introductory offer is **Pay As You Go, 1 week** —
+  pay-up-front is not available at that duration.
+- **AE-045.5** Decide the Lifetime price against real storefront data. $49.99
+  is anchored to a year of weekly billing, not measured.
+
 ## AE-044 — The demand the aircraft actually sells (2026-09-04)
 
 ### Done

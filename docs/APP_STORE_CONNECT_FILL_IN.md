@@ -161,15 +161,36 @@ is not wagering), no web view and no user content.
 
 **hand-entry only.**
 
-- **Price** — _your call._ Nothing in the repository decides it; what is
-  decided is the shape: one purchase, no in-app purchases, no ads, no
-  subscription (`GAME_DESIGN.md`).
+- **Price** — **Free**. The app itself is not sold; the three Pro products
+  are (`MONETIZATION.md`).
 - **Availability** — all countries and regions, unless you have a reason.
 - **Pre-Orders** — off, unless you are running a launch campaign.
 
-> Reminder: a paid app also needs the **Paid Applications agreement** active
-> under Business, plus tax and banking. It is the step most often discovered
-> at the end, when the Release button is greyed out.
+### The three in-app purchases
+
+Full walkthrough in `docs/MONETIZATION.md` §8. All three are submitted
+**with** the version, each needs a display name, a description and a review
+screenshot of the paywall, and every identifier below is immutable once
+created.
+
+| What | Identifier | Type | Price (US) |
+|---|---|---|---|
+| Pro Weekly | `com.airlineempire.game.pro.weekly` | Auto-renewable, 1 week | 8.99 |
+| Pro Yearly | `com.airlineempire.game.pro.yearly` | Auto-renewable, 1 year | 39.99 |
+| Pro Lifetime | `com.airlineempire.game.pro.lifetime` | Non-Consumable | 49.99 |
+
+- Subscription group: **`Airline Empire Pro`**, holding the weekly and the
+  yearly at the same group level.
+- Introductory offer on the **weekly only**: **Pay As You Go, 1 week,
+  0.99**. Not pay-up-front — Apple does not offer that duration on a weekly
+  subscription, and it is the detail this setup is most often got wrong on.
+- One introductory offer per group per Apple Account, ever. That is why the
+  yearly carries none.
+
+> Reminder: selling anything needs the **Paid Applications agreement** active
+> under Business, plus tax and banking — a free app with in-app purchases
+> included. It is the step most often discovered at the end, when the
+> products cannot be created.
 
 ---
 
@@ -203,16 +224,16 @@ pushes for you._
 
 ### English (U.S.)
 
-**Promotional Text** — 161/170 characters
+**Promotional Text** — 143/170 characters
 
 ```text
-Ninety-four real airports. Fourteen aircraft. One turboprop to start with. Version 1.0 is the whole simulation — no timers, no ads, nothing to unlock with money.
+Ninety-four real airports. Fourteen aircraft. One turboprop to start with. Free to play, with no ads and no timers — Pro opens the whole world.
 ```
 
 > The only field that can be changed **without submitting a new version**.
 > Keep anything time-bound here and nothing permanent.
 
-**Description** — 2270/4000 characters
+**Description** — 2897/4000 characters
 
 ```text
 One aircraft. One route. Everything after that is yours to build.
@@ -239,11 +260,18 @@ PLAY IT YOUR WAY
 • Three starting scenarios, from a careful regional debut to a well-funded launch
 • Pick your seed — the same seed always grows the same world, so a run can be replayed exactly
 • Pause, or run at up to 4×. It works in five minutes and it works for an hour
-• Multiple save slots, and a save that survives being backgrounded mid-flight
+• A save that survives being backgrounded mid-flight, and — with Pro — as many airlines running at once as you like
 
-NO STRINGS ATTACHED
-• One purchase. No ads, no in-app purchases, no energy meters, nothing to wait out
-• Completely offline. No account, no sign-in, no servers, no tracking, nothing sent anywhere
+FREE TO FLY, AND WE MEAN IT
+• The whole simulation is free: the full ledger, every explainer, rivals that fight back, the seeded world you can replay exactly
+• No ads. No timers. No energy meter. No premium currency. Nothing to wait out and nothing to pay to skip
+• A free airline flies the twenty airports nearest its home, through the Startup and Regional eras
+• Airline Empire Pro opens the rest: National, International and Empire, all 94 airports across nine regions, widebodies and long-haul, every scenario, and as many airlines as you like
+• Pro is more world, never a shortcut through it — no aircraft, route or advantage is ever sold
+
+COMPLETELY OFFLINE
+• No account, no sign-in, no servers, no tracking, nothing sent anywhere
+• Play it in Airplane Mode from start to finish
 • iPhone and iPad
 
 A NOTE ON THE WORLD
@@ -273,16 +301,16 @@ https://wrexist.github.io/airline-empire/
 
 ### English (U.K.)
 
-**Promotional Text** — 165/170 characters
+**Promotional Text** — 147/170 characters
 
 ```text
-Ninety-four real airports. Fourteen aircraft. One turboprop to start with. Version 1.0 is the whole simulation — no timers, no adverts, nothing to unlock with money.
+Ninety-four real airports. Fourteen aircraft. One turboprop to start with. Free to play, with no adverts and no timers — Pro opens the whole world.
 ```
 
 > The only field that can be changed **without submitting a new version**.
 > Keep anything time-bound here and nothing permanent.
 
-**Description** — 2275/4000 characters
+**Description** — 2903/4000 characters
 
 ```text
 One aircraft. One route. Everything after that is yours to build.
@@ -309,11 +337,18 @@ PLAY IT YOUR WAY
 • Three starting scenarios, from a careful regional debut to a well-funded launch
 • Pick your seed — the same seed always grows the same world, so a run can be replayed exactly
 • Pause, or run at up to 4×. It works in five minutes and it works for an hour
-• Multiple save slots, and a save that survives being backgrounded mid-flight
+• A save that survives being backgrounded mid-flight, and — with Pro — as many airlines running at once as you like
 
-NO STRINGS ATTACHED
-• One purchase. No adverts, no in-app purchases, no energy meters, nothing to wait out
-• Completely offline. No account, no sign-in, no servers, no tracking, nothing sent anywhere
+FREE TO FLY, AND WE MEAN IT
+• The whole simulation is free: the full ledger, every explainer, rivals that fight back, the seeded world you can replay exactly
+• No adverts. No timers. No energy meter. No premium currency. Nothing to wait out and nothing to pay to skip
+• A free airline flies the twenty airports nearest its home, through the Startup and Regional eras
+• Airline Empire Pro opens the rest: National, International and Empire, all 94 airports across nine regions, widebodies and long-haul, every scenario, and as many airlines as you like
+• Pro is more world, never a shortcut through it — no aircraft, route or advantage is ever sold
+
+COMPLETELY OFFLINE
+• No account, no sign-in, no servers, no tracking, nothing sent anywhere
+• Play it in Aeroplane Mode from start to finish
 • iPhone and iPad
 
 A NOTE ON THE WORLD
@@ -363,32 +398,50 @@ by the metadata workflow with **screenshots** ticked.
 - **Phone Number** — `REPLACE_ME`  ⚠️ **you must replace this**
 - **Email** — `REPLACE_ME@example.com`  ⚠️ **you must replace this**
 
-**Notes** — 2427/4000 characters
+**Notes** — 3974/4000 characters
 
 ```text
-Airline Empire is a single-player airline management simulation. Everything a reviewer needs is in the app on first launch — there is nothing to sign in to.
+Airline Empire is a single-player airline management simulation. Everything a reviewer needs is in the app on first launch; there is nothing to sign in to.
 
 WHAT THE APP DOES NOT DO
 • No account, no sign-in, no user-generated content, no social features, no chat.
-• No network access of any kind. The app makes no requests; it will behave identically in Airplane Mode, and we would encourage testing it that way.
-• No advertising, no in-app purchases, no third-party SDKs, no analytics and no tracking. Nothing is collected, so the privacy nutrition label declares no data collection and the bundled privacy manifest declares no tracking domains and no required-reason API use.
+• No network access other than StoreKit. The game makes no requests and plays identically in Airplane Mode; only loading prices and completing a purchase need a connection, and the paywall says so when it cannot reach the store.
+• No advertising, third-party SDKs, analytics or tracking. Nothing is collected, so the privacy label declares no data collection and the bundled privacy manifest declares no tracking domains and no required-reason API use.
 • No gambling, no loot boxes, no randomised paid rewards. The only randomness is the simulation's own seeded world generation, which the player sets and can repeat.
 
+IN-APP PURCHASES
+The app is free to play. One entitlement, "Airline Empire Pro", sold three ways — a subscription group of two plans plus one non-consumable:
+
+• com.airlineempire.game.pro.weekly — auto-renewable, 1 week. Introductory offer: pay as you go, 1 week at the reduced price.
+• com.airlineempire.game.pro.yearly — auto-renewable, 1 year.
+• com.airlineempire.game.pro.lifetime — non-consumable, one-time, never renews.
+
+All three grant identical access; nothing in the game behaves differently depending on which was bought.
+
+WHAT THE FREE GAME INCLUDES
+The entire simulation — the full ledger, every explainer, competitor airlines, world events, seeded replay, the map — through the Startup and Regional eras, on the Founder scenario, the twenty airports nearest the chosen home, one saved airline. A complete game, not a demo: no ads, no timers, no energy meter and no premium currency in either tier.
+
+WHAT PRO ADDS
+More world only: the National, International and Empire eras, all 94 airports across nine regions, the widebodies those eras allow, the Entrepreneur and Magnate scenarios, and unlimited saved airlines. No aircraft, route, cash or advantage is sold — which aircraft a player may buy is decided by the era their airline has earned, identically for free and paying players.
+
+SEEING THE PAYWALL
+Home → gear icon → "Airline Empire Pro". It also appears once after founding a first airline, and whenever a locked control is tapped. Restore Purchases, Terms of Use and Privacy Policy are on the paywall and in Settings.
+
 HOW TO SEE THE GAME QUICKLY
-1. Launch → "New Game" → name an airline, pick the "Magnate" scenario (the well-funded start) and any seed.
-2. Fleet → Acquire → buy a used aircraft (it is available immediately; new aircraft are orders with a delivery lead time).
-3. Dashboard → the onboarding card suggests two routes ranked by demand → tap one → the route sheet opens pre-filled → open the route.
+1. Launch → "New Game" → name an airline and any seed. "Founder" is the free scenario; "Magnate" (the well-funded start, easiest to review quickly) needs Pro, so buy any tier with a sandbox account first if you want it.
+2. Fleet → Acquire → buy a used aircraft (immediate; new aircraft are orders with a delivery lead time).
+3. Dashboard → the onboarding card suggests two routes ranked by demand → tap one → the sheet opens pre-filled → open the route.
 4. Route detail → Aircraft → assign the aircraft you bought.
-5. Set the speed to 4× → flights depart and arrive, the map animates, and the feed narrates the day. A month boundary closes a statement, which Finance then charts.
+5. Set the speed to 4× → flights depart and arrive, the map animates, the feed narrates the day. A month boundary closes a statement, which Finance charts.
 
 AGE RATING
-The game contains no violence, no sexual content, no profanity, no substances, no gambling and no horror. Its subject matter is running an airline: money, aircraft, schedules and reputation. Aircraft losses are modelled as financial and reputational events only; there are no crashes, casualties or injury depicted anywhere in the game.
+No violence, sexual content, profanity, substances, gambling or horror. The subject is running an airline: money, aircraft, schedules and reputation. Aircraft losses are modelled as financial and reputational events only; no crash, casualty or injury is depicted anywhere.
 
 CONTENT AND LIKENESS
-The geography is real: real cities and real airports (name, code and location only — e.g. Stockholm Arlanda / ARN), used as factual geographic reference the way flight-planning and mapping apps do. Everything commercial is fictional: airlines, liveries, aircraft models and manufacturers were invented for this simulation, no real airline or manufacturer trademark is depicted or referenced, no airport branding or imagery is used, and no real-world flight data is used.
+The geography is real: real cities and airports (name, code and location only — e.g. Stockholm Arlanda / ARN), used as factual geographic reference the way mapping and flight-planning apps do. Everything commercial is fictional: airlines, liveries, aircraft and manufacturers were invented for this simulation. No real airline or manufacturer trademark is depicted or referenced, no airport branding or imagery is used, and no real-world flight data is used.
 
 CONTACT
-The contact on this version is the developer, who can respond the same day for anything that blocks the review.
+The developer, who can respond the same day to anything blocking the review.
 ```
 
 - **Attachment** — none needed.

@@ -70,7 +70,7 @@ under this name** — changing entity type later is a migration.
 **2.2** ⏳ Wait for approval.
 
 **2.3** 🧑 App Store Connect → Business → accept the **Paid Applications
-agreement**, and complete **tax and banking**. A paid app cannot be sold
+agreement**, and complete **tax and banking**. Nothing can be sold
 without it, and the usual way to discover that is on release day.
 
 **2.4** 🧑 Note your **Team ID** (Developer portal → Membership). Ten
@@ -335,9 +335,24 @@ generated from `store/` and can be worked top to bottom:
 - **App Privacy** → "Do you collect data?" → **No**
   ([`APP_STORE_CONNECT.md`](APP_STORE_CONNECT.md) §6)
 - **Age Rating** → every question **None**, expect 4+ (§7 there)
-- **Pricing and Availability** → your price tier and storefronts (§10 there)
+- **Pricing and Availability** → **Free**, and your storefronts (§10 there)
 
-✅ Done when: the App Store Connect page has no yellow "required" markers left.
+**11.4** 🧑 Create the three in-app purchases. Full walkthrough in
+[`MONETIZATION.md`](MONETIZATION.md) §8; the shape of it is a subscription
+group `Airline Empire Pro` holding the weekly and yearly plans, an
+introductory offer on the weekly only — **Pay As You Go, 1 week** (pay-up-front
+is not offered at that duration, which is the one detail everybody gets wrong)
+— and `pro.lifetime` as a separate non-consumable.
+
+This stage cannot be skipped or deferred. Products must be submitted **with**
+the version, and a build whose paywall loads no products is a build whose only
+button is disabled.
+
+⚠️ The Paid Applications agreement, plus tax and banking, must be active
+(Stage 2.3) or none of these can be created, let alone sold.
+
+✅ Done when: the App Store Connect page has no yellow "required" markers left,
+and all three products read "Ready to Submit".
 
 ---
 

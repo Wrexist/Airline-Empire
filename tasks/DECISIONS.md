@@ -273,3 +273,40 @@ identity, and a test says so rather than a comment. Nine tests
 (`LiveryMigrationTests`). The map now draws each carrier in its own colours,
 which is the first time a rival on that screen has been distinguishable from
 any other rival.
+
+## D-016 — Free-to-start with one Pro entitlement, sold three ways
+**Date:** 2026-09-06 · **Status:** ACCEPTED · **Phase:** AE-045
+**Context:** The game was designed, documented and listed as a paid app with
+no in-app purchases (`GAME_DESIGN` §7, `ASO` §2). A paid game converts once,
+at the store page, from six screenshots — and a deep management simulation is
+the hardest possible thing to sell that way. RevenueCat's *State of
+Subscription Apps 2026* (115,000 apps): games' median install-to-paid is 1.0%,
+download-to-trial 4.4%, weekly is 82% of every subscription plan sold against
+13% annual, and 81.5% of trials start on day zero. Lifetime is ~9.6% of plans
+in games, four times the cross-category average — which is the market pricing
+in the other number in that report, a median $11.22 of revenue per payer over
+a full year.
+**Decision:** Free to start. One entitlement, **Pro**, granted identically by
+a weekly subscription ($8.99, $0.99 first week), a yearly ($39.99) or a
+one-time Lifetime ($49.99). Weekly leads and is pre-selected; Lifetime exists
+to catch the payer who would otherwise churn in three weeks and ask for a
+refund. The free tier is the whole simulation through the Regional era, on
+Founder, across the twenty airports nearest home, with one save.
+**Alternatives rejected:** *Weekly only* — maximises revenue per payer and
+maximises refunds, one-star reviews and 3.1.2 exposure, with no ceiling-buyer
+capture. *Monthly/yearly/lifetime with a free trial* — safest with reviewers,
+but the games data says weekly converts several times better and this product
+needs the revenue more than it needs the comfort. *A one-era free tier* — walls
+the player during the tutorial, before the game has made its case.
+**Consequences:** The listing, the ASO doc and the design bible's non-goals
+all asserted "no in-app purchases" and are rewritten. The era ceiling stops
+the *clock*, not the simulation, so no save-format change and no new field in
+a file 253 deterministic tests depend on. The no-pay-for-power rule is
+preserved and now stated more strongly than before: which aircraft a player
+may buy is decided by the era their airline earned, identically for free and
+paying players. The accepted risk is guideline 3.1.2 "ongoing value" — an
+offline single-player game selling a permanent unlock by subscription is the
+textbook rejection shape; the Lifetime non-consumable and complete disclosure
+are the mitigations, and `MONETIZATION.md` §5.2 records the fallback if App
+Review pushes back. 30 Core tests; nothing about the *screen* is proven yet
+(`APPLE_VALIDATION.md` §5).

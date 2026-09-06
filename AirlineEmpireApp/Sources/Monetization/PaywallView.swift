@@ -28,8 +28,15 @@ struct PaywallView: View {
     @Environment(\.openURL) private var openURL
 
     @State private var selection: ProProduct = .default
-
-    private var catalog: ContentCatalog? { controller.catalog }
+    /// The content pack, for the counter bar.
+    ///
+    /// Not simply `controller.catalog`: that is only populated once a game is
+    /// open, and this sheet is raised from the new-game screen too — by the
+    /// scenario and save-slot gates. Reading it from the controller alone
+    /// meant the paywall lost its strongest element (94 airports, 14
+    /// aircraft) on exactly the two entries where the player has not seen the
+    /// game yet. Loaded the same way `NewGameView` loads it, once, on appear.
+    @State private var catalog: ContentCatalog?
 
     var body: some View {
         ZStack {
@@ -37,6 +44,9 @@ struct PaywallView: View {
             content
         }
         .aeSheetFeedback()
+        .onAppear {
+            catalog = controller.catalog ?? (try? ContentCatalog.loadBundled())
+        }
         .toolbar { closeButton }
         .toolbarBackground(.hidden, for: .navigationBar)
         .alert("Restore purchases",
