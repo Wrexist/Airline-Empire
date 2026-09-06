@@ -123,8 +123,8 @@ struct PaywallView: View {
                     price: entitlements.displayPrice(tier),
                     introductoryPrice: entitlements.introductoryPrice(tier),
                     period: entitlements.periodName(tier),
-                    savings: entitlements.savingsVersusWeekly(tier),
-                    footnote: entitlements.perWeekEquivalent(tier)) {
+                    badge: entitlements.badge(tier),
+                    footnote: entitlements.footnote(tier)) {
                         withAnimation(AEMotion.selection) { selection = tier }
                     }
             }

@@ -184,7 +184,13 @@ Pro adds → what it costs → **exactly what will be charged** → the button.
   repository. Nothing on the paywall is a roadmap item in the present tense.
 - `PaywallPlanCard` — three plans, weekly pre-selected. The recurring price
   is the largest number on the card; the discounted first period sits under
-  the plan name, never over the price.
+  the plan name, never over the price. Two of the three carry a badge and
+  they say different kinds of thing: the yearly gets the percentage, because
+  a subscription is what a percentage fairly compares; the lifetime gets
+  "BEST VALUE" plus a footnote saying how many weeks of the weekly plan cost
+  the same. Both beat a year of weekly billing by about ninety percent, and
+  two near-identical gold pills would read as decoration and sell neither.
+  Every number in both is computed from the loaded products.
 - The commitment sentence, then the button, then the assurances.
 
 Copy lives in Core (`PaywallContent`) rather than in the view, because a

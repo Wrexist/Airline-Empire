@@ -412,8 +412,27 @@ final class Entitlements {
             standard: price, isSubscription: tier.isSubscription)
     }
 
-    /// What this tier saves against paying weekly for the same time, as a
-    /// whole percent — the badge on the yearly and lifetime cards.
+    /// The badge on a plan card, or `nil` for no badge.
+    ///
+    /// Only two of the three ever carry one, and they carry *different* ones.
+    /// Both the yearly and the lifetime beat a year of weekly billing by
+    /// around ninety percent, so giving both a gold "SAVE n%" pill would put
+    /// two near-identical claims side by side — which reads as decoration and
+    /// sells neither. The yearly gets the number, because a subscription is
+    /// the thing a percentage is a fair comparison for; the lifetime gets the
+    /// verdict.
+    func badge(_ tier: ProProduct) -> String? {
+        switch tier {
+        case .weekly: return nil
+        case .lifetime: return products[.lifetime] == nil ? nil : "BEST VALUE"
+        case .yearly:
+            guard let percent = savingsVersusWeekly(.yearly) else { return nil }
+            return "SAVE \(percent)%"
+        }
+    }
+
+    /// What a tier saves against paying weekly for the same year, as a whole
+    /// percent.
     ///
     /// Computed from the loaded products rather than written down, so it
     /// cannot drift from the prices and cannot be wrong in a storefront where
@@ -427,7 +446,7 @@ final class Entitlements {
         // A year of weekly billing is 52 renewals. Lifetime is compared
         // against the same year: claiming it against an infinite horizon
         // would be an unfalsifiable number, which is not a claim worth
-        // putting on a button.
+        // putting on a card.
         let yearOfWeekly = weekly * 52
         guard yearOfWeekly > price else { return nil }
         // Through `Double` for the rounding only: `Decimal` has no
@@ -438,12 +457,30 @@ final class Entitlements {
         return percent >= 20 ? percent : nil
     }
 
-    /// The per-week equivalent of a longer plan, for the small print under
-    /// its price. Honest anchoring: the comparison is stated, not implied.
-    func perWeekEquivalent(_ tier: ProProduct) -> String? {
-        guard tier == .yearly, let product = products[.yearly] else { return nil }
-        let weekly = product.price / 52
-        return product.priceFormatStyle.format(weekly) + " per week, billed yearly"
+    /// The small print under a plan's price. Honest anchoring: the
+    /// comparison is stated in full, never implied by a bigger number.
+    func footnote(_ tier: ProProduct) -> String? {
+        switch tier {
+        case .weekly:
+            return nil
+        case .yearly:
+            guard let product = products[.yearly] else { return nil }
+            return product.priceFormatStyle.format(product.price / 52)
+                + " per week, billed yearly"
+        case .lifetime:
+            // The comparison that actually sells this tier, said as a
+            // duration rather than as a second percentage: how long the
+            // weekly plan takes to cost the same. Rounded down, so the claim
+            // is conservative rather than flattering.
+            guard let weekly = products[.weekly]?.price,
+                  let lifetime = products[.lifetime]?.price, weekly > 0 else {
+                return nil
+            }
+            let weeks = Int((NSDecimalNumber(decimal: lifetime / weekly)
+                .doubleValue).rounded(.down))
+            guard weeks >= 2 else { return nil }
+            return "About \(weeks) weeks of Pro Weekly — then never again"
+        }
     }
 
     // MARK: - History persistence

@@ -283,8 +283,10 @@ struct PaywallPlanCard: View {
     let introductoryPrice: String?
     /// "week" / "year" — the unit the price is per.
     let period: String
-    /// Percent saved against a year of weekly billing, if it is worth saying.
-    let savings: Int?
+    /// The pill beside the plan name, if this plan earns one. Two of the
+    /// three do, and they say different kinds of thing — see
+    /// `Entitlements.badge`.
+    let badge: String?
     /// The small print under the price, e.g. the per-week equivalent.
     let footnote: String?
     let action: () -> Void
@@ -307,8 +309,8 @@ struct PaywallPlanCard: View {
                         Text(tier.displayName)
                             .font(AEType.sectionTitle)
                             .foregroundStyle(.primary)
-                        if let savings {
-                            Text("SAVE \(savings)%")
+                        if let badge {
+                            Text(badge)
                                 .font(AEType.badge)
                                 .foregroundStyle(.black)
                                 .padding(.horizontal, 7)
