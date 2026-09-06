@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import AirlineEmpireCore
 
@@ -192,6 +193,78 @@ struct MapPresentationTests {
                 #expect(point.x >= 0 && point.x <= 1)
                 #expect(point.y >= 0 && point.y <= 1)
             }
+        }
+    }
+
+    // MARK: - The sun
+
+    /// The city lights and the terminator read the same sun (AE-047). These
+    /// hold that answer to facts about the actual sky, because the failure
+    /// this prevents is invisible in code review and obvious on screen: lights
+    /// burning on the daylight side of the map's own night.
+    @Suite("Solar geometry")
+    struct SolarGeometryTests {
+        private func date(month: Int, day: Int, hour: Int, minute: Int = 0) -> GameDate {
+            GameDate(year: 2030, month: month, day: day, hour: hour,
+                     minute: minute, weekday: .monday, season: .winter)
+        }
+
+        @Test("The sun is directly overhead at the subsolar point")
+        func noonIsNotDark() {
+            for hour in stride(from: 0, to: 24, by: 3) {
+                let when = date(month: 6, day: 15, hour: hour)
+                let overhead = Coordinate(
+                    latitude: SolarGeometry.declination(when) * 180 / .pi,
+                    longitude: SolarGeometry.subsolarLongitude(when))
+                #expect(abs(SolarGeometry.elevation(at: overhead, date: when) - 90) < 0.01)
+                #expect(SolarGeometry.darkness(at: overhead, date: when) == 0)
+            }
+        }
+
+        @Test("The far side of the world from the sun is fully dark")
+        func midnightIsFullyDark() {
+            let when = date(month: 3, day: 21, hour: 12)
+            let antipode = Coordinate(
+                latitude: -SolarGeometry.declination(when) * 180 / .pi,
+                longitude: SolarGeometry.subsolarLongitude(when) - 180)
+            #expect(SolarGeometry.elevation(at: antipode, date: when) < -80)
+            #expect(SolarGeometry.darkness(at: antipode, date: when) == 1)
+        }
+
+        /// The one that matters for the map: the terminator polygon is drawn
+        /// where the sun's elevation is zero, and the lights fade in from the
+        /// same zero. If these ever disagree, cities light up in daylight.
+        @Test("Darkness begins exactly at the terminator the map draws")
+        func lightsAgreeWithTheTerminator() {
+            let when = date(month: 9, day: 6, hour: 18, minute: 30)
+            let declination = SolarGeometry.declination(when)
+            let subsolar = SolarGeometry.subsolarLongitude(when)
+            for step in 0..<24 {
+                let longitude = -180.0 + Double(step) * 15
+                // The same construction `MapRenderCache.nightPolygons` uses
+                // for its boundary latitude at this longitude.
+                let latitude = atan(-cos((longitude - subsolar) * .pi / 180)
+                                    / tan(declination == 0 ? 1e-6 : declination))
+                    * 180 / .pi
+                guard abs(latitude) < 85 else { continue }
+                let onTheLine = Coordinate(latitude: latitude, longitude: longitude)
+                #expect(abs(SolarGeometry.elevation(at: onTheLine, date: when)) < 0.5)
+                #expect(SolarGeometry.darkness(at: onTheLine, date: when) < 0.05)
+            }
+        }
+
+        @Test("A place on the equator gets a day and a night")
+        func everywhereGetsBoth() {
+            let place = Coordinate(latitude: 0, longitude: 18)
+            var lit = 0, dark = 0
+            for hour in 0..<24 {
+                let value = SolarGeometry.darkness(at: place,
+                                                   date: date(month: 6, day: 1, hour: hour))
+                if value == 0 { lit += 1 }
+                if value == 1 { dark += 1 }
+            }
+            #expect(lit >= 8, "the equator saw \(lit) fully lit hours in a day")
+            #expect(dark >= 8, "the equator saw \(dark) fully dark hours in a day")
         }
     }
 

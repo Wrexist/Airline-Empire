@@ -70,7 +70,7 @@ impact, tests, risks and definition of done per phase — is
 | Phase | Title | Layer | Status |
 |-------|-------|-------|--------|
 | 25 | AE-046 Follow a flight | App | **AUTHORED** (2026-09-06; Core tested, device pending) |
-| 26 | AE-047 Airports that breathe, weather you can see | App + read model | PLANNED |
+| 26 | AE-047 Airports that breathe, weather you can see | App + Core geometry | **AUTHORED** (2026-09-06; Core tested, device pending) |
 | 27 | AE-048 The map is the home screen | App | PLANNED |
 | 28 | AE-049 The investor rescue | Core + App | PLANNED |
 | 29 | AE-050 Capped offline catch-up | Core + App | PLANNED |

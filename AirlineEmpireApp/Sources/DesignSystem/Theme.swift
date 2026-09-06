@@ -80,6 +80,12 @@ enum AETheme {
     static let mapCountryLabel = Color(red: 0.62, green: 0.69, blue: 0.80).opacity(0.55)
     /// Meridians and parallels: present, never read as data.
     static let mapGraticule = Color(red: 0.35, green: 0.45, blue: 0.60).opacity(0.10)
+    /// Cities on the night side (AE-047). Warm, and deliberately dim: at full
+    /// strength it sits between the land and the coastline, so a lit city
+    /// never competes with an airport marker or a route drawn over it. The
+    /// warmth is the whole signal — everything else on this map is cold, so a
+    /// warm point reads as *inhabited* without needing to be bright.
+    static let cityLight = Color(red: 1.0, green: 0.84, blue: 0.58)
     static let playerRoute = Color.cyan
     static let rivalRoute = Color.gray.opacity(0.55)
 

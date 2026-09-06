@@ -233,6 +233,63 @@ public struct MapPoint: Equatable, Sendable {
     }
 }
 
+/// Where the sun is over this world, and how dark it is under it.
+///
+/// In Core for `MapMath`'s reason: it is geometry rather than drawing, and
+/// Core is where geometry can be tested. The renderer had it inlined in the
+/// terminator's own path — fine while one layer needed it, and a trap the
+/// moment a second one did (city lights, AE-047): two copies of a declination
+/// formula is how a map ends up with its lights on the wrong side of its own
+/// night.
+///
+/// Deliberately simple astronomy: a circular orbit, no equation of time, no
+/// atmospheric refraction. The calendar is twelve thirty-day months and the
+/// countries are invented; a sub-degree correction would be precision about
+/// nothing.
+public enum SolarGeometry {
+    /// Solar declination in radians — how far north or south the sun stands
+    /// on this date. Zero at the equinoxes, ±23.44° at the solstices.
+    public static func declination(_ date: GameDate) -> Double {
+        let dayOfYear = Double((date.month - 1) * 30) + Double(date.day)
+        return 23.44 * sin(2 * .pi * (dayOfYear - 81) / 365) * .pi / 180
+    }
+
+    /// The longitude the sun stands directly over, in degrees. Noon UTC puts
+    /// it on the prime meridian, and it travels west at 15° an hour.
+    public static func subsolarLongitude(_ date: GameDate) -> Double {
+        let utcHours = Double(date.hour) + Double(date.minute) / 60
+        return (12 - utcHours) * 15
+    }
+
+    /// The sun's angle above the horizon at a place, in degrees. Negative is
+    /// below.
+    public static func elevation(at coordinate: Coordinate,
+                                 date: GameDate) -> Double {
+        let latitude = coordinate.latitude * .pi / 180
+        let declination = declination(date)
+        let hourAngle = (coordinate.longitude - subsolarLongitude(date)) * .pi / 180
+        let sine = sin(latitude) * sin(declination)
+            + cos(latitude) * cos(declination) * cos(hourAngle)
+        return asin(min(1, max(-1, sine))) * 180 / .pi
+    }
+
+    /// Below the horizon by this much, it is fully night: nautical twilight,
+    /// where the horizon itself stops being visible.
+    public static let fullDarkDegrees = 12.0
+
+    /// How dark it is at a place: 0 while the sun is up, 1 once it is
+    /// `fullDarkDegrees` below the horizon, and a ramp between.
+    ///
+    /// The ramp is the point. A hard day/night edge switches a city's lights
+    /// on as the terminator crosses it; fading them through dusk is both what
+    /// happens and what reads as evening.
+    public static func darkness(at coordinate: Coordinate,
+                                date: GameDate) -> Double {
+        let below = -elevation(at: coordinate, date: date)
+        return min(1, max(0, below / fullDarkDegrees))
+    }
+}
+
 public enum MapMath {
     /// Great-circle intermediate point (slerp on the unit sphere).
     public static func greatCirclePoint(from a: Coordinate, to b: Coordinate,

@@ -5,6 +5,56 @@ Active task list. Format follows the Master Task Rule (see
 
 ---
 
+## AE-047 — Airports that breathe, weather you can see (2026-09-06)
+
+**Purpose.** Phase 26 of Direction II: stop the map being a diagram. Three
+layers, each driven by a number the simulation already had and no layer had
+ever drawn — and nothing that moves without meaning something.
+
+### Done
+- **City lights.** Airports lit on the night side by
+  `SolarGeometry.darkness`, sized by `prominence`. Warm, dim, and gone by day.
+- **`SolarGeometry`, in Core.** The terminator had the solar maths inlined in
+  the render cache; city lights need the same answer per airport, and two
+  copies of a declination formula is how a map ends up with lights on the
+  daylight side of its own night. Moved to Core for `MapMath`'s stated reason
+  — geometry belongs where it can be tested — and both layers now read it.
+- **Airports that breathe.** A steady halo from `slotPressure` (Core has
+  always computed it; nothing displayed it) plus an expanding ring when a
+  movement is actually happening, derived from the flights the frame is
+  already drawing: first 7% of a leg is a departure at the origin, last 7% an
+  arrival at the destination. No new state, nothing remembered between frames.
+  Tinted by whose traffic it is.
+- **Weather with a size.** `severity` was ignored — a mild storm and a severe
+  one drew the same circle. Radius and strength both carry it now, the field
+  drifts on a slow seeded wander, and an airport inside a started storm gets a
+  ring: the same airport whose late flights AE-046's tracker names it over.
+- **The idle clock, fixed.** `MapFrame.elapsed` was measured from the
+  snapshot, so it reset every tick — four times a minute at 1×, mid-fade — and
+  anything periodic reading it stuttered on the simulation's cadence. It now
+  runs from when the screen appeared. This was a live flaw in the selection
+  breath before the ripple inherited it.
+
+### Tests
+Four new Core tests (`Solar geometry` suite): the sun is overhead at the
+subsolar point, the antipode is fully dark, every equatorial place gets both a
+day and a night, and — the one that matters — **darkness begins exactly at the
+terminator the map draws**, checked at 24 longitudes against the render
+cache's own boundary construction. That is the test that makes "lights on the
+wrong side" impossible rather than unlikely.
+
+### Not verified
+Everything about how it *looks*. No simulator here: whether the lights read as
+inhabited or as noise, whether the ripple is a pulse or a distraction, whether
+the storm drift is felt or seen, and whether the whole layer stays inside the
+draw budget on a real device. The draw-cost probe
+(`PerformanceBaselineUITests`) measures the last one on the CI runner and has
+not been run for this change.
+
+**Status.** AUTHORED 2026-09-06 — Core half tested, app half awaiting a device.
+
+---
+
 ## AE-046 — Follow a flight (2026-09-06)
 
 **Purpose.** The first phase of Direction II (`docs/GAME_DIRECTION.md`,

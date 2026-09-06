@@ -1,5 +1,41 @@
 # Current Phase
 
+**AE-047 — Airports that breathe, weather you can see.** 2026-09-06.
+
+Phase 26 of Direction II: stop the map being a diagram. Three layers, each
+driven by a number the simulation already had and no layer had ever drawn —
+city lights on the night side (`prominence` + the sun), a steady halo from
+`slotPressure` with a ring when a movement is actually happening, and storms
+whose size and strength finally carry their own `severity`.
+
+**Outcome: AUTHORED. Core half tested and green; how it looks needs a device.**
+
+The movement ring is derived from the flights the frame is already drawing —
+first 7% of a leg is a departure at the origin, last 7% an arrival at the
+destination — so there is no new state, no event subscription and nothing
+remembered between frames. The map says "something is moving here" exactly
+while something is.
+
+`SolarGeometry` moved into Core for `MapMath`'s stated reason: geometry
+belongs where it can be tested. Four new tests hold it to the sky, including
+the one that matters — **darkness begins exactly at the terminator the map
+draws**, checked at 24 longitudes against the render cache's own boundary
+construction, because "lights on the daylight side" is invisible in review and
+obvious on screen.
+
+**A live flaw fixed in passing.** `MapFrame.elapsed` was measured from the
+snapshot, so it reset on every tick — four times a minute at 1× — and the
+selection breath had been stuttering on the simulation's cadence ever since it
+was written. It now runs from when the screen appeared.
+
+**Next:** AE-048 — the map as the home screen
+(`docs/ROADMAP_DIRECTION_II.md` Phase 27), which is the one most likely to
+make the game worse and ships behind a toggle for that reason.
+
+---
+
+## Previous phase
+
 **AE-046 — Follow a flight.** 2026-09-06.
 
 The first phase of Direction II (`docs/GAME_DIRECTION.md`,

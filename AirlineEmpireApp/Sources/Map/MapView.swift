@@ -15,8 +15,9 @@ import AirlineEmpireCore
 ///
 /// ## Layers, back to front
 ///
-/// ocean → graticule → land → event regions → opportunity arcs → rival routes
-/// → player routes → airports → flights → labels
+/// ocean → graticule → land → night → city lights → event regions →
+/// opportunity arcs → rival routes → player routes → airports → flights →
+/// labels
 ///
 /// Order is the hierarchy: geography never draws over the network, and the
 /// player's airline never draws under a rival's.
@@ -41,6 +42,9 @@ struct MapScreen: View {
     /// inside the draw like `hitGeometry`, and read when the follow ends —
     /// see `MapFollowMemory`.
     @State private var followMemory = MapFollowMemory()
+    /// A fixed epoch for the map's idle animations, so a breath or a ripple
+    /// runs on its own steady clock rather than on the simulation's tick.
+    @State private var animationEpoch = Date()
     /// Draw-cost and label-churn totals, collected only under
     /// `-AEUITestProbes` and published through the canvas's accessibility
     /// value so a UI test can drag the real map and read real numbers.
@@ -178,7 +182,7 @@ struct MapScreen: View {
                                      overlay: overlay, selection: selection,
                                      speed: controller.speed,
                                      elapsed: animating
-                                        ? timeline.date.timeIntervalSince(referenceDate)
+                                        ? timeline.date.timeIntervalSince(animationEpoch)
                                         : 0,
                                      // Reduce Motion stops interpolating; a
                                      // paused game does not — the world holds
@@ -239,8 +243,9 @@ struct MapScreen: View {
         }
     }
 
-    /// A fixed epoch so `elapsed` is monotonic across frames without storing
-    /// a start date that a view rebuild would reset.
+    /// The tick the route cache and the label memory key on: it moves when
+    /// Core hands over a new tick and not otherwise
+    /// (docs/MAP_INTERACTION_ARCHITECTURE.md §3).
     private var referenceDate: Date { controller.snapshotReceivedAt }
 
     // MARK: - Chrome

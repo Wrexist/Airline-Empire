@@ -264,11 +264,11 @@ final class MapRenderCache {
     /// (docs/MAP_RUNTIME_BASELINE.md §4 · P3).
     private static func nightPolygons(projector: MapProjector,
                                       date: GameDate) -> [(Path, Double)] {
-        let dayOfYear = Double((date.month - 1) * 30) + Double(date.day)
-        let declination = 23.44 * sin(2 * .pi * (dayOfYear - 81) / 365)
-            * .pi / 180
-        let utcHours = Double(date.hour) + Double(date.minute) / 60
-        let subsolarLon = (12 - utcHours) * 15
+        // One source for where the sun is (`SolarGeometry`, in Core with
+        // the rest of the map's testable geometry), shared with the city
+        // lights that have to appear on this polygon's own dark side.
+        let declination = SolarGeometry.declination(date)
+        let subsolarLon = SolarGeometry.subsolarLongitude(date)
 
         var result: [(Path, Double)] = []
         for (inset, alpha) in [(0.0, 0.14), (6.0, 0.10)] {

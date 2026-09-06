@@ -142,8 +142,9 @@ No new dependencies were added.
 ### Layers, back to front
 
 ```text
-ocean → graticule → land → event fields → opportunity arcs
-→ rival routes → player routes → airports → flights → labels
+ocean → graticule → land → night → city lights → event fields
+→ opportunity arcs → rival routes → player routes → airports → flights
+→ labels
 ```
 
 Order *is* the hierarchy: geography never draws over the network, and the
@@ -245,6 +246,43 @@ never invalidate the view that is drawing it. `zoom` and `center` remain the
 committed target, which is what gestures, hit-testing and the audio focus
 already reasoned about; the timeline stays awake while a move is in flight,
 so the map still travels with the simulation paused.
+
+### A world that is doing something (AE-047)
+
+Three layers, each driven by a number the simulation already had and no layer
+had ever drawn. The rule they share is the map's oldest one: **nothing moves
+that does not mean something.**
+
+- **City lights.** Airports, lit by `SolarGeometry.darkness` on the night
+  side, sized by catchment (`prominence`). Airports rather than a city
+  dataset: the content pack already carries ninety-odd places with a size,
+  they are where this world's cities are, and a second dataset would be half a
+  megabyte to say the same thing differently. Drawn per frame rather than
+  cached with the geography — the geography cache is keyed to the game *hour*
+  and dusk moves continuously within one.
+- **Airports that breathe.** A steady halo from `slotPressure` — the fraction
+  of an airport's daily movements already claimed, which Core has always
+  computed and nothing displayed — plus a ring that expands and fades when a
+  movement is actually happening. The movement is *derived from the flights
+  the frame is already drawing*: a flight in the first 7% of its leg is a
+  departure at its origin, one in the last 7% an arrival at its destination.
+  No new state, no event subscription, nothing remembered between frames. The
+  ring is tinted by whose traffic it is — the airline's own livery, a rival's
+  grey, neutral white for everyone else.
+- **Weather with a size.** `severity` is a real 0…1 within a kind and the
+  event field ignored it, so a mild storm and a severe one drew the same
+  circle. Both the field's radius and its strength carry it now, it drifts a
+  few points on a slow seeded wander so a weather system does not read as a
+  stain on the glass, and an airport actually inside a started storm gets a
+  ring — which is the same airport whose late flights the tracker now names
+  that storm over (AE-046).
+
+**The idle clock.** These animations, and the selection breath that predates
+them, read `MapFrame.elapsed` — which used to be measured from the *snapshot*
+and therefore reset every tick: four times a minute at 1×, mid-fade. It is now
+measured from when the screen appeared, so a breath or a ripple runs at its
+own steady rate and tells the player nothing about the simulation's cadence.
+Zero when the world is paused or Reduce Motion is on, so a still map is still.
 
 ### Following a flight
 
