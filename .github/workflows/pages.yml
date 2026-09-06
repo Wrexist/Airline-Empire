@@ -40,6 +40,9 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # A hung job must never bill an hour. Publishing a static site is a
+    # thirty-second operation; fifteen minutes is generous.
+    timeout-minutes: 15
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

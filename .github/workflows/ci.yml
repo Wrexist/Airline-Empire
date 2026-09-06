@@ -17,9 +17,26 @@ name: CI
 # change cannot break a compile.
 
 on:
+  # Docs-only pushes to main do not need a compiler. This filter is safe
+  # *here* and deliberately absent from `pull_request` below: GitHub reports
+  # no status at all for a workflow a paths filter skipped, and this file's
+  # own rule (see "What changed?" in the app job) is that a check which
+  # silently does not run is a check that never blocks anything. On a PR the
+  # gate is a job that runs and decides; on a push to main there is nothing
+  # to block, so the workflow can simply not start.
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'tasks/**'
+      - '.gitignore'
+      - 'LICENSE'
+      - 'store/**'
+  # Only PRs that target main. A PR between two feature branches is somebody
+  # staging work, not asking for the gate.
   pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       ipad:
