@@ -61,10 +61,7 @@ struct RoutesList: View {
                     }
                     .listStyle(.plain)
                     .aeScreenBackground()
-                    // The chosen row's marker fills rather than swaps: at the moment of
-        // the tap, the only feedback this sheet gives is that circle.
-        .aeAnimation(AEMotion.selection, value: destination)
-        // Pinned to the destination list rather than left to float. iOS 26
+                    // Pinned to the destination list rather than left to float. iOS 26
         // anchors a bare `.searchable` to the bottom of the sheet, which put
         // the search field *below* the "Open this route" bar: browse, commit,
         // then search (AE-033 audit §6.5). `.navigationBarDrawer` puts it
@@ -939,6 +936,9 @@ struct OpenRouteSheet: View {
         // back above the thing it filters.
         .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always),
                     prompt: "Airport code or city")
+        // The chosen row's marker fills rather than swaps: at the moment of
+        // the tap, the only feedback this sheet gives is that circle.
+        .aeAnimation(AEMotion.selection, value: destination)
         // The commit rides the bottom edge rather than living at the foot of
         // the list. It used to be the last row after all ~40 candidates, so a
         // player who picked LNW — the top-ranked suggestion — then had to
