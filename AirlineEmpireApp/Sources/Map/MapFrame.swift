@@ -16,8 +16,15 @@ struct MapFrame {
     let overlay: MapOverlay
     let selection: MapHit?
     let speed: SimSpeed
-    /// Real seconds since the snapshot, for flight interpolation.
+    /// Real seconds since the snapshot, for the map's own idle animations
+    /// (the selection pulse). Freezes when the clock does.
     let elapsed: TimeInterval
+    /// Game minutes since the snapshot's clock, for flight interpolation —
+    /// `GameController.predictedGameMinutes`. Not derived from `elapsed`:
+    /// real seconds are the wrong unit for a world that runs on a fractional
+    /// tick accumulator, and deriving it here is what let the two drift apart
+    /// (tasks/BUGS.md BUG-058).
+    let gameMinutes: Double
     /// When the snapshot arrived — the route cache's tick key.
     let tick: Date
     /// The camera's settle generation — the label memory's re-decide signal.
@@ -60,7 +67,8 @@ struct MapFrame {
 
     init(model: MapModel, snapshot: GameState, projector: MapProjector,
          policy: MapDetailPolicy, overlay: MapOverlay, selection: MapHit?,
-         speed: SimSpeed, elapsed: TimeInterval, tick: Date, settle: Int,
+         speed: SimSpeed, elapsed: TimeInterval, gameMinutes: Double,
+         tick: Date, settle: Int,
          bottomOcclusion: CGFloat = 0,
          cache: MapRenderCache) {
         self.model = model
@@ -71,6 +79,7 @@ struct MapFrame {
         self.selection = selection
         self.speed = speed
         self.elapsed = elapsed
+        self.gameMinutes = gameMinutes
         self.tick = tick
         self.settle = settle
         self.bottomOcclusion = bottomOcclusion
@@ -626,7 +635,7 @@ struct MapFrame {
                                       heading: flight.heading,
                                       progress: flight.progress)
         }
-        return InterpolatedFlight.advance(flight, by: elapsed, speed: speed,
+        return InterpolatedFlight.advance(flight, byGameMinutes: gameMinutes,
                                           origin: catalog.0, destination: catalog.1)
     }
 

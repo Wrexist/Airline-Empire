@@ -12,7 +12,17 @@ public actor GameSession {
     private let engine: SimulationEngine
     /// Fractional tick accumulator: real seconds already consumed but not
     /// yet amounting to a whole tick at the current speed.
-    private var pendingGameMinutes: Double = 0
+    ///
+    /// Readable because it is the missing half of the clock the presentation
+    /// layer needs. `clock.now` steps in whole ticks; real time does not, so
+    /// a renderer that predicts between ticks from the tick alone is
+    /// predicting from a value that is up to one tick stale — and the error
+    /// is not constant, so it corrects *backwards* every time a tick lands
+    /// (tasks/BUGS.md BUG-058). `clock.now + pendingGameMinutes` is the
+    /// continuous game time the pump has actually been handed, and it only
+    /// ever moves forwards. Read-only: the simulation still advances in
+    /// whole ticks and nothing outside may nudge the accumulator.
+    public private(set) var pendingGameMinutes: Double = 0
 
     private var saveManager: SaveManager?
     private var autosaveSlot = "auto"
@@ -148,13 +158,19 @@ public actor GameSession {
 
     // MARK: Control
 
+    /// Changes speed. The fractional tick survives it.
+    ///
+    /// Pausing used to drop the fraction, so that resume behaviour did not
+    /// depend on when the pause happened. That independence was worth very
+    /// little — the fraction is wall-clock change nobody can observe in the
+    /// simulation — and it cost the one thing that is observable: the
+    /// continuous clock `clock.now + pendingGameMinutes` jumped backwards by
+    /// up to a whole tick at the instant of the pause, and the map moved
+    /// every aircraft back with it (tasks/BUGS.md BUG-058). Keeping the
+    /// fraction makes the pause button do exactly what it says — stop the
+    /// world where it is — and resume continue from there.
     public func setSpeed(_ newSpeed: SimSpeed) {
         speed = newSpeed
-        if newSpeed == .paused {
-            // Dropping the fraction on pause keeps resume behavior
-            // independent of when the pause happened.
-            pendingGameMinutes = 0
-        }
     }
 
     /// Converts elapsed real time into ticks at the current speed and

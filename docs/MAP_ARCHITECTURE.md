@@ -221,9 +221,42 @@ world point under the gesture's start location and solves for the centre that
 holds it fixed. `MapProjector.unproject` exists for this. Past the zoom limits
 the gesture resists (`pow(overshoot, 0.30)`) rather than stopping dead, and
 springs back on release — a hard clamp reads as a dropped gesture. A flick
-coasts on `predictedEndTranslation` damped to 45%, off under Reduce Motion. A
-double tap zooms in by the same 1.7 step the on-screen buttons use, about the
-point tapped.
+coasts on the *momentum* `predictedEndTranslation` implies — the prediction
+minus the translation already applied — damped to 45%, off under Reduce
+Motion. A double tap zooms in by the same 1.7 step the on-screen buttons use,
+about the point tapped. Every gesture is given the canvas's own size, which is
+taller than the layout's by the bottom safe area the map bleeds into; a
+viewport centre computed from the shorter one anchors a pinch to the wrong
+world point (BUG-057).
+
+**The camera animates itself.** A `Canvas` has no animatable data, so
+`withAnimation` around a camera change does nothing but arrive in the next
+frame — every coast, zoom step, framing and edge spring used to be a teleport
+(BUG-057). `MapCamera` therefore holds the move itself — where it came from,
+when it started, how long it lasts — and the draw asks what the camera looks
+like *at this frame's date*, ease-out cubic. It is evaluated, never stepped:
+a pure function of the date, so a frame never writes camera state and can
+never invalidate the view that is drawing it. `zoom` and `center` remain the
+committed target, which is what gestures, hit-testing and the audio focus
+already reasoned about; the timeline stays awake while a move is in flight,
+so the map still travels with the simulation paused.
+
+### Aircraft between ticks
+
+The simulation moves in whole 15-minute ticks, so a flight's own truth changes
+once every 3.75 real seconds at 1×; the renderer predicts between them
+(`InterpolatedFlight`). The rule that makes that look like flight is that the
+base and the prediction must measure the same clock. They did not: the
+prediction ran on real time while `flight.progress` stepped in ticks, and the
+difference between the two — Core's fractional tick accumulator — grows and
+resets, so every tick that landed pulled each aircraft *backwards* by whatever
+had accumulated (BUG-058). `GameSession.pendingGameMinutes` is now readable,
+`clock.now + pendingGameMinutes` is the continuous game time, and
+`GameController.predictedGameMinutes(at:)` is the one number the map advances
+by. It only ever moves forwards — including across a pause, which now keeps
+the fraction rather than dropping it — and it is capped at 1.5 real seconds of
+prediction so a stall or a return from the background holds the aircraft still
+instead of flinging them down their routes.
 
 ### Flight trails
 

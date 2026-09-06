@@ -36,8 +36,13 @@ Verified by reading, and worth writing down before criticising the rest:
 - Hit-testing resolves against the geometry the last frame actually drew
   (`MapHitGeometry`), not a recomputed layout.
 - The pinch is anchored to the world point under the fingers; limits resist
-  rather than clamp dead; a flick coasts on `predictedEndTranslation`
-  damped to 45%, off under Reduce Motion.
+  rather than clamp dead; a flick coasts, off under Reduce Motion.
+  **Corrected, AE-045:** the coast was 45% of `predictedEndTranslation`
+  itself, which is measured from the drag's start like `translation` — so
+  every release added 45% of the whole drag again — and none of the camera's
+  `withAnimation` moves animated a `Canvas` at all, so it arrived in one
+  frame. That pair is what "the map jumps while dragging" was: a jump *on
+  release*, largest after the slowest drags (BUG-057).
 - Labels are ranked by player relevance and placed greedily by priority —
   the *ranking* is stable frame to frame.
 - Three LOD tiers for geography, chosen by zoom.

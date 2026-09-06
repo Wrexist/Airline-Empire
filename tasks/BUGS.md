@@ -1616,3 +1616,80 @@ It is still not enough to build the pinned recommendation on:
 **Status:** OPEN — reproduced, root-caused, re-measured twice; the estimator
 blocker (TD-033) is resolved, the aircraft market is not. Now blocked on
 TD-036, not TD-033. Not forced closed.
+
+---
+
+## BUG-057 — Releasing a drag threw the map somewhere else
+**Severity:** P1 (the map's primary gesture) · **Phase found:** AE-045, player
+screen recording, 2026-09-06.
+**Repro:** Map → press, drag anywhere, release. The map keeps going after the
+finger leaves, in a single frame, by roughly half the distance just dragged.
+Frame-differencing the recording (10.8 s, 60 fps, five drags) shows the same
+shape every time: the drag decelerating to a stop under the finger
+(−10, −4, −4, −3, −3, −2, −1, 0 px/frame), one still frame, then **one frame
+of −18 px** — a teleport, not a coast.
+
+**Root cause — two faults compounding, both in `MapCamera`:**
+
+1. **The coast was the whole drag, not the momentum.**
+   `commitPan` coasted on `predictedEndTranslation × 0.45`.
+   `predictedEndTranslation` is measured from where the drag *started*,
+   exactly like `translation` — it is where the finger would end up, not how
+   much further it would travel. The pan had already been applied, so every
+   release added 45% of the entire drag again. The *slowest* drag was the
+   worst case: with no velocity the prediction equals the translation, so the
+   whole 45% is error.
+2. **None of the camera's animations animated.** Six camera intents were
+   wrapped in `withAnimation`/`interpolatingSpring` — the coast, both zoom
+   buttons, the double tap, the edge springs, framing the network.
+   `withAnimation` interpolates a view's *animatable data*; a `Canvas` has
+   none. Its draw closure reads whatever the camera says when it runs, so
+   each of those was a jump in the next frame.
+
+A third, smaller fault in the same area: gestures were given
+`GeometryReader.size`, while the canvas is drawn into a rectangle taller by
+the bottom safe area it deliberately bleeds into. Every viewport-centre
+calculation — the pinch anchor, the double-tap anchor — was therefore solved
+against the wrong height, sliding the map by half the inset as you pinched.
+
+**Fix layer:** App (map presentation only; no Core involvement).
+`commitPan` coasts on `predicted − translation`; `MapCamera` owns its move
+(from-value, start date, duration) and the draw evaluates it at the frame's
+date with an ease-out cubic — evaluated, never stepped, so no frame writes
+camera state; the timeline stays awake while a move is in flight so the map
+travels with the simulation paused; gestures are handed the canvas's own size.
+**Status:** FIXED (authored) 2026-09-06 — the camera's arithmetic is unit-free
+and reviewable, but a jump is a *feel* claim and this environment has no hand
+and no device. Confirm on hardware.
+
+---
+
+## BUG-058 — Aircraft in flight jumped backwards along their routes
+**Severity:** P1 (the map's only moving thing) · **Phase found:** AE-045,
+player screen recording, 2026-09-06.
+**Repro:** Map, any speed, watch an airborne aircraft. It advances smoothly
+and then hops backwards; at 16× the hop is large enough to re-fly minutes of
+the arc. Pausing does it once, too.
+**Root cause:** Client-side prediction measured against a base that moves in
+different units. `MapModel` reports `progress` from `clock.now`, which steps
+in whole 15-minute ticks; `MapFrame` advanced it by *real seconds since the
+snapshot* × the speed. The gap between the two is Core's fractional tick
+accumulator (`GameSession.pendingGameMinutes`) — real time already consumed
+but not yet worth a tick — and it is not constant: it grows with every pump
+and drops by a tick whenever one fires. So each landing tick corrected the
+aircraft backwards by however much had accumulated, up to a whole tick, and
+at 16× (where a 250 ms pump can carry more than one tick's worth) more often.
+Pausing added a second copy of the same fault: `setSpeed(.paused)` threw the
+fraction away, so the world's continuous clock jumped backwards at the exact
+moment the player asked it to stop.
+**Fix layer:** Core exposes the accumulator (`pendingGameMinutes`, read-only)
+and keeps it across a pause — `clock.now + pendingGameMinutes` is then a
+continuous game clock that only moves forwards. App:
+`GameController.predictedGameMinutes(at:)` publishes it per snapshot,
+`InterpolatedFlight.advance(_:byGameMinutes:…)` takes game minutes rather than
+real seconds, and prediction is capped at 1.5 real seconds so a stall or a
+return from the background holds aircraft still rather than flinging them.
+`GameSessionTests.pauseKeepsPendingFraction` replaces the test that pinned the
+old pause behaviour.
+**Status:** FIXED (authored) 2026-09-06 — Core side is covered by tests and
+green; the app side has no test target that runs here and needs a device.

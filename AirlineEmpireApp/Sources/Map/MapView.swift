@@ -119,18 +119,36 @@ struct MapScreen: View {
 
     private func canvas(model: MapModel, snapshot: GameState,
                         size: CGSize, bottomOcclusion: CGFloat) -> some View {
-        // Paused stops the clock entirely, so nothing animates and the battery
-        // is left alone. Reduce Motion does the same: the map still updates
-        // every snapshot, it just stops interpolating between them.
+        // Paused stops the *world's* clock, so nothing in it animates and the
+        // battery is left alone. Reduce Motion does the same: the map still
+        // updates every snapshot, it just stops interpolating between them.
         let animating = controller.speed != .paused && !reduceMotion
+        // The size the *canvas* is drawn at, which is not the size the
+        // GeometryReader reports: the canvas bleeds past the bottom safe area
+        // and is therefore that much taller. Every camera calculation that
+        // involves the viewport's centre — the pinch anchor, the double-tap
+        // anchor — has to use the same height the projector does, or the point
+        // it holds fixed is not the point under the finger and the map slides
+        // by half the safe-area inset as you pinch it. Gestures are attached
+        // to the canvas and report locations in its space, so this is the
+        // size they must be given.
+        let gestureSize = CGSize(width: size.width,
+                                 height: size.height + bottomOcclusion)
+        // `isMoving` keeps the clock running through a camera move even with
+        // the simulation paused: the world stops, the map still has to travel.
         return TimelineView(.animation(minimumInterval: 1.0 / 30.0,
-                                       paused: !animating)) { timeline in
+                                       paused: !animating && !camera.isMoving)) { timeline in
             Canvas(opaque: true, rendersAsynchronously: false) { context, canvasSize in
-                let projector = MapProjector(zoom: camera.liveZoom,
-                                             center: camera.liveCenter(size: canvasSize),
-                                             size: canvasSize)
-                let policy = MapDetailPolicy(level: MapZoomLevel(zoom: camera.liveZoom),
-                                             zoom: camera.liveZoom)
+                // The camera as of *this frame's* date: a move in flight is
+                // evaluated here rather than stepped anywhere, which is what
+                // lets a Canvas animate at all (MapCamera).
+                let zoom = camera.liveZoom(at: timeline.date)
+                let projector = MapProjector(
+                    zoom: zoom,
+                    center: camera.liveCenter(size: canvasSize, at: timeline.date),
+                    size: canvasSize)
+                let policy = MapDetailPolicy(level: MapZoomLevel(zoom: zoom),
+                                             zoom: zoom)
                 var frame = MapFrame(model: model, snapshot: snapshot,
                                      projector: projector, policy: policy,
                                      overlay: overlay, selection: selection,
@@ -138,6 +156,12 @@ struct MapScreen: View {
                                      elapsed: animating
                                         ? timeline.date.timeIntervalSince(referenceDate)
                                         : 0,
+                                     // Reduce Motion stops interpolating; a
+                                     // paused game does not — the world holds
+                                     // where the pause found it, which is a
+                                     // fraction of a tick past the last one.
+                                     gameMinutes: reduceMotion ? 0
+                                        : controller.predictedGameMinutes(at: timeline.date),
                                      tick: referenceDate,
                                      settle: camera.settleGeneration,
                                      bottomOcclusion: bottomOcclusion,
@@ -159,13 +183,14 @@ struct MapScreen: View {
                 hitGeometry.store(frame.geometry)
             }
             .contentShape(Rectangle())
-            .gesture(SimultaneousGesture(dragGesture(size: size), zoomGesture(size: size)))
+            .gesture(SimultaneousGesture(dragGesture(size: gestureSize),
+                                         zoomGesture(size: gestureSize)))
             // Double tap before single tap: SwiftUI gives the higher count
             // first refusal, and a single tap still selects after the
             // double-tap window lapses. Declared the other way round the
             // double tap is unreachable.
             .onTapGesture(count: 2) { location in
-                camera.zoomIn(about: location, size: size)
+                camera.zoomIn(about: location, size: gestureSize)
             }
             .onTapGesture { location in handleTap(at: location, model: model) }
             .accessibilityElement()
@@ -218,11 +243,16 @@ struct MapScreen: View {
 
     private func dragGesture(size: CGSize) -> some Gesture {
         DragGesture()
-            .onChanged { camera.panOffset = $0.translation }
+            .onChanged { value in
+                // Whatever the camera was doing, the finger now decides.
+                camera.interruptMove()
+                camera.panOffset = value.translation
+            }
             .onEnded { value in
                 // Reduce Motion means what it says: the map still goes where
                 // the finger left it, it just stops there.
                 camera.commitPan(size: size,
+                                 translation: value.translation,
                                  predicted: value.predictedEndTranslation,
                                  glide: !reduceMotion)
             }
@@ -261,7 +291,7 @@ struct MapScreen: View {
     private func frameHomeOnce(_ model: MapModel) {
         guard !hasFramedHome else { return }
         hasFramedHome = true
-        camera.frameNetwork(model)
+        camera.frameNetwork(model, animated: false)
     }
 
     private func accessibilitySummary(_ model: MapModel) -> String {
@@ -311,6 +341,25 @@ struct MapScreen: View {
 
 /// Pan and zoom, with the in-flight gesture kept separate from the committed
 /// value so a drag never accumulates rounding error into the camera.
+///
+/// ## Why the camera animates itself
+///
+/// Every camera move used to be wrapped in `withAnimation` — the flick's
+/// coast, the zoom buttons, the double tap, the springs at the world's edges,
+/// framing the network. None of them animated. `withAnimation` interpolates a
+/// view's *animatable data*; a `Canvas` has none. Its draw closure simply
+/// reads whatever the camera says at the moment it runs, so a "0.32-second
+/// smooth" change to `center` was a teleport in the next frame — six separate
+/// camera intents, all of them arriving as a jump (tasks/BUGS.md BUG-057).
+///
+/// So the camera keeps its own move — a start value, a target, a start time
+/// and a duration — and the draw asks what it should look like *at this
+/// frame's date*. Evaluated, never stepped: reading is a pure function of the
+/// date, so nothing is written from inside a draw and a frame can never
+/// invalidate the view that is drawing it (the rule `MapRenderCache` and
+/// `MapHitGeometry` are built on). `zoom` and `center` are always the
+/// committed target — a gesture, a hit test and the audio focus all reason
+/// about where the camera is *going*, which is the value they already used.
 @Observable
 final class MapCamera {
     var zoom: CGFloat = 2.2
@@ -332,21 +381,116 @@ final class MapCamera {
     static let minZoom: CGFloat = 1
     static let maxZoom: CGFloat = 16
 
-    /// Zoom during a pinch, resisting rather than stopping at the limits.
+    // MARK: The move in flight
+
+    /// A camera move being played out, held as where it came from rather than
+    /// where it is going: the destination is `zoom`/`center` themselves, so
+    /// the committed camera is never a lie about where the map will end up.
+    private struct Move {
+        let fromZoom: CGFloat
+        let fromCenter: CGPoint
+        let start: Date
+        let duration: TimeInterval
+
+        /// Ease-out cubic: fastest at the start, settling into the target.
+        /// The shape a map should have — a flick that decelerates, a zoom
+        /// that arrives rather than stops dead.
+        func eased(at date: Date) -> CGFloat {
+            let t = CGFloat(min(1, max(0, date.timeIntervalSince(start) / duration)))
+            return 1 - pow(1 - t, 3)
+        }
+
+        func isDone(at date: Date) -> Bool {
+            date.timeIntervalSince(start) >= duration
+        }
+    }
+
+    private var move: Move?
+
+    /// Durations, in one place so the map's moves agree with each other.
+    private enum MoveDuration {
+        /// A flick's coast. Long enough to read as deceleration.
+        static let glide: TimeInterval = 0.55
+        /// Springing back from a limit — resistance released, so: brisk.
+        static let recoil: TimeInterval = 0.28
+        /// A deliberate step: the zoom buttons, a double tap.
+        static let step: TimeInterval = 0.32
+        /// Travelling somewhere: framing the network.
+        static let travel: TimeInterval = 0.55
+    }
+
+    /// Whether the map still owes the player motion. Drives the timeline's
+    /// `paused` flag, so a camera move animates even with the simulation
+    /// paused — the world stops; the map does not have to.
+    var isMoving: Bool {
+        guard let move else { return false }
+        return !move.isDone(at: Date())
+    }
+
+    private func beginMove(fromZoom: CGFloat, fromCenter: CGPoint,
+                           duration: TimeInterval) {
+        move = Move(fromZoom: fromZoom, fromCenter: fromCenter,
+                    start: Date(), duration: duration)
+    }
+
+    /// The zoom a move is currently showing, target if none is in flight.
+    private func movedZoom(at date: Date) -> CGFloat {
+        guard let move else { return zoom }
+        return move.fromZoom + (zoom - move.fromZoom) * move.eased(at: date)
+    }
+
+    private func movedCenter(at date: Date) -> CGPoint {
+        guard let move else { return center }
+        let t = move.eased(at: date)
+        return CGPoint(x: move.fromCenter.x + (center.x - move.fromCenter.x) * t,
+                       y: move.fromCenter.y + (center.y - move.fromCenter.y) * t)
+    }
+
+    /// A finger on the glass outranks anything the camera was doing: fold the
+    /// move into the committed camera where it currently *looks*, so the
+    /// gesture starts from what is on screen rather than snapping to a
+    /// destination the player has already changed their mind about.
+    func interruptMove() {
+        guard move != nil else { return }
+        let now = Date()
+        let landedZoom = movedZoom(at: now)
+        let landedCenter = movedCenter(at: now)
+        move = nil
+        zoom = landedZoom
+        center = landedCenter
+    }
+
+    // MARK: What this frame draws
+
+    /// Zoom for a frame drawn at `date`: the move, then the live pinch,
+    /// resisting rather than stopping at the limits.
     ///
     /// A hard clamp is what makes a map feel broken at the ends: the fingers
     /// keep moving and nothing happens, so the gesture reads as dropped. The
     /// exponent turns overshoot into resistance — it still moves, just less —
     /// and `commitZoom` springs it back.
-    var liveZoom: CGFloat {
-        let raw = zoom * pinch
+    func liveZoom(at date: Date) -> CGFloat {
+        resisted(movedZoom(at: date) * pinch)
+    }
+
+    /// The settled zoom under the live pinch, with no move applied — what the
+    /// camera *is*, for everything that is not a frame: the audio focus, the
+    /// accessibility summary, a gesture's own arithmetic.
+    var liveZoom: CGFloat { resisted(zoom * pinch) }
+
+    private func resisted(_ raw: CGFloat) -> CGFloat {
         if raw > Self.maxZoom { return Self.maxZoom * pow(raw / Self.maxZoom, 0.30) }
         if raw < Self.minZoom { return Self.minZoom * pow(raw / Self.minZoom, 0.30) }
         return raw
     }
 
+    func liveCenter(size: CGSize, at date: Date) -> CGPoint {
+        centre(at: liveZoom(at: date), base: movedCenter(at: date),
+               size: size, pan: panOffset)
+    }
+
     func liveCenter(size: CGSize) -> CGPoint {
-        centre(at: liveZoom, size: size, pan: panOffset)
+        centre(at: liveZoom, base: center, size: size, pan: panOffset)
     }
 
     /// The camera centre for a given zoom, holding the pinch anchor fixed.
@@ -356,11 +500,11 @@ final class MapCamera {
     /// was written for this and then never called — the map had the arithmetic
     /// to follow a pinch and zoomed about the screen centre anyway, which is
     /// why the thing under your fingers slid away as you pinched it.
-    private func centre(at zoomValue: CGFloat, size: CGSize,
-                        pan: CGSize) -> CGPoint {
+    private func centre(at zoomValue: CGFloat, base settled: CGPoint,
+                        size: CGSize, pan: CGSize) -> CGPoint {
         let worldWidth = max(1, size.width * zoomValue)
         let worldHeight = max(1, worldWidth / 2)
-        var base = center
+        var base = settled
         if let anchor = pinchAnchor, let world = pinchWorld {
             base = CGPoint(x: world.x - (anchor.x - size.width / 2) / worldWidth,
                            y: world.y - (anchor.y - size.height / 2) / worldHeight)
@@ -390,10 +534,13 @@ final class MapCamera {
         return y
     }
 
+    // MARK: Gestures
+
     /// Remember what the fingers landed on, in world space, before the
     /// magnification starts changing the projection under them.
     func beginPinch(at anchor: CGPoint, size: CGSize) {
         guard pinchAnchor == nil else { return }
+        interruptMove()
         let projector = MapProjector(zoom: liveZoom,
                                      center: liveCenter(size: size), size: size)
         pinchAnchor = anchor
@@ -404,21 +551,37 @@ final class MapCamera {
     ///
     /// `predictedEndTranslation` is UIKit's own estimate of where the finger
     /// was heading, which is what a flick expects to do on any map made in the
-    /// last fifteen years. Damped to 45%: the full prediction overshoots
-    /// badly on a small screen, and a map that sails past what you flicked at
-    /// is worse than one that does not coast at all.
-    func commitPan(size: CGSize, predicted: CGSize? = nil, glide: Bool = true) {
+    /// last fifteen years — but it is measured from where the drag *started*,
+    /// exactly like `translation`, so the coast is the difference between the
+    /// two and never the prediction itself.
+    ///
+    /// It was the prediction itself (tasks/BUGS.md BUG-057). Every release
+    /// therefore added 45% of the whole drag to a drag that had already been
+    /// applied: let go after dragging a continent's width and the map jumped
+    /// half a continent further, in a single frame because nothing here
+    /// animated either. A slow, deliberate drag — no flick, no momentum,
+    /// prediction ≈ translation — was the worst case, because the whole of
+    /// that 45% is error.
+    ///
+    /// Damped to 45% of the *momentum*: the full prediction overshoots badly
+    /// on a small screen, and a map that sails past what you flicked at is
+    /// worse than one that does not coast at all.
+    func commitPan(size: CGSize, translation: CGSize? = nil,
+                   predicted: CGSize? = nil, glide: Bool = true) {
         settleGeneration += 1
+        // The gesture's own final translation, where it was given: the last
+        // `onChanged` is not guaranteed to have carried it.
+        let finalPan = translation ?? panOffset
+        panOffset = finalPan
         let landed = liveCenter(size: size)
         let settled = clamp(landed)
         // A release past the vertical edge springs home, exactly as an
         // over-pinched zoom does in `commitZoom`.
         if abs(settled.y - landed.y) > 0.0005 {
-            center = landed
             panOffset = .zero
-            withAnimation(.interpolatingSpring(stiffness: 170, damping: 22)) {
-                center = settled
-            }
+            center = settled
+            beginMove(fromZoom: zoom, fromCenter: landed,
+                      duration: MoveDuration.recoil)
             return
         }
         center = settled
@@ -429,41 +592,44 @@ final class MapCamera {
         // overshoots by the pinch factor (baseline §4).
         let worldWidth = max(1, size.width * liveZoom)
         let worldHeight = max(1, worldWidth / 2)
-        let coast = CGSize(width: predicted.width * 0.45,
-                           height: predicted.height * 0.45)
+        let momentum = CGSize(width: predicted.width - finalPan.width,
+                              height: predicted.height - finalPan.height)
+        let coast = CGSize(width: momentum.width * 0.45,
+                           height: momentum.height * 0.45)
         let target = clamp(CGPoint(x: landed.x - coast.width / worldWidth,
                                    y: landed.y - coast.height / worldHeight))
         guard hypot(target.x - landed.x, target.y - landed.y) > 0.0004 else { return }
-        withAnimation(.interpolatingSpring(stiffness: 42, damping: 14)) {
-            center = target
-        }
+        center = target
+        beginMove(fromZoom: zoom, fromCenter: landed, duration: MoveDuration.glide)
     }
 
     /// Fold a finished pinch in, springing back if it was pushed past a limit.
     func commitZoom(size: CGSize) {
         settleGeneration += 1
         let settled = min(Self.maxZoom, max(Self.minZoom, zoom * pinch))
-        let overshot = abs(settled - liveZoom) > 0.001
+        let shown = liveZoom
+        let overshot = abs(settled - shown) > 0.001
         // Resolve the anchored centre at the zoom we are actually keeping,
         // so releasing a pinch does not shift what is under the fingers.
-        center = centre(at: settled, size: size, pan: .zero)
+        let landed = centre(at: shown, base: center, size: size, pan: .zero)
+        let target = centre(at: settled, base: center, size: size, pan: .zero)
         pinchAnchor = nil
         pinchWorld = nil
         pinch = 1
+        zoom = settled
+        center = target
         if overshot {
-            withAnimation(.interpolatingSpring(stiffness: 180, damping: 18)) {
-                zoom = settled
-            }
-        } else {
-            zoom = settled
+            beginMove(fromZoom: shown, fromCenter: landed,
+                      duration: MoveDuration.recoil)
         }
     }
 
     func zoomBy(_ factor: CGFloat) {
         settleGeneration += 1
-        withAnimation(AEMotion.selection) {
-            zoom = min(Self.maxZoom, max(Self.minZoom, zoom * factor))
-        }
+        interruptMove()
+        let from = zoom
+        zoom = min(Self.maxZoom, max(Self.minZoom, zoom * factor))
+        beginMove(fromZoom: from, fromCenter: center, duration: MoveDuration.step)
     }
 
     /// Double tap: in by a step, about the point tapped.
@@ -473,6 +639,8 @@ final class MapCamera {
     /// on Tokyo should end up looking at Tokyo.
     func zoomIn(about point: CGPoint, size: CGSize) {
         settleGeneration += 1
+        interruptMove()
+        let fromZoom = zoom, fromCenter = center
         let target = min(Self.maxZoom, zoom * 1.7)
         let projector = MapProjector(zoom: zoom, center: center, size: size)
         let world = projector.unproject(point)
@@ -481,35 +649,41 @@ final class MapCamera {
         let settled = clamp(CGPoint(
             x: world.x - (point.x - size.width / 2) / worldWidth,
             y: world.y - (point.y - size.height / 2) / worldHeight))
-        withAnimation(.interpolatingSpring(stiffness: 120, damping: 16)) {
-            zoom = target
-            center = settled
-        }
+        zoom = target
+        center = settled
+        beginMove(fromZoom: fromZoom, fromCenter: fromCenter,
+                  duration: MoveDuration.step)
     }
 
     /// Fits the player's own airports — the view a player actually wants and
     /// previously had no way to ask for. Falls back to the whole world for an
     /// airline that has not flown anywhere yet.
-    func frameNetwork(_ model: MapModel) {
+    ///
+    /// `animated: false` is for the one framing nobody asked for: the map's
+    /// own first appearance, which should simply *be* the right view rather
+    /// than fly to it from a default the player never saw.
+    func frameNetwork(_ model: MapModel, animated: Bool = true) {
         settleGeneration += 1
+        interruptMove()
+        let fromZoom = zoom, fromCenter = center
         let mine = model.airports.filter { $0.servedByPlayer || $0.isPlayerHome }
-        guard !mine.isEmpty else {
-            withAnimation(AEMotion.content) {
-                zoom = 1.4
-                center = CGPoint(x: 0.5, y: 0.42)
-            }
-            return
-        }
-        let xs = mine.map(\.position.x), ys = mine.map(\.position.y)
-        let minX = xs.min() ?? 0, maxX = xs.max() ?? 1
-        let minY = ys.min() ?? 0, maxY = ys.max() ?? 1
-        // The 2:1 world means a degree of latitude covers twice the normalised
-        // span of a degree of longitude, so the y extent counts double.
-        let span = max(maxX - minX, (maxY - minY) * 2, 0.03)
-        withAnimation(AEMotion.content) {
+        if mine.isEmpty {
+            zoom = 1.4
+            center = CGPoint(x: 0.5, y: 0.42)
+        } else {
+            let xs = mine.map(\.position.x), ys = mine.map(\.position.y)
+            let minX = xs.min() ?? 0, maxX = xs.max() ?? 1
+            let minY = ys.min() ?? 0, maxY = ys.max() ?? 1
+            // The 2:1 world means a degree of latitude covers twice the
+            // normalised span of a degree of longitude, so the y extent
+            // counts double.
+            let span = max(maxX - minX, (maxY - minY) * 2, 0.03)
             center = clamp(CGPoint(x: (minX + maxX) / 2, y: (minY + maxY) / 2))
             zoom = min(Self.maxZoom, max(Self.minZoom, 0.8 / span))
         }
+        guard animated else { return }
+        beginMove(fromZoom: fromZoom, fromCenter: fromCenter,
+                  duration: MoveDuration.travel)
     }
 
     /// Keeps the camera inside the world, and — because the viewport is
