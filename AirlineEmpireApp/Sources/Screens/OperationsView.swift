@@ -943,7 +943,6 @@ struct EconomyDetailView: View {
 /// confirmations toggle (UIUX_FORENSIC_AUDIT UI-023).
 struct SettingsView: View {
     @Environment(GameController.self) private var controller
-    @Environment(Entitlements.self) private var entitlements
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {

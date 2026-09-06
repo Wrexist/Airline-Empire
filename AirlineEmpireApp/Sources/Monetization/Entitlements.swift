@@ -3,6 +3,16 @@ import Observation
 import StoreKit
 import AirlineEmpireCore
 
+// `StoreKit.Transaction`, spelled out at every use below, is not verbosity.
+// Core's ledger has its own `Transaction` (`Domain/Ledger.swift`) — the thing
+// that moves money inside the simulation — and this file imports both
+// modules, so the bare name is ambiguous and the module refuses to compile.
+//
+// It is worth knowing how that reached CI: `swiftc -parse` is the only
+// compiler check a Linux session has, and it resolves no names, so it passed
+// this file cleanly. The macOS build found it in seconds. This is the second
+// defect class `docs/APPLE_VALIDATION.md` §5 warns about, met in person.
+
 /// The app's one owner of purchases (docs/MONETIZATION.md §7).
 ///
 /// StoreKit lives here and nowhere else, for the reason every other Apple
@@ -136,7 +146,7 @@ final class Entitlements {
     func start() async {
         guard readsStoreKit else { return }
         updatesTask = Task { [weak self] in
-            for await update in Transaction.updates {
+            for await update in StoreKit.Transaction.updates {
                 guard let self else { return }
                 await self.apply(update)
             }
@@ -237,7 +247,7 @@ final class Entitlements {
 
     // MARK: - Entitlement
 
-    private func apply(_ result: VerificationResult<Transaction>) async {
+    private func apply(_ result: VerificationResult<StoreKit.Transaction>) async {
         guard case .verified(let transaction) = result else {
             // An unverified transaction is not a purchase. Nothing is
             // granted, and nothing is finished — leaving it unfinished means
@@ -261,7 +271,7 @@ final class Entitlements {
         var owned: ProProduct?
         var expiry: Date?
 
-        for await result in Transaction.currentEntitlements {
+        for await result in StoreKit.Transaction.currentEntitlements {
             guard case .verified(let transaction) = result,
                   let tier = ProProduct(rawValue: transaction.productID) else { continue }
             // Lifetime outranks everything and can never lapse, so it wins

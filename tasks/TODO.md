@@ -179,6 +179,11 @@ awaiting a device.
   pay-up-front is not available at that duration.
 - **AE-045.5** Decide the Lifetime price against real storefront data. $49.99
   is anchored to a year of weekly billing, not measured.
+- **AE-045.6** Teach `scripts/check-app-symbols.mjs` a third question: is a
+  type Core declares being used bare in an app file that also imports a
+  framework declaring the same name? `StoreKit.Transaction` against the
+  ledger's `Transaction` cost a macOS build on this branch, `swiftc -parse`
+  cannot see it, and the script exists for exactly this class of defect.
 
 ---
 
