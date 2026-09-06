@@ -28,6 +28,12 @@ import { Buffer } from 'node:buffer'
 import { decodePrivateKey, credentialsFromEnv, mintToken, AppStoreConnect, AscError } from './lib/asc.mjs'
 import { loadStore, validateStore, checkBundleIdConsistency, checkAppIcon, inspectPng, LIMITS } from './lib/metadata.mjs'
 import { checkBundleConfig } from './check-bundle-config.mjs'
+import {
+  membershipRefusal,
+  auditCertificates,
+  auditProfiles,
+  DISTRIBUTION_CERTIFICATE_LIMIT,
+} from './check-signing-eligibility.mjs'
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
@@ -186,6 +192,77 @@ await asyncTest('the bearer token never leaves App Store Connect', async () => {
 })
 
 globalThis.fetch = realFetch
+
+// ---------------------------------------------------------------------------
+// Signing eligibility
+// ---------------------------------------------------------------------------
+
+/** Run 6's message, verbatim, as `xcodebuild` printed it. */
+const RUN_6_REFUSAL =
+  'Communication with Apple failed: The selected team does not have a program ' +
+  'membership that is eligible for this feature.'
+
+test('the message that failed release run 6 is recognised', () => {
+  assert(
+    membershipRefusal(new Error(RUN_6_REFUSAL)) === 'program membership',
+    'the one message this check exists for was not matched',
+  )
+})
+
+test('a refusal is found in Apple JSON:API errors, not just the message', () => {
+  const error = new AscError(403, 'GET', '/v1/bundleIds', {
+    errors: [{ status: '403', code: 'FORBIDDEN_ERROR', title: 'Access denied', detail: 'Your membership has expired.' }],
+  })
+  assert(membershipRefusal(error) === 'membership has expired', 'the detail field was not read')
+})
+
+test('an ordinary permission failure is NOT read as a membership refusal', () => {
+  // The false block this check must never produce: an API key without
+  // provisioning access 403s here and archives perfectly well.
+  const error = new AscError(403, 'GET', '/v1/certificates', {
+    errors: [{ status: '403', code: 'FORBIDDEN_ERROR', title: 'Forbidden', detail: 'The request is not permitted.' }],
+  })
+  assert(membershipRefusal(error) === null, `a plain 403 would have blocked a release: ${membershipRefusal(error)}`)
+})
+
+test('neither a 401 nor a network failure reads as a membership refusal', () => {
+  assert(membershipRefusal(new AscError(401, 'GET', '/v1/bundleIds', {})) === null, '401 blocked')
+  assert(membershipRefusal(new Error('fetch failed')) === null, 'a network error blocked')
+})
+
+test('both distribution certificate slots in use is warned about before the 10x runner', () => {
+  const certificate = (attributes) => ({ attributes: { certificateType: 'DISTRIBUTION', ...attributes } })
+  const { live, warnings } = auditCertificates([certificate({}), certificate({})])
+  assert(live === DISTRIBUTION_CERTIFICATE_LIMIT, `expected 2 live certificates, got ${live}`)
+  assertIncludes(warnings, 'cannot create another', 'the certificate limit drew no warning')
+})
+
+test('an expired certificate does not count against the limit', () => {
+  const certificates = [
+    { attributes: { certificateType: 'DISTRIBUTION', expirationDate: '2020-01-01T00:00:00Z' } },
+    { attributes: { certificateType: 'DISTRIBUTION' } },
+  ]
+  const { live, total, warnings } = auditCertificates(certificates)
+  assert(live === 1 && total === 2, `expected 1 live of 2, got ${live} of ${total}`)
+  assert(warnings.length === 0, `a healthy account was warned about: ${warnings.join(' ')}`)
+})
+
+test('development certificates are not counted as distribution ones', () => {
+  const { total, warnings } = auditCertificates([{ attributes: { certificateType: 'DEVELOPMENT' } }])
+  assert(total === 0, `a development certificate was counted: ${total}`)
+  assertIncludes(warnings, 'No distribution certificate', 'an account with no distribution certificate said nothing')
+})
+
+test('only usable App Store profiles are counted', () => {
+  const profiles = [
+    { attributes: { profileType: 'IOS_APP_STORE', profileState: 'ACTIVE' } },
+    { attributes: { profileType: 'IOS_APP_STORE', profileState: 'INVALID' } },
+    { attributes: { profileType: 'IOS_APP_STORE', expirationDate: '2020-01-01T00:00:00Z' } },
+    { attributes: { profileType: 'IOS_APP_DEVELOPMENT', profileState: 'ACTIVE' } },
+  ]
+  const { live, total } = auditProfiles(profiles)
+  assert(total === 3 && live === 1, `expected 1 usable of 3 App Store profiles, got ${live} of ${total}`)
+})
 
 // ---------------------------------------------------------------------------
 // PNG inspection
