@@ -1,5 +1,87 @@
 # Current Phase
 
+**AE-047 — Airports that breathe, weather you can see.** 2026-09-06.
+
+Phase 26 of Direction II: stop the map being a diagram. Three layers, each
+driven by a number the simulation already had and no layer had ever drawn —
+city lights on the night side (`prominence` + the sun), a steady halo from
+`slotPressure` with a ring when a movement is actually happening, and storms
+whose size and strength finally carry their own `severity`.
+
+**Outcome: AUTHORED. Core half tested and green; how it looks needs a device.**
+
+The movement ring is derived from the flights the frame is already drawing —
+first 7% of a leg is a departure at the origin, last 7% an arrival at the
+destination — so there is no new state, no event subscription and nothing
+remembered between frames. The map says "something is moving here" exactly
+while something is.
+
+`SolarGeometry` moved into Core for `MapMath`'s stated reason: geometry
+belongs where it can be tested. Four new tests hold it to the sky, including
+the one that matters — **darkness begins exactly at the terminator the map
+draws**, checked at 24 longitudes against the render cache's own boundary
+construction, because "lights on the daylight side" is invisible in review and
+obvious on screen.
+
+**A live flaw fixed in passing.** `MapFrame.elapsed` was measured from the
+snapshot, so it reset on every tick — four times a minute at 1× — and the
+selection breath had been stuttering on the simulation's cadence ever since it
+was written. It now runs from when the screen appeared.
+
+**Next:** AE-048 — the map as the home screen
+(`docs/ROADMAP_DIRECTION_II.md` Phase 27), which is the one most likely to
+make the game worse and ships behind a toggle for that reason.
+
+---
+
+## Previous phase
+
+**AE-046 — Follow a flight.** 2026-09-06.
+
+The first phase of Direction II (`docs/GAME_DIRECTION.md`,
+`docs/ROADMAP_DIRECTION_II.md`): the project owner set the game's direction as
+a **cozy builder with a living world map at its centre**, and this is the
+cheapest delight in that plan — tap an aircraft, ride with it, watch the ETA
+count down.
+
+**Outcome: AUTHORED. Core half tested and green; the camera itself needs a
+device.**
+
+Built: `MapCamera` holds a followed flight's *identity* and resolves its
+position per frame through `MapFollow.point` — the same interpolation the
+frame draws with — so the camera can never lag the thing it is following. Any
+drag or pinch releases it, handing back the last drawn point from
+`MapFollowMemory` (a plain class, written from inside the draw on the
+`MapHitGeometry` rule) so taking over does not throw the player across the
+world. The flight card became a live tracker: seats aboard, the arrival its
+schedule implies on the game clock, the leg length, and the weather over
+either end when the departure slipped.
+
+Core gained four read-model facts (`passengers`, `distanceKm`, `arrival`,
+`delayContext`) — all derived per tick from state that already existed, so no
+new state and **no save migration**.
+
+**BUG-060, found by building it.** `.turnaround` is the phase *after* arrival,
+and the map drew those aircraft back at the airport they had taken off from,
+for the whole turn. It surfaced because a follow camera has to hold position
+when its flight lands — riding an aircraft across the Atlantic and being
+snapped back to Stockholm on arrival is how a quiet wrongness becomes loud.
+The map's own test had asserted the bug (`progress == 0` for every parked
+flight); it now distinguishes boarding from turnaround, and a new regression
+test walks two game days and requires that it actually saw one.
+
+**What this phase did not do:** verify any of it on a screen. No simulator
+exists here. The UI-test journey reads the follow state back out of the
+canvas's accessibility value and skips honestly, with a frame attached, where
+a synthetic tap cannot select a moving aircraft.
+
+**Next:** AE-047 — airports that breathe, weather you can see
+(`docs/ROADMAP_DIRECTION_II.md` Phase 26).
+
+---
+
+## Previous phase
+
 **AE-044 — The demand the aircraft actually sells.**
 2026-09-04.
 
@@ -1218,3 +1300,62 @@ their effect. New finding EXP-08: the Home feed keeps the last fourteen
 *events*, not fourteen days, so a completed mission leaves no trace on
 Home within a simulated week. Evidence:
 docs/FIRST_ERA_RUNTIME_AUDIT.md, docs/DECISION_EXPERIENCE_AUDIT.md.
+
+**2026-09-06 (AE-046/AE-047 CI evidence — what the follow journey actually
+did).** The `Test [Cc]ase` grep fix on e1cc79f paid for itself immediately:
+run 158's shard 3 lists every journey it ran, and
+`testFollowingAFlightRidesTheCamera()` is recorded there as **skipped
+(222.172 s)**, at checkpoint `76-NO-FLIGHT-TO-FOLLOW`. So the follow camera
+is still NOT VERIFIED on a device, exactly as the test's own skip message
+says. The journey around it did work: the screenshot at that checkpoint shows
+16× selected, the clock at 2030-01-02 09:15 and a drawn Stockholm–London
+route — an airline was founded, an aircraft leased, a route opened and the
+aircraft assigned. What never appeared is an aircraft *on* the line.
+
+Two leads for whoever takes it, both from the code rather than from guessing:
+`FlightSchedulingSystem` materialises a day's flights on the **daily** tick,
+so nothing can fly before the next day boundary after an assignment; and
+BUG-061 — the sunrise control lands on 00:00, six hours before the operating
+day starts, so "advance a day and look" is the one sampling strategy
+guaranteed to see an empty sky. A journey that wants an aeroplane in the air
+should advance past a day boundary and then run the clock into the operating
+day, not stop at midnight.
+
+The per-test costs from that run, which is the first time this project has
+had them for the parallel shard, in seconds:
+`HorizonArrival.testARivalComesToMunich` 578.9 (alone on clone 2);
+`ShellAndMap` on clone 1 — follow 222.2, accessibility 160.4, dark appearance
+135.4, detail screens 93.0, zoom 98.0, clock 63.2, section picker 45.0,
+airport panel 34.5, light appearance 21.6 (873.3 total). The shard's critical
+path is that 873 s column, and the two clones are 873 vs 579: worth
+rebalancing when a class is next split, but not the reason run 160 failed.
+
+**2026-09-06 (run 161, green — and the follow journey's diagnosis corrected).**
+The raised caps held: shard 3's UI step finished in ~23 minutes and the
+"=== UI TEST RESULTS ===" section listed all twelve tests for the first time
+in this project's history. Six checks green (iPad skipped).
+
+The correction: `testFollowingAFlightRidesTheCamera()` skipped again, but at
+the **other** branch — `76-NO-AIRCRAFT-SELECTED`, not
+`76-NO-FLIGHT-TO-FOLLOW`. So an aircraft *did* reach the air this time, which
+weakens the two leads recorded above: the daily scheduler and BUG-061's
+midnight both delay the first flight, but they do not prevent it. The
+remaining blocker is targeting. The checkpoint screenshot shows the aircraft
+plainly, a small marker on the Stockholm–London line just north-west of
+Gothenburg, at roughly (0.67, 0.51) of the canvas — and the seven-point
+spiral's nearest tap was (0.65, 0.55), a few points low. The map is also
+still framed on the whole network, so the three "Zoom in" taps did not make
+the marker any bigger to aim at.
+
+What that says for a fix: this is not worth solving with a denser spiral. The
+map canvas is a *single* accessibility element carrying a summary string, so
+an aeroplane is unreachable to VoiceOver as well as to a test — a blind
+player cannot select a flight at all. Exposing airborne aircraft as
+accessibility children of the canvas fixes the real gap and gives the journey
+a stable target, in that order of importance. Not attempted from this
+environment: it is SwiftUI that no compiler here can check, and this branch
+has already paid once for an unverifiable edit.
+
+Runner-speed control for the record: the measurement pass took 212.5 s on run
+161, against 150.5 s (run 158) and 249.5 s (run 160) — a middling machine,
+which is why 23 minutes rather than 19.6 or 32.5.

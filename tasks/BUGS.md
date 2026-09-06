@@ -1616,3 +1616,210 @@ It is still not enough to build the pinned recommendation on:
 **Status:** OPEN — reproduced, root-caused, re-measured twice; the estimator
 blocker (TD-033) is resolved, the aircraft market is not. Now blocked on
 TD-036, not TD-033. Not forced closed.
+
+---
+
+## BUG-057 — Releasing a drag threw the map somewhere else
+**Severity:** P1 (the map's primary gesture) · **Phase found:** AE-045, player
+screen recording, 2026-09-06.
+**Repro:** Map → press, drag anywhere, release. The map keeps going after the
+finger leaves, in a single frame, by roughly half the distance just dragged.
+Frame-differencing the recording (10.8 s, 60 fps, five drags) shows the same
+shape every time: the drag decelerating to a stop under the finger
+(−10, −4, −4, −3, −3, −2, −1, 0 px/frame), one still frame, then **one frame
+of −18 px** — a teleport, not a coast.
+
+**Root cause — two faults compounding, both in `MapCamera`:**
+
+1. **The coast was the whole drag, not the momentum.**
+   `commitPan` coasted on `predictedEndTranslation × 0.45`.
+   `predictedEndTranslation` is measured from where the drag *started*,
+   exactly like `translation` — it is where the finger would end up, not how
+   much further it would travel. The pan had already been applied, so every
+   release added 45% of the entire drag again. The *slowest* drag was the
+   worst case: with no velocity the prediction equals the translation, so the
+   whole 45% is error.
+2. **None of the camera's animations animated.** Six camera intents were
+   wrapped in `withAnimation`/`interpolatingSpring` — the coast, both zoom
+   buttons, the double tap, the edge springs, framing the network.
+   `withAnimation` interpolates a view's *animatable data*; a `Canvas` has
+   none. Its draw closure reads whatever the camera says when it runs, so
+   each of those was a jump in the next frame.
+
+A third, smaller fault in the same area: gestures were given
+`GeometryReader.size`, while the canvas is drawn into a rectangle taller by
+the bottom safe area it deliberately bleeds into. Every viewport-centre
+calculation — the pinch anchor, the double-tap anchor — was therefore solved
+against the wrong height, sliding the map by half the inset as you pinched.
+
+**Fix layer:** App (map presentation only; no Core involvement).
+`commitPan` coasts on `predicted − translation`; `MapCamera` owns its move
+(from-value, start date, duration) and the draw evaluates it at the frame's
+date with an ease-out cubic — evaluated, never stepped, so no frame writes
+camera state; the timeline stays awake while a move is in flight so the map
+travels with the simulation paused; gestures are handed the canvas's own size.
+**Status:** FIXED (authored) 2026-09-06 — the camera's arithmetic is unit-free
+and reviewable, but a jump is a *feel* claim and this environment has no hand
+and no device. Confirm on hardware.
+
+---
+
+## BUG-058 — Aircraft in flight jumped backwards along their routes
+**Severity:** P1 (the map's only moving thing) · **Phase found:** AE-045,
+player screen recording, 2026-09-06.
+**Repro:** Map, any speed, watch an airborne aircraft. It advances smoothly
+and then hops backwards; at 16× the hop is large enough to re-fly minutes of
+the arc. Pausing does it once, too.
+**Root cause:** Client-side prediction measured against a base that moves in
+different units. `MapModel` reports `progress` from `clock.now`, which steps
+in whole 15-minute ticks; `MapFrame` advanced it by *real seconds since the
+snapshot* × the speed. The gap between the two is Core's fractional tick
+accumulator (`GameSession.pendingGameMinutes`) — real time already consumed
+but not yet worth a tick — and it is not constant: it grows with every pump
+and drops by a tick whenever one fires. So each landing tick corrected the
+aircraft backwards by however much had accumulated, up to a whole tick, and
+at 16× (where a 250 ms pump can carry more than one tick's worth) more often.
+Pausing added a second copy of the same fault: `setSpeed(.paused)` threw the
+fraction away, so the world's continuous clock jumped backwards at the exact
+moment the player asked it to stop.
+**Fix layer:** Core exposes the accumulator (`pendingGameMinutes`, read-only)
+and keeps it across a pause — `clock.now + pendingGameMinutes` is then a
+continuous game clock that only moves forwards. App:
+`GameController.predictedGameMinutes(at:)` publishes it per snapshot,
+`InterpolatedFlight.advance(_:byGameMinutes:…)` takes game minutes rather than
+real seconds, and prediction is capped at 1.5 real seconds so a stall or a
+return from the background holds aircraft still rather than flinging them.
+`GameSessionTests.pauseKeepsPendingFraction` replaces the test that pinned the
+old pause behaviour.
+**Status:** FIXED (authored) 2026-09-06 — Core side is covered by tests and
+green; the app side has no test target that runs here and needs a device.
+
+---
+
+## BUG-059 — Four screens named a problem and offered nothing to press
+**Severity:** P2 (usability, on the game's most-used decisions) · **Phase
+found:** AE-046, player screenshots of a TestFlight build, 2026-09-06.
+
+Not one defect: one habit, photographed four times. Each screen computed the
+right thing, said it accurately, and stopped one step short of the action it
+had just argued for.
+
+**1. The assignment menu was a popover over the card that raised it.**
+Aircraft → an idle aeroplane: "Assign to a route" opened a `Menu` — a floating
+panel drawn over its own card and clipped by the card beneath it, holding two
+bare route codes. The fit note (`AssignmentCandidate.Note`, the whole reason to
+prefer one route over another) had to be crammed onto the end of each label,
+because a menu row has nowhere else to put one. The most consequential tap on
+the screen was being made in the container iOS reserves for "sort by".
+**Fix:** `AssignRouteSheet` — a sheet of choice cards carrying frequency, fare
+and distance, the fit note in its own colour, Core's blocked routes listed
+underneath with reasons, and one primary action at the bottom that stays put.
+
+**2. Two meters in one card disagreed about what "good" is.** Condition 84%
+drew green; reliability 94% drew orange, one row under it, because each call
+site picked its own threshold. Side by side that reads as "the better number is
+the worse one". **Fix:** `AEMeter` owns the thresholds; reliability's genuinely
+higher band is named at the call site (`good: 0.95`) rather than hand-coloured.
+
+**3. The advice pointed at another tab and left the player to walk.** Home's
+Next moves said "assign it in Airline → Routes"; the Fleet board counted idle
+aircraft in orange and offered nothing. Both screens already register
+`AircraftID` as a navigation destination. **Fix:** `AENextStepLabel` on both,
+pressable, landing on the aeroplane itself — Home → aircraft → assign, in
+three taps from the sentence that asked for it.
+
+**4. The route sheet's commit bar covered the row it was about.** "Open this
+route" appeared *on selection*, which meant the list jumped by a bar's height
+at the moment of the tap and the bar covered the row just chosen — a
+screenshot caught the state exactly: three destinations with empty circles and
+a commit bar over the fourth, so the sheet appeared to show no selection at
+all. **Fix:** the bar is always present (a prompt before a choice is made) and
+states the choice itself — "ARN → CAI · 2×/day · $220" — so what the button
+will do is legible whether or not its row is on screen.
+
+Also here, because they are the same screenshots: the aircraft screen's
+navigation title truncated the model name it exists to show ("Pacifica PA-184
+Curr…" — the manufacturer, repeated from the card directly beneath, pushed the
+variant off the end), and Home's market recommendations were `.bordered` +
+`.tint`, a system control shape this design system uses nowhere else, drawn as
+a solid blue slab around three lines of small grey text.
+
+**Fix layer:** App, presentation only — no Core change, no new numbers. Two new
+components (`AEMeter`, `AENextStepLabel`) so the pattern is available rather
+than re-argued per screen (docs/DESIGN_SYSTEM.md §3).
+**Status:** FIXED (authored) 2026-09-06. Authored, not seen: this environment
+has no simulator and no device, and every claim above about *layout* is
+therefore a claim about code. The screenshots that found it are the standard
+the fix should be checked against.
+
+**Not fixed, deliberately:** the route detail screen assigns aircraft through
+the same `Menu` pattern, in the opposite direction (a route picking an
+aeroplane). It should become the same sheet, but four UI-test journeys drive it
+by matching menu-row labels (`UITestSupport.assignFirstAircraft`), so changing
+it is a test change as much as a UI change and does not belong in a pass that
+cannot run those tests.
+
+---
+
+## BUG-060 — An aircraft turning around was drawn at the airport it left
+**Severity:** P2 (the map states something false, quietly) · **Phase found:**
+AE-046, while building the follow camera, 2026-09-06.
+**Repro:** Watch any aircraft complete a leg. It lands at the destination and,
+for the whole turnaround — 42 minutes on the map's own example airframe — its
+marker sits at the *origin* airport, where it is not.
+**Root cause:** `MapModel`'s flight build handled `.boarding` and
+`.turnaround` in one `case`, positioning both at `flight.from`. That is right
+for boarding and wrong for turnaround: `FlightPhase` is
+`scheduled → boarding → enRoute → turnaround → removed`, and
+`FlightOpsSystem.arrive` sets `.turnaround` **after** the aircraft is on the
+ground at `flight.to`. Two phases share a spelling ("not airborne") and were
+given one meaning ("has not left yet").
+
+It survived because the map's own test asserted it: `flightsCarryProgress`
+checked `if !flight.airborne { #expect(flight.progress == 0) }`, which is the
+buggy behaviour written down as a rule. A test can only catch what it was
+told to look for, and this one had been told the wrong thing.
+
+**Found by:** AE-046's follow camera, which has to hold position when a
+followed flight lands. Riding an aircraft across the Atlantic and having the
+camera snap back to Stockholm on arrival is how a quiet wrongness becomes
+loud.
+**Fix layer:** Core — `.turnaround` is its own case: positioned at
+`destination`, `progress: 1`, keeping the course it landed on, because a
+parked aeroplane pointing back at the airport it just left is the same lie in
+miniature. The test's assertion now distinguishes the two phases and a new
+regression test (`turnaroundAircraftSitAtTheirDestination`) walks two game
+days, requires that it actually saw a turnaround, and pins the position to the
+destination's coordinate.
+**Status:** FIXED 2026-09-06. Core-verified: 29 map-presentation tests green,
+full Core suite re-run.
+
+---
+
+## BUG-061 — "Advance to next morning" advances to midnight
+**Severity:** P3 (a control that says one thing and does another; it also
+costs the UI journeys their only look at a world in motion) · **Phase found:**
+AE-047 CI evidence, 2026-09-06.
+**Repro:** Press the sunrise control on any screen. The clock lands on 00:00
+of the next day, not on a morning. Every screenshot the UI journeys take after
+a sunrise — which is most of them — is therefore a photograph of the world at
+local midnight.
+**Root cause:** `GameSession.advanceToNextMorning()` computes
+`nextMidnight = (now.dayIndex + 1) * GameCalendar.minutesPerDay` and advances
+to exactly that. The name, the SF Symbol (`sunrise`), and the VoiceOver label
+("Advance to next morning") all describe a different time of day from the one
+it goes to. The operating day starts at 06:00
+(`OpsTuning.operatingDayStartMinute`), so the instant it lands on is the one
+moment in twenty-four hours when nothing is flying and no airport has a
+movement.
+**Why it matters beyond the label:** AE-047 gave the map a day/night
+terminator, city lights and airport movements. A journey that advances a day
+and photographs the result now photographs, by construction, the quietest and
+darkest frame the game can produce.
+**Fix layer:** Core — either advance to `operatingDayStartMinute` of the next
+day (making the name true), or rename the control to what it does. The first
+is the better game: "next morning" is the phrase a player understands, and a
+morning is when an airline looks alive. Not taken here because it moves the
+clock under every UI journey (the campaign suite drives ~1,800 of these taps
+and asserts on dates), and this branch cannot run them.
+**Status:** OPEN.

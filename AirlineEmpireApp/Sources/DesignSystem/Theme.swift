@@ -80,6 +80,12 @@ enum AETheme {
     static let mapCountryLabel = Color(red: 0.62, green: 0.69, blue: 0.80).opacity(0.55)
     /// Meridians and parallels: present, never read as data.
     static let mapGraticule = Color(red: 0.35, green: 0.45, blue: 0.60).opacity(0.10)
+    /// Cities on the night side (AE-047). Warm, and deliberately dim: at full
+    /// strength it sits between the land and the coastline, so a lit city
+    /// never competes with an airport marker or a route drawn over it. The
+    /// warmth is the whole signal — everything else on this map is cold, so a
+    /// warm point reads as *inhabited* without needing to be bright.
+    static let cityLight = Color(red: 1.0, green: 0.84, blue: 0.58)
     static let playerRoute = Color.cyan
     static let rivalRoute = Color.gray.opacity(0.55)
 
@@ -340,6 +346,18 @@ enum Format {
                      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         guard (1...12).contains(month) else { return "—" }
         return names[month - 1]
+    }
+
+    /// Game minutes as a phrase a player reads at a glance: "40 min",
+    /// "1h 20m", "2h". Used by anything counting down to an arrival, where
+    /// "80 minutes" is a number and "1h 20m" is a feeling about a flight.
+    static func duration(minutes: Int64) -> String {
+        let total = max(0, minutes)
+        let hours = total / 60
+        let rest = total % 60
+        if hours == 0 { return "\(rest) min" }
+        if rest == 0 { return "\(hours)h" }
+        return "\(hours)h \(rest)m"
     }
 
     /// A count of days as a phrase, because "1 days" is how a game loses a

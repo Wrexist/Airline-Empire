@@ -631,11 +631,16 @@ struct NextMovesCard: View {
     let catalog: ContentCatalog
     let openSuggestion: (FirstRouteSuggestion) -> Void
 
-    private var idleCount: Int {
-        guard let player = snapshot.playerAirline?.id else { return 0 }
-        return snapshot.fleet(of: player)
-            .filter { $0.assignedRoute == nil }.count
+    /// Aircraft earning nothing. Kept as the aeroplanes rather than as a
+    /// count, because the card now offers to open one — an instruction the
+    /// player has to carry to another tab by hand is the weakest form of
+    /// advice a game can give (tasks/BUGS.md BUG-059).
+    private var idleAircraft: [Aircraft] {
+        guard let player = snapshot.playerAirline?.id else { return [] }
+        return snapshot.fleet(of: player).filter { $0.assignedRoute == nil }
     }
+
+    private var idleCount: Int { idleAircraft.count }
 
     private var opportunities: [MarketOpportunity] {
         // Servable markets first: advice the fleet cannot act on today is a
@@ -688,18 +693,23 @@ struct NextMovesCard: View {
             AECard {
                 VStack(alignment: .leading, spacing: AETheme.spacingS) {
                     Text("Next moves").font(.headline)
-                    if idle > 0 {
-                        HStack(spacing: AETheme.spacingS) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(AETheme.caution)
-                                .accessibilityHidden(true)
-                            Text(idle == 1
-                                 ? "One aircraft is idle. It costs the same parked as flying — assign it in Airline → Routes."
-                                 : "\(idle) aircraft are idle. They cost the same parked as flying — assign them in Airline → Routes.")
-                                .font(.subheadline)
-                                .fixedSize(horizontal: false, vertical: true)
+                    // Pressable, and it lands on the aeroplane itself — the
+                    // screen with the assignment on it — rather than naming
+                    // the tab the player should go and find. Home already
+                    // registers `AircraftID` as a destination; the advice
+                    // simply had never used it.
+                    if let waiting = idleAircraft.first {
+                        NavigationLink(value: waiting.id) {
+                            AENextStepLabel(
+                                icon: "pause.circle.fill",
+                                title: idle == 1 ? "One aircraft is idle"
+                                                 : "\(idle) aircraft are idle",
+                                detail: "Parked costs the same as flying. Give it a route.",
+                                tint: AETheme.caution,
+                                attention: true)
                         }
-                        .accessibilityElement(children: .combine)
+                        .buttonStyle(.aePress)
+                        .accessibilityIdentifier("ae-next-moves-idle")
                     }
                     if !markets.isEmpty {
                         Text(marketsHeading(idleWarningAbove: idle > 0))
@@ -730,9 +740,20 @@ struct NextMovesCard: View {
                                         .foregroundStyle(AETheme.mutedText)
                                 }
                                 .frame(minHeight: 44)
+                                .padding(.horizontal, AETheme.spacingS)
+                                .padding(.vertical, AETheme.spacingXS)
+                                .contentShape(AETheme.cardShape)
+                                // The app's own glass, tinted, rather than
+                                // `.bordered` + `.tint` — which is a system
+                                // control shape this design system does not
+                                // use anywhere else, and read as a solid blue
+                                // slab wrapping three lines of small grey
+                                // text (BUG-059).
+                                .aeGlass(in: AETheme.cardShape,
+                                         tint: AETheme.accent.opacity(0.22),
+                                         interactive: true)
                             }
-                            .buttonStyle(.bordered)
-                            .tint(AETheme.accent)
+                            .buttonStyle(.aePress)
                         }
                     }
                 }

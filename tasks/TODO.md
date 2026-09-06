@@ -5,6 +5,150 @@ Active task list. Format follows the Master Task Rule (see
 
 ---
 
+
+## AE-047 — Airports that breathe, weather you can see (2026-09-06)
+
+**Purpose.** Phase 26 of Direction II: stop the map being a diagram. Three
+layers, each driven by a number the simulation already had and no layer had
+ever drawn — and nothing that moves without meaning something.
+
+### Done
+- **City lights.** Airports lit on the night side by
+  `SolarGeometry.darkness`, sized by `prominence`. Warm, dim, and gone by day.
+- **`SolarGeometry`, in Core.** The terminator had the solar maths inlined in
+  the render cache; city lights need the same answer per airport, and two
+  copies of a declination formula is how a map ends up with lights on the
+  daylight side of its own night. Moved to Core for `MapMath`'s stated reason
+  — geometry belongs where it can be tested — and both layers now read it.
+- **Airports that breathe.** A steady halo from `slotPressure` (Core has
+  always computed it; nothing displayed it) plus an expanding ring when a
+  movement is actually happening, derived from the flights the frame is
+  already drawing: first 7% of a leg is a departure at the origin, last 7% an
+  arrival at the destination. No new state, nothing remembered between frames.
+  Tinted by whose traffic it is.
+- **Weather with a size.** `severity` was ignored — a mild storm and a severe
+  one drew the same circle. Radius and strength both carry it now, the field
+  drifts on a slow seeded wander, and an airport inside a started storm gets a
+  ring: the same airport whose late flights AE-046's tracker names it over.
+- **The idle clock, fixed.** `MapFrame.elapsed` was measured from the
+  snapshot, so it reset every tick — four times a minute at 1×, mid-fade — and
+  anything periodic reading it stuttered on the simulation's cadence. It now
+  runs from when the screen appeared. This was a live flaw in the selection
+  breath before the ripple inherited it.
+
+### Tests
+Four new Core tests (`Solar geometry` suite): the sun is overhead at the
+subsolar point, the antipode is fully dark, every equatorial place gets both a
+day and a night, and — the one that matters — **darkness begins exactly at the
+terminator the map draws**, checked at 24 longitudes against the render
+cache's own boundary construction. That is the test that makes "lights on the
+wrong side" impossible rather than unlikely.
+
+### Not verified
+Everything about how it *looks*. No simulator here: whether the lights read as
+inhabited or as noise, whether the ripple is a pulse or a distraction, whether
+the storm drift is felt or seen, and whether the whole layer stays inside the
+draw budget on a real device. The draw-cost probe
+(`PerformanceBaselineUITests`) measures the last one on the CI runner and has
+not been run for this change.
+
+**Status.** AUTHORED 2026-09-06 — Core half tested, app half awaiting a device.
+
+---
+
+## AE-046 — Follow a flight (2026-09-06)
+
+**Purpose.** The first phase of Direction II (`docs/GAME_DIRECTION.md`,
+`docs/ROADMAP_DIRECTION_II.md` Phase 25): make the map worth watching by
+letting the player ride with an aircraft. The cheapest delight in the plan,
+on the warmest seam — AE-045 has just rebuilt the camera as a pure function
+of the frame's date and flight motion on a continuous game clock.
+
+**Dependencies.** AE-045 (shipped): the date-evaluated camera and the
+continuous flight clock. None outstanding.
+
+**Implementation notes.**
+1. `MapCamera` gains `followed: FlightID?` and a per-frame centre override
+   that resolves the followed flight's interpolated position at the frame's
+   date. Evaluated, never stepped — the rule the move already obeys, so no
+   frame writes camera state.
+2. Any drag or pinch clears the follow target, in the `interruptMove()` calls
+   that already exist on both gestures.
+3. Core read model: `MapModel.MapFlight` gains `passengers`,
+   `scheduledArrival`, `distanceKm` and a **derived** `delayCause`.
+   `FlightOpsSystem` already boosts disruption from
+   `state.world.activeStorm(in:at:)` over either endpoint; the cause is
+   derivable at read-model build time from the same call. No new state, no
+   migration.
+4. `MapFlightCard` becomes the tracker: progress, ETA on the game clock,
+   passengers aboard, delay with its cause, a Follow toggle, existing link
+   into the aircraft.
+5. Entering follow eases to regional zoom unless the camera is already closer.
+6. Arrival, cancellation and disappearance of a followed flight are handled
+   explicitly: hold at the destination and say so; never follow a ghost.
+
+**Acceptance criteria.**
+- Tapping an aircraft and pressing Follow locks the camera to it; the world
+  moves under the aircraft and the aircraft stays put on screen.
+- Any touch on the map returns control immediately.
+- The card states passengers aboard, arrival time on the game clock, and —
+  when late — the reason.
+- Reduce Motion: following works without easing.
+- The draw-cost probe shows no regression against the AE-045 baseline.
+
+**Tests.**
+- Core: `MapPresentationTests` — passengers and scheduled arrival match the
+  `Flight` they derive from; a ferry reports zero passengers; a flight whose
+  endpoint is under an active storm reports the cause; one that is not
+  reports none.
+- App: the UI-test map journey gains a follow step asserting the canvas
+  accessibility value names a followed flight (same probe channel as
+  `zoom %.1fx`).
+
+### Done (2026-09-06)
+- **Core read model.** `MapModel.MapFlight` carries `passengers`,
+  `distanceKm`, `arrival` and a derived `delayContext`
+  (`MapModel.DelayContext`: an endpoint closed, or a storm over one, and only
+  for a flight that is actually late). No new state, no save migration.
+- **BUG-060, found while building it.** `.turnaround` — the phase *after*
+  arrival — was drawn at the origin, so every aircraft sat at the wrong
+  airport for the length of its turn. It is now its own case at the
+  destination, and the map test that had asserted the bug now distinguishes
+  the two parked phases.
+- **The follow camera.** `MapCamera.followed` holds the flight's identity;
+  `MapFollow.point` resolves its position per frame with the same
+  interpolation the frame draws with; `liveCenter(size:at:focus:)` rides it.
+  Any drag or pinch releases it through `stopFollowing(landingAt:)`, which is
+  handed the last drawn point from `MapFollowMemory` — a plain class, written
+  from inside the draw on the `MapHitGeometry` rule. A followed flight that
+  lands releases the camera where it landed.
+- **The tracker card.** `MapFlightCard` states seats aboard, the arrival its
+  schedule implies (on the game clock and as a countdown), the leg length,
+  and the weather over either end when the departure slipped. Follow is
+  offered for rivals' aircraft too.
+- **Two new formatters**, in the one place formats live: `Format.duration`
+  and `Vocab.delayContext`.
+- **Tests.** Four new/updated Core tests in `MapPresentationTests`
+  (turnaround position, per-flight facts, the delay context under an
+  engineered storm, and the corrected parked-phase assertion) — 29 map tests
+  green, full Core suite re-run. One new UI-test journey,
+  `testFollowingAFlightRidesTheCamera`, which reads the follow state back out
+  of the canvas's accessibility value and skips honestly with a frame
+  attached where the synthetic tap cannot select a moving aircraft.
+  `openRouteBySearch` moved into `UITestSupport` rather than copied.
+
+### Not verified
+The camera itself. This environment has no simulator: whether the aircraft
+holds still while the world slides under it, whether the ease into the follow
+zoom is pleasant, and whether following at 16× is a blur are all device
+questions. The UI test proves the mode engages and that a drag releases it;
+it cannot prove any of that.
+
+**Status.** AUTHORED 2026-09-06 — Core half verified by tests, app half
+awaiting a device.
+
+---
+
 ## AE-045 — Free-to-play, and the paywall (2026-09-06)
 
 ### Done
@@ -35,6 +179,8 @@ Active task list. Format follows the Master Task Rule (see
   pay-up-front is not available at that duration.
 - **AE-045.5** Decide the Lifetime price against real storefront data. $49.99
   is anchored to a year of weekly billing, not measured.
+
+---
 
 ## AE-044 — The demand the aircraft actually sells (2026-09-04)
 

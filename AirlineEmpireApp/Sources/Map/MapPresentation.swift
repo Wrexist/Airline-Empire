@@ -95,17 +95,26 @@ enum MapZoomLevel: Int, Comparable {
 
 /// A flight's position for *this frame*.
 ///
-/// `MapModel` gives a flight's progress at the tick it was built. The pump
-/// publishes four snapshots a second, so at 1× that is a new position every
-/// game-minute and motion is already smooth — but at 16× a two-hour flight
-/// gets about seven updates, and the aircraft stutters across the ocean.
+/// `MapModel` gives a flight's progress at the tick it was built. The
+/// simulation runs in whole 15-minute ticks, so at 1× a flight's own truth
+/// moves once every 3.75 real seconds and would visibly hop between them.
 ///
-/// So the renderer advances a *copy* of the fraction by the real time elapsed
-/// since the snapshot, converted to game minutes at the current speed, and
-/// re-syncs the moment a new snapshot arrives. Standard client-side
-/// prediction: the simulation is never asked, never told, and never affected.
-/// Paused means `gameMinutesPerRealSecond` is zero, so nothing moves — which
-/// is the behaviour the pause button promises.
+/// So the renderer advances a *copy* of the fraction by the game minutes that
+/// have passed since the snapshot, and re-syncs as each one arrives. Standard
+/// client-side prediction: the simulation is never asked, never told, and
+/// never affected.
+///
+/// The one rule that makes it look like flight rather than like a bug is that
+/// the base and the prediction must measure the same clock. They did not
+/// (BUG-058): the prediction ran on real time while `flight.progress` stepped
+/// in whole ticks, and the gap between them — Core's fractional tick
+/// accumulator — is not constant, so every tick that landed pulled the
+/// aircraft *backwards* by however much the fraction had grown — at 16×,
+/// where a single 250 ms pump carries more than a whole tick, up to a
+/// quarter-hour of flying undone in one frame. So the caller passes game
+/// minutes measured from `clock.now + pendingGameMinutes` — a clock that
+/// only moves forwards — and
+/// this interpolates, rather than predicts, between two consistent numbers.
 struct InterpolatedFlight {
     let flight: MapModel.MapFlight
     let position: MapPoint
@@ -113,17 +122,14 @@ struct InterpolatedFlight {
     let progress: Double
 
     static func advance(_ flight: MapModel.MapFlight,
-                        by realSeconds: Double,
-                        speed: SimSpeed,
+                        byGameMinutes gameMinutes: Double,
                         origin: Coordinate,
                         destination: Coordinate) -> InterpolatedFlight {
-        guard flight.airborne, flight.flightMinutes > 0, realSeconds > 0,
-              speed != .paused else {
+        guard flight.airborne, flight.flightMinutes > 0, gameMinutes > 0 else {
             return InterpolatedFlight(flight: flight, position: flight.position,
                                       heading: flight.heading,
                                       progress: flight.progress)
         }
-        let gameMinutes = realSeconds * speed.gameMinutesPerRealSecond
         // Never run past arrival: the simulation decides when a flight lands,
         // and a marker that reaches the airport early would be lying.
         let advanced = min(1, flight.progress
@@ -137,6 +143,56 @@ struct InterpolatedFlight {
             heading: MapMath.heading(from: position, to: ahead),
             progress: advanced)
     }
+}
+
+// MARK: - Following a flight
+
+/// Where a followed flight is *right now*, in map space.
+///
+/// The camera has to be built around this point, and the camera is built
+/// before the frame exists — so this resolves the same interpolation
+/// `MapFrame` will draw with, one flight's worth, ahead of it. One flight per
+/// frame against ~90 airports is a rounding error next to the draw it
+/// precedes; the alternative is handing the whole model to the camera, which
+/// would make a camera that knows about airlines.
+enum MapFollow {
+    static func point(flight followed: FlightID, model: MapModel,
+                      gameMinutes: Double) -> CGPoint? {
+        guard let flight = model.flights.first(where: { $0.id == followed })
+        else { return nil }
+        guard flight.airborne,
+              let from = model.airports.first(where: { $0.code == flight.origin }),
+              let to = model.airports.first(where: { $0.code == flight.destination })
+        else {
+            // Parked: the aircraft is at an airport, and the map's own
+            // position for it is already that airport.
+            return CGPoint(x: CGFloat(flight.position.x),
+                           y: CGFloat(flight.position.y))
+        }
+        let interpolated = InterpolatedFlight.advance(
+            flight, byGameMinutes: gameMinutes,
+            origin: from.position.coordinate,
+            destination: to.position.coordinate)
+        return CGPoint(x: CGFloat(interpolated.position.x),
+                       y: CGFloat(interpolated.position.y))
+    }
+}
+
+/// The last place a followed flight was drawn.
+///
+/// Deliberately *not* `@Observable`, for `MapHitGeometry`'s reason: it is
+/// written from inside the draw and read when a gesture or an arrival ends
+/// the follow. It is what stops the camera teleporting when the flight it was
+/// following lands and leaves the world — the aircraft is gone, but where it
+/// was is still the right place for the camera to be.
+final class MapFollowMemory {
+    private(set) var lastPoint: CGPoint?
+
+    func store(_ point: CGPoint?) {
+        if let point { lastPoint = point }
+    }
+
+    func clear() { lastPoint = nil }
 }
 
 // MARK: - The antimeridian

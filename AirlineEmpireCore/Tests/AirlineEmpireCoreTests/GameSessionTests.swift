@@ -33,13 +33,22 @@ struct GameSessionTests {
         #expect(await session.snapshot.clock.now.rawMinutes == 60) // 4 min still pending
     }
 
-    @Test func pauseDropsPendingFraction() async {
+    /// The fraction is the presentation clock's second hand (BUG-058): the
+    /// map reads `clock.now + pendingGameMinutes` as continuous game time, so
+    /// dropping it on pause would move every aircraft backwards at the
+    /// instant the player pressed pause.
+    @Test func pauseKeepsPendingFraction() async {
         let session = GameSession(state: Fixtures.newState(), systems: [])
         await session.setSpeed(.x1)
         _ = await session.pump(elapsedSeconds: 3.0) // 12 game-min pending, no tick
+        #expect(await session.pendingGameMinutes == 12)
         await session.setSpeed(.paused)
+        #expect(await session.pendingGameMinutes == 12) // the world stops where it is
+        _ = await session.pump(elapsedSeconds: 10)      // paused: nothing accumulates
+        #expect(await session.pendingGameMinutes == 12)
         await session.setSpeed(.x1)
-        #expect(await session.pump(elapsedSeconds: 3.0) == 0) // fraction was cleared
+        // Resume completes the tick the pause interrupted rather than
+        // restarting it: 12 pending + 3 more minutes reaches 15.
         #expect(await session.pump(elapsedSeconds: 0.75) == 1)
     }
 

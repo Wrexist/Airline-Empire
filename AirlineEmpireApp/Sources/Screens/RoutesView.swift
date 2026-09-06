@@ -961,6 +961,9 @@ struct OpenRouteSheet: View {
         // back above the thing it filters.
         .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always),
                     prompt: "Airport code or city")
+        // The chosen row's marker fills rather than swaps: at the moment of
+        // the tap, the only feedback this sheet gives is that circle.
+        .aeAnimation(AEMotion.selection, value: destination)
         // The commit rides the bottom edge rather than living at the foot of
         // the list. It used to be the last row after all ~40 candidates, so a
         // player who picked LNW — the top-ranked suggestion — then had to
@@ -969,13 +972,26 @@ struct OpenRouteSheet: View {
         // sheet is what made that visible; the UI test that drives this
         // journey could not find the button either, which is the same finding
         // made by a machine (BUG-038).
+        // Always present, even with nothing chosen. It used to appear on
+        // selection, which had two costs: the list jumped by the height of a
+        // bar at the moment of the tap, and — because the bar covers the row
+        // it appears over — the row the player had just chosen was the one it
+        // covered. A screenshot caught exactly that: three destinations with
+        // empty circles and a commit bar over the fourth, so the sheet showed
+        // no selected row at all (tasks/BUGS.md BUG-059). The bar now states
+        // the choice itself, so what happens on press is legible whether or
+        // not its row is on screen.
         .safeAreaInset(edge: .bottom) {
-            if let destination, destination != from {
-                confirmRow(from: from, to: destination, player: player)
-                    .padding(.horizontal, AETheme.spacingM)
-                    .padding(.vertical, AETheme.spacingS)
-                    .background(.bar)
+            Group {
+                if let destination, destination != from {
+                    confirmRow(from: from, to: destination, player: player)
+                } else {
+                    waitingRow(from: from)
+                }
             }
+            .padding(.horizontal, AETheme.spacingM)
+            .padding(.vertical, AETheme.spacingS)
+            .background(.bar)
         }
         .aeScreenBackground()
     }
@@ -1187,6 +1203,22 @@ struct OpenRouteSheet: View {
         }
     }
 
+    /// The bar before a destination is chosen: the same shape, the same
+    /// place, saying what it is waiting for rather than vanishing.
+    private func waitingRow(from: AirportCode) -> some View {
+        HStack(spacing: AETheme.spacingS) {
+            Image(systemName: "hand.tap")
+                .foregroundStyle(AETheme.mutedText)
+                .accessibilityHidden(true)
+            Text("Pick where \(from.raw) flies to")
+                .font(AEType.body)
+                .foregroundStyle(AETheme.mutedText)
+            Spacer()
+        }
+        .frame(minHeight: 44)
+        .accessibilityElement(children: .combine)
+    }
+
     /// The verdict, before the tap.
     private func confirmRow(from: AirportCode, to: AirportCode,
                             player: Airline) -> some View {
@@ -1216,6 +1248,18 @@ struct OpenRouteSheet: View {
             return (eligible(owned), eligible(era))
         }()
         return VStack(alignment: .leading, spacing: AETheme.spacingS) {
+            // The choice, restated where the action is. The rows carry the
+            // detail; this carries the decision, and it is the only part
+            // guaranteed to be on screen when the button is pressed.
+            HStack(spacing: AETheme.spacingXS) {
+                Text("\(from.raw) → \(to.raw)")
+                    .font(AEType.code)
+                Text("\(trips)×/day · \(Format.money(Money.dollars(Int64(fare)))) fare")
+                    .font(AEType.secondary)
+                    .foregroundStyle(AETheme.mutedText)
+                Spacer()
+            }
+            .accessibilityElement(children: .combine)
             if let blocked {
                 Label(blocked.message, systemImage: "exclamationmark.triangle")
                     .font(.caption)

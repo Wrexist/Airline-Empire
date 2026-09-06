@@ -60,13 +60,39 @@ final class GameController {
     private var pumpTask: Task<Void, Never>?
     private var eventTask: Task<Void, Never>?
     private var rejectionTask: Task<Void, Never>?
-    /// When the current snapshot arrived in real time.
+    /// When the current *tick* arrived in real time.
     ///
-    /// The map interpolates flight positions between simulation ticks, and it
-    /// measures that from here. Wall-clock rather than simulation time on
-    /// purpose: it is a *presentation* clock, it never re-enters the
-    /// simulation, and it resets every time Core hands over a new truth.
+    /// Wall-clock rather than simulation time on purpose: it is a
+    /// *presentation* clock, it never re-enters the simulation, and it resets
+    /// every time Core hands over a new tick. The map's caches key on it —
+    /// route styling and label placement re-decide per tick, not per publish
+    /// (docs/MAP_INTERACTION_ARCHITECTURE.md §3), so it deliberately does
+    /// *not* move on a publish that carried no new tick.
     private(set) var snapshotReceivedAt = Date()
+    /// The continuous presentation clock, in two halves: when the last
+    /// snapshot was published, and how far past its tick the simulation had
+    /// already been handed at that moment.
+    ///
+    /// Separate from `snapshotReceivedAt` because they answer different
+    /// questions and moved at different rates the moment anything depended on
+    /// both: the caches want "which tick is this" (3.75 s apart at 1×), and
+    /// flight prediction wants "what time is it now" (every publish, 4 Hz).
+    /// Predicting from the tick alone is what made aircraft jump backwards —
+    /// the prediction ran on real time while its base stepped in whole ticks,
+    /// so every tick landed a correction (tasks/BUGS.md BUG-058).
+    private(set) var publishedAt = Date()
+    /// Game minutes the pump has consumed past `snapshot.clock.now` — Core's
+    /// fractional tick accumulator, as of `publishedAt`.
+    private(set) var publishedTickFraction: Double = 0
+    /// How far ahead of a published snapshot the map may predict.
+    ///
+    /// The pump publishes every 250 ms, so this is never reached while the
+    /// app is running. It exists for when it stops being reached — a stall, a
+    /// return from the background — where extrapolating minutes of real time
+    /// from a stale snapshot would fling every aircraft down its route and
+    /// then yank it back on the next publish. Holding still is the honest
+    /// answer when the last truth is that old.
+    private static let maxPredictionSeconds: TimeInterval = 1.5
     /// Solvency stage at the last pump, so entering danger fires the
     /// auto-pause exactly once rather than every quarter second.
     private var lastSolvencyStage: SolvencyModel.Stage = .healthy
@@ -501,6 +527,22 @@ final class GameController {
         cachedCompetition = nil
     }
 
+    /// Game minutes to add to the published snapshot's clock to get the world
+    /// as it stands at `date` — the map's client-side prediction, in the one
+    /// unit the simulation measures time in.
+    ///
+    /// Monotonic by construction: `publishedTickFraction` is the part of a
+    /// tick already paid for in real time, so the base it is added to never
+    /// steps forwards without the fraction stepping back by the same amount.
+    /// Paused returns the frozen fraction rather than zero — the aircraft
+    /// stay where the pause found them instead of stepping back to the last
+    /// tick (BUG-058).
+    func predictedGameMinutes(at date: Date) -> Double {
+        let realSeconds = min(max(0, date.timeIntervalSince(publishedAt)),
+                              Self.maxPredictionSeconds)
+        return publishedTickFraction + realSeconds * speed.gameMinutesPerRealSecond
+    }
+
     // MARK: Time control
 
     func setSpeed(_ newSpeed: SimSpeed) {
@@ -720,9 +762,16 @@ final class GameController {
     private func refresh() async {
         guard let session else { return }
         let state = await session.snapshot
+        let fraction = await session.pendingGameMinutes
         if state.clock.tickCount != snapshot?.clock.tickCount {
             snapshotReceivedAt = Date()
         }
+        // Every publish, tick or no tick: this pair *is* the current game
+        // time, and `state.clock.now + fraction` is continuous across a tick
+        // boundary precisely because the fraction drops by a tick as the
+        // clock gains one.
+        publishedAt = Date()
+        publishedTickFraction = fraction
         invalidateCaches()
         snapshot = state
         speed = await session.speed

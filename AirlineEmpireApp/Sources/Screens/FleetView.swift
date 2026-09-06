@@ -39,6 +39,27 @@ struct FleetList: View {
                             FleetSummaryRow(summary: summary)
                                 .aeListRow()
                         }
+                        // The fleet board's own next move. An idle airframe
+                        // is the one thing on this screen that costs money
+                        // per hour for nothing, the summary strip already
+                        // counts them in orange — and counting was as far as
+                        // the screen went (tasks/BUGS.md BUG-059). This is
+                        // the same fact with somewhere to press.
+                        if let idle = firstIdle(all) {
+                            NavigationLink(value: idle.id) {
+                                AENextStepLabel(
+                                    icon: "pause.circle.fill",
+                                    title: idleCount(all) == 1
+                                        ? "Put the \(idle.typeName) to work"
+                                        : "Put \(idleCount(all)) idle aircraft to work",
+                                    detail: "Parked at \(idle.location.raw), earning nothing. Give it a route.",
+                                    tint: AETheme.caution,
+                                    attention: true,
+                                    showsChevron: false)
+                            }
+                            .aeListRow()
+                            .accessibilityIdentifier("ae-fleet-next-step")
+                        }
                         // The bar only appears once there are enough aircraft
                         // for scanning to be work. At four aeroplanes a filter
                         // is a control that costs a row and saves nothing.
@@ -77,7 +98,11 @@ struct FleetList: View {
                     }
                     .listStyle(.plain)
                     .aeScreenBackground()
+                    // Both counts: the prompt above the list appears and
+                    // leaves as aircraft are given work, and it should do
+                    // that as a movement rather than as a flicker.
                     .aeAnimation(AEMotion.content, value: cards.count)
+                    .aeAnimation(AEMotion.content, value: idleCount(all))
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) { sortMenu }
                     }
@@ -114,6 +139,17 @@ struct FleetList: View {
         case .condition:
             return cards.sorted { $0.condition < $1.condition }
         }
+    }
+
+    /// Aircraft that could fly and are not. `sorted(_:)` already puts them
+    /// first under the default order, but the prompt has to be right whatever
+    /// the player has sorted by, so it is found rather than assumed.
+    private func firstIdle(_ cards: [FleetCardModel]) -> FleetCardModel? {
+        cards.first { $0.assignedRoute == nil && $0.status.isActive }
+    }
+
+    private func idleCount(_ cards: [FleetCardModel]) -> Int {
+        cards.filter { $0.assignedRoute == nil && $0.status.isActive }.count
     }
 
     private func statusRank(_ card: FleetCardModel) -> Int {
@@ -322,6 +358,10 @@ struct AircraftDetailView: View {
     @Environment(GameController.self) private var controller
     @Environment(\.dismiss) private var dismiss
     let aircraftID: AircraftID
+    /// Whether the "where does it fly next" sheet is up. State rather than a
+    /// `Menu`, because the menu was the wrong container for the decision —
+    /// see `AssignRouteSheet`.
+    @State private var assigning = false
 
     var body: some View {
         ScrollView {
@@ -349,9 +389,17 @@ struct AircraftDetailView: View {
             controller.catalog.flatMap { catalog in
                 snapshot.aircraft[aircraftID].flatMap { catalog.aircraftType($0.typeCode) }
             }
-        }.map { "\($0.manufacturer) \($0.model)" } ?? "Aircraft")
+        // The model alone. An inline navigation title has room for about
+        // twenty characters and "Pacifica PA-184 Current" is twenty-three, so
+        // the bar read "Pacifica PA-184 Curr…" — the manufacturer pushed the
+        // one word that distinguishes two variants off the end. The card
+        // directly beneath carries the full name, in full.
+        }.map(\.model) ?? "Aircraft")
         .navigationBarTitleDisplayMode(.inline)
         .aeTimeToolbar()
+        .sheet(isPresented: $assigning) {
+            AssignRouteSheet(aircraftID: aircraftID)
+        }
     }
 
     /// The airline's livery, falling back to the accent before an airline
@@ -459,8 +507,7 @@ struct AircraftDetailView: View {
                             .foregroundStyle(AETheme.caution)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    routePicker(card, snapshot: snapshot, player: player,
-                                catalog: catalog)
+                    routePicker(card, snapshot: snapshot, catalog: catalog)
                 }
             }
         }
@@ -482,7 +529,6 @@ struct AircraftDetailView: View {
     /// answers "why isn't my new route in this list?" with nothing.
     @ViewBuilder
     private func routePicker(_ card: FleetCardModel, snapshot: GameState,
-                             player: AirlineID,
                              catalog: ContentCatalog) -> some View {
         let candidates = snapshot.assignmentCandidates(forAircraft: card.id,
                                                        catalog: catalog)
@@ -495,31 +541,24 @@ struct AircraftDetailView: View {
                 .fixedSize(horizontal: false, vertical: true)
         } else {
             if !eligible.isEmpty {
-                Menu {
-                    ForEach(eligible, id: \.routeID) { candidate in
-                        if let route = snapshot.routes[candidate.routeID] {
-                            Button {
-                                controller.submit(AssignAircraftToRouteCommand(
-                                    airline: player, route: candidate.routeID,
-                                    aircraftID: card.id))
-                            } label: {
-                                // The note rides along in the menu label
-                                // because a Menu row has nowhere else to put
-                                // it, and the fit is the whole reason to
-                                // prefer one route over another.
-                                if let note = Vocab.assignmentNote(candidate.note) {
-                                    Text("\(route.origin.raw) – \(route.destination.raw) — \(note)")
-                                } else {
-                                    Text("\(route.origin.raw) – \(route.destination.raw)")
-                                }
-                            }
-                        }
-                    }
-                } label: {
-                    Label("Assign to a route", systemImage: "plus")
-                        .font(AEType.body.weight(.medium))
-                        .frame(minHeight: 44)
+                // A button to a sheet, not a `Menu`. The menu was a floating
+                // panel that opened over the card it belonged to, clipped by
+                // the card below, with two bare route codes in it and nothing
+                // to compare them on — the fit note had to be crammed into
+                // the same line because a menu row has nowhere else to put it
+                // (tasks/BUGS.md BUG-059). Choosing where an aeroplane flies
+                // next is the most consequential tap on this screen; it gets
+                // a surface, not a popover.
+                Button { assigning = true } label: {
+                    Label(eligible.count == 1
+                          ? "Assign to a route"
+                          : "Choose one of \(eligible.count) routes",
+                          systemImage: "arrow.triangle.branch")
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.aePrimary)
+                .padding(.top, AETheme.spacingXS)
+                .accessibilityIdentifier("ae-aircraft-assign")
             }
             if !blocked.isEmpty {
                 VStack(alignment: .leading, spacing: 2) {
@@ -546,10 +585,17 @@ struct AircraftDetailView: View {
         AECard {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "Condition and history", systemImage: "wrench.and.screwdriver")
-                gauge("Condition", card.condition,
-                      tint: card.condition > 0.8 ? AETheme.positive : AETheme.caution)
-                gauge("Reliability", card.reliability,
-                      tint: card.reliability > 0.95 ? AETheme.positive : AETheme.caution)
+                // Two measures, two honest ranges, one component deciding the
+                // colour from them. Written by hand these disagreed with each
+                // other: 84% condition was green and 94% reliability was
+                // orange, one row apart, which reads as "the better number is
+                // the worse one" (BUG-059). Reliability really does live in a
+                // higher band — an aeroplane that fails one departure in
+                // twenty is a bad aeroplane — so it says so, by name.
+                AEMeter(label: "Condition", value: card.condition,
+                        good: 0.80, warn: 0.60)
+                AEMeter(label: "Reliability", value: card.reliability,
+                        good: 0.95, warn: 0.85)
                 labelled("Age", "\(Format.decimal(card.ageYears, places: 1)) years")
                 labelled("Flight hours",
                          Format.count(Int64(card.totalFlightHours.rounded())))
@@ -635,19 +681,6 @@ struct AircraftDetailView: View {
         }
     }
 
-    private func gauge(_ label: String, _ value: Double, tint: Color) -> some View {
-        HStack {
-            Text(label).font(.subheadline)
-            Spacer()
-            ProgressView(value: value).tint(tint).frame(width: 110)
-            Text(Format.percent(value))
-                .font(.caption).monospacedDigit()
-                .frame(width: 44, alignment: .trailing)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(label), \(Format.percent(value))")
-    }
-
     private func labelled(_ label: String, _ value: String) -> some View {
         HStack {
             Text(label)
@@ -655,6 +688,162 @@ struct AircraftDetailView: View {
             Text(value).monospacedDigit()
         }
         .font(.subheadline)
+    }
+}
+
+/// Where this aeroplane flies next.
+///
+/// This was a `Menu`: two route codes in a floating panel, opened over the
+/// card that raised it and clipped by the card beneath, with each option's
+/// fit note glued onto the end of its own label because a menu row has
+/// nowhere else to put one (tasks/BUGS.md BUG-059). It is the most
+/// consequential decision on the aircraft screen — an idle airframe still
+/// bills — and it was being made in the container iOS reserves for "sort by".
+///
+/// A sheet, then, with the same information the map's route cards carry:
+/// each route as a choice card that says what it flies today and what this
+/// aircraft would bring to it, one selection at a time, and one primary
+/// action at the bottom that stays put. Routes Core would refuse are listed
+/// underneath with the reason, unpressable — a picker that silently omits
+/// them answers "why isn't my new route here?" with nothing.
+struct AssignRouteSheet: View {
+    @Environment(GameController.self) private var controller
+    @Environment(\.dismiss) private var dismiss
+    let aircraftID: AircraftID
+    @State private var choice: RouteID?
+    @State private var rejection: CommandRejection?
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if let snapshot = controller.snapshot,
+                   let player = snapshot.playerAirline,
+                   let catalog = controller.catalog {
+                    content(snapshot: snapshot, player: player.id, catalog: catalog)
+                } else {
+                    LoadingState(message: "Loading your routes")
+                }
+            }
+            .navigationTitle("Fly it where?")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+            .aeSheetFeedback()
+            .aeFeedback(.uiSelect, on: choice)
+        }
+    }
+
+    @ViewBuilder
+    private func content(snapshot: GameState, player: AirlineID,
+                         catalog: ContentCatalog) -> some View {
+        let candidates = snapshot.assignmentCandidates(forAircraft: aircraftID,
+                                                       catalog: catalog)
+        let eligible = candidates.filter(\.isEligible)
+        let blocked = candidates.filter { !$0.isEligible }
+        ScrollView {
+            VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                ForEach(eligible, id: \.routeID) { candidate in
+                    if let route = snapshot.routes[candidate.routeID] {
+                        AEChoiceCard(isSelected: choice == candidate.routeID) {
+                            choice = candidate.routeID
+                        } content: {
+                            routeSummary(route, note: candidate.note)
+                        }
+                        .accessibilityIdentifier("ae-assign-route")
+                    }
+                }
+                if !blocked.isEmpty {
+                    AESectionHeader(text: "Cannot fly these",
+                                    systemImage: "exclamationmark.triangle")
+                        .padding(.top, AETheme.spacingS)
+                    ForEach(blocked, id: \.routeID) { candidate in
+                        if let route = snapshot.routes[candidate.routeID],
+                           let blocker = candidate.blocker {
+                            AEPanel {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("\(route.origin.raw) – \(route.destination.raw)")
+                                        .font(AEType.body.weight(.medium))
+                                    Text(Vocab.blocker(blocker))
+                                        .font(AEType.secondary)
+                                        .foregroundStyle(AETheme.mutedText)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                            .opacity(0.7)
+                            .accessibilityElement(children: .combine)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, AETheme.spacingM)
+            .padding(.top, AETheme.spacingS)
+            .padding(.bottom, AETheme.spacingL)
+        }
+        .aeScreenBackground()
+        .aeAnimation(AEMotion.selection, value: choice)
+        .safeAreaInset(edge: .bottom) {
+            commitBar(player: player)
+        }
+    }
+
+    /// What the route is today, and what this aircraft would mean for it.
+    private func routeSummary(_ route: Route, note: AssignmentCandidate.Note?) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("\(route.origin.raw) – \(route.destination.raw)")
+                .font(.headline)
+            Text("\(route.dailyRoundTrips)×/day · \(Format.money(route.ticketPrice)) fare · \(Format.count(Int64(route.distanceKm))) km")
+                .font(AEType.secondary)
+                .foregroundStyle(AETheme.mutedText)
+            if let text = Vocab.assignmentNote(note) {
+                // The fit: the whole reason to prefer one route over another,
+                // and the line the menu had to smuggle into a label. Coloured
+                // by what the note *is* — `Vocab` already decides that, and a
+                // caution rendered in the accent would read as a
+                // recommendation.
+                Text(text)
+                    .font(AEType.caption)
+                    .foregroundStyle(Vocab.assignmentNoteColor(note))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    /// One action, in one place, whatever the list is doing above it.
+    private func commitBar(player: AirlineID) -> some View {
+        VStack(alignment: .leading, spacing: AETheme.spacingXS) {
+            if let rejection {
+                Label(rejection.message, systemImage: "xmark.octagon")
+                    .font(AEType.secondary)
+                    .foregroundStyle(AETheme.negative)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Button {
+                guard let choice else { return }
+                let command = AssignAircraftToRouteCommand(
+                    airline: player, route: choice, aircraftID: aircraftID)
+                // Stay on refusal and say why — the sheet is where the
+                // decision was made, so it is where the answer belongs.
+                if let refusal = controller.submit(command) {
+                    rejection = refusal
+                    controller.clearRejection()
+                } else {
+                    dismiss()
+                }
+            } label: {
+                Label(choice == nil ? "Pick a route" : "Fly this route",
+                      systemImage: "airplane.departure")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.aePrimary)
+            .disabled(choice == nil)
+            .accessibilityIdentifier("ae-assign-commit")
+        }
+        .padding(.horizontal, AETheme.spacingM)
+        .padding(.vertical, AETheme.spacingS)
+        .background(.bar)
     }
 }
 
