@@ -58,6 +58,30 @@ Neither agent may blindly trust previous work.
 | 23 | Release Candidate | Opus | NOT STARTED (macOS required) |
 | 24 | Post-Launch Expansion Architecture | Fable | **COMPLETE** (2026-08-25) |
 
+### Direction II — the cozy living world (2026-09-06)
+
+Phases 0–24 built and hardened the simulation. Phases 25 onward are set by the
+project owner's direction decisions of 2026-09-06 (`docs/GAME_DIRECTION.md`):
+a **cozy builder with a living world map at its centre**, played in 20–40
+minute sittings, guided but with real stakes. The detailed plan — seams, data
+impact, tests, risks and definition of done per phase — is
+`docs/ROADMAP_DIRECTION_II.md`.
+
+| Phase | Title | Layer | Status |
+|-------|-------|-------|--------|
+| 25 | AE-046 Follow a flight | App | PLANNED |
+| 26 | AE-047 Airports that breathe, weather you can see | App + read model | PLANNED |
+| 27 | AE-048 The map is the home screen | App | PLANNED |
+| 28 | AE-049 The investor rescue | Core + App | PLANNED |
+| 29 | AE-050 Capped offline catch-up | Core + App | PLANNED |
+| 30 | AE-051 Goals that pull: era objectives and contracts | Core + App | PLANNED |
+| 31 | AE-052 The first hour, on the new home | App | PLANNED |
+| 32 | AE-053 The fleet you want | Content + App | BLOCKED (naming, art) |
+| 33 | AE-054 Hub connections | Core + App | PLANNED |
+
+Phases 25–27 are one piece of work in three shippable parts. Phases 28–30 are
+Core-side and interleave when an app phase is blocked.
+
 **Gate before Phase 3:** RESOLVED 2026-08-25. Swift 6.0.3 runs in the agent
 environment via `scripts/setup-linux-toolchain.sh` (decision D-009); build
 and tests verified working.

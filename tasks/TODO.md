@@ -5,6 +5,61 @@ Active task list. Format follows the Master Task Rule (see
 
 ---
 
+## AE-046 — Follow a flight (PLANNED, 2026-09-06)
+
+**Purpose.** The first phase of Direction II (`docs/GAME_DIRECTION.md`,
+`docs/ROADMAP_DIRECTION_II.md` Phase 25): make the map worth watching by
+letting the player ride with an aircraft. The cheapest delight in the plan,
+on the warmest seam — AE-045 has just rebuilt the camera as a pure function
+of the frame's date and flight motion on a continuous game clock.
+
+**Dependencies.** AE-045 (shipped): the date-evaluated camera and the
+continuous flight clock. None outstanding.
+
+**Implementation notes.**
+1. `MapCamera` gains `followed: FlightID?` and a per-frame centre override
+   that resolves the followed flight's interpolated position at the frame's
+   date. Evaluated, never stepped — the rule the move already obeys, so no
+   frame writes camera state.
+2. Any drag or pinch clears the follow target, in the `interruptMove()` calls
+   that already exist on both gestures.
+3. Core read model: `MapModel.MapFlight` gains `passengers`,
+   `scheduledArrival`, `distanceKm` and a **derived** `delayCause`.
+   `FlightOpsSystem` already boosts disruption from
+   `state.world.activeStorm(in:at:)` over either endpoint; the cause is
+   derivable at read-model build time from the same call. No new state, no
+   migration.
+4. `MapFlightCard` becomes the tracker: progress, ETA on the game clock,
+   passengers aboard, delay with its cause, a Follow toggle, existing link
+   into the aircraft.
+5. Entering follow eases to regional zoom unless the camera is already closer.
+6. Arrival, cancellation and disappearance of a followed flight are handled
+   explicitly: hold at the destination and say so; never follow a ghost.
+
+**Acceptance criteria.**
+- Tapping an aircraft and pressing Follow locks the camera to it; the world
+  moves under the aircraft and the aircraft stays put on screen.
+- Any touch on the map returns control immediately.
+- The card states passengers aboard, arrival time on the game clock, and —
+  when late — the reason.
+- Reduce Motion: following works without easing.
+- The draw-cost probe shows no regression against the AE-045 baseline.
+
+**Tests.**
+- Core: `MapPresentationTests` — passengers and scheduled arrival match the
+  `Flight` they derive from; a ferry reports zero passengers; a flight whose
+  endpoint is under an active storm reports the cause; one that is not
+  reports none.
+- App: the UI-test map journey gains a follow step asserting the canvas
+  accessibility value names a followed flight (same probe channel as
+  `zoom %.1fx`).
+
+**Status.** NOT STARTED — planned in full, awaiting the go-ahead. The camera
+and card behaviour cannot be verified in this environment (no simulator);
+the Core half can and will be.
+
+---
+
 ## AE-044 — The demand the aircraft actually sells (2026-09-04)
 
 ### Done
