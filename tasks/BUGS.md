@@ -1693,3 +1693,68 @@ return from the background holds aircraft still rather than flinging them.
 old pause behaviour.
 **Status:** FIXED (authored) 2026-09-06 — Core side is covered by tests and
 green; the app side has no test target that runs here and needs a device.
+
+---
+
+## BUG-059 — Four screens named a problem and offered nothing to press
+**Severity:** P2 (usability, on the game's most-used decisions) · **Phase
+found:** AE-046, player screenshots of a TestFlight build, 2026-09-06.
+
+Not one defect: one habit, photographed four times. Each screen computed the
+right thing, said it accurately, and stopped one step short of the action it
+had just argued for.
+
+**1. The assignment menu was a popover over the card that raised it.**
+Aircraft → an idle aeroplane: "Assign to a route" opened a `Menu` — a floating
+panel drawn over its own card and clipped by the card beneath it, holding two
+bare route codes. The fit note (`AssignmentCandidate.Note`, the whole reason to
+prefer one route over another) had to be crammed onto the end of each label,
+because a menu row has nowhere else to put one. The most consequential tap on
+the screen was being made in the container iOS reserves for "sort by".
+**Fix:** `AssignRouteSheet` — a sheet of choice cards carrying frequency, fare
+and distance, the fit note in its own colour, Core's blocked routes listed
+underneath with reasons, and one primary action at the bottom that stays put.
+
+**2. Two meters in one card disagreed about what "good" is.** Condition 84%
+drew green; reliability 94% drew orange, one row under it, because each call
+site picked its own threshold. Side by side that reads as "the better number is
+the worse one". **Fix:** `AEMeter` owns the thresholds; reliability's genuinely
+higher band is named at the call site (`good: 0.95`) rather than hand-coloured.
+
+**3. The advice pointed at another tab and left the player to walk.** Home's
+Next moves said "assign it in Airline → Routes"; the Fleet board counted idle
+aircraft in orange and offered nothing. Both screens already register
+`AircraftID` as a navigation destination. **Fix:** `AENextStepLabel` on both,
+pressable, landing on the aeroplane itself — Home → aircraft → assign, in
+three taps from the sentence that asked for it.
+
+**4. The route sheet's commit bar covered the row it was about.** "Open this
+route" appeared *on selection*, which meant the list jumped by a bar's height
+at the moment of the tap and the bar covered the row just chosen — a
+screenshot caught the state exactly: three destinations with empty circles and
+a commit bar over the fourth, so the sheet appeared to show no selection at
+all. **Fix:** the bar is always present (a prompt before a choice is made) and
+states the choice itself — "ARN → CAI · 2×/day · $220" — so what the button
+will do is legible whether or not its row is on screen.
+
+Also here, because they are the same screenshots: the aircraft screen's
+navigation title truncated the model name it exists to show ("Pacifica PA-184
+Curr…" — the manufacturer, repeated from the card directly beneath, pushed the
+variant off the end), and Home's market recommendations were `.bordered` +
+`.tint`, a system control shape this design system uses nowhere else, drawn as
+a solid blue slab around three lines of small grey text.
+
+**Fix layer:** App, presentation only — no Core change, no new numbers. Two new
+components (`AEMeter`, `AENextStepLabel`) so the pattern is available rather
+than re-argued per screen (docs/DESIGN_SYSTEM.md §3).
+**Status:** FIXED (authored) 2026-09-06. Authored, not seen: this environment
+has no simulator and no device, and every claim above about *layout* is
+therefore a claim about code. The screenshots that found it are the standard
+the fix should be checked against.
+
+**Not fixed, deliberately:** the route detail screen assigns aircraft through
+the same `Menu` pattern, in the opposite direction (a route picking an
+aeroplane). It should become the same sheet, but four UI-test journeys drive it
+by matching menu-row labels (`UITestSupport.assignFirstAircraft`), so changing
+it is a test change as much as a UI change and does not belong in a pass that
+cannot run those tests.

@@ -107,6 +107,20 @@ phone. With an array it uses a real adaptive `LazyVGrid`: about three columns
 on the narrowest iPhone, more as width allows, and the same strip serves three
 metrics or nine with no decision at the call site.
 
+**`AEMeter`** is the labelled bar: a measure, its number, and a track that
+animates to it. The thresholds are the component's, not the call site's —
+written by hand the same card drew 84% condition green and 94% reliability
+orange, one row under the other, and two bars side by side are read as one
+comparison (BUG-059). Where a measure genuinely has a different healthy range,
+the call site names it (`good:`, `warn:`) instead of picking a colour.
+
+**`AENextStepLabel`** is a suggested action: what it is about, what to do, why
+it matters, and a chevron. A *label*, so the caller owns the action — the same
+row is a `NavigationLink` on a list, a `Button` opening a sheet, or a row in a
+card. It exists because screens were stating problems and stopping: "Idle at
+ARN. It earns nothing here" was true, orange, and next to nothing to press.
+**A problem the game can name is a problem the game should offer to solve.**
+
 ---
 
 ## 4. Buttons — `AEButtonRole`
