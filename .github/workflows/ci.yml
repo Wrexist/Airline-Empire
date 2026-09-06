@@ -591,15 +591,25 @@ jobs:
       # ever produced, so they are kept whether the run passed or failed —
       # a green run whose screens are wrong is precisely the case that needs
       # looking at.
+      # Only when something failed, and only for three days.
+      #
+      # These bundles are ~30 MB each. Uploading them on `always()` for
+      # fourteen days is what produced 1,990 GB-hrs of Actions storage in a
+      # week — about 91 MB per run, three runs an hour on a busy day, held a
+      # fortnight. The success case loses nothing: the step below prints
+      # every frame into the log as base64, which is where they are actually
+      # read from (see its comment). What an artifact adds over that is
+      # full resolution, and full resolution only matters when you are
+      # looking at a failure.
       - name: Keep the screenshots
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: ui-screenshots-shard${{ matrix.shard }}
           path: |
             AirlineEmpireApp/UITestResults.xcresult
             AirlineEmpireApp/UITestResults-baseline.xcresult
-          retention-days: 14
+          retention-days: 3
           if-no-files-found: warn
 
       # Print the screenshots into the log, small, as base64.
@@ -789,13 +799,14 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             test 2>&1 | tee ui-test-output.txt
 
+      # Failures only, three days — same reasoning as the phone job above.
       - name: Keep the screenshots
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: ui-screenshots-ipad
           path: AirlineEmpireApp/UITestResults.xcresult
-          retention-days: 14
+          retention-days: 3
           if-no-files-found: warn
 
       # Identical to the iPhone job's step, for the identical reason: the
