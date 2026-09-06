@@ -1300,3 +1300,32 @@ their effect. New finding EXP-08: the Home feed keeps the last fourteen
 *events*, not fourteen days, so a completed mission leaves no trace on
 Home within a simulated week. Evidence:
 docs/FIRST_ERA_RUNTIME_AUDIT.md, docs/DECISION_EXPERIENCE_AUDIT.md.
+
+**2026-09-06 (AE-046/AE-047 CI evidence — what the follow journey actually
+did).** The `Test [Cc]ase` grep fix on e1cc79f paid for itself immediately:
+run 158's shard 3 lists every journey it ran, and
+`testFollowingAFlightRidesTheCamera()` is recorded there as **skipped
+(222.172 s)**, at checkpoint `76-NO-FLIGHT-TO-FOLLOW`. So the follow camera
+is still NOT VERIFIED on a device, exactly as the test's own skip message
+says. The journey around it did work: the screenshot at that checkpoint shows
+16× selected, the clock at 2030-01-02 09:15 and a drawn Stockholm–London
+route — an airline was founded, an aircraft leased, a route opened and the
+aircraft assigned. What never appeared is an aircraft *on* the line.
+
+Two leads for whoever takes it, both from the code rather than from guessing:
+`FlightSchedulingSystem` materialises a day's flights on the **daily** tick,
+so nothing can fly before the next day boundary after an assignment; and
+BUG-061 — the sunrise control lands on 00:00, six hours before the operating
+day starts, so "advance a day and look" is the one sampling strategy
+guaranteed to see an empty sky. A journey that wants an aeroplane in the air
+should advance past a day boundary and then run the clock into the operating
+day, not stop at midnight.
+
+The per-test costs from that run, which is the first time this project has
+had them for the parallel shard, in seconds:
+`HorizonArrival.testARivalComesToMunich` 578.9 (alone on clone 2);
+`ShellAndMap` on clone 1 — follow 222.2, accessibility 160.4, dark appearance
+135.4, detail screens 93.0, zoom 98.0, clock 63.2, section picker 45.0,
+airport panel 34.5, light appearance 21.6 (873.3 total). The shard's critical
+path is that 873 s column, and the two clones are 873 vs 579: worth
+rebalancing when a class is next split, but not the reason run 160 failed.

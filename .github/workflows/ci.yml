@@ -242,8 +242,9 @@ jobs:
     # skips its `always()` steps and its log is not even retrievable. The
     # UI step below carries its own timeout so an overrun ends the tests
     # and still exports what they photographed; this cap only has to
-    # outlast that.
-    timeout-minutes: 50
+    # outlast that: 2 (build) + 10 (measurement) + 45 (UI step) + 3
+    # (evidence) + 2 (setup) = 62.
+    timeout-minutes: 65
     steps:
       - uses: actions/checkout@v4
         with:
@@ -397,7 +398,21 @@ jobs:
         # fails and the evidence steps below still run on the result bundle
         # as it stands. Run 118 lost every frame of a new journey to the job
         # cap instead.
-        timeout-minutes: 30
+        #
+        # 45 rather than 30, because 30 was under-provisioned for the
+        # *measured* spread between runners and every shard sat inside one
+        # slow machine of it. Runs 158 and 160 ran byte-identical UI test
+        # code; the measurement pass, which runs the same two tests alone
+        # and serially on both, took 150.5 s on run 158 and 249.5 s on run
+        # 160 — the same work, 1.66× slower. Shard 3's journey pass took
+        # 19.6 min on 158 and was killed at 30 on 160 (19.6 × 1.66 = 32.5).
+        # Shards 1 and 2 nominally take 17.5 and 20.6 min, so at that same
+        # 1.66× they land at 29 and 34: both were one slow runner away from
+        # the identical failure, and neither had done anything wrong either.
+        # A cap is meant to catch a hang, not to lose a green suite to the
+        # machine it was scheduled on — and it costs nothing on a normal
+        # runner, which finishes in twenty.
+        timeout-minutes: 45
         run: |
           set -o pipefail
           xcodebuild \

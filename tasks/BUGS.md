@@ -1793,3 +1793,33 @@ days, requires that it actually saw a turnaround, and pins the position to the
 destination's coordinate.
 **Status:** FIXED 2026-09-06. Core-verified: 29 map-presentation tests green,
 full Core suite re-run.
+
+---
+
+## BUG-061 — "Advance to next morning" advances to midnight
+**Severity:** P3 (a control that says one thing and does another; it also
+costs the UI journeys their only look at a world in motion) · **Phase found:**
+AE-047 CI evidence, 2026-09-06.
+**Repro:** Press the sunrise control on any screen. The clock lands on 00:00
+of the next day, not on a morning. Every screenshot the UI journeys take after
+a sunrise — which is most of them — is therefore a photograph of the world at
+local midnight.
+**Root cause:** `GameSession.advanceToNextMorning()` computes
+`nextMidnight = (now.dayIndex + 1) * GameCalendar.minutesPerDay` and advances
+to exactly that. The name, the SF Symbol (`sunrise`), and the VoiceOver label
+("Advance to next morning") all describe a different time of day from the one
+it goes to. The operating day starts at 06:00
+(`OpsTuning.operatingDayStartMinute`), so the instant it lands on is the one
+moment in twenty-four hours when nothing is flying and no airport has a
+movement.
+**Why it matters beyond the label:** AE-047 gave the map a day/night
+terminator, city lights and airport movements. A journey that advances a day
+and photographs the result now photographs, by construction, the quietest and
+darkest frame the game can produce.
+**Fix layer:** Core — either advance to `operatingDayStartMinute` of the next
+day (making the name true), or rename the control to what it does. The first
+is the better game: "next morning" is the phrase a player understands, and a
+morning is when an airline looks alive. Not taken here because it moves the
+clock under every UI journey (the campaign suite drives ~1,800 of these taps
+and asserts on dates), and this branch cannot run them.
+**Status:** OPEN.
