@@ -513,12 +513,9 @@ class AEUITestCase: XCTestCase {
                 // labelled "Lease"; the row is behind the dialog and not
                 // hittable, so the hittable match — searched from the most
                 // recently added — is the dialog's.
-                let confirms = app.buttons.matching(
-                    NSPredicate(format: "label == %@", "Lease"))
-                for index in stride(from: confirms.count - 1, through: 0, by: -1) {
-                    let candidate = confirms.element(boundBy: index)
-                    if candidate.isHittable { candidate.tap(); break }
-                }
+                let confirm = app.buttons["ae-confirm-action"]
+                guard require(confirm, "the lease confirmation") else { return false }
+                confirm.tap()
                 // The sheet dismisses itself on success — there is no Done
                 // fallback any more. Blind-tapping Done has never rescued a
                 // stuck sheet; in runs 62 and 63 it closed a healthy market

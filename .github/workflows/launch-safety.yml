@@ -26,6 +26,11 @@ jobs:
         run: python3 scripts/check-release-readiness.py
   app:
     runs-on: macos-26
+    # iOS 26.4's StoreKit test service returned SKInternalErrorDomain 3
+    # before loading any product (run 34164974444). Keep this test lane on
+    # the installed 26.2 runtime; normal CI still compiles with current Xcode.
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
@@ -39,7 +44,9 @@ jobs:
       - name: Select iPhone simulator
         id: sim
         run: |
-          DEVICE=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; print(next(d["udid"] for r,ds in json.load(sys.stdin)["devices"].items() if "iOS" in r for d in ds if d.get("isAvailable") and d["name"].startswith("iPhone")))')
+          xcodebuild -version
+          xcrun simctl list runtimes
+          DEVICE=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; print(next(d["udid"] for r,ds in json.load(sys.stdin)["devices"].items() if r.endswith("iOS-26-2") for d in ds if d.get("isAvailable") and d["name"].startswith("iPhone")))')
           echo "id=$DEVICE" >> "$GITHUB_OUTPUT"
       - name: App save safety and real StoreKit tests
         working-directory: AirlineEmpireApp

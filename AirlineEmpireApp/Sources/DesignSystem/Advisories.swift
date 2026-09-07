@@ -211,7 +211,8 @@ struct ConfirmableButton<Label: View>: View {
             label
         }
         .confirmationDialog(title, isPresented: $asking, titleVisibility: .visible) {
-            Button(confirmTitle, role: role ?? .destructive, action: action)
+            Button(confirmTitle, role: role, action: action)
+                .accessibilityIdentifier("ae-confirm-action")
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(message)

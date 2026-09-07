@@ -39,7 +39,10 @@ Campaign export/import is available through the system file picker. Export captu
 - Release tooling: **47 selftests passed** after regenerating the fill-in sheet.
 - Local Swift 6 Core type-check and app/test syntax checks passed. SwiftPM's local runner crashes before assertions in this environment; it is not counted as a test pass.
 - The first new app test job used macOS 15's older SDK and failed on the existing iOS 26 glass API. The workflow now uses the project's macOS 26 runner.
-- Later export/import and follow changes require their own current-commit CI results. Do not infer they passed from the earlier commit.
+- Commit `3f5f207`: current-Xcode iOS build passed. All four hosted save/fixture tests and the free-player UI entry journey passed. The map journey failed at market dismissal after leasing. The sheet now owns the dismissal callback.
+- StoreKit test setup on iOS 26.4 returned `SKInternalErrorDomain Code=3` before products could load. The dedicated test lane now selects the installed Xcode/iOS 26.2 combination, consistent with the reported simulator workaround. Current-Xcode compilation remains in normal CI. See [Apple Developer Forums](https://developer.apple.com/forums/thread/826364).
+- A nested Swift Testing macro in the malformed-save test failed to compile; the unwraps are now separate statements.
+- All later fixes still require current-commit CI evidence. Earlier passes do not certify later edits.
 
 ## Release sequence
 

@@ -942,7 +942,8 @@ struct AircraftShopSheet: View {
                                         facts: facts(spec, catalog: catalog,
                                                      snapshot: snapshot,
                                                      player: player.id),
-                                        deal: deals[spec.code] ?? .lease)
+                                        deal: deals[spec.code] ?? .lease,
+                                        onCommitted: { dismiss() })
                                 }
                             }
                         }
@@ -1484,10 +1485,12 @@ struct ShopDealPicker: View {
 /// or by the test runner.
 struct ShopCommitButton: View {
     @Environment(GameController.self) private var controller
-    @Environment(\.dismiss) private var dismiss
 
     let facts: ShopDealFacts
     let deal: ShopDeal
+    /// The sheet owns dismissal; a child inside its NavigationStack must
+    /// not resolve a different dismiss action and leave the market open.
+    let onCommitted: () -> Void
 
     var body: some View {
         let command = facts.command(for: deal)
@@ -1500,7 +1503,7 @@ struct ShopCommitButton: View {
                 // Dismiss on success, like every other sheet in the app —
                 // the payoff is the aircraft in the fleet, not this sheet.
                 action: {
-                    if controller.submit(command) == nil { dismiss() }
+                    if controller.submit(command) == nil { onCommitted() }
                 }
             ) {
                 Label(facts.ctaTitle(for: deal), systemImage: "signature")
