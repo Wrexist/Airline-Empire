@@ -19,9 +19,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Save, access and entitlement regression tests
+      - name: Full simulation regression suite
         working-directory: AirlineEmpireCore
-        run: swift test -c release --filter 'LaunchReadinessTests|SaveStoreTests|SessionAutosaveTests|MonetizationTests'
+        run: swift test -c release
       - name: Release source checks
         run: python3 scripts/check-release-readiness.py
   app:
@@ -46,6 +46,8 @@ jobs:
         run: |
           xcodebuild test -project AirlineEmpire.xcodeproj -scheme AirlineEmpire \
             -destination 'platform=iOS Simulator,id=${{ steps.sim.outputs.id }}' \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 1200 \
+            -maximum-test-execution-time-allowance 1200 \
             -parallel-testing-enabled NO -only-testing:AirlineEmpireTests \
             -only-testing:AirlineEmpireUITests/FreeTierUITests \
             -only-testing:AirlineEmpireUITests/MapHomeUITests/testTheMapIsTheHomeScreen \
@@ -55,3 +57,6 @@ jobs:
         with:
           name: launch-safety-results
           path: AirlineEmpireApp/LaunchSafety.xcresult
+      - name: UI checkpoints in the log
+        if: always()
+        run: python3 scripts/export-ci-checkpoints.py AirlineEmpireApp/LaunchSafety.xcresult

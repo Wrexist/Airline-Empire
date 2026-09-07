@@ -861,8 +861,9 @@ struct AircraftShopSheet: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var usedAge = 8
     @State private var leaseTermMonths = 60
-    @State private var sort: Sort = .price
+    @State private var sort: Sort = .recommended
     @State private var hidesLocked = true
+    @State private var starterOpportunity: MarketOpportunity?
     /// Which way in is picked, per aircraft. Lives here because the picker
     /// and the commit button are separate List rows (see `ShopCommitButton`)
     /// that must see the same choice. Absent means the default, lease.
@@ -871,10 +872,11 @@ struct AircraftShopSheet: View {
     /// Fourteen types with seven attributes each, and no way to order them,
     /// was a catalogue rather than a market (UIUX_FORENSIC_AUDIT UI-017).
     enum Sort: String, CaseIterable, Hashable {
-        case seats, range, efficiency, price
+        case recommended, seats, range, efficiency, price
 
         var title: String {
             switch self {
+            case .recommended: "Best fit"
             case .seats: "Seats"
             case .range: "Range"
             // "Fuel per seat" rendered as "Fuel per s…" in the segmented
@@ -896,13 +898,25 @@ struct AircraftShopSheet: View {
                         Section {
                             wallet(snapshot: snapshot, player: player.id)
                         }
+                        if let market = starterOpportunity,
+                           let code = market.bestAirframe,
+                           let spec = catalog.aircraftTypes[code] {
+                            Section("A first route to build around") {
+                                Text("\(spec.model) for \(market.origin.raw) to \(market.destination.raw)")
+                                    .font(.headline)
+                                Text("Estimated \(market.monthlyAfterAirframe.compact)/month after lease and route payroll, before airline overhead. Start with two daily round trips and review the actual results before expanding.")
+                                    .font(.caption)
+                                    .foregroundStyle(AETheme.mutedText)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
                         Section("Show") {
                             Picker("Sort", selection: $sort) {
                                 ForEach(Sort.allCases, id: \.self) { option in
                                     Text(option.title).tag(option)
                                 }
                             }
-                            .pickerStyle(.segmented)
+                            .pickerStyle(.menu)
                             Toggle("Hide what this era cannot buy", isOn: $hidesLocked)
                         }
                         Section("Terms") {
@@ -954,6 +968,16 @@ struct AircraftShopSheet: View {
             // The sheet says so on the way in and out; the purchase itself is
             // voiced by `aircraftOrdered`/`aircraftDelivered` from Core.
             .aeSheetFeedback()
+            .onAppear {
+                guard let state = controller.snapshot, let player = state.playerAirline,
+                      state.fleet(of: player.id).isEmpty, state.routes(of: player.id).isEmpty,
+                      let catalog = controller.catalog else { return }
+                let access = ContentAccess(isPro: controller.eraCeiling == .empire)
+                let airports = access.servableAirports(home: player.homeAirport, catalog: catalog)
+                starterOpportunity = state.marketOpportunities(catalog: catalog, limit: catalog.orderedAirportCodes.count)
+                    .first { $0.origin == player.homeAirport && $0.paysForItsAirframe
+                        && airports.contains($0.destination) }
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -972,6 +996,13 @@ struct AircraftShopSheet: View {
             .compactMap { catalog.aircraftTypes[$0] }
             .filter { !hidesLocked || allowed.contains($0.category) }
         switch sort {
+        case .recommended:
+            let recommended = starterOpportunity?.bestAirframe
+            return specs.sorted {
+                if ($0.code == recommended) != ($1.code == recommended) { return $0.code == recommended }
+                if $0.listPrice != $1.listPrice { return $0.listPrice < $1.listPrice }
+                return $0.code.raw < $1.code.raw
+            }
         case .seats:
             return specs.sorted { $0.seats > $1.seats }
         case .range:

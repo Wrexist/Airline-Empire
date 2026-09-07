@@ -261,13 +261,13 @@ final class Entitlements {
         guard readsStoreKit else { return }
         refreshGeneration += 1
         let generation = refreshGeneration
-        var candidates: [ProEntitlement] = []
+        var candidates: [UInt64: ProEntitlement] = [:]
         for await result in StoreKit.Transaction.currentEntitlements {
             guard case .verified(let transaction) = result,
                   transaction.revocationDate == nil, !transaction.isUpgraded,
                   let tier = ProProduct(rawValue: transaction.productID) else { continue }
-            candidates.append(ProEntitlement(grantedBy: tier,
-                                               expiresAt: transaction.expirationDate))
+            candidates[transaction.originalID] = ProEntitlement(grantedBy: tier,
+                                                expiresAt: transaction.expirationDate)
         }
         // All subscription plans share a group. Verify both signed values,
         // and use the grace deadline rather than treating retry as ownership.
@@ -279,18 +279,20 @@ final class Entitlements {
                       transaction.revocationDate == nil, !transaction.isUpgraded,
                       let tier = ProProduct(rawValue: transaction.productID), tier.isSubscription
                 else { continue }
-                candidates.removeAll { $0.grantedBy == tier }
+                // A family-shared status must not erase a separate active
+                // purchase of the same product. Match the transaction chain.
+                candidates[transaction.originalID] = nil
                 guard status.state == .subscribed || status.state == .inGracePeriod else { continue }
-                candidates.append(ProEntitlement(
+                candidates[transaction.originalID] = ProEntitlement(
                     grantedBy: tier, expiresAt: transaction.expirationDate,
                     isInBillingRetry: status.state == .inGracePeriod,
                     willRenew: renewal.willAutoRenew,
                     gracePeriodExpiresAt: status.state == .inGracePeriod
-                        ? renewal.gracePeriodExpirationDate : nil))
+                        ? renewal.gracePeriodExpirationDate : nil)
             }
         }
         guard generation == refreshGeneration else { return }
-        let active = candidates.filter { $0.isPro() }
+        let active = candidates.keys.sorted().compactMap { candidates[$0] }.filter { $0.isPro() }
         entitlement = active.first { $0.grantedBy == .lifetime }
             ?? active.max { accessDeadline($0) < accessDeadline($1) } ?? .free
         scheduleExpiryRefresh()

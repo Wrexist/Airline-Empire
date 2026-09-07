@@ -4,6 +4,11 @@ import AirlineEmpireCore
 @testable import AirlineEmpire
 
 final class StoreKitPurchaseTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        executionTimeAllowance = 120
+    }
+
     @MainActor
     func testRealStoreKitLifetimePurchaseAndRestore() async throws {
         let store = try SKTestSession(configurationFileNamed: "AirlineEmpire")

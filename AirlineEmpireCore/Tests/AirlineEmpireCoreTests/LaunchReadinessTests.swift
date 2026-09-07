@@ -9,7 +9,8 @@ struct LaunchReadinessTests {
         let data = try codec.encode(Fixtures.newState())
         var envelope = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
         let base64 = try #require(envelope["payload"] as? String)
-        var payload = try #require(JSONSerialization.jsonObject(with: #require(Data(base64Encoded: base64))) as? [String: Any])
+        let payloadData = try #require(Data(base64Encoded: base64))
+        var payload = try #require(JSONSerialization.jsonObject(with: payloadData) as? [String: Any])
         var meta = try #require(payload["meta"] as? [String: Any])
         meta["tickMinutes"] = 0
         payload["meta"] = meta
