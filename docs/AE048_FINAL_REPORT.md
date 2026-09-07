@@ -396,128 +396,106 @@ following the balance reasoning already in `ci.yml`.
 
 ## 13. Simulator validation
 
-**Workflow:** `.github/workflows/ci.yml`, dispatched `suite: full, ipad: true`.
-**Run:** 171 — `34092672265`, on `ac73d84`.
-**Runners:** macos-26; iPhone simulator picked by the workflow (a plain
-iPhone, preferred over Pro/Max), plus an iPad simulator at regular width.
+Four dispatched `full` runs with the iPad job on, each one reading the frames
+rather than the tick. What each answered:
 
-### What was answered
+| Run | Commit | Result | What the frames changed |
+| --- | --- | --- | --- |
+| 171 | `ac73d84` | build ✅ on 6 runners; 4 shards red | **the app compiles** — the check Linux could never answer. Frames found BUG-063 (wrapped date) and proved the lease the harness had called a failure |
+| 172 | `48dabcd` | 6/8 green | frames found **BUG-065** (zoom controls off-screen) and the Dynamic-Type overflow; iPad proved BUG-064 fixed; **the performance probe ran** (§11) |
+| 173 | `7d94013` | 8/9 green | BUG-065 and Dynamic Type **verified fixed by eye**; arrival green again; economy's year-long advance still short; follow still skipped |
+| 176 | `c887a61` | see below | the progress-verifying advance and the steered aircraft sweep |
 
-| Job | Result |
-| --- | --- |
-| Core (Linux, swift test) | see §12 — 506/506 locally on this branch |
-| Release tooling, store listing, bundle, app symbols, audio assets | ✅ all green |
-| **`xcodebuild build-for-testing`, all six macOS jobs** | ✅ **BUILD SUCCEEDED** |
-| map home shard | `testTheShellHasFourTabsAndNoDeadDestinations` ✅ 46 s; `testTheMapIsTheHomeScreen` ❌ (harness, see below) |
-| economy shard | 3 ✅ / 2 ❌ (one launch timeout, one the arrow defect) |
-| arrival shard | ❌ 1 (the rival headline moved into the briefing) |
-| iPad shell | `testFoundingAnAirlineReachesEveryTab` ✅ 168 s; `testDetailScreensAndSettingsRender` ❌ (below the fold) |
-| campaign, shell + map | still running when this was written; not claimed |
+### Frames actually inspected
 
-**The app compiles.** That is the check this repository has never been able to
-answer on Linux, and it answered yes with every change of this phase in it, on
-six independent runners.
+Pulled from the result bundles (run 171, by the attachment table) and from the
+job logs via `scripts/decode-ci-screenshots.py` (runs 172–173), and **looked
+at** — the log-embedded frames are downscaled to 360 px, so the two layout
+defects were only visible after magnifying the corners:
 
-### Frames inspected
-
-Pulled out of the `.xcresult` bundles by name (the attachment table maps names
-to payloads) and **looked at**:
-
-- `KEY-AE048-A-map-home-on-arrival` — the game opens on the world. The map is
-  ~62 % of the viewport; Arlanda is the ember home marker with the dashed
-  opportunity arcs radiating from it; four tabs (Home ·globe·, Airline,
-  Finance, World) and no Map tab; the briefing strip reads
-  **"$60.0M cash · 0 in the air · 0 routes · 0 aircraft"** over
-  **"Get an aircraft — Open the aircraft market — leasing keeps cash free early
-  on."** Layers 1, 2 and 4 of the brief, in one frame.
-- `KEY-AE048-B2-briefing-over-the-world` — the briefing sheet, light mode. The
-  close chevron, the speed capsule and the gear all fit the bar; the header,
-  the five-step checklist, the pulse strip, all six stat tiles and the
-  operations feed are present and correctly laid out. Nothing was lost.
-- `KEY-AE048-C-market-opened-from-the-map` — pressing the next-move row opened
-  the aircraft market. The first interaction of the game happens on the map.
-- `KEY-LEASE-ATTEMPT-1` — see below. It is the frame that settled the phase's
-  most important question and the test's own diagnosis at once.
-- iPad `90-aircraft-detail`, `91-route-detail`, `92-settings` — the sidebar
-  carries exactly four rows, Home first with the globe; Settings renders.
+- **A — the game opens on the world.** Map ~62 % of the viewport; Arlanda the
+  ember home marker with the dashed opportunity arcs radiating from it; four
+  tabs, no Map tab; the strip reads `$60.0M cash · 0 in the air · 0 routes ·
+  0 aircraft` over `Get an aircraft — Open the aircraft market`.
+- **C** — the next-move row opened the aircraft market. The first interaction
+  of the game happens on the map.
+- **D, E** — the route sheet and the route's own detail, both reached from the
+  map's row.
+- **G — the one-occupant rule, photographed.** Billund selected with its card
+  (small · 0% slots · 0 your routes · 0 rivals), a live aircraft drawn on the
+  ARN–LHR arc, and **the briefing strip gone** while the card holds the region.
+- **H — and back.** Selection released, the strip returns as `$59.4M · 1 in the
+  air · 1 route · 1 aircraft`, and the move has advanced to *"ARN → CDG is
+  open — Paris · about 1084 passengers a day, and it pays for its aircraft."*
+  The whole derivation chain, in the player's words, on the world.
+- **Dark** — the briefing on dark surfaces with legible secondary text and no
+  stranded light panels; the map is fixed near-black in both appearances by
+  design, so light and dark home frames are the same image, which is correct.
+- **Dynamic Type (AccessibilityL)** — run 172 showed the speed control off
+  screen and the action text clipped mid-word; run 173 shows the bar stacked
+  with every speed control on screen, the zoom cluster whole, two facts
+  instead of four, and the text wrapping.
+- **iPad** — four sidebar rows, Home first with the globe; and the Settings
+  frame showing a **back chevron beside the title with the map behind**, which
+  is what a push inside the briefing looks like and what a replaced sheet did
+  not.
 
 ### Defects found by looking, and fixed
 
-1. **The top bar wrapped the date onto two lines.** Mine, introduced by this
-   phase: putting the cash beside the clock widened that column past what the
-   capsule had spare, so `2030-01-01` broke as "2030-" / "01-01" and the bar
-   went from one line to four. Both frames A and the lease frame show it.
-   **Fixed** by taking the cash back out — it is already on the briefing strip,
-   bigger and labelled, so this was a second copy that cost a wrapped date —
-   and by pinning the date to one line so nothing can wrap it again.
-2. **`leaseAnAircraft` reported a failure over a success.** The helper proves a
-   lease by waiting for the market to close *and* for a row on the fleet board
-   behind it. Opened from the map there is no fleet board behind it. The frame
-   it saved as `LEASE-ATTEMPT-1` shows cash $60.0M → $59.2M, **1 aircraft** on
-   the strip, and the next move already advanced to "Open your first route"
-   with ARN → LHR (≈1,117/day) and ARN → CDG (≈987/day) offered over the arcs
-   that are them. The product did exactly what the phase claims; the harness
-   asked the wrong surface. **Fixed** with a `LeaseProof` the caller chooses;
-   the map's proof reads the fleet count out of the briefing strip's
-   accessibility value, which is `FleetSummary` read back.
-3. **Settings, raised from inside the briefing, replaced it on iPad.** The
-   frame shows the Settings form sheet over the *map*, with the briefing gone —
-   a sheet from a sheet does not stack at regular width. **Fixed** by making
-   Settings a push inside the briefing's own navigation stack, which keeps one
-   modal level and returns the player to the briefing rather than to the map.
-   The destination table moved out of the stat grid at the same time, because
-   registered there it was inert whenever the briefing had no snapshot yet —
-   BUG-029's family.
-4. **The iPad Settings assertion waited for a control below the fold.** The
-   frame shows Settings rendered correctly with "Mute everything" just past the
-   bottom edge of the form sheet. **Fixed** by scrolling to it, which is the
-   stronger claim: it proves the list scrolls as well as that it drew.
-5. **Two surfaces I had missed when moving Home.** `testNewYorkAdviceIsWorth-
-   Following` looked for the recommendation by `label CONTAINS "→"` and my
-   hand-written accessibility label said "ARN to LHR" — the advice was on
-   screen and unfindable. `HorizonArrivalUITests` read the rival-entry headline
-   on Home, which is now in the briefing. Both **fixed**; the first was caught
-   by reading the code before CI reached it, the second by CI.
+1. **BUG-063** — cash beside the clock wrapped the date onto two lines and made
+   a one-line bar four. Cash removed (the strip already carries it).
+2. **BUG-065** — the fix for BUG-063 used `fixedSize(horizontal: true)`, which
+   made the row's ideal width unsatisfiable: the capsule laid out past its own
+   margin and the `Spacer()` below pushed `MapZoomControls` half off the right
+   edge. That cluster is the only way to zoom without a pinch, so this was an
+   accessibility failure. Now `lineLimit(1)` + `minimumScaleFactor`, a stacked
+   bar at accessibility sizes, and a two-fact strip there.
+3. **BUG-064** — Settings raised from inside the briefing *replaced* it on
+   iPad. Now a push; the `DashboardRoute` table also moved off the stat grid,
+   where it was inert before a snapshot landed.
+4. **Four harness assumptions** that moved with Home: a lease proved against a
+   fleet board that is not behind the map's sheet; a recommendation matched by
+   `label CONTAINS "→"` against a label that said "to"; the rival headline and
+   the era read on a Home that is now the briefing; a Settings toggle waited
+   for below a form sheet's fold.
+5. **Two harness regressions of my own**: `firstMatch` (which resolves without
+   waiting) on a control tapped hundreds of times, and a week-advance loop that
+   fired a precomputed count blind.
 
-### Not caused by this phase
+### What is still not validated
 
-`testAcquireAircraftThenOpenARoute` died on "Timed out while launching
-application via Xcode" — the runner never got the app up. That is TD-037's
-class and is recorded, not fixed here.
-
-### What the run did not answer
-
-Dark mode, Dynamic Type, the follow camera and the performance probe are in the
-campaign and shell+map shards, which had not finished. Frames E–J of the AE-048
-journey were never reached, because it stopped at the lease. Both wait on the
-redispatch.
-
----
+**The follow camera.** Four attempts, never once reached. AE-046 recorded it
+NOT VERIFIED and nothing since has changed that: run 171 and 172 skipped
+before an aircraft was airborne, run 173 got one and held it still but the
+seven blind taps missed. Run 176 carries a steered grid sweep. **Until a frame
+shows the camera locked on, this phase claims nothing about it** — the plumbing
+is AE-046's and untouched, the control is on the card, and neither of those is
+the same as having seen it work.
 
 ## 14. Remaining issues
 
-1. **The era and the reputation are not on the world.** Both are one tap away
-   on the briefing; neither is on the map surface. `TD-039`.
-2. **Two journeys now present a sheet from inside a sheet** (the guided route
-   sheet over the briefing). It is what a player following that advice does,
-   and it is one nesting level neither journey had. `TD-039`.
-3. **Settings is two taps from the world**, where it was one from Home.
-   `TD-039`.
-4. **BUG-061 is still open.** "Advance to next morning" lands on 00:00, so
-   every journey frame taken after a sunrise photographs the world at local
-   midnight — which for a phase about a living map is exactly the wrong
-   picture. It was not fixed here: `GameSession` has no catalog, so reaching
+1. **The follow camera has never been exercised by any run.** Not a defect
+   found — a claim not made. §13 says why and what run 176 tries. It is the
+   single item that keeps this phase from a clean classification.
+2. **`testNewYorkAdviceIsWorthFollowing`'s year-long advance.** Green at run
+   135, short of March 2031 in runs 172 and 173 at the same ~328 s. The rest
+   of that journey — including every step AE-048 touched — passes. Run 176
+   carries the progress-verifying advance. **Not attributed to AE-048**: the
+   equivalent short advance broke and was fixed by the same harness change,
+   and the app-side behaviour under it is a fast-forward that this phase did
+   not alter.
+3. **The era and the reputation are not on the world.** One tap away on the
+   briefing. `TD-039`.
+4. **Settings is two taps from the world**, where it was one. `TD-039`.
+5. **BUG-061 is still open** — "Advance to next morning" lands on 00:00, so
+   every journey frame taken after a sunrise photographs local midnight. Not
+   fixed here: `GameSession` has no catalog, so reaching
    `OpsTuning.operatingDayStartMinute` means changing Core's session API under
-   ~1,800 sunrise taps this branch cannot run. `MapHomeUITests` works around it
-   by reaching its later-state frames at 16× rather than by sunrise.
-5. **iPad is partly verified.** The shell journey passed at regular width and
-   its frames were inspected; the detail/Settings journey found BUG-064, now
-   fixed. What has *not* been seen on iPad is the AE-048 journey itself.
+   ~1,800 sunrise taps. The AE-048 journey reaches its later frames at 16×
+   instead, which is why frames G and H show 07:45 rather than midnight.
 6. **VoiceOver was not run.** §9 says what was written and what that does not
    prove.
-7. **No performance number was measured.** §11.
-
----
+7. **The performance comparison is not a clean A/B.** §11.
 
 ## 15. Bugs and tech debt
 
