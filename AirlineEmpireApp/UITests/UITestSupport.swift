@@ -938,10 +938,20 @@ class AEUITestCase: XCTestCase {
     /// labelled "Advance to next morning" in the tree (iOS usually hides the
     /// presenter behind a full-height sheet, but "usually" is not a contract,
     /// and `app.buttons[label]` raises on multiple matches rather than
-    /// picking one). Every journey taps this hundreds of times; none of them
-    /// should be able to die on an ambiguity.
+    /// picking one).
+    ///
+    /// **`element(boundBy: 0)`, not `firstMatch`.** The first version of this
+    /// used `firstMatch`, whose whole purpose is to resolve without waiting
+    /// for the query — and this control is tapped in tight loops of tens to
+    /// hundreds of taps while the app simulates a game day per tap. Run 172
+    /// lost both long journeys to advances that ran to their cap without
+    /// arriving: the New York journey could not reach March 2031 and the
+    /// Munich one could not reach April 3, both having been green at run 135.
+    /// Indexing waits for the query the way a plain subscript does, and keeps
+    /// the ambiguity safety the subscript lacks.
     private func labelledButton(_ label: String) -> XCUIElement {
-        app.buttons.matching(NSPredicate(format: "label == %@", label)).firstMatch
+        app.buttons.matching(NSPredicate(format: "label == %@", label))
+            .element(boundBy: 0)
     }
 
     @discardableResult

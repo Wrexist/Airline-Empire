@@ -159,6 +159,13 @@ final class MapHomeUITests: AEUITestCase {
         checkpoint("AE048-F0-map-with-the-network-running")
 
         if airborne() > 0 {
+            // Stop the clock first: at 16x an aeroplane crosses its own width
+            // between the snapshot a tap is aimed from and the tap landing,
+            // which is why this spiral has never hit one. Paused, the flight
+            // holds position and the card still offers Follow.
+            let pause = app.buttons["Pause"]
+            if pause.waitForExistence(timeout: 5) { pause.tap() }
+            Thread.sleep(forTimeInterval: 1)
             // The map's own row offers the ride once nothing needs doing;
             // whether it does depends on the state the clock produced, so
             // the durable path is the one AE-046 built: select, then follow.
@@ -200,13 +207,13 @@ final class MapHomeUITests: AEUITestCase {
 
         // ── FRAME G · something in the world, selected on the home map ─────
         //
-        // Stop the clock first: a moving target is what makes the aircraft
-        // spiral above a coin toss, and this leg is about the *panel*, not
-        // about hitting a particular kind of object. An airport or the route
-        // between them both count — the claim is that the world answers a tap
-        // and the briefing gets out of the way while it does.
+        // The clock is already stopped by the follow leg above; stop it here
+        // too for the path where that leg was skipped. This leg is about the
+        // *panel*, not about hitting a particular kind of object — an airport
+        // or the route between them both count. The claim is that the world
+        // answers a tap and the briefing gets out of the way while it does.
         let paused = app.buttons["Pause"]
-        if paused.waitForExistence(timeout: 5) { paused.tap() }
+        if paused.exists, paused.isHittable { paused.tap() }
         let frameNetwork = app.buttons["Frame my network"]
         if frameNetwork.exists { frameNetwork.tap() }
         Thread.sleep(forTimeInterval: 1)

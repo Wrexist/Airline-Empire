@@ -111,9 +111,18 @@ struct MapHomeBriefing: View {
         var tint: Color = .white
     }
 
-    /// Four, and only four. Cash because it decides everything; aircraft in
-    /// the air because it is the one number that is alive; the fleet and the
-    /// network because they are the shape of what the map is drawing.
+    /// Four, and only four — two at accessibility sizes.
+    ///
+    /// Cash because it decides everything; aircraft in the air because it is
+    /// the one number that is alive; the fleet and the network because they
+    /// are the shape of what the map is drawing.
+    ///
+    /// The accessibility cap is not a nicety. These stack vertically at those
+    /// sizes, and run 172's AccessibilityL frame showed four of them taking a
+    /// third of the screen with the top bar taking another — the world, on the
+    /// screen whose whole point is the world, was a band a centimetre high.
+    /// Two facts is the most this strip can spend there; the other two are on
+    /// the briefing behind it, where there is room to read them.
     private var facts: [Fact] {
         var result: [Fact] = []
         if let dashboard = controller.dashboard {
@@ -133,7 +142,7 @@ struct MapHomeBriefing: View {
                                value: "\(fleet.total)",
                                tint: fleet.idle > 0 ? AETheme.caution : .white))
         }
-        return result
+        return typeSize.isAccessibilitySize ? Array(result.prefix(2)) : result
     }
 
     private func fact(_ fact: Fact) -> some View {

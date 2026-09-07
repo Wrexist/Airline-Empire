@@ -14,43 +14,51 @@ import AirlineEmpireCore
 /// a live disruption.
 struct MapTopBar: View {
     @Environment(GameController.self) private var controller
+    @Environment(\.dynamicTypeSize) private var typeSize
     let model: MapModel
     let snapshot: GameState
 
     var body: some View {
         VStack(spacing: AETheme.spacingS) {
-            HStack(spacing: AETheme.spacingS) {
-                // Date over clock, and nothing else.
-                //
-                // AE-048 briefly put the cash here as well, and the CI frames
-                // showed what that cost: "$60.0M" beside "00:00" widened this
-                // column past what the capsule had spare, so the *date* broke
-                // across two lines — "2030-" / "01-01" — and the top bar went
-                // from one line to four. The money already has a place, one
-                // that is bigger, legible and labelled: the briefing strip at
-                // the foot of the map. Two copies bought a wrapped date.
-                //
-                // `lineLimit(1)` and `fixedSize` so it can never wrap again,
-                // whatever is put beside it.
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(Format.date(snapshot.currentDate))
-                        .font(.subheadline.weight(.semibold))
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                        .contentTransition(.numericText())
-                        .aeAnimation(AEMotion.content, value: snapshot.currentDate.day)
-                    Text(Format.clock(snapshot.currentDate))
-                        .font(.caption2.monospacedDigit())
-                        .foregroundStyle(.white.opacity(0.55))
-                        .lineLimit(1)
+            // Beside the speed control at reading sizes; above it at
+            // accessibility sizes, where the two together are wider than any
+            // phone.
+            //
+            // Both halves of this are things CI photographed rather than
+            // things anybody reasoned out. AE-048 first put the cash on the
+            // clock line, and run 171's frames showed the *date* wrapping to
+            // "2030-" / "01-01" — a one-line bar became four (BUG-063). The
+            // cash came out and the date was pinned with `fixedSize`, and run
+            // 172's frames showed what *that* cost: a date that refuses to
+            // compress makes this row wider than the screen, so the capsule
+            // ran past its own margin and the `Spacer()` in the row below
+            // pushed `MapZoomControls` — the only way to zoom without a pinch,
+            // and therefore an accessibility control — clean off the right
+            // edge (BUG-065). At AccessibilityL the same overflow put the
+            // whole speed control off-screen.
+            //
+            // So: never wrap, never force a width. The date shrinks a little
+            // before it does either, and at accessibility sizes the row stops
+            // being a row.
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                    clock
+                    SpeedControl()
                 }
-                Spacer(minLength: AETheme.spacingS)
-                SpeedControl()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, AETheme.spacingM)
+                .padding(.vertical, AETheme.spacingS)
+                .aeGlass(in: AETheme.cardShape)
+            } else {
+                HStack(spacing: AETheme.spacingS) {
+                    clock
+                    Spacer(minLength: AETheme.spacingS)
+                    SpeedControl()
+                }
+                .padding(.horizontal, AETheme.spacingM)
+                .padding(.vertical, AETheme.spacingS)
+                .aeGlass(in: Capsule(style: .continuous))
             }
-            .padding(.horizontal, AETheme.spacingM)
-            .padding(.vertical, AETheme.spacingS)
-            .aeGlass(in: Capsule(style: .continuous))
 
             if let banner = worldBanner {
                 HStack(spacing: AETheme.spacingXS) {
@@ -72,6 +80,25 @@ struct MapTopBar: View {
             }
         }
         .aeAnimation(AEMotion.content, value: worldBanner?.text ?? "")
+    }
+
+    /// The date over the clock. One line each, and allowed to shrink a little
+    /// rather than wrap or force the row wider than the screen.
+    private var clock: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(Format.date(snapshot.currentDate))
+                .font(.subheadline.weight(.semibold))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .contentTransition(.numericText())
+                .aeAnimation(AEMotion.content, value: snapshot.currentDate.day)
+            Text(Format.clock(snapshot.currentDate))
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.white.opacity(0.55))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
     }
 
     private struct Banner {

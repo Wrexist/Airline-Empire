@@ -371,11 +371,19 @@ final class ShellAndMapUITests: AEUITestCase {
         let fast = app.buttons["Sixteen times speed"]
         if fast.waitForExistence(timeout: 5) { fast.tap() }
         var waited = 0
-        while airborne() == 0 && waited < 40 {
+        var seen = 0
+        while seen == 0 && waited < 40 {
             Thread.sleep(forTimeInterval: 1)
             waited += 1
+            seen = airborne()
         }
-        guard airborne() > 0 else {
+        // Read once and keep it. The first version asked `airborne()` in the
+        // loop condition and *again* in the guard below, and run 172 skipped
+        // on the pair disagreeing — "no aircraft reached the air within 19
+        // seconds" after the loop had already exited because one had. A
+        // flight that lands between two accessibility queries is a race in
+        // the test, not a fact about the camera.
+        guard seen > 0 else {
             checkpoint("76-NO-FLIGHT-TO-FOLLOW")
             throw XCTSkip("""
                 No aircraft reached the air within \(waited) seconds at 16×, \
@@ -385,8 +393,21 @@ final class ShellAndMapUITests: AEUITestCase {
                 """)
         }
 
+        // Stop the clock before aiming.
+        //
+        // This spiral has never once hit an aircraft — AE-046 recorded the
+        // camera NOT VERIFIED, and runs 171 and 172 both skipped here. It was
+        // tapping at 16×, where an aeroplane crosses its own width several
+        // times between the snapshot the tap is aimed from and the tap
+        // landing. Paused, the flight holds position, `MapFlightCard` still
+        // offers Follow (`flight.airborne || isFollowing`), and the target
+        // stops moving out from under the finger.
+        let pause = app.buttons["Pause"]
+        if pause.waitForExistence(timeout: 5) { pause.tap() }
+        Thread.sleep(forTimeInterval: 1)
+
         // Zoom in so the aircraft is a target a synthetic tap can hit, then
-        // walk a small spiral: an aircraft is a few points wide and moving.
+        // walk a small spiral: an aircraft is a few points wide.
         let zoomIn = app.buttons["Zoom in"]
         if zoomIn.waitForExistence(timeout: 5) { for _ in 0..<3 { zoomIn.tap() } }
         let follow = app.buttons["ae-map-follow"]

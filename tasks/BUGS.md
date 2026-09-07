@@ -1895,3 +1895,33 @@ snapshot had landed, and a `NavigationLink(value:)` with no destination is
 silently inert (BUG-029's family).
 **Status:** FIXED in AE-048.
 
+---
+
+## BUG-065 — pinning the date pushed the map's zoom controls off the screen
+**Severity:** P1. The zoom cluster is "the only way this map is reachable for
+anyone who cannot make that gesture" (`MapChrome`), so losing it is an
+accessibility failure, not a cosmetic one · **Phase found:** AE-048 closure
+pass, 2026-09-07, in CI run 172's frames.
+**Repro:** Open the game on a phone. The top-bar capsule runs past its own
+margin to the screen edge, and the +/−/frame column below it is half off the
+right edge. At AccessibilityL the whole speed control is off-screen and the
+next-move row's text is clipped mid-word ("leas" for "leasing").
+**Root cause:** the fix for BUG-063. Taking the cash out of the top bar stopped
+the date wrapping; `fixedSize(horizontal: true)` was added on top of that to
+guarantee it could never wrap again. A view that refuses to compress makes its
+row's ideal width unsatisfiable, so the `HStack` overflows the screen, the
+capsule is laid out wider than its padding allows, and the `Spacer()` in the
+row *below* pushes `MapZoomControls` out to that overflowed trailing edge.
+One frame fixed, the next frame broken — and the second break was worse.
+**Why it was found:** only because run 172's frames were magnified. At the
+360-pixel scale the log embeds, the clipped column reads as a shadow.
+**Fix:** never wrap *and* never force a width — `lineLimit(1)` with
+`minimumScaleFactor(0.75)`, so the date shrinks slightly before it does
+either. And at accessibility sizes the top bar stops being a row: the date
+stacks above the speed control, which is the same two-layout pattern
+`BriefingView`'s header already uses. The briefing strip caps itself at two
+facts there for the same reason — four stacked facts plus an overflowing top
+bar had left the world a band a centimetre high on the screen whose entire
+point is the world.
+**Status:** FIXED in the AE-048 closure pass. Verified by eye on the re-run.
+
