@@ -147,6 +147,7 @@ extension GameState {
                 origin: originSpec, destination: destinationSpec, distanceKm: distanceKm,
                 spec: spec, fareRatio: 1.0, serviceTier: .standard,
                 reputationMultiplier: reputation, incumbents: incumbents,
+                rotationsPerDay: PlayerRouteDefaults.dailyRoundTrips,
                 state: self, catalog: catalog, basis: .profit).value
             let monthly = perDay * 30 - spec.leaseMonthly.asDouble - payroll
             if best == nil || monthly > best!.monthly { best = (spec, monthly) }

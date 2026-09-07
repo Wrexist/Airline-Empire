@@ -154,7 +154,7 @@ final class EconomyJourneyUITests: AEUITestCase {
 
         // ── A month passes ─────────────────────────────────────────────────
         openTab("Home")
-        let sunrise = app.buttons["Advance to next morning"]
+        let sunrise = app.buttons["Advance to next day"]
         require(sunrise, "the advance-to-morning control")
         // The header prints the date as 2030-01-01; February appearing is
         // the proof the boundary was crossed. Polled by prefix so the exact

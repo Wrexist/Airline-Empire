@@ -2,30 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <!--
-    Apple's privacy manifest. Required for App Store submission, and this one
-    is short because the app genuinely does nothing that needs declaring.
-
-    Every entry below was derived from the code rather than copied from a
-    template:
-
-    · NSPrivacyTracking = false, NSPrivacyTrackingDomains empty — there is no
-      network code anywhere in AirlineEmpireApp or AirlineEmpireCore. Audited
-      by enumeration, twice (docs/APPLE_VALIDATION.md §6).
-
-    · NSPrivacyCollectedDataTypes empty — no analytics, no crash reporter, no
-      third-party SDK, no account, no user-entered data that leaves the device.
-
-    · NSPrivacyAccessedAPITypes empty — the required-reason API list covers
-      file timestamps, disk space, system boot time, active keyboards and
-      UserDefaults. The app touches none of them: SaveStore uses
-      FileManager create/write/rename/remove and reads no timestamps, and
-      there is no UserDefaults or @AppStorage use in the app target.
-
-    If any of those three facts ever stops being true, this file changes in
-    the same commit. A stale privacy manifest is a rejection at best and a
-    false statement to users at worst.
-  -->
+  <!-- Preferences and paywall history are private app UserDefaults.
+       StoreKit handles purchases; no developer tracking or analytics SDKs. -->
   <key>NSPrivacyTracking</key>
   <false/>
   <key>NSPrivacyTrackingDomains</key>
@@ -33,6 +11,13 @@
   <key>NSPrivacyCollectedDataTypes</key>
   <array/>
   <key>NSPrivacyAccessedAPITypes</key>
-  <array/>
+  <array>
+    <dict>
+      <key>NSPrivacyAccessedAPIType</key>
+      <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+      <key>NSPrivacyAccessedAPITypeReasons</key>
+      <array><string>CA92.1</string></array>
+    </dict>
+  </array>
 </dict>
 </plist>

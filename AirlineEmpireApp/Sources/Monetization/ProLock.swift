@@ -1,14 +1,7 @@
 import SwiftUI
 import AirlineEmpireCore
 
-/// The bar that appears when an airline outgrows what the player has bought.
-///
-/// It is a bar and not a modal, and the difference is the whole point. The
-/// airline is intact: every screen still reads, every command still works,
-/// the ledger is still there. What stopped is time, and the bar says exactly
-/// that — no countdown, no dark overlay, no "your progress is at risk". A
-/// player who declines here still has a game to look at, which is the
-/// difference between a wall and a hostage situation.
+/// Offers further expansion while the current airline keeps operating.
 struct EraCeilingBar: View {
     @Environment(GameController.self) private var controller
     @Environment(Entitlements.self) private var entitlements
@@ -25,8 +18,8 @@ struct EraCeilingBar: View {
                     .font(AEType.sectionTitle)
                 Spacer(minLength: 0)
             }
-            Text("Your airline earned it — the clock is what needs Pro. "
-                 + "Everything you have built is still here and still saved.")
+            Text("Keep flying your airline for free. Pro unlocks further "
+                 + "expansion, new aircraft classes and the whole world.")
                 .font(AEType.secondary)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -35,7 +28,7 @@ struct EraCeilingBar: View {
                 entitlements.present(.eraCeiling)
             } label: {
                 Text(entitlements.displayPrice(.weekly) == nil
-                     ? "See Pro" : "Continue with Pro")
+                     ? "See Pro" : "Expand with Pro")
                     .frame(maxWidth: typeSize.isAccessibilitySize ? .infinity : nil)
             }
             .buttonStyle(.aePrimary)
@@ -144,6 +137,8 @@ struct ProSection: View {
                 }
             }
 
+            PurchaseFeedback()
+
             Button("Terms of Use") { openURL(PaywallContent.termsURL) }
             Button("Privacy Policy") { openURL(PaywallContent.privacyURL) }
         }
@@ -175,7 +170,7 @@ struct ProSection: View {
         }
         if entitlement.isInBillingRetry {
             return "A renewal payment did not go through. Your game is still "
-                + "unlocked while Apple retries."
+                + "unlocked until the billing grace period ends."
         }
         guard let expires = entitlement.expiresAt else { return "Active." }
         let date = expires.formatted(date: .abbreviated, time: .omitted)

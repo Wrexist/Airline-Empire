@@ -8,6 +8,7 @@ public final class SimulationEngine {
     public private(set) var state: GameState
     public let systems: [any SimulationSystem]
     public let catalog: ContentCatalog
+    public var progressionCeiling: Era = .empire
 
     /// Commands submitted since the last tick boundary, in submission order.
     private var pendingCommands: [any Command] = []
@@ -40,7 +41,7 @@ public final class SimulationEngine {
     public func applyNow(_ command: any Command) -> CommandResult {
         let context = SimContext(previous: state.clock.now, current: state.clock.now,
                                  tick: SimDuration(minutes: 0), catalog: catalog,
-                                 events: collector)
+                                 events: collector, progressionCeiling: progressionCeiling)
         let result = process(command, context: context)
         state.eventLog.append(contentsOf: collector.drain())
         return result
@@ -58,7 +59,8 @@ public final class SimulationEngine {
             state.clock.now += tick
             state.clock.tickCount += 1
             let context = SimContext(previous: previous, current: state.clock.now,
-                                     tick: tick, catalog: catalog, events: collector)
+                                     tick: tick, catalog: catalog, events: collector,
+                                     progressionCeiling: progressionCeiling)
 
             // 1. Drain commands queued before this boundary.
             if !pendingCommands.isEmpty {
@@ -115,6 +117,10 @@ public final class SimulationEngine {
     }
 
     private func process(_ command: any Command, context: SimContext) -> CommandResult {
+        if let rejection = ExpansionAccess.rejection(for: command, state: state,
+                                                      catalog: catalog, ceiling: progressionCeiling) {
+            return .rejected(rejection)
+        }
         if let rejection = command.validate(state: state, catalog: catalog) {
             return .rejected(rejection)
         }

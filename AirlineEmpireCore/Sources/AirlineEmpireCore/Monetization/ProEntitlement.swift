@@ -25,12 +25,11 @@ public struct ProEntitlement: Equatable, Sendable, Codable {
     /// free (nothing to lapse) or they own Lifetime.
     public let expiresAt: Date?
 
-    /// Apple is still trying to collect a renewal (billing retry / grace
-    /// period). Access is deliberately *kept* here: the player has not
-    /// cancelled, their card has failed, and locking them out of a campaign
-    /// mid-run over a bank decline is how a recoverable payment becomes a
-    /// one-star review.
+    /// A renewal needs payment attention. Informational only: the verified
+    /// grace deadline controls any extension of access.
     public let isInBillingRetry: Bool
+    /// Only a verified Apple grace period extends access beyond expiry.
+    public let gracePeriodExpiresAt: Date?
 
     /// The subscription is set not to renew. Access continues to `expiresAt`;
     /// this is only so the UI can say so plainly rather than letting the
@@ -38,11 +37,13 @@ public struct ProEntitlement: Equatable, Sendable, Codable {
     public let willRenew: Bool
 
     public init(grantedBy: ProProduct?, expiresAt: Date? = nil,
-                isInBillingRetry: Bool = false, willRenew: Bool = true) {
+                isInBillingRetry: Bool = false, willRenew: Bool = true,
+                gracePeriodExpiresAt: Date? = nil) {
         self.grantedBy = grantedBy
         self.expiresAt = expiresAt
         self.isInBillingRetry = isInBillingRetry
         self.willRenew = willRenew
+        self.gracePeriodExpiresAt = gracePeriodExpiresAt
     }
 
     /// No purchase. The starting state, and the state a save is played in
@@ -60,9 +61,9 @@ public struct ProEntitlement: Equatable, Sendable, Codable {
     /// test cannot wait a week.
     public func isPro(asOf now: Date = Date()) -> Bool {
         guard grantedBy != nil else { return false }
-        guard let expiresAt else { return true }
-        // Billing retry outlives the expiry date by design; see the property.
-        return now < expiresAt || isInBillingRetry
+        if grantedBy == .lifetime { return true }
+        return expiresAt.map { now < $0 } == true
+            || gracePeriodExpiresAt.map { now < $0 } == true
     }
 
     /// The access rules this entitlement resolves to.

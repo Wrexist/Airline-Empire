@@ -1,0 +1,53 @@
+name: Launch safety
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: launch-safety-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    container: swift:6.0.3-jammy
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Save, access and entitlement regression tests
+        working-directory: AirlineEmpireCore
+        run: swift test -c release --filter 'LaunchReadinessTests|SaveStoreTests|SessionAutosaveTests|MonetizationTests'
+      - name: Release source checks
+        run: python3 scripts/check-release-readiness.py
+  app:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Generate project
+        working-directory: AirlineEmpireApp
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Select iPhone simulator
+        id: sim
+        run: |
+          DEVICE=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; print(next(d["udid"] for r,ds in json.load(sys.stdin)["devices"].items() if "iOS" in r for d in ds if d.get("isAvailable") and d["name"].startswith("iPhone")))')
+          echo "id=$DEVICE" >> "$GITHUB_OUTPUT"
+      - name: App save safety and real StoreKit tests
+        working-directory: AirlineEmpireApp
+        run: |
+          xcodebuild test -project AirlineEmpire.xcodeproj -scheme AirlineEmpire \
+            -destination 'platform=iOS Simulator,id=${{ steps.sim.outputs.id }}' \
+            -parallel-testing-enabled NO -only-testing:AirlineEmpireTests \
+            CODE_SIGNING_ALLOWED=NO -resultBundlePath LaunchSafety.xcresult
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: launch-safety-results
+          path: AirlineEmpireApp/LaunchSafety.xcresult

@@ -47,6 +47,7 @@ public struct ProgressionSystem: SimulationSystem {
     private func advanceEra(player: Airline, state: inout GameState,
                             context: SimContext, tuning: ProgressionTuning) {
         guard let next = EraGate.next(after: state.progression.era),
+              next <= context.progressionCeiling,
               EraGate.isPassed(next, player: player, state: state,
                                catalog: context.catalog, tuning: tuning)
         else { return }

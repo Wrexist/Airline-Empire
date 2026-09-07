@@ -67,6 +67,7 @@ struct AirlineEmpireApp: App {
                         controller.feedback.applicationDidEnterBackground()
                     } else if phase == .active {
                         controller.feedback.applicationWillEnterForeground()
+                        Task { await entitlements.refreshEntitlement() }
                         // The only unprompted paywall after the first run,
                         // and it is bounded by the policy rather than by this
                         // call site (docs/MONETIZATION.md §6). The one thing
@@ -74,7 +75,9 @@ struct AirlineEmpireApp: App {
                         // `initial: true` above means this also runs on a
                         // cold launch, and a paywall over the new-game menu
                         // is an ad, not an offer.
-                        if controller.hasGame { entitlements.nudgeIfDue() }
+                        if controller.snapshot?.progression.milestones.contains("firstFlight") == true {
+                            entitlements.nudgeIfDue()
+                        }
                     }
                     controller.setPumping(phase == .active)
                 }

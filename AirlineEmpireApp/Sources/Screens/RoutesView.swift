@@ -840,7 +840,7 @@ struct OpenRouteSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var origin: AirportCode?
     @State private var destination: AirportCode?
-    @State private var trips = 2
+    @State private var trips = PlayerRouteDefaults.dailyRoundTrips
     @State private var fare: Double = 0
     @State private var fareTouched = false
     @State private var search = ""

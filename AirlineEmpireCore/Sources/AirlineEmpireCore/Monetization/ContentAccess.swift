@@ -109,7 +109,7 @@ public struct ContentAccess: Equatable, Sendable {
     /// explanation, and no aircraft that is visible-but-purchasable-for-cash.
     public func allowsAircraftCategory(_ category: AircraftCategory,
                                        in era: Era) -> Bool {
-        era.allowedCategories.contains(category)
+        min(era, eraCeiling).allowedCategories.contains(category)
     }
 
     /// The aircraft classes this tier can ever reach, at any era.

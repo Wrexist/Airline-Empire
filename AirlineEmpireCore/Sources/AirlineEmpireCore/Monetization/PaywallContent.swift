@@ -179,7 +179,7 @@ public enum PaywallContent {
     /// Apple requires functional links to both, in the app, on the screen
     /// that sells the subscription. Missing either is guideline 3.1.2.
     public static let termsURL =
-        URL(string: "https://wrexist.github.io/airline-empire/terms")!
+        URL(string: "https://wrexist.github.io/Airline-Empire/terms.html")!
     public static let privacyURL =
-        URL(string: "https://wrexist.github.io/airline-empire/privacy")!
+        URL(string: "https://wrexist.github.io/Airline-Empire/privacy.html")!
 }

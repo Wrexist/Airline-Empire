@@ -105,13 +105,9 @@ struct RootView: View {
         // offered is a purchase that silently fails to happen
         // (docs/MONETIZATION.md §6).
         .aePaywall()
-        // The once-only first-run offer, made when the player arrives in the
-        // game rather than before they reach it. By this point they have
-        // named an airline, chosen a livery and picked a home — the offer
-        // lands on something begun, and declining it leads into a real game
-        // instead of back to an empty menu (docs/MONETIZATION.md §6).
-        .onChange(of: state) { previous, current in
-            guard previous == .newGame, current == .playing else { return }
+        // Let the player complete a real flight before making an offer.
+        .onChange(of: controller.snapshot?.progression.milestones.contains("firstFlight") == true) { _, completed in
+            guard completed else { return }
             entitlements.offerOnFirstRunIfDue()
         }
     }

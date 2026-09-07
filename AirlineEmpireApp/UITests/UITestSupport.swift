@@ -23,6 +23,7 @@ class AEUITestCase: XCTestCase {
         super.setUp()
         continueAfterFailure = false
         app = XCUIApplication()
+        if usesProFixture { app.launchArguments.append("-AEUITestPro") }
         // The week control beside the sunrise, for the journeys only: the
         // two long journeys tapped the sunrise ninety and a hundred and ten
         // times, at several seconds of simulator settling each, and run
@@ -38,6 +39,7 @@ class AEUITestCase: XCTestCase {
     /// Whether this class wants the journeys' week control on screen.
     /// `PerformanceBaselineUITests` says no — see `setUp`.
     var wantsSunriseWeek: Bool { true }
+    var usesProFixture: Bool { true }
 
     override func tearDown() {
         app = nil
@@ -935,7 +937,7 @@ class AEUITestCase: XCTestCase {
     ///
     /// AE-048 made the briefing a sheet over the map, and both surfaces carry
     /// a `SpeedControl` — so with the briefing up there can be two buttons
-    /// labelled "Advance to next morning" in the tree (iOS usually hides the
+    /// labelled "Advance to next day" in the tree (iOS usually hides the
     /// presenter behind a full-height sheet, but "usually" is not a contract,
     /// and `app.buttons[label]` raises on multiple matches rather than
     /// picking one).
@@ -957,7 +959,7 @@ class AEUITestCase: XCTestCase {
     @discardableResult
     func advanceMornings(until datePrefix: String, cap: Int = 35) -> Bool {
         openTabIfNeeded("Home")
-        let sunrise = labelledButton("Advance to next morning")
+        let sunrise = labelledButton("Advance to next day")
         guard sunrise.waitForExistence(timeout: 8) else { return false }
         let arrived = app.staticTexts.matching(NSPredicate(
             format: "label BEGINSWITH %@", datePrefix)).firstMatch
@@ -1079,7 +1081,7 @@ class AEUITestCase: XCTestCase {
         // control the map's does — so the whole loop runs inside it, and the
         // caller gets the tab bar back at the end.
         guard openBriefing() else { return false }
-        let sunrise = labelledButton("Advance to next morning")
+        let sunrise = labelledButton("Advance to next day")
         guard sunrise.waitForExistence(timeout: 8) else {
             closeBriefing()
             return false
@@ -1096,7 +1098,7 @@ class AEUITestCase: XCTestCase {
     }
 
     private func openTabIfNeeded(_ title: String) {
-        if labelledButton("Advance to next morning").exists { return }
+        if labelledButton("Advance to next day").exists { return }
         openTab(title)
     }
 

@@ -861,8 +861,8 @@ struct AircraftShopSheet: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var usedAge = 8
     @State private var leaseTermMonths = 60
-    @State private var sort: Sort = .seats
-    @State private var hidesLocked = false
+    @State private var sort: Sort = .price
+    @State private var hidesLocked = true
     /// Which way in is picked, per aircraft. Lives here because the picker
     /// and the commit button are separate List rows (see `ShopCommitButton`)
     /// that must see the same choice. Absent means the default, lease.
@@ -967,7 +967,7 @@ struct AircraftShopSheet: View {
     /// can actually act on.
     private func types(catalog: ContentCatalog,
                        snapshot: GameState) -> [AircraftTypeSpec] {
-        let allowed = snapshot.progression.era.allowedCategories
+        let allowed = min(snapshot.progression.era, controller.eraCeiling).allowedCategories
         let specs = catalog.orderedAircraftTypeCodes
             .compactMap { catalog.aircraftTypes[$0] }
             .filter { !hidesLocked || allowed.contains($0.category) }
@@ -1120,7 +1120,7 @@ struct AircraftShopSheet: View {
 
     private func locked(_ spec: AircraftTypeSpec,
                         snapshot: GameState) -> Bool {
-        !snapshot.progression.era.allowedCategories.contains(spec.category)
+        !min(snapshot.progression.era, controller.eraCeiling).allowedCategories.contains(spec.category)
     }
 
     /// The shared per-aircraft facts both deal rows read.

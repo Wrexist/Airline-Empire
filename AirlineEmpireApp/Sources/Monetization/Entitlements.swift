@@ -86,36 +86,19 @@ final class Entitlements {
 
     private let defaults: UserDefaults
     private var updatesTask: Task<Void, Never>?
+    private var expiryTask: Task<Void, Never>?
+    private var refreshGeneration = 0
 
-    /// Forces an entitlement without a transaction, for UI tests only.
-    ///
-    /// The same shape as the launch arguments `RootView` already uses for
-    /// dark appearance and the audio probe: a launch argument rather than a
-    /// build flag, so the binary under test is the shipping binary, and no
-    /// player will ever pass one.
-    ///
-    /// **A UI test run is Pro by default**, and that default is load-bearing
-    /// rather than lazy. Every journey in `UITests/` founds an airline and
-    /// then drives the game; the first-run paywall would open a sheet over
-    /// the first tap of all of them, and five test files would start failing
-    /// for a reason that has nothing to do with what they assert. So a test
-    /// process is unlocked unless it says otherwise: `-AEUITestFree` opts
-    /// into the free tier for the journeys that are *about* the gates, and
-    /// `-AEUITestPro` states the default explicitly where a test wants to be
-    /// read as deliberate.
-    ///
-    /// The cost is that the free tier is only exercised by tests that ask for
-    /// it. That is a known gap, recorded in `docs/APPLE_VALIDATION.md` rather
-    /// than papered over.
+    /// Tests use the real free/StoreKit path unless they explicitly opt into
+    /// `-AEUITestPro` for a gameplay fixture that needs the full world.
     private let testingOverride: ProEntitlement?
 
     init(defaults: UserDefaults = .standard,
          arguments: [String] = ProcessInfo.processInfo.arguments) {
         self.defaults = defaults
-        let isUITest = arguments.contains { $0.hasPrefix("-AEUITest") }
         if arguments.contains("-AEUITestFree") {
             self.testingOverride = .free
-        } else if isUITest || arguments.contains("-AEUITestPro") {
+        } else if arguments.contains("-AEUITestPro") {
             self.testingOverride = .lifetime
         } else {
             self.testingOverride = nil
@@ -152,7 +135,7 @@ final class Entitlements {
     /// would be lost in the gap otherwise. A lost transaction is a player who
     /// paid and did not get the game.
     func start() async {
-        guard readsStoreKit else { return }
+        guard readsStoreKit, updatesTask == nil else { return }
         updatesTask = Task { [weak self] in
             for await update in StoreKit.Transaction.updates {
                 guard let self else { return }
@@ -180,6 +163,7 @@ final class Entitlements {
             loadFailure = byTier.isEmpty
                 ? "Prices are unavailable right now." : nil
             await refreshIntroEligibility()
+            await refreshEntitlement()
         } catch {
             // Offline is the common case for a game that advertises itself as
             // playable with no network at all, so this is a normal state and
@@ -205,6 +189,7 @@ final class Entitlements {
     func purchase(_ tier: ProProduct) async {
         guard !isPurchasing, let product = products[tier] else { return }
         isPurchasing = true
+        lastOutcome = nil
         defer { isPurchasing = false }
         do {
             switch try await product.purchase() {
@@ -241,12 +226,13 @@ final class Entitlements {
     func restore() async {
         guard !isPurchasing else { return }
         isPurchasing = true
+        lastOutcome = nil
         defer { isPurchasing = false }
         do {
             try await AppStore.sync()
         } catch {
-            // A cancelled password prompt lands here; the refresh below is
-            // still worth doing, so this is not surfaced as a failure.
+            lastOutcome = .failed("Purchases could not be restored. " + error.localizedDescription)
+            return
         }
         await refreshEntitlement()
         lastOutcome = isPro ? .restored : .nothingToRestore
@@ -257,10 +243,7 @@ final class Entitlements {
 
     private func apply(_ result: VerificationResult<StoreKit.Transaction>) async {
         guard case .verified(let transaction) = result else {
-            // An unverified transaction is not a purchase. Nothing is
-            // granted, and nothing is finished — leaving it unfinished means
-            // StoreKit offers it again rather than the player silently losing
-            // whatever it was.
+            lastOutcome = .failed("Apple could not verify this purchase. Try Restore purchases or contact support.")
             return
         }
         await transaction.finish()
@@ -274,49 +257,58 @@ final class Entitlements {
     /// sharing, so this method never has to decide those. What it adds is the
     /// two facts the *UI* needs and the transaction does not carry — whether
     /// a renewal is being retried, and whether it will renew at all.
-    private func refreshEntitlement() async {
+    func refreshEntitlement() async {
         guard readsStoreKit else { return }
-        var owned: ProProduct?
-        var expiry: Date?
-
+        refreshGeneration += 1
+        let generation = refreshGeneration
+        var candidates: [ProEntitlement] = []
         for await result in StoreKit.Transaction.currentEntitlements {
             guard case .verified(let transaction) = result,
+                  transaction.revocationDate == nil, !transaction.isUpgraded,
                   let tier = ProProduct(rawValue: transaction.productID) else { continue }
-            // Lifetime outranks everything and can never lapse, so it wins
-            // outright — a player who owns it and also has a stale
-            // subscription must not inherit that subscription's expiry.
-            if tier == .lifetime {
-                owned = .lifetime
-                expiry = nil
-                break
-            }
-            owned = tier
-            expiry = transaction.expirationDate
+            candidates.append(ProEntitlement(grantedBy: tier,
+                                               expiresAt: transaction.expirationDate))
         }
-
-        guard let owned else {
-            entitlement = .free
-            return
-        }
-
-        var retrying = false
-        var willRenew = true
-        if owned.isSubscription,
-           let subscription = products[owned]?.subscription,
+        // All subscription plans share a group. Verify both signed values,
+        // and use the grace deadline rather than treating retry as ownership.
+        if let subscription = products[.weekly]?.subscription ?? products[.yearly]?.subscription,
            let statuses = try? await subscription.status {
             for status in statuses {
-                if status.state == .inBillingRetryPeriod || status.state == .inGracePeriod {
-                    retrying = true
-                }
-                if case .verified(let renewal) = status.renewalInfo {
-                    willRenew = renewal.willAutoRenew
-                }
+                guard case .verified(let transaction) = status.transaction,
+                      case .verified(let renewal) = status.renewalInfo,
+                      transaction.revocationDate == nil, !transaction.isUpgraded,
+                      let tier = ProProduct(rawValue: transaction.productID), tier.isSubscription
+                else { continue }
+                candidates.removeAll { $0.grantedBy == tier }
+                guard status.state == .subscribed || status.state == .inGracePeriod else { continue }
+                candidates.append(ProEntitlement(
+                    grantedBy: tier, expiresAt: transaction.expirationDate,
+                    isInBillingRetry: status.state == .inGracePeriod,
+                    willRenew: renewal.willAutoRenew,
+                    gracePeriodExpiresAt: status.state == .inGracePeriod
+                        ? renewal.gracePeriodExpirationDate : nil))
             }
         }
+        guard generation == refreshGeneration else { return }
+        let active = candidates.filter { $0.isPro() }
+        entitlement = active.first { $0.grantedBy == .lifetime }
+            ?? active.max { accessDeadline($0) < accessDeadline($1) } ?? .free
+        scheduleExpiryRefresh()
+    }
 
-        entitlement = ProEntitlement(grantedBy: owned, expiresAt: expiry,
-                                     isInBillingRetry: retrying,
-                                     willRenew: willRenew)
+    private func accessDeadline(_ value: ProEntitlement) -> Date {
+        max(value.expiresAt ?? .distantPast, value.gracePeriodExpiresAt ?? .distantPast)
+    }
+
+    private func scheduleExpiryRefresh() {
+        expiryTask?.cancel()
+        guard entitlement.grantedBy?.isSubscription == true else { return }
+        let seconds = max(0.1, accessDeadline(entitlement).timeIntervalSinceNow + 0.1)
+        expiryTask = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(seconds)) }
+            catch { return }
+            await self?.refreshEntitlement()
+        }
     }
 
     // MARK: - Paywall presentation

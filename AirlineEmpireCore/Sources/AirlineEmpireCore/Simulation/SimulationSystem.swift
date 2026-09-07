@@ -20,17 +20,21 @@ public struct SimContext: Sendable {
     public let tick: SimDuration
     /// Static game content (never part of GameState).
     public let catalog: ContentCatalog
+    /// Runtime access policy, supplied by the host and never stored in a save.
+    public let progressionCeiling: Era
     /// Event sink for this update. Events are appended to the state's log
     /// (and streamed to the UI) after the system returns.
     public let events: EventCollector
 
     public init(previous: SimTime, current: SimTime, tick: SimDuration,
-                catalog: ContentCatalog, events: EventCollector) {
+                catalog: ContentCatalog, events: EventCollector,
+                progressionCeiling: Era = .empire) {
         self.previous = previous
         self.current = current
         self.tick = tick
         self.catalog = catalog
         self.events = events
+        self.progressionCeiling = progressionCeiling
     }
 
     public func emit(_ kind: SimEventKind) {

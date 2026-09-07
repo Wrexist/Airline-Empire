@@ -723,7 +723,7 @@ struct NextMovesCard: View {
         guard market.paysForItsAirframe else {
             return "No aircraft you can fly today covers its own lease here."
         }
-        return "Best on a \(spec.seats)-seat \(spec.model) — about \(market.monthlyAfterAirframe.compact) a month after its lease."
+        return "Estimated \(market.monthlyAfterAirframe.compact)/month on a \(spec.seats)-seat \(spec.model). " + PlayerRouteDefaults.forecastAssumptions
     }
 
     var body: some View {
