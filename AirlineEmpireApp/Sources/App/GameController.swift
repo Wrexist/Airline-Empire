@@ -441,6 +441,38 @@ final class GameController {
         return manager.store.slots().map { ($0, manager.store.meta(slot: $0)) }
     }
 
+    func exportCampaign() async throws -> CampaignDocument {
+        guard let session else { throw CocoaError(.fileNoSuchFile) }
+        let state = await session.snapshot
+        let data = try await Task.detached { try JSONSaveCodec().encode(state) }.value
+        return CampaignDocument(data: data)
+    }
+
+    /// Imports only validated data and always into a fresh slot. An invalid
+    /// file or a failed write cannot replace a campaign the player already has.
+    func importCampaign(from url: URL, access: ContentAccess) throws {
+        guard session == nil, access.allowsNewSave(existingSaves: availableSlots().count) else {
+            throw SaveError.corruptPayload("Keep your current campaign, or use Pro to keep more than one.")
+        }
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        let limit = 32 * 1024 * 1024
+        let data = try handle.read(upToCount: limit + 1) ?? Data()
+        guard data.count <= limit else {
+            throw SaveError.corruptPayload("This file is too large to be an Airline Empire campaign.")
+        }
+        let manager = makeSaveManager()
+        let state = try manager.codec.decode(data)
+        guard state.playerAirline != nil else {
+            throw SaveError.corruptPayload("This save does not contain a founded airline.")
+        }
+        let slot = UUID().uuidString.lowercased()
+        try manager.save(state, slot: slot)
+        loadGame(slot: slot)
+    }
+
     /// Removes a save. The menu listed slots with no way to manage them, and
     /// no way to tell the rolling autosave from a deliberate one
     /// (UIUX_FORENSIC_AUDIT UI-035).

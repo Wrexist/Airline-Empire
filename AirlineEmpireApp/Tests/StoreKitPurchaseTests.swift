@@ -39,4 +39,39 @@ final class StoreKitPurchaseTests: XCTestCase {
         XCTAssertFalse(entitlements.isPro)
         guard case .failed = entitlements.lastOutcome else { XCTFail("Missing purchase error"); return }
     }
+
+    @MainActor
+    func testPendingApprovalDoesNotGrantProEarly() async throws {
+        let store = try SKTestSession(configurationFileNamed: "AirlineEmpire")
+        store.resetToDefaultState()
+        store.disableDialogs = true
+        store.clearTransactions()
+        store.askToBuyEnabled = true
+        defer { store.clearTransactions(); store.resetToDefaultState() }
+        let entitlements = Entitlements(arguments: ["-AEUITestFree"])
+        await entitlements.start()
+        await entitlements.purchase(.lifetime)
+        XCTAssertEqual(entitlements.lastOutcome, .pending)
+        XCTAssertFalse(entitlements.isPro)
+    }
+
+    @MainActor
+    func testExpiredSubscriptionReturnsToFree() async throws {
+        let store = try SKTestSession(configurationFileNamed: "AirlineEmpire")
+        store.resetToDefaultState()
+        store.disableDialogs = true
+        store.clearTransactions()
+        defer { store.clearTransactions(); store.resetToDefaultState() }
+        let entitlements = Entitlements(arguments: ["-AEUITestFree"])
+        await entitlements.start()
+        await entitlements.purchase(.weekly)
+        XCTAssertTrue(entitlements.isPro)
+        try store.expireSubscription(productIdentifier: ProProduct.weekly.rawValue)
+        for _ in 0..<50 {
+            await entitlements.refreshEntitlement()
+            if !entitlements.isPro { break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        XCTAssertFalse(entitlements.isPro)
+    }
 }

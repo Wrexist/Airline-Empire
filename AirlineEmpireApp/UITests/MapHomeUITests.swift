@@ -152,7 +152,7 @@ final class MapHomeUITests: AEUITestCase {
             return Int(text[range].prefix(while: \.isNumber)) ?? 0
         }
         var waited = 0
-        while airborne() == 0 && waited < 60 {
+        while !app.buttons["ae-follow-flight-menu"].exists && waited < 60 {
             Thread.sleep(forTimeInterval: 1)
             waited += 1
         }
@@ -166,55 +166,30 @@ final class MapHomeUITests: AEUITestCase {
             let pause = app.buttons["Pause"]
             if pause.waitForExistence(timeout: 5) { pause.tap() }
             Thread.sleep(forTimeInterval: 1)
-            // The map's own row offers the ride once nothing needs doing;
-            // whether it does depends on the state the clock produced, so
-            // the durable path is the one AE-046 built: select, then follow.
-            // The same steered grid `ShellAndMapUITests` uses: a sweep across
-            // the framed network rather than a cluster on its middle, stopped
-            // by the canvas saying it selected *a flight* rather than merely
-            // something.
-            let frameIt = app.buttons["Frame my network"]
-            if frameIt.waitForExistence(timeout: 5) { frameIt.tap() }
+            // Use the same accessible flight menu available to every player.
+            let menu = app.buttons["ae-follow-flight-menu"]
+            guard require(menu, "the live flight menu", timeout: 8) else { return }
+            menu.tap()
+            let flight = app.buttons.matching(NSPredicate(
+                format: "identifier BEGINSWITH %@", "ae-follow-flight-")).firstMatch
+            guard require(flight, "a player flight in the menu", timeout: 8) else { return }
+            flight.tap()
             Thread.sleep(forTimeInterval: 1)
-            let zoomIn = app.buttons["Zoom in"]
-            if zoomIn.waitForExistence(timeout: 5) { for _ in 0..<2 { zoomIn.tap() } }
-            Thread.sleep(forTimeInterval: 0.5)
-            let follow = app.buttons["ae-map-follow"]
-            var offsets: [(CGFloat, CGFloat)] = []
-            for row in 0..<6 {
-                for column in 0..<5 {
-                    offsets.append((0.16 + CGFloat(column) * 0.17,
-                                    0.28 + CGFloat(row) * 0.075))
-                }
-            }
-            for (x, y) in offsets {
-                map.coordinate(withNormalizedOffset: CGVector(dx: x, dy: y)).tap()
-                Thread.sleep(forTimeInterval: 0.25)
-                if value().contains("Selected a flight") { break }
-                if follow.exists { break }
-            }
-            if follow.exists {
-                follow.tap()
-                Thread.sleep(forTimeInterval: 1)
-                XCTAssertTrue(value().contains("following"), """
-                    The follow control was pressed from the map home and the \
-                    map does not report a followed flight. Canvas value: \
-                    \(value())
-                    """)
-                checkpoint("AE048-F-following-from-the-home-map")
-                map.swipeLeft()
-                Thread.sleep(forTimeInterval: 1)
-                XCTAssertFalse(value().contains("following"), """
-                    A drag did not release the follow camera on the home map.
-                    """)
-            } else {
-                // Not a pass and not a failure: a synthetic tap cannot always
-                // hit a moving marker a few points wide, and saying so is the
-                // honest record (BUG-039's rule).
-                checkpoint("AE048-F-NO-AIRCRAFT-SELECTED")
-            }
+            XCTAssertTrue(value().contains("following"), """
+                The follow control was pressed from the map home and the \
+                map does not report a followed flight. Canvas value: \
+                \(value())
+                """)
+            checkpoint("AE048-F-following-from-the-home-map")
+            map.swipeLeft()
+            Thread.sleep(forTimeInterval: 1)
+            XCTAssertFalse(value().contains("following"), """
+                A drag did not release the follow camera on the home map.
+                """)
         } else {
             checkpoint("AE048-F-NOTHING-AIRBORNE")
+            XCTFail("The assigned route did not produce a flight to follow.")
+            return
         }
 
         // ── FRAME G · something in the world, selected on the home map ─────

@@ -79,6 +79,7 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   # ── 1 · Everything answerable before the expensive runner starts ───────────
@@ -90,6 +91,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+
+      - name: Require tested release and live review pages
+        if: inputs.upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 scripts/check-release-evidence.py
+          python3 scripts/check-release-readiness.py --live
 
       # The archive job writes this straight into the binary. A malformed
       # value would surface as an Apple rejection after the compile is paid

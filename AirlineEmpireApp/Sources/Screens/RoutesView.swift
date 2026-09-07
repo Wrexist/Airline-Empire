@@ -243,11 +243,16 @@ struct RouteDetailView: View {
                     // asking "is this route working" read an expense table
                     // before they reached the load factor.
                     headline(card, snapshot: snapshot, catalog: catalog)
+                    if card.assignedAircraftCount == 0 {
+                        aircraftSection(card, player: player.id, catalog: catalog)
+                    }
                     operations(card)
                     demandSection(card, snapshot: snapshot)
                     competitorSection(card, snapshot: snapshot, player: player.id)
                     breakdown(card, catalog: catalog)
-                    aircraftSection(card, player: player.id, catalog: catalog)
+                    if card.assignedAircraftCount > 0 {
+                        aircraftSection(card, player: player.id, catalog: catalog)
+                    }
                     fareControls(card, player: player.id)
                     dangerZone(player: player.id)
                 }
@@ -325,6 +330,10 @@ struct RouteDetailView: View {
                     }
                 } else {
                     Text("This route has not lived through a month-end yet, so there is no closed month to compare against.")
+                        .font(.caption)
+                        .foregroundStyle(AETheme.mutedText)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Ticket revenue pays the flight's costs first. Aircraft leases, payroll and airline overhead also affect company profit; check Finance after the month closes.")
                         .font(.caption)
                         .foregroundStyle(AETheme.mutedText)
                         .fixedSize(horizontal: false, vertical: true)

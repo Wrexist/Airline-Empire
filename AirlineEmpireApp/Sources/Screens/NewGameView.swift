@@ -47,6 +47,8 @@ struct NewGameView: View {
     @State private var scenario: ScenarioCode = "entrepreneur"
     @State private var seedText = ""
     @State private var showsSeed = false
+    @State private var showingImport = false
+    @State private var importFailure: String?
     // Loaded once on appear: content parsing and save-slot IO do not belong
     // in the render pass.
     @State private var catalog: ContentCatalog?
@@ -83,6 +85,17 @@ struct NewGameView: View {
                     nameField
                     liverySection
                     if !slots.isEmpty { continueSection }
+                    Button {
+                        if entitlements.access.allowsNewSave(existingSaves: slots.count) {
+                            showingImport = true
+                        } else {
+                            entitlements.present(.saveSlot)
+                        }
+                    } label: {
+                        Label("Import campaign backup", systemImage: "square.and.arrow.down")
+                    }
+                    .buttonStyle(.aeTertiary)
+                    .accessibilityIdentifier("ae-import-campaign")
                     homeSection
                     difficultySection
                     seedSection
@@ -97,6 +110,16 @@ struct NewGameView: View {
         }
         .safeAreaInset(edge: .bottom) { foundBar }
         .preferredColorScheme(.dark)
+        .fileImporter(isPresented: $showingImport, allowedContentTypes: [.data]) { result in
+            do {
+                try controller.importCampaign(from: result.get(), access: entitlements.access)
+                slots = controller.availableSlots()
+            } catch { importFailure = error.localizedDescription }
+        }
+        .alert("Could not import campaign", isPresented: Binding(
+            get: { importFailure != nil }, set: { if !$0 { importFailure = nil } })) {
+            Button("OK", role: .cancel) { importFailure = nil }
+        } message: { Text(importFailure ?? "") }
         .confirmationDialog("Delete this save?",
                             isPresented: deletionPresented,
                             titleVisibility: .visible,

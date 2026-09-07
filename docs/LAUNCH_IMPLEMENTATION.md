@@ -1,0 +1,66 @@
+# Launch implementation status
+
+7 September 2026. Implementation branch: `codex/launch-readiness`, PR #22.
+The original audit is preserved in [LAUNCH_AUDIT.md](LAUNCH_AUDIT.md). This file records what has actually changed; the full expansion backlog is not a completed feature list.
+
+## Implemented
+
+| Audit | Change | Remaining evidence or limitation |
+|---|---|---|
+| R01 | Each campaign owns a unique save slot. Loading legacy `auto` keeps that slot; new campaigns cannot overwrite it. | Hosted app regression covers founding two airlines, saving, quitting and loading. |
+| R02 | Failed save-and-quit retains the live session and reports the failure. Retry remains available. | Hosted failure/retry regression uses an unwritable save destination. |
+| R03 | Private UserDefaults use declared with CA92.1. | Confirm the final archive's privacy report before submission. |
+| R04 | Correctly cased `.html` URLs, accurate privacy/support copy, Terms page linking Apple's standard EULA, public support request link. | Pages still needs deployment and a successful live URL check. |
+| R05 | Pending, failure, restore and purchase feedback in the paywall/Settings; restore errors no longer become “nothing to restore.” | StoreKit integration tests must pass. |
+| R06 | Unrelated UI test flags no longer grant Pro. Existing full-world fixtures opt in explicitly; a dedicated free journey and hosted purchase tests use StoreKit. | Complete device/sandbox validation remains required. |
+| R07–08 | Runtime progression ceiling shared by every simulation time path. Free/lapsed airlines keep operating; paid aircraft, new capability programs and out-of-radius routes are checked at the command boundary. | Existing earned eras and assets are preserved. No persisted save schema change. |
+| R09 | Dedicated Launch safety workflow; TestFlight upload requires successful same-commit Launch safety plus full CI with all five journeys and iPad. | Existing full-suite failures must be resolved and rerun. Compilation alone cannot authorize upload. |
+| R10 | Store metadata links/review notes corrected and fill-in sheet regenerated. | Legal seller name, review contact, screenshots, App Store product/account configuration remain external inputs. |
+| R11 | Aircraft shop initially hides locked classes and sorts by price. | Route-specific aircraft selection and multi-home economic calibration remain. |
+| R12 | Player forecasts use the route creator's two-round-trip default, capped by the airframe's daily capacity. Assumptions explain lease/payroll and excluded airline overhead. | Forecast is still an estimate; no claim of guaranteed profit or completed balance calibration. |
+| R13 | Idle routes place aircraft assignment near the top. Young routes explain ticket revenue versus company profit. | Observe first-session comprehension on devices. |
+| R14 | User-facing day advance labels now match the midnight behavior. | Internal function names stay compatible. |
+| R15 | Refresh on foreground, product load, transaction updates and expiry. Only verified grace deadlines extend expired subscriptions. | Real Apple sandbox cancellation/refund/grace rehearsals remain. |
+| R16 | Initial checkpoint, daily autosaves, captured session/slot on background, UIKit background allowance, checked synchronization/rotation errors, future-version protection. | Forced termination/low-storage rehearsal on physical devices remains. |
+| R17 | First automatic offer follows the first completed flight; foreground nudges require that milestone. | Check presentation alongside the first-flight celebration. |
+| R18 | Existing rival economy retained. | Archetype rebalance requires measured seed sweeps. |
+| R19 | Time-control hit targets are at least 44 points. Flight-follow menu gives a production accessibility path without tapping tiny moving markers. Follow test now fails when the path is unavailable. | Fresh small-phone, iPad, Dynamic Type and VoiceOver review remains. |
+| R20 | No unsupported performance claim added. | Physical-device memory, battery, thermal and frame-time evidence remains. |
+| R21 | Manifest, legal/support pages, review notes, generated store checklist and this status document updated. | Older design/audit documents describe historical behavior and are not release certification. |
+
+## Additional delivered feature
+
+Campaign export/import is available through the system file picker. Export captures a coherent snapshot using the existing checksummed save format. Import checks file size, codec/version/integrity and the presence of a founded airline, then writes a new slot before opening it. It respects the free campaign limit and never overwrites an existing campaign. The hosted regression covers export, import, slot separation and rejection of corrupt data.
+
+## Validation record
+
+- Initial launch commit `e73c98f`: iOS `build-for-testing` passed on the existing macOS 26 CI runner.
+- Initial targeted Core run: **45 tests passed**, covering save store/migrations, campaign isolation, failure preservation, time access and entitlement expiry/grace rules.
+- Release tooling: **47 selftests passed** after regenerating the fill-in sheet.
+- Local Swift 6 Core type-check and app/test syntax checks passed. SwiftPM's local runner crashes before assertions in this environment; it is not counted as a test pass.
+- The first new app test job used macOS 15's older SDK and failed on the existing iOS 26 glass API. The workflow now uses the project's macOS 26 runner.
+- Later export/import and follow changes require their own current-commit CI results. Do not infer they passed from the earlier commit.
+
+## Release sequence
+
+1. Resolve every current-commit Launch safety and CI failure; review the screenshot artifacts.
+2. Run CI with `suite=full` and `ipad=true` on the candidate commit. The upload gate requires all five journeys and iPad to have actually run successfully.
+3. Publish the support site from the reviewed commit and run `python3 scripts/check-release-readiness.py --live`.
+4. Fill real seller/contact fields, complete the screenshot package, confirm StoreKit products in App Store Connect, and rehearse purchases on a physical device.
+5. Test termination, recovery, upgrades, offline use, subscription changes and accessibility. Upload only after the same-commit evidence gate passes.
+
+No merge, Pages deployment, TestFlight upload or App Store submission was performed by this implementation work.
+
+## Accepted follow-up backlog
+
+The remaining audit recommendations need further implementation and validation: next-era progress on Home; session-end summaries; investor rescue; capped offline catch-up; contract variety; rival archetype balance; stronger fleet identity; connecting hubs and banked schedules; fleet commonality; bulk network management; versioned seed challenges; richer scenarios/historical starts; iCloud conflict-safe synchronization; cargo, alliances, terminals and subsidiaries.
+
+These changes add persistent simulation or product behavior. Each needs a concrete design, migration where applicable, economic tests and device review. They have not been silently added to the launch feature claims.
+
+## Primary references
+
+- [Apple required-reason API categories](https://developer.apple.com/documentation/bundleresources/app-privacy-configuration/nsprivacyaccessedapitypes/nsprivacyaccessedapitype)
+- [StoreKit renewal states](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/renewalstate)
+- [Verified grace-period deadline](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/renewalinfo/graceperiodexpirationdate)
+- [StoreKit testing](https://developer.apple.com/documentation/storekittest/sktestsession)
+- [Apple standard EULA](https://www.apple.com/legal/internet-services/itunes/dev/stdeula/)

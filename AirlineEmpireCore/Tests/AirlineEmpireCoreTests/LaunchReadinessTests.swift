@@ -4,6 +4,22 @@ import Testing
 
 @Suite("Launch readiness")
 struct LaunchReadinessTests {
+    @Test func checksummedSaveWithInvalidClockIsRejected() throws {
+        let codec = JSONSaveCodec()
+        let data = try codec.encode(Fixtures.newState())
+        var envelope = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let base64 = try #require(envelope["payload"] as? String)
+        var payload = try #require(JSONSerialization.jsonObject(with: #require(Data(base64Encoded: base64))) as? [String: Any])
+        var meta = try #require(payload["meta"] as? [String: Any])
+        meta["tickMinutes"] = 0
+        payload["meta"] = meta
+        let bytes = try JSONSerialization.data(withJSONObject: payload)
+        envelope["payload"] = bytes.base64EncodedString()
+        envelope["checksum"] = NSNumber(value: StableHash.fnv1a(bytes))
+        let damaged = try JSONSerialization.data(withJSONObject: envelope)
+        #expect(throws: (any Error).self) { _ = try codec.decode(damaged) }
+    }
+
     @Test func separateCampaignAutosavesNeverOverwriteLegacyOrEachOther() async throws {
         let root = SaveStoreTests.scratch()
         defer { try? FileManager.default.removeItem(at: root) }

@@ -67,4 +67,29 @@ final class LaunchSafetyTests: XCTestCase {
         XCTAssertFalse(entitlements.isPro)
         XCTAssertTrue(Entitlements(arguments: ["-AEUITestPro"]).isPro)
     }
+
+    @MainActor
+    func testExportImportPreservesCampaignAndRejectsCorruptFile() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let controller = GameController(savesDirectory: root)
+        controller.startNewGame(airlineName: "Portable", home: "ARN", seed: 8, scenario: "founder")
+        try await waitForGame(controller)
+        let originalSlot = try XCTUnwrap(controller.activeSaveSlot)
+        let document = try await controller.exportCampaign()
+        let exported = root.appendingPathComponent("export.aesave")
+        try document.data.write(to: exported)
+        let saved = await controller.saveAndQuit()
+        XCTAssertTrue(saved)
+        XCTAssertThrowsError(try controller.importCampaign(from: exported, access: .free))
+        try controller.importCampaign(from: exported, access: .pro)
+        try await waitForGame(controller)
+        XCTAssertEqual(controller.snapshot?.playerAirline?.name, "Portable")
+        XCTAssertNotEqual(controller.activeSaveSlot, originalSlot)
+        let importedSaved = await controller.saveAndQuit()
+        XCTAssertTrue(importedSaved)
+        try Data("not a campaign".utf8).write(to: exported)
+        XCTAssertThrowsError(try controller.importCampaign(from: exported, access: .pro))
+        XCTAssertEqual(controller.availableSlots().count, 2)
+    }
 }

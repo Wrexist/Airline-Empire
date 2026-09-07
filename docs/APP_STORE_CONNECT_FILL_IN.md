@@ -89,10 +89,10 @@ Airline Empire: Flight Tycoon
 Route & fleet strategy sim
 ```
 
-**Privacy Policy URL** — 48/255 characters
+**Privacy Policy URL** — 53/255 characters
 
 ```text
-https://wrexist.github.io/airline-empire/privacy
+https://wrexist.github.io/Airline-Empire/privacy.html
 ```
 
 #### English (U.K.)
@@ -111,10 +111,10 @@ Airline Empire: Flight Tycoon
 Route & fleet strategy sim
 ```
 
-**Privacy Policy URL** — 48/255 characters
+**Privacy Policy URL** — 53/255 characters
 
 ```text
-https://wrexist.github.io/airline-empire/privacy
+https://wrexist.github.io/Airline-Empire/privacy.html
 ```
 
 ### General Information
@@ -208,10 +208,10 @@ crash reporter, no advertising SDK and no account. The bundled
 mechanically, and `site/privacy.html` says it in prose. If that ever stops
 being true, all three change in the same commit.
 
-**Privacy Policy URL (asked again here)** — 48/255 characters
+**Privacy Policy URL (asked again here)** — 53/255 characters
 
 ```text
-https://wrexist.github.io/airline-empire/privacy
+https://wrexist.github.io/Airline-Empire/privacy.html
 ```
 
 ---
@@ -287,16 +287,16 @@ aviation,airport,aircraft,planes,manager,management,simulator,offline,business,n
 > Comma-separated, **no spaces after the commas** — a space is a character
 > spent on nothing. Hidden from users; this is pure search surface.
 
-**Support URL** — 48/255 characters
+**Support URL** — 53/255 characters
 
 ```text
-https://wrexist.github.io/airline-empire/support
+https://wrexist.github.io/Airline-Empire/support.html
 ```
 
 **Marketing URL** — 41/255 characters
 
 ```text
-https://wrexist.github.io/airline-empire/
+https://wrexist.github.io/Airline-Empire/
 ```
 
 ### English (U.K.)
@@ -364,16 +364,16 @@ aviation,airport,aeroplane,airliner,aircraft,manager,management,simulator,offlin
 > Comma-separated, **no spaces after the commas** — a space is a character
 > spent on nothing. Hidden from users; this is pure search surface.
 
-**Support URL** — 48/255 characters
+**Support URL** — 53/255 characters
 
 ```text
-https://wrexist.github.io/airline-empire/support
+https://wrexist.github.io/Airline-Empire/support.html
 ```
 
 **Marketing URL** — 41/255 characters
 
 ```text
-https://wrexist.github.io/airline-empire/
+https://wrexist.github.io/Airline-Empire/
 ```
 
 ### Screenshots
@@ -398,7 +398,7 @@ by the metadata workflow with **screenshots** ticked.
 - **Phone Number** — `REPLACE_ME`  ⚠️ **you must replace this**
 - **Email** — `REPLACE_ME@example.com`  ⚠️ **you must replace this**
 
-**Notes** — 3974/4000 characters
+**Notes** — 3994/4000 characters
 
 ```text
 Airline Empire is a single-player airline management simulation. Everything a reviewer needs is in the app on first launch; there is nothing to sign in to.
@@ -406,7 +406,7 @@ Airline Empire is a single-player airline management simulation. Everything a re
 WHAT THE APP DOES NOT DO
 • No account, no sign-in, no user-generated content, no social features, no chat.
 • No network access other than StoreKit. The game makes no requests and plays identically in Airplane Mode; only loading prices and completing a purchase need a connection, and the paywall says so when it cannot reach the store.
-• No advertising, third-party SDKs, analytics or tracking. Nothing is collected, so the privacy label declares no data collection and the bundled privacy manifest declares no tracking domains and no required-reason API use.
+• No advertising, third-party SDKs, analytics or tracking. Nothing is collected, so the privacy label declares no data collection and the bundled privacy manifest declares no tracking domains and private UserDefaults use (CA92.1) for preferences and Pro offer history.
 • No gambling, no loot boxes, no randomised paid rewards. The only randomness is the simulation's own seeded world generation, which the player sets and can repeat.
 
 IN-APP PURCHASES
@@ -425,7 +425,7 @@ WHAT PRO ADDS
 More world only: the National, International and Empire eras, all 94 airports across nine regions, the widebodies those eras allow, the Entrepreneur and Magnate scenarios, and unlimited saved airlines. No aircraft, route, cash or advantage is sold — which aircraft a player may buy is decided by the era their airline has earned, identically for free and paying players.
 
 SEEING THE PAYWALL
-Home → gear icon → "Airline Empire Pro". It also appears once after founding a first airline, and whenever a locked control is tapped. Restore Purchases, Terms of Use and Privacy Policy are on the paywall and in Settings.
+Settings → "Airline Empire Pro". It also appears once after completing the first flight, and whenever a locked control is tapped. Restore Purchases, Terms of Use and Privacy Policy are on the paywall and in Settings.
 
 HOW TO SEE THE GAME QUICKLY
 1. Launch → "New Game" → name an airline and any seed. "Founder" is the free scenario; "Magnate" (the well-funded start, easiest to review quickly) needs Pro, so buy any tier with a sandbox account first if you want it.
@@ -441,7 +441,7 @@ CONTENT AND LIKENESS
 The geography is real: real cities and airports (name, code and location only — e.g. Stockholm Arlanda / ARN), used as factual geographic reference the way mapping and flight-planning apps do. Everything commercial is fictional: airlines, liveries, aircraft and manufacturers were invented for this simulation. No real airline or manufacturer trademark is depicted or referenced, no airport branding or imagery is used, and no real-world flight data is used.
 
 CONTACT
-The developer, who can respond the same day to anything blocking the review.
+Use the App Review contact supplied with the submission.
 ```
 
 - **Attachment** — none needed.
@@ -490,8 +490,8 @@ Anything that renders wrong, any control that is hard to hit, anything that is s
 ```
 
 - **Feedback Email** — `REPLACE_ME@example.com`  ⚠️ **you must replace this**
-- **Marketing URL** — `https://wrexist.github.io/airline-empire/`
-- **Privacy Policy URL** — `https://wrexist.github.io/airline-empire/privacy`
+- **Marketing URL** — `https://wrexist.github.io/Airline-Empire/`
+- **Privacy Policy URL** — `https://wrexist.github.io/Airline-Empire/privacy.html`
 - **Beta App Review Information** — the same contact and notes as §5.
 
 ---

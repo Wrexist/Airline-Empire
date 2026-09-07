@@ -2,6 +2,8 @@ name: Launch safety
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,8 +25,8 @@ jobs:
       - name: Release source checks
         run: python3 scripts/check-release-readiness.py
   app:
-    runs-on: macos-15
-    timeout-minutes: 25
+    runs-on: macos-26
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
         with:
@@ -45,6 +47,8 @@ jobs:
           xcodebuild test -project AirlineEmpire.xcodeproj -scheme AirlineEmpire \
             -destination 'platform=iOS Simulator,id=${{ steps.sim.outputs.id }}' \
             -parallel-testing-enabled NO -only-testing:AirlineEmpireTests \
+            -only-testing:AirlineEmpireUITests/FreeTierUITests \
+            -only-testing:AirlineEmpireUITests/MapHomeUITests/testTheMapIsTheHomeScreen \
             CODE_SIGNING_ALLOWED=NO -resultBundlePath LaunchSafety.xcresult
       - uses: actions/upload-artifact@v4
         if: always()

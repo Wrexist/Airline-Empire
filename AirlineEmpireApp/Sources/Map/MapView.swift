@@ -285,7 +285,27 @@ struct MapScreen: View {
                 .padding(.top, AETheme.spacingS)
 
             HStack(alignment: .top) {
-                MapOverlayPicker(selection: $overlay)
+                VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                    MapOverlayPicker(selection: $overlay)
+                    let flights = model.flights.filter { $0.isPlayer && $0.airborne }
+                    if !flights.isEmpty {
+                        Menu {
+                            ForEach(flights, id: \.id) { flight in
+                                Button("\(flight.origin.raw) to \(flight.destination.raw)") {
+                                    follow(flight.id)
+                                }
+                                .accessibilityIdentifier("ae-follow-flight-\(flight.id.raw)")
+                            }
+                        } label: {
+                            Label("Follow a flight", systemImage: "airplane")
+                                .font(.callout.weight(.semibold))
+                                .padding(.horizontal, 12)
+                                .frame(minHeight: 44)
+                                .background(.regularMaterial, in: Capsule())
+                        }
+                        .accessibilityIdentifier("ae-follow-flight-menu")
+                    }
+                }
                 Spacer()
                 MapZoomControls(
                     zoomIn: { camera.zoomBy(1.7) },
