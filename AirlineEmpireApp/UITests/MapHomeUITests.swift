@@ -167,11 +167,12 @@ final class MapHomeUITests: AEUITestCase {
             if pause.waitForExistence(timeout: 5) { pause.tap() }
             Thread.sleep(forTimeInterval: 1)
             // Use the same accessible flight menu available to every player.
-            let menu = app.buttons["ae-follow-flight-menu"]
+            let menu = app.buttons.matching(identifier: "ae-follow-flight-menu").firstMatch
             guard require(menu, "the live flight menu", timeout: 8) else { return }
             menu.tap()
             let flight = app.buttons.matching(NSPredicate(
-                format: "identifier BEGINSWITH %@", "ae-follow-flight-")).firstMatch
+                format: "identifier BEGINSWITH %@ AND identifier != %@",
+                "ae-follow-flight-", "ae-follow-flight-menu")).firstMatch
             guard require(flight, "a player flight in the menu", timeout: 8) else { return }
             flight.tap()
             Thread.sleep(forTimeInterval: 1)
