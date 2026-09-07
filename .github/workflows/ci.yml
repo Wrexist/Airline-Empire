@@ -41,12 +41,13 @@ on:
     inputs:
       suite:
         description: >-
-          smoke runs the ~6-minute subset a pull request gets; full runs
-          every journey class and the performance measurements, on four
-          macOS runners. Full is what you want before a release or after
+          compile is what a pull request gets (~2 min: does it build);
+          smoke adds the eight-test subset a merge to main gets (~10 min);
+          full runs every journey class and the performance measurements on
+          four runners. Full is what you want before a release or after
           touching the map, the shell or the campaign.
         type: choice
-        options: [smoke, full]
+        options: [compile, smoke, full]
         default: full
       ipad:
         description: >-
@@ -267,10 +268,31 @@ jobs:
           set -euo pipefail
 
           # ── which suite ──────────────────────────────────────────────────
-          if [ "$EVENT" = "workflow_dispatch" ] && [ "$SUITE_INPUT" = "full" ]; then
-            SUITE=full
-          else
+          #
+          # Signal per macOS minute, which is the only currency that matters
+          # at 10x billing:
+          #
+          #   compile  ~2 min   Does the SwiftUI app build? This repository
+          #                     could never answer that on Linux — the Apple
+          #                     SDKs do not exist there — and it is the
+          #                     failure this file was created to catch. Run
+          #                     134 was exactly this: three shards, all three
+          #                     dead in 76-113 s on one line in DashboardView.
+          #                     `build-for-testing` is 56 s; the other eight
+          #                     minutes of a smoke run are simulator boot and
+          #                     journeys.
+          #   smoke   ~10 min   ...plus eight journeys. On a merge to main,
+          #                     where a red build is expensive to discover
+          #                     late.
+          #   full    ~40 min   ...plus every journey class and the
+          #                     performance baselines, on four runners. On
+          #                     demand.
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            SUITE="${SUITE_INPUT:-full}"
+          elif [ "$EVENT" = "push" ]; then
             SUITE=smoke
+          else
+            SUITE=compile
           fi
           echo "Suite: $SUITE"
 
@@ -352,22 +374,33 @@ jobs:
             SMOKE="$SMOKE -only-testing:AirlineEmpireUITests/$T"
           done
 
-          if [ "$SUITE" = full ]; then
-            MATRIX=$(jq -cn '{include: [
-              {shard: 1, name: "campaign",   job: 45, ui: 40, measure: false,
-               tests: "-only-testing:AirlineEmpireUITests/CampaignUITests"},
-              {shard: 2, name: "economy",    job: 45, ui: 40, measure: false,
-               tests: "-only-testing:AirlineEmpireUITests/EconomyJourneyUITests"},
-              {shard: 3, name: "shell + map", job: 60, ui: 40, measure: true,
-               tests: "-only-testing:AirlineEmpireUITests/ShellAndMapUITests"},
-              {shard: 4, name: "arrival",    job: 45, ui: 40, measure: false,
-               tests: "-only-testing:AirlineEmpireUITests/HorizonArrivalUITests"}
-            ]}')
-          else
-            MATRIX=$(jq -cn --arg tests "$SMOKE" '{include: [
-              {shard: 0, name: "smoke", job: 25, ui: 18, measure: false, tests: $tests}
-            ]}')
-          fi
+          case "$SUITE" in
+            full)
+              MATRIX=$(jq -cn '{include: [
+                {shard: 1, name: "campaign",   job: 45, ui: 40, run: true, measure: false,
+                 tests: "-only-testing:AirlineEmpireUITests/CampaignUITests"},
+                {shard: 2, name: "economy",    job: 45, ui: 40, run: true, measure: false,
+                 tests: "-only-testing:AirlineEmpireUITests/EconomyJourneyUITests"},
+                {shard: 3, name: "shell + map", job: 60, ui: 40, run: true, measure: true,
+                 tests: "-only-testing:AirlineEmpireUITests/ShellAndMapUITests"},
+                {shard: 4, name: "arrival",    job: 45, ui: 40, run: true, measure: false,
+                 tests: "-only-testing:AirlineEmpireUITests/HorizonArrivalUITests"}
+              ]}') ;;
+            smoke)
+              MATRIX=$(jq -cn --arg tests "$SMOKE" '{include: [
+                {shard: 0, name: "smoke", job: 25, ui: 18, run: true, measure: false,
+                 tests: $tests}
+              ]}') ;;
+            *)
+              # No simulator is booted, no test bundle is run, and none of
+              # the evidence steps fire: this job answers one question and
+              # stops. It is why a pull request now costs about two macOS
+              # minutes instead of eighty-four.
+              MATRIX=$(jq -cn '{include: [
+                {shard: 0, name: "compile", job: 15, ui: 1, run: false, measure: false,
+                 tests: ""}
+              ]}') ;;
+          esac
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           echo "$MATRIX" | jq .
 
@@ -465,6 +498,7 @@ jobs:
       # turns that into a red build with a confusing message.
       - name: Pick a simulator
         id: sim
+        if: matrix.run
         run: |
           set -euo pipefail
           NAME=$(xcrun simctl list devices available --json \
@@ -527,7 +561,7 @@ jobs:
             test-without-building 2>&1 | tee ui-test-output.txt
 
       - name: Run the UI tests
-        if: always()
+        if: always() && matrix.run
         working-directory: AirlineEmpireApp
         # A step timeout, not only the job's: when this overruns, the step
         # fails and the evidence steps below still run on the result bundle
@@ -566,7 +600,7 @@ jobs:
       # only in the result bundle. Runs 113 and 114 each ended a journey on
       # an assertion nobody could read from the log. Evidence, not a gate.
       - name: Failure messages into the log
-        if: always()
+        if: always() && matrix.run
         working-directory: AirlineEmpireApp
         continue-on-error: true
         run: |
@@ -602,7 +636,7 @@ jobs:
       # full resolution, and full resolution only matters when you are
       # looking at a failure.
       - name: Keep the screenshots
-        if: failure()
+        if: failure() && matrix.run
         uses: actions/upload-artifact@v4
         with:
           name: ui-screenshots-shard${{ matrix.shard }}
@@ -629,7 +663,7 @@ jobs:
       # would flood the log. `|| true` throughout: this is evidence, not a
       # gate, and it must never be the reason a green run reports red.
       - name: Screenshots into the log
-        if: always()
+        if: always() && matrix.run
         working-directory: AirlineEmpireApp
         continue-on-error: true
         run: |
@@ -701,7 +735,7 @@ jobs:
       # Fifteen lines here puts the verdict where anyone, human or agent,
       # looks first.
       - name: What failed
-        if: always()
+        if: always() && matrix.run
         working-directory: AirlineEmpireApp
         continue-on-error: true
         run: |

@@ -34,17 +34,33 @@ diffing the last push: a change whose run was cancelled by `concurrency` is
 still in the diff, because that run never went green. When the answer is no,
 the macOS job does not start, so it costs nothing at all.
 
-**Which journeys?** A pull request gets a **smoke subset** — eight tests, about
-six minutes, chosen by value per second from measured per-test costs: the
-founding journey that reaches every tab, the home guidance to a first
-aircraft, the audio-cue decode, the currency-glyph contract, acquiring an
-aircraft and opening a route, a frame assertion, an airport tap, and the clock
-actually running.
+**Which suite?** Three, graded by signal per macOS minute — the only currency
+that matters at 10×.
 
-Everything else runs on demand: dispatch `CI` with **suite: full** for all four
-journey classes and the performance baselines, on four runners. Do that before
-a release, and after touching the map, the shell or the campaign. The iPad
-shell journey is a separate opt-in input on the same dispatch.
+| Suite | When | Cost | What it answers |
+| --- | --- | --- | --- |
+| **compile** | every pull request | ~2 min | Does the SwiftUI app build? |
+| **smoke** | every merge to `main` | ~10 min | ...and do eight core journeys pass? |
+| **full** | dispatch | ~40 min | ...and every journey class, plus the performance baselines, on four runners |
+
+`compile` is `build-for-testing` and nothing else: no simulator is booted, no
+test bundle runs, no evidence steps fire. It costs 56 seconds of xcodebuild
+because the other eight minutes of a smoke run are simulator boot and
+journeys. It is also the failure this file exists to catch — the Apple SDKs do
+not exist on Linux, so this repository could never answer "does it compile" any
+other way, and run 134 was exactly that: three shards, all dead in 76–113
+seconds on one line in `DashboardView.swift`.
+
+`smoke` is eight tests, ~6 minutes, chosen by value per second from measured
+per-test costs: the founding journey that reaches every tab, the home guidance
+to a first aircraft, the audio-cue decode, the currency-glyph contract,
+acquiring an aircraft and opening a route, a frame assertion, an airport tap,
+and the clock actually running. It runs on merge, where a red build is
+expensive to discover late.
+
+Dispatch `CI` with **suite: full** before a release, and after touching the
+map, the shell or the campaign. The iPad shell journey is a separate opt-in
+input on the same dispatch.
 
 **No simulator cloning anywhere.** Four separate runs proved these runners
 cannot take simultaneous app launches; run 162 was the last of them, where the
