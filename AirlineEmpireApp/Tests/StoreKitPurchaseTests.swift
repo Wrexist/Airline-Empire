@@ -20,6 +20,7 @@ final class StoreKitPurchaseTests: XCTestCase {
         await entitlements.start()
         XCTAssertFalse(entitlements.isPro)
         XCTAssertEqual(entitlements.products.count, ProProduct.allCases.count)
+        _ = try XCTUnwrap(entitlements.products[.lifetime], "StoreKit did not load the lifetime product")
         await entitlements.purchase(.lifetime)
         XCTAssertTrue(entitlements.isPro)
         XCTAssertEqual(entitlements.lastOutcome, .purchased(.lifetime))
@@ -40,6 +41,7 @@ final class StoreKitPurchaseTests: XCTestCase {
         store.failTransactionsEnabled = true
         let entitlements = Entitlements(arguments: ["-AEUITestFree"])
         await entitlements.start()
+        _ = try XCTUnwrap(entitlements.products[.lifetime], "StoreKit did not load the lifetime product")
         await entitlements.purchase(.lifetime)
         XCTAssertFalse(entitlements.isPro)
         guard case .failed = entitlements.lastOutcome else { XCTFail("Missing purchase error"); return }
@@ -55,6 +57,7 @@ final class StoreKitPurchaseTests: XCTestCase {
         defer { store.clearTransactions(); store.resetToDefaultState() }
         let entitlements = Entitlements(arguments: ["-AEUITestFree"])
         await entitlements.start()
+        _ = try XCTUnwrap(entitlements.products[.lifetime], "StoreKit did not load the lifetime product")
         await entitlements.purchase(.lifetime)
         XCTAssertEqual(entitlements.lastOutcome, .pending)
         XCTAssertFalse(entitlements.isPro)
@@ -69,6 +72,7 @@ final class StoreKitPurchaseTests: XCTestCase {
         defer { store.clearTransactions(); store.resetToDefaultState() }
         let entitlements = Entitlements(arguments: ["-AEUITestFree"])
         await entitlements.start()
+        _ = try XCTUnwrap(entitlements.products[.weekly], "StoreKit did not load the weekly product")
         await entitlements.purchase(.weekly)
         XCTAssertTrue(entitlements.isPro)
         try store.expireSubscription(productIdentifier: ProProduct.weekly.rawValue)

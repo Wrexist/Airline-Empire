@@ -509,11 +509,10 @@ class AEUITestCase: XCTestCase {
             aimCorrection = 0
 
             if leaseDialogTitle.waitForExistence(timeout: 3) {
-                // The dialog's confirm button and the market row are both
-                // labelled "Lease"; the row is behind the dialog and not
-                // hittable, so the hittable match — searched from the most
-                // recently added — is the dialog's.
-                let confirm = app.buttons["ae-confirm-action"]
+                // iOS 26 exposes the confirmation as two nested Button
+                // nodes with the same identifier. Resolve the outer control
+                // explicitly; an unqualified query fails as ambiguous.
+                let confirm = app.buttons.matching(identifier: "ae-confirm-action").firstMatch
                 guard require(confirm, "the lease confirmation") else { return false }
                 confirm.tap()
                 // The sheet dismisses itself on success — there is no Done

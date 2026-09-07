@@ -453,6 +453,9 @@ struct ServiceDemandTests {
             origin: origin, destination: destination, distanceKm: distance,
             spec: spec, fareRatio: 1.0, serviceTier: .standard,
             reputationMultiplier: reputation, incumbents: [],
+            rotationsPerDay: min(PlayerRouteDefaults.dailyRoundTrips,
+                FlightSchedulingSystem.roundTripsPerAircraftPerDay(
+                    distanceKm: distance, spec: spec, ops: catalog.tuning.ops)),
             state: state, catalog: catalog, basis: .profit).value
         let expected = Money(rounding: direct * 30 - spec.leaseMonthly.asDouble - payroll)
         #expect(viaPlayer?.monthly == expected,

@@ -8,7 +8,8 @@ import Testing
 /// The script is what the journey does in the simulator and nothing more:
 /// found in Munich on seed 2030, lease a narrowbody, open the guided first
 /// route, then in February buy a used narrowbody, lease another, and open
-/// the two markets Home's Next Moves card names — one of them Istanbul.
+/// the two markets Home's Next Moves card names. Istanbul is now the first
+/// route because forecasts use the player's actual starter schedule.
 /// PacificBlue, the low-cost carrier based at Istanbul, does the rest.
 @Suite("Munich horizon")
 struct MunichHorizonTests {
@@ -160,7 +161,9 @@ struct MunichHorizonTests {
         #expect(entry > 31 && entry <= 120)
         #expect(report.entrant == "PacificBlue" && report.archetype == "lowCost")
         #expect(report.market == "MUC-IST")
-        #expect(report.februaryMarkets.contains("MUC-IST"))
+        #expect(report.firstRoute == "MUC-IST")
+        #expect(report.februaryMarkets.count == 2)
+        #expect(Set(report.februaryMarkets).count == 2)
         #expect(report.entrantFare < report.playerFare, "the low-cost carrier arrives under the player's fare")
         // Home says so the next morning, the player's way round, and the
         // feed carries it.
