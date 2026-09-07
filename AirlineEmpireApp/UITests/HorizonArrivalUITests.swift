@@ -46,7 +46,10 @@ final class HorizonArrivalUITests: AEUITestCase {
         guard require(fleetRow, "the fleet after the used purchase", timeout: 10) else { return }
         guard openAircraftMarket() else { return }
         guard leaseAnAircraft() else { return }
-        openTab("Home")
+        // The ranked markets are on the briefing's Next Moves card (AE-048).
+        // The map home's own row offers one move, and with two aircraft just
+        // bought that move is correctly "put them to work", not "grow".
+        guard openBriefing() else { return }
         for attempt in 1...2 {
             let suggestion = app.buttons.matching(NSPredicate(
                 format: "label CONTAINS %@", "→")).firstMatch
@@ -63,8 +66,9 @@ final class HorizonArrivalUITests: AEUITestCase {
                 if app.buttons["Done"].exists { app.buttons["Done"].tap() }
                 if app.buttons["Cancel"].exists { app.buttons["Cancel"].tap() }
             }
-            openTab("Home")
+            guard openBriefing() else { break }
         }
+        closeBriefing()
         guard openAirlineSection("Routes") else { return }
         let bare = assignAllBareRoutes()
         XCTAssertEqual(bare, 0, "\(bare) route(s) have no aircraft after February.")

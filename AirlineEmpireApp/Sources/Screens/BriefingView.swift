@@ -1,11 +1,26 @@
 import SwiftUI
 import AirlineEmpireCore
 
-/// The command-center home (docs/CORE_LOOP.md §4): current state at a
-/// glance, the ops feed, and the time controls.
-struct DashboardView: View {
+/// The briefing (docs/CORE_LOOP.md §4): current state at a glance, the next
+/// moves, the ops feed and the time controls.
+///
+/// This was `DashboardView`, and it was the Home tab. AE-048 made the world
+/// map the home screen and moved this behind it, one tap from the foot of the
+/// map — a **sheet over the world** rather than a screen beside it
+/// (docs/ROADMAP_DIRECTION_II.md Phase 27). Nothing was removed in the move:
+/// every card, every number and every destination that was on Home is here,
+/// in the same order, for the same reasons.
+///
+/// The rename is not cosmetic. A "dashboard" is where you go; a briefing is
+/// something you are handed before you go back to the world. That is the
+/// hierarchy this phase changed, and the type name should not go on saying
+/// the old one.
+struct BriefingView: View {
     @Environment(GameController.self) private var controller
     @Environment(\.dynamicTypeSize) private var typeSize
+    /// Present as a sheet, so it can close itself. The map is underneath and
+    /// the player must always be able to get back to it.
+    @Environment(\.dismiss) private var dismiss
     /// The suggestion whose route sheet is up. Item-driven, not a Bool
     /// beside an optional: run 116 photographed the guided sheet opening
     /// *empty* — From Stockholm, nothing picked, the whole ranked list —
@@ -81,6 +96,18 @@ struct DashboardView: View {
             .safeAreaInset(edge: .bottom) { autoPauseBar }
             .toolbar {
                 ToolbarItem(placement: .principal) { SpeedControl() }
+                // Icon only, and deliberately. The principal slot holds the
+                // full speed capsule (~236 pt) and the trailing slot holds
+                // Settings; on the narrowest supported phone a titled button
+                // here would be the third thing competing for 375 points, and
+                // a compressed speed control is a control a player misses.
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { dismiss() } label: {
+                        Image(systemName: "chevron.down")
+                    }
+                    .accessibilityIdentifier("ae-briefing-close")
+                    .accessibilityLabel("Back to the map")
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingSettings = true } label: {
                         Label("Settings", systemImage: "gearshape")
@@ -418,7 +445,7 @@ struct UpcomingCard: View {
 /// `DailyDigestModel`; this view only formats.
 /// Yesterday's close, when there is a yesterday and it had content.
 ///
-/// The condition lived inline in `DashboardView.body` as a four-clause `if
+/// The condition lived inline in `BriefingView.body` as a four-clause `if
 /// let`, which is most of why the body was hard to read as an ordering.
 struct DigestSlot: View {
     let snapshot: GameState
@@ -596,29 +623,16 @@ struct OnboardingCard: View {
         .accessibilityLabel("\(title(step)), \(done ? "done" : isNext ? "next step" : "not started")")
     }
 
+    // The words are `Vocab`'s, not this card's. The map's briefing row shows
+    // the same step at the same moment (AE-048), and a checklist that says
+    // "Get an aircraft" beside a map that says something else is two games
+    // teaching one player.
     private func title(_ step: OnboardingModel.Step) -> String {
-        switch step {
-        case .acquireAircraft: "Get an aircraft"
-        case .openRoute: "Open your first route"
-        case .assignAircraft: "Put the aircraft on the route"
-        case .watchFirstFlight: "Un-pause and watch it fly"
-        case .earnFirstRevenue: "Earn your first ticket revenue"
-        }
+        Vocab.onboardingStep(step)
     }
 
     private func hint(_ step: OnboardingModel.Step) -> String {
-        switch step {
-        case .acquireAircraft:
-            "Airline tab → Fleet → Acquire. Leasing keeps cash free early on."
-        case .openRoute:
-            "Pick one of the suggested markets below, or browse the map."
-        case .assignAircraft:
-            "Airline tab → Routes → open the route → Assign an aircraft."
-        case .watchFirstFlight:
-            "Set speed to 1× — boarding, taxi, and the map crossing are real."
-        case .earnFirstRevenue:
-            "Revenue posts as flights land. Watch the feed below."
-        }
+        Vocab.onboardingHint(step)
     }
 }
 

@@ -137,7 +137,7 @@ struct AutoPauseNotice: View {
         switch reason {
         case .solvencyDanger: "Paused — your airline is running out of money."
         // `EraCeilingBar` is what a player actually sees for this one, and
-        // Home does not raise this notice for it (see `DashboardView`). The
+        // the briefing does not raise this notice for it (see `BriefingView`). The
         // case is still answered rather than defaulted: a `default:` here
         // would mean the next reason anyone adds compiles into a banner that
         // says nothing, which is the failure mode this switch's

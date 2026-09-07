@@ -45,12 +45,19 @@ final class ShellAndMapUITests: AEUITestCase {
         let route = appearanceRoute.rawValue
         checkpoint("50-\(route)-home")
 
-        let tabs = ["Map", "Airline", "Finance", "World"]
+        // Home is the world map now (AE-048), so the briefing — everything
+        // that used to be the Home tab — is a fourth surface with its own
+        // materials, and it is the one this suite had never seen in dark.
+        let tabs = ["Airline", "Finance", "World", "Home"]
         for (index, tab) in tabs.enumerated() {
             openTab(tab)
             XCTAssertTrue(app.staticTexts.count > 0 || app.otherElements.count > 0,
                           "\(tab) rendered nothing in dark appearance")
             checkpoint("5\(index + 1)-\(route)-\(tab.lowercased())")
+        }
+        if openBriefing() {
+            checkpoint("55-\(route)-briefing")
+            closeBriefing()
         }
     }
 
@@ -61,8 +68,15 @@ final class ShellAndMapUITests: AEUITestCase {
     func testLightAppearanceMapForComparison() throws {
         guard reachGameplay(in: .light) else { return }
         checkpoint("60-light-home")
-        openTab("Map")
+        openTab("Home")
         checkpoint("61-light-map")
+        // BUG-036's other half: the briefing is glass and system materials
+        // over a near-black map, and light is where that combination has
+        // failed before.
+        if openBriefing() {
+            checkpoint("62-light-briefing")
+            closeBriefing()
+        }
     }
 
 
@@ -119,8 +133,10 @@ final class ShellAndMapUITests: AEUITestCase {
             attached.
             """)
 
-        // ── Settings, from Home ───────────────────────────────────────────
-        openTab("Home")
+        // ── Settings, from the briefing ───────────────────────────────────
+        // Settings left the World hub for the Home toolbar (UI-001); AE-048
+        // moved that toolbar into the briefing when Home became the map.
+        guard openBriefing() else { return }
         let settings = app.buttons["Settings"]
         require(settings, "the Settings button in the toolbar")
         settings.tap()
@@ -153,7 +169,7 @@ final class ShellAndMapUITests: AEUITestCase {
         checkpoint("95-dynamictype-home")
 
         // Navigation failure is the worst outcome: every tab must survive.
-        for tab in ["Map", "Airline", "Finance", "World", "Home"] {
+        for tab in ["Airline", "Finance", "World", "Home"] {
             guard let button = waitForTab(tab, timeout: 10) else {
                 capture(Self.logPrefix + "MISSING-\(tab)-at-accessibility-size")
                 XCTFail("The \(tab) tab vanished at accessibility size. Screenshot attached.")
@@ -228,7 +244,7 @@ final class ShellAndMapUITests: AEUITestCase {
     func testZoomingTheMapRevealsCountryLabels() throws {
         launch(appearance: .light)
         guard foundAirline() else { return }
-        openTab("Map")
+        openTab("Home")
 
         let map = app.descendants(matching: .any)["ae-map-canvas"]
         require(map, "the map canvas")
@@ -326,7 +342,7 @@ final class ShellAndMapUITests: AEUITestCase {
         guard openAircraftMarket(), leaseAnAircraft() else { return }
         guard openRouteBySearch(city: "London", code: "LHR") else { return }
         guard assignFirstAircraft() else { return }
-        openTab("Map")
+        openTab("Home")
 
         let map = app.descendants(matching: .any)["ae-map-canvas"]
         require(map, "the map canvas")
@@ -424,7 +440,7 @@ final class ShellAndMapUITests: AEUITestCase {
     func testSelectingAnAirportOpensItsPanel() throws {
         launch(appearance: .light)
         guard foundAirline() else { return }
-        openTab("Map")
+        openTab("Home")
 
         let map = app.descendants(matching: .any)["ae-map-canvas"]
         require(map, "the map canvas")

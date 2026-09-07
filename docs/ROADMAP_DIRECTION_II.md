@@ -217,6 +217,29 @@ Mitigation: it ships behind a settings toggle for one build (`Open on: Map /
 Home`), and the decision is made on a device with both available — not
 argued from a diagram.
 
+### Shipped — AE-048, 2026-09-07
+
+**The toggle was not built, and that is the one plan decision this phase
+reversed.** `Open on: Map / Home` needs both a map home and a dashboard home to
+choose between, which is precisely the duplicate world the phase exists to
+remove — and a preference between two homes is a question a player should never
+be asked. What shipped instead keeps the mitigation's substance without the
+duplicate: **nothing on the dashboard was lost, and it is one control away.**
+
+- The tab bar is **four items** — Home, Airline, Finance, World. Home is
+  `MapScreen`; there is no Map tab.
+- `DashboardView` became **`BriefingView`**, unchanged in content, presented as
+  a sheet over the map from the strip at its foot.
+- `MapHomeBriefing` is that strip: one row of airline state (cash, in the air,
+  routes, aircraft) which *is* the handle, and one row for the next move.
+- `HomeNextMove` resolves the move from `OnboardingModel` → idle aircraft →
+  `marketOpportunities` → an airborne flight of the player's own → a stopped
+  clock, and offers nothing when none of those holds.
+- The bottom region is shared with `MapSelectionPanel` by never showing both:
+  a live selection owns it, and releasing the selection gives it back.
+
+See `docs/AE048_FINAL_REPORT.md` for what was measured and what was not.
+
 ---
 
 ## Phase 28 — AE-049: The investor rescue

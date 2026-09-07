@@ -1,7 +1,17 @@
 import SwiftUI
 import AirlineEmpireCore
 
-/// The world map (docs/MAP_ARCHITECTURE.md).
+/// The world map, which is also the game's home screen
+/// (docs/MAP_ARCHITECTURE.md; AE-048, docs/ROADMAP_DIRECTION_II.md Phase 27).
+///
+/// ## Home
+///
+/// Until AE-048 this was tab two and Home was a dashboard, which put the
+/// game's atmosphere on one screen and its prompts on another. The map is now
+/// the screen the game opens on: the world fills it, `MapHomeBriefing` puts
+/// the airline's state and its one next move at the foot of it, and the
+/// dashboard is a sheet behind that — `BriefingView`, reached in one tap,
+/// with nothing removed from it.
 ///
 /// ## Renderer
 ///
@@ -30,6 +40,14 @@ struct MapScreen: View {
     @State private var selection: MapHit?
     @State private var overlay: MapOverlay = .network
     @State private var routeDraft: RouteDraft?
+    /// The dashboard, raised over the world. AE-048 moved Home *onto* the
+    /// map; this is where everything the dashboard held went, and it is a
+    /// sheet rather than a panel so the map keeps its whole surface
+    /// (docs/ROADMAP_DIRECTION_II.md Phase 27).
+    @State private var showingBriefing = false
+    /// The aircraft market, which the first onboarding step opens directly.
+    /// The same sheet the Airline tab presents — not a second market.
+    @State private var showingAircraftMarket = false
     @State private var hasFramedHome = false
     /// Frozen geometry from the last draw, so a tap resolves against exactly
     /// what the player saw rather than against a recomputed layout.
@@ -119,12 +137,21 @@ struct MapScreen: View {
                     LoadingState(message: "Drawing the world")
                 }
             }
-            .navigationTitle("Map")
+            // The bar is hidden — the world is the screen — but the title is
+            // still what the accessibility tree and the iPad sidebar call
+            // this stack, and it is the airline's home, not "Map".
+            .navigationTitle(controller.snapshot?.playerAirline?.name ?? "Airline Empire")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
             .sheet(item: $routeDraft) { draft in
                 OpenRouteSheet(suggestion: draft.suggestion)
             }
+            // Attached out here, outside the ZStack that pins
+            // `colorScheme: .dark` for the map's chrome: the briefing is an
+            // ordinary surface and follows the system appearance, exactly as
+            // the route sheet and the pushed destinations already do.
+            .sheet(isPresented: $showingBriefing) { BriefingView() }
+            .sheet(isPresented: $showingAircraftMarket) { AircraftShopSheet() }
             .navigationDestination(for: RouteID.self) { RouteDetailView(routeID: $0) }
             .navigationDestination(for: AircraftID.self) { AircraftDetailView(aircraftID: $0) }
         }
@@ -270,24 +297,63 @@ struct MapScreen: View {
 
             Spacer()
 
-            MapSelectionPanel(
-                selection: selection,
-                model: model,
-                snapshot: snapshot,
-                overlay: overlay,
-                followed: camera.followed,
-                toggleFollow: { toggleFollow($0) },
-                dismiss: {
-                    // Dismissing the card lets go of the flight too: the card
-                    // is the only way back to "stop following", so leaving the
-                    // camera locked with nothing to unlock it would be a trap.
-                    camera.stopFollowing(landingAt: followMemory.lastPoint)
-                    followMemory.clear()
-                    withAnimation(AEMotion.content) { selection = nil }
-                },
-                openRoute: { routeDraft = RouteDraft(suggestion: $0) })
-                .padding(.horizontal, AETheme.spacingM)
-                .padding(.bottom, AETheme.spacingS)
+            // One bottom region, two occupants, never both (the roadmap's
+            // requirement: the briefing and the selection panel must share
+            // this space without fighting over it). Selecting something is an
+            // *inspection*, and the card is the whole answer; letting go of
+            // the selection returns the airline's own state and its next
+            // move to the foot of the world.
+            VStack(spacing: AETheme.spacingS) {
+                if !hasLiveSelection(model) {
+                    MapOverlayHint(model: model, overlay: overlay)
+                    MapHomeBriefing(
+                        snapshot: snapshot,
+                        openBriefing: { showingBriefing = true },
+                        openRoute: { routeDraft = RouteDraft(suggestion: $0) },
+                        openAircraftMarket: { showingAircraftMarket = true },
+                        followFlight: { follow($0) })
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else {
+                    MapSelectionPanel(
+                        selection: selection,
+                        model: model,
+                        snapshot: snapshot,
+                        followed: camera.followed,
+                        toggleFollow: { toggleFollow($0) },
+                        dismiss: {
+                            // Dismissing the card lets go of the flight too:
+                            // the card is the only way back to "stop
+                            // following", so leaving the camera locked with
+                            // nothing to unlock it would be a trap.
+                            camera.stopFollowing(landingAt: followMemory.lastPoint)
+                            followMemory.clear()
+                            withAnimation(AEMotion.content) { selection = nil }
+                        },
+                        openRoute: { routeDraft = RouteDraft(suggestion: $0) })
+                }
+            }
+            .padding(.horizontal, AETheme.spacingM)
+            .padding(.bottom, AETheme.spacingS)
+            .aeAnimation(AEMotion.content, value: hasLiveSelection(model))
+        }
+    }
+
+    /// Whether the selection still resolves to something the model has.
+    ///
+    /// Not `selection != nil`. A selected route can be closed from another
+    /// screen and a followed flight lands and leaves the world — and the card
+    /// for a selection that no longer resolves renders nothing, which used to
+    /// leave the foot of the map simply empty. Home cannot afford that: the
+    /// briefing is what tells the player where their airline is, and it has to
+    /// come back when the thing being inspected stops existing.
+    private func hasLiveSelection(_ model: MapModel) -> Bool {
+        // `.some(...)` spelled out, as `MapSelectionPanel` does: this switches
+        // over an *optional* `MapHit`, and naming the layer costs one word.
+        switch selection {
+        case .none: false
+        case .some(.airport(let code)): model.airports.contains { $0.code == code }
+        case .some(.route(let id)): model.routes.contains { $0.id == id }
+        case .some(.aircraft(let id)): model.flights.contains { $0.id == id }
         }
     }
 
@@ -327,6 +393,14 @@ struct MapScreen: View {
                 camera.pinch = value.magnification
             }
             .onEnded { _ in camera.commitZoom(size: size) }
+    }
+
+    /// Start riding with a flight from somewhere other than its card — the
+    /// briefing's "one of yours is in the air" row. Selects it first, so the
+    /// card that can stop the follow arrives with the camera.
+    private func follow(_ flight: FlightID) {
+        guard camera.followed != flight else { return }
+        toggleFollow(flight)
     }
 
     /// Ride with a flight, or stop. Selection follows the camera: a followed

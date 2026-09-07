@@ -27,15 +27,28 @@ final class EconomyJourneyUITests: AEUITestCase {
         guard foundAirline(seed: "2030", home: (code: "JFK", city: "New York")) else { return }
 
         // ── AE042-KEY-01 · what Home offers a brand-new airline ────────────
+        //
+        // Two surfaces now, and both are the advice: the map home's own row
+        // (AE-048) and the briefing's Next Moves card behind it. The row is
+        // checked first because it is what the player actually meets.
         openTab("Home")
+        let row = app.descendants(matching: .any)
+            .matching(identifier: "ae-home-next-action").firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 15), """
+            The map home offers a brand-new airline no next move at all. \
+            This row is the only thing on the opening screen that says what \
+            to do, so an empty one is the first-hour defect EXP-01 named.
+            """)
+        checkpoint("AE042-1-home-first-advice")
+        guard openBriefing() else { return }
         let card = app.descendants(matching: .any)
             .matching(identifier: "ae-next-moves").firstMatch
         if !card.waitForExistence(timeout: 10) {
-            // Before the first aircraft the checklist owns the screen and
+            // Before the first aircraft the checklist owns the briefing and
             // carries the same suggestions; either surface is the advice.
             capture(Self.logPrefix + "AE042-NO-NEXT-MOVES-CARD")
         }
-        checkpoint("AE042-1-home-first-advice")
+        checkpoint("AE042-1b-briefing-first-advice")
 
         // Toronto was the second suggestion and the trap. It must not be
         // among what Home offers now.
@@ -300,7 +313,7 @@ final class EconomyJourneyUITests: AEUITestCase {
         checkpoint("80-route-with-aircraft")
 
         // ── Run the clock ──────────────────────────────────────────────────
-        openTab("Map")
+        openTab("Home")
         // Run 114 ended this journey between the route frame and the
         // flight frame with nothing photographed in between: the map, its
         // framing button and the speed control are the only steps there.
@@ -356,7 +369,11 @@ final class EconomyJourneyUITests: AEUITestCase {
         // celebration overlay is transient, so it is photographed when the
         // poll happens to catch it, never asserted — a screenshot loop is
         // not a race the suite should bet on.
+        // The checklist lives in the briefing since AE-048, and the step
+        // retiring is what proves revenue posted — so the poll happens where
+        // the checklist is.
         openTab("Home")
+        guard openBriefing() else { return }
         let lastStep = app.staticTexts["Earn your first ticket revenue"]
         var celebrationSeen = false
         let payoffDeadline = Date().addingTimeInterval(120)
@@ -378,10 +395,12 @@ final class EconomyJourneyUITests: AEUITestCase {
             .matching(identifier: "ae-next-moves").firstMatch
         XCTAssertTrue(nextMoves.waitForExistence(timeout: 10), """
             The checklist retired but nothing took its place: the Next \
-            Moves card did not render on Home. With one route open there \
-            are open markets to suggest, so an empty card is a defect, not \
-            a quiet state (EXP-01).
+            Moves card did not render in the briefing. With one route open \
+            there are open markets to suggest, so an empty card is a defect, \
+            not a quiet state (EXP-01).
             """)
+        checkpoint("09b-briefing-after-first-revenue")
+        closeBriefing()
     }
 
 
@@ -401,19 +420,29 @@ final class EconomyJourneyUITests: AEUITestCase {
         launch(appearance: .light)
         guard foundAirline() else { return }
 
-        for tab in ["Home", "Map", "Airline", "Finance", "World"] {
-            openTab(tab)
+        func sweep(_ surface: String) -> Bool {
             let offending = app.staticTexts.matching(
                 NSPredicate(format: "label CONTAINS %@", "\u{00A4}"))
-            if offending.count > 0 {
-                capture(Self.logPrefix + "CURRENCY-\(tab)")
-                XCTFail("""
-                    \(tab) shows \(offending.count) label(s) containing ¤, the \
-                    generic currency sign, which renders as a hollow box and \
-                    reads as a broken glyph. Money should use $.
-                    """)
-                return
-            }
+            guard offending.count > 0 else { return true }
+            capture(Self.logPrefix + "CURRENCY-\(surface)")
+            XCTFail("""
+                \(surface) shows \(offending.count) label(s) containing ¤, the \
+                generic currency sign, which renders as a hollow box and \
+                reads as a broken glyph. Money should use $.
+                """)
+            return false
         }
+
+        for tab in ["Home", "Airline", "Finance", "World"] {
+            openTab(tab)
+            guard sweep(tab) else { return }
+        }
+        // The briefing carries most of the money in the game — the cash
+        // header, the month to date, the stat grid, the digest and the feed —
+        // and after AE-048 it is a sheet rather than a tab, so a sweep of the
+        // tabs alone would no longer see any of it.
+        guard openBriefing() else { return }
+        guard sweep("the briefing") else { return }
+        closeBriefing()
     }
 }

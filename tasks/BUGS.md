@@ -1823,3 +1823,29 @@ morning is when an airline looks alive. Not taken here because it moves the
 clock under every UI journey (the campaign suite drives ~1,800 of these taps
 and asserts on dates), and this branch cannot run them.
 **Status:** OPEN.
+
+---
+
+## BUG-062 — a selection that stopped existing left the foot of the map blank
+**Severity:** P2 before AE-048 (a strip of empty glass); P1 after it, because
+the same region now carries the airline's state and its next move · **Phase
+found:** AE-048, 2026-09-07, by reasoning about the new composition rather
+than by seeing it.
+**Repro:** Select a route on the map, then close that route from Route Detail;
+or select an aircraft in flight and let it land and finish its turnaround.
+**Behaviour:** `MapSelectionPanel` switched on `selection`, found no matching
+entry in the model and rendered nothing, while the panel's own container went
+on claiming the bottom of the screen. The player was left with a selection the
+map still believed in and a card that did not exist.
+**Root cause:** the panel asked whether a selection had been *made*, not
+whether it still *resolved*. The two are the same only while the world holds
+still, and this map's whole point is that it does not.
+**Fix:** `MapScreen.hasLiveSelection(_:)` asks the model whether the selected
+airport, route or flight is still in it, and the bottom region is decided by
+that. A selection that has gone stale now returns the region to the briefing.
+The selection value itself is left alone — clearing state during a body pass
+is not allowed, and the next tap re-selects.
+**Status:** FIXED in AE-048. Not yet seen on a simulator: the case needs a
+route closed or a flight landed while its card is open, which no journey
+currently drives. Recorded as reasoned-and-fixed, not observed-and-fixed.
+

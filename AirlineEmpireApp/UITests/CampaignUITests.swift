@@ -174,8 +174,13 @@ final class CampaignUITests: AEUITestCase {
         guard openAircraftMarket() else { return }
         guard leaseAnAircraft() else { return }
 
-        // Two more markets, from the same ranking the Next Moves card shows.
-        openTab("Home")
+        // Two more markets, from the Next Moves card itself.
+        //
+        // Through the briefing since AE-048: the map home's own row offers
+        // *one* move and by now that move is the idle aircraft just bought,
+        // which is correct advice and the wrong control for this loop. The
+        // card behind the briefing still ranks the markets, unchanged.
+        guard openBriefing() else { return }
         for attempt in 1...2 {
             let suggestion = app.buttons.matching(NSPredicate(
                 format: "label CONTAINS %@", "→")).firstMatch
@@ -198,8 +203,9 @@ final class CampaignUITests: AEUITestCase {
                 checkpoint("FEB-ROUTE-SHEET-STUCK-\(attempt)")
                 if app.buttons["Done"].exists { app.buttons["Done"].tap() }
             }
-            openTab("Home")
+            guard openBriefing() else { break }
         }
+        closeBriefing()
 
         // ── The fight: London–Berlin under an incumbent (AE-037, AE-039) ───
         // The Core twin (RivalPressureCampaignTests) measures this exact
@@ -292,6 +298,9 @@ final class CampaignUITests: AEUITestCase {
             XCTFail("The sunrise control could not reach February 9.")
             return
         }
+        // The rival card rides in the briefing since AE-048, with the rest of
+        // what Home used to be.
+        guard openBriefing() else { return }
         checkpoint("43-home-rival-pressure")
         // Runs 113 and 114 both photographed the card on screen here and
         // then stopped on the query against it — by identifier in 113, by
@@ -313,13 +322,14 @@ final class CampaignUITests: AEUITestCase {
             capture(Self.logPrefix + "43-NO-RIVAL-CARD-QUERY")
             let labels = app.staticTexts.allElementsBoundByIndex
                 .prefix(48).map(\.label)
-            print("AE-UI Home static texts at KEY-43: \(labels)")
+            print("AE-UI briefing static texts at KEY-43: \(labels)")
         }
         continueAfterFailure = true
         XCTAssertTrue(cardFound, """
-            Home carries no rival-pressure card a week into a contested \
-            market — the one competitive fact the screen exists to show.
+            The briefing carries no rival-pressure card a week into a \
+            contested market — the one competitive fact it exists to show.
             """)
+        closeBriefing()
         guard openContestedRouteDetail() else { return }
         let standing = app.descendants(matching: .any)
             .matching(identifier: "ae-route-standing").firstMatch
@@ -391,15 +401,18 @@ final class CampaignUITests: AEUITestCase {
         guard openProgression() else { return }
         checkpoint("37-progression-after-era")
         app.navigationBars.buttons.firstMatch.tap()
-        openTab("Home")
+        // The era is on the briefing's header, where the date, the season and
+        // the money are — it did not move in AE-048, the screen around it did.
+        guard openBriefing() else { return }
 
         let regional = app.staticTexts.matching(NSPredicate(
             format: "label CONTAINS %@", "Regional era")).firstMatch
         XCTAssertTrue(regional.waitForExistence(timeout: 10), """
-            March has begun with the Core twin's gate satisfied, but Home \
-            still does not say "Regional era" — the era did not advance, or \
-            the banner does not show it.
+            March has begun with the Core twin's gate satisfied, but the \
+            briefing still does not say "Regional era" — the era did not \
+            advance, or the header does not show it.
             """)
+        closeBriefing()
 
         openTab("Finance")
         Thread.sleep(forTimeInterval: 1)
@@ -522,14 +535,15 @@ final class CampaignUITests: AEUITestCase {
     ///
     /// On seed 2039 the regional incumbent closes London–Paris on day 248,
     /// two hundred days after the player entered it. The fixture is that
-    /// campaign saved on day 249; Home must say so.
+    /// campaign saved on day 249; the briefing must say so.
     func testARivalsRetreatIsOnHomeTheMorningAfter() throws {
         guard launchFromFixture("rival-pressure-retreat") else { return }
+        guard openBriefing() else { return }
         let card = app.descendants(matching: .any)
             .matching(identifier: "ae-rival-pressure").firstMatch
         XCTAssertTrue(card.waitForExistence(timeout: 10), """
-            Home shows no rival-pressure card the morning after a rival left \
-            the player's market.
+            The briefing shows no rival-pressure card the morning after a \
+            rival left the player's market.
             """)
         let line = app.descendants(matching: .any).matching(NSPredicate(
             format: "label CONTAINS %@", "pulled out")).firstMatch
@@ -538,6 +552,7 @@ final class CampaignUITests: AEUITestCase {
             rival pulled out of a market.
             """)
         checkpoint("47-rival-retreat-on-home")
+        closeBriefing()
         guard openContestedRouteDetail(farEnd: "CDG") else { return }
         checkpoint("48-market-after-retreat")
     }
@@ -557,7 +572,7 @@ final class CampaignUITests: AEUITestCase {
             the saved world has five rivals.
             """)
         app.navigationBars.buttons.firstMatch.tap()
-        openTab("Map")
+        openTab("Home")
         Thread.sleep(forTimeInterval: 2)
         let layer = app.buttons["Map layer"]
         if layer.waitForExistence(timeout: 6) {
@@ -573,18 +588,33 @@ final class CampaignUITests: AEUITestCase {
     /// Every tab reachable, and each renders something.
     ///
     /// Checkpoints on every tab, because this is also the test the iPad job
-    /// runs: the same five screens at regular width are the whole of what
-    /// that job exists to photograph.
+    /// runs: the same screens at regular width are the whole of what that job
+    /// exists to photograph.
+    ///
+    /// Four tabs since AE-048, not five — Home *is* the world map, and the
+    /// dashboard it replaced is the briefing raised over it. The briefing is
+    /// photographed here too, because dropping a tab must not drop a surface.
     func testFoundingAnAirlineReachesEveryTab() throws {
         launch(appearance: .light)
         guard foundAirline() else { return }
 
-        for (index, tab) in ["Home", "Map", "Airline", "Finance", "World"].enumerated() {
+        for (index, tab) in ["Home", "Airline", "Finance", "World"].enumerated() {
             openTab(tab)
             XCTAssertTrue(app.staticTexts.count > 0 || app.otherElements.count > 0,
                           "\(tab) rendered no content")
             checkpoint("2\(index)-shell-\(tab.lowercased())")
         }
+
+        XCTAssertTrue(openBriefing(), """
+            The briefing did not open from the map home. Every card the Home \
+            tab used to carry — the checklist, Next Moves, the feed, the stat \
+            grid and Settings — is behind that one control, so a briefing \
+            that will not open is five screens lost, not one.
+            """)
+        checkpoint("24-shell-briefing")
+        closeBriefing()
+        XCTAssertFalse(briefingIsOpen,
+                       "The briefing would not close; the map is unreachable behind it.")
     }
 
 
@@ -639,10 +669,34 @@ final class CampaignUITests: AEUITestCase {
     func testHomeGuidesANewPlayerToTheirFirstAircraft() throws {
         launch(appearance: .light)
         guard foundAirline() else { return }
-        XCTAssertTrue(app.staticTexts["Get an aircraft"].waitForExistence(timeout: 15),
+
+        // The map home's own row, matched by identifier and read back by
+        // label. AE-048 moved the checklist into the briefing and put its
+        // next step here, on the world, as a control that opens the market —
+        // so this asks the row both that it exists and that it names the
+        // right step, rather than hoping a loose static text resolves.
+        let row = app.descendants(matching: .any)
+            .matching(identifier: "ae-home-next-action").firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 15), """
+            The map home shows no next move for a new airline. This row is \
+            the only signpost to the market on the screen the game opens on.
+            """)
+        XCTAssertTrue(row.label.contains("Get an aircraft"), """
+            The map home's next move reads "\(row.label)" for an airline \
+            with no aircraft and no routes. The onboarding model's first \
+            step is "Get an aircraft"; anything else means the row is not \
+            reading it.
+            """)
+        checkpoint("26-map-home-first-move")
+
+        // And the checklist itself, where the whole arc still is.
+        guard openBriefing() else { return }
+        XCTAssertTrue(app.staticTexts["Get an aircraft"].waitForExistence(timeout: 10),
                       """
-                      Home shows no onboarding step for a new airline. This \
-                      card is the only signpost to the market.
+                      The briefing shows no onboarding checklist for a new \
+                      airline. The map's row is one step; this is the arc.
                       """)
+        checkpoint("27-briefing-first-checklist")
+        closeBriefing()
     }
 }

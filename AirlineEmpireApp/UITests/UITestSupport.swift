@@ -980,16 +980,25 @@ class AEUITestCase: XCTestCase {
     /// morning, which is also how a player would meet it.
     @discardableResult
     func advanceMorningsUntilHomeSays(_ phrase: String, cap: Int) -> Bool {
-        openTabIfNeeded("Home")
+        // The feed moved into the briefing with the rest of the dashboard
+        // (AE-048), and the briefing's toolbar carries the same sunrise
+        // control the map's does — so the whole loop runs inside it, and the
+        // caller gets the tab bar back at the end.
+        guard openBriefing() else { return false }
         let sunrise = app.buttons["Advance to next morning"]
-        guard sunrise.waitForExistence(timeout: 8) else { return false }
+        guard sunrise.waitForExistence(timeout: 8) else {
+            closeBriefing()
+            return false
+        }
         let line = app.staticTexts.matching(NSPredicate(
             format: "label CONTAINS %@", phrase)).firstMatch
         for _ in 0..<cap {
             if line.exists { return true }
             sunrise.tap()
         }
-        return line.exists
+        let found = line.exists
+        if !found { closeBriefing() }
+        return found
     }
 
     private func openTabIfNeeded(_ title: String) {
@@ -1156,12 +1165,61 @@ class AEUITestCase: XCTestCase {
     }
 
     /// Switch to a tab by its title.
+    ///
+    /// Closes the briefing first if it is up. AE-048 made Home the world map
+    /// and the dashboard a sheet over it, and a sheet swallows every tap
+    /// aimed at the tab bar underneath — so a journey that reads the feed and
+    /// then asks for the World hub would tap into the sheet's own scroll view
+    /// and fail on a screen that is perfectly healthy.
     func openTab(_ title: String) {
+        closeBriefing()
         guard let button = waitForTab(title, timeout: 15) else {
             capture(Self.logPrefix + "MISSING-the \(title) tab")
             XCTFail("The \(title) tab never appeared in any shape. Screenshot attached.")
             return
         }
         button.tap()
+    }
+
+    // MARK: The briefing (AE-048)
+
+    /// Whether the briefing sheet is currently in front of the map.
+    var briefingIsOpen: Bool {
+        app.buttons["ae-briefing-close"].exists
+    }
+
+    /// Raise the briefing — the dashboard, over the world.
+    ///
+    /// Everything that used to be the Home tab is behind this one control:
+    /// the onboarding checklist, Next Moves, rival pressure, the stat grid,
+    /// the digest, the calendar, the operations feed and Settings. A journey
+    /// that wants any of them opens this first.
+    @discardableResult
+    func openBriefing() -> Bool {
+        if briefingIsOpen { return true }
+        openTab("Home")
+        let handle = app.buttons["ae-home-briefing"]
+        guard handle.waitForExistence(timeout: 15) else {
+            capture(Self.logPrefix + "NO-BRIEFING-HANDLE")
+            XCTFail("The map home shows no briefing handle. Screenshot attached.")
+            return false
+        }
+        handle.tap()
+        guard app.buttons["ae-briefing-close"].waitForExistence(timeout: 10) else {
+            capture(Self.logPrefix + "BRIEFING-DID-NOT-OPEN")
+            XCTFail("Pressing the briefing handle did not raise the briefing.")
+            return false
+        }
+        return true
+    }
+
+    /// Put the briefing away and return to the world. A no-op when it is not
+    /// up, so it is safe to call defensively.
+    func closeBriefing() {
+        let close = app.buttons["ae-briefing-close"]
+        guard close.exists, close.isHittable else { return }
+        close.tap()
+        // The sheet's dismissal is animated; the next query must not race it.
+        _ = close.waitForNonExistence(timeout: 5)
     }
 }

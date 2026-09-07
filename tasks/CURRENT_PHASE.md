@@ -1,5 +1,61 @@
 # Current Phase
 
+**AE-048 — The map is the home screen.** 2026-09-07.
+
+Phase 27 of Direction II. The game opens on the world. `MapScreen` is the Home
+tab, the Map tab is gone, and what used to be the Home dashboard is
+`BriefingView` — the same file, the same cards, in the same order — raised as a
+sheet from the foot of the map.
+
+**Outcome: AUTHORED + CORE TESTED. The composition is a claim about what a
+screen looks like, and that needs the simulator run this branch dispatched and
+a person to read the frames.**
+
+**Two rows over the Atlantic, and nothing else.** `MapHomeBriefing` is the
+airline's state (cash, aircraft in the air, routes, fleet) and one next move.
+The state row *is* the handle: pressing the numbers raises the briefing, so
+there is one control where there would otherwise be two.
+
+**The next move is a derivation, not a system.** `HomeNextMove.resolve` reads
+`OnboardingModel` → an idle aircraft → `marketOpportunities` (only where the
+market pays for its own airframe, BUG-055's rule) → an airborne flight of the
+player's own → a stopped clock, and returns **nothing** when none of those
+holds. There is no second onboarding model, nothing persisted, and — via
+`Vocab.onboardingStep` — the map's row and the briefing's checklist cannot
+drift into two vocabularies for one arc.
+
+**Every move lands somewhere real.** The market is the Airline tab's own sheet;
+"put the aircraft on the route" is a `NavigationLink` to that route's detail;
+"ride with LHR → BER" is AE-046's follow camera, selected first so the card
+that stops it arrives with it. No case in that enum leads nowhere.
+
+**The bottom region has one occupant, ever.** A live selection owns it;
+releasing gives it back. "Live" means the selection still *resolves* — which is
+BUG-062, found by looking at the new composition rather than at a screen: a
+route closed elsewhere or a flight that has landed used to leave a strip of
+empty glass, and would now have taken the airline's own state with it.
+
+**Per-snapshot, not per-frame.** The strip rebuilds on every `MapScreen` body
+pass and a finger drives those, so `HomeNextMove` and `DashboardModel` joined
+`MapModel` and `NetworkSummary` in `GameController`'s cache. `HomeNextMove`
+carries a `Tone` rather than a `Color` so that cache costs the controller no
+SwiftUI import.
+
+**One plan decision reversed.** The roadmap's mitigation was a settings toggle,
+`Open on: Map / Home`, for one build. A toggle needs both homes to exist, which
+is the duplicate world the phase is for — and it asks the player a question
+they should never be asked. `docs/AE048_FINAL_REPORT.md` §6 argues it; the
+substance of the mitigation (nothing lost, everything one control away) is
+what shipped instead.
+
+**Next:** AE-049 — the investor rescue (`docs/ROADMAP_DIRECTION_II.md` Phase
+28), which is mostly Core; or AE-031's first-hour work on the new home, which
+Phase 31 puts after this one for exactly this reason.
+
+---
+
+## Previous phase
+
 **AE-047 — Airports that breathe, weather you can see.** 2026-09-06.
 
 Phase 26 of Direction II: stop the map being a diagram. Three layers, each

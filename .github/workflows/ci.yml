@@ -349,8 +349,14 @@ jobs:
           #   section picker is not in dead space  20.4   a frame assertion
           #   selecting an airport opens a panel   32.6   the map answers a tap
           #   the clock actually runs              63.2   the simulation moves
+          #   four tabs, no dead destinations       (new) the AE-048 shell
           #                                       ─────
           #                                       346.1   ≈ 6 min of tests
+          #
+          # The AE-048 entry has no measured cost yet — it founds an airline
+          # and walks four tabs, so it should sit near the 29 s of "founding
+          # reaches every tab", and the number here will be replaced with a
+          # measured one after the first full run rather than guessed at.
           #
           # ~9 minutes of runner once the build, the boot and the install are
           # counted; ~15 on the slowest machine measured (runners vary 1.7x,
@@ -367,6 +373,7 @@ jobs:
             CampaignUITests/testAudioEngineStartsAndEveryCueDecodes \
             EconomyJourneyUITests/testNoScreenShowsTheOldCurrencyGlyph \
             EconomyJourneyUITests/testAcquireAircraftThenOpenARoute \
+            MapHomeUITests/testTheShellHasFourTabsAndNoDeadDestinations \
             ShellAndMapUITests/testSectionPickerSitsUnderTheNavigationBarNotInDeadSpace \
             ShellAndMapUITests/testSelectingAnAirportOpensItsPanel \
             ShellAndMapUITests/testTheClockActuallyRuns
@@ -384,7 +391,9 @@ jobs:
                 {shard: 3, name: "shell + map", job: 60, ui: 40, run: true, measure: true,
                  tests: "-only-testing:AirlineEmpireUITests/ShellAndMapUITests"},
                 {shard: 4, name: "arrival",    job: 45, ui: 40, run: true, measure: false,
-                 tests: "-only-testing:AirlineEmpireUITests/HorizonArrivalUITests"}
+                 tests: "-only-testing:AirlineEmpireUITests/HorizonArrivalUITests"},
+                {shard: 5, name: "map home",   job: 40, ui: 30, run: true, measure: false,
+                 tests: "-only-testing:AirlineEmpireUITests/MapHomeUITests"}
               ]}') ;;
             smoke)
               MATRIX=$(jq -cn --arg tests "$SMOKE" '{include: [
