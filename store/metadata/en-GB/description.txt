@@ -5,7 +5,7 @@ Airline Empire is a deep, offline airline management simulator. You decide where
 BUILD A NETWORK THAT IS YOURS
 • Ninety-four real airports across nine world regions — Arlanda, Heathrow, Haneda, Landvetter — each with its own demand, slot capacity, runway limits and weather risk
 • Open routes, set frequencies, set the fare, and watch the map fill in behind you
-• Grow from a single regional hop to widebodies and long-haul, as hubs and fleet commonality start to matter
+• Grow from a single regional hop to widebodies and long-haul as you earn new eras and expand your fleet
 
 RUN A REAL BUSINESS
 • Fourteen aircraft types, from a 68-seat turboprop to a 422-seat widebody — buy new, buy used, or lease
@@ -21,8 +21,8 @@ A WORLD THAT MOVES WITHOUT YOU
 PLAY IT YOUR WAY
 • Three starting scenarios, from a careful regional debut to a well-funded launch
 • Pick your seed — the same seed always grows the same world, so a run can be replayed exactly
-• Pause, or run at up to 4×. It works in five minutes and it works for an hour
-• A save that survives being backgrounded mid-flight, and — with Pro — as many airlines running at once as you like
+• Pause, or run at up to 16×. It works in five minutes and it works for an hour
+• Daily autosaves, backup recovery and campaign export/import — with Pro, keep multiple airlines in separate saves
 
 FREE TO FLY, AND WE MEAN IT
 • The whole simulation is free: the full ledger, every explainer, rivals that fight back, the seeded world you can replay exactly
@@ -31,9 +31,9 @@ FREE TO FLY, AND WE MEAN IT
 • Airline Empire Pro opens the rest: National, International and Empire, all 94 airports across nine regions, widebodies and long-haul, every scenario, and as many airlines as you like
 • Pro is more world, never a shortcut through it — no aircraft, route or advantage is ever sold
 
-COMPLETELY OFFLINE
-• No account, no sign-in, no servers, no tracking, nothing sent anywhere
-• Play it in Aeroplane Mode from start to finish
+OFFLINE GAMEPLAY
+• No game account, advertising or tracking
+• Play your campaign in Aeroplane Mode; purchases and restoring Pro use Apple’s App Store services
 • iPhone and iPad
 
 A NOTE ON THE WORLD

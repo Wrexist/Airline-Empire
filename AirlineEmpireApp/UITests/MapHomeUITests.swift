@@ -140,7 +140,7 @@ final class MapHomeUITests: AEUITestCase {
         if back.exists, back.isHittable { back.tap() }
         Thread.sleep(forTimeInterval: 0.6)
         openTab("Home")
-        let fast = app.buttons["Sixteen times speed"]
+        let fast = app.buttons["Four times speed"]
         if fast.waitForExistence(timeout: 8) { fast.tap() }
 
         func value() -> String { map.value as? String ?? "" }
@@ -151,21 +151,18 @@ final class MapHomeUITests: AEUITestCase {
             else { return 0 }
             return Int(text[range].prefix(while: \.isNumber)) ?? 0
         }
-        var waited = 0
-        while !app.buttons["ae-follow-flight-menu"].exists && waited < 60 {
+        let menuDeadline = Date().addingTimeInterval(180)
+        while !app.buttons["ae-follow-flight-menu"].exists && Date() < menuDeadline {
             Thread.sleep(forTimeInterval: 1)
-            waited += 1
         }
+        // Pause before taking a screenshot or querying the canvas. On a
+        // loaded runner those operations took five game hours at 16x, so
+        // the flight landed between its discovery and the Pause tap.
+        app.buttons["Pause"].tap()
+        Thread.sleep(forTimeInterval: 1)
         checkpoint("AE048-F0-map-with-the-network-running")
 
         if airborne() > 0 {
-            // Stop the clock first: at 16x an aeroplane crosses its own width
-            // between the snapshot a tap is aimed from and the tap landing,
-            // which is why this spiral has never hit one. Paused, the flight
-            // holds position and the card still offers Follow.
-            let pause = app.buttons["Pause"]
-            if pause.waitForExistence(timeout: 5) { pause.tap() }
-            Thread.sleep(forTimeInterval: 1)
             // Use the same accessible flight menu available to every player.
             let menu = app.buttons.matching(identifier: "ae-follow-flight-menu").firstMatch
             guard require(menu, "the live flight menu", timeout: 8) else { return }
