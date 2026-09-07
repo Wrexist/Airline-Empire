@@ -29,7 +29,6 @@ struct BriefingView: View {
     /// route no aircraft could fly. `sheet(item:)` cannot present without
     /// the value (BUG-045).
     @State private var guidedRoute: GuidedRoute?
-    @State private var showingSettings = false
 
     var body: some View {
         NavigationStack {
@@ -91,6 +90,32 @@ struct BriefingView: View {
                 .padding(.bottom, AETheme.spacingM)
             }
             .aeScreenBackground()
+            // Registered on the stack rather than inside the stat grid, which
+            // is where they lived. The grid only renders once a snapshot has
+            // landed, so every destination — Settings among them now — was
+            // inert on a briefing still saying "Preparing your airline". A
+            // `NavigationLink(value:)` with no matching destination is
+            // silently dead, which is BUG-029's whole family.
+            .navigationDestination(for: DashboardRoute.self) { route in
+                switch route {
+                case .fleet:
+                    FleetList().navigationTitle("Fleet").aeTimeToolbar()
+                case .routes:
+                    RoutesList().navigationTitle("Routes").aeTimeToolbar()
+                case .reputation:
+                    ReputationDetailView()
+                case .finance:
+                    FinanceContent().navigationTitle("Finance").aeTimeToolbar()
+                case .economy:
+                    EconomyDetailView()
+                case .settings:
+                    SettingsView()
+                }
+            }
+            // The pushed screens above link onward, so this stack has to know
+            // the same destinations the Airline tab does.
+            .navigationDestination(for: RouteID.self) { RouteDetailView(routeID: $0) }
+            .navigationDestination(for: AircraftID.self) { AircraftDetailView(aircraftID: $0) }
             .navigationTitle(controller.snapshot?.playerAirline?.name ?? "…")
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) { autoPauseBar }
@@ -108,17 +133,25 @@ struct BriefingView: View {
                     .accessibilityIdentifier("ae-briefing-close")
                     .accessibilityLabel("Back to the map")
                 }
+                // A push, not a sheet.
+                //
+                // The briefing is itself a sheet, and Settings used to be a
+                // second one raised from inside it. The iPad frames from CI
+                // run 171 showed what that does at regular width: the second
+                // sheet *replaced* the briefing rather than stacking over it,
+                // so closing Settings returned the player to the map rather
+                // than to what they were reading. Pushing keeps one modal
+                // level, works the same on both idioms, and gives the list a
+                // full-height scroll — `SettingsView` already carries its own
+                // title, and its Done button pops instead of dismissing.
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showingSettings = true } label: {
+                    NavigationLink(value: DashboardRoute.settings) {
                         Label("Settings", systemImage: "gearshape")
                     }
                 }
             }
             .sheet(item: $guidedRoute) { guided in
                 OpenRouteSheet(suggestion: guided.suggestion)
-            }
-            .sheet(isPresented: $showingSettings) {
-                NavigationStack { SettingsView() }
             }
         }
     }
@@ -264,24 +297,6 @@ struct BriefingView: View {
             }
         }
         .buttonStyle(.aePress)
-        .navigationDestination(for: DashboardRoute.self) { route in
-            switch route {
-            case .fleet:
-                FleetList().navigationTitle("Fleet").aeTimeToolbar()
-            case .routes:
-                RoutesList().navigationTitle("Routes").aeTimeToolbar()
-            case .reputation:
-                ReputationDetailView()
-            case .finance:
-                FinanceContent().navigationTitle("Finance").aeTimeToolbar()
-            case .economy:
-                EconomyDetailView()
-            }
-        }
-        // The pushed screens above link onward, so this stack has to know the
-        // same destinations the Airline tab does.
-        .navigationDestination(for: RouteID.self) { RouteDetailView(routeID: $0) }
-        .navigationDestination(for: AircraftID.self) { AircraftDetailView(aircraftID: $0) }
     }
 
     private func eventsFeed(snapshot: GameState) -> some View {
@@ -312,7 +327,13 @@ struct BriefingView: View {
 }
 
 /// Where a dashboard number leads.
-enum DashboardRoute: Hashable { case fleet, routes, reputation, finance, economy }
+enum DashboardRoute: Hashable {
+    case fleet, routes, reputation, finance, economy
+    /// Reached from the briefing's toolbar. A case rather than a sheet since
+    /// AE-048: the briefing is a sheet, and a sheet over a sheet does not
+    /// stack on iPad — it replaces.
+    case settings
+}
 
 /// The forward hook (docs/PLAYER_JOURNEY.md §2: a session should end on
 /// "your second aircraft arrives Tuesday").

@@ -391,8 +391,31 @@ class AEUITestCase: XCTestCase {
     /// The confirmation is a `confirmationDialog`, which is an action sheet on
     /// a phone, so it is queried through `app.sheets` rather than by label
     /// against the whole app — the market row is also called "Lease".
+    /// How a completed lease is proved, which depends on where the market was
+    /// opened from.
+    ///
+    /// This helper confirmed a lease by waiting for the market sheet to close
+    /// *and* for a row on the fleet board behind it. AE-048 gave the market a
+    /// second, legitimate entry point — the map home's own "Get an aircraft"
+    /// row — and behind that sheet is the world, not the fleet board. CI run
+    /// 171 photographed the consequence: the frame it saved as
+    /// `LEASE-ATTEMPT-1` shows a lease that had plainly succeeded (cash
+    /// $60.0M → $59.2M, "1 aircraft" on the briefing strip, the next move
+    /// already advanced to "Open your first route") under a test that had
+    /// just reported "No lease completed after four attempts".
+    ///
+    /// Neither proof is weaker than the other, and both are agreements rather
+    /// than appearances: one reads the fleet board, the other reads the fleet
+    /// count that `FleetSummary` puts on the map.
+    enum LeaseProof {
+        /// Opened from the Fleet board, which is behind the sheet.
+        case fleetBoard
+        /// Opened from the map home: the briefing strip reports the count.
+        case mapHomeBriefing
+    }
+
     @discardableResult
-    func leaseAnAircraft() -> Bool {
+    func leaseAnAircraft(proof: LeaseProof = .fleetBoard) -> Bool {
         // Hide what the era cannot buy, so the first lease action on screen
         // belongs to an aircraft this airline is allowed to take.
         let eraFilter = app.switches["Hide what this era cannot buy"]
@@ -499,7 +522,7 @@ class AEUITestCase: XCTestCase {
                 // stuck sheet; in runs 62 and 63 it closed a healthy market
                 // over a lease that had not happened, three times each.
                 if market.waitForNonExistence(timeout: 8),
-                   fleetRow.waitForExistence(timeout: 6) {
+                   leaseLanded(proof, fleetRow: fleetRow) {
                     return true
                 }
             }
@@ -552,6 +575,31 @@ class AEUITestCase: XCTestCase {
             would be testing what it claims to.
             """)
         return false
+    }
+
+    /// Did the lease actually land? Asked of whichever surface can answer.
+    private func leaseLanded(_ proof: LeaseProof, fleetRow: XCUIElement) -> Bool {
+        switch proof {
+        case .fleetBoard:
+            return fleetRow.waitForExistence(timeout: 6)
+        case .mapHomeBriefing:
+            // The strip's accessibility value is the read model, read back:
+            // "cash $59.2M, in the air 0, routes 0, aircraft 1". A fleet that
+            // went up is the agreement; the wording around it is not.
+            let strip = app.buttons["ae-home-briefing"]
+            guard strip.waitForExistence(timeout: 10) else { return false }
+            let deadline = Date().addingTimeInterval(8)
+            repeat {
+                if let value = strip.value as? String,
+                   value.range(of: #"aircraft [1-9]"#,
+                               options: .regularExpression) != nil {
+                    return true
+                }
+                Thread.sleep(forTimeInterval: 0.5)
+            } while Date() < deadline
+            capture(Self.logPrefix + "LEASE-NOT-ON-THE-BRIEFING")
+            return false
+        }
     }
 
     /// Open a route from the empty routes board, taking the guided first

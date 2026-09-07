@@ -83,7 +83,7 @@ final class MapHomeUITests: AEUITestCase {
             is the dead-control class this phase forbids.
             """)
         checkpoint("AE048-C-market-opened-from-the-map")
-        guard leaseAnAircraft() else { return }
+        guard leaseAnAircraft(proof: .mapHomeBriefing) else { return }
 
         // ── FRAME D · the move becomes the first route ─────────────────────
         XCTAssertTrue(map.waitForExistence(timeout: 15), """

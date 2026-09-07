@@ -140,8 +140,14 @@ final class ShellAndMapUITests: AEUITestCase {
         let settings = app.buttons["Settings"]
         require(settings, "the Settings button in the toolbar")
         settings.tap()
+        // Scrolled to, not merely waited for. Settings is a long list and
+        // "Mute everything" is its third section; CI run 171's iPad frame
+        // showed the screen rendered perfectly with the toggle below the
+        // fold, and reported it as "the sheet did not present or it rendered
+        // empty". Reaching a control by scrolling is the stronger claim
+        // anyway — it proves the list scrolls as well as that it drew.
         let muteToggle = app.switches["Mute everything"]
-        let settingsRendered = muteToggle.waitForExistence(timeout: 10)
+        let settingsRendered = scrollUntil(muteToggle, "the Mute everything toggle in Settings")
         checkpoint("92-settings")
         XCTAssertTrue(settingsRendered, """
             The Settings sheet shows no "Mute everything" toggle. Either the \

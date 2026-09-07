@@ -2,13 +2,22 @@
 
 Direction II, Phase 27 (`docs/ROADMAP_DIRECTION_II.md`). 2026-09-07.
 
-**Evidence classification: AUTHORED + CORE TESTED.**
-The Core suite is green on Linux and the app parses and resolves every symbol
-it uses, which is every check this environment can run. The phase's actual
-claim — that a screen now reads as *my airline, on a living world* — is a
-claim about pixels, and it is settled by the simulator frames the branch
-dispatched and by a person reading them. Section 13 says exactly what was run
-and what it did not answer.
+**Evidence classification: SIMULATOR VALIDATED (partial) + CORE TESTED.**
+
+Partial, and the word is load-bearing: the app built and ran on macos-26
+simulators, six frames were pulled out of the result bundles and looked at, and
+four defects were found that way and fixed — two of them mine. What is *not*
+validated is everything in the shards that had not finished when this was
+written (dark mode, Dynamic Type, the follow camera, the draw-cost probe) and
+frames E–J of the AE-048 journey, which stopped at a harness fault before
+reaching them. Those wait on the redispatch, and this line should be re-read
+against §13 rather than trusted on its own.
+
+The Core suite is green on Linux (506/506) and the app compiles for the iOS
+simulator on six independent runners — the check this repository has never been
+able to answer on Linux at all. The phase's remaining claim, that the screen
+reads as *my airline, on a living world*, is a claim about pixels; §13 says
+which pixels were looked at and what they showed.
 
 ---
 
@@ -359,7 +368,101 @@ following the balance reasoning already in `ci.yml`.
 
 ## 13. Simulator validation
 
-*(Filled in from the dispatched run — see the end of this file.)*
+**Workflow:** `.github/workflows/ci.yml`, dispatched `suite: full, ipad: true`.
+**Run:** 171 — `34092672265`, on `ac73d84`.
+**Runners:** macos-26; iPhone simulator picked by the workflow (a plain
+iPhone, preferred over Pro/Max), plus an iPad simulator at regular width.
+
+### What was answered
+
+| Job | Result |
+| --- | --- |
+| Core (Linux, swift test) | see §12 — 506/506 locally on this branch |
+| Release tooling, store listing, bundle, app symbols, audio assets | ✅ all green |
+| **`xcodebuild build-for-testing`, all six macOS jobs** | ✅ **BUILD SUCCEEDED** |
+| map home shard | `testTheShellHasFourTabsAndNoDeadDestinations` ✅ 46 s; `testTheMapIsTheHomeScreen` ❌ (harness, see below) |
+| economy shard | 3 ✅ / 2 ❌ (one launch timeout, one the arrow defect) |
+| arrival shard | ❌ 1 (the rival headline moved into the briefing) |
+| iPad shell | `testFoundingAnAirlineReachesEveryTab` ✅ 168 s; `testDetailScreensAndSettingsRender` ❌ (below the fold) |
+| campaign, shell + map | still running when this was written; not claimed |
+
+**The app compiles.** That is the check this repository has never been able to
+answer on Linux, and it answered yes with every change of this phase in it, on
+six independent runners.
+
+### Frames inspected
+
+Pulled out of the `.xcresult` bundles by name (the attachment table maps names
+to payloads) and **looked at**:
+
+- `KEY-AE048-A-map-home-on-arrival` — the game opens on the world. The map is
+  ~62 % of the viewport; Arlanda is the ember home marker with the dashed
+  opportunity arcs radiating from it; four tabs (Home ·globe·, Airline,
+  Finance, World) and no Map tab; the briefing strip reads
+  **"$60.0M cash · 0 in the air · 0 routes · 0 aircraft"** over
+  **"Get an aircraft — Open the aircraft market — leasing keeps cash free early
+  on."** Layers 1, 2 and 4 of the brief, in one frame.
+- `KEY-AE048-B2-briefing-over-the-world` — the briefing sheet, light mode. The
+  close chevron, the speed capsule and the gear all fit the bar; the header,
+  the five-step checklist, the pulse strip, all six stat tiles and the
+  operations feed are present and correctly laid out. Nothing was lost.
+- `KEY-AE048-C-market-opened-from-the-map` — pressing the next-move row opened
+  the aircraft market. The first interaction of the game happens on the map.
+- `KEY-LEASE-ATTEMPT-1` — see below. It is the frame that settled the phase's
+  most important question and the test's own diagnosis at once.
+- iPad `90-aircraft-detail`, `91-route-detail`, `92-settings` — the sidebar
+  carries exactly four rows, Home first with the globe; Settings renders.
+
+### Defects found by looking, and fixed
+
+1. **The top bar wrapped the date onto two lines.** Mine, introduced by this
+   phase: putting the cash beside the clock widened that column past what the
+   capsule had spare, so `2030-01-01` broke as "2030-" / "01-01" and the bar
+   went from one line to four. Both frames A and the lease frame show it.
+   **Fixed** by taking the cash back out — it is already on the briefing strip,
+   bigger and labelled, so this was a second copy that cost a wrapped date —
+   and by pinning the date to one line so nothing can wrap it again.
+2. **`leaseAnAircraft` reported a failure over a success.** The helper proves a
+   lease by waiting for the market to close *and* for a row on the fleet board
+   behind it. Opened from the map there is no fleet board behind it. The frame
+   it saved as `LEASE-ATTEMPT-1` shows cash $60.0M → $59.2M, **1 aircraft** on
+   the strip, and the next move already advanced to "Open your first route"
+   with ARN → LHR (≈1,117/day) and ARN → CDG (≈987/day) offered over the arcs
+   that are them. The product did exactly what the phase claims; the harness
+   asked the wrong surface. **Fixed** with a `LeaseProof` the caller chooses;
+   the map's proof reads the fleet count out of the briefing strip's
+   accessibility value, which is `FleetSummary` read back.
+3. **Settings, raised from inside the briefing, replaced it on iPad.** The
+   frame shows the Settings form sheet over the *map*, with the briefing gone —
+   a sheet from a sheet does not stack at regular width. **Fixed** by making
+   Settings a push inside the briefing's own navigation stack, which keeps one
+   modal level and returns the player to the briefing rather than to the map.
+   The destination table moved out of the stat grid at the same time, because
+   registered there it was inert whenever the briefing had no snapshot yet —
+   BUG-029's family.
+4. **The iPad Settings assertion waited for a control below the fold.** The
+   frame shows Settings rendered correctly with "Mute everything" just past the
+   bottom edge of the form sheet. **Fixed** by scrolling to it, which is the
+   stronger claim: it proves the list scrolls as well as that it drew.
+5. **Two surfaces I had missed when moving Home.** `testNewYorkAdviceIsWorth-
+   Following` looked for the recommendation by `label CONTAINS "→"` and my
+   hand-written accessibility label said "ARN to LHR" — the advice was on
+   screen and unfindable. `HorizonArrivalUITests` read the rival-entry headline
+   on Home, which is now in the briefing. Both **fixed**; the first was caught
+   by reading the code before CI reached it, the second by CI.
+
+### Not caused by this phase
+
+`testAcquireAircraftThenOpenARoute` died on "Timed out while launching
+application via Xcode" — the runner never got the app up. That is TD-037's
+class and is recorded, not fixed here.
+
+### What the run did not answer
+
+Dark mode, Dynamic Type, the follow camera and the performance probe are in the
+campaign and shell+map shards, which had not finished. Frames E–J of the AE-048
+journey were never reached, because it stopped at the lease. Both wait on the
+redispatch.
 
 ---
 
@@ -379,8 +482,9 @@ following the balance reasoning already in `ci.yml`.
    `OpsTuning.operatingDayStartMinute` means changing Core's session API under
    ~1,800 sunrise taps this branch cannot run. `MapHomeUITests` works around it
    by reaching its later-state frames at 16× rather than by sunrise.
-5. **iPad is unverified** for this phase; the CI iPad job is opt-in and was not
-   requested.
+5. **iPad is partly verified.** The shell journey passed at regular width and
+   its frames were inspected; the detail/Settings journey found BUG-064, now
+   fixed. What has *not* been seen on iPad is the AE-048 journey itself.
 6. **VoiceOver was not run.** §9 says what was written and what that does not
    prove.
 7. **No performance number was measured.** §11.
@@ -389,6 +493,13 @@ following the balance reasoning already in `ci.yml`.
 
 ## 15. Bugs and tech debt
 
+- **BUG-063 — the map's top bar broke its own date across two lines.** Mine,
+  introduced by this phase and caught by its own screenshots. Fixed by taking
+  the duplicated cash back out of the bar and pinning the date to one line.
+- **BUG-064 — Settings, raised from inside the briefing, replaced it on iPad.**
+  A sheet from a sheet does not stack at regular width. Fixed by making
+  Settings a push, which also fixed a set of destinations that were registered
+  inside the stat grid and therefore inert before a snapshot landed.
 - **BUG-062 — a selection that stopped existing left the foot of the map
   blank.** Found by reading the new composition: `MapSelectionPanel` asked
   whether a selection had been *made*, not whether it still *resolved*, so a
@@ -433,13 +544,14 @@ No other bug was opened or closed. No P0 was encountered.
 | Onboarding truthful | ✅ one model, shared words |
 | New game and existing save both launch | ✅ unchanged paths; fixture journeys updated |
 | Game over → new airline | ✅ unchanged; caches now cleared by one function |
-| Light and dark | ⏳ frames |
+| Light mode | ✅ frames A, B2, C, and the iPad set |
+| Dark mode | ⏳ campaign/shell shards had not finished |
 | Dynamic Type | ⏳ frames |
 | Accessibility | ⚠️ written, not run — §9 |
-| iPhone layout | ⏳ frames |
-| iPad layout | ❌ not run |
+| iPhone layout | ✅ frames inspected; one defect found (BUG-063) and fixed |
+| iPad layout | ✅ run and inspected; one defect found (BUG-064) and fixed |
 | Map performance not regressed | ⚠️ reasoned, not measured — §11 |
 | Core tests pass | ✅ §13 |
 | UI tests pass | ⏳ the dispatched run |
-| macOS build succeeds | ⏳ the dispatched run |
-| Frames inspected | ⏳ |
+| macOS build succeeds | ✅ six runners, BUILD SUCCEEDED |
+| Frames inspected | ✅ six, by eye — §13 |

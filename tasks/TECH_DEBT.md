@@ -1121,3 +1121,8 @@ the briefing is where a player looks for the airline's own controls, but this
 is the one path the phase made longer, and it is the one worth watching on a
 device.
 
+This is also where the phase's one iPad defect landed (BUG-064, fixed): the
+gear used to raise a sheet from inside the briefing sheet, which replaces
+rather than stacks at regular width. It is a push now. The *depth* remains, and
+remains the thing to watch.
+

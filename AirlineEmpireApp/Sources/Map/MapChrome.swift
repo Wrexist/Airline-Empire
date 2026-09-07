@@ -20,22 +20,30 @@ struct MapTopBar: View {
     var body: some View {
         VStack(spacing: AETheme.spacingS) {
             HStack(spacing: AETheme.spacingS) {
+                // Date over clock, and nothing else.
+                //
+                // AE-048 briefly put the cash here as well, and the CI frames
+                // showed what that cost: "$60.0M" beside "00:00" widened this
+                // column past what the capsule had spare, so the *date* broke
+                // across two lines — "2030-" / "01-01" — and the top bar went
+                // from one line to four. The money already has a place, one
+                // that is bigger, legible and labelled: the briefing strip at
+                // the foot of the map. Two copies bought a wrapped date.
+                //
+                // `lineLimit(1)` and `fixedSize` so it can never wrap again,
+                // whatever is put beside it.
                 VStack(alignment: .leading, spacing: 1) {
                     Text(Format.date(snapshot.currentDate))
                         .font(.subheadline.weight(.semibold))
                         .monospacedDigit()
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                         .contentTransition(.numericText())
                         .aeAnimation(AEMotion.content, value: snapshot.currentDate.day)
-                    // The clock, and the one number that is always the
-                    // answer to "can I afford that". `Format.money` is
-                    // already compact ("$1.2M"), so this costs a dozen
-                    // points beside a date and never wraps the capsule.
-                    let cash = cashLine(snapshot)
-                    Text(cash)
+                    Text(Format.clock(snapshot.currentDate))
                         .font(.caption2.monospacedDigit())
                         .foregroundStyle(.white.opacity(0.55))
-                        .contentTransition(.numericText())
-                        .aeAnimation(AEMotion.content, value: cash)
+                        .lineLimit(1)
                 }
                 Spacer(minLength: AETheme.spacingS)
                 SpeedControl()
@@ -64,16 +72,6 @@ struct MapTopBar: View {
             }
         }
         .aeAnimation(AEMotion.content, value: worldBanner?.text ?? "")
-    }
-
-    /// "07:20 · $1.2M". One line, because the top bar is a capsule and the
-    /// map is the screen.
-    private func cashLine(_ snapshot: GameState) -> String {
-        let clock = Format.clock(snapshot.currentDate)
-        // The controller's cached model, not a fresh derivation: this bar is
-        // rebuilt on every map body pass, and a drag drives those.
-        guard let dashboard = controller.dashboard else { return clock }
-        return "\(clock) · \(Format.money(dashboard.cash))"
     }
 
     private struct Banner {
