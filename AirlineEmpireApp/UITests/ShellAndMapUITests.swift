@@ -406,28 +406,52 @@ final class ShellAndMapUITests: AEUITestCase {
         if pause.waitForExistence(timeout: 5) { pause.tap() }
         Thread.sleep(forTimeInterval: 1)
 
-        // Zoom in so the aircraft is a target a synthetic tap can hit, then
-        // walk a small spiral: an aircraft is a few points wide.
+        // Frame the network, then sweep it — and know what was hit.
+        //
+        // Seven blind taps around the centre have now missed in four
+        // consecutive attempts (AE-046, and runs 171, 172, 173), which is
+        // long enough to stop calling it luck. Two things were wrong with
+        // them. They clustered on the middle of the canvas, and the middle of
+        // a framed network is usually the ocean *between* the two airports,
+        // not the arc; and they asked only whether *something* had been
+        // selected, so an airport under the third tap would have ended the
+        // search with the wrong object.
+        //
+        // A grid across the framed network looks where the arc actually is,
+        // and the canvas's own accessibility value says which kind of thing
+        // was hit — "Selected a flight to LHR" for an aircraft against
+        // "Selected Stockholm" for an airport — so the sweep can walk past an
+        // airport and keep going. Thirty taps on a paused map cost about
+        // eight seconds.
+        let frameNetwork = app.buttons["Frame my network"]
+        if frameNetwork.waitForExistence(timeout: 5) { frameNetwork.tap() }
+        Thread.sleep(forTimeInterval: 1)
         let zoomIn = app.buttons["Zoom in"]
-        if zoomIn.waitForExistence(timeout: 5) { for _ in 0..<3 { zoomIn.tap() } }
+        if zoomIn.waitForExistence(timeout: 5) { for _ in 0..<2 { zoomIn.tap() } }
+        Thread.sleep(forTimeInterval: 0.5)
         let follow = app.buttons["ae-map-follow"]
-        let offsets: [(CGFloat, CGFloat)] = [
-            (0.5, 0.5), (0.42, 0.45), (0.58, 0.45), (0.5, 0.38),
-            (0.5, 0.6), (0.35, 0.55), (0.65, 0.55),
-        ]
+        func aircraftSelected() -> Bool { value().contains("Selected a flight") }
+        var offsets: [(CGFloat, CGFloat)] = []
+        for row in 0..<6 {
+            for column in 0..<5 {
+                offsets.append((0.16 + CGFloat(column) * 0.17,
+                                0.28 + CGFloat(row) * 0.075))
+            }
+        }
         for (x, y) in offsets {
             map.coordinate(withNormalizedOffset: CGVector(dx: x, dy: y)).tap()
-            Thread.sleep(forTimeInterval: 0.4)
+            Thread.sleep(forTimeInterval: 0.25)
+            if aircraftSelected() { break }
             if follow.exists { break }
         }
         guard follow.exists else {
             checkpoint("76-NO-AIRCRAFT-SELECTED")
             throw XCTSkip("""
-                Seven taps across the canvas selected no aircraft, so the \
-                flight card never appeared and the follow control was never \
-                reachable. An aircraft marker is a few points wide and moving \
-                under the tap; this is a limitation of synthetic tapping, not \
-                evidence about the camera. Recorded as NOT VERIFIED.
+                Thirty taps swept across the framed network on a paused map \
+                selected no aircraft, so the flight card never appeared and \
+                the follow control was never reachable. An aircraft marker is \
+                a few points wide; this is a limitation of synthetic tapping, \
+                not evidence about the camera. Recorded as NOT VERIFIED.
                 """)
         }
         checkpoint("76-map-flight-card")

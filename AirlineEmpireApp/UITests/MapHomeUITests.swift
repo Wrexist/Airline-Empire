@@ -169,16 +169,28 @@ final class MapHomeUITests: AEUITestCase {
             // The map's own row offers the ride once nothing needs doing;
             // whether it does depends on the state the clock produced, so
             // the durable path is the one AE-046 built: select, then follow.
+            // The same steered grid `ShellAndMapUITests` uses: a sweep across
+            // the framed network rather than a cluster on its middle, stopped
+            // by the canvas saying it selected *a flight* rather than merely
+            // something.
+            let frameIt = app.buttons["Frame my network"]
+            if frameIt.waitForExistence(timeout: 5) { frameIt.tap() }
+            Thread.sleep(forTimeInterval: 1)
             let zoomIn = app.buttons["Zoom in"]
-            if zoomIn.waitForExistence(timeout: 5) { for _ in 0..<3 { zoomIn.tap() } }
+            if zoomIn.waitForExistence(timeout: 5) { for _ in 0..<2 { zoomIn.tap() } }
+            Thread.sleep(forTimeInterval: 0.5)
             let follow = app.buttons["ae-map-follow"]
-            let offsets: [(CGFloat, CGFloat)] = [
-                (0.5, 0.5), (0.42, 0.45), (0.58, 0.45), (0.5, 0.38),
-                (0.5, 0.6), (0.35, 0.55), (0.65, 0.55),
-            ]
+            var offsets: [(CGFloat, CGFloat)] = []
+            for row in 0..<6 {
+                for column in 0..<5 {
+                    offsets.append((0.16 + CGFloat(column) * 0.17,
+                                    0.28 + CGFloat(row) * 0.075))
+                }
+            }
             for (x, y) in offsets {
                 map.coordinate(withNormalizedOffset: CGVector(dx: x, dy: y)).tap()
-                Thread.sleep(forTimeInterval: 0.4)
+                Thread.sleep(forTimeInterval: 0.25)
+                if value().contains("Selected a flight") { break }
                 if follow.exists { break }
             }
             if follow.exists {

@@ -968,12 +968,33 @@ class AEUITestCase: XCTestCase {
         // always stops at least a day short, so the day-by-day approach
         // below — the part the journeys' caps were written for — is intact
         // and no journey can land past the date it asked for.
+        // Weeks first, and **re-read the date each time** rather than
+        // computing a count and trusting every tap to land.
+        //
+        // The count was computed once and fired blind: `for _ in 0..<weeks`.
+        // A tap that does not register is invisible to that loop, and 57 of
+        // them — which is what a year-long advance needs — is a lot of
+        // chances to lose one. Run 172 and run 173 both left the New York
+        // journey short of March 2031 by exactly this route, while the Munich
+        // journey's four week-taps arrived. One accessibility query per tap
+        // is the price of a loop that cannot silently under-advance; if the
+        // clock genuinely stops moving the guard still ends it, and the
+        // caller's assertion still fails with the same message.
         let week = labelledButton("Advance seven mornings")
-        if !arrived.exists, week.exists,
-           let today = currentHomeDate(),
-           let target = Self.earliestDate(matching: datePrefix) {
-            let weeks = max(0, (Self.days(from: today, to: target) - 1) / 7)
-            for _ in 0..<weeks { week.tap() }
+        if week.exists, let target = Self.earliestDate(matching: datePrefix) {
+            var weekTaps = 0
+            // Stops a fortnight short, not a week. The date is read from the
+            // screen, so it can lag the tap that has just been dispatched; a
+            // one-tap-stale read at a seven-day threshold can step *past* the
+            // target, and `arrived` matches a date prefix, so overshooting
+            // never arrives. Two weeks of margin costs a few day-taps and
+            // cannot overshoot.
+            while !arrived.exists, weekTaps < 90,
+                  let today = currentHomeDate(),
+                  Self.days(from: today, to: target) > 14 {
+                week.tap()
+                weekTaps += 1
+            }
         }
 
         var taps = 0
