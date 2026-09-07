@@ -296,29 +296,57 @@ not tested at all.
 
 ## 11. Performance
 
-**No measurement was taken, and none is claimed.** `ae-map-bench` measures the
-map model's build cost, which this phase did not touch, and
-`PerformanceBaselineUITests` measures draw cost and label churn on a simulator
-this environment cannot boot. The CI run that carries the `measure` flag is
-shard 3; its numbers are the before/after this section should eventually hold.
+**Measured**, on CI run 172's shell+map shard, by the in-app draw-cost probe
+(`PerformanceBaselineUITests.testMapInteractionBaselineMeasurements`, run alone
+on its simulator so the numbers stay comparable). Same test, same three
+sequences — 4 slow strokes, 6 fast alternating strokes, 3×3 zoom cycles — as
+the numbers already recorded in `MAP_P0_PERFORMANCE_REPORT.md`.
 
-What was done instead is to remove the cost the composition would otherwise
-have introduced, by reasoning about where it would land:
+| Sequence | frames | avg draw | worst | identity churn/frame | hops/frame |
+| --- | --- | --- | --- | --- | --- |
+| at open | 68 | 15.12 ms | 243.55 ms | — | — |
+| slow drag | 626 | **10.61 ms** | 243.55 ms | 0.21 | 0.32 |
+| fast drag | 420 | **9.33 ms** | 243.55 ms | 0.43 | 0.40 |
+| zoom cycles | 402 | **11.02 ms** | 243.55 ms | 1.00 | 2.56 |
 
-- `HomeNextMove.resolve` and `dashboardModel()` are cached per published
-  snapshot on `GameController`. Without that they would run on **every
-  `MapScreen` body pass**, which a drag drives — `MapHomeBriefing` holds
-  closures, so SwiftUI cannot treat it as unchanged and its `body` re-runs
-  whenever the parent's does.
-- `MapTopBar` computes its cash line once per pass rather than twice (once for
-  the text and once for the animation key).
-- `MapHomeBriefing.body` takes both derivations once into locals rather than
-  referring to computed properties from three places.
-- Nothing was added inside the `Canvas` closure, the `TimelineView`, or
-  `MapFrame`. `MapRenderCache` is untouched, and the render path has no new
-  dependency on home-screen state.
+Against the repository's recorded baseline (run 85, AE-034's post-fix figures):
+slow drag 11.39 → 10.61 ms, fast drag 11.40 → 9.33 ms, zoom 11.16 → 11.02 ms;
+churn per frame 1.35 → 0.21, 3.89 → 0.43, 14.55 → 1.00. **No draw-cost
+regression, and every churn metric is lower.**
 
----
+**The caveat, and it is a real one.** Run 85 was AE-034, on a different runner,
+and AE-045, AE-046 and AE-047 all touched the map between then and now. This is
+therefore *not* a clean A/B for AE-048 alone — it establishes that the map is
+not slower than its recorded baseline, not that this phase changed nothing. A
+clean A/B would need the same probe run on `main`, which was not done.
+
+The worst frame is 243.55 ms and is **identical across all four sequences**,
+which means it is the at-open frame — the first full cache build — and no
+interaction frame in the run exceeded it. That is the same shape run 85
+recorded (169 ms at open, on a faster runner), not a new stall.
+
+### Did the home overlays cause map rebuilds? No.
+
+The probe also prints the render cache's own counters. Across the run:
+
+```
+MAP-CACHE cache rebuilds  4 replays  132  reasons [first, routesFirst, routesZoomBand, zoomBand]
+MAP-CACHE cache rebuilds 24 replays 2526  reasons [first, panMargin, routesFirst,
+                                                   routesPanMargin, routesZoomBand, zoomBand]
+MAP-CACHE cache rebuilds 64 replays 3290  reasons [first, lod, panMargin, routesFirst,
+                                                   routesLod, routesPanMargin, routesZoomBand, zoomBand]
+```
+
+Roughly **51 replays per rebuild**, and every rebuild reason is a camera or
+level-of-detail reason — `first`, `zoomBand`, `panMargin`, `lod` and their
+route equivalents. There is no snapshot-driven or state-driven reason in the
+list, which is the direct answer to "did the briefing strip make the map
+rebuild": it did not. `MapRenderCache` is untouched and behaving as designed.
+
+The three things done to keep it that way are in §3: `HomeNextMove` and
+`DashboardModel` cached per snapshot on `GameController`, both derivations
+taken once per body pass into locals, and nothing added inside the `Canvas`
+closure, the `TimelineView` or `MapFrame`.
 
 ## 12. Tests
 
