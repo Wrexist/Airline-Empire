@@ -26,24 +26,30 @@ ASO moves two of those three: **impressions** come from what the app is
 comes from what the page *shows* (icon, first two screenshots, first three
 lines of the description, rating).
 
-Airline Empire is a **paid app with no ads and no in-app purchases**
-(`docs/GAME_DESIGN.md` §"Premium single-purchase posture"). That single fact
-reorders the whole discipline:
+Airline Empire is **free to play, with no ads, and one Pro entitlement**
+(`docs/MONETIZATION.md`). It was a paid app until AE-045, and that reversal
+reorders the discipline again:
 
-- **Conversion matters more than reach.** A free game can afford a wide,
-  loosely-matched keyword net; every install costs the user nothing and some
-  fraction monetises later. Here, a mismatched visitor never converts and the
-  listing has spent an impression to be rejected. Precision beats volume.
-- **The page has to answer "why does this cost money?" above the fold.** The
-  answer this listing gives, in three places, is: no ads, no in-app purchases,
-  no timers, nothing to wait out — a complete game, bought once. That is a
-  genuine differentiator in a category built almost entirely on the opposite,
-  and it belongs in the promotional text, in the screenshots and in the
-  description's first block.
-- **Browse traffic is worth more than usual.** Category browsing brings people
-  who are already looking for a simulation game rather than for a specific
-  free one, which is why the category choice in §4 is a real decision and not
-  a formality.
+- **Reach now matters, but not indiscriminately.** A free listing can afford a
+  wider keyword net than a paid one could, because an install costs the
+  visitor nothing and the sale happens later, inside the game. What it still
+  cannot afford is *audience* mismatch: this is a deep management simulation,
+  and a player who wanted an idle tycoon uninstalls before they ever see a
+  paywall. Precision loosens; it does not go away.
+- **The page no longer has to justify a price — it has to justify a
+  download.** The old page's job was "why does this cost money?". The new
+  page's job is "why is this the airline game worth your evening?", and the
+  answer is the depth: the ledger, the rivals, the real map.
+- **The page must still be honest about the paywall, above the fold.** A free
+  game that reads as fully free and then walls the third era earns exactly the
+  reviews it deserves. The description's FREE TO FLY block says what the free
+  tier is (whole simulation, two eras, twenty airports, one airline) and what
+  Pro adds, in the listing's own words, before anyone downloads.
+- **The differentiator survives the pivot, and it is unusual.** No ads, no
+  timers, no energy, no premium currency, and nothing sold that makes the
+  player's airline stronger — in a category built almost entirely on the
+  opposite. That claim is worth more in a free listing than it was in a paid
+  one, because in a free listing it is surprising.
 
 ---
 
@@ -121,10 +127,11 @@ In order, one change at a time (§10 explains why):
 
 1. **`tycoon` versus `simulator` in the name.** They attract different
    audiences: "tycoon" is broader and more casual, "simulator" is smaller and
-   converts harder on a paid app. This is the single highest-leverage
-   experiment available, and it is a Product Page Optimisation test, not a
-   guess.
-2. **`offline` promoted into the subtitle.** If the paid-and-complete
+   converts harder. On a free listing the trade is different from the paid
+   one — "tycoon" now buys installs cheaply and may buy the *wrong* installs,
+   so the metric to judge it on is install-to-Pro, not installs. A Product
+   Page Optimisation test, not a guess.
+2. **`offline` promoted into the subtitle.** If the no-ads, no-timers
    positioning is what converts, the word should be higher up the page.
 3. **Rotating the six unused characters** in the keyword field into a
    long-tail term (`turboprop`, `widebody`, `airline tycoon`) and watching
@@ -165,7 +172,7 @@ thumbnail.
 | 3 | Fleet acquisition | "Fourteen aircraft. New, used or leased." | Progression and scale: there is a lot to buy. |
 | 4 | Finance, month closed | "Read the business, not a menu" | It is a real economic model. |
 | 5 | World feed with a rival's move | "A world that moves without you" | It is not solitaire against a spreadsheet. |
-| 6 | Dashboard with the daily digest | "No ads. No timers. One purchase." | The monetisation promise, stated last and plainly. |
+| 6 | Dashboard with the daily digest | "No ads. No timers. Free to start." | The monetisation promise, stated last and plainly. It has to survive being read next to a paywall, so it claims only what is true in both tiers (`MONETIZATION.md` §1). |
 
 Rules for producing them (they need a Mac and a simulator, so they do not
 exist yet):
@@ -319,7 +326,10 @@ convert someone who is already looking at the page. Structure:
    opening line of what the game is.
 2. **Scannable blocks** with capitalised headers and bulleted lines, because
    nobody reads a wall of text on a phone.
-3. **The no-strings block**, which is the paid-app argument, stated plainly.
+3. **The FREE TO FLY block**, which is now the whole monetization argument:
+   what the free game is, what Pro adds, and the promise that nothing sold
+   makes an airline stronger. It replaced the old NO STRINGS ATTACHED block,
+   whose "no in-app purchases" line became a lie the day AE-045 landed.
 4. **The fictional-world note**, last: it pre-empts the "why aren't these real
    airports?" review before it is written.
 
@@ -383,7 +393,7 @@ App Store Connect's own analytics, in the order they matter here:
 | Impressions, split search vs browse | Findability | A keyword change should move search impressions within about a week. |
 | Product page views | Interest from the thumbnail | The icon and the first screenshot are the levers. |
 | Conversion rate (views → downloads) | Whether the page closes | Below the category norm means the page over-promises or under-explains. |
-| Proceeds per download | Storefront pricing sanity | Paid apps only; not a keyword signal. |
+| Proceeds per download | Whether the traffic monetises | The number that judges a keyword or name change now that the app is free — installs alone can rise while this falls, and that is a worse listing, not a better one. |
 | Crash-free rate, ratings | Whether the product is good | ASO cannot fix a 3.1-star game. |
 
 Three rules for changing things:

@@ -145,6 +145,20 @@ Everything here is unproven on Apple platforms and must be checked by hand:
 | Accessibility | Labels authored; VoiceOver, Dynamic Type, contrast unverified |
 | Haptics and sound | Not implemented at all |
 | Signing, entitlements, App Store | Never attempted |
+| **StoreKit — products load** | No StoreKit on Linux. `Entitlements` has never run; the `.storekit` fixture has never been served |
+| **StoreKit — a purchase completes** | Needs a simulator with the scheme's StoreKit configuration, or a sandbox Apple Account |
+| **StoreKit — restore** | Needs a real Apple Account with a prior purchase |
+| **The introductory offer displays as Pay As You Go** | Depends on a real App Store Connect product; the fixture asserts the shape, not Apple's rendering |
+| **The paywall's layout at every Dynamic Type size** | Same reason as every other rendering row above. It is a dense screen with a two-column grid — the size most likely to break it is `AccessibilityL`, which is where run 60 found the chip rows |
+| **The era bar lifts mid-campaign on purchase** | The rule is unit-tested; the SwiftUI update path is not |
+| **The free tier under UI test** | A UI-test process is Pro by default so the existing journeys keep working (docs/MONETIZATION.md §7.1). Nothing exercises the free gates end-to-end yet; `-AEUITestFree` is the hook for the journey that should |
+
+What *is* proven about monetization, on Linux, on every push: the entitlement
+clock (expiry, billing retry, cancelled-but-unexpired, lifetime), all four
+gates, the twenty-nearest-airport radius for all 94 possible homes, the
+presentation policy, and the presence of every clause and price App Review
+looks for on the paywall — 30 tests in `MonetizationTests`. That is the rules.
+None of it is the screen.
 
 ## 6. What was verified statically (so you can skip re-deriving it)
 

@@ -34,9 +34,10 @@ exists) · [`ASO.md`](ASO.md) (what goes in the listing and why).
       published under this name** and changing entity type later is a
       migration, not a setting.
 - [ ] Accept the **Paid Applications agreement** in App Store Connect →
-      Business. A paid app cannot be sold without it, and it is the step most
-      often discovered at the end: the app is approved, the listing is
-      finished, and the release button is greyed out.
+      Business. Nothing can be sold without it — a free app with in-app
+      purchases included — and it is the step most often discovered at the
+      end: the app is approved, the listing is finished, and the release
+      button is greyed out.
 - [ ] Complete **tax forms and banking** in the same place.
 
 **Produces:** the 10-character **Team ID** (Developer portal → Membership).
@@ -259,14 +260,22 @@ A TestFlight build expires **90 days** after upload.
 
 ## 10 · Pricing and availability
 
-- [ ] App Store Connect → Pricing and Availability → set the price tier and
-      the storefronts.
+- [ ] App Store Connect → Pricing and Availability → **Free**, and the
+      storefronts.
+- [ ] Create the three Pro products. The identifiers, types, prices and the
+      introductory offer are in [`MONETIZATION.md`](MONETIZATION.md) §8, and
+      the same table is in the generated fill-in sheet §3.
 
-No price is recorded in this repository, deliberately: it is a business
-decision with no technical dependency, and writing a number here that nobody
-decided would be exactly the invented fact the project's rules forbid. What is
-decided, and is a product constraint rather than a pricing one: **one
-purchase, no in-app purchases, no ads, no subscription** (`GAME_DESIGN.md`).
+The app is free; the three in-app purchases carry the price
+(`MONETIZATION.md`). Their US prices *are* recorded — a product identifier and
+its tier are technical facts the paywall and the tests depend on, not a
+business decision left open. What is still a business decision, and is
+deliberately not fixed here, is what those tiers should be in each storefront
+once there is data (`tasks/TODO.md` AE-045.5).
+
+The product constraint underneath the price, unchanged since
+`GAME_DESIGN.md` §7: **no ads, no timers, no premium currency, and nothing
+sold that makes an airline stronger.**
 
 ---
 

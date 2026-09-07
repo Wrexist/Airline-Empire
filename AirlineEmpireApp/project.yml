@@ -33,6 +33,13 @@ targets:
       # (docs/AUDIO_ARCHITECTURE.md §10).
       - path: Resources/Audio
         buildPhase: resources
+      # The StoreKit test configuration. Declared with `buildPhase: none` on
+      # purpose: it must appear in the project so the scheme below can point
+      # at it and so a human can open it in Xcode's editor, but it must NOT
+      # be copied into the app bundle — it is a local simulator fixture, and
+      # shipping it would put the test prices inside the shipping binary.
+      - path: Resources/AirlineEmpire.storekit
+        buildPhase: none
     dependencies:
       - package: AirlineEmpireCore
     settings:
@@ -142,6 +149,14 @@ schemes:
         AirlineEmpireUITests: [test]
     run:
       config: Debug
+      # Serves the three Pro products locally, so the paywall can be run,
+      # bought from and photographed on a simulator with no App Store Connect
+      # record, no sandbox Apple Account and no network. Without it the
+      # products load empty and the paywall renders its "prices unavailable"
+      # state forever — which is a real state worth seeing, but not the only
+      # one. Debug/run only: the release archive has no scheme option set and
+      # talks to the real App Store.
+      storeKitConfiguration: Resources/AirlineEmpire.storekit
     test:
       config: Debug
       # Screenshots are attached on every step, not only on failure — the

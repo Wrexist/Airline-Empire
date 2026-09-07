@@ -239,8 +239,19 @@ determinism enables seed-sharing and self-imposed challenges.
 Cargo, alliances/codeshares (beyond the late capability hook), staff
 individuals, real-world airline/airport licensing (fictional-but-plausible
 world data), multiplayer, monetization mechanics that sell time or power.
-Premium single-purchase posture; any monetization design lands Phase 22+
-without violating the no-pay-for-power rule.
+
+**Monetization posture (revised, AE-045).** This section said "premium
+single-purchase". It is now free-to-start with one Pro entitlement, sold as a
+weekly or yearly subscription or a one-time Lifetime purchase — the full
+design is `docs/MONETIZATION.md`. What did *not* change is the sentence above
+it: **no monetization mechanic sells time or power.** Pro is more world — three
+more eras, the other 74 airports, the harder scenarios, more saves — and never
+a shortcut through the world the player already has. There is no energy meter,
+no premium currency, no timer, no ad, and no aircraft, route or advantage for
+sale. Which aircraft a player may buy is decided by the era their airline has
+earned, identically for free and paying players. Any future monetization
+proposal that cannot say the same about itself is out of scope by this
+paragraph, not by a later review.
 
 ## 8. Tone & fiction
 

@@ -948,6 +948,8 @@ struct SettingsView: View {
     var body: some View {
         @Bindable var preferences = controller.preferences
         return List {
+            ProSection()
+
             Section("Playing") {
                 Toggle("Pause when money runs short", isOn: $preferences.autoPauseOnDanger)
                 Text("Fast-forward stops itself when your airline drops below the overdraft floor, so a collapse never happens while you are looking away.")

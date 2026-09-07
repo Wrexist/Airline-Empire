@@ -231,7 +231,42 @@ final class GameController {
         /// countdown has started (docs/CORE_LOOP.md §2 — fast-forward never
         /// skips a decision the player opted to be paused for).
         case solvencyDanger
+        /// The airline earned an era the player's purchases do not cover
+        /// (docs/MONETIZATION.md §4). Time stops here until Pro; every
+        /// command still works, so nothing the player built is taken away.
+        case eraCeiling
     }
+
+    // MARK: Entitlement ceiling
+
+    /// The highest era time may run in.
+    ///
+    /// Written by the app from `Entitlements.access.eraCeiling` and
+    /// `.empire` — no ceiling — for anyone who has bought Pro. It lives here
+    /// rather than in the simulation on purpose: `ProgressionSystem` decides
+    /// eras from what the airline has *earned*, and a paywall must not be
+    /// able to change what the world does. So the airline still advances, the
+    /// player still sees they earned it, and what stops is the clock.
+    ///
+    /// The alternative — refusing the era inside Core — would have meant a
+    /// new field in the save, a version bump, and a paying player's rules
+    /// living in a file 253 deterministic tests depend on. This is the
+    /// smaller blast radius and the better sales moment.
+    var eraCeiling: Era = .empire {
+        didSet {
+            guard oldValue != eraCeiling, let snapshot else { return }
+            checkEraCeiling(snapshot)
+            // Buying Pro mid-campaign lifts the wall immediately; it must not
+            // wait for a tick that cannot happen while time is stopped.
+            if !isBeyondEraCeiling, autoPauseReason == .eraCeiling {
+                autoPauseReason = nil
+            }
+        }
+    }
+
+    /// Whether the airline has passed the ceiling and time is therefore held.
+    /// Screens read this to draw the wall; nothing else may resume the clock.
+    private(set) var isBeyondEraCeiling = false
 
     // MARK: Lifecycle
 
@@ -511,6 +546,16 @@ final class GameController {
     // MARK: Time control
 
     func setSpeed(_ newSpeed: SimSpeed) {
+        // The one refusal in this method. Pausing is always allowed; only
+        // starting the clock again past the ceiling is not, and the speed
+        // control's own state has to keep saying `.paused` or the player gets
+        // a 4× badge over a world that is not moving — which is precisely the
+        // defect BUG-040 was.
+        if newSpeed != .paused, isBeyondEraCeiling {
+            speed = .paused
+            autoPauseReason = .eraCeiling
+            return
+        }
         speed = newSpeed
         autoPauseReason = nil
         guard let session else { return }
@@ -730,6 +775,7 @@ final class GameController {
         invalidateCaches()
         snapshot = state
         speed = await session.speed
+        checkEraCeiling(state)
         checkSolvency(state)
         publishAudio(state)
     }
@@ -747,6 +793,23 @@ final class GameController {
         // moments (docs/AUDIO_ARCHITECTURE.md §6).
         feedback.updateSoundscape(state: state, speed: speed,
                                   stage: lastSolvencyStage)
+    }
+
+    /// The entitlement wall, applied to the clock.
+    ///
+    /// Checked on every refresh rather than only on the `eraAdvanced` event,
+    /// because the event is not the only way to arrive here: loading a save
+    /// made before a subscription lapsed puts an airline three eras past the
+    /// ceiling with no transition to observe, and that save must open into
+    /// the wall rather than into a freely running late game.
+    private func checkEraCeiling(_ state: GameState) {
+        isBeyondEraCeiling = state.progression.era > eraCeiling
+        guard isBeyondEraCeiling else {
+            if autoPauseReason == .eraCeiling { autoPauseReason = nil }
+            return
+        }
+        if speed != .paused { setSpeed(.paused) }
+        autoPauseReason = .eraCeiling
     }
 
     /// Money trouble, heard and acted on.

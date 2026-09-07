@@ -836,6 +836,7 @@ extension FleetCardModel {
 /// keeps the sheet open with the reason attached.
 struct OpenRouteSheet: View {
     @Environment(GameController.self) private var controller
+    @Environment(Entitlements.self) private var entitlements
     @Environment(\.dismiss) private var dismiss
     @State private var origin: AirportCode?
     @State private var destination: AirportCode?
@@ -844,6 +845,14 @@ struct OpenRouteSheet: View {
     @State private var fareTouched = false
     @State private var search = ""
     @State private var rejection: CommandRejection?
+    /// The airports this player may serve, resolved once.
+    ///
+    /// Cached in state rather than computed in `destinations`, which runs
+    /// inside `body`: the free set is the twenty nearest to home, and finding
+    /// them sorts every airport in the catalogue by distance. That is cheap
+    /// once and wasteful forty times a scroll — the same O(world)-per-frame
+    /// mistake `GameController`'s derived caches exist to stop (UI-016).
+    @State private var servableAirports: Set<AirportCode> = []
 
     private let prefill: FirstRouteSuggestion?
 
@@ -873,6 +882,11 @@ struct OpenRouteSheet: View {
                 }
             }
             .onAppear(perform: prime)
+            // Buying Pro from inside this sheet opens the rest of the map
+            // without closing and reopening it.
+            .onChange(of: entitlements.access) { _, _ in
+                refreshServableAirports()
+            }
             .aeSheetFeedback()
             // The route-creation journey, in three beats
             // (docs/AUDIO_ARCHITECTURE.md §5). Choosing where you fly from is
@@ -886,8 +900,19 @@ struct OpenRouteSheet: View {
     }
 
     private func prime() {
+        refreshServableAirports()
         if let prefill {
             origin = prefill.origin
+            // The guided first route is chosen from near home and so is
+            // always inside the free set — but "always" is an assumption
+            // about another file, and this sheet is the last place that can
+            // check it before the player is handed a destination they cannot
+            // open.
+            guard servableAirports.isEmpty
+                    || servableAirports.contains(prefill.destination) else {
+                if !fareTouched { fare = prefill.referenceFare.asDouble }
+                return
+            }
             destination = prefill.destination
             if !fareTouched { fare = prefill.referenceFare.asDouble }
             return
@@ -996,6 +1021,12 @@ struct OpenRouteSheet: View {
     }
 
     private struct Candidate {
+        /// Outside what this player has bought (docs/MONETIZATION.md §4).
+        /// Kept in the list rather than filtered out of it: a destination the
+        /// player can see, priced and ranked, is an argument for Pro, and a
+        /// destination silently missing is a map that looks smaller than it
+        /// is.
+        var locked = false
         let code: AirportCode
         let name: String
         let city: String
@@ -1024,6 +1055,13 @@ struct OpenRouteSheet: View {
     /// `DemandSystem.demandPool` is internal to Core, which is the module
     /// boundary doing exactly its job. Economics belongs behind it, where the
     /// test suite can reach it.
+    private func refreshServableAirports() {
+        guard let catalog = controller.catalog,
+              let home = controller.snapshot?.playerAirline?.homeAirport else { return }
+        servableAirports = entitlements.access.servableAirports(home: home,
+                                                               catalog: catalog)
+    }
+
     private func destinations(from: AirportCode, snapshot: GameState,
                               catalog: ContentCatalog) -> [Candidate] {
         let needle = search.uppercased()
@@ -1034,6 +1072,7 @@ struct OpenRouteSheet: View {
                    !market.destination.raw.uppercased().contains(needle),
                    !spec.city.uppercased().contains(needle) { return nil }
                 return Candidate(
+                    locked: !servableAirports.contains(market.destination),
                     code: market.destination, name: spec.name,
                     city: market.destinationCity,
                     country: spec.country, distanceKm: market.distanceKm,
@@ -1049,6 +1088,14 @@ struct OpenRouteSheet: View {
 
     private func destinationRow(_ candidate: Candidate) -> some View {
         Button {
+            // A locked destination answers with the reason it is locked and
+            // does not become the selection — selecting it would arm an
+            // "Open this route" button whose only possible outcome is a
+            // refusal.
+            guard !candidate.locked else {
+                entitlements.present(.airport)
+                return
+            }
             destination = candidate.code
             if !fareTouched { fare = candidate.referenceFare.asDouble }
         } label: {
@@ -1074,7 +1121,15 @@ struct OpenRouteSheet: View {
                         .font(AEType.caption)
                         .foregroundStyle(candidate.incumbents == 0
                                          ? AETheme.positive : AETheme.mutedText)
-                    if !candidate.servable {
+                    if candidate.locked {
+                        // A third kind of "not yet", named as plainly as the
+                        // other two: this one is not about the fleet or the
+                        // era, and pretending otherwise would be a lie the
+                        // player can check.
+                        Text("Outside your free region — opens with Pro")
+                            .font(.caption2)
+                            .foregroundStyle(AETheme.ember)
+                    } else if !candidate.servable {
                         // Which kind of impossible matters (AE-035's dead
                         // route): "get the right aircraft" is a next action,
                         // "wait for a later era" is an aspiration.
@@ -1087,11 +1142,15 @@ struct OpenRouteSheet: View {
                     }
                 }
                 Spacer()
-                Image(systemName: destination == candidate.code
-                      ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(destination == candidate.code
-                                     ? AETheme.accent : Color.secondary.opacity(0.4))
-                    .accessibilityHidden(true)
+                if candidate.locked {
+                    ProBadge()
+                } else {
+                    Image(systemName: destination == candidate.code
+                          ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(destination == candidate.code
+                                         ? AETheme.accent : Color.secondary.opacity(0.4))
+                        .accessibilityHidden(true)
+                }
             }
             .frame(minHeight: 44)
             .contentShape(Rectangle())
