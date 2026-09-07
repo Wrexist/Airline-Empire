@@ -132,6 +132,13 @@ final class MapHomeUITests: AEUITestCase {
             """)
 
         // ── FRAME F · the world moves, and can be ridden ───────────────────
+        //
+        // Pop the route detail first. It was pushed inside the map's own
+        // navigation stack, and tapping the Home tab that is already selected
+        // does not pop it — the map would still be behind a detail screen.
+        let back = app.navigationBars.buttons.firstMatch
+        if back.exists, back.isHittable { back.tap() }
+        Thread.sleep(forTimeInterval: 0.6)
         openTab("Home")
         let fast = app.buttons["Sixteen times speed"]
         if fast.waitForExistence(timeout: 8) { fast.tap() }
@@ -191,14 +198,21 @@ final class MapHomeUITests: AEUITestCase {
             checkpoint("AE048-F-NOTHING-AIRBORNE")
         }
 
-        // ── FRAME G · an airport, selected on the home map ─────────────────
+        // ── FRAME G · something in the world, selected on the home map ─────
+        //
+        // Stop the clock first: a moving target is what makes the aircraft
+        // spiral above a coin toss, and this leg is about the *panel*, not
+        // about hitting a particular kind of object. An airport or the route
+        // between them both count — the claim is that the world answers a tap
+        // and the briefing gets out of the way while it does.
         let paused = app.buttons["Pause"]
         if paused.waitForExistence(timeout: 5) { paused.tap() }
-        let zoomOut = app.buttons["Zoom out"]
-        if zoomOut.exists { for _ in 0..<2 { zoomOut.tap() } }
         let frameNetwork = app.buttons["Frame my network"]
         if frameNetwork.exists { frameNetwork.tap() }
         Thread.sleep(forTimeInterval: 1)
+        let zoomIn2 = app.buttons["Zoom in"]
+        if zoomIn2.exists { for _ in 0..<2 { zoomIn2.tap() } }
+        Thread.sleep(forTimeInterval: 0.5)
 
         func selected() -> Bool { value().contains("Selected") }
         let ring: [(CGFloat, CGFloat)] = [

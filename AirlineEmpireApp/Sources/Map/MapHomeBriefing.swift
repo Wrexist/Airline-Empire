@@ -261,7 +261,14 @@ struct MapHomeBriefing: View {
             }
             .buttonStyle(.aePress)
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("Open \(suggestion.origin.raw) to \(suggestion.destination.raw), \(suggestion.destinationCity), about \(suggestion.expectedDailyPassengers) passengers a day")
+            // The arrow stays *in the label*, not only in the glyphs. Four
+            // journeys find the game's own recommendation with
+            // `label CONTAINS "→"` — the shape the checklist's suggestion rows
+            // have always had — and a hand-written label that reads "ARN to
+            // LHR" would have silently stopped matching, which is the
+            // BUG-033 family: a string that matches nothing, and a test that
+            // says the advice is missing when it is on screen.
+            .accessibilityLabel("\(suggestion.origin.raw) → \(suggestion.destination.raw), \(suggestion.destinationCity), about \(suggestion.expectedDailyPassengers) passengers a day")
         }
     }
 }

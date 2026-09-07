@@ -881,10 +881,25 @@ class AEUITestCase: XCTestCase {
     /// Tap the sunrise control until Home's date begins with `datePrefix`
     /// (e.g. "2030-02"). Each tap simulates a full game day synchronously;
     /// the loop exits on the calendar, never on elapsed time.
+
+    /// The sunrise control, matched as *a* button with that label rather than
+    /// as the only one.
+    ///
+    /// AE-048 made the briefing a sheet over the map, and both surfaces carry
+    /// a `SpeedControl` — so with the briefing up there can be two buttons
+    /// labelled "Advance to next morning" in the tree (iOS usually hides the
+    /// presenter behind a full-height sheet, but "usually" is not a contract,
+    /// and `app.buttons[label]` raises on multiple matches rather than
+    /// picking one). Every journey taps this hundreds of times; none of them
+    /// should be able to die on an ambiguity.
+    private func labelledButton(_ label: String) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label == %@", label)).firstMatch
+    }
+
     @discardableResult
     func advanceMornings(until datePrefix: String, cap: Int = 35) -> Bool {
         openTabIfNeeded("Home")
-        let sunrise = app.buttons["Advance to next morning"]
+        let sunrise = labelledButton("Advance to next morning")
         guard sunrise.waitForExistence(timeout: 8) else { return false }
         let arrived = app.staticTexts.matching(NSPredicate(
             format: "label BEGINSWITH %@", datePrefix)).firstMatch
@@ -895,7 +910,7 @@ class AEUITestCase: XCTestCase {
         // always stops at least a day short, so the day-by-day approach
         // below — the part the journeys' caps were written for — is intact
         // and no journey can land past the date it asked for.
-        let week = app.buttons["Advance seven mornings"]
+        let week = labelledButton("Advance seven mornings")
         if !arrived.exists, week.exists,
            let today = currentHomeDate(),
            let target = Self.earliestDate(matching: datePrefix) {
@@ -985,7 +1000,7 @@ class AEUITestCase: XCTestCase {
         // control the map's does — so the whole loop runs inside it, and the
         // caller gets the tab bar back at the end.
         guard openBriefing() else { return false }
-        let sunrise = app.buttons["Advance to next morning"]
+        let sunrise = labelledButton("Advance to next morning")
         guard sunrise.waitForExistence(timeout: 8) else {
             closeBriefing()
             return false
@@ -1002,7 +1017,7 @@ class AEUITestCase: XCTestCase {
     }
 
     private func openTabIfNeeded(_ title: String) {
-        if app.buttons["Advance to next morning"].exists { return }
+        if labelledButton("Advance to next morning").exists { return }
         openTab(title)
     }
 
