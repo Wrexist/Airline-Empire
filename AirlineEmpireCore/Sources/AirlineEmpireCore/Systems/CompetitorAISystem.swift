@@ -60,6 +60,11 @@ public struct CompetitorAISystem: SimulationSystem {
         // the airframe it had just bought, in 143 of 150 campaigns
         // (BUG-054, docs/AE041_ECONOMIC_CREDIBILITY.md §3).
         if runway >= profile.expandRunwayMonths,
+           // Cash reserves alone do not make another aircraft productive.
+           // Keep managing routes above, but place existing aircraft and
+           // cover operating/financing costs before adding more obligations.
+           state.fleet(of: airlineID).allSatisfy({ $0.assignedRoute != nil }),
+           (state.finance.byAirline[airlineID]?.latest?.netProfit ?? .zero) >= .zero,
            state.fleet(of: airlineID).count < tuning.maxFleetPerAirline {
             acquireAircraft(airlineID, profile: profile, state: &state,
                             context: context,

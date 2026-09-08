@@ -42,8 +42,11 @@ public struct AIProfile: Equatable, Codable, Sendable {
     /// Prefers leasing (flexibility) over buying used (cost).
     public var prefersLeasing: Bool {
         switch archetype {
-        case .lowCost, .expansionist: true
-        case .premium, .regional, .conservative: false
+        case .expansionist: true
+        // A discount carrier buys inexpensive used aircraft to keep fixed
+        // ownership costs below its lower fares. Leasing every expansion
+        // consumed its route contribution in the four-year seed battery.
+        case .lowCost, .premium, .regional, .conservative: false
         }
     }
 

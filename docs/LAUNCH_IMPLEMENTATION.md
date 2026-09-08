@@ -23,7 +23,7 @@ The original audit is preserved in [LAUNCH_AUDIT.md](LAUNCH_AUDIT.md). This file
 | R15 | Refresh on foreground, product load, transaction updates and expiry. Only verified grace deadlines extend expired subscriptions. | Real Apple sandbox cancellation/refund/grace rehearsals remain. |
 | R16 | Initial checkpoint, daily autosaves, captured session/slot on background, UIKit background allowance, checked synchronization/rotation errors, future-version protection. | Forced termination/low-storage rehearsal on physical devices remains. |
 | R17 | First automatic offer follows the first completed flight; foreground nudges require that milestone. | Check presentation alongside the first-flight celebration. |
-| R18 | Existing rival economy retained. | Archetype rebalance requires measured seed sweeps. |
+| R18 | Low-cost rivals prefer used ownership; expansion waits for placed aircraft and nonnegative closed-month net profit. Nine-seed controlled runs improved all five strategies; the regression now requires every median to preserve starting capital. | See RIVAL_BALANCE_FIX.md. Integrated Core and curated player journeys still need to pass. |
 | R19 | Time-control hit targets are at least 44 points. Flight-follow menu gives a production accessibility path without tapping tiny moving markers. Follow test now fails when the path is unavailable. | Fresh small-phone, iPad, Dynamic Type and VoiceOver review remains. |
 | R20 | No unsupported performance claim added. | Physical-device memory, battery, thermal and frame-time evidence remains. |
 | R21 | Manifest, legal/support pages, review notes, generated store checklist and this status document updated. | Older design/audit documents describe historical behavior and are not release certification. |
@@ -76,6 +76,15 @@ The long economy journey now waits for the requested one-day or seven-day calend
 
 PR review identified a stale-ownership nudge on foreground. The foreground task now awaits ownership refresh and cancels when the scene changes; verified Pro ownership also clears any stale purchase prompt. The real StoreKit purchase regression checks that refresh behavior. Contract confirmations now quote an exact midnight deadline aligned with daily mission settlement, including when accepted at midday.
 
+Candidate `a9037e4` passed all **522 Core release tests** and all **11 launch-safety app/UI tests**. Full CI passed map-home and release tooling, but exposed additional issues:
+
+- Campaign and arrival stopped on a lost time-control tap during a milestone. The informational celebration overlay now passes taps through; a cancelled older banner task can no longer dismiss a newer banner.
+- iPad failed during first launch. Its actual crash report shows `SIGABRT` in `AURemoteIO::Initialize`, reached through `AudioEngine.prepare` and `mainMixerNode`. Audio preparation now waits for an active scene, checks session activation and output availability before building the graph, and supports retry without attaching duplicate nodes. A fresh iPad pass is required; this is not dismissed as a flaky assertion.
+- The recap checkpoint photographed Settings during dismissal despite finding the recap in the accessibility tree. The test now requires Settings to disappear and the recap to be usable before capture.
+- Reviewer instructions now identify Founder as the well-funded free start and use the current map/briefing navigation. The generated store fill-in sheet was refreshed.
+
+The rival investigation and reproducible nine-seed measurements are in [RIVAL_BALANCE_FIX.md](RIVAL_BALANCE_FIX.md). No cash, fare, service, maintenance, aircraft-price or debt-limit subsidy was used.
+
 ## Release sequence
 
 1. Resolve every current-commit Launch safety and CI failure; review the screenshot artifacts.
@@ -88,7 +97,7 @@ No merge, Pages deployment, TestFlight upload or App Store submission was perfor
 
 ## Accepted follow-up backlog
 
-The remaining audit recommendations need further implementation and validation: capped offline catch-up; rival archetype balance; stronger fleet identity; connecting hubs and banked schedules; fleet commonality; bulk network management; versioned seed challenges; richer scenarios/historical starts; iCloud conflict-safe synchronization; cargo, alliances, terminals and subsidiaries. Rescue financing and flight/passenger contracts are implemented above, pending final candidate validation.
+The remaining audit recommendations need further implementation and validation: capped offline catch-up; stronger fleet identity; connecting hubs and banked schedules; fleet commonality; bulk network management; versioned seed challenges; richer scenarios/historical starts; iCloud conflict-safe synchronization; cargo, alliances, terminals and subsidiaries. Rescue financing, flight/passenger contracts and the measured rival ownership/spending correction are implemented above, pending final candidate validation.
 
 These changes add persistent simulation or product behavior. Each needs a concrete design, migration where applicable, economic tests and device review. They have not been silently added to the launch feature claims.
 

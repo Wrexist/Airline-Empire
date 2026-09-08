@@ -256,6 +256,7 @@ struct CelebrationOverlay: View {
         .transition(.move(edge: .top).combined(with: .opacity))
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isStaticText)
+        .allowsHitTesting(false)
         // No feedback here on purpose. Every event that raises a celebration
         // — an era, a milestone, an achievement, a finished programme, a
         // completed mission — already carries its own cue and its own haptic
@@ -264,7 +265,9 @@ struct CelebrationOverlay: View {
         // "haptics triggering repeatedly" failure in MASTER PROMPT 3 §29.
         .task(id: celebration.id) {
             // Long enough to read, short enough never to be in the way.
-            try? await Task.sleep(for: .seconds(4))
+            do { try await Task.sleep(for: .seconds(4)) }
+            catch { return }
+            guard controller.celebration?.id == celebration.id else { return }
             withAnimation(AEMotion.content) { controller.dismissCelebration() }
         }
     }

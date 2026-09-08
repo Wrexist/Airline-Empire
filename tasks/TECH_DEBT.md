@@ -1032,6 +1032,12 @@ flake.
 
 ## TD-038 — Two of the five AI archetypes do not work, and the guard that should say so cannot
 
+**8 September update:** a measured ownership/spending correction and stronger
+per-archetype guard are implemented in PR #22. All 45 runs in the nine-seed
+candidate survived and all five medians exceeded starting capital. See
+`docs/RIVAL_BALANCE_FIX.md` for baseline ledgers, results, reproducibility and
+the remaining integration/device gates. The original finding follows.
+
 **Symptom.** MEASURED (AE-044, `BalanceTests.archetypeParityAndSanity`, nine
 seeds × four years, each archetype founded with $120M). Net worth at the end,
 **before and after** AE-044's estimator fix — this is a pre-existing state, not
@@ -1125,4 +1131,3 @@ This is also where the phase's one iPad defect landed (BUG-064, fixed): the
 gear used to raise a sheet from inside the briefing sheet, which replaces
 rather than stacks at regular width. It is a push now. The *depth* remains, and
 remains the thing to watch.
-

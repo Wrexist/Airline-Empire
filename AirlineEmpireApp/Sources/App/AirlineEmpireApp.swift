@@ -22,9 +22,6 @@ struct AirlineEmpireApp: App {
                 // of the moments audio cares about.
                 .environment(\.feedback, controller.feedback)
                 .task {
-                    // Decoding the palette is milliseconds, but it is still
-                    // not work to do while the player waits for a screen.
-                    controller.feedback.prepare()
                     // UI tests only: open a save the engine wrote, so the
                     // late game can be photographed (AE-037 COMP-07).
                     controller.loadFixtureIfRequested()
@@ -72,6 +69,7 @@ struct AirlineEmpireApp: App {
                 }
                 .task(id: scenePhase) {
                     guard scenePhase == .active else { return }
+                    controller.feedback.prepare()
                     // Ownership may have changed on another device while
                     // suspended. Refresh before deciding whether to offer Pro.
                     await entitlements.refreshEntitlement()

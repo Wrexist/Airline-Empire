@@ -14,7 +14,7 @@ Five archetypes; every behavioral parameter derives from the archetype:
 
 | Archetype | Fare vs ref | Service | Shops for | Financing | Geography |
 |---|---|---|---|---|---|
-| lowCost | 0.85× | basic | used/leased narrowbodies (12y) | leases, borrows to 55% | anywhere |
+| lowCost | 0.85× | basic | used narrowbodies (12y) | buys used, borrows to 55% | anywhere |
 | premium | 1.25× | premium | young large-narrow/widebodies (3y) | buys, ≤40% debt | anywhere |
 | regional | 1.0× | standard | turboprops/RJs (12y) | buys, ≤40% | **home region only** |
 | conservative | 1.05× | standard | mid-age narrowbodies (8y) | ≤20% debt | anywhere |
