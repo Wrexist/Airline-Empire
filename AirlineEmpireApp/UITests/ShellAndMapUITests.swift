@@ -45,12 +45,19 @@ final class ShellAndMapUITests: AEUITestCase {
         let route = appearanceRoute.rawValue
         checkpoint("50-\(route)-home")
 
-        let tabs = ["Map", "Airline", "Finance", "World"]
+        // Home is the world map now (AE-048), so the briefing — everything
+        // that used to be the Home tab — is a fourth surface with its own
+        // materials, and it is the one this suite had never seen in dark.
+        let tabs = ["Airline", "Finance", "World", "Home"]
         for (index, tab) in tabs.enumerated() {
             openTab(tab)
             XCTAssertTrue(app.staticTexts.count > 0 || app.otherElements.count > 0,
                           "\(tab) rendered nothing in dark appearance")
             checkpoint("5\(index + 1)-\(route)-\(tab.lowercased())")
+        }
+        if openBriefing() {
+            checkpoint("55-\(route)-briefing")
+            closeBriefing()
         }
     }
 
@@ -61,8 +68,15 @@ final class ShellAndMapUITests: AEUITestCase {
     func testLightAppearanceMapForComparison() throws {
         guard reachGameplay(in: .light) else { return }
         checkpoint("60-light-home")
-        openTab("Map")
+        openTab("Home")
         checkpoint("61-light-map")
+        // BUG-036's other half: the briefing is glass and system materials
+        // over a near-black map, and light is where that combination has
+        // failed before.
+        if openBriefing() {
+            checkpoint("62-light-briefing")
+            closeBriefing()
+        }
     }
 
 
@@ -119,13 +133,21 @@ final class ShellAndMapUITests: AEUITestCase {
             attached.
             """)
 
-        // ── Settings, from Home ───────────────────────────────────────────
-        openTab("Home")
+        // ── Settings, from the briefing ───────────────────────────────────
+        // Settings left the World hub for the Home toolbar (UI-001); AE-048
+        // moved that toolbar into the briefing when Home became the map.
+        guard openBriefing() else { return }
         let settings = app.buttons["Settings"]
         require(settings, "the Settings button in the toolbar")
         settings.tap()
+        // Scrolled to, not merely waited for. Settings is a long list and
+        // "Mute everything" is its third section; CI run 171's iPad frame
+        // showed the screen rendered perfectly with the toggle below the
+        // fold, and reported it as "the sheet did not present or it rendered
+        // empty". Reaching a control by scrolling is the stronger claim
+        // anyway — it proves the list scrolls as well as that it drew.
         let muteToggle = app.switches["Mute everything"]
-        let settingsRendered = muteToggle.waitForExistence(timeout: 10)
+        let settingsRendered = scrollUntil(muteToggle, "the Mute everything toggle in Settings")
         checkpoint("92-settings")
         XCTAssertTrue(settingsRendered, """
             The Settings sheet shows no "Mute everything" toggle. Either the \
@@ -153,7 +175,7 @@ final class ShellAndMapUITests: AEUITestCase {
         checkpoint("95-dynamictype-home")
 
         // Navigation failure is the worst outcome: every tab must survive.
-        for tab in ["Map", "Airline", "Finance", "World", "Home"] {
+        for tab in ["Airline", "Finance", "World", "Home"] {
             guard let button = waitForTab(tab, timeout: 10) else {
                 capture(Self.logPrefix + "MISSING-\(tab)-at-accessibility-size")
                 XCTFail("The \(tab) tab vanished at accessibility size. Screenshot attached.")
@@ -228,7 +250,7 @@ final class ShellAndMapUITests: AEUITestCase {
     func testZoomingTheMapRevealsCountryLabels() throws {
         launch(appearance: .light)
         guard foundAirline() else { return }
-        openTab("Map")
+        openTab("Home")
 
         let map = app.descendants(matching: .any)["ae-map-canvas"]
         require(map, "the map canvas")
@@ -326,7 +348,7 @@ final class ShellAndMapUITests: AEUITestCase {
         guard openAircraftMarket(), leaseAnAircraft() else { return }
         guard openRouteBySearch(city: "London", code: "LHR") else { return }
         guard assignFirstAircraft() else { return }
-        openTab("Map")
+        openTab("Home")
 
         let map = app.descendants(matching: .any)["ae-map-canvas"]
         require(map, "the map canvas")
@@ -349,11 +371,19 @@ final class ShellAndMapUITests: AEUITestCase {
         let fast = app.buttons["Sixteen times speed"]
         if fast.waitForExistence(timeout: 5) { fast.tap() }
         var waited = 0
-        while airborne() == 0 && waited < 40 {
+        var seen = 0
+        while seen == 0 && waited < 40 {
             Thread.sleep(forTimeInterval: 1)
             waited += 1
+            seen = airborne()
         }
-        guard airborne() > 0 else {
+        // Read once and keep it. The first version asked `airborne()` in the
+        // loop condition and *again* in the guard below, and run 172 skipped
+        // on the pair disagreeing — "no aircraft reached the air within 19
+        // seconds" after the loop had already exited because one had. A
+        // flight that lands between two accessibility queries is a race in
+        // the test, not a fact about the camera.
+        guard seen > 0 else {
             checkpoint("76-NO-FLIGHT-TO-FOLLOW")
             throw XCTSkip("""
                 No aircraft reached the air within \(waited) seconds at 16×, \
@@ -363,28 +393,65 @@ final class ShellAndMapUITests: AEUITestCase {
                 """)
         }
 
-        // Zoom in so the aircraft is a target a synthetic tap can hit, then
-        // walk a small spiral: an aircraft is a few points wide and moving.
+        // Stop the clock before aiming.
+        //
+        // This spiral has never once hit an aircraft — AE-046 recorded the
+        // camera NOT VERIFIED, and runs 171 and 172 both skipped here. It was
+        // tapping at 16×, where an aeroplane crosses its own width several
+        // times between the snapshot the tap is aimed from and the tap
+        // landing. Paused, the flight holds position, `MapFlightCard` still
+        // offers Follow (`flight.airborne || isFollowing`), and the target
+        // stops moving out from under the finger.
+        let pause = app.buttons["Pause"]
+        if pause.waitForExistence(timeout: 5) { pause.tap() }
+        Thread.sleep(forTimeInterval: 1)
+
+        // Frame the network, then sweep it — and know what was hit.
+        //
+        // Seven blind taps around the centre have now missed in four
+        // consecutive attempts (AE-046, and runs 171, 172, 173), which is
+        // long enough to stop calling it luck. Two things were wrong with
+        // them. They clustered on the middle of the canvas, and the middle of
+        // a framed network is usually the ocean *between* the two airports,
+        // not the arc; and they asked only whether *something* had been
+        // selected, so an airport under the third tap would have ended the
+        // search with the wrong object.
+        //
+        // A grid across the framed network looks where the arc actually is,
+        // and the canvas's own accessibility value says which kind of thing
+        // was hit — "Selected a flight to LHR" for an aircraft against
+        // "Selected Stockholm" for an airport — so the sweep can walk past an
+        // airport and keep going. Thirty taps on a paused map cost about
+        // eight seconds.
+        let frameNetwork = app.buttons["Frame my network"]
+        if frameNetwork.waitForExistence(timeout: 5) { frameNetwork.tap() }
+        Thread.sleep(forTimeInterval: 1)
         let zoomIn = app.buttons["Zoom in"]
-        if zoomIn.waitForExistence(timeout: 5) { for _ in 0..<3 { zoomIn.tap() } }
+        if zoomIn.waitForExistence(timeout: 5) { for _ in 0..<2 { zoomIn.tap() } }
+        Thread.sleep(forTimeInterval: 0.5)
         let follow = app.buttons["ae-map-follow"]
-        let offsets: [(CGFloat, CGFloat)] = [
-            (0.5, 0.5), (0.42, 0.45), (0.58, 0.45), (0.5, 0.38),
-            (0.5, 0.6), (0.35, 0.55), (0.65, 0.55),
-        ]
+        func aircraftSelected() -> Bool { value().contains("Selected a flight") }
+        var offsets: [(CGFloat, CGFloat)] = []
+        for row in 0..<6 {
+            for column in 0..<5 {
+                offsets.append((0.16 + CGFloat(column) * 0.17,
+                                0.28 + CGFloat(row) * 0.075))
+            }
+        }
         for (x, y) in offsets {
             map.coordinate(withNormalizedOffset: CGVector(dx: x, dy: y)).tap()
-            Thread.sleep(forTimeInterval: 0.4)
+            Thread.sleep(forTimeInterval: 0.25)
+            if aircraftSelected() { break }
             if follow.exists { break }
         }
         guard follow.exists else {
             checkpoint("76-NO-AIRCRAFT-SELECTED")
             throw XCTSkip("""
-                Seven taps across the canvas selected no aircraft, so the \
-                flight card never appeared and the follow control was never \
-                reachable. An aircraft marker is a few points wide and moving \
-                under the tap; this is a limitation of synthetic tapping, not \
-                evidence about the camera. Recorded as NOT VERIFIED.
+                Thirty taps swept across the framed network on a paused map \
+                selected no aircraft, so the flight card never appeared and \
+                the follow control was never reachable. An aircraft marker is \
+                a few points wide; this is a limitation of synthetic tapping, \
+                not evidence about the camera. Recorded as NOT VERIFIED.
                 """)
         }
         checkpoint("76-map-flight-card")
@@ -424,7 +491,7 @@ final class ShellAndMapUITests: AEUITestCase {
     func testSelectingAnAirportOpensItsPanel() throws {
         launch(appearance: .light)
         guard foundAirline() else { return }
-        openTab("Map")
+        openTab("Home")
 
         let map = app.descendants(matching: .any)["ae-map-canvas"]
         require(map, "the map canvas")

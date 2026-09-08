@@ -1081,3 +1081,48 @@ largeNarrowbody preferences, and expansionist the widest category list and the
 highest debt tolerance; either the archetypes or the economy they meet is
 wrong. That is a phase, not a fix, and it should come with a ledger for each
 archetype rather than a net-worth number at year four.
+
+---
+
+## TD-039 — AE-048's new debt: three things the map home moved rather than solved
+
+**Phase:** AE-048, 2026-09-07. All three are consequences of Home becoming the
+world map, recorded on the day they were created so they are not discovered
+instead.
+
+### The era and the reputation are not on the world
+
+`MapHomeBriefing` shows four facts — cash, aircraft in the air, routes, fleet
+— and the top bar shows the date and the clock. The **era** and the
+**reputation** are on the briefing's header and stat grid, one tap away, and
+were on the old Home at a glance. Four facts was a judgement about how much a
+strip over the Atlantic may carry, not a limit anybody measured; the campaign
+journey's era assertion had to move into the briefing because of it. If a
+device says the strip has room, the era belongs on it — it is the one piece of
+airline state that changes the game rather than describing it.
+
+### Two journeys now open a sheet from inside a sheet
+
+`CampaignUITests` and `HorizonArrivalUITests` take their ranked markets from
+the briefing's Next Moves card, which means the guided route sheet is presented
+over the briefing sheet. That works, and it is what a player following the same
+advice does. It is still one more nesting level than either journey had, and if
+sheet-over-sheet ever becomes flaky on a runner these are the two tests that
+will say so first. The alternative — driving the map home's own row — was
+rejected because that row correctly offers *one* move, and at that point in
+both journeys the correct move is "put the aircraft you just bought to work",
+not "open another route".
+
+### Settings is two taps from the world
+
+It was one from the old Home (tab, then the gear). It is now Home → briefing →
+gear. Save, load and quit-to-menu live behind it. Nothing is unreachable and
+the briefing is where a player looks for the airline's own controls, but this
+is the one path the phase made longer, and it is the one worth watching on a
+device.
+
+This is also where the phase's one iPad defect landed (BUG-064, fixed): the
+gear used to raise a sheet from inside the briefing sheet, which replaces
+rather than stacks at regular width. It is a push now. The *depth* remains, and
+remains the thing to watch.
+

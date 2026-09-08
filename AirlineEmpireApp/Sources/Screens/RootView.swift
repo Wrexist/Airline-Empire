@@ -146,7 +146,7 @@ struct RootView: View {
 
 /// The playing shell.
 ///
-/// ## Why five tabs and not six
+/// ## Six tabs, then five, now four
 ///
 /// It was six — Home, Map, Routes, Fleet, Finance, World — and iOS shows four
 /// plus an automatic *More* list once a tab bar passes five. Finance and World
@@ -160,18 +160,29 @@ struct RootView: View {
 /// **Airline** says what it holds — *your airline*: its routes and its
 /// aircraft. Settings left the World hub for the Home toolbar, where a player
 /// looks for settings. Nothing lost a level; two things gained one.
+///
+/// AE-048 removed the fifth. Home was a dashboard and Map was the world, and
+/// the game's direction is a living world at the centre — so Home *is* the
+/// world now (`MapScreen`), and the dashboard is the briefing raised over it
+/// (`BriefingView`). Keeping both would have been the same screen twice under
+/// two names, which is the duplication the phase was for; keeping a "open on
+/// Map / open on Home" preference would have required exactly that duplicate
+/// to preference between. Nothing became unreachable: every card, number and
+/// destination that was on Home is one tap from the foot of the map.
+///
+/// Four tabs, three of them unchanged. No overflow, and none possible until
+/// somebody adds two more.
 struct GameShell: View {
     @Environment(GameController.self) private var controller
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var selection: Tab = .home
 
     enum Tab: Hashable, CaseIterable {
-        case home, map, network, finance, world
+        case home, network, finance, world
 
         var title: String {
             switch self {
             case .home: "Home"
-            case .map: "Map"
             case .network: "Airline"
             case .finance: "Finance"
             case .world: "World"
@@ -180,8 +191,9 @@ struct GameShell: View {
 
         var icon: String {
             switch self {
-            case .home: "house"
-            case .map: "globe"
+            // A globe, because that is what the tab now contains. `house`
+            // over a world map would be the old hierarchy still speaking.
+            case .home: "globe"
             case .network: "airplane"
             case .finance: "chart.bar"
             case .world: "bolt"
@@ -250,8 +262,7 @@ struct GameShell: View {
     @ViewBuilder
     private func screen(for tab: Tab) -> some View {
         switch tab {
-        case .home: DashboardView()
-        case .map: MapScreen()
+        case .home: MapScreen()
         case .network: NetworkView()
         case .finance: FinanceView()
         case .world: OperationsView()

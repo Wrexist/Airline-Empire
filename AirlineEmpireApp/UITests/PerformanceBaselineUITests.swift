@@ -36,7 +36,7 @@ final class PerformanceBaselineUITests: AEUITestCase {
     func testMapInteractionBaselineMeasurements() throws {
         launch(appearance: .light, arguments: ["-AEUITestProbes"])
         guard foundAirline() else { return }
-        openTab("Map")
+        openTab("Home")
 
         let map = app.descendants(matching: .any)["ae-map-canvas"]
         require(map, "the map canvas")

@@ -798,4 +798,56 @@ extension Vocab {
                 : "You lead on all \(contested) of your contested markets."
         }
     }
+
+    // MARK: Onboarding
+
+    /// The five first-session steps, named the same way wherever they appear.
+    ///
+    /// AE-048 put the next step on the map home *and* left the full checklist
+    /// in the briefing, which is two surfaces reading from one model — so the
+    /// words live here rather than in whichever view was written first. A
+    /// checklist that says "Get an aircraft" and a map that says "Buy a plane"
+    /// are two different games to a player being taught one.
+    static func onboardingStep(_ step: OnboardingModel.Step) -> String {
+        switch step {
+        case .acquireAircraft: "Get an aircraft"
+        case .openRoute: "Open your first route"
+        case .assignAircraft: "Put the aircraft on the route"
+        case .watchFirstFlight: "Un-pause and watch it fly"
+        case .earnFirstRevenue: "Earn your first ticket revenue"
+        }
+    }
+
+    /// What the step asks the player to do next.
+    ///
+    /// Written for a surface that can *act*, because the map's row can: each
+    /// of these is a control there, so the line says what pressing it does
+    /// rather than naming a tab to go and find (BUG-059's rule). It has to
+    /// stay readable as plain status on the briefing's checklist too, which
+    /// is why none of them says "press this".
+    static func onboardingHint(_ step: OnboardingModel.Step) -> String {
+        switch step {
+        case .acquireAircraft:
+            "Open the aircraft market — leasing keeps cash free early on."
+        case .openRoute:
+            "Pick one of the strongest markets from your home airport."
+        case .assignAircraft:
+            "Open the route, then assign the aircraft parked at its origin."
+        case .watchFirstFlight:
+            "Set the clock to 1x — boarding, taxi and the crossing are real."
+        case .earnFirstRevenue:
+            "Revenue posts as flights land. The operations feed records each one."
+        }
+    }
+
+    /// The step's icon, for the row that offers to do it.
+    static func onboardingIcon(_ step: OnboardingModel.Step) -> String {
+        switch step {
+        case .acquireAircraft: "airplane.circle"
+        case .openRoute: "point.topleft.down.to.point.bottomright.curvepath"
+        case .assignAircraft: "arrow.triangle.branch"
+        case .watchFirstFlight: "play.circle"
+        case .earnFirstRevenue: "banknote"
+        }
+    }
 }

@@ -374,11 +374,23 @@ permanent occupies the middle.
 - **Top** — date, clock, speed control, and at most one world banner. Solvency
   outranks weather: a storm costs a day, insolvency costs the game.
 - **Upper left / right** — overlay picker and zoom controls, both 44 pt.
-- **Bottom** — whatever is selected. Nothing selected shows the single most
-  useful true thing the current overlay can say; a player with no routes gets
-  the empty-state invitation instead.
+- **Bottom** — **one region, one occupant.** Something selected: that object's
+  card, and only it. Nothing selected: `MapOverlayHint` when the current
+  overlay has something specific to say, and `MapHomeBriefing` — the airline's
+  state and its one next move. They never stack, and "selected" means the
+  selection still *resolves*: a route closed elsewhere or a flight that has
+  landed gives the region back to the briefing rather than leaving it empty.
 
 The navigation bar is hidden on this screen so the map is full-bleed.
+
+### The map is the home screen (AE-048)
+
+This screen is the game's Home tab. What used to be the Home dashboard is
+`BriefingView`, raised as a sheet from the briefing strip's own row; nothing
+that was on the dashboard was removed. `docs/UI_ARCHITECTURE.md` §9 has the
+shell, the three rules the composition obeys, and where the next move comes
+from. Everything in sections 3–8 and 10–14 of this document is unchanged by it:
+the phase moved the hierarchy, not the map.
 
 ---
 

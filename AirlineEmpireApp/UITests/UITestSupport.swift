@@ -391,8 +391,31 @@ class AEUITestCase: XCTestCase {
     /// The confirmation is a `confirmationDialog`, which is an action sheet on
     /// a phone, so it is queried through `app.sheets` rather than by label
     /// against the whole app — the market row is also called "Lease".
+    /// How a completed lease is proved, which depends on where the market was
+    /// opened from.
+    ///
+    /// This helper confirmed a lease by waiting for the market sheet to close
+    /// *and* for a row on the fleet board behind it. AE-048 gave the market a
+    /// second, legitimate entry point — the map home's own "Get an aircraft"
+    /// row — and behind that sheet is the world, not the fleet board. CI run
+    /// 171 photographed the consequence: the frame it saved as
+    /// `LEASE-ATTEMPT-1` shows a lease that had plainly succeeded (cash
+    /// $60.0M → $59.2M, "1 aircraft" on the briefing strip, the next move
+    /// already advanced to "Open your first route") under a test that had
+    /// just reported "No lease completed after four attempts".
+    ///
+    /// Neither proof is weaker than the other, and both are agreements rather
+    /// than appearances: one reads the fleet board, the other reads the fleet
+    /// count that `FleetSummary` puts on the map.
+    enum LeaseProof {
+        /// Opened from the Fleet board, which is behind the sheet.
+        case fleetBoard
+        /// Opened from the map home: the briefing strip reports the count.
+        case mapHomeBriefing
+    }
+
     @discardableResult
-    func leaseAnAircraft() -> Bool {
+    func leaseAnAircraft(proof: LeaseProof = .fleetBoard) -> Bool {
         // Hide what the era cannot buy, so the first lease action on screen
         // belongs to an aircraft this airline is allowed to take.
         let eraFilter = app.switches["Hide what this era cannot buy"]
@@ -499,7 +522,7 @@ class AEUITestCase: XCTestCase {
                 // stuck sheet; in runs 62 and 63 it closed a healthy market
                 // over a lease that had not happened, three times each.
                 if market.waitForNonExistence(timeout: 8),
-                   fleetRow.waitForExistence(timeout: 6) {
+                   leaseLanded(proof, fleetRow: fleetRow) {
                     return true
                 }
             }
@@ -552,6 +575,31 @@ class AEUITestCase: XCTestCase {
             would be testing what it claims to.
             """)
         return false
+    }
+
+    /// Did the lease actually land? Asked of whichever surface can answer.
+    private func leaseLanded(_ proof: LeaseProof, fleetRow: XCUIElement) -> Bool {
+        switch proof {
+        case .fleetBoard:
+            return fleetRow.waitForExistence(timeout: 6)
+        case .mapHomeBriefing:
+            // The strip's accessibility value is the read model, read back:
+            // "cash $59.2M, in the air 0, routes 0, aircraft 1". A fleet that
+            // went up is the agreement; the wording around it is not.
+            let strip = app.buttons["ae-home-briefing"]
+            guard strip.waitForExistence(timeout: 10) else { return false }
+            let deadline = Date().addingTimeInterval(8)
+            repeat {
+                if let value = strip.value as? String,
+                   value.range(of: #"aircraft [1-9]"#,
+                               options: .regularExpression) != nil {
+                    return true
+                }
+                Thread.sleep(forTimeInterval: 0.5)
+            } while Date() < deadline
+            capture(Self.logPrefix + "LEASE-NOT-ON-THE-BRIEFING")
+            return false
+        }
     }
 
     /// Open a route from the empty routes board, taking the guided first
@@ -881,10 +929,35 @@ class AEUITestCase: XCTestCase {
     /// Tap the sunrise control until Home's date begins with `datePrefix`
     /// (e.g. "2030-02"). Each tap simulates a full game day synchronously;
     /// the loop exits on the calendar, never on elapsed time.
+
+    /// The sunrise control, matched as *a* button with that label rather than
+    /// as the only one.
+    ///
+    /// AE-048 made the briefing a sheet over the map, and both surfaces carry
+    /// a `SpeedControl` — so with the briefing up there can be two buttons
+    /// labelled "Advance to next morning" in the tree (iOS usually hides the
+    /// presenter behind a full-height sheet, but "usually" is not a contract,
+    /// and `app.buttons[label]` raises on multiple matches rather than
+    /// picking one).
+    ///
+    /// **`element(boundBy: 0)`, not `firstMatch`.** The first version of this
+    /// used `firstMatch`, whose whole purpose is to resolve without waiting
+    /// for the query — and this control is tapped in tight loops of tens to
+    /// hundreds of taps while the app simulates a game day per tap. Run 172
+    /// lost both long journeys to advances that ran to their cap without
+    /// arriving: the New York journey could not reach March 2031 and the
+    /// Munich one could not reach April 3, both having been green at run 135.
+    /// Indexing waits for the query the way a plain subscript does, and keeps
+    /// the ambiguity safety the subscript lacks.
+    private func labelledButton(_ label: String) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label == %@", label))
+            .element(boundBy: 0)
+    }
+
     @discardableResult
     func advanceMornings(until datePrefix: String, cap: Int = 35) -> Bool {
         openTabIfNeeded("Home")
-        let sunrise = app.buttons["Advance to next morning"]
+        let sunrise = labelledButton("Advance to next morning")
         guard sunrise.waitForExistence(timeout: 8) else { return false }
         let arrived = app.staticTexts.matching(NSPredicate(
             format: "label BEGINSWITH %@", datePrefix)).firstMatch
@@ -895,12 +968,33 @@ class AEUITestCase: XCTestCase {
         // always stops at least a day short, so the day-by-day approach
         // below — the part the journeys' caps were written for — is intact
         // and no journey can land past the date it asked for.
-        let week = app.buttons["Advance seven mornings"]
-        if !arrived.exists, week.exists,
-           let today = currentHomeDate(),
-           let target = Self.earliestDate(matching: datePrefix) {
-            let weeks = max(0, (Self.days(from: today, to: target) - 1) / 7)
-            for _ in 0..<weeks { week.tap() }
+        // Weeks first, and **re-read the date each time** rather than
+        // computing a count and trusting every tap to land.
+        //
+        // The count was computed once and fired blind: `for _ in 0..<weeks`.
+        // A tap that does not register is invisible to that loop, and 57 of
+        // them — which is what a year-long advance needs — is a lot of
+        // chances to lose one. Run 172 and run 173 both left the New York
+        // journey short of March 2031 by exactly this route, while the Munich
+        // journey's four week-taps arrived. One accessibility query per tap
+        // is the price of a loop that cannot silently under-advance; if the
+        // clock genuinely stops moving the guard still ends it, and the
+        // caller's assertion still fails with the same message.
+        let week = labelledButton("Advance seven mornings")
+        if week.exists, let target = Self.earliestDate(matching: datePrefix) {
+            var weekTaps = 0
+            // Stops a fortnight short, not a week. The date is read from the
+            // screen, so it can lag the tap that has just been dispatched; a
+            // one-tap-stale read at a seven-day threshold can step *past* the
+            // target, and `arrived` matches a date prefix, so overshooting
+            // never arrives. Two weeks of margin costs a few day-taps and
+            // cannot overshoot.
+            while !arrived.exists, weekTaps < 90,
+                  let today = currentHomeDate(),
+                  Self.days(from: today, to: target) > 14 {
+                week.tap()
+                weekTaps += 1
+            }
         }
 
         var taps = 0
@@ -980,20 +1074,29 @@ class AEUITestCase: XCTestCase {
     /// morning, which is also how a player would meet it.
     @discardableResult
     func advanceMorningsUntilHomeSays(_ phrase: String, cap: Int) -> Bool {
-        openTabIfNeeded("Home")
-        let sunrise = app.buttons["Advance to next morning"]
-        guard sunrise.waitForExistence(timeout: 8) else { return false }
+        // The feed moved into the briefing with the rest of the dashboard
+        // (AE-048), and the briefing's toolbar carries the same sunrise
+        // control the map's does — so the whole loop runs inside it, and the
+        // caller gets the tab bar back at the end.
+        guard openBriefing() else { return false }
+        let sunrise = labelledButton("Advance to next morning")
+        guard sunrise.waitForExistence(timeout: 8) else {
+            closeBriefing()
+            return false
+        }
         let line = app.staticTexts.matching(NSPredicate(
             format: "label CONTAINS %@", phrase)).firstMatch
         for _ in 0..<cap {
             if line.exists { return true }
             sunrise.tap()
         }
-        return line.exists
+        let found = line.exists
+        if !found { closeBriefing() }
+        return found
     }
 
     private func openTabIfNeeded(_ title: String) {
-        if app.buttons["Advance to next morning"].exists { return }
+        if labelledButton("Advance to next morning").exists { return }
         openTab(title)
     }
 
@@ -1156,12 +1259,61 @@ class AEUITestCase: XCTestCase {
     }
 
     /// Switch to a tab by its title.
+    ///
+    /// Closes the briefing first if it is up. AE-048 made Home the world map
+    /// and the dashboard a sheet over it, and a sheet swallows every tap
+    /// aimed at the tab bar underneath — so a journey that reads the feed and
+    /// then asks for the World hub would tap into the sheet's own scroll view
+    /// and fail on a screen that is perfectly healthy.
     func openTab(_ title: String) {
+        closeBriefing()
         guard let button = waitForTab(title, timeout: 15) else {
             capture(Self.logPrefix + "MISSING-the \(title) tab")
             XCTFail("The \(title) tab never appeared in any shape. Screenshot attached.")
             return
         }
         button.tap()
+    }
+
+    // MARK: The briefing (AE-048)
+
+    /// Whether the briefing sheet is currently in front of the map.
+    var briefingIsOpen: Bool {
+        app.buttons["ae-briefing-close"].exists
+    }
+
+    /// Raise the briefing — the dashboard, over the world.
+    ///
+    /// Everything that used to be the Home tab is behind this one control:
+    /// the onboarding checklist, Next Moves, rival pressure, the stat grid,
+    /// the digest, the calendar, the operations feed and Settings. A journey
+    /// that wants any of them opens this first.
+    @discardableResult
+    func openBriefing() -> Bool {
+        if briefingIsOpen { return true }
+        openTab("Home")
+        let handle = app.buttons["ae-home-briefing"]
+        guard handle.waitForExistence(timeout: 15) else {
+            capture(Self.logPrefix + "NO-BRIEFING-HANDLE")
+            XCTFail("The map home shows no briefing handle. Screenshot attached.")
+            return false
+        }
+        handle.tap()
+        guard app.buttons["ae-briefing-close"].waitForExistence(timeout: 10) else {
+            capture(Self.logPrefix + "BRIEFING-DID-NOT-OPEN")
+            XCTFail("Pressing the briefing handle did not raise the briefing.")
+            return false
+        }
+        return true
+    }
+
+    /// Put the briefing away and return to the world. A no-op when it is not
+    /// up, so it is safe to call defensively.
+    func closeBriefing() {
+        let close = app.buttons["ae-briefing-close"]
+        guard close.exists, close.isHittable else { return }
+        close.tap()
+        // The sheet's dismissal is animated; the next query must not race it.
+        _ = close.waitForNonExistence(timeout: 5)
     }
 }

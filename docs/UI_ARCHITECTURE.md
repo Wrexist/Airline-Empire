@@ -176,8 +176,9 @@ found the structural rules honoured and several of the *product* rules not.
 What changed, against the rules above:
 
 - **§2 adaptive shell — now built.** `NavigationSplitView` at regular width,
-  a five-item `TabView` at compact. Six tabs overflowed into the system *More*
-  list (BUG-009); Routes and Fleet merged into **Network**.
+  a `TabView` at compact. Six tabs overflowed into the system *More*
+  list (BUG-009); Routes and Fleet merged into **Network**. **Four items since
+  AE-048**, see §9.
 - **§2 navigation state as a value — mostly.** Typed destinations
   (`RouteID`, `AircraftID`, `AirportCode`, `DashboardRoute`) are values, every
   screen links by value, and **a feed line about something you own opens it** —
@@ -308,3 +309,53 @@ mapped code is a code Core emits, that a `NavigationLink(value:)` resolves,
 that `Vocab` is total over the enum it words — is guarded by review alone,
 because the App target has no test that runs anywhere we build. That is
 `TD-016`, and it is the common cause behind BUG-029, BUG-030 and BUG-033.
+
+---
+
+## 9. The shell after AE-048 — the map is Home
+
+`docs/ROADMAP_DIRECTION_II.md` Phase 27. §2 above lists "Home/Dashboard" and
+"Map" as two of the primary areas, which is what shipped for six phases and is
+no longer what the game is. The direction set in `GAME_DIRECTION.md` is a cozy
+builder with a living world map at its centre; a shell whose atmosphere is on
+tab two and whose prompts are on tab one has that exactly backwards.
+
+**The shell is now four items.**
+
+| Tab | Screen | What it is |
+| --- | --- | --- |
+| Home | `MapScreen` | the world, and the airline on it |
+| Airline | `NetworkView` | routes and fleet, segmented |
+| Finance | `FinanceView` | the ledger, the months, the loans |
+| World | `OperationsView` | events, competitors, progression, airports |
+
+**What used to be Home is `BriefingView`** — the same file, the same cards, in
+the same order, renamed and presented as a **sheet over the map** rather than
+as a screen beside it. Nothing was removed: the onboarding checklist, Next
+Moves, the rival-pressure card, the pulse strip, the six stat tiles and their
+destinations, the daily digest, the calendar, the operations feed and the
+Settings entry are all behind one control at the foot of the map.
+
+**Three rules the composition obeys.**
+
+1. **One bottom region, one occupant.** The map's foot is either a selection
+   card (something is being inspected) or the briefing strip (nothing is). They
+   never stack. `MapScreen.hasLiveSelection` decides, and asks whether the
+   selection still *resolves* rather than whether it is non-nil — a closed
+   route or a landed flight must give the region back.
+2. **The next move is a derivation, never a state.** `HomeNextMove.resolve`
+   reads `OnboardingModel`, the fleet, `marketOpportunities` and the map model,
+   in that priority. There is no second onboarding system and nothing is
+   persisted, so the row cannot survive a new game or contradict the checklist
+   behind it — they read the same model and, via `Vocab.onboardingStep`, use
+   the same words.
+3. **Per-snapshot, not per-frame.** The strip is rebuilt on every `MapScreen`
+   body pass, and a finger on the map drives those (the camera is observable
+   and a drag writes to it). `HomeNextMove` and `DashboardModel` are therefore
+   cached on `GameController` beside `MapModel` and `NetworkSummary`, under the
+   §5 rule and for the reason UI-016 gave. `HomeNextMove` carries a `Tone`
+   rather than a `Color` so that cache costs `GameController` no SwiftUI import.
+
+**What this does not change.** The map renderer, the render cache, the camera,
+hit-testing, the overlay picker, the zoom controls, the selection cards and the
+follow camera are untouched. The phase moved the hierarchy, not the map.

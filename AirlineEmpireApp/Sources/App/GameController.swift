@@ -124,6 +124,13 @@ final class GameController {
     @ObservationIgnored private var cachedRouteCards: [RouteCardModel]?
     @ObservationIgnored private var cachedFleetCards: [FleetCardModel]?
     @ObservationIgnored private var cachedCompetition: CompetitionSummary?
+    @ObservationIgnored private var cachedDashboard: DashboardModel?
+    /// Doubly optional on purpose: the inner `nil` is a real answer — a quiet
+    /// airline with nothing to do — and a single optional could not tell it
+    /// apart from "not computed yet", so the most expensive derivation of the
+    /// six would re-run on every gesture frame precisely when it has nothing
+    /// to say.
+    @ObservationIgnored private var cachedNextMove: HomeNextMove??
 
     /// Drops every derived cache. Called on each published snapshot.
     ///
@@ -148,6 +155,8 @@ final class GameController {
         cachedNetwork = nil
         cachedFleetSummary = nil
         cachedCompetition = nil
+        cachedDashboard = nil
+        cachedNextMove = nil
     }
 
     /// The competitive picture — Home's one rival fact, the World hub's live
@@ -177,6 +186,35 @@ final class GameController {
         let summary = snapshot.fleetSummary(for: player.id)
         cachedFleetSummary = summary
         return summary
+    }
+
+    /// The airline at a glance — the map's top bar and briefing strip, the
+    /// briefing's own header and stat grid.
+    ///
+    /// Cached because the map home reads it on every body pass, and the map's
+    /// body is driven by a finger: it walks the routes, the fleet and the
+    /// asset valuation, which is not per-gesture-frame work.
+    var dashboard: DashboardModel? {
+        guard let snapshot else { return nil }
+        if let cachedDashboard { return cachedDashboard }
+        let model = snapshot.dashboardModel()
+        cachedDashboard = model
+        return model
+    }
+
+    /// The one thing worth doing next, on the map home (AE-048).
+    ///
+    /// A derivation over `OnboardingModel`, the fleet and `marketOpportunities`
+    /// — no stored progress, nothing persisted, and therefore nothing that can
+    /// survive a new game or go stale against the state it describes.
+    var homeNextMove: HomeNextMove? {
+        guard let snapshot, let model = mapModel else { return nil }
+        if let cachedNextMove { return cachedNextMove }
+        let move = HomeNextMove.resolve(snapshot: snapshot, model: model,
+                                        catalog: catalog,
+                                        fleetSummary: fleetSummary)
+        cachedNextMove = .some(move)
+        return move
     }
 
     var mapModel: MapModel? {
@@ -519,12 +557,11 @@ final class GameController {
         // inherits the last one's history and never hears its own first route
         // (tasks/BUGS.md BUG-013).
         feedback.endSession()
-        cachedMap = nil
-        cachedRouteCards = nil
-        cachedFleetCards = nil
-        cachedNetwork = nil
-        cachedFleetSummary = nil
-        cachedCompetition = nil
+        // Every derived cache, by the one function that knows them all. This
+        // was an inline copy of that list and had already drifted once: a
+        // cache added for a screen is a cache the *next* airline inherits
+        // unless somebody remembers two places (BUG-013's shape).
+        invalidateCaches()
     }
 
     /// Game minutes to add to the published snapshot's clock to get the world

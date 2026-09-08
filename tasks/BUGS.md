@@ -1823,3 +1823,105 @@ morning is when an airline looks alive. Not taken here because it moves the
 clock under every UI journey (the campaign suite drives ~1,800 of these taps
 and asserts on dates), and this branch cannot run them.
 **Status:** OPEN.
+
+---
+
+## BUG-062 — a selection that stopped existing left the foot of the map blank
+**Severity:** P2 before AE-048 (a strip of empty glass); P1 after it, because
+the same region now carries the airline's state and its next move · **Phase
+found:** AE-048, 2026-09-07, by reasoning about the new composition rather
+than by seeing it.
+**Repro:** Select a route on the map, then close that route from Route Detail;
+or select an aircraft in flight and let it land and finish its turnaround.
+**Behaviour:** `MapSelectionPanel` switched on `selection`, found no matching
+entry in the model and rendered nothing, while the panel's own container went
+on claiming the bottom of the screen. The player was left with a selection the
+map still believed in and a card that did not exist.
+**Root cause:** the panel asked whether a selection had been *made*, not
+whether it still *resolved*. The two are the same only while the world holds
+still, and this map's whole point is that it does not.
+**Fix:** `MapScreen.hasLiveSelection(_:)` asks the model whether the selected
+airport, route or flight is still in it, and the bottom region is decided by
+that. A selection that has gone stale now returns the region to the briefing.
+The selection value itself is left alone — clearing state during a body pass
+is not allowed, and the next tap re-selects.
+**Status:** FIXED in AE-048. Not yet seen on a simulator: the case needs a
+route closed or a flight landed while its card is open, which no journey
+currently drives. Recorded as reasoned-and-fixed, not observed-and-fixed.
+
+---
+
+## BUG-063 — the map's top bar broke its own date across two lines
+**Severity:** P2 (the first thing on the first screen, wrong in every frame) ·
+**Phase found:** AE-048, 2026-09-07, in CI run 171's own screenshots.
+**Repro:** Open the game. The top-left capsule reads "2030-" / "01-01" over
+"00:00 ·" / "$60.0M" — four lines where there was one.
+**Root cause:** mine, and introduced by this phase. AE-048 put the cash on the
+clock line to satisfy the brief's "airline state at a glance". That column
+shares a fixed-width capsule with the speed control, and "· $60.0M" widened it
+past what was spare, so SwiftUI wrapped the *date* — the one string in the bar
+that must never wrap.
+**Why review missed it:** the strings are short, the code reads fine, and the
+capsule's width is a consequence of three other views. Nothing but a rendered
+frame could have shown it, which is exactly what the phase's visual-QA step is
+for.
+**Fix:** the cash came back out. It is already on the briefing strip at the
+foot of the map — bigger, labelled, and beside the counts it belongs with — so
+the top bar was carrying a second copy and paying for it with a wrapped date.
+The date is now `lineLimit(1)` and `fixedSize`, so nothing put beside it can
+wrap it again.
+**Status:** FIXED in AE-048. Verified by eye on the redispatched run.
+
+---
+
+## BUG-064 — Settings, raised from inside the briefing, replaced it on iPad
+**Severity:** P2 (the only path to saving and quitting, on one idiom) ·
+**Phase found:** AE-048, 2026-09-07, in CI run 171's iPad frames.
+**Repro:** On an iPad, open the briefing from the map and tap Settings.
+**Behaviour:** the Settings form sheet appears over the **map**, not over the
+briefing — the briefing has gone. Closing Settings therefore returns the player
+to the world rather than to the screen they were reading.
+**Root cause:** AE-048 made the briefing a sheet, and Settings was already a
+sheet raised from it. A sheet presented from inside a sheet does not stack at
+regular width; it replaces. On iPhone it stacks, which is why the shape
+survived review.
+**Fix:** Settings is a push inside the briefing's own navigation stack — one
+modal level, the same behaviour on both idioms, back returns to the briefing,
+and the list gets a full-height scroll. `SettingsView` already carried its own
+title and its Done button pops rather than dismissing, so nothing else moved.
+The `DashboardRoute` destination table moved from inside the stat grid up to
+the stack at the same time: registered in the grid it did not exist until a
+snapshot had landed, and a `NavigationLink(value:)` with no destination is
+silently inert (BUG-029's family).
+**Status:** FIXED in AE-048.
+
+---
+
+## BUG-065 — pinning the date pushed the map's zoom controls off the screen
+**Severity:** P1. The zoom cluster is "the only way this map is reachable for
+anyone who cannot make that gesture" (`MapChrome`), so losing it is an
+accessibility failure, not a cosmetic one · **Phase found:** AE-048 closure
+pass, 2026-09-07, in CI run 172's frames.
+**Repro:** Open the game on a phone. The top-bar capsule runs past its own
+margin to the screen edge, and the +/−/frame column below it is half off the
+right edge. At AccessibilityL the whole speed control is off-screen and the
+next-move row's text is clipped mid-word ("leas" for "leasing").
+**Root cause:** the fix for BUG-063. Taking the cash out of the top bar stopped
+the date wrapping; `fixedSize(horizontal: true)` was added on top of that to
+guarantee it could never wrap again. A view that refuses to compress makes its
+row's ideal width unsatisfiable, so the `HStack` overflows the screen, the
+capsule is laid out wider than its padding allows, and the `Spacer()` in the
+row *below* pushes `MapZoomControls` out to that overflowed trailing edge.
+One frame fixed, the next frame broken — and the second break was worse.
+**Why it was found:** only because run 172's frames were magnified. At the
+360-pixel scale the log embeds, the clipped column reads as a shadow.
+**Fix:** never wrap *and* never force a width — `lineLimit(1)` with
+`minimumScaleFactor(0.75)`, so the date shrinks slightly before it does
+either. And at accessibility sizes the top bar stops being a row: the date
+stacks above the speed control, which is the same two-layout pattern
+`BriefingView`'s header already uses. The briefing strip caps itself at two
+facts there for the same reason — four stacked facts plus an overflowing top
+bar had left the world a band a centimetre high on the screen whose entire
+point is the world.
+**Status:** FIXED in the AE-048 closure pass. Verified by eye on the re-run.
+

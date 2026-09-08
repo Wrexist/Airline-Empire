@@ -46,7 +46,10 @@ final class HorizonArrivalUITests: AEUITestCase {
         guard require(fleetRow, "the fleet after the used purchase", timeout: 10) else { return }
         guard openAircraftMarket() else { return }
         guard leaseAnAircraft() else { return }
-        openTab("Home")
+        // The ranked markets are on the briefing's Next Moves card (AE-048).
+        // The map home's own row offers one move, and with two aircraft just
+        // bought that move is correctly "put them to work", not "grow".
+        guard openBriefing() else { return }
         for attempt in 1...2 {
             let suggestion = app.buttons.matching(NSPredicate(
                 format: "label CONTAINS %@", "→")).firstMatch
@@ -63,8 +66,9 @@ final class HorizonArrivalUITests: AEUITestCase {
                 if app.buttons["Done"].exists { app.buttons["Done"].tap() }
                 if app.buttons["Cancel"].exists { app.buttons["Cancel"].tap() }
             }
-            openTab("Home")
+            guard openBriefing() else { break }
         }
+        closeBriefing()
         guard openAirlineSection("Routes") else { return }
         let bare = assignAllBareRoutes()
         XCTAssertEqual(bare, 0, "\(bare) route(s) have no aircraft after February.")
@@ -87,17 +91,22 @@ final class HorizonArrivalUITests: AEUITestCase {
             XCTFail("The sunrise control could not reach March 4.")
             return
         }
+        // The rival-pressure card and the operations feed are in the briefing
+        // since AE-048; the map says the date, and this is what it says about
+        // the world.
+        guard openBriefing() else { return }
         let entered = app.descendants(matching: .any).matching(NSPredicate(
             format: "label CONTAINS %@ AND label CONTAINS %@", "PacificBlue", "entered your")).firstMatch
         let found = entered.waitForExistence(timeout: 8)
         if !found { capture(Self.logPrefix + "HZ2-NO-ENTRY-HEADLINE") }
         continueAfterFailure = true
         XCTAssertTrue(found, """
-            Home does not say that PacificBlue entered the player's market the \
-            morning after it did — the world-initiated event on a start the \
-            world never came to before this phase.
+            The briefing does not say that PacificBlue entered the player's \
+            market the morning after it did — the world-initiated event on a \
+            start the world never came to before this phase.
             """)
         checkpoint("HZ2-home-rival-entered")
+        closeBriefing()
         guard openRouteDetail(containing: "IST") else { return }
         checkpoint("HZ3-route-morning-after-entry")
         app.navigationBars.buttons.firstMatch.tap()

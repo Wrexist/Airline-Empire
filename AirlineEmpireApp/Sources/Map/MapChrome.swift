@@ -14,28 +14,51 @@ import AirlineEmpireCore
 /// a live disruption.
 struct MapTopBar: View {
     @Environment(GameController.self) private var controller
+    @Environment(\.dynamicTypeSize) private var typeSize
     let model: MapModel
     let snapshot: GameState
 
     var body: some View {
         VStack(spacing: AETheme.spacingS) {
-            HStack(spacing: AETheme.spacingS) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(Format.date(snapshot.currentDate))
-                        .font(.subheadline.weight(.semibold))
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                        .aeAnimation(AEMotion.content, value: snapshot.currentDate.day)
-                    Text(Format.clock(snapshot.currentDate))
-                        .font(.caption2.monospacedDigit())
-                        .foregroundStyle(.white.opacity(0.55))
+            // Beside the speed control at reading sizes; above it at
+            // accessibility sizes, where the two together are wider than any
+            // phone.
+            //
+            // Both halves of this are things CI photographed rather than
+            // things anybody reasoned out. AE-048 first put the cash on the
+            // clock line, and run 171's frames showed the *date* wrapping to
+            // "2030-" / "01-01" — a one-line bar became four (BUG-063). The
+            // cash came out and the date was pinned with `fixedSize`, and run
+            // 172's frames showed what *that* cost: a date that refuses to
+            // compress makes this row wider than the screen, so the capsule
+            // ran past its own margin and the `Spacer()` in the row below
+            // pushed `MapZoomControls` — the only way to zoom without a pinch,
+            // and therefore an accessibility control — clean off the right
+            // edge (BUG-065). At AccessibilityL the same overflow put the
+            // whole speed control off-screen.
+            //
+            // So: never wrap, never force a width. The date shrinks a little
+            // before it does either, and at accessibility sizes the row stops
+            // being a row.
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                    clock
+                    SpeedControl()
                 }
-                Spacer(minLength: AETheme.spacingS)
-                SpeedControl()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, AETheme.spacingM)
+                .padding(.vertical, AETheme.spacingS)
+                .aeGlass(in: AETheme.cardShape)
+            } else {
+                HStack(spacing: AETheme.spacingS) {
+                    clock
+                    Spacer(minLength: AETheme.spacingS)
+                    SpeedControl()
+                }
+                .padding(.horizontal, AETheme.spacingM)
+                .padding(.vertical, AETheme.spacingS)
+                .aeGlass(in: Capsule(style: .continuous))
             }
-            .padding(.horizontal, AETheme.spacingM)
-            .padding(.vertical, AETheme.spacingS)
-            .aeGlass(in: Capsule(style: .continuous))
 
             if let banner = worldBanner {
                 HStack(spacing: AETheme.spacingXS) {
@@ -57,6 +80,25 @@ struct MapTopBar: View {
             }
         }
         .aeAnimation(AEMotion.content, value: worldBanner?.text ?? "")
+    }
+
+    /// The date over the clock. One line each, and allowed to shrink a little
+    /// rather than wrap or force the row wider than the screen.
+    private var clock: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(Format.date(snapshot.currentDate))
+                .font(.subheadline.weight(.semibold))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .contentTransition(.numericText())
+                .aeAnimation(AEMotion.content, value: snapshot.currentDate.day)
+            Text(Format.clock(snapshot.currentDate))
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.white.opacity(0.55))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
     }
 
     private struct Banner {
@@ -203,14 +245,12 @@ struct MapZoomControls: View {
 
 // MARK: - Selection
 
-/// What the player selected, or — when nothing is selected — the one thing
-/// the map most wants to tell them.
+/// What the player selected. Nothing, when nothing is: the home briefing owns
+/// the bottom of an unselected map (AE-048).
 struct MapSelectionPanel: View {
-    @Environment(GameController.self) private var controller
     let selection: MapHit?
     let model: MapModel
     let snapshot: GameState
-    let overlay: MapOverlay
     /// The flight the camera is riding with, so the card can offer the
     /// opposite of whatever is happening.
     let followed: FlightID?
@@ -241,38 +281,37 @@ struct MapSelectionPanel: View {
                                   dismiss: dismiss)
                 }
             case .none:
-                MapIdlePanel(model: model, overlay: overlay, openRoute: openRoute)
+                // Nothing. The home briefing owns the empty bottom now
+                // (AE-048): one surface answers "what should I do", and it
+                // is the one that can see the whole airline rather than only
+                // the layer currently drawn.
+                EmptyView()
             }
         }
         // A stable handle on "something is selected", so the journey that taps
         // an airport can prove the panel opened rather than photographing the
         // map and hoping. The identifier is on the selected states only: the
-        // idle panel is not a selection and must not answer to the name.
+        // briefing below is not a selection and must not answer to the name.
         .accessibilityIdentifier(selection == nil ? "" : "ae-map-selection")
         .aeAnimation(AEMotion.content, value: selection)
     }
 }
 
-/// Nothing selected. Rather than an empty strip, the map says the most useful
-/// true thing it can — which for a new airline is "here is where to begin",
-/// and for an established one is what the current overlay found.
-struct MapIdlePanel: View {
+/// What the layer currently drawn has found, in one sentence.
+///
+/// Before AE-048 this was the map's whole answer to "what now" — it carried
+/// the first-route invitation as well, because Home was a different screen and
+/// the map had nobody to hand the question to. Home *is* the map now, and
+/// `MapHomeBriefing` answers it from the whole airline rather than from one
+/// overlay. What is left here is the thing only this panel can say: what the
+/// layer you are looking at has found in the world underneath it.
+struct MapOverlayHint: View {
     @Environment(GameController.self) private var controller
     let model: MapModel
     let overlay: MapOverlay
-    let openRoute: (FirstRouteSuggestion) -> Void
-
-    /// The city name for a code, from the model's own airports. The
-    /// opportunity carries codes; the route sheet shows a city, and an empty
-    /// string there would be a blank where a place name belongs.
-    private func city(_ code: AirportCode) -> String {
-        model.airports.first { $0.code == code }?.city ?? code.raw
-    }
 
     var body: some View {
-        if model.routes.filter(\.isPlayer).isEmpty {
-            emptyAirline
-        } else if let hint {
+        if let hint {
             HStack(spacing: AETheme.spacingS) {
                 Image(systemName: hint.icon)
                     .font(.caption)
@@ -288,53 +327,8 @@ struct MapIdlePanel: View {
             .padding(.vertical, AETheme.spacingS)
             .aeGlass(in: Capsule(style: .continuous))
             .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("ae-map-overlay-hint")
         }
-    }
-
-    /// The early-game map used to be dots on a dark field with nothing to do.
-    /// It is the first screen of a strategy game; it should be an invitation.
-    private var emptyAirline: some View {
-        VStack(alignment: .leading, spacing: AETheme.spacingS) {
-            HStack(spacing: AETheme.spacingS) {
-                Image(systemName: "sparkle.magnifyingglass")
-                    .foregroundStyle(AETheme.positive)
-                    .accessibilityHidden(true)
-                Text("Your airline begins here")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
-                Spacer(minLength: 0)
-            }
-            Text("The dashed lines are the strongest markets from your home airport. Pick one to open your first route.")
-                .font(.caption)
-                .foregroundStyle(.white.opacity(0.65))
-                .fixedSize(horizontal: false, vertical: true)
-            ForEach(Array(model.opportunities.prefix(2).enumerated()), id: \.offset) { _, market in
-                Button {
-                    openRoute(FirstRouteSuggestion(
-                        origin: market.origin, destination: market.destination,
-                        destinationCity: city(market.destination),
-                        distanceKm: market.distanceKm,
-                        expectedDailyPassengers: market.expectedDailyPassengers,
-                        referenceFare: market.referenceFare))
-                } label: {
-                    HStack {
-                        Text("\(market.origin.raw) → \(market.destination.raw)")
-                            .font(.caption.weight(.semibold))
-                        Text("≈\(Format.count(Int64(market.expectedDailyPassengers))) passengers/day")
-                            .font(.caption2)
-                            .foregroundStyle(.white.opacity(0.6))
-                        Spacer(minLength: 0)
-                        Image(systemName: "chevron.right").font(.caption2)
-                    }
-                    .foregroundStyle(.white)
-                    .frame(minHeight: 44)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.aePress)
-            }
-        }
-        .padding(AETheme.spacingM)
-        .aeGlass(in: AETheme.cardShape, tint: AETheme.positive.opacity(0.12))
     }
 
     private struct Hint {
@@ -348,15 +342,18 @@ struct MapIdlePanel: View {
         let mine = model.routes.filter(\.isPlayer)
         switch overlay {
         case .network:
+            // Nothing at all when the network is healthy. This used to fall
+            // through to "Tap an airport, a route or an aircraft." — a line
+            // that says nothing about the world and, since AE-048, sits
+            // directly above a briefing that says what to do. Two rows of
+            // chrome for one row of meaning is the map's own rule broken
+            // (`MapChrome`: nothing permanent occupies the middle, and the
+            // bottom is a consequence of what is happening).
             let grounded = mine.filter { $0.health == .grounded }.count
-            if grounded > 0 {
-                return Hint(icon: "pause.circle.fill",
-                            text: "\(grounded) of your routes have no aircraft and are still paying fees.",
-                            tint: AETheme.caution)
-            }
-            return Hint(icon: "hand.tap",
-                        text: "Tap an airport, a route or an aircraft.",
-                        tint: .white.opacity(0.6))
+            guard grounded > 0 else { return nil }
+            return Hint(icon: "pause.circle.fill",
+                        text: "\(grounded) of your routes have no aircraft and are still paying fees.",
+                        tint: AETheme.caution)
         case .opportunity:
             guard let best = model.opportunities.first else { return nil }
             return Hint(icon: "sparkle",
