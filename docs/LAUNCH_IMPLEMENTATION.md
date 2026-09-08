@@ -95,6 +95,8 @@ Candidate `bf2f0fd` passed Launch safety: **523 Core release tests and all 11 ap
 
 The `bf2f0fd` campaign/New York failures report unchanged manual-request acknowledgements (`2 → 2` and `1 → 1`) with no detected system banner: those taps never reached the app. The first-month statement journey passed. The long helper now resolves a fresh visible, enabled control for every action, waits for a stable frame, and taps that frame's centre instead of retaining an accessibility element across world/overlay updates. Unknown misses still fail; no generic retry was added. This remains a candidate harness correction until the full journeys pass.
 
+The celebration animation was also attached to the entire game shell. It is now scoped to the non-interactive overlay container, and dismissal no longer creates a global `withAnimation` transaction. This keeps unrelated controls outside the banner's transition and retains Reduce Motion handling. The strict tap acknowledgement/date tests remain the validation gate.
+
 ## Release sequence
 
 1. Resolve every current-commit Launch safety and CI failure; review the screenshot artifacts.

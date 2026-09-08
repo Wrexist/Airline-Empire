@@ -268,7 +268,7 @@ struct CelebrationOverlay: View {
             do { try await Task.sleep(for: .seconds(4)) }
             catch { return }
             guard controller.celebration?.id == celebration.id else { return }
-            withAnimation(AEMotion.content) { controller.dismissCelebration() }
+            controller.dismissCelebration()
         }
     }
 }

@@ -238,11 +238,16 @@ struct GameShell: View {
         // Above whichever tab is open: a milestone should not depend on the
         // player happening to be on the Home screen when it lands.
         .overlay(alignment: .top) {
-            if let celebration = controller.celebration {
-                CelebrationOverlay(celebration: celebration)
+            ZStack {
+                if let celebration = controller.celebration {
+                    CelebrationOverlay(celebration: celebration)
+                }
             }
+            .allowsHitTesting(false)
+            // A banner transition must not put the entire game shell into
+            // an animation transaction while the player uses its controls.
+            .aeAnimation(AEMotion.content, value: controller.celebration)
         }
-        .aeAnimation(AEMotion.content, value: controller.celebration)
         // The era wall. Docked to the bottom rather than raised as a sheet:
         // the airline is still there, still readable, still commandable — it
         // is the *clock* that has stopped, and a modal over the whole game
