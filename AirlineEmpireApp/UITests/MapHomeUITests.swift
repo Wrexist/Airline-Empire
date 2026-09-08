@@ -140,8 +140,22 @@ final class MapHomeUITests: AEUITestCase {
         if back.exists, back.isHittable { back.tap() }
         Thread.sleep(forTimeInterval: 0.6)
         openTab("Home")
-        let fast = app.buttons["Four times speed"]
-        if fast.waitForExistence(timeout: 8) { fast.tap() }
+        // At 4x a short flight can take off and land between accessibility
+        // snapshots. Normal speed keeps its real airborne interval long
+        // enough to discover and pause, without manufacturing a flight.
+        let normal = app.buttons["Normal speed"]
+        guard require(normal, "the normal-speed control", timeout: 8),
+              normal.isHittable, waitUntilStill(normal) else {
+            XCTFail("The normal-speed control was not stable and hittable.")
+            return
+        }
+        normal.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let running = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in normal.exists && normal.isSelected }, object: nil)
+        guard XCTWaiter.wait(for: [running], timeout: 5) == .completed else {
+            XCTFail("Normal speed did not become selected.")
+            return
+        }
 
         func value() -> String { map.value as? String ?? "" }
         func airborne() -> Int {
@@ -151,14 +165,25 @@ final class MapHomeUITests: AEUITestCase {
             else { return 0 }
             return Int(text[range].prefix(while: \.isNumber)) ?? 0
         }
-        let menuDeadline = Date().addingTimeInterval(180)
+        let menuDeadline = Date().addingTimeInterval(300)
         while !app.buttons["ae-follow-flight-menu"].exists && Date() < menuDeadline {
             Thread.sleep(forTimeInterval: 1)
         }
         // Pause before taking a screenshot or querying the canvas. On a
         // loaded runner those operations took five game hours at 16x, so
         // the flight landed between its discovery and the Pause tap.
-        app.buttons["Pause"].tap()
+        let pause = app.buttons["Pause"]
+        guard require(pause, "the pause control", timeout: 5), pause.isHittable else {
+            XCTFail("The pause control was not hittable.")
+            return
+        }
+        pause.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let stopped = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in pause.exists && pause.isSelected }, object: nil)
+        guard XCTWaiter.wait(for: [stopped], timeout: 5) == .completed else {
+            XCTFail("Pause did not become selected before inspecting the flight.")
+            return
+        }
         Thread.sleep(forTimeInterval: 1)
         checkpoint("AE048-F0-map-with-the-network-running")
 

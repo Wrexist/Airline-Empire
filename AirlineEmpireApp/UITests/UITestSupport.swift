@@ -1343,7 +1343,15 @@ class AEUITestCase: XCTestCase {
             XCTFail("The \(title) tab never appeared in any shape. Screenshot attached.")
             return
         }
-        button.tap()
+        guard button.isHittable, waitUntilStill(button),
+              let current = tabButton(title), current.isHittable else {
+            checkpoint("TAB-NOT-HITTABLE-\(title)")
+            XCTFail("The \(title) tab did not settle into a hittable control.")
+            return
+        }
+        // Resolve and tap the current frame after a sheet dismissal. A
+        // retained synthetic Home tap left the arrival journey on Fleet.
+        current.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
     }
 
     // MARK: The briefing (AE-048)

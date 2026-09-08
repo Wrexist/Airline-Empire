@@ -22,7 +22,7 @@ final class HorizonArrivalUITests: AEUITestCase {
         // ── January: the guided first route, Munich–Istanbul ────────────────
         guard openAircraftMarket() else { return }
         guard leaseAnAircraft(model: "PA-184") else { return }
-        guard openARoute() else { return }
+        guard openRouteBySearch(city: "Istanbul", code: "IST") else { return }
         guard assignFirstAircraft() else { return }
 
         // ── February: a used narrowbody, a lease, the two suggested markets ─

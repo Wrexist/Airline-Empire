@@ -103,6 +103,8 @@ The `ca13fe3` economy shard passed the New York advice/survival journey. Its fir
 
 The current iPad interaction assertions pass, but its exported Settings checkpoint shows an older aircraft screen despite the trace finding the Settings list and hittable toggle. That image is not treated as visual proof of Settings; native-device visual review remains required.
 
+Candidate `d64ce00` passed 523 Core release tests, the full Core debug/release-build gate, all six campaign tests (including reaching Regional), all five economy tests (including the January statement and New York survival), release tooling and iPad; its Settings screenshot visibly shows the sound controls. All eight hosted save/StoreKit tests, free entry and recap also passed. Arrival successfully acquired the intended used MR-180 and leased PA-184, then a Home tab tap left it on Fleet. The helper now resolves a stable, hittable tab frame before tapping its centre. Munich explicitly opens Istanbul rather than assuming the route picker's first row matches the onboarding ranking. The first-flight/follow journey passed on the current simulator but missed the airborne interval in the 26.2 lane; it now uses normal speed with a selected-state assertion and a bounded five-minute observation window. The separate four-tab test failed during XCTest's termination of the preceding app instance, before its own app interactions. These subsequent harness corrections require fresh validation; the simulator lifecycle failure is not waived.
+
 ## Release sequence
 
 1. Resolve every current-commit Launch safety and CI failure; review the screenshot artifacts.
