@@ -18,7 +18,7 @@ URL="https://github.com/swiftwasm/swift/releases/download/${SWIFT_VERSION}/${SWI
 if [ ! -x "${INSTALL_DIR}/${SWIFT_VERSION}/usr/bin/swift" ]; then
   echo "Installing Swift toolchain to ${INSTALL_DIR} ..."
   mkdir -p "${INSTALL_DIR}"
-  curl -sSL --retry 3 "${URL}" | tar -xz -C "${INSTALL_DIR}"
+  curl -fsSL --retry 3 "${URL}" | tar --no-same-owner -xz -C "${INSTALL_DIR}"
 fi
 
 export PATH="${INSTALL_DIR}/${SWIFT_VERSION}/usr/bin:${PATH}"

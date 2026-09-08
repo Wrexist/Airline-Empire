@@ -33,15 +33,13 @@ struct MonetizationTests {
         #expect(entitlement.isPro(asOf: now.addingTimeInterval(120)) == false)
     }
 
-    /// A failed card is not a cancellation. Apple keeps retrying for days,
-    /// and a player locked out of a campaign in the middle of that has been
-    /// punished for their bank's decision.
-    @Test func billingRetryKeepsAccess() {
+    /// Only a verified billing grace period extends a paid subscription.
+    @Test func billingRetryAloneDoesNotExtendAccess() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let retrying = ProEntitlement(grantedBy: .weekly,
                                       expiresAt: now.addingTimeInterval(-1),
                                       isInBillingRetry: true)
-        #expect(retrying.isPro(asOf: now))
+        #expect(!retrying.isPro(asOf: now))
     }
 
     /// Cancelled-but-not-yet-expired still plays. The player paid for the

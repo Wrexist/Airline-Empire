@@ -27,25 +27,26 @@ public final class FileSaveStore: Sendable {
 
     /// Atomic save with backup rotation.
     public func save(_ data: Data, slot: String, meta: SlotMeta) throws {
+        try validate(slot: slot)
         let fm = FileManager.default
         let directory = slotDirectory(slot)
         try fm.createDirectory(at: directory, withIntermediateDirectories: true)
 
         // 1. Write + fsync the temp file.
         let tmp = directory.appendingPathComponent("current.aesave.tmp")
+        defer { try? fm.removeItem(at: tmp) }
         try data.write(to: tmp)
-        if let handle = try? FileHandle(forWritingTo: tmp) {
-            try? handle.synchronize()
-            try? handle.close()
-        }
+        let handle = try FileHandle(forWritingTo: tmp)
+        defer { try? handle.close() }
+        try handle.synchronize()
 
         // 2. Rotate: backup-1 -> backup-2, current -> backup-1 (renames are
         //    atomic on APFS/ext4; missing sources are fine).
         let current = directory.appendingPathComponent(Self.currentName)
         let backup1 = directory.appendingPathComponent(Self.backupNames[0])
         let backup2 = directory.appendingPathComponent(Self.backupNames[1])
-        _ = rename(backup1.path, backup2.path)
-        _ = rename(current.path, backup1.path)
+        try rotateIfPresent(backup1, to: backup2)
+        try rotateIfPresent(current, to: backup1)
 
         // 3. Atomic promote.
         guard rename(tmp.path, current.path) == 0 else {
@@ -79,13 +80,31 @@ public final class FileSaveStore: Sendable {
         let fm = FileManager.default
         guard let entries = try? fm.contentsOfDirectory(atPath: rootDirectory.path)
         else { return [] }
-        return entries.compactMap { name in
-            name.hasPrefix("slot-") ? String(name.dropFirst(5)) : nil
+        return entries.compactMap { name -> String? in
+            guard name.hasPrefix("slot-") else { return nil }
+            let slot = String(name.dropFirst(5))
+            guard (try? validate(slot: slot)) != nil, !candidates(slot: slot).isEmpty else { return nil }
+            return slot
         }.sorted()
     }
 
     public func deleteSlot(_ slot: String) throws {
+        try validate(slot: slot)
         try FileManager.default.removeItem(at: slotDirectory(slot))
+    }
+
+    fileprivate func validate(slot: String) throws {
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_"))
+        guard !slot.isEmpty, slot.unicodeScalars.allSatisfy(allowed.contains) else {
+            throw SaveError.corruptPayload("Invalid campaign identifier")
+        }
+    }
+
+    private func rotateIfPresent(_ source: URL, to destination: URL) throws {
+        guard rename(source.path, destination.path) != 0 else { return }
+        let code = errno
+        guard code != ENOENT else { return }
+        throw POSIXError(POSIXErrorCode(rawValue: code) ?? .EIO)
     }
 }
 
@@ -132,12 +151,17 @@ public final class SaveManager: Sendable {
 
     /// Tries current, then backups; the first intact generation wins.
     public func load(slot: String) throws -> LoadResult {
+        try store.validate(slot: slot)
         var lastError: Error = SaveError.corruptPayload("No save files in slot \(slot)")
         for (generation, url) in store.candidates(slot: slot) {
             do {
                 let data = try Data(contentsOf: url)
                 let state = try codec.decode(data)
                 return LoadResult(state: state, generation: generation)
+            } catch SaveError.unsupportedVersion(let version) where version > SaveFormat.currentVersion {
+                // Never open an older backup and subsequently overwrite a
+                // campaign that requires a newer app version.
+                throw SaveError.unsupportedVersion(version)
             } catch {
                 lastError = error
             }

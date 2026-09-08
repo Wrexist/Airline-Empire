@@ -16,6 +16,10 @@ public enum MissionMath {
             let current = regionPassengers(region, player: player, state: state,
                                            catalog: catalog)
             return max(0, current - mission.baseline)
+        case .flightContract:
+            return max(0, state.progression.counters.flightsCompleted - mission.baseline)
+        case .passengerContract:
+            return max(0, state.progression.counters.passengersCarried - mission.baseline)
         }
     }
 
@@ -23,6 +27,7 @@ public enum MissionMath {
     public static func target(of mission: Mission) -> Int64 {
         switch mission.kind {
         case .boomRush(_, let target): target
+        case .flightContract(let target), .passengerContract(let target): target
         }
     }
 

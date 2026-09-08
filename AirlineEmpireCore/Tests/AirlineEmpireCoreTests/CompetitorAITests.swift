@@ -20,6 +20,34 @@ enum AIFixtures {
 
 @Suite("Competitor AI")
 struct CompetitorAITests {
+    enum CashSituation: CaseIterable { case generating, principalDrain, overdrawn, borrowedCash }
+
+    @Test(arguments: CashSituation.allCases)
+    func lowReservesOnlyTriggerRetrenchmentWhenCashIsDraining(situation: CashSituation) throws {
+        let catalog = try ContentCatalog.loadBundled()
+        let setup = SimulationEngine(state: Fixtures.newState(), systems: [], catalog: catalog)
+        #expect(setup.applyNow(FoundAirlineCommand(
+            airlineName: "Reserve Air", kind: .ai, homeAirport: "LHR",
+            startingCash: .dollars(100_000_000), aiProfile: AIProfile(archetype: .lowCost))) == .applied)
+        let id = try #require(setup.state.orderedAirlineIDs.first)
+        #expect(setup.applyNow(BuyUsedAircraftCommand(buyer: id, type: "MR180", ageYears: 12)) == .applied)
+        let aircraft = try #require(setup.state.fleet(of: id).first?.id)
+        var state = setup.state
+        let cash = Money.dollars(situation == .overdrawn ? -100_000 : 100_000)
+        state.ledger.post(airline: id, category: .overhead,
+                          amount: cash - state.ledger.balance(of: id),
+                          at: state.clock.now, memo: "Low reserve fixture")
+        state.finance.append(MonthlyStatement(year: 2029, month: 12, byCategory: [
+            .ticketRevenue: Money.dollars(situation == .borrowedCash ? 500_000 : 2_000_000).cents,
+            .overhead: Money.dollars(-1_000_000).cents,
+            .loanPrincipal: Money.dollars(situation == .principalDrain ? -1_500_000 : 0).cents,
+            .loanProceeds: Money.dollars(situation == .borrowedCash ? 10_000_000 : 0).cents
+        ]), for: id, keeping: 12)
+        let engine = SimulationEngine(state: state, systems: [CompetitorAISystem()], catalog: catalog)
+        engine.advance(ticks: Fixtures.ticksPerDay * 7)
+        #expect((engine.state.aircraft[aircraft] != nil) == (situation == .generating))
+    }
+
     @Test func worldSetupFoundsDistinctCompetitors() throws {
         let (engine, player) = try AIFixtures.world(competitors: 5)
         let ais = engine.state.airlines.values.filter { $0.kind == .ai }

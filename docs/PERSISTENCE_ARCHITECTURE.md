@@ -170,4 +170,18 @@ world's current routes are intact, so its competitive picture is whole and
 only the history of how it came to be is missing, which a v11 world never
 had. Round-trip and migration are pinned by
 `CompetitionTests.marketMovesPersistAndMigrate`; the v10→v11 fixture test
-now asserts `currentVersion == 12` and a chain reaching back to v9.
+asserted `currentVersion == 12` at that revision and a chain reaching back to v9.
+
+## Addendum: v13 (2026-09-08)
+
+One-time rescue financing persists `Airline.rescueDecision` as `unreviewed`,
+`accepted` or `declined`. The v12 migration defaults missing decisions to
+`unreviewed` without replacing existing values or changing loans and cash.
+The contiguous migration chain still reads v9 saves.
+
+Optional flight and passenger contracts use the existing mission slice, with
+new `MissionKind` cases. Their lifetime-counter baseline, deadline and reward
+persist in the mission. `contract.lastAcceptedMonth` in event cooldowns records
+the calendar month of acceptance, preventing repeated claims after completion
+or reload. Existing v12 clients refuse the newer envelope instead of attempting
+to decode unknown mission kinds.

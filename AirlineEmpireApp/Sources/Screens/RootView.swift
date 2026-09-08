@@ -71,6 +71,16 @@ struct RootView: View {
         // is the one place the difference is visible to automation. Gated on
         // a launch argument so neither players nor VoiceOver ever meet it.
         .overlay(alignment: .topLeading) {
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("-AEUITestSunriseWeek") {
+                Color.clear
+                    .frame(width: 2, height: 2)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityIdentifier("ae-time-advance-requests")
+                    .accessibilityValue(String(controller.manualAdvanceRequests))
+                    .allowsHitTesting(false)
+            }
+            #endif
             if ProcessInfo.processInfo.arguments.contains("-AEUITestProbes") {
                 Color.clear
                     .frame(width: 2, height: 2)
@@ -105,13 +115,9 @@ struct RootView: View {
         // offered is a purchase that silently fails to happen
         // (docs/MONETIZATION.md §6).
         .aePaywall()
-        // The once-only first-run offer, made when the player arrives in the
-        // game rather than before they reach it. By this point they have
-        // named an airline, chosen a livery and picked a home — the offer
-        // lands on something begun, and declining it leads into a real game
-        // instead of back to an empty menu (docs/MONETIZATION.md §6).
-        .onChange(of: state) { previous, current in
-            guard previous == .newGame, current == .playing else { return }
+        // Let the player complete a real flight before making an offer.
+        .onChange(of: controller.snapshot?.progression.milestones.contains("firstFlight") == true) { _, completed in
+            guard completed else { return }
             entitlements.offerOnFirstRunIfDue()
         }
     }
@@ -232,11 +238,16 @@ struct GameShell: View {
         // Above whichever tab is open: a milestone should not depend on the
         // player happening to be on the Home screen when it lands.
         .overlay(alignment: .top) {
-            if let celebration = controller.celebration {
-                CelebrationOverlay(celebration: celebration)
+            ZStack {
+                if let celebration = controller.celebration {
+                    CelebrationOverlay(celebration: celebration)
+                }
             }
+            .allowsHitTesting(false)
+            // A banner transition must not put the entire game shell into
+            // an animation transaction while the player uses its controls.
+            .aeAnimation(AEMotion.content, value: controller.celebration)
         }
-        .aeAnimation(AEMotion.content, value: controller.celebration)
         // The era wall. Docked to the bottom rather than raised as a sheet:
         // the airline is still there, still readable, still commandable — it
         // is the *clock* that has stopped, and a modal over the whole game

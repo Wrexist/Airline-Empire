@@ -147,6 +147,9 @@ extension GameState {
                 origin: originSpec, destination: destinationSpec, distanceKm: distanceKm,
                 spec: spec, fareRatio: 1.0, serviceTier: .standard,
                 reputationMultiplier: reputation, incumbents: incumbents,
+                rotationsPerDay: min(PlayerRouteDefaults.dailyRoundTrips,
+                    FlightSchedulingSystem.roundTripsPerAircraftPerDay(
+                        distanceKm: distanceKm, spec: spec, ops: catalog.tuning.ops)),
                 state: self, catalog: catalog, basis: .profit).value
             let monthly = perDay * 30 - spec.leaseMonthly.asDouble - payroll
             if best == nil || monthly > best!.monthly { best = (spec, monthly) }

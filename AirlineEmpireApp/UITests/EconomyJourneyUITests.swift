@@ -126,7 +126,7 @@ final class EconomyJourneyUITests: AEUITestCase {
     /// have only ever existed as code (READ, never OBSERVED).
     ///
     /// The engine is driven by the sunrise control — "Advance to next
-    /// morning" simulates synchronously to the next midnight, a real product
+    /// morning" simulates to the next midnight, a real product
     /// action, so the month passes through the real economy with no
     /// wall-clock dependence and no cheat scaffolding. Thirty-one taps take
     /// the calendar from 2030-01-01 to 2030-02-01; the month boundary runs
@@ -153,32 +153,9 @@ final class EconomyJourneyUITests: AEUITestCase {
         guard assignFirstAircraft() else { return }
 
         // ── A month passes ─────────────────────────────────────────────────
-        openTab("Home")
-        let sunrise = app.buttons["Advance to next morning"]
-        require(sunrise, "the advance-to-morning control")
-        // The header prints the date as 2030-01-01; February appearing is
-        // the proof the boundary was crossed. Polled by prefix so the exact
-        // day is not a contract.
-        let february = app.staticTexts.matching(NSPredicate(
-            format: "label BEGINSWITH '2030-02'")).firstMatch
-        let january31 = app.staticTexts.matching(NSPredicate(
-            format: "label BEGINSWITH '2030-01-31'")).firstMatch
-        var days = 0
-        while days < 33, !february.exists {
-            if january31.exists { checkpoint("10-before-month-end") }
-            sunrise.tap()
-            // Each tap simulates a full game day synchronously on the
-            // session actor; the pause lets the snapshot land before the
-            // date is re-read. State-based, not time-based: the loop exits
-            // on the calendar, the sleep only paces the polling.
-            Thread.sleep(forTimeInterval: 0.5)
-            days += 1
-        }
-        XCTAssertTrue(february.exists, """
-            Thirty-three advance-to-morning taps did not reach February. \
-            Either the control stopped advancing the clock or the header \
-            stopped showing the date.
-            """)
+        guard advanceMornings(until: "2030-01-31", cap: 31) else { return }
+        checkpoint("10-before-month-end")
+        guard advanceMornings(until: "2030-02-01", cap: 1) else { return }
         // The overlay for "First profitable month" is transient; caught if
         // present, never required — profitability is the balance's contract.
         if app.staticTexts["First profitable month"].exists {

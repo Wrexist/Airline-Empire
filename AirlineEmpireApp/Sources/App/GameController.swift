@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import UIKit
 import AirlineEmpireCore
 
 /// The app's single owner of the game session (composition root,
@@ -13,6 +14,11 @@ final class GameController {
     private(set) var catalog: ContentCatalog?
     private(set) var recentEvents: [SimEvent] = []
     private(set) var speed: SimSpeed = .paused
+    #if DEBUG
+    /// Test acknowledgement: distinguishes an OS-intercepted tap from a
+    /// request already delivered to the asynchronous simulation.
+    private(set) var manualAdvanceRequests = 0
+    #endif
     private(set) var lastRejection: CommandRejection?
     private(set) var loadedFromBackup: Int?
     /// The result of the most recent save, so "Save now" can say what
@@ -48,7 +54,21 @@ final class GameController {
     /// (docs/AUDIO_ARCHITECTURE.md §3).
     let feedback: Feedback
 
-    init() {
+    init(savesDirectory: URL? = nil) {
+        #if DEBUG
+        // Isolate UI journeys without deleting saves or granting paid access.
+        // Keep the same directory when a journey deliberately relaunches.
+        if savesDirectory == nil,
+           let value = ProcessInfo.processInfo.environment["AE_UI_TEST_SAVE_ID"],
+           let id = UUID(uuidString: value) {
+            self.savesDirectory = FileManager.default.temporaryDirectory
+                .appendingPathComponent("AE-UI-\(id.uuidString)", isDirectory: true)
+        } else {
+            self.savesDirectory = savesDirectory
+        }
+        #else
+        self.savesDirectory = savesDirectory
+        #endif
         let preferences = Preferences()
         self.preferences = preferences
         self.feedback = Feedback(preferences: preferences)
@@ -56,6 +76,13 @@ final class GameController {
 
 
     private var session: GameSession?
+    private(set) var activeSaveSlot: String?
+    private let savesDirectory: URL?
+    private var backgroundSaveTask: UIBackgroundTaskIdentifier = .invalid
+    private(set) var isSavingAndQuitting = false
+    private var sessionCheckpoint: SessionCheckpoint?
+    private(set) var lastSessionReport: SessionReport?
+    private(set) var lastSessionNextMove: String?
     private var saveManager: SaveManager?
     private var pumpTask: Task<Void, Never>?
     private var eventTask: Task<Void, Never>?
@@ -125,6 +152,7 @@ final class GameController {
     @ObservationIgnored private var cachedFleetCards: [FleetCardModel]?
     @ObservationIgnored private var cachedCompetition: CompetitionSummary?
     @ObservationIgnored private var cachedDashboard: DashboardModel?
+    @ObservationIgnored private var cachedProgression: ProgressionModel?
     /// Doubly optional on purpose: the inner `nil` is a real answer — a quiet
     /// airline with nothing to do — and a single optional could not tell it
     /// apart from "not computed yet", so the most expensive derivation of the
@@ -156,6 +184,7 @@ final class GameController {
         cachedFleetSummary = nil
         cachedCompetition = nil
         cachedDashboard = nil
+        cachedProgression = nil
         cachedNextMove = nil
     }
 
@@ -207,6 +236,14 @@ final class GameController {
     /// A derivation over `OnboardingModel`, the fleet and `marketOpportunities`
     /// — no stored progress, nothing persisted, and therefore nothing that can
     /// survive a new game or go stale against the state it describes.
+    var progressionModel: ProgressionModel? {
+        guard let snapshot, let catalog else { return nil }
+        if let cachedProgression { return cachedProgression }
+        let model = snapshot.progressionModel(catalog: catalog)
+        cachedProgression = model
+        return model
+    }
+
     var homeNextMove: HomeNextMove? {
         guard let snapshot, let model = mapModel else { return nil }
         if let cachedNextMove { return cachedNextMove }
@@ -277,33 +314,20 @@ final class GameController {
 
     // MARK: Entitlement ceiling
 
-    /// The highest era time may run in.
-    ///
-    /// Written by the app from `Entitlements.access.eraCeiling` and
-    /// `.empire` — no ceiling — for anyone who has bought Pro. It lives here
-    /// rather than in the simulation on purpose: `ProgressionSystem` decides
-    /// eras from what the airline has *earned*, and a paywall must not be
-    /// able to change what the world does. So the airline still advances, the
-    /// player still sees they earned it, and what stops is the clock.
-    ///
-    /// The alternative — refusing the era inside Core — would have meant a
-    /// new field in the save, a version bump, and a paying player's rules
-    /// living in a file 253 deterministic tests depend on. This is the
-    /// smaller blast radius and the better sales moment.
-    var eraCeiling: Era = .empire {
+    /// Runtime expansion policy. Saved progress is preserved, and simulation
+    /// time continues independently of the current purchase entitlement.
+    var eraCeiling: Era = .regional {
         didSet {
-            guard oldValue != eraCeiling, let snapshot else { return }
-            checkEraCeiling(snapshot)
-            // Buying Pro mid-campaign lifts the wall immediately; it must not
-            // wait for a tick that cannot happen while time is stopped.
-            if !isBeyondEraCeiling, autoPauseReason == .eraCeiling {
-                autoPauseReason = nil
+            guard oldValue != eraCeiling else { return }
+            if let session {
+                let ceiling = eraCeiling
+                Task { await session.setProgressionCeiling(ceiling) }
             }
+            if let snapshot { checkEraCeiling(snapshot) }
         }
     }
 
-    /// Whether the airline has passed the ceiling and time is therefore held.
-    /// Screens read this to draw the wall; nothing else may resume the clock.
+    /// Expansion is capped; the current airline remains playable.
     private(set) var isBeyondEraCeiling = false
 
     // MARK: Lifecycle
@@ -311,6 +335,7 @@ final class GameController {
     func startNewGame(airlineName: String, home: AirportCode, seed: UInt64,
                       scenario: ScenarioCode = "entrepreneur",
                       livery: Livery = .default) {
+        guard session == nil else { return }
         startupFailure = nil
         let catalog: ContentCatalog
         do {
@@ -332,8 +357,10 @@ final class GameController {
                                   catalog: catalog)
         self.catalog = catalog
         self.session = session
+        self.activeSaveSlot = UUID().uuidString.lowercased()
         self.lastSolvencyStage = .healthy
         Task {
+            await session.setProgressionCeiling(self.eraCeiling)
             let result = await session.beginScenario(spec, airlineName: airlineName,
                                                      home: home, livery: livery)
             if case .rejected(let rejection) = result {
@@ -344,6 +371,9 @@ final class GameController {
                 return
             }
             await self.attachPersistence()
+            if let slot = self.activeSaveSlot {
+                _ = await self.save(session: session, slot: slot, announce: false)
+            }
             await self.subscribe()
             await self.refresh()
             // The clock's ignition, and the other half of BUG-040. The
@@ -358,6 +388,7 @@ final class GameController {
     }
 
     func loadGame(slot: String) {
+        guard session == nil else { return }
         startupFailure = nil
         do {
             let catalog = try ContentCatalog.loadBundled()
@@ -367,11 +398,14 @@ final class GameController {
                                       systems: GamePipeline.standard(), catalog: catalog)
             self.catalog = catalog
             self.session = session
+            self.activeSaveSlot = slot
             self.saveManager = manager
             self.loadedFromBackup = result.generation > 0 ? result.generation : nil
             self.lastSolvencyStage = .healthy
             Task {
-                await session.attachSaveManager(manager)
+                await session.setProgressionCeiling(self.eraCeiling)
+                await session.attachSaveManager(manager, autosaveSlot: slot,
+                                                autosaveEveryGameDays: 1)
                 await self.subscribe()
                 await self.refresh()
                 // Same as founding: a loaded game needs its clock started
@@ -411,11 +445,15 @@ final class GameController {
                                       catalog: catalog)
             self.catalog = catalog
             self.session = session
+            let slot = UUID().uuidString.lowercased()
+            self.activeSaveSlot = slot
             self.saveManager = manager
             self.loadedFromBackup = nil
             self.lastSolvencyStage = .healthy
             Task {
-                await session.attachSaveManager(manager)
+                await session.setProgressionCeiling(self.eraCeiling)
+                await session.attachSaveManager(manager, autosaveSlot: slot,
+                                                autosaveEveryGameDays: 1)
                 await self.subscribe()
                 await self.refresh()
                 self.setPumping(true)
@@ -432,6 +470,38 @@ final class GameController {
     func availableSlots() -> [(slot: String, meta: SlotMeta?)] {
         let manager = saveManager ?? makeSaveManager()
         return manager.store.slots().map { ($0, manager.store.meta(slot: $0)) }
+    }
+
+    func exportCampaign() async throws -> CampaignDocument {
+        guard let session else { throw CocoaError(.fileNoSuchFile) }
+        let state = await session.snapshot
+        let data = try await Task.detached { try JSONSaveCodec().encode(state) }.value
+        return CampaignDocument(data: data)
+    }
+
+    /// Imports only validated data and always into a fresh slot. An invalid
+    /// file or a failed write cannot replace a campaign the player already has.
+    func importCampaign(from url: URL, access: ContentAccess) throws {
+        guard session == nil, access.allowsNewSave(existingSaves: availableSlots().count) else {
+            throw SaveError.corruptPayload("Keep your current campaign, or use Pro to keep more than one.")
+        }
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        let limit = 32 * 1024 * 1024
+        let data = try handle.read(upToCount: limit + 1) ?? Data()
+        guard data.count <= limit else {
+            throw SaveError.corruptPayload("This file is too large to be an Airline Empire campaign.")
+        }
+        let manager = makeSaveManager()
+        let state = try manager.codec.decode(data)
+        guard state.playerAirline != nil else {
+            throw SaveError.corruptPayload("This save does not contain a founded airline.")
+        }
+        let slot = UUID().uuidString.lowercased()
+        try manager.save(state, slot: slot)
+        loadGame(slot: slot)
     }
 
     /// Removes a save. The menu listed slots with no way to manage them, and
@@ -452,33 +522,49 @@ final class GameController {
     /// A player-facing name for a slot. `auto` is the rolling autosave; a
     /// named slot is something the player asked for.
     static func slotLabel(_ slot: String) -> String {
-        slot == "auto" ? "Autosave" : slot.capitalized
+        if slot == "auto" { return "Autosave" }
+        return UUID(uuidString: slot) == nil ? slot.capitalized : "Campaign"
     }
 
     private func makeSaveManager() -> SaveManager {
-        let root = FileManager.default.urls(for: .applicationSupportDirectory,
+        let root = savesDirectory ?? FileManager.default.urls(for: .applicationSupportDirectory,
                                             in: .userDomainMask)[0]
             .appendingPathComponent("AirlineEmpire/saves", isDirectory: true)
         return SaveManager(store: FileSaveStore(rootDirectory: root))
     }
 
     private func attachPersistence() async {
-        guard let session else { return }
+        guard let session, let activeSaveSlot else { return }
         let manager = makeSaveManager()
         saveManager = manager
-        await session.attachSaveManager(manager)
+        await session.attachSaveManager(manager, autosaveSlot: activeSaveSlot,
+                                        autosaveEveryGameDays: 1)
     }
 
     /// Backgrounding: save, quietly. A failure here is recorded but never
     /// interrupts — the player is already looking at another app.
     func saveOnBackground() {
-        guard session != nil else { return }
-        Task { await self.save(slot: "auto", announce: false) }
+        guard let session, let slot = activeSaveSlot,
+              backgroundSaveTask == .invalid else { return }
+        backgroundSaveTask = UIApplication.shared.beginBackgroundTask(withName: "Save campaign") {
+            MainActor.assumeIsolated { self.endBackgroundSave() }
+        }
+        Task {
+            _ = await self.save(session: session, slot: slot, announce: false)
+            self.endBackgroundSave()
+        }
+    }
+
+    private func endBackgroundSave() {
+        guard backgroundSaveTask != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(backgroundSaveTask)
+        backgroundSaveTask = .invalid
     }
 
     /// An explicit save, which must report what happened either way.
-    func saveNow(slot: String = "auto") {
-        Task { await self.save(slot: slot, announce: true) }
+    func saveNow() {
+        guard let session, let slot = activeSaveSlot else { return }
+        Task { _ = await self.save(session: session, slot: slot, announce: true) }
     }
 
     /// Saves, waits for it, and only then leaves.
@@ -490,23 +576,41 @@ final class GameController {
     /// down before the task could start, and the save returned having written
     /// nothing — silently, because the code path that reports a failure was
     /// never reached (tasks/BUGS.md BUG-021).
-    func saveAndQuit(slot: String = "auto") async {
-        await save(slot: slot, announce: true)
-        // Deliberately read before `quitToMenu` clears it: the player asked to
-        // save, and if that failed they need to know on the menu rather than
-        // discovering it the next time they try to load.
-        let outcome = lastSaveOutcome
+    @discardableResult
+    func saveAndQuit() async -> Bool {
+        guard !isSavingAndQuitting, let session, let slot = activeSaveSlot else { return false }
+        isSavingAndQuitting = true
+        let wasPumping = pumpTask != nil
+        setPumping(false)
+        defer { isSavingAndQuitting = false }
+        guard await save(session: session, slot: slot, announce: true, announceSuccess: false) else {
+            if self.session === session { setPumping(wasPumping) }
+            return false
+        }
+        guard self.session === session else { return false }
+        let closingState = await session.snapshot
+        guard self.session === session else { return false }
+        let report = sessionCheckpoint.flatMap { start in
+            SessionCheckpoint(closingState).flatMap { SessionReport(from: start, to: $0) }
+        }
+        let nextMove = homeNextMove?.title
         quitToMenu()
-        lastSaveOutcome = outcome
+        lastSessionReport = report
+        lastSessionNextMove = nextMove
+        lastSaveOutcome = nil // The saved-session card is the confirmation.
+        return true
     }
 
-    private func save(slot: String, announce: Bool) async {
-        guard let session else { return }
+    private func save(session: GameSession, slot: String, announce: Bool,
+                      announceSuccess: Bool = true) async -> Bool {
         do {
             try await session.saveNow(slot: slot)
+            guard self.session === session else { return true }
             quietSaveFailure = nil
-            if announce { lastSaveOutcome = .saved(slot: slot) }
+            if announce && announceSuccess { lastSaveOutcome = .saved(slot: slot) }
+            return true
         } catch {
+            guard self.session === session else { return false }
             // Swallowing this is how a failing save became indistinguishable
             // from a working one (UI-012). But `lastSaveOutcome` is what
             // `GameShell` raises an alert from, and `saveOnBackground` passes
@@ -519,6 +623,7 @@ final class GameController {
             } else {
                 quietSaveFailure = error.localizedDescription
             }
+            return false
         }
     }
 
@@ -537,6 +642,8 @@ final class GameController {
         rejectionTask?.cancel()
         rejectionTask = nil
         session = nil
+        activeSaveSlot = nil
+        sessionCheckpoint = nil
         saveManager = nil
         snapshot = nil
         catalog = nil
@@ -583,16 +690,6 @@ final class GameController {
     // MARK: Time control
 
     func setSpeed(_ newSpeed: SimSpeed) {
-        // The one refusal in this method. Pausing is always allowed; only
-        // starting the clock again past the ceiling is not, and the speed
-        // control's own state has to keep saying `.paused` or the player gets
-        // a 4× badge over a world that is not moving — which is precisely the
-        // defect BUG-040 was.
-        if newSpeed != .paused, isBeyondEraCeiling {
-            speed = .paused
-            autoPauseReason = .eraCeiling
-            return
-        }
         speed = newSpeed
         autoPauseReason = nil
         guard let session else { return }
@@ -604,6 +701,9 @@ final class GameController {
 
     func advanceToNextMorning() {
         guard let session else { return }
+        #if DEBUG
+        manualAdvanceRequests += 1
+        #endif
         Task {
             await session.advanceToNextMorning()
             await self.refresh()
@@ -615,6 +715,9 @@ final class GameController {
     /// journeys' week control uses it (`-AEUITestSunriseWeek`).
     func advanceMornings(_ count: Int) {
         guard let session, count > 0 else { return }
+        #if DEBUG
+        manualAdvanceRequests += 1
+        #endif
         Task {
             for _ in 0..<count {
                 await session.advanceToNextMorning()
@@ -664,7 +767,9 @@ final class GameController {
     /// the rejection stream.
     func precheck(_ command: any Command) -> CommandRejection? {
         guard let snapshot, let catalog else { return nil }
-        return command.validate(state: snapshot, catalog: catalog)
+        return ExpansionAccess.rejection(for: command, state: snapshot,
+                                         catalog: catalog, ceiling: eraCeiling)
+            ?? command.validate(state: snapshot, catalog: catalog)
     }
 
     /// Submits a command. Returns the rejection if the command could not even
@@ -683,7 +788,7 @@ final class GameController {
             // the refusal of a command belonging to an abandoned session
             // would still make a noise on the menu — the "sound after
             // switching saves" case in the audio bug hunt.
-            guard self.session != nil else { return }
+            guard self.session === session else { return }
             if case .rejected(let rejection) = result {
                 self.reject(rejection)
             }
@@ -800,6 +905,11 @@ final class GameController {
         guard let session else { return }
         let state = await session.snapshot
         let fraction = await session.pendingGameMinutes
+        let sessionSpeed = await session.speed
+        guard self.session === session else { return }
+        if sessionCheckpoint == nil {
+            sessionCheckpoint = SessionCheckpoint(state)
+        }
         if state.clock.tickCount != snapshot?.clock.tickCount {
             snapshotReceivedAt = Date()
         }
@@ -811,7 +921,7 @@ final class GameController {
         publishedTickFraction = fraction
         invalidateCaches()
         snapshot = state
-        speed = await session.speed
+        speed = sessionSpeed
         checkEraCeiling(state)
         checkSolvency(state)
         publishAudio(state)
@@ -832,21 +942,10 @@ final class GameController {
                                   stage: lastSolvencyStage)
     }
 
-    /// The entitlement wall, applied to the clock.
-    ///
-    /// Checked on every refresh rather than only on the `eraAdvanced` event,
-    /// because the event is not the only way to arrive here: loading a save
-    /// made before a subscription lapsed puts an airline three eras past the
-    /// ceiling with no transition to observe, and that save must open into
-    /// the wall rather than into a freely running late game.
+    /// Present an expansion offer without pausing the player's operations.
     private func checkEraCeiling(_ state: GameState) {
-        isBeyondEraCeiling = state.progression.era > eraCeiling
-        guard isBeyondEraCeiling else {
-            if autoPauseReason == .eraCeiling { autoPauseReason = nil }
-            return
-        }
-        if speed != .paused { setSpeed(.paused) }
-        autoPauseReason = .eraCeiling
+        isBeyondEraCeiling = eraCeiling < .empire && state.progression.era >= eraCeiling
+        if autoPauseReason == .eraCeiling { autoPauseReason = nil }
     }
 
     /// Money trouble, heard and acted on.

@@ -140,8 +140,38 @@ final class MapHomeUITests: AEUITestCase {
         if back.exists, back.isHittable { back.tap() }
         Thread.sleep(forTimeInterval: 0.6)
         openTab("Home")
-        let fast = app.buttons["Sixteen times speed"]
-        if fast.waitForExistence(timeout: 8) { fast.tap() }
+        // Assignments materialise into flights at the next daily boundary.
+        // At 1x, five real minutes reach only 20:00 on the founding day.
+        guard advanceMornings(until: "2030-01-02", cap: 1) else { return }
+
+        // Speed selection is idempotent. A recorded 26.2 synthetic Pause
+        // tap hit its reported frame but left 1x selected. Permit one
+        // state-checked retry, retain its screenshot, and still fail if the
+        // requested speed is not selected. Purchases and day advances do
+        // not use this retry because repeating them changes the game twice.
+        func selectSpeed(_ label: String) -> Bool {
+            for attempt in 1...2 {
+                let control = app.buttons.matching(identifier: label).firstMatch
+                guard require(control, "the \(label) control", timeout: 8),
+                      control.isHittable, waitUntilStill(control) else {
+                    XCTFail("The \(label) control was not stable and hittable.")
+                    return false
+                }
+                if control.isSelected { return true }
+                control.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+                let selected = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                    let current = self.app.buttons.matching(identifier: label).firstMatch
+                    return current.exists && current.isSelected
+                }, object: nil)
+                if XCTWaiter.wait(for: [selected], timeout: 8) == .completed { return true }
+                checkpoint("AE048-SPEED-\(label)-ATTEMPT-\(attempt)")
+            }
+            XCTFail("\(label) did not become selected after two idempotent attempts.")
+            return false
+        }
+        // Observe real departures at normal speed so a short flight remains
+        // airborne long enough for accessibility discovery and Pause.
+        guard selectSpeed("Normal speed") else { return }
 
         func value() -> String { map.value as? String ?? "" }
         func airborne() -> Int {
@@ -151,70 +181,43 @@ final class MapHomeUITests: AEUITestCase {
             else { return 0 }
             return Int(text[range].prefix(while: \.isNumber)) ?? 0
         }
-        var waited = 0
-        while airborne() == 0 && waited < 60 {
+        let menuDeadline = Date().addingTimeInterval(300)
+        while !app.buttons["ae-follow-flight-menu"].exists && Date() < menuDeadline {
             Thread.sleep(forTimeInterval: 1)
-            waited += 1
         }
+        // Pause before taking a screenshot or querying the canvas. On a
+        // loaded runner those operations took five game hours at 16x, so
+        // the flight landed between its discovery and the Pause tap.
+        guard selectSpeed("Pause") else { return }
+        Thread.sleep(forTimeInterval: 1)
         checkpoint("AE048-F0-map-with-the-network-running")
 
         if airborne() > 0 {
-            // Stop the clock first: at 16x an aeroplane crosses its own width
-            // between the snapshot a tap is aimed from and the tap landing,
-            // which is why this spiral has never hit one. Paused, the flight
-            // holds position and the card still offers Follow.
-            let pause = app.buttons["Pause"]
-            if pause.waitForExistence(timeout: 5) { pause.tap() }
+            // Use the same accessible flight menu available to every player.
+            let menu = app.buttons.matching(identifier: "ae-follow-flight-menu").firstMatch
+            guard require(menu, "the live flight menu", timeout: 8) else { return }
+            menu.tap()
+            let flight = app.buttons.matching(NSPredicate(
+                format: "identifier BEGINSWITH %@ AND identifier != %@",
+                "ae-follow-flight-", "ae-follow-flight-menu")).firstMatch
+            guard require(flight, "a player flight in the menu", timeout: 8) else { return }
+            flight.tap()
             Thread.sleep(forTimeInterval: 1)
-            // The map's own row offers the ride once nothing needs doing;
-            // whether it does depends on the state the clock produced, so
-            // the durable path is the one AE-046 built: select, then follow.
-            // The same steered grid `ShellAndMapUITests` uses: a sweep across
-            // the framed network rather than a cluster on its middle, stopped
-            // by the canvas saying it selected *a flight* rather than merely
-            // something.
-            let frameIt = app.buttons["Frame my network"]
-            if frameIt.waitForExistence(timeout: 5) { frameIt.tap() }
+            XCTAssertTrue(value().contains("following"), """
+                The follow control was pressed from the map home and the \
+                map does not report a followed flight. Canvas value: \
+                \(value())
+                """)
+            checkpoint("AE048-F-following-from-the-home-map")
+            map.swipeLeft()
             Thread.sleep(forTimeInterval: 1)
-            let zoomIn = app.buttons["Zoom in"]
-            if zoomIn.waitForExistence(timeout: 5) { for _ in 0..<2 { zoomIn.tap() } }
-            Thread.sleep(forTimeInterval: 0.5)
-            let follow = app.buttons["ae-map-follow"]
-            var offsets: [(CGFloat, CGFloat)] = []
-            for row in 0..<6 {
-                for column in 0..<5 {
-                    offsets.append((0.16 + CGFloat(column) * 0.17,
-                                    0.28 + CGFloat(row) * 0.075))
-                }
-            }
-            for (x, y) in offsets {
-                map.coordinate(withNormalizedOffset: CGVector(dx: x, dy: y)).tap()
-                Thread.sleep(forTimeInterval: 0.25)
-                if value().contains("Selected a flight") { break }
-                if follow.exists { break }
-            }
-            if follow.exists {
-                follow.tap()
-                Thread.sleep(forTimeInterval: 1)
-                XCTAssertTrue(value().contains("following"), """
-                    The follow control was pressed from the map home and the \
-                    map does not report a followed flight. Canvas value: \
-                    \(value())
-                    """)
-                checkpoint("AE048-F-following-from-the-home-map")
-                map.swipeLeft()
-                Thread.sleep(forTimeInterval: 1)
-                XCTAssertFalse(value().contains("following"), """
-                    A drag did not release the follow camera on the home map.
-                    """)
-            } else {
-                // Not a pass and not a failure: a synthetic tap cannot always
-                // hit a moving marker a few points wide, and saying so is the
-                // honest record (BUG-039's rule).
-                checkpoint("AE048-F-NO-AIRCRAFT-SELECTED")
-            }
+            XCTAssertFalse(value().contains("following"), """
+                A drag did not release the follow camera on the home map.
+                """)
         } else {
             checkpoint("AE048-F-NOTHING-AIRBORNE")
+            XCTFail("The assigned route did not produce a flight to follow.")
+            return
         }
 
         // ── FRAME G · something in the world, selected on the home map ─────

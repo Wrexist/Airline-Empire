@@ -47,6 +47,7 @@ public struct ProgressionSystem: SimulationSystem {
     private func advanceEra(player: Airline, state: inout GameState,
                             context: SimContext, tuning: ProgressionTuning) {
         guard let next = EraGate.next(after: state.progression.era),
+              next <= context.progressionCeiling,
               EraGate.isPassed(next, player: player, state: state,
                                catalog: context.catalog, tuning: tuning)
         else { return }
@@ -172,18 +173,16 @@ public struct ProgressionSystem: SimulationSystem {
         for mission in state.progression.missions {
             let progress = missionProgress(mission, player: player, state: state,
                                            catalog: context.catalog)
-            switch mission.kind {
-            case .boomRush(_, let target):
-                if progress >= target {
-                    state.ledger.post(airline: player.id, category: .missionReward,
-                                      amount: mission.reward, at: context.current,
-                                      memo: "Mission reward")
-                    context.emit(.missionCompleted(id: mission.id, reward: mission.reward))
-                } else if mission.deadline <= context.current {
-                    context.emit(.missionExpired(id: mission.id))
-                } else {
-                    open.append(mission)
-                }
+            let target = MissionMath.target(of: mission)
+            if progress >= target && context.current <= mission.deadline {
+                state.ledger.post(airline: player.id, category: .missionReward,
+                                  amount: mission.reward, at: context.current,
+                                  memo: "Mission reward")
+                context.emit(.missionCompleted(id: mission.id, reward: mission.reward))
+            } else if mission.deadline <= context.current {
+                context.emit(.missionExpired(id: mission.id))
+            } else {
+                open.append(mission)
             }
         }
         state.progression.missions = open

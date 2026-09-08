@@ -54,14 +54,7 @@ struct PaywallView: View {
         // text on a near-black sky. `NewGameView` pins the scheme for the
         // same reason and on the same backdrop; a sheet does not inherit it.
         .preferredColorScheme(.dark)
-        .alert("Restore purchases",
-               isPresented: restoreFailedPresented) {
-            Button("OK", role: .cancel) { entitlements.lastOutcome = nil }
-        } message: {
-            Text("No previous purchase was found for this Apple Account. If "
-                 + "you bought Pro on another account, sign in with it in "
-                 + "Settings and try again.")
-        }
+
     }
 
     // MARK: - Body
@@ -104,6 +97,7 @@ struct PaywallView: View {
 
                     commitment
                     callToAction
+                    PurchaseFeedback()
                     assurances
                 }
 
@@ -233,10 +227,7 @@ struct PaywallView: View {
         }
     }
 
-    private var restoreFailedPresented: Binding<Bool> {
-        Binding(get: { entitlements.lastOutcome == .nothingToRestore },
-                set: { if !$0 { entitlements.lastOutcome = nil } })
-    }
+
 }
 
 // MARK: - Presentation

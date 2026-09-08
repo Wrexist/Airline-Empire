@@ -5,10 +5,12 @@ The player starts with a single aircraft on a single route and builds a
 global aviation empire — driven by a deterministic, testable simulation, not
 a collection of menus.
 
-**Status:** Pre-production. The simulation core is complete and Linux-validated
-(253 tests); the SwiftUI app is authored and has never been compiled by Xcode.
-`/tasks/CURRENT_PHASE.md` is the live picture — this line has been wrong before
-and it is not the source of truth.
+**Status:** Launch stabilization. Candidate `b2420a1` passed all 513 Core
+regressions, the debug and release builds, iOS compilation, save/StoreKit
+integration tests, free entry and the map-first flight journey. Full device
+coverage and the App Store submission package remain release gates.
+See [launch implementation status](docs/LAUNCH_IMPLEMENTATION.md) for dated
+evidence and [the audit](docs/LAUNCH_AUDIT.md) for outstanding work.
 
 ## Project navigation
 

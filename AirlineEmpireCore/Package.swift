@@ -19,6 +19,7 @@ let package = Package(
         // player's network classified by who started the contest
         // (docs/RIVALS_THAT_COME_TO_YOU_AUDIT.md).
         .executable(name: "ae-rival-scan", targets: ["AERivalScan"]),
+        .executable(name: "ae-rival-economy", targets: ["AERivalEconomyProbe"]),
         // Flies single routes through the real pipeline and reads the
         // ledger back: the fee, fuel, crew, maintenance and service each
         // route actually paid, against what the AI's estimator would have
@@ -66,6 +67,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "AERivalScan",
+            dependencies: ["AirlineEmpireCore"]
+        ),
+        .executableTarget(
+            name: "AERivalEconomyProbe",
             dependencies: ["AirlineEmpireCore"]
         ),
         .executableTarget(

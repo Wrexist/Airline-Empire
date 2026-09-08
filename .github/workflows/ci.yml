@@ -3,18 +3,14 @@ name: CI
 # The gate. Three questions, each answered on the cheapest machine that can
 # answer it:
 #
-#   1. Does the simulation core build and pass its 253 tests?  (ubuntu, 1x)
+#   1. Does the simulation core build and pass its regression suite?
 #   2. Is the release tooling sound and the store listing legal? (ubuntu, 1x)
 #   3. Does the SwiftUI app actually COMPILE?                    (macOS, 10x)
 #
-# Question 3 is the one this repository has never been able to answer. Every
-# session so far has run on Linux, where the Apple SDKs do not exist, so
-# `AirlineEmpireApp` is "authored, parsed, structurally validated, never
-# compiled" (docs/APPLE_VALIDATION.md). A macOS runner can answer it in about
-# ten minutes without anyone owning a Mac — which is the single highest-value
-# thing this file does. It is scoped by a `git diff` rather than run on every
-# commit, because macOS minutes bill at ten times ubuntu ones and a docs-only
-# change cannot break a compile.
+# macOS runners compile the app and exercise simulator journeys. Ordinary
+# PRs use the compile lane; the full-validation label runs every journey
+# and iPad. A compile pass alone is not release evidence. File diffs avoid
+# unnecessary compilation for ordinary documentation changes.
 
 on:
   # Docs-only pushes to main do not need a compiler. This filter is safe
@@ -37,6 +33,7 @@ on:
   # staging work, not asking for the gate.
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   workflow_dispatch:
     inputs:
       suite:
@@ -264,6 +261,7 @@ jobs:
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PUSH_BEFORE: ${{ github.event.before }}
           SUITE_INPUT: ${{ inputs.suite }}
+          FULL_VALIDATION: ${{ contains(github.event.pull_request.labels.*.name, 'full-validation') }}
         run: |
           set -euo pipefail
 
@@ -289,6 +287,8 @@ jobs:
           #                     demand.
           if [ "$EVENT" = "workflow_dispatch" ]; then
             SUITE="${SUITE_INPUT:-full}"
+          elif [ "$EVENT" = "pull_request" ] && [ "$FULL_VALIDATION" = "true" ]; then
+            SUITE=full
           elif [ "$EVENT" = "push" ]; then
             SUITE=smoke
           else
@@ -298,7 +298,7 @@ jobs:
 
           # ── should macOS run at all ──────────────────────────────────────
           BASE=""
-          if [ "$EVENT" = "workflow_dispatch" ]; then
+          if [ "$EVENT" = "workflow_dispatch" ] || [ "$FULL_VALIDATION" = "true" ]; then
             echo "Dispatched by hand — building unconditionally."
           else
             LAST_GREEN=$(curl -fsS \
@@ -781,7 +781,7 @@ jobs:
   # and the detail screens are the whole of what regular width can change.
   app-ipad:
     name: iPad shell (regular width)
-    if: github.event_name == 'workflow_dispatch' && inputs.ipad
+    if: (github.event_name == 'workflow_dispatch' && inputs.ipad) || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-validation'))
     runs-on: macos-26
     timeout-minutes: 45
     steps:

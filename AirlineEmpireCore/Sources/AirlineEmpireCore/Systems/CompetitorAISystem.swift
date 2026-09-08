@@ -29,8 +29,13 @@ public struct CompetitorAISystem: SimulationSystem {
                         state: inout GameState, context: SimContext, tuning: AITuning) {
         let (runway, monthlyCosts) = cashRunway(airlineID, state: state, context: context)
 
-        // 1. Survival: deep trouble -> shed the worst loss-maker and idle metal.
-        if runway < tuning.retrenchRunwayMonths {
+        // 1. Survival: low reserves alone are not a reason to liquidate a
+        // cash-generating network. Include principal repayments, but exclude
+        // aircraft sales and loan proceeds from recurring cash generation.
+        let latest = state.finance.byAirline[airlineID]?.latest
+        let recurringCash = latest.map { $0.netProfit + $0.total(.loanPrincipal) }
+        if runway < tuning.retrenchRunwayMonths,
+           state.ledger.balance(of: airlineID) < .zero || (recurringCash.map { $0 < .zero } ?? true) {
             retrench(airlineID, state: &state, context: context)
             return
         }
@@ -60,6 +65,11 @@ public struct CompetitorAISystem: SimulationSystem {
         // the airframe it had just bought, in 143 of 150 campaigns
         // (BUG-054, docs/AE041_ECONOMIC_CREDIBILITY.md §3).
         if runway >= profile.expandRunwayMonths,
+           // Cash reserves alone do not make another aircraft productive.
+           // Keep managing routes above, but place existing aircraft and
+           // cover operating/financing costs before adding more obligations.
+           state.fleet(of: airlineID).allSatisfy({ $0.assignedRoute != nil }),
+           (state.finance.byAirline[airlineID]?.latest?.netProfit ?? .zero) >= .zero,
            state.fleet(of: airlineID).count < tuning.maxFleetPerAirline {
             acquireAircraft(airlineID, profile: profile, state: &state,
                             context: context,

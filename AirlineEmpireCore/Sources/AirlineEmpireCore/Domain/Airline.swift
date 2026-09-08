@@ -12,6 +12,7 @@ public struct Airline: Equatable, Codable, Sendable {
     /// Administrations survived; the second collapse is final
     /// (docs/GAME_DESIGN.md §5).
     public var administrationCount: Int
+    public var rescueDecision: RescueDecision
     /// Consecutive days below the overdraft floor (solvency tracking).
     public var daysInsolvent: Int
     public var reputation: Reputation
@@ -36,6 +37,7 @@ public struct Airline: Equatable, Codable, Sendable {
         self.loans = []
         self.status = .active
         self.administrationCount = 0
+        self.rescueDecision = .unreviewed
         self.daysInsolvent = 0
         self.reputation = Reputation()
         self.livery = .default
@@ -49,6 +51,10 @@ public enum AirlineStatus: Equatable, Codable, Sendable {
     case active
     /// Terminal state: the airline failed for good.
     case collapsed
+}
+
+public enum RescueDecision: String, Equatable, Codable, Sendable {
+    case unreviewed, accepted, declined
 }
 
 /// An airline's colour, as a name rather than a hex string.

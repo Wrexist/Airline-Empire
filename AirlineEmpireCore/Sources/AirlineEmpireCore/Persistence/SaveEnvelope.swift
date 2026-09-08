@@ -21,7 +21,8 @@ public enum SaveFormat {
     /// v10 shipped to TestFlight, so it migrates rather than refuses.
     /// v12 added `world.marketMoves` (AE-037: who entered and left which
     /// city pair, the record competition needs and the event log cannot keep).
-    public static let currentVersion = 12
+    /// v13 adds the persistent rescue decision and optional contract kinds.
+    public static let currentVersion = 13
 }
 
 public struct SaveEnvelope: Codable, Sendable {
@@ -42,11 +43,20 @@ public struct SaveEnvelope: Codable, Sendable {
     }
 }
 
-public enum SaveError: Error, Equatable, Sendable {
+public enum SaveError: Error, Equatable, Sendable, LocalizedError {
     case badMagic
     case checksumMismatch
     case unsupportedVersion(Int)
     case corruptPayload(String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .badMagic: "This is not an Airline Empire save."
+        case .checksumMismatch: "This save is damaged or incomplete. Try another backup."
+        case .unsupportedVersion: "This save uses an unsupported format. Update the app or choose a compatible backup."
+        case .corruptPayload(let reason): reason
+        }
+    }
 }
 
 /// JSON codec with deterministic output (sorted keys) — same bytes for the
@@ -104,7 +114,20 @@ public struct JSONSaveCodec: Sendable {
             }
         }
         do {
-            return try JSONDecoder().decode(GameState.self, from: payload)
+            let state = try JSONDecoder().decode(GameState.self, from: payload)
+            // Synthesized Decodable bypasses GameMeta's initializer checks.
+            // Reject malformed imports before the simulation can divide by zero.
+            guard state.meta.tickMinutes > 0,
+                  state.meta.tickMinutes <= GameCalendar.minutesPerDay,
+                  GameCalendar.minutesPerDay % state.meta.tickMinutes == 0,
+                  state.clock.tickCount >= 0,
+                  state.clock.now.rawMinutes <= Int64.max - 2 * GameCalendar.minutesPerDay,
+                  state.integrityViolations().isEmpty else {
+                throw SaveError.corruptPayload("This save contains an invalid game state. Choose another backup.")
+            }
+            return state
+        } catch let error as SaveError {
+            throw error
         } catch {
             throw SaveError.corruptPayload("State undecodable: \(error)")
         }

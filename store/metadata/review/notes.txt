@@ -1,9 +1,9 @@
-Airline Empire is a single-player airline management simulation. Everything a reviewer needs is in the app on first launch; there is nothing to sign in to.
+Airline Empire is a single-player airline management simulation. No sign-in is required.
 
 WHAT THE APP DOES NOT DO
 • No account, no sign-in, no user-generated content, no social features, no chat.
-• No network access other than StoreKit. The game makes no requests and plays identically in Airplane Mode; only loading prices and completing a purchase need a connection, and the paywall says so when it cannot reach the store.
-• No advertising, third-party SDKs, analytics or tracking. Nothing is collected, so the privacy label declares no data collection and the bundled privacy manifest declares no tracking domains and no required-reason API use.
+• Gameplay works offline. Prices, purchases and Restore purchases use Apple's StoreKit services and need a connection. Legal and support links open web pages. The simulation pauses while the app is closed; there is no offline catch-up.
+• No advertising, third-party SDKs, analytics or tracking. Nothing is collected, so the privacy label declares no data collection and the bundled privacy manifest declares no tracking domains and private UserDefaults use (CA92.1) for preferences and Pro offer history.
 • No gambling, no loot boxes, no randomised paid rewards. The only randomness is the simulation's own seeded world generation, which the player sets and can repeat.
 
 IN-APP PURCHASES
@@ -13,29 +13,30 @@ The app is free to play. One entitlement, "Airline Empire Pro", sold three ways 
 • com.airlineempire.game.pro.yearly — auto-renewable, 1 year.
 • com.airlineempire.game.pro.lifetime — non-consumable, one-time, never renews.
 
-All three grant identical access; nothing in the game behaves differently depending on which was bought.
+All three grant identical access.
 
 WHAT THE FREE GAME INCLUDES
-The entire simulation — the full ledger, every explainer, competitor airlines, world events, seeded replay, the map — through the Startup and Regional eras, on the Founder scenario, the twenty airports nearest the chosen home, one saved airline. A complete game, not a demo: no ads, no timers, no energy meter and no premium currency in either tier.
+The entire simulation — the full ledger, every explainer, competitor airlines, world events, seeded replay, the map — through the Startup and Regional eras, on the Founder scenario, the twenty airports nearest the chosen home, one saved airline. No ads, energy meter or premium currency.
 
 WHAT PRO ADDS
 More world only: the National, International and Empire eras, all 94 airports across nine regions, the widebodies those eras allow, the Entrepreneur and Magnate scenarios, and unlimited saved airlines. No aircraft, route, cash or advantage is sold — which aircraft a player may buy is decided by the era their airline has earned, identically for free and paying players.
 
 SEEING THE PAYWALL
-Home → gear icon → "Airline Empire Pro". It also appears once after founding a first airline, and whenever a locked control is tapped. Restore Purchases, Terms of Use and Privacy Policy are on the paywall and in Settings.
+Home → tap the airline-state strip to open the briefing → Settings → "Airline Empire Pro". It also appears once after completing the first flight, and whenever a locked control is tapped. Restore Purchases, Terms of Use and Privacy Policy are on the paywall and in Settings.
 
 HOW TO SEE THE GAME QUICKLY
-1. Launch → "New Game" → name an airline and any seed. "Founder" is the free scenario; "Magnate" (the well-funded start, easiest to review quickly) needs Pro, so buy any tier with a sandbox account first if you want it.
-2. Fleet → Acquire → buy a used aircraft (immediate; new aircraft are orders with a delivery lead time).
-3. Dashboard → the onboarding card suggests two routes ranked by demand → tap one → the sheet opens pre-filled → open the route.
-4. Route detail → Aircraft → assign the aircraft you bought.
-5. Set the speed to 4× → flights depart and arrive, the map animates, the feed narrates the day. A month boundary closes a statement, which Finance charts.
+1. Launch, name an airline and choose a seed, then found it. Founder is the free, well-funded start ($90M). Entrepreneur ($60M) and Magnate ($35M, the harder start) require Pro; they are not needed to review the first playable loop.
+2. Home opens on the map. Tap its next-action card to open the aircraft market, read the recommended aircraft and route, and lease an aircraft. The market closes after acquisition.
+3. Tap the suggested route on Home, review the pre-filled route sheet, and open the route.
+4. Open the route detail and assign the aircraft you leased.
+5. Set the speed to 4×. Flights depart and arrive; use "Follow a flight" to follow one on the map. A month boundary closes a statement in Finance.
+6. Open the briefing and Settings, then save and quit. A session recap appears. Continue the saved airline to verify persistence. Export/import backups are also in Settings and use Files.
 
 AGE RATING
 No violence, sexual content, profanity, substances, gambling or horror. The subject is running an airline: money, aircraft, schedules and reputation. Aircraft losses are modelled as financial and reputational events only; no crash, casualty or injury is depicted anywhere.
 
 CONTENT AND LIKENESS
-The geography is real: real cities and airports (name, code and location only — e.g. Stockholm Arlanda / ARN), used as factual geographic reference the way mapping and flight-planning apps do. Everything commercial is fictional: airlines, liveries, aircraft and manufacturers were invented for this simulation. No real airline or manufacturer trademark is depicted or referenced, no airport branding or imagery is used, and no real-world flight data is used.
+Cities and airports use factual names, codes and locations. Everything commercial is fictional: airlines, liveries, aircraft and manufacturers were invented for this simulation. No real airline or manufacturer trademark is depicted or referenced, no airport branding or imagery is used, and no real-world flight data is used.
 
 CONTACT
-The developer, who can respond the same day to anything blocking the review.
+Use the App Review contact supplied with the submission.

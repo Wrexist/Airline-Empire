@@ -834,7 +834,7 @@ extension Vocab {
         case .assignAircraft:
             "Open the route, then assign the aircraft parked at its origin."
         case .watchFirstFlight:
-            "Set the clock to 1x — boarding, taxi and the crossing are real."
+            "Schedules start at midnight. Advance a day to skip the wait, then run at 1x."
         case .earnFirstRevenue:
             "Revenue posts as flights land. The operations feed records each one."
         }

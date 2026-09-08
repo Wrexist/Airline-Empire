@@ -47,6 +47,7 @@ struct BriefingView: View {
                             SolvencyBanner(
                                 model: solvency,
                                 autoPaused: controller.autoPauseReason == .solvencyDanger)
+                            RescueOfferCard()
                         }
 
                         if let catalog = controller.catalog,
@@ -71,6 +72,9 @@ struct BriefingView: View {
                         // (AE-037). Not a feed: the most decision-relevant
                         // thing a rival did or is doing to this airline.
                         RivalPressureCard()
+                        if snapshot.progression.hasMilestone("firstFlight") {
+                            NextEraBriefing()
+                        }
                         // The pulse comes before the history. This block
                         // used to sit fifth, below yesterday's digest and next
                         // week's calendar — so "how is my airline doing right
@@ -153,6 +157,12 @@ struct BriefingView: View {
             .sheet(item: $guidedRoute) { guided in
                 OpenRouteSheet(suggestion: guided.suggestion)
             }
+        }
+        .onChange(of: controller.hasGame) { _, hasGame in
+            // Settings is pushed inside this sheet. Saving and quitting
+            // replaces the world underneath it, so explicitly dismiss the
+            // presentation to reveal the saved-session recap.
+            if !hasGame { dismiss() }
         }
     }
 
@@ -723,7 +733,7 @@ struct NextMovesCard: View {
         guard market.paysForItsAirframe else {
             return "No aircraft you can fly today covers its own lease here."
         }
-        return "Best on a \(spec.seats)-seat \(spec.model) — about \(market.monthlyAfterAirframe.compact) a month after its lease."
+        return "Estimated \(market.monthlyAfterAirframe.compact)/month on a \(spec.seats)-seat \(spec.model). " + PlayerRouteDefaults.forecastAssumptions
     }
 
     var body: some View {

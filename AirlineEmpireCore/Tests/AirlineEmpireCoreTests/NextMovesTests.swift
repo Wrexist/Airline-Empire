@@ -102,16 +102,15 @@ struct NextMovesTests {
                 "\(home.raw)-\(trap.raw) is supposed to be the trap and now reads as paying \(listed.monthlyAfterAirframe.compact)")
     }
 
-    /// NEXTMOVES-03: the advice at the three curated starts and at Munich is
-    /// exactly what it was before the gate. Those are the worlds the AE-039
-    /// and AE-041 twins and the UI journeys are pinned on; the fix was chosen
-    /// over a full re-ranking precisely so they would not move.
-    @Test func theCuratedStartsAdviceIsUnchanged() throws {
+    /// NEXTMOVES-03: curated advice stays deterministic and prices the
+    /// actual starter schedule. Munich–Paris no longer covers its aircraft
+    /// at two daily round trips; Istanbul replaces it.
+    @Test func theCuratedStartsAdviceMatchesTheStarterSchedule() throws {
         let expected: [AirportCode: [AirportCode]] = [
             "ARN": ["LHR", "CDG"],
             "BCN": ["LHR", "CDG"],
             "SIN": ["CGK", "BKK"],   // Kuala Lumpur, the one trap, replaced
-            "MUC": ["LHR", "CDG"],
+            "MUC": ["LHR", "IST"],
         ]
         for (home, markets) in expected.sorted(by: { $0.key.raw < $1.key.raw }) {
             let (engine, catalog, _) = try Self.founded(home: home)

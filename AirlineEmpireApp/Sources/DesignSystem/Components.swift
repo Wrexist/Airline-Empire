@@ -367,7 +367,7 @@ struct SpeedControl: View {
                         .font(.footnote.weight(.semibold))
                         .monospacedDigit()
                         .foregroundStyle(isSelected ? Color.white : AETheme.mutedText)
-                        .frame(minWidth: 44, minHeight: 38)
+                        .frame(minWidth: 44, minHeight: 44)
                         .background {
                             if isSelected {
                                 Capsule(style: .continuous)
@@ -390,11 +390,11 @@ struct SpeedControl: View {
                 Image(systemName: "sunrise")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(AETheme.ember)
-                    .frame(minWidth: 44, minHeight: 38)
+                    .frame(minWidth: 44, minHeight: 44)
                     .contentShape(Capsule(style: .continuous))
             }
             .buttonStyle(.aePress)
-            .accessibilityLabel("Advance to next morning")
+            .accessibilityLabel("Advance to next day")
 
             // For the UI journeys only (`-AEUITestSunriseWeek`): seven
             // mornings in one tap — the same engine calls, one refresh —
@@ -408,7 +408,7 @@ struct SpeedControl: View {
                     Image(systemName: "forward.end")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(AETheme.ember)
-                        .frame(minWidth: 44, minHeight: 38)
+                        .frame(minWidth: 44, minHeight: 44)
                         .contentShape(Capsule(style: .continuous))
                 }
                 .buttonStyle(.aePress)
@@ -467,7 +467,7 @@ struct TimeMenuButton: View {
             Button {
                 controller.advanceToNextMorning()
             } label: {
-                Label("Advance to next morning", systemImage: "sunrise")
+                Label("Advance to next day", systemImage: "sunrise")
             }
         } label: {
             HStack(spacing: AETheme.spacingXS) {

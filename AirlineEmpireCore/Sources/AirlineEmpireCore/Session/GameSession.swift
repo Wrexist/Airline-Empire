@@ -51,8 +51,13 @@ public actor GameSession {
 
     public var snapshot: GameState { engine.state }
 
+    /// Limits new expansion while existing aircraft, routes and time keep running.
+    public func setProgressionCeiling(_ ceiling: Era) {
+        engine.progressionCeiling = ceiling
+    }
+
     public func snapshots() -> AsyncStream<GameState> {
-        AsyncStream { continuation in
+        AsyncStream(bufferingPolicy: .bufferingNewest(1)) { continuation in
             nextSubscriptionID += 1
             let id = nextSubscriptionID
             snapshotContinuations[id] = continuation
@@ -297,4 +302,3 @@ public enum SimSpeed: String, Codable, Sendable, CaseIterable {
         }
     }
 }
-

@@ -23,6 +23,8 @@ class AEUITestCase: XCTestCase {
         super.setUp()
         continueAfterFailure = false
         app = XCUIApplication()
+        app.launchEnvironment["AE_UI_TEST_SAVE_ID"] = UUID().uuidString
+        if usesProFixture { app.launchArguments.append("-AEUITestPro") }
         // The week control beside the sunrise, for the journeys only: the
         // two long journeys tapped the sunrise ninety and a hundred and ten
         // times, at several seconds of simulator settling each, and run
@@ -38,6 +40,7 @@ class AEUITestCase: XCTestCase {
     /// Whether this class wants the journeys' week control on screen.
     /// `PerformanceBaselineUITests` says no — see `setUp`.
     var wantsSunriseWeek: Bool { true }
+    var usesProFixture: Bool { true }
 
     override func tearDown() {
         app = nil
@@ -216,12 +219,23 @@ class AEUITestCase: XCTestCase {
     /// Lease action, which was not true.
     @discardableResult
     func scrollUntil(_ element: XCUIElement, _ what: String,
-                     swipes: Int = 8) -> Bool {
-        for _ in 0..<swipes {
-            if element.exists { break }
-            app.swipeUp()
+                     swipes: Int = 8, in container: XCUIElement? = nil) -> Bool {
+        func reached() -> Bool {
+            element.exists && (container == nil || element.isHittable)
         }
-        guard element.exists else {
+        for _ in 0..<swipes {
+            if reached() { break }
+            if let container {
+                // A whole-iPad swipe can jump over a row inside a small
+                // sheet. Move a fraction of the actual list's viewport.
+                let start = container.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.75))
+                let end = container.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+                start.press(forDuration: 0.05, thenDragTo: end)
+            } else {
+                app.swipeUp()
+            }
+        }
+        guard reached() else {
             capture(Self.logPrefix + "MISSING-\(what)")
             XCTFail("\(what) never appeared, after scrolling \(swipes) times.")
             return false
@@ -415,7 +429,7 @@ class AEUITestCase: XCTestCase {
     }
 
     @discardableResult
-    func leaseAnAircraft(proof: LeaseProof = .fleetBoard) -> Bool {
+    func leaseAnAircraft(proof: LeaseProof = .fleetBoard, model: String? = nil) -> Bool {
         // Hide what the era cannot buy, so the first lease action on screen
         // belongs to an aircraft this airline is allowed to take.
         let eraFilter = app.switches["Hide what this era cannot buy"]
@@ -424,7 +438,9 @@ class AEUITestCase: XCTestCase {
             eraFilter.tap()
         }
 
-        let lease = app.buttons.matching(identifier: "ae-market-lease").firstMatch
+        let leaseQuery = app.buttons.matching(identifier: "ae-market-lease")
+        let lease = model.map { leaseQuery.matching(NSPredicate(
+            format: "label CONTAINS %@", $0)).firstMatch } ?? leaseQuery.firstMatch
         guard scrollUntil(lease, "a Lease action in the market") else { return false }
 
         // The dialog must be the LEASE dialog before anything is confirmed,
@@ -507,16 +523,12 @@ class AEUITestCase: XCTestCase {
             aimCorrection = 0
 
             if leaseDialogTitle.waitForExistence(timeout: 3) {
-                // The dialog's confirm button and the market row are both
-                // labelled "Lease"; the row is behind the dialog and not
-                // hittable, so the hittable match — searched from the most
-                // recently added — is the dialog's.
-                let confirms = app.buttons.matching(
-                    NSPredicate(format: "label == %@", "Lease"))
-                for index in stride(from: confirms.count - 1, through: 0, by: -1) {
-                    let candidate = confirms.element(boundBy: index)
-                    if candidate.isHittable { candidate.tap(); break }
-                }
+                // iOS 26 exposes the confirmation as two nested Button
+                // nodes with the same identifier. Resolve the outer control
+                // explicitly; an unqualified query fails as ambiguous.
+                let confirm = app.buttons.matching(identifier: "ae-confirm-action").firstMatch
+                guard require(confirm, "the lease confirmation") else { return false }
+                confirm.tap()
                 // The sheet dismisses itself on success — there is no Done
                 // fallback any more. Blind-tapping Done has never rescued a
                 // stuck sheet; in runs 62 and 63 it closed a healthy market
@@ -935,7 +947,7 @@ class AEUITestCase: XCTestCase {
     ///
     /// AE-048 made the briefing a sheet over the map, and both surfaces carry
     /// a `SpeedControl` — so with the briefing up there can be two buttons
-    /// labelled "Advance to next morning" in the tree (iOS usually hides the
+    /// labelled "Advance to next day" in the tree (iOS usually hides the
     /// presenter behind a full-height sheet, but "usually" is not a contract,
     /// and `app.buttons[label]` raises on multiple matches rather than
     /// picking one).
@@ -950,14 +962,15 @@ class AEUITestCase: XCTestCase {
     /// Indexing waits for the query the way a plain subscript does, and keeps
     /// the ambiguity safety the subscript lacks.
     private func labelledButton(_ label: String) -> XCUIElement {
-        app.buttons.matching(NSPredicate(format: "label == %@", label))
-            .element(boundBy: 0)
+        let matches = app.buttons.matching(NSPredicate(format: "label == %@", label))
+        return matches.allElementsBoundByIndex.first(where: { $0.isHittable })
+            ?? matches.element(boundBy: 0)
     }
 
     @discardableResult
     func advanceMornings(until datePrefix: String, cap: Int = 35) -> Bool {
         openTabIfNeeded("Home")
-        let sunrise = labelledButton("Advance to next morning")
+        let sunrise = labelledButton("Advance to next day")
         guard sunrise.waitForExistence(timeout: 8) else { return false }
         let arrived = app.staticTexts.matching(NSPredicate(
             format: "label BEGINSWITH %@", datePrefix)).firstMatch
@@ -992,22 +1005,80 @@ class AEUITestCase: XCTestCase {
             while !arrived.exists, weekTaps < 90,
                   let today = currentHomeDate(),
                   Self.days(from: today, to: target) > 14 {
-                week.tap()
+                guard advanceAndWait("Advance seven mornings", from: today, days: 7) else { return false }
                 weekTaps += 1
             }
         }
 
         var taps = 0
         while taps < cap, !arrived.exists {
-            sunrise.tap()
-            // No fixed pause: `tap()` already waits for the app to go idle,
-            // and the `arrived.exists` query at the top of the loop is a
-            // second synchronisation point. The campaign tapped this control
-            // ninety times, so half a second each was half a minute of the
-            // suite spent asleep.
+            guard let today = currentHomeDate() else { return false }
+            guard advanceAndWait("Advance to next day", from: today, days: 1) else { return false }
             taps += 1
         }
         return arrived.exists
+    }
+
+    /// UI idleness does not mean the actor's asynchronous simulation task
+    /// has published its result. Wait for the requested calendar movement
+    /// before another tap, so advances cannot pile up and skip the target.
+    private func advanceAndWait(_ label: String, from previous: DateComponents,
+                                days: Int) -> Bool {
+        _ = dismissSimulatorSetupBanner()
+        // SwiftUI replaces accessibility nodes as the world and milestone
+        // overlays update. Resolve the visible control for each interaction.
+        let button = labelledButton(label)
+        guard button.exists, button.isEnabled, button.isHittable,
+              waitUntilStill(button) else {
+            checkpoint("TIME-control-not-ready")
+            return false
+        }
+        let requests = manualAdvanceRequestCount()
+        // The header is stationary. Use its freshly resolved centre rather
+        // than retaining an accessibility hit point across world updates.
+        button.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        var interrupted = false
+        var retryAfter: Date?
+        let moved = XCTNSPredicateExpectation(predicate: NSPredicate { [weak self] _, _ in
+            guard let self else { return false }
+            if let current = self.currentHomeDate(), Self.days(from: previous, to: current) >= days {
+                return true
+            }
+            if let deadline = retryAfter, Date() >= deadline {
+                retryAfter = nil
+                // Never double-submit a slow simulation request. Retry only
+                // a known OS interruption whose tap did not reach the app.
+                if let requests, self.manualAdvanceRequestCount() == requests {
+                    self.labelledButton(label).tap()
+                }
+            } else if !interrupted, self.dismissSimulatorSetupBanner() {
+                interrupted = true
+                retryAfter = Date().addingTimeInterval(2)
+            }
+            return false
+        }, object: nil)
+        if XCTWaiter.wait(for: [moved], timeout: 20) == .completed { return true }
+        print("TIME advance failed: requested \(days) days; acknowledgements \(String(describing: requests)) -> \(String(describing: manualAdvanceRequestCount())); system interruption \(interrupted)")
+        print("TIME control: \(labelledButton(label).debugDescription)")
+        checkpoint("TIME-advance-did-not-complete")
+        return false
+    }
+
+    private func manualAdvanceRequestCount() -> Int? {
+        let probe = app.descendants(matching: .any)["ae-time-advance-requests"]
+        guard probe.exists, let value = probe.value as? String else { return nil }
+        return Int(value)
+    }
+
+    @discardableResult
+    private func dismissSimulatorSetupBanner() -> Bool {
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let banner = springboard.descendants(matching: .any).matching(NSPredicate(
+            format: "label CONTAINS %@", "Ready for Apple Intelligence")).firstMatch
+        guard banner.exists else { return false }
+        checkpoint("SYSTEM-Apple-Intelligence-banner")
+        banner.swipeUp()
+        return true
     }
 
     /// The date Home shows, read back from the header ("2030-02-09").
@@ -1079,7 +1150,7 @@ class AEUITestCase: XCTestCase {
         // control the map's does — so the whole loop runs inside it, and the
         // caller gets the tab bar back at the end.
         guard openBriefing() else { return false }
-        let sunrise = labelledButton("Advance to next morning")
+        let sunrise = labelledButton("Advance to next day")
         guard sunrise.waitForExistence(timeout: 8) else {
             closeBriefing()
             return false
@@ -1096,7 +1167,7 @@ class AEUITestCase: XCTestCase {
     }
 
     private func openTabIfNeeded(_ title: String) {
-        if labelledButton("Advance to next morning").exists { return }
+        if labelledButton("Advance to next day").exists { return }
         openTab(title)
     }
 
@@ -1272,7 +1343,15 @@ class AEUITestCase: XCTestCase {
             XCTFail("The \(title) tab never appeared in any shape. Screenshot attached.")
             return
         }
-        button.tap()
+        guard button.isHittable, waitUntilStill(button),
+              let current = tabButton(title), current.isHittable else {
+            checkpoint("TAB-NOT-HITTABLE-\(title)")
+            XCTFail("The \(title) tab did not settle into a hittable control.")
+            return
+        }
+        // Resolve and tap the current frame after a sheet dismissal. A
+        // retained synthetic Home tap left the arrival journey on Fleet.
+        current.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
     }
 
     // MARK: The briefing (AE-048)

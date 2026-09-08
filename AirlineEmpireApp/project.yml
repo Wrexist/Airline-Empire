@@ -122,6 +122,21 @@ targets:
   # through SwiftUI's navigation and presentation, which a unit test cannot
   # reach. `tasks/TECH_DEBT.md` TD-016 asks for both; this is the half that
   # catches the bugs actually being found.
+  AirlineEmpireTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+      - path: Resources/AirlineEmpire.storekit
+        buildPhase: resources
+    dependencies:
+      - target: AirlineEmpire
+      - package: AirlineEmpireCore
+    settings:
+      base:
+        CODE_SIGNING_ALLOWED: NO
+        GENERATE_INFOPLIST_FILE: YES
+
   AirlineEmpireUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -147,6 +162,7 @@ schemes:
       targets:
         AirlineEmpire: all
         AirlineEmpireUITests: [test]
+        AirlineEmpireTests: [test]
     run:
       config: Debug
       # Serves the three Pro products locally, so the paywall can be run,
@@ -164,6 +180,7 @@ schemes:
       # and a failure-only attachment never answers it.
       targets:
         - AirlineEmpireUITests
+        - AirlineEmpireTests
     profile:
       config: Release
     analyze:

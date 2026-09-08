@@ -1,5 +1,10 @@
 # Go live — the step-by-step
 
+> Current status: the September 5 membership failure described below is historical.
+> The September 6 [TestFlight run 34027843211](https://github.com/Wrexist/Airline-Empire/actions/runs/34027843211)
+> archived, uploaded and processed successfully. Check [LAUNCH_IMPLEMENTATION.md](LAUNCH_IMPLEMENTATION.md)
+> for current candidate evidence and remaining release gates. This does not assert today's account status.
+
 Everything between where the project is today and Airline Empire being on the
 App Store, in the order it has to happen, with the commands to run and what
 "done" looks like for each step.

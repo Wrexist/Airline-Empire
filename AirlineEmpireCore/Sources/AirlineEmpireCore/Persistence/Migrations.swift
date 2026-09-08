@@ -36,6 +36,7 @@ public struct MigrationChain: Sendable {
         MigrationV9AddProgression(),
         MigrationV10AddLivery(),
         MigrationV11AddMarketMoves(),
+        MigrationV12AddRescueDecision(),
     ])
 
     public func migrate(payload: [String: Any], from version: Int) throws -> [String: Any] {
@@ -52,6 +53,22 @@ public struct MigrationChain: Sendable {
             v += 1
         }
         return current
+    }
+}
+
+/// v12 → v13 preserves every airline and loan. Existing campaigns have not
+/// yet accepted or declined the new one-time rescue offer.
+public struct MigrationV12AddRescueDecision: SaveMigration {
+    public let fromVersion = 12
+    public init() {}
+    public func migrate(_ payload: inout [String: Any]) throws {
+        guard var airlines = payload["airlines"] as? [String: Any] else { return }
+        for key in airlines.keys.sorted() {
+            guard var airline = airlines[key] as? [String: Any] else { continue }
+            if airline["rescueDecision"] == nil { airline["rescueDecision"] = "unreviewed" }
+            airlines[key] = airline
+        }
+        payload["airlines"] = airlines
     }
 }
 

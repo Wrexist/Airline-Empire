@@ -72,6 +72,7 @@ final class AudioEngine {
 
     private var buffers: [AudioCue: AVAudioPCMBuffer] = [:]
     private(set) var isRunning = false
+    private var graphPrepared = false
     /// Cues whose file was missing or unreadable. Surfaced rather than
     /// swallowed: silence is indistinguishable from working, so the one place
     /// this can be noticed is a list somebody can look at.
@@ -84,7 +85,8 @@ final class AudioEngine {
     /// still not work to do while the player is waiting for a screen.
     func prepare() {
         guard !isRunning else { return }
-        configureSession()
+        if graphPrepared { resume(); return }
+        guard configureSession() else { return }
 
         // Buffers first, deliberately. A player node's output connection has
         // a format, and `scheduleBuffer` with a buffer that does not match it
@@ -148,6 +150,7 @@ final class AudioEngine {
             }
         }
 
+        graphPrepared = true
         do {
             try engine.start()
             for voice in voices { voice.play() }
@@ -166,17 +169,22 @@ final class AudioEngine {
         stopAmbience()
         stopMusic()
         engine.pause()
+        isRunning = false
         try? AVAudioSession.sharedInstance().setActive(false,
                                                        options: .notifyOthersOnDeactivation)
     }
 
     func resume() {
-        guard isRunning else { return }
-        configureSession()
-        try? engine.start()
+        guard graphPrepared else { return }
+        guard configureSession() else { isRunning = false; return }
+        do {
+            try engine.start()
+            for voice in voices { voice.play() }
+            isRunning = true
+        } catch { isRunning = false }
     }
 
-    private func configureSession() {
+    private func configureSession() -> Bool {
         let session = AVAudioSession.sharedInstance()
         // `.ambient`: never interrupt the player's music, always obey the
         // silent switch. It mixes by default — that is what the category
@@ -189,8 +197,16 @@ final class AudioEngine {
         // default `.soloAmbient` — which does **not** mix. The one behaviour
         // this line exists to guarantee was the behaviour it prevented
         // (tasks/BUGS.md BUG-019).
-        try? session.setCategory(.ambient, mode: .default)
-        try? session.setActive(true)
+        do {
+            try session.setCategory(.ambient, mode: .default)
+            try session.setActive(true)
+            // Do not ask AVAudioEngine to initialize RemoteIO against an
+            // unavailable output. Its hardware getter can abort the process,
+            // which a Swift catch around engine.start cannot recover from.
+            return session.sampleRate > 0 && session.outputNumberOfChannels > 0
+        } catch {
+            return false
+        }
     }
 
     private func loadBuffer(_ cue: AudioCue) -> AVAudioPCMBuffer? {
@@ -406,17 +422,16 @@ final class AudioEngine {
     /// thread and an audio route. Muting the game should cost nothing, not
     /// merely produce nothing (MASTER PROMPT 3 §29).
     func setActive(_ active: Bool) {
-        guard isRunning else { return }
+        guard graphPrepared else { return }
         if active {
             if !engine.isRunning {
-                configureSession()
-                try? engine.start()
-                for voice in voices { voice.play() }
+                resume()
             }
         } else if engine.isRunning {
             stopAmbience()
             stopMusic()
             engine.pause()
+            isRunning = false
         }
     }
 

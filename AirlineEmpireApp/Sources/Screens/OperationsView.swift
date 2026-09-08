@@ -549,6 +549,7 @@ struct ProgressionView: View {
                    let player = snapshot.playerAirline {
                     eraCard(model)
                     missionsCard(model)
+                    ContractBoard()
                     capabilitiesCard(model, player: player.id)
                     honoursCard(model)
                 } else {
@@ -635,6 +636,10 @@ struct ProgressionView: View {
         switch mission.kind {
         case .boomRush(let region, let target):
             "Carry \(Format.count(target)) passengers in \(Vocab.region(region))"
+        case .flightContract(let target):
+            "Complete \(Format.count(target)) flights"
+        case .passengerContract(let target):
+            "Carry \(Format.count(target)) passengers across your network"
         }
     }
 
@@ -944,6 +949,10 @@ struct EconomyDetailView: View {
 struct SettingsView: View {
     @Environment(GameController.self) private var controller
     @Environment(\.dismiss) private var dismiss
+    @State private var exportDocument: CampaignDocument?
+    @State private var showingExport = false
+    @State private var exportInProgress = false
+    @State private var exportFailure: String?
 
     var body: some View {
         @Bindable var preferences = controller.preferences
@@ -1035,6 +1044,25 @@ struct SettingsView: View {
                 Button("Save and quit to menu") {
                     Task { await controller.saveAndQuit() }
                 }
+                .disabled(controller.isSavingAndQuitting)
+                if case .failed(let reason) = controller.lastSaveOutcome {
+                    Text(reason + " Your game is still open. Free some device storage and try Save now again.")
+                        .font(.caption)
+                        .foregroundStyle(AETheme.negative)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Button("Export campaign backup") {
+                    exportInProgress = true
+                    Task {
+                        defer { exportInProgress = false }
+                        do {
+                            exportDocument = try await controller.exportCampaign()
+                            showingExport = true
+                        } catch { exportFailure = error.localizedDescription }
+                    }
+                }
+                .disabled(exportInProgress)
+                .accessibilityIdentifier("ae-export-campaign")
                 if let generation = controller.loadedFromBackup {
                     Text("This game was restored from backup #\(generation) — some recent progress may be missing.")
                         .font(.caption)
@@ -1046,7 +1074,7 @@ struct SettingsView: View {
                         .foregroundStyle(AETheme.negative)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                Text("The game also saves itself every week of game time and whenever you leave the app.")
+                Text("The game saves every game day and whenever you leave the app. Export a backup to keep a copy outside the app; import it from the main menu.")
                     .font(.caption)
                     .foregroundStyle(AETheme.mutedText)
             }
@@ -1056,13 +1084,22 @@ struct SettingsView: View {
                 if let seed = controller.snapshot?.meta.worldSeed {
                     LabeledContent("World seed", value: String(seed))
                 }
-                Text("Everything happens on this device. The game makes no network requests and collects nothing.")
+                Text("Your game runs on this device. Pro purchases and restores use Apple's StoreKit service. The game has no advertising, tracking or analytics.")
                     .font(.caption)
                     .foregroundStyle(AETheme.mutedText)
             }
         }
         .aeScreenBackground()
         .navigationTitle("Settings")
+        .accessibilityIdentifier("ae-settings-list")
+        .fileExporter(isPresented: $showingExport, document: exportDocument,
+                      contentType: .data, defaultFilename: "AirlineEmpire-Backup.aesave") { result in
+            if case .failure(let error) = result { exportFailure = error.localizedDescription }
+        }
+        .alert("Could not export backup", isPresented: Binding(
+            get: { exportFailure != nil }, set: { if !$0 { exportFailure = nil } })) {
+            Button("OK", role: .cancel) { exportFailure = nil }
+        } message: { Text(exportFailure ?? "") }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {

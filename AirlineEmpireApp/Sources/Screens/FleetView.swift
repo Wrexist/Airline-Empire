@@ -861,8 +861,9 @@ struct AircraftShopSheet: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var usedAge = 8
     @State private var leaseTermMonths = 60
-    @State private var sort: Sort = .seats
-    @State private var hidesLocked = false
+    @State private var sort: Sort = .recommended
+    @State private var hidesLocked = true
+    @State private var starterOpportunity: MarketOpportunity?
     /// Which way in is picked, per aircraft. Lives here because the picker
     /// and the commit button are separate List rows (see `ShopCommitButton`)
     /// that must see the same choice. Absent means the default, lease.
@@ -871,10 +872,11 @@ struct AircraftShopSheet: View {
     /// Fourteen types with seven attributes each, and no way to order them,
     /// was a catalogue rather than a market (UIUX_FORENSIC_AUDIT UI-017).
     enum Sort: String, CaseIterable, Hashable {
-        case seats, range, efficiency, price
+        case recommended, seats, range, efficiency, price
 
         var title: String {
             switch self {
+            case .recommended: "Best fit"
             case .seats: "Seats"
             case .range: "Range"
             // "Fuel per seat" rendered as "Fuel per s…" in the segmented
@@ -896,13 +898,25 @@ struct AircraftShopSheet: View {
                         Section {
                             wallet(snapshot: snapshot, player: player.id)
                         }
+                        if let market = starterOpportunity,
+                           let code = market.bestAirframe,
+                           let spec = catalog.aircraftTypes[code] {
+                            Section("A first route to build around") {
+                                Text("\(spec.model) for \(market.origin.raw) to \(market.destination.raw)")
+                                    .font(.headline)
+                                Text("Estimated \(market.monthlyAfterAirframe.compact)/month after lease and route payroll, before airline overhead. Start with two daily round trips and review the actual results before expanding.")
+                                    .font(.caption)
+                                    .foregroundStyle(AETheme.mutedText)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
                         Section("Show") {
                             Picker("Sort", selection: $sort) {
                                 ForEach(Sort.allCases, id: \.self) { option in
                                     Text(option.title).tag(option)
                                 }
                             }
-                            .pickerStyle(.segmented)
+                            .pickerStyle(.menu)
                             Toggle("Hide what this era cannot buy", isOn: $hidesLocked)
                         }
                         Section("Terms") {
@@ -928,7 +942,8 @@ struct AircraftShopSheet: View {
                                         facts: facts(spec, catalog: catalog,
                                                      snapshot: snapshot,
                                                      player: player.id),
-                                        deal: deals[spec.code] ?? .lease)
+                                        deal: deals[spec.code] ?? .lease,
+                                        onCommitted: { dismiss() })
                                 }
                             }
                         }
@@ -954,6 +969,16 @@ struct AircraftShopSheet: View {
             // The sheet says so on the way in and out; the purchase itself is
             // voiced by `aircraftOrdered`/`aircraftDelivered` from Core.
             .aeSheetFeedback()
+            .onAppear {
+                guard let state = controller.snapshot, let player = state.playerAirline,
+                      state.fleet(of: player.id).isEmpty, state.routes(of: player.id).isEmpty,
+                      let catalog = controller.catalog else { return }
+                let access = ContentAccess(isPro: controller.eraCeiling == .empire)
+                let airports = access.servableAirports(home: player.homeAirport, catalog: catalog)
+                starterOpportunity = state.marketOpportunities(catalog: catalog, limit: catalog.orderedAirportCodes.count)
+                    .first { $0.origin == player.homeAirport && $0.paysForItsAirframe
+                        && airports.contains($0.destination) }
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -967,11 +992,18 @@ struct AircraftShopSheet: View {
     /// can actually act on.
     private func types(catalog: ContentCatalog,
                        snapshot: GameState) -> [AircraftTypeSpec] {
-        let allowed = snapshot.progression.era.allowedCategories
+        let allowed = min(snapshot.progression.era, controller.eraCeiling).allowedCategories
         let specs = catalog.orderedAircraftTypeCodes
             .compactMap { catalog.aircraftTypes[$0] }
             .filter { !hidesLocked || allowed.contains($0.category) }
         switch sort {
+        case .recommended:
+            let recommended = starterOpportunity?.bestAirframe
+            return specs.sorted {
+                if ($0.code == recommended) != ($1.code == recommended) { return $0.code == recommended }
+                if $0.listPrice != $1.listPrice { return $0.listPrice < $1.listPrice }
+                return $0.code.raw < $1.code.raw
+            }
         case .seats:
             return specs.sorted { $0.seats > $1.seats }
         case .range:
@@ -1120,7 +1152,7 @@ struct AircraftShopSheet: View {
 
     private func locked(_ spec: AircraftTypeSpec,
                         snapshot: GameState) -> Bool {
-        !snapshot.progression.era.allowedCategories.contains(spec.category)
+        !min(snapshot.progression.era, controller.eraCeiling).allowedCategories.contains(spec.category)
     }
 
     /// The shared per-aircraft facts both deal rows read.
@@ -1394,7 +1426,7 @@ struct ShopDealPicker: View {
         // row, and borderless is the style Lists hit-test per button.
         .buttonStyle(.borderless)
         .accessibilityIdentifier("ae-deal-\(facts.name(for: option))")
-        .accessibilityLabel("\(facts.caption(for: option)), \(Format.money(facts.price(for: option))), \(facts.subtitle(for: option))")
+        .accessibilityLabel("\(facts.caption(for: option)), \(facts.spec.manufacturer) \(facts.spec.model), \(Format.money(facts.price(for: option))), \(facts.subtitle(for: option))")
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
@@ -1453,10 +1485,12 @@ struct ShopDealPicker: View {
 /// or by the test runner.
 struct ShopCommitButton: View {
     @Environment(GameController.self) private var controller
-    @Environment(\.dismiss) private var dismiss
 
     let facts: ShopDealFacts
     let deal: ShopDeal
+    /// The sheet owns dismissal; a child inside its NavigationStack must
+    /// not resolve a different dismiss action and leave the market open.
+    let onCommitted: () -> Void
 
     var body: some View {
         let command = facts.command(for: deal)
@@ -1469,7 +1503,7 @@ struct ShopCommitButton: View {
                 // Dismiss on success, like every other sheet in the app —
                 // the payoff is the aircraft in the fleet, not this sheet.
                 action: {
-                    if controller.submit(command) == nil { dismiss() }
+                    if controller.submit(command) == nil { onCommitted() }
                 }
             ) {
                 Label(facts.ctaTitle(for: deal), systemImage: "signature")
@@ -1483,6 +1517,7 @@ struct ShopCommitButton: View {
             // deal, so "ae-market-lease" is this row whenever Lease is
             // picked — which it is by default.
             .accessibilityIdentifier("ae-market-\(facts.name(for: deal))")
+            .accessibilityLabel("\(facts.ctaTitle(for: deal)), \(facts.spec.manufacturer) \(facts.spec.model)")
             .disabled(blocked != nil)
             if let blocked {
                 Text(blocked.message)

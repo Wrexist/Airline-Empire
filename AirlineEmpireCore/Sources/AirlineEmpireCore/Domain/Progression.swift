@@ -136,6 +136,8 @@ public enum MissionKind: Equatable, Codable, Sendable {
     /// Carry `targetPassengers` on routes serving the boom region before
     /// the deadline.
     case boomRush(region: WorldRegion, targetPassengers: Int64)
+    case flightContract(targetFlights: Int64)
+    case passengerContract(targetPassengers: Int64)
 }
 
 public struct ProgressionTuning: Equatable, Codable, Sendable {
