@@ -436,6 +436,16 @@ for day in 1...days {
 
 // MARK: - Save (for the UI tests' late-game fixture)
 
+// Optional intra-day capture point, advanced by the normal simulation pipeline.
+// This never edits the state or changes the existing whole-day probe by default.
+if let flag = arguments.firstIndex(of: "--snapshot-hour") {
+    guard arguments.indices.contains(flag + 1),
+          let hour = Int(arguments[flag + 1]), (0...23).contains(hour) else {
+        fatalError("--snapshot-hour requires an integer from 0 through 23")
+    }
+    engine.advance(ticks: hour * 60 / Int(ScenarioBootstrap.standardTickMinutes))
+}
+
 if let flag = arguments.firstIndex(of: "--save"), arguments.indices.contains(flag + 1) {
     let url = URL(fileURLWithPath: arguments[flag + 1])
     try JSONSaveCodec().encode(engine.state).write(to: url)

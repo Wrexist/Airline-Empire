@@ -28,8 +28,8 @@ jobs:
       - name: Generate an earned campaign from the current simulation
         working-directory: AirlineEmpireCore
         run: |
-          swift run -c release ae-rival-probe 2039 1825 ARN LHR-CDG:0.88 --save ../AirlineEmpireApp/UITests/Fixtures/store-campaign.json > ../store-campaign-ledger.txt
-          tail -12 ../store-campaign-ledger.txt
+          swift run -c release ae-rival-probe 2039 1825 ARN LHR-CDG:0.88 --snapshot-hour 12 --save ../AirlineEmpireApp/UITests/Fixtures/store-campaign.json > ../store-campaign-ledger.txt
+          grep -E '^saved |^final:|^   player routes:' ../store-campaign-ledger.txt
       - name: Generate Xcode project
         working-directory: AirlineEmpireApp
         run: |

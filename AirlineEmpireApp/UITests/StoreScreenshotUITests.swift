@@ -5,8 +5,13 @@ import XCTest
 /// No balances, fleets, milestones or route figures are manufactured for the artwork.
 final class StoreScreenshotUITests: AEUITestCase {
     override var wantsSunriseWeek: Bool { false }
+    private var capturedShots = 0
 
     func testCaptureStoreStory() throws {
+        defer {
+            if capturedShots != 10 { capture("DIAGNOSTIC-incomplete-store-capture") }
+            XCTAssertEqual(capturedShots, 10, "Every storyboard source must be photographed.")
+        }
         let bundle = Bundle(for: StoreScreenshotUITests.self)
         let fixture = bundle.url(forResource: "store-campaign", withExtension: "json")
             ?? bundle.url(forResource: "rival-pressure-late-game", withExtension: "json")
@@ -15,9 +20,8 @@ final class StoreScreenshotUITests: AEUITestCase {
                                              "-AEUITestDarkAppearance"])
         XCTAssertNotNil(waitForTab("Home", timeout: 30))
         openTab("Home")
-        guard setSpeed("Sixteen times speed") else { return }
-        Thread.sleep(forTimeInterval: 8)
-        guard setSpeed("Pause") else { return }
+        // The workflow advances the real engine to noon before saving. Keeping
+        // it paused gives every screen the same moment, without timing UI taps.
         shot("01-network")
 
         guard openAirlineSection("Fleet") else { return }
@@ -60,24 +64,6 @@ final class StoreScreenshotUITests: AEUITestCase {
             .staticTexts["Ready for Apple Intelligence"]
         if systemBanner.exists { systemBanner.swipeUp(); Thread.sleep(forTimeInterval: 1) }
         capture("STORE-" + name)
-    }
-
-    /// These are idempotent selections. A system notification may intercept a tap.
-    private func setSpeed(_ label: String) -> Bool {
-        for _ in 0..<2 {
-            let button = app.buttons.matching(identifier: label).firstMatch
-            guard require(button, label), button.isHittable else { return false }
-            if button.isSelected { return true }
-            button.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-            let selected = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-                self.app.buttons.matching(identifier: label).firstMatch.isSelected
-            }, object: nil)
-            if XCTWaiter.wait(for: [selected], timeout: 8) == .completed { return true }
-            let banner = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-                .staticTexts["Ready for Apple Intelligence"]
-            if banner.exists { banner.swipeUp() }
-        }
-        XCTFail("The capture journey could not select \(label).")
-        return false
+        capturedShots += 1
     }
 }
