@@ -14,6 +14,11 @@ final class GameController {
     private(set) var catalog: ContentCatalog?
     private(set) var recentEvents: [SimEvent] = []
     private(set) var speed: SimSpeed = .paused
+    #if DEBUG
+    /// Test acknowledgement: distinguishes an OS-intercepted tap from a
+    /// request already delivered to the asynchronous simulation.
+    private(set) var manualAdvanceRequests = 0
+    #endif
     private(set) var lastRejection: CommandRejection?
     private(set) var loadedFromBackup: Int?
     /// The result of the most recent save, so "Save now" can say what
@@ -696,6 +701,9 @@ final class GameController {
 
     func advanceToNextMorning() {
         guard let session else { return }
+        #if DEBUG
+        manualAdvanceRequests += 1
+        #endif
         Task {
             await session.advanceToNextMorning()
             await self.refresh()
@@ -707,6 +715,9 @@ final class GameController {
     /// journeys' week control uses it (`-AEUITestSunriseWeek`).
     func advanceMornings(_ count: Int) {
         guard let session, count > 0 else { return }
+        #if DEBUG
+        manualAdvanceRequests += 1
+        #endif
         Task {
             for _ in 0..<count {
                 await session.advanceToNextMorning()

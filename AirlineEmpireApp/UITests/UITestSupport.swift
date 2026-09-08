@@ -992,8 +992,7 @@ class AEUITestCase: XCTestCase {
             while !arrived.exists, weekTaps < 90,
                   let today = currentHomeDate(),
                   Self.days(from: today, to: target) > 14 {
-                week.tap()
-                guard waitForAdvance(from: today, days: 7) else { return false }
+                guard advanceAndWait(week, from: today, days: 7) else { return false }
                 weekTaps += 1
             }
         }
@@ -1001,8 +1000,7 @@ class AEUITestCase: XCTestCase {
         var taps = 0
         while taps < cap, !arrived.exists {
             guard let today = currentHomeDate() else { return false }
-            sunrise.tap()
-            guard waitForAdvance(from: today, days: 1) else { return false }
+            guard advanceAndWait(sunrise, from: today, days: 1) else { return false }
             taps += 1
         }
         return arrived.exists
@@ -1011,14 +1009,52 @@ class AEUITestCase: XCTestCase {
     /// UI idleness does not mean the actor's asynchronous simulation task
     /// has published its result. Wait for the requested calendar movement
     /// before another tap, so advances cannot pile up and skip the target.
-    private func waitForAdvance(from previous: DateComponents, days: Int) -> Bool {
+    private func advanceAndWait(_ button: XCUIElement, from previous: DateComponents,
+                                days: Int) -> Bool {
+        _ = dismissSimulatorSetupBanner()
+        let requests = manualAdvanceRequestCount()
+        button.tap()
+        var interrupted = false
+        var retryAfter: Date?
         let moved = XCTNSPredicateExpectation(predicate: NSPredicate { [weak self] _, _ in
-            guard let current = self?.currentHomeDate() else { return false }
-            return Self.days(from: previous, to: current) >= days
+            guard let self else { return false }
+            if let current = self.currentHomeDate(), Self.days(from: previous, to: current) >= days {
+                return true
+            }
+            if let deadline = retryAfter, Date() >= deadline {
+                retryAfter = nil
+                // Never double-submit a slow simulation request. Retry only
+                // a known OS interruption whose tap did not reach the app.
+                if let requests, self.manualAdvanceRequestCount() == requests {
+                    button.tap()
+                }
+            } else if !interrupted, self.dismissSimulatorSetupBanner() {
+                interrupted = true
+                retryAfter = Date().addingTimeInterval(2)
+            }
+            return false
         }, object: nil)
         if XCTWaiter.wait(for: [moved], timeout: 20) == .completed { return true }
+        print("TIME advance failed: requested \(days) days; acknowledgements \(String(describing: requests)) -> \(String(describing: manualAdvanceRequestCount())); system interruption \(interrupted)")
         checkpoint("TIME-advance-did-not-complete")
         return false
+    }
+
+    private func manualAdvanceRequestCount() -> Int? {
+        let probe = app.descendants(matching: .any)["ae-time-advance-requests"]
+        guard probe.exists, let value = probe.value as? String else { return nil }
+        return Int(value)
+    }
+
+    @discardableResult
+    private func dismissSimulatorSetupBanner() -> Bool {
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let banner = springboard.descendants(matching: .any).matching(NSPredicate(
+            format: "label CONTAINS %@", "Ready for Apple Intelligence")).firstMatch
+        guard banner.exists else { return false }
+        checkpoint("SYSTEM-Apple-Intelligence-banner")
+        banner.swipeUp()
+        return true
     }
 
     /// The date Home shows, read back from the header ("2030-02-09").

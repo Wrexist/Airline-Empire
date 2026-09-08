@@ -71,6 +71,16 @@ struct RootView: View {
         // is the one place the difference is visible to automation. Gated on
         // a launch argument so neither players nor VoiceOver ever meet it.
         .overlay(alignment: .topLeading) {
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("-AEUITestSunriseWeek") {
+                Color.clear
+                    .frame(width: 2, height: 2)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityIdentifier("ae-time-advance-requests")
+                    .accessibilityValue(String(controller.manualAdvanceRequests))
+                    .allowsHitTesting(false)
+            }
+            #endif
             if ProcessInfo.processInfo.arguments.contains("-AEUITestProbes") {
                 Color.clear
                     .frame(width: 2, height: 2)

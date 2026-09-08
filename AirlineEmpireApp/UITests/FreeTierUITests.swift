@@ -15,15 +15,19 @@ final class FreeTierUITests: AEUITestCase {
         save.tap()
         let report = app.descendants(matching: .any)["ae-session-report"]
         XCTAssertTrue(report.waitForExistence(timeout: 15))
+        let caption = app.staticTexts["Since you opened this campaign"]
         let visible = XCTNSPredicateExpectation(predicate: NSPredicate { [self] _, _ in
-            !app.navigationBars["Settings"].exists && report.isHittable
+            !app.navigationBars["Settings"].exists && caption.isHittable
         }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [visible], timeout: 10), .completed,
-                       "Settings must dismiss before the saved-session recap is usable")
-        XCTAssertTrue(app.staticTexts["Since you opened this campaign"].exists)
-        XCTAssertFalse(app.alerts["Save"].exists, "A save alert must not cover the recap")
-        _ = waitUntilStill(report)
+        let visibilityResult = XCTWaiter.wait(for: [visible], timeout: 10)
+        _ = waitUntilStill(caption)
+        // Capture failures too. The card's layout container is not a hit
+        // target; visibility must be checked on the text the player reads.
         capture("FREE-saved-session-summary")
+        XCTAssertEqual(visibilityResult, .completed,
+                       "Settings must dismiss before the saved-session recap is usable")
+        XCTAssertTrue(caption.exists)
+        XCTAssertFalse(app.alerts["Save"].exists, "A save alert must not cover the recap")
     }
 
     func testFreePlayerReachesGameWithoutFoundingPaywall() {
