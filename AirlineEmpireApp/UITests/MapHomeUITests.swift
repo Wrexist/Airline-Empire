@@ -140,22 +140,38 @@ final class MapHomeUITests: AEUITestCase {
         if back.exists, back.isHittable { back.tap() }
         Thread.sleep(forTimeInterval: 0.6)
         openTab("Home")
-        // At 4x a short flight can take off and land between accessibility
-        // snapshots. Normal speed keeps its real airborne interval long
-        // enough to discover and pause, without manufacturing a flight.
-        let normal = app.buttons["Normal speed"]
-        guard require(normal, "the normal-speed control", timeout: 8),
-              normal.isHittable, waitUntilStill(normal) else {
-            XCTFail("The normal-speed control was not stable and hittable.")
-            return
+        // Assignments materialise into flights at the next daily boundary.
+        // At 1x, five real minutes reach only 20:00 on the founding day.
+        guard advanceMornings(until: "2030-01-02", cap: 1) else { return }
+
+        // Speed selection is idempotent. A recorded 26.2 synthetic Pause
+        // tap hit its reported frame but left 1x selected. Permit one
+        // state-checked retry, retain its screenshot, and still fail if the
+        // requested speed is not selected. Purchases and day advances do
+        // not use this retry because repeating them changes the game twice.
+        func selectSpeed(_ label: String) -> Bool {
+            for attempt in 1...2 {
+                let control = app.buttons.matching(identifier: label).firstMatch
+                guard require(control, "the \(label) control", timeout: 8),
+                      control.isHittable, waitUntilStill(control) else {
+                    XCTFail("The \(label) control was not stable and hittable.")
+                    return false
+                }
+                if control.isSelected { return true }
+                control.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+                let selected = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                    let current = self.app.buttons.matching(identifier: label).firstMatch
+                    return current.exists && current.isSelected
+                }, object: nil)
+                if XCTWaiter.wait(for: [selected], timeout: 8) == .completed { return true }
+                checkpoint("AE048-SPEED-\(label)-ATTEMPT-\(attempt)")
+            }
+            XCTFail("\(label) did not become selected after two idempotent attempts.")
+            return false
         }
-        normal.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        let running = XCTNSPredicateExpectation(
-            predicate: NSPredicate { _, _ in normal.exists && normal.isSelected }, object: nil)
-        guard XCTWaiter.wait(for: [running], timeout: 5) == .completed else {
-            XCTFail("Normal speed did not become selected.")
-            return
-        }
+        // Observe real departures at normal speed so a short flight remains
+        // airborne long enough for accessibility discovery and Pause.
+        guard selectSpeed("Normal speed") else { return }
 
         func value() -> String { map.value as? String ?? "" }
         func airborne() -> Int {
@@ -172,18 +188,7 @@ final class MapHomeUITests: AEUITestCase {
         // Pause before taking a screenshot or querying the canvas. On a
         // loaded runner those operations took five game hours at 16x, so
         // the flight landed between its discovery and the Pause tap.
-        let pause = app.buttons["Pause"]
-        guard require(pause, "the pause control", timeout: 5), pause.isHittable else {
-            XCTFail("The pause control was not hittable.")
-            return
-        }
-        pause.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        let stopped = XCTNSPredicateExpectation(
-            predicate: NSPredicate { _, _ in pause.exists && pause.isSelected }, object: nil)
-        guard XCTWaiter.wait(for: [stopped], timeout: 5) == .completed else {
-            XCTFail("Pause did not become selected before inspecting the flight.")
-            return
-        }
+        guard selectSpeed("Pause") else { return }
         Thread.sleep(forTimeInterval: 1)
         checkpoint("AE048-F0-map-with-the-network-running")
 
