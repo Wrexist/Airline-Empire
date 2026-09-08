@@ -219,12 +219,23 @@ class AEUITestCase: XCTestCase {
     /// Lease action, which was not true.
     @discardableResult
     func scrollUntil(_ element: XCUIElement, _ what: String,
-                     swipes: Int = 8) -> Bool {
-        for _ in 0..<swipes {
-            if element.exists { break }
-            app.swipeUp()
+                     swipes: Int = 8, in container: XCUIElement? = nil) -> Bool {
+        func reached() -> Bool {
+            element.exists && (container == nil || element.isHittable)
         }
-        guard element.exists else {
+        for _ in 0..<swipes {
+            if reached() { break }
+            if let container {
+                // A whole-iPad swipe can jump over a row inside a small
+                // sheet. Move a fraction of the actual list's viewport.
+                let start = container.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.75))
+                let end = container.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+                start.press(forDuration: 0.05, thenDragTo: end)
+            } else {
+                app.swipeUp()
+            }
+        }
+        guard reached() else {
             capture(Self.logPrefix + "MISSING-\(what)")
             XCTFail("\(what) never appeared, after scrolling \(swipes) times.")
             return false
@@ -992,7 +1003,7 @@ class AEUITestCase: XCTestCase {
             while !arrived.exists, weekTaps < 90,
                   let today = currentHomeDate(),
                   Self.days(from: today, to: target) > 14 {
-                guard advanceAndWait(week, from: today, days: 7) else { return false }
+                guard advanceAndWait("Advance seven mornings", from: today, days: 7) else { return false }
                 weekTaps += 1
             }
         }
@@ -1000,7 +1011,7 @@ class AEUITestCase: XCTestCase {
         var taps = 0
         while taps < cap, !arrived.exists {
             guard let today = currentHomeDate() else { return false }
-            guard advanceAndWait(sunrise, from: today, days: 1) else { return false }
+            guard advanceAndWait("Advance to next day", from: today, days: 1) else { return false }
             taps += 1
         }
         return arrived.exists
@@ -1009,11 +1020,21 @@ class AEUITestCase: XCTestCase {
     /// UI idleness does not mean the actor's asynchronous simulation task
     /// has published its result. Wait for the requested calendar movement
     /// before another tap, so advances cannot pile up and skip the target.
-    private func advanceAndWait(_ button: XCUIElement, from previous: DateComponents,
+    private func advanceAndWait(_ label: String, from previous: DateComponents,
                                 days: Int) -> Bool {
         _ = dismissSimulatorSetupBanner()
+        // SwiftUI replaces accessibility nodes as the world and milestone
+        // overlays update. Resolve the visible control for each interaction.
+        let button = labelledButton(label)
+        guard button.exists, button.isEnabled, button.isHittable,
+              waitUntilStill(button) else {
+            checkpoint("TIME-control-not-ready")
+            return false
+        }
         let requests = manualAdvanceRequestCount()
-        button.tap()
+        // The header is stationary. Use its freshly resolved centre rather
+        // than retaining an accessibility hit point across world updates.
+        button.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         var interrupted = false
         var retryAfter: Date?
         let moved = XCTNSPredicateExpectation(predicate: NSPredicate { [weak self] _, _ in
@@ -1026,7 +1047,7 @@ class AEUITestCase: XCTestCase {
                 // Never double-submit a slow simulation request. Retry only
                 // a known OS interruption whose tap did not reach the app.
                 if let requests, self.manualAdvanceRequestCount() == requests {
-                    button.tap()
+                    self.labelledButton(label).tap()
                 }
             } else if !interrupted, self.dismissSimulatorSetupBanner() {
                 interrupted = true
@@ -1036,6 +1057,7 @@ class AEUITestCase: XCTestCase {
         }, object: nil)
         if XCTWaiter.wait(for: [moved], timeout: 20) == .completed { return true }
         print("TIME advance failed: requested \(days) days; acknowledgements \(String(describing: requests)) -> \(String(describing: manualAdvanceRequestCount())); system interruption \(interrupted)")
+        print("TIME control: \(labelledButton(label).debugDescription)")
         checkpoint("TIME-advance-did-not-complete")
         return false
     }

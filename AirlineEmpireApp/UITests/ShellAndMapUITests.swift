@@ -147,7 +147,11 @@ final class ShellAndMapUITests: AEUITestCase {
         // empty". Reaching a control by scrolling is the stronger claim
         // anyway — it proves the list scrolls as well as that it drew.
         let muteToggle = app.switches["Mute everything"]
-        let settingsRendered = scrollUntil(muteToggle, "the Mute everything toggle in Settings")
+        let settingsList = app.descendants(matching: .any)
+            .matching(identifier: "ae-settings-list").firstMatch
+        guard require(settingsList, "the Settings list") else { return }
+        let settingsRendered = scrollUntil(muteToggle, "the Mute everything toggle in Settings",
+                                           in: settingsList)
         checkpoint("92-settings")
         XCTAssertTrue(settingsRendered, """
             The Settings sheet shows no "Mute everything" toggle. Either the \

@@ -91,6 +91,10 @@ Candidate `be00c89` passed **523 Core release tests**, including the unchanged r
 
 The `be00c89` arrival failure screenshot identifies an external obstruction: SpringBoard's “Ready for Apple Intelligence” banner covers the date and time controls. The journey now dismisses only that named simulator notification. A DEBUG-only acknowledgement records each manual-advance request synchronously, so recovery can retry an OS-intercepted tap only when the app did not receive it; a slow accepted request is never duplicated. Unknown missed taps and incorrect target dates still fail, with acknowledgement counts in the log. Earlier banner/header changes alone did not resolve this interruption.
 
+Candidate `bf2f0fd` passed Launch safety: **523 Core release tests and all 11 app/UI tests**. The saved-session screenshot was inspected and shows the visible recap followed by Continue. Full CI's iPad run then failed to reach Mute everything: its screenshot shows Settings scrolled to the bottom after whole-iPad swipes skipped the third section in the compact sheet. The Settings journey now scopes bounded drags to the actual list and requires the target to be hittable. This test correction and the remaining full matrix require validation.
+
+The `bf2f0fd` campaign/New York failures report unchanged manual-request acknowledgements (`2 → 2` and `1 → 1`) with no detected system banner: those taps never reached the app. The first-month statement journey passed. The long helper now resolves a fresh visible, enabled control for every action, waits for a stable frame, and taps that frame's centre instead of retaining an accessibility element across world/overlay updates. Unknown misses still fail; no generic retry was added. This remains a candidate harness correction until the full journeys pass.
+
 ## Release sequence
 
 1. Resolve every current-commit Launch safety and CI failure; review the screenshot artifacts.

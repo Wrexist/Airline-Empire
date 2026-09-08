@@ -1091,6 +1091,7 @@ struct SettingsView: View {
         }
         .aeScreenBackground()
         .navigationTitle("Settings")
+        .accessibilityIdentifier("ae-settings-list")
         .fileExporter(isPresented: $showingExport, document: exportDocument,
                       contentType: .data, defaultFilename: "AirlineEmpire-Backup.aesave") { result in
             if case .failure(let error) = result { exportFailure = error.localizedDescription }
