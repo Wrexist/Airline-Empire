@@ -1,0 +1,82 @@
+name: Store screenshots
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/store-screenshots.yml'
+      - 'AirlineEmpireApp/UITests/StoreScreenshotUITests.swift'
+      - 'scripts/export-store-captures.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: store-screenshots-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  capture:
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [iphone, ipad]
+    runs-on: macos-26
+    timeout-minutes: 35
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Generate an earned campaign from the current simulation
+        working-directory: AirlineEmpireCore
+        run: |
+          swift run -c release ae-rival-probe 2039 1825 ARN LHR-CDG:0.88 --save ../AirlineEmpireApp/UITests/Fixtures/store-campaign.json > ../store-campaign-ledger.txt
+          tail -12 ../store-campaign-ledger.txt
+      - name: Generate Xcode project
+        working-directory: AirlineEmpireApp
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Select the correct native display
+        id: sim
+        env:
+          CAPTURE_DEVICE: ${{ matrix.device }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+          devices = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devices', 'available', '--json']))['devices']
+          matches = [d for runtime, ds in devices.items() if runtime.endswith('iOS-26-2') for d in ds
+                     if d.get('isAvailable') and ((os.environ['CAPTURE_DEVICE'] == 'iphone' and d['name'] == 'iPhone 17 Pro Max')
+                     or (os.environ['CAPTURE_DEVICE'] == 'ipad' and 'iPad Pro' in d['name'] and '13-inch' in d['name']))]
+          if not matches: raise SystemExit('Required native display is not installed')
+          d = matches[0]
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f: f.write('id=' + d['udid'] + '\n')
+          print(d['name'], d['udid'])
+          subprocess.run(['xcrun', 'simctl', 'boot', d['udid']], check=True)
+          subprocess.run(['xcrun', 'simctl', 'bootstatus', d['udid'], '-b'], check=True)
+          subprocess.run(['xcrun', 'simctl', 'status_bar', d['udid'], 'override', '--time', '9:41', '--dataNetwork', 'wifi', '--wifiMode', 'active', '--wifiBars', '3', '--batteryState', 'charged', '--batteryLevel', '100'], check=True)
+          PY
+      - name: Capture real gameplay
+        working-directory: AirlineEmpireApp
+        run: |
+          set -o pipefail
+          xcodebuild test -project AirlineEmpire.xcodeproj -scheme AirlineEmpire \
+            -destination 'platform=iOS Simulator,id=${{ steps.sim.outputs.id }}' \
+            -parallel-testing-enabled NO -only-testing:AirlineEmpireUITests/StoreScreenshotUITests \
+            CODE_SIGNING_ALLOWED=NO -resultBundlePath StoreCaptures.xcresult 2>&1 | tee ../store-capture-log.txt
+      - name: Export full-resolution captures
+        run: python3 scripts/export-store-captures.py AirlineEmpireApp/StoreCaptures.xcresult captures/${{ matrix.device }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: store-captures-${{ matrix.device }}
+          path: |
+            captures/
+            store-campaign-ledger.txt
+            AirlineEmpireApp/UITests/Fixtures/store-campaign.json
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: store-capture-failure-${{ matrix.device }}
+          path: |
+            AirlineEmpireApp/StoreCaptures.xcresult
+            store-capture-log.txt
+          retention-days: 3
