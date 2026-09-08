@@ -1,0 +1,8 @@
+{
+  "name": "airline-empire-store-art",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Native-gameplay App Store artwork renderer",
+  "dependencies": { "sharp": "0.35.4" },
+  "scripts": { "verify": "node verify.cjs" }
+}

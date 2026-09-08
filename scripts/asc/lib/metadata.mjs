@@ -121,6 +121,13 @@ export const KNOWN_LOCALES = new Set([
  * relying on the names.
  */
 export const SCREENSHOT_SIZES = {
+  // Rechecked against Apple's screenshot specifications 2026-09-08.
+  APP_IPHONE_65: [
+    { width: 1242, height: 2688 },
+    { width: 2688, height: 1242 },
+    { width: 1284, height: 2778 },
+    { width: 2778, height: 1284 },
+  ],
   APP_IPHONE_67: [
     { width: 1320, height: 2868 }, // 6.9" portrait
     { width: 2868, height: 1320 }, // 6.9" landscape
@@ -676,4 +683,3 @@ export function checkAppIcon(repoRoot) {
   }
   return problems
 }
-

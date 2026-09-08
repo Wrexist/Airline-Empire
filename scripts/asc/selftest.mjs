@@ -26,7 +26,7 @@ import { fileURLToPath } from 'node:url'
 import { Buffer } from 'node:buffer'
 
 import { decodePrivateKey, credentialsFromEnv, mintToken, AppStoreConnect, AscError } from './lib/asc.mjs'
-import { loadStore, validateStore, checkBundleIdConsistency, checkAppIcon, inspectPng, LIMITS } from './lib/metadata.mjs'
+import { loadStore, validateStore, checkBundleIdConsistency, checkAppIcon, inspectPng, LIMITS, SCREENSHOT_SIZES } from './lib/metadata.mjs'
 import { checkBundleConfig } from './check-bundle-config.mjs'
 import {
   membershipRefusal,
@@ -39,6 +39,11 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 let passed = 0
 const failures = []
+
+test('6.5-inch portrait artwork is an accepted screenshot canvas', () => {
+  assert(SCREENSHOT_SIZES.APP_IPHONE_65.some(s => s.width === 1242 && s.height === 2688),
+    'The additional iPhone screenshot export must validate before upload')
+})
 
 function test(name, body) {
   try {

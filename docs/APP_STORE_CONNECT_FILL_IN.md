@@ -380,8 +380,8 @@ https://wrexist.github.io/Airline-Empire/
 
 | App Store Connect tab | Canvas (px) | Status |
 |---|---|---|
-| iPhone 6.9" | 1320 × 2868 | **missing — blocks submission** |
-| iPad 13" | 2064 × 2752 | **missing — blocks submission** |
+| iPhone 6.9" | 1320 × 2868 | in `store/screenshots/` |
+| iPad 13" | 2064 × 2752 | in `store/screenshots/` |
 
 Portrait, PNG, **no alpha channel**, at most ten per size. The six-shot
 storyboard and the captions are `ASO.md` §5; the upload can be done for you

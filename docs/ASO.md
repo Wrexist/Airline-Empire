@@ -155,9 +155,9 @@ traffic.
 
 ## 5 · The screenshots
 
-Six shots, portrait, in a fixed order. Two canvases are required — 6.9-inch
-iPhone (1320×2868) and 13-inch iPad (2064×2752) — because the app ships for
-both device families; Apple scales every other size down from those. The
+Six shots, portrait, in a fixed order. Native 6.9-inch iPhone (1320×2868)
+and 13-inch iPad (2064×2752) artwork is supplied, with an additional 6.5-inch
+iPhone export (1242×2688). Both English locales share the same artwork. The
 validator checks the dimensions and rejects any image with an alpha channel,
 which is the most common silent failure in a screenshot pipeline.
 
@@ -165,28 +165,30 @@ which is the most common silent failure in a screenshot pipeline.
 without a tap, and most people never scroll the gallery. Both must work as a
 thumbnail.
 
-| # | Screen | Caption (≤ 6 words) | What it has to prove |
+| # | Screen | Player benefit | What it proves |
 |---|---|---|---|
-| 1 | Map, mid-game network | "Build a network that is yours" | This is a *map* game. The single strongest differentiator against the spreadsheet-shaped competition, and the most beautiful screen. |
-| 2 | Route detail with the profit breakdown open | "Every number, explained" | Depth *and* legibility — the explainability pillar is what separates this from a tap-to-earn game. |
-| 3 | Fleet acquisition | "Fourteen aircraft. New, used or leased." | Progression and scale: there is a lot to buy. |
-| 4 | Finance, month closed | "Read the business, not a menu" | It is a real economic model. |
-| 5 | World feed with a rival's move | "A world that moves without you" | It is not solitaire against a spreadsheet. |
-| 6 | Dashboard with the daily digest | "No ads. No timers. Free to start." | The monetisation promise, stated last and plainly. It has to survive being read next to a paywall, so it claims only what is true in both tiers (`MONETIZATION.md` §1). |
+| 1 | Live network map | The world. Your network. | Choose among 94 real airports; build connections and watch flights. |
+| 2 | Growing fleet | From one plane to a fleet. | 14 aircraft types; new, used or leased acquisition. |
+| 3 | Stockholm–Istanbul route | Make every route count. | Real demand, load, frequency and earnings; decisions have measurable consequences. |
+| 4 | Finance and monthly profit chart | Turn smart moves into profit. | Actual simulation results and visible operating costs, not fabricated success. |
+| 5 | Competitor cards | Build an airline rivals notice. | Five rival personalities with different approaches. |
+| 6 | Progression and contracts | Your next milestone awaits. | Five eras, optional contracts and a long-term startup-to-empire arc. |
 
-Rules for producing them (they need a Mac and a simulator, so they do not
-exist yet):
+Native sources and finished exports are now in `store/artwork/` and
+`store/screenshots/`. See the artwork README for the passing simulator run,
+source hashes, editable renderer, font requirement and reproduction steps.
+Rules for future revisions:
 
-- Capture a **real mid-game world**, never a fresh save. Three routes and
-  £2,000 in the bank reads as a demo; forty routes across two continents reads
-  as a game worth £5.
+- Capture a **real mid-game world** using ordinary simulation commands. Never
+  manufacture cash, route statistics, fleets or achievements for the artwork.
 - Use the **same seed and the same airline name** across all six so it is one
   story, not six unrelated screens.
-- Caption text at the **top**, in the app's own type, at a size legible in the
+- Caption text at the **top**, in clean editorial type, at a size legible in the
   gallery thumbnail — the failure mode is 12-point body copy inside a device
   frame nobody can read.
 - No fake UI, no invented numbers, no screens the app does not have. A
   screenshot is a claim.
+- Identify Pro gameplay; never imply the full catalogue is unlocked for free.
 - PNG, no alpha, no rounded-corner mask of its own.
 
 `store/screenshots/<locale>/<DISPLAY_TYPE>/01-map.png` is where they go; the

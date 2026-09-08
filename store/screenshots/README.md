@@ -1,6 +1,7 @@
 # Screenshots
 
-Empty, and blocking a submission. They need a simulator, and therefore a Mac.
+Six benefit-led designs, based on genuine iPhone and iPad gameplay from one
+simulated campaign. English artwork is supplied for both en-US and en-GB.
 
 ## Layout
 
@@ -15,9 +16,10 @@ stale that way. The two required today, from `config.json`:
 | Directory | Canvas | Device |
 |---|---|---|
 | `APP_IPHONE_67` | 1320×2868 (or 1290×2796) | iPhone 6.9" / 6.7" |
+| `APP_IPHONE_65` | 1242×2688 | iPhone 6.5" (additional export) |
 | `APP_IPAD_PRO_3GEN_129` | 2064×2752 (or 2048×2732) | iPad 13" / 12.9" |
 
-Sizes read off Apple's screenshot specification on 2026-08-07. Apple revises
+Sizes read off Apple's screenshot specification on 2026-09-08. Apple revises
 them most years and a guessed dimension is a rejected submission — re-verify
 before the first upload.
 
@@ -32,5 +34,12 @@ product page, so the numeric prefix is the storyboard.
 - Caption text legible at gallery-thumbnail size.
 - Nothing on screen the app cannot actually do.
 
+The artwork identifies Pro gameplay. Numbers in UI are actual simulation
+results, not a promise of what every player will earn. UI is cropped and
+uniformly scaled from native captures, never regenerated. Upload only the six
+ordered PNGs per slot, not the overview sheets or manifests. The 18 unique
+exports are reused for the two English locales. No Apple upload was performed.
+
+See [artwork provenance and reproduction](../artwork/README.md).
 The six shots, what each one has to prove, and the captions:
 [`docs/ASO.md`](../../docs/ASO.md) §5.

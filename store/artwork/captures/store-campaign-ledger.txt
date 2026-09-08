@@ -1,0 +1,735 @@
+== Rival pressure probe · seed 2039 · 1825 days · entrepreneur · home ARN ==
+DAY  DATE       | RIVAL            | ACTION                                               | PLAYER IMPACT                                  | CURRENT VISIBILITY
+D001 2030-01-02 | TerraLink | OPENED CGK-DPS elsewhere @$113 2x | none | FILTERED
+D002 2030-01-03 | Crown Meridian | OPENED HND-TPE elsewhere @$226 2x | none | FILTERED
+D003 2030-01-04 | SwiftJet | OPENED CDG-ZRH elsewhere @$75 2x | none | FILTERED
+D004 2030-01-05 | Aurora Atlantic | OPENED LHR-BER at your airport @$146 2x | none | FILTERED
+D005 2030-01-06 | PacificBlue | OPENED IST-BER elsewhere @$152 2x | none | FILTERED
+D008 2030-01-09 | TerraLink | FREQUENCY UP CGK-DPS 2x→3x | none | NO EVENT
+D008 2030-01-09 | TerraLink | FLEET GREW 1→2 | none directly | FEED
+D009 2030-01-10 | Crown Meridian | FREQUENCY UP HND-TPE 2x→3x | none | NO EVENT
+D009 2030-01-10 | Crown Meridian | FLEET GREW 1→2 | none directly | FEED
+D010 2030-01-11 | SwiftJet | FLEET GREW 1→2 | none directly | FILTERED
+D011 2030-01-12 | Aurora Atlantic | FREQUENCY UP LHR-BER 2x→3x | none | NO EVENT
+D011 2030-01-12 | Aurora Atlantic | FLEET GREW 1→2 | none directly | FILTERED
+D012 2030-01-13 | PacificBlue | FLEET GREW 1→2 | none directly | FILTERED
+D015 2030-01-16 | TerraLink | OPENED CGK-BKK elsewhere @$219 2x | none | FILTERED
+D017 2030-01-18 | SwiftJet | OPENED CDG-NCE elsewhere @$94 2x | none | FILTERED
+D018 2030-01-19 | Aurora Atlantic | OPENED LHR-MUC at your airport @$144 2x | none | FILTERED
+D019 2030-01-20 | PacificBlue | OPENED IST-MXP elsewhere @$151 2x | none | FILTERED
+D022 2030-01-23 | TerraLink | FREQUENCY UP CGK-DPS 3x→4x | none | NO EVENT
+D022 2030-01-23 | TerraLink | FREQUENCY UP CGK-BKK 2x→3x | none | NO EVENT
+D022 2030-01-23 | TerraLink | FLEET GREW 2→3 | none directly | FILTERED
+D023 2030-01-24 | Crown Meridian | FREQUENCY UP HND-TPE 3x→4x | none | NO EVENT
+D023 2030-01-24 | Crown Meridian | FLEET GREW 2→3 | none directly | FILTERED
+D024 2030-01-25 | SwiftJet | FREQUENCY UP CDG-ZRH 2x→3x | none | NO EVENT
+D024 2030-01-25 | SwiftJet | FLEET GREW 2→3 | none directly | FILTERED
+D025 2030-01-26 | Aurora Atlantic | FREQUENCY UP LHR-BER 3x→4x | none | NO EVENT
+D025 2030-01-26 | Aurora Atlantic | FREQUENCY UP LHR-MUC 2x→3x | none | NO EVENT
+D026 2030-01-27 | PacificBlue | FREQUENCY UP IST-BER 2x→3x | none | NO EVENT
+D026 2030-01-27 | PacificBlue | FLEET GREW 2→3 | none directly | FILTERED
+D030 2030-01-31 | Crown Meridian | OPENED HND-KIX elsewhere @$75 2x | none | FILTERED
+FIGHT day 31: opened LHR-CDG at $57 (ref $65) → applied
+D031 2030-02-01 | SwiftJet | OPENED CDG-MUC at your airport @$93 2x | none | FILTERED
+MONTH 2030-02 | player routes 5 fleet 5 cash $8.3M era startup | rivals alive 5 routes 11 | contested 0
+D032 2030-02-02 | Aurora Atlantic | FREQUENCY UP LHR-BER 4x→5x | none | NO EVENT
+D032 2030-02-02 | Aurora Atlantic | FREQUENCY UP LHR-MUC 3x→4x | none | NO EVENT
+D033 2030-02-03 | PacificBlue | OPENED IST-MUC at your airport @$142 2x | none | FILTERED
+FIGHT D035 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$15k · you $57/2x vs
+D036 2030-02-06 | TerraLink | FREQUENCY UP CGK-DPS 4x→5x | none | NO EVENT
+D036 2030-02-06 | TerraLink | FREQUENCY UP CGK-BKK 3x→4x | none | NO EVENT
+D036 2030-02-06 | TerraLink | FLEET GREW 3→4 | none directly | FILTERED
+D037 2030-02-07 | Crown Meridian | FREQUENCY UP HND-TPE 4x→5x | none | NO EVENT
+D037 2030-02-07 | Crown Meridian | FREQUENCY UP HND-KIX 2x→3x | none | NO EVENT
+D037 2030-02-07 | Crown Meridian | FLEET GREW 3→4 | none directly | FILTERED
+D038 2030-02-08 | SwiftJet | FREQUENCY UP CDG-ZRH 3x→4x | none | NO EVENT
+D038 2030-02-08 | SwiftJet | FREQUENCY UP CDG-NCE 2x→3x | none | NO EVENT
+D039 2030-02-09 | Aurora Atlantic | FREQUENCY UP LHR-BER 5x→6x | none | NO EVENT
+D039 2030-02-09 | Aurora Atlantic | FREQUENCY UP LHR-MUC 4x→5x | none | NO EVENT
+D040 2030-02-10 | PacificBlue | FREQUENCY UP IST-BER 3x→4x | none | NO EVENT
+D040 2030-02-10 | PacificBlue | FREQUENCY UP IST-MXP 2x→3x | none | NO EVENT
+D040 2030-02-10 | PacificBlue | FLEET GREW 3→4 | none directly | FILTERED
+FIGHT D042 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$39k · you $57/2x vs
+D045 2030-02-15 | SwiftJet | FREQUENCY UP CDG-ZRH 4x→5x | none | NO EVENT
+D045 2030-02-15 | SwiftJet | FREQUENCY UP CDG-NCE 3x→4x | none | NO EVENT
+D045 2030-02-15 | SwiftJet | FREQUENCY UP CDG-MUC 2x→3x | none | NO EVENT
+D046 2030-02-16 | Aurora Atlantic | FREQUENCY UP LHR-BER 6x→7x | none | NO EVENT
+D046 2030-02-16 | Aurora Atlantic | FREQUENCY UP LHR-MUC 5x→6x | none | NO EVENT
+FIGHT D049 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$63k · you $57/2x vs
+D050 2030-02-20 | TerraLink | FREQUENCY UP CGK-DPS 5x→6x | none | NO EVENT
+D050 2030-02-20 | TerraLink | FREQUENCY UP CGK-BKK 4x→5x | none | NO EVENT
+D050 2030-02-20 | TerraLink | FLEET GREW 4→5 | none directly | FILTERED
+D051 2030-02-21 | Crown Meridian | FREQUENCY UP HND-TPE 5x→6x | none | NO EVENT
+D051 2030-02-21 | Crown Meridian | FREQUENCY UP HND-KIX 3x→4x | none | NO EVENT
+D051 2030-02-21 | Crown Meridian | FLEET GREW 4→5 | none directly | FILTERED
+D052 2030-02-22 | SwiftJet | FREQUENCY UP CDG-ZRH 5x→6x | none | NO EVENT
+D052 2030-02-22 | SwiftJet | FREQUENCY UP CDG-NCE 4x→5x | none | NO EVENT
+D052 2030-02-22 | SwiftJet | FREQUENCY UP CDG-MUC 3x→4x | none | NO EVENT
+D053 2030-02-23 | Aurora Atlantic | FREQUENCY UP LHR-BER 7x→8x | none | NO EVENT
+D053 2030-02-23 | Aurora Atlantic | FREQUENCY UP LHR-MUC 6x→7x | none | NO EVENT
+D054 2030-02-24 | PacificBlue | FREQUENCY UP IST-BER 4x→5x | none | NO EVENT
+D054 2030-02-24 | PacificBlue | FREQUENCY UP IST-MXP 3x→4x | none | NO EVENT
+D054 2030-02-24 | PacificBlue | FREQUENCY UP IST-MUC 2x→3x | none | NO EVENT
+D054 2030-02-24 | PacificBlue | FLEET GREW 4→5 | none directly | FILTERED
+FIGHT D056 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$86k · you $57/2x vs
+D058 2030-02-28 | Crown Meridian | OPENED HND-PEK elsewhere @$224 2x | none | FILTERED
+D059 2030-03-01 | SwiftJet | FREQUENCY UP CDG-ZRH 6x→7x | none | NO EVENT
+D059 2030-03-01 | SwiftJet | FREQUENCY UP CDG-NCE 5x→6x | none | NO EVENT
+D059 2030-03-01 | SwiftJet | FREQUENCY UP CDG-MUC 4x→5x | none | NO EVENT
+MONTH 2030-03 | player routes 5 fleet 5 cash $12.5M era regional | rivals alive 5 routes 13 | contested 0
+D060 2030-03-02 | Aurora Atlantic | FREQUENCY UP LHR-BER 8x→9x | none | NO EVENT
+D060 2030-03-02 | Aurora Atlantic | FREQUENCY UP LHR-MUC 7x→8x | none | NO EVENT
+FIGHT D063 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$13k · you $57/2x vs
+D064 2030-03-06 | TerraLink | FREQUENCY UP CGK-DPS 6x→7x | none | NO EVENT
+D064 2030-03-06 | TerraLink | FREQUENCY UP CGK-BKK 5x→6x | none | NO EVENT
+D064 2030-03-06 | TerraLink | FLEET GREW 5→6 | none directly | FILTERED
+D065 2030-03-07 | Crown Meridian | FREQUENCY UP HND-TPE 6x→7x | none | NO EVENT
+D065 2030-03-07 | Crown Meridian | FREQUENCY UP HND-KIX 4x→5x | none | NO EVENT
+D065 2030-03-07 | Crown Meridian | FREQUENCY UP HND-PEK 2x→3x | none | NO EVENT
+D066 2030-03-08 | SwiftJet | FREQUENCY UP CDG-ZRH 7x→8x | none | NO EVENT
+D066 2030-03-08 | SwiftJet | FREQUENCY UP CDG-NCE 6x→7x | none | NO EVENT
+D066 2030-03-08 | SwiftJet | FREQUENCY UP CDG-MUC 5x→6x | none | NO EVENT
+D067 2030-03-09 | Aurora Atlantic | FREQUENCY UP LHR-BER 9x→10x | none | NO EVENT
+D067 2030-03-09 | Aurora Atlantic | FREQUENCY UP LHR-MUC 8x→9x | none | NO EVENT
+D068 2030-03-10 | PacificBlue | FREQUENCY UP IST-BER 5x→6x | none | NO EVENT
+D068 2030-03-10 | PacificBlue | FREQUENCY UP IST-MXP 4x→5x | none | NO EVENT
+D068 2030-03-10 | PacificBlue | FREQUENCY UP IST-MUC 3x→4x | none | NO EVENT
+FIGHT D070 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$35k · you $57/2x vs
+D071 2030-03-13 | TerraLink | OPENED CGK-SIN elsewhere @$105 2x | none | FILTERED
+D072 2030-03-14 | Crown Meridian | FREQUENCY UP HND-TPE 7x→8x | none | NO EVENT
+D072 2030-03-14 | Crown Meridian | FREQUENCY UP HND-KIX 5x→6x | none | NO EVENT
+D072 2030-03-14 | Crown Meridian | FREQUENCY UP HND-PEK 3x→4x | none | NO EVENT
+D073 2030-03-15 | SwiftJet | FREQUENCY UP CDG-ZRH 8x→9x | none | NO EVENT
+D073 2030-03-15 | SwiftJet | FREQUENCY UP CDG-NCE 7x→8x | none | NO EVENT
+D073 2030-03-15 | SwiftJet | FREQUENCY UP CDG-MUC 6x→7x | none | NO EVENT
+D074 2030-03-16 | Aurora Atlantic | FREQUENCY UP LHR-BER 10x→11x | none | NO EVENT
+D074 2030-03-16 | Aurora Atlantic | FREQUENCY UP LHR-MUC 9x→10x | none | NO EVENT
+D075 2030-03-17 | PacificBlue | FREQUENCY UP IST-BER 6x→7x | none | NO EVENT
+D075 2030-03-17 | PacificBlue | FREQUENCY UP IST-MXP 5x→6x | none | NO EVENT
+D075 2030-03-17 | PacificBlue | FREQUENCY UP IST-MUC 4x→5x | none | NO EVENT
+FIGHT D077 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$59k · you $57/2x vs
+D078 2030-03-20 | TerraLink | FREQUENCY UP CGK-DPS 7x→8x | none | NO EVENT
+D078 2030-03-20 | TerraLink | FREQUENCY UP CGK-BKK 6x→7x | none | NO EVENT
+D078 2030-03-20 | TerraLink | FREQUENCY UP CGK-SIN 2x→3x | none | NO EVENT
+D078 2030-03-20 | TerraLink | FLEET GREW 6→7 | none directly | FILTERED
+D079 2030-03-21 | Crown Meridian | FREQUENCY UP HND-TPE 8x→9x | none | NO EVENT
+D079 2030-03-21 | Crown Meridian | FREQUENCY UP HND-KIX 6x→7x | none | NO EVENT
+D079 2030-03-21 | Crown Meridian | FREQUENCY UP HND-PEK 4x→5x | none | NO EVENT
+D080 2030-03-22 | SwiftJet | FREQUENCY UP CDG-ZRH 9x→10x | none | NO EVENT
+D080 2030-03-22 | SwiftJet | FREQUENCY UP CDG-NCE 8x→9x | none | NO EVENT
+D080 2030-03-22 | SwiftJet | FREQUENCY UP CDG-MUC 7x→8x | none | NO EVENT
+D081 2030-03-23 | Aurora Atlantic | FREQUENCY UP LHR-BER 11x→12x | none | NO EVENT
+D081 2030-03-23 | Aurora Atlantic | FREQUENCY UP LHR-MUC 10x→11x | none | NO EVENT
+D082 2030-03-24 | PacificBlue | FREQUENCY UP IST-BER 7x→8x | none | NO EVENT
+D082 2030-03-24 | PacificBlue | FREQUENCY UP IST-MXP 6x→7x | none | NO EVENT
+D082 2030-03-24 | PacificBlue | FREQUENCY UP IST-MUC 5x→6x | none | NO EVENT
+FIGHT D084 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$83k · you $57/2x vs
+D086 2030-03-28 | Crown Meridian | FREQUENCY UP HND-TPE 9x→10x | none | NO EVENT
+D086 2030-03-28 | Crown Meridian | FREQUENCY UP HND-KIX 7x→8x | none | NO EVENT
+D086 2030-03-28 | Crown Meridian | FREQUENCY UP HND-PEK 5x→6x | none | NO EVENT
+D087 2030-03-29 | SwiftJet | FREQUENCY UP CDG-ZRH 10x→11x | none | NO EVENT
+D087 2030-03-29 | SwiftJet | FREQUENCY UP CDG-NCE 9x→10x | none | NO EVENT
+D087 2030-03-29 | SwiftJet | FREQUENCY UP CDG-MUC 8x→9x | none | NO EVENT
+D088 2030-03-30 | Aurora Atlantic | FREQUENCY UP LHR-BER 12x→13x | none | NO EVENT
+D088 2030-03-30 | Aurora Atlantic | FREQUENCY UP LHR-MUC 11x→12x | none | NO EVENT
+D089 2030-03-31 | PacificBlue | FREQUENCY UP IST-BER 8x→9x | none | NO EVENT
+D089 2030-03-31 | PacificBlue | FREQUENCY UP IST-MXP 7x→8x | none | NO EVENT
+D089 2030-03-31 | PacificBlue | FREQUENCY UP IST-MUC 6x→7x | none | NO EVENT
+MONTH 2030-04 | player routes 5 fleet 5 cash $16.4M era regional | rivals alive 5 routes 14 | contested 0
+FIGHT D091 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$3,386 · you $57/2x vs
+D092 2030-04-03 | TerraLink | FREQUENCY UP CGK-DPS 8x→9x | none | NO EVENT
+D092 2030-04-03 | TerraLink | FREQUENCY UP CGK-BKK 7x→8x | none | NO EVENT
+D092 2030-04-03 | TerraLink | FREQUENCY UP CGK-SIN 3x→4x | none | NO EVENT
+D092 2030-04-03 | TerraLink | FLEET GREW 7→8 | none directly | FILTERED
+D093 2030-04-04 | Crown Meridian | FREQUENCY UP HND-TPE 10x→11x | none | NO EVENT
+D093 2030-04-04 | Crown Meridian | FREQUENCY UP HND-KIX 8x→9x | none | NO EVENT
+D093 2030-04-04 | Crown Meridian | FREQUENCY UP HND-PEK 6x→7x | none | NO EVENT
+D094 2030-04-05 | SwiftJet | FREQUENCY UP CDG-ZRH 11x→12x | none | NO EVENT
+D094 2030-04-05 | SwiftJet | FREQUENCY UP CDG-NCE 10x→11x | none | NO EVENT
+D094 2030-04-05 | SwiftJet | FREQUENCY UP CDG-MUC 9x→10x | none | NO EVENT
+D095 2030-04-06 | Aurora Atlantic | FREQUENCY UP LHR-BER 13x→14x | none | NO EVENT
+D095 2030-04-06 | Aurora Atlantic | FREQUENCY UP LHR-MUC 12x→13x | none | NO EVENT
+D096 2030-04-07 | PacificBlue | FREQUENCY UP IST-BER 9x→10x | none | NO EVENT
+D096 2030-04-07 | PacificBlue | FREQUENCY UP IST-MXP 8x→9x | none | NO EVENT
+D096 2030-04-07 | PacificBlue | FREQUENCY UP IST-MUC 7x→8x | none | NO EVENT
+FIGHT D098 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$27k · you $57/2x vs
+D100 2030-04-11 | Crown Meridian | FREQUENCY UP HND-TPE 11x→12x | none | NO EVENT
+D100 2030-04-11 | Crown Meridian | FREQUENCY UP HND-KIX 9x→10x | none | NO EVENT
+D100 2030-04-11 | Crown Meridian | FREQUENCY UP HND-PEK 7x→8x | none | NO EVENT
+D101 2030-04-12 | SwiftJet | FREQUENCY UP CDG-ZRH 12x→13x | none | NO EVENT
+D101 2030-04-12 | SwiftJet | FREQUENCY UP CDG-NCE 11x→12x | none | NO EVENT
+D101 2030-04-12 | SwiftJet | FREQUENCY UP CDG-MUC 10x→11x | none | NO EVENT
+D102 2030-04-13 | Aurora Atlantic | FREQUENCY UP LHR-BER 14x→15x | none | NO EVENT
+D102 2030-04-13 | Aurora Atlantic | FREQUENCY UP LHR-MUC 13x→14x | none | NO EVENT
+D103 2030-04-14 | PacificBlue | FREQUENCY UP IST-BER 10x→11x | none | NO EVENT
+D103 2030-04-14 | PacificBlue | FREQUENCY UP IST-MXP 9x→10x | none | NO EVENT
+D103 2030-04-14 | PacificBlue | FREQUENCY UP IST-MUC 8x→9x | none | NO EVENT
+FIGHT D105 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$51k · you $57/2x vs
+D106 2030-04-17 | TerraLink | FREQUENCY UP CGK-DPS 9x→10x | none | NO EVENT
+D106 2030-04-17 | TerraLink | FREQUENCY UP CGK-BKK 8x→9x | none | NO EVENT
+D106 2030-04-17 | TerraLink | FREQUENCY UP CGK-SIN 4x→5x | none | NO EVENT
+D106 2030-04-17 | TerraLink | FLEET GREW 8→9 | none directly | FILTERED
+D107 2030-04-18 | Crown Meridian | FREQUENCY UP HND-TPE 12x→13x | none | NO EVENT
+D107 2030-04-18 | Crown Meridian | FREQUENCY UP HND-KIX 10x→11x | none | NO EVENT
+D107 2030-04-18 | Crown Meridian | FREQUENCY UP HND-PEK 8x→9x | none | NO EVENT
+D108 2030-04-19 | SwiftJet | FREQUENCY UP CDG-ZRH 13x→14x | none | NO EVENT
+D108 2030-04-19 | SwiftJet | FREQUENCY UP CDG-NCE 12x→13x | none | NO EVENT
+D108 2030-04-19 | SwiftJet | FREQUENCY UP CDG-MUC 11x→12x | none | NO EVENT
+D109 2030-04-20 | Aurora Atlantic | FREQUENCY UP LHR-BER 15x→16x | none | NO EVENT
+D109 2030-04-20 | Aurora Atlantic | FREQUENCY UP LHR-MUC 14x→15x | none | NO EVENT
+D110 2030-04-21 | PacificBlue | FREQUENCY UP IST-BER 11x→12x | none | NO EVENT
+D110 2030-04-21 | PacificBlue | FREQUENCY UP IST-MXP 10x→11x | none | NO EVENT
+D110 2030-04-21 | PacificBlue | FREQUENCY UP IST-MUC 9x→10x | none | NO EVENT
+FIGHT D112 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$74k · you $57/2x vs
+D114 2030-04-25 | Crown Meridian | FREQUENCY UP HND-TPE 13x→14x | none | NO EVENT
+D114 2030-04-25 | Crown Meridian | FREQUENCY UP HND-KIX 11x→12x | none | NO EVENT
+D114 2030-04-25 | Crown Meridian | FREQUENCY UP HND-PEK 9x→10x | none | NO EVENT
+D115 2030-04-26 | SwiftJet | FREQUENCY UP CDG-ZRH 14x→15x | none | NO EVENT
+D115 2030-04-26 | SwiftJet | FREQUENCY UP CDG-NCE 13x→14x | none | NO EVENT
+D115 2030-04-26 | SwiftJet | FREQUENCY UP CDG-MUC 12x→13x | none | NO EVENT
+D116 2030-04-27 | Aurora Atlantic | FREQUENCY UP LHR-BER 16x→17x | none | NO EVENT
+D116 2030-04-27 | Aurora Atlantic | FREQUENCY UP LHR-MUC 15x→16x | none | NO EVENT
+D117 2030-04-28 | PacificBlue | FREQUENCY UP IST-BER 12x→13x | none | NO EVENT
+D117 2030-04-28 | PacificBlue | FREQUENCY UP IST-MXP 11x→12x | none | NO EVENT
+D117 2030-04-28 | PacificBlue | FREQUENCY UP IST-MUC 10x→11x | none | NO EVENT
+FIGHT D119 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$97k · you $57/2x vs
+D120 2030-05-01 | TerraLink | FREQUENCY UP CGK-DPS 10x→11x | none | NO EVENT
+D120 2030-05-01 | TerraLink | FREQUENCY UP CGK-BKK 9x→10x | none | NO EVENT
+D120 2030-05-01 | TerraLink | FREQUENCY UP CGK-SIN 5x→6x | none | NO EVENT
+D120 2030-05-01 | TerraLink | FLEET GREW 9→10 | none directly | FILTERED
+MONTH 2030-05 | player routes 5 fleet 5 cash $21.4M era regional | rivals alive 5 routes 14 | contested 0
+D121 2030-05-02 | Crown Meridian | FREQUENCY UP HND-TPE 14x→15x | none | NO EVENT
+D121 2030-05-02 | Crown Meridian | FREQUENCY UP HND-KIX 12x→13x | none | NO EVENT
+D121 2030-05-02 | Crown Meridian | FREQUENCY UP HND-PEK 10x→11x | none | NO EVENT
+D122 2030-05-03 | SwiftJet | FREQUENCY UP CDG-ZRH 15x→16x | none | NO EVENT
+D122 2030-05-03 | SwiftJet | FREQUENCY UP CDG-NCE 14x→15x | none | NO EVENT
+D122 2030-05-03 | SwiftJet | FREQUENCY UP CDG-MUC 13x→14x | none | NO EVENT
+D123 2030-05-04 | Aurora Atlantic | FREQUENCY UP LHR-BER 17x→18x | none | NO EVENT
+D123 2030-05-04 | Aurora Atlantic | FREQUENCY UP LHR-MUC 16x→17x | none | NO EVENT
+D124 2030-05-05 | PacificBlue | FREQUENCY UP IST-BER 13x→14x | none | NO EVENT
+D124 2030-05-05 | PacificBlue | FREQUENCY UP IST-MXP 12x→13x | none | NO EVENT
+D124 2030-05-05 | PacificBlue | FREQUENCY UP IST-MUC 11x→12x | none | NO EVENT
+FIGHT D126 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$20k · you $57/2x vs
+D128 2030-05-09 | Crown Meridian | FREQUENCY UP HND-TPE 15x→16x | none | NO EVENT
+D128 2030-05-09 | Crown Meridian | FREQUENCY UP HND-KIX 13x→14x | none | NO EVENT
+D128 2030-05-09 | Crown Meridian | FREQUENCY UP HND-PEK 11x→12x | none | NO EVENT
+D129 2030-05-10 | SwiftJet | FREQUENCY UP CDG-ZRH 16x→17x | none | NO EVENT
+D129 2030-05-10 | SwiftJet | FREQUENCY UP CDG-NCE 15x→16x | none | NO EVENT
+D129 2030-05-10 | SwiftJet | FREQUENCY UP CDG-MUC 14x→15x | none | NO EVENT
+D130 2030-05-11 | Aurora Atlantic | FREQUENCY UP LHR-BER 18x→19x | none | NO EVENT
+D130 2030-05-11 | Aurora Atlantic | FREQUENCY UP LHR-MUC 17x→18x | none | NO EVENT
+D131 2030-05-12 | PacificBlue | FREQUENCY UP IST-BER 14x→15x | none | NO EVENT
+D131 2030-05-12 | PacificBlue | FREQUENCY UP IST-MXP 13x→14x | none | NO EVENT
+D131 2030-05-12 | PacificBlue | FREQUENCY UP IST-MUC 12x→13x | none | NO EVENT
+FIGHT D133 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$44k · you $57/2x vs
+D134 2030-05-15 | TerraLink | FREQUENCY UP CGK-BKK 10x→11x | none | NO EVENT
+D134 2030-05-15 | TerraLink | FREQUENCY UP CGK-SIN 6x→7x | none | NO EVENT
+D134 2030-05-15 | TerraLink | FLEET GREW 10→11 | none directly | FILTERED
+D135 2030-05-16 | Crown Meridian | FREQUENCY UP HND-TPE 16x→17x | none | NO EVENT
+D135 2030-05-16 | Crown Meridian | FREQUENCY UP HND-KIX 14x→15x | none | NO EVENT
+D135 2030-05-16 | Crown Meridian | FREQUENCY UP HND-PEK 12x→13x | none | NO EVENT
+D136 2030-05-17 | SwiftJet | FREQUENCY UP CDG-ZRH 17x→18x | none | NO EVENT
+D136 2030-05-17 | SwiftJet | FREQUENCY UP CDG-NCE 16x→17x | none | NO EVENT
+D136 2030-05-17 | SwiftJet | FREQUENCY UP CDG-MUC 15x→16x | none | NO EVENT
+D137 2030-05-18 | Aurora Atlantic | FREQUENCY UP LHR-BER 19x→20x | none | NO EVENT
+D137 2030-05-18 | Aurora Atlantic | FREQUENCY UP LHR-MUC 18x→19x | none | NO EVENT
+D138 2030-05-19 | PacificBlue | FREQUENCY UP IST-BER 15x→16x | none | NO EVENT
+D138 2030-05-19 | PacificBlue | FREQUENCY UP IST-MXP 14x→15x | none | NO EVENT
+D138 2030-05-19 | PacificBlue | FREQUENCY UP IST-MUC 13x→14x | none | NO EVENT
+D138 2030-05-19 | PacificBlue | FLEET GREW 5→6 | none directly | FILTERED
+FIGHT D140 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$67k · you $57/2x vs
+D142 2030-05-23 | Crown Meridian | FREQUENCY UP HND-TPE 17x→18x | none | NO EVENT
+D142 2030-05-23 | Crown Meridian | FREQUENCY UP HND-KIX 15x→16x | none | NO EVENT
+D142 2030-05-23 | Crown Meridian | FREQUENCY UP HND-PEK 13x→14x | none | NO EVENT
+D143 2030-05-24 | SwiftJet | FREQUENCY UP CDG-ZRH 18x→19x | none | NO EVENT
+D143 2030-05-24 | SwiftJet | FREQUENCY UP CDG-NCE 17x→18x | none | NO EVENT
+D143 2030-05-24 | SwiftJet | FREQUENCY UP CDG-MUC 16x→17x | none | NO EVENT
+D144 2030-05-25 | Aurora Atlantic | FREQUENCY UP LHR-MUC 19x→20x | none | NO EVENT
+FIGHT D147 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$88k · you $57/2x vs
+D148 2030-05-29 | TerraLink | FREQUENCY UP CGK-BKK 11x→12x | none | NO EVENT
+D148 2030-05-29 | TerraLink | FREQUENCY UP CGK-SIN 7x→8x | none | NO EVENT
+D148 2030-05-29 | TerraLink | FLEET GREW 11→12 | none directly | FILTERED
+D149 2030-05-30 | Crown Meridian | FREQUENCY UP HND-TPE 18x→19x | none | NO EVENT
+D149 2030-05-30 | Crown Meridian | FREQUENCY UP HND-KIX 16x→17x | none | NO EVENT
+D149 2030-05-30 | Crown Meridian | FREQUENCY UP HND-PEK 14x→15x | none | NO EVENT
+D150 2030-05-31 | SwiftJet | FREQUENCY UP CDG-ZRH 19x→20x | none | NO EVENT
+D150 2030-05-31 | SwiftJet | FREQUENCY UP CDG-NCE 18x→19x | none | NO EVENT
+D150 2030-05-31 | SwiftJet | FREQUENCY UP CDG-MUC 17x→18x | none | NO EVENT
+MONTH 2030-06 | player routes 5 fleet 5 cash $25.9M era regional | rivals alive 5 routes 14 | contested 0
+D152 2030-06-02 | PacificBlue | FREQUENCY UP IST-BER 16x→17x | none | NO EVENT
+D152 2030-06-02 | PacificBlue | FREQUENCY UP IST-MXP 15x→16x | none | NO EVENT
+D152 2030-06-02 | PacificBlue | FREQUENCY UP IST-MUC 14x→15x | none | NO EVENT
+FIGHT D154 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$10k · you $57/2x vs
+D155 2030-06-05 | TerraLink | OPENED CGK-KUL elsewhere @$125 2x | none | FILTERED
+D156 2030-06-06 | Crown Meridian | FREQUENCY UP HND-TPE 19x→20x | none | NO EVENT
+D156 2030-06-06 | Crown Meridian | FREQUENCY UP HND-KIX 17x→18x | none | NO EVENT
+D156 2030-06-06 | Crown Meridian | FREQUENCY UP HND-PEK 15x→16x | none | NO EVENT
+D157 2030-06-07 | SwiftJet | FREQUENCY UP CDG-NCE 19x→20x | none | NO EVENT
+D157 2030-06-07 | SwiftJet | FREQUENCY UP CDG-MUC 18x→19x | none | NO EVENT
+D159 2030-06-09 | PacificBlue | FREQUENCY UP IST-BER 17x→18x | none | NO EVENT
+D159 2030-06-09 | PacificBlue | FREQUENCY UP IST-MXP 16x→17x | none | NO EVENT
+D159 2030-06-09 | PacificBlue | FREQUENCY UP IST-MUC 15x→16x | none | NO EVENT
+FIGHT D161 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$34k · you $57/2x vs
+D162 2030-06-12 | TerraLink | FREQUENCY UP CGK-BKK 12x→13x | none | NO EVENT
+D162 2030-06-12 | TerraLink | FREQUENCY UP CGK-SIN 8x→9x | none | NO EVENT
+D162 2030-06-12 | TerraLink | FREQUENCY UP CGK-KUL 2x→3x | none | NO EVENT
+D162 2030-06-12 | TerraLink | FLEET GREW 12→13 | none directly | FILTERED
+D163 2030-06-13 | Crown Meridian | FREQUENCY UP HND-KIX 18x→19x | none | NO EVENT
+D163 2030-06-13 | Crown Meridian | FREQUENCY UP HND-PEK 16x→17x | none | NO EVENT
+D164 2030-06-14 | SwiftJet | FREQUENCY UP CDG-MUC 19x→20x | none | NO EVENT
+D166 2030-06-16 | PacificBlue | FREQUENCY UP IST-BER 18x→19x | none | NO EVENT
+D166 2030-06-16 | PacificBlue | FREQUENCY UP IST-MXP 17x→18x | none | NO EVENT
+D166 2030-06-16 | PacificBlue | FREQUENCY UP IST-MUC 16x→17x | none | NO EVENT
+FIGHT D168 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$57k · you $57/2x vs
+D170 2030-06-20 | Crown Meridian | FREQUENCY UP HND-KIX 19x→20x | none | NO EVENT
+D170 2030-06-20 | Crown Meridian | FREQUENCY UP HND-PEK 17x→18x | none | NO EVENT
+D173 2030-06-23 | PacificBlue | FREQUENCY UP IST-BER 19x→20x | none | NO EVENT
+D173 2030-06-23 | PacificBlue | FREQUENCY UP IST-MXP 18x→19x | none | NO EVENT
+D173 2030-06-23 | PacificBlue | FREQUENCY UP IST-MUC 17x→18x | none | NO EVENT
+FIGHT D175 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$80k · you $57/2x vs
+D176 2030-06-26 | TerraLink | FREQUENCY UP CGK-BKK 13x→14x | none | NO EVENT
+D176 2030-06-26 | TerraLink | FREQUENCY UP CGK-SIN 9x→10x | none | NO EVENT
+D176 2030-06-26 | TerraLink | FREQUENCY UP CGK-KUL 3x→4x | none | NO EVENT
+D176 2030-06-26 | TerraLink | FLEET GREW 13→14 | none directly | FILTERED
+D177 2030-06-27 | Crown Meridian | FREQUENCY UP HND-PEK 18x→19x | none | NO EVENT
+D180 2030-06-30 | PacificBlue | FREQUENCY UP IST-MXP 19x→20x | none | NO EVENT
+D180 2030-06-30 | PacificBlue | FREQUENCY UP IST-MUC 18x→19x | none | NO EVENT
+MONTH 2030-07 | player routes 5 fleet 5 cash $30.4M era regional | rivals alive 5 routes 15 | contested 0
+FIGHT D182 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$3,345 · you $57/2x vs
+D184 2030-07-04 | Crown Meridian | FREQUENCY UP HND-PEK 19x→20x | none | NO EVENT
+D187 2030-07-07 | PacificBlue | FREQUENCY UP IST-MUC 19x→20x | none | NO EVENT
+FIGHT D189 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$14k · you $57/2x vs
+D190 2030-07-10 | TerraLink | FREQUENCY UP CGK-BKK 14x→15x | none | NO EVENT
+D190 2030-07-10 | TerraLink | FREQUENCY UP CGK-SIN 10x→11x | none | NO EVENT
+D190 2030-07-10 | TerraLink | FREQUENCY UP CGK-KUL 4x→5x | none | NO EVENT
+D190 2030-07-10 | TerraLink | FLEET GREW 14→15 | none directly | FILTERED
+FIGHT D196 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$37k · you $57/2x vs
+D200 2030-07-20 | Aurora Atlantic | FLEET GREW 2→3 | none directly | FILTERED
+FIGHT D203 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$62k · you $57/2x vs
+D204 2030-07-24 | TerraLink | FREQUENCY UP CGK-BKK 15x→16x | none | NO EVENT
+D204 2030-07-24 | TerraLink | FREQUENCY UP CGK-SIN 11x→12x | none | NO EVENT
+D204 2030-07-24 | TerraLink | FREQUENCY UP CGK-KUL 5x→6x | none | NO EVENT
+D204 2030-07-24 | TerraLink | FLEET GREW 15→16 | none directly | FILTERED
+FIGHT D210 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$87k · you $57/2x vs
+MONTH 2030-08 | player routes 5 fleet 5 cash $35.0M era regional | rivals alive 5 routes 15 | contested 0
+FIGHT D217 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$18k · you $57/2x vs
+D218 2030-08-07 | TerraLink | FREQUENCY UP CGK-BKK 16x→17x | none | NO EVENT
+D218 2030-08-07 | TerraLink | FREQUENCY UP CGK-SIN 12x→13x | none | NO EVENT
+D218 2030-08-07 | TerraLink | FREQUENCY UP CGK-KUL 6x→7x | none | NO EVENT
+D218 2030-08-07 | TerraLink | FLEET GREW 16→17 | none directly | FILTERED
+FIGHT D224 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$43k · you $57/2x vs
+FIGHT D231 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$68k · you $57/2x vs
+D232 2030-08-21 | TerraLink | FREQUENCY UP CGK-BKK 17x→18x | none | NO EVENT
+D232 2030-08-21 | TerraLink | FREQUENCY UP CGK-SIN 13x→14x | none | NO EVENT
+D232 2030-08-21 | TerraLink | FREQUENCY UP CGK-KUL 7x→8x | none | NO EVENT
+D232 2030-08-21 | TerraLink | FLEET GREW 17→18 | none directly | FILTERED
+FIGHT D238 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$93k · you $57/2x vs
+MONTH 2030-09 | player routes 5 fleet 5 cash $39.4M era regional | rivals alive 5 routes 15 | contested 0
+FIGHT D245 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$6,700 · you $57/2x vs
+D246 2030-09-04 | TerraLink | FREQUENCY UP CGK-BKK 18x→19x | none | NO EVENT
+D246 2030-09-04 | TerraLink | FREQUENCY UP CGK-SIN 14x→15x | none | NO EVENT
+D246 2030-09-04 | TerraLink | FREQUENCY UP CGK-KUL 8x→9x | none | NO EVENT
+D246 2030-09-04 | TerraLink | FLEET GREW 18→19 | none directly | FILTERED
+FIGHT D252 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$30k · you $57/2x vs
+FIGHT D259 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$54k · you $57/2x vs
+D260 2030-09-18 | TerraLink | FREQUENCY UP CGK-BKK 19x→20x | none | NO EVENT
+D260 2030-09-18 | TerraLink | FREQUENCY UP CGK-SIN 15x→16x | none | NO EVENT
+D260 2030-09-18 | TerraLink | FREQUENCY UP CGK-KUL 9x→10x | none | NO EVENT
+D260 2030-09-18 | TerraLink | FLEET GREW 19→20 | none directly | FILTERED
+FIGHT D266 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$78k · you $57/2x vs
+FIGHT D273 LHR-CDG share 100% (0 rivals) load 100% month-to-date $0 · you $57/2x vs
+MONTH 2030-10 | player routes 5 fleet 5 cash $43.9M era regional | rivals alive 5 routes 15 | contested 0
+D274 2030-10-02 | TerraLink | FREQUENCY UP CGK-SIN 16x→17x | none | NO EVENT
+D274 2030-10-02 | TerraLink | FREQUENCY UP CGK-KUL 10x→11x | none | NO EVENT
+D274 2030-10-02 | TerraLink | FLEET GREW 20→21 | none directly | FILTERED
+FIGHT D280 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$24k · you $57/2x vs
+FIGHT D287 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$47k · you $57/2x vs
+D288 2030-10-16 | TerraLink | FREQUENCY UP CGK-SIN 17x→18x | none | NO EVENT
+D288 2030-10-16 | TerraLink | FREQUENCY UP CGK-KUL 11x→12x | none | NO EVENT
+D288 2030-10-16 | TerraLink | FLEET GREW 21→22 | none directly | FILTERED
+FIGHT D294 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$73k · you $57/2x vs
+FIGHT D301 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$98k · you $57/2x vs
+D302 2030-10-30 | TerraLink | FREQUENCY UP CGK-SIN 18x→19x | none | NO EVENT
+D302 2030-10-30 | TerraLink | FREQUENCY UP CGK-KUL 12x→13x | none | NO EVENT
+D302 2030-10-30 | TerraLink | FLEET GREW 22→23 | none directly | FILTERED
+MONTH 2030-11 | player routes 5 fleet 5 cash $48.6M era regional | rivals alive 5 routes 15 | contested 0
+FIGHT D308 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$15k · you $57/2x vs
+FIGHT D315 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$40k · you $57/2x vs
+D316 2030-11-13 | TerraLink | FREQUENCY UP CGK-SIN 19x→20x | none | NO EVENT
+D316 2030-11-13 | TerraLink | FREQUENCY UP CGK-KUL 13x→14x | none | NO EVENT
+D316 2030-11-13 | TerraLink | FLEET GREW 23→24 | none directly | FILTERED
+FIGHT D322 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$64k · you $57/2x vs
+D323 2030-11-20 | TerraLink | OPENED CGK-SGN elsewhere @$185 2x | none | FILTERED
+FIGHT D329 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$89k · you $57/2x vs
+D330 2030-11-27 | TerraLink | FREQUENCY UP CGK-KUL 14x→15x | none | NO EVENT
+D330 2030-11-27 | TerraLink | FREQUENCY UP CGK-SGN 2x→3x | none | NO EVENT
+D330 2030-11-27 | TerraLink | FLEET GREW 24→25 | none directly | FILTERED
+MONTH 2030-12 | player routes 5 fleet 5 cash $52.7M era regional | rivals alive 5 routes 16 | contested 0
+FIGHT D336 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$7,114 · you $57/2x vs
+FIGHT D343 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$29k · you $57/2x vs
+D344 2030-12-11 | TerraLink | FREQUENCY UP CGK-KUL 15x→16x | none | NO EVENT
+D344 2030-12-11 | TerraLink | FREQUENCY UP CGK-SGN 3x→4x | none | NO EVENT
+D344 2030-12-11 | TerraLink | FLEET GREW 25→26 | none directly | FILTERED
+FIGHT D350 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$43k · you $57/2x vs
+D355 2030-12-22 | PacificBlue | FLEET GREW 6→7 | none directly | FILTERED
+FIGHT D357 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$69k · you $57/2x vs
+D358 2030-12-25 | TerraLink | FREQUENCY UP CGK-KUL 16x→17x | none | NO EVENT
+D358 2030-12-25 | TerraLink | FREQUENCY UP CGK-SGN 4x→5x | none | NO EVENT
+D358 2030-12-25 | TerraLink | FLEET GREW 26→27 | none directly | FILTERED
+D359 2030-12-26 | Crown Meridian | FLEET GREW 5→6 | none directly | FILTERED
+FIGHT D364 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$93k · you $57/2x vs
+MONTH 2031-01 | player routes 5 fleet 5 cash $57.5M era regional | rivals alive 5 routes 16 | contested 0
+D369 2031-01-05 | PacificBlue | FLEET GREW 7→8 | none directly | FILTERED
+FIGHT D371 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$20k · you $57/2x vs
+D372 2031-01-08 | TerraLink | FREQUENCY UP CGK-KUL 17x→18x | none | NO EVENT
+D372 2031-01-08 | TerraLink | FREQUENCY UP CGK-SGN 5x→6x | none | NO EVENT
+D372 2031-01-08 | TerraLink | FLEET GREW 27→28 | none directly | FILTERED
+FIGHT D378 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$45k · you $57/2x vs
+D379 2031-01-15 | TerraLink | FREQUENCY UP CGK-KUL 18x→19x | none | NO EVENT
+D379 2031-01-15 | TerraLink | FREQUENCY UP CGK-SGN 6x→7x | none | NO EVENT
+FIGHT D385 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$69k · you $57/2x vs
+FIGHT D392 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$94k · you $57/2x vs
+D393 2031-01-29 | TerraLink | FREQUENCY UP CGK-KUL 19x→20x | none | NO EVENT
+D393 2031-01-29 | TerraLink | FREQUENCY UP CGK-SGN 7x→8x | none | NO EVENT
+D393 2031-01-29 | TerraLink | FLEET GREW 28→29 | none directly | FILTERED
+MONTH 2031-02 | player routes 6 fleet 6 cash $11.1M era regional | rivals alive 5 routes 16 | contested 0
+FIGHT D399 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$11k · you $57/2x vs
+FIGHT D406 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$30k · you $57/2x vs
+D407 2031-02-12 | TerraLink | FREQUENCY UP CGK-SGN 8x→9x | none | NO EVENT
+D407 2031-02-12 | TerraLink | FLEET GREW 29→30 | none directly | FILTERED
+FIGHT D413 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$56k · you $57/2x vs
+FIGHT D420 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$81k · you $57/2x vs
+D421 2031-02-26 | TerraLink | FREQUENCY UP CGK-SGN 9x→10x | none | NO EVENT
+D421 2031-02-26 | TerraLink | FLEET GREW 30→31 | none directly | FILTERED
+MONTH 2031-03 | player routes 6 fleet 6 cash $15.1M era regional | rivals alive 5 routes 16 | contested 0
+FIGHT D427 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$11k · you $57/2x vs
+D428 2031-03-05 | TerraLink | FREQUENCY UP CGK-SGN 10x→11x | none | NO EVENT
+FIGHT D434 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$36k · you $57/2x vs
+FIGHT D441 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$61k · you $57/2x vs
+D442 2031-03-19 | TerraLink | FREQUENCY UP CGK-SGN 11x→12x | none | NO EVENT
+D442 2031-03-19 | TerraLink | FLEET GREW 31→32 | none directly | FILTERED
+FIGHT D448 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$86k · you $57/2x vs
+D449 2031-03-26 | TerraLink | FREQUENCY UP CGK-SGN 12x→13x | none | NO EVENT
+FIGHT D455 LHR-CDG share 100% (0 rivals) load 100% month-to-date $0 · you $57/2x vs
+MONTH 2031-04 | player routes 6 fleet 6 cash $19.0M era regional | rivals alive 5 routes 16 | contested 0
+FIGHT D462 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$24k · you $57/2x vs
+D463 2031-04-09 | TerraLink | FREQUENCY UP CGK-SGN 13x→14x | none | NO EVENT
+D463 2031-04-09 | TerraLink | FLEET GREW 32→33 | none directly | FILTERED
+FIGHT D469 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$47k · you $57/2x vs
+D470 2031-04-16 | TerraLink | FREQUENCY UP CGK-SGN 14x→15x | none | NO EVENT
+FIGHT D476 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$72k · you $57/2x vs
+FIGHT D483 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$96k · you $57/2x vs
+D484 2031-04-30 | TerraLink | FREQUENCY UP CGK-SGN 15x→16x | none | NO EVENT
+D484 2031-04-30 | TerraLink | FLEET GREW 33→34 | none directly | FILTERED
+MONTH 2031-05 | player routes 6 fleet 6 cash $23.6M era regional | rivals alive 5 routes 16 | contested 0
+FIGHT D490 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$17k · you $57/2x vs
+D491 2031-05-07 | TerraLink | FREQUENCY UP CGK-SGN 16x→17x | none | NO EVENT
+FIGHT D497 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$41k · you $57/2x vs
+FIGHT D504 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$53k · you $57/2x vs
+D505 2031-05-21 | TerraLink | FREQUENCY UP CGK-SGN 17x→18x | none | NO EVENT
+D505 2031-05-21 | TerraLink | FLEET GREW 34→35 | none directly | FILTERED
+FIGHT D511 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$73k · you $57/2x vs
+D512 2031-05-28 | TerraLink | FREQUENCY UP CGK-SGN 18x→19x | none | NO EVENT
+MONTH 2031-06 | player routes 6 fleet 6 cash $28.0M era regional | rivals alive 5 routes 16 | contested 0
+FIGHT D518 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$7,106 · you $57/2x vs
+FIGHT D525 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$32k · you $57/2x vs
+D526 2031-06-11 | TerraLink | FREQUENCY UP CGK-SGN 19x→20x | none | NO EVENT
+D526 2031-06-11 | TerraLink | FLEET GREW 35→36 | none directly | FILTERED
+FIGHT D532 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$57k · you $57/2x vs
+FIGHT D539 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$80k · you $57/2x vs
+FIGHT D546 LHR-CDG share 100% (0 rivals) load 100% month-to-date $0 · you $57/2x vs
+MONTH 2031-07 | player routes 6 fleet 6 cash $32.2M era regional | rivals alive 5 routes 16 | contested 0
+D548 2031-07-03 | Crown Meridian | FLEET GREW 6→7 | none directly | FILTERED
+FIGHT D553 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$25k · you $57/2x vs
+FIGHT D560 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$49k · you $57/2x vs
+D564 2031-07-19 | Aurora Atlantic | FLEET GREW 3→4 | none directly | FILTERED
+FIGHT D567 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$73k · you $57/2x vs
+FIGHT D574 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$97k · you $57/2x vs
+MONTH 2031-08 | player routes 6 fleet 6 cash $37.0M era regional | rivals alive 5 routes 16 | contested 0
+FIGHT D581 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$14k · you $57/2x vs
+FIGHT D588 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$39k · you $57/2x vs
+FIGHT D595 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$65k · you $57/2x vs
+FIGHT D602 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$89k · you $57/2x vs
+MONTH 2031-09 | player routes 6 fleet 6 cash $41.4M era regional | rivals alive 5 routes 16 | contested 0
+FIGHT D609 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$3,476 · you $57/2x vs
+FIGHT D616 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$28k · you $57/2x vs
+FIGHT D623 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$52k · you $57/2x vs
+FIGHT D630 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$77k · you $57/2x vs
+FIGHT D637 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$101k · you $57/2x vs
+MONTH 2031-10 | player routes 6 fleet 6 cash $45.7M era regional | rivals alive 5 routes 16 | contested 0
+FIGHT D644 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$21k · you $57/2x vs
+FIGHT D651 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$45k · you $57/2x vs
+FIGHT D658 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$71k · you $57/2x vs
+FIGHT D665 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$81k · you $57/2x vs
+MONTH 2031-11 | player routes 6 fleet 6 cash $50.2M era regional | rivals alive 5 routes 16 | contested 0
+FIGHT D672 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$11k · you $57/2x vs
+FIGHT D679 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$38k · you $57/2x vs
+FIGHT D686 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$64k · you $57/2x vs
+D691 2031-11-23 | PacificBlue | FLEET GREW 8→9 | none directly | FILTERED
+FIGHT D693 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$90k · you $57/2x vs
+MONTH 2031-12 | player routes 6 fleet 6 cash $54.2M era regional | rivals alive 5 routes 16 | contested 0
+FIGHT D700 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$3,615 · you $57/2x vs
+FIGHT D707 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$29k · you $57/2x vs
+FIGHT D714 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$53k · you $57/2x vs
+D716 2031-12-18 | Crown Meridian | FLEET GREW 7→8 | none directly | FILTERED
+FIGHT D721 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$78k · you $57/2x vs
+FIGHT D728 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$103k · you $57/2x vs
+MONTH 2032-01 | player routes 6 fleet 6 cash $59.4M era regional | rivals alive 5 routes 16 | contested 0
+FIGHT D735 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$18k · you $57/2x vs
+FIGHT D742 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$44k · you $57/2x vs
+FIGHT D749 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$68k · you $57/2x vs
+FIGHT D756 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$92k · you $57/2x vs
+MONTH 2032-02 | player routes 7 fleet 7 cash $22.4M era regional | rivals alive 5 routes 16 | contested 0
+FIGHT D763 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$7,301 · you $57/2x vs
+FIGHT D770 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$32k · you $57/2x vs
+FIGHT D777 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$55k · you $57/2x vs
+FIGHT D784 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$80k · you $57/2x vs
+MONTH 2032-03 | player routes 7 fleet 7 cash $27.3M era regional | rivals alive 5 routes 16 | contested 0
+FIGHT D791 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$5,423 · you $57/2x vs
+FIGHT D798 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$29k · you $57/2x vs
+FIGHT D805 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$52k · you $57/2x vs
+FIGHT D812 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$75k · you $57/2x vs
+FIGHT D819 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$91k · you $57/2x vs
+MONTH 2032-04 | player routes 7 fleet 7 cash $32.1M era regional | rivals alive 5 routes 16 | contested 0
+FIGHT D826 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$15k · you $57/2x vs
+FIGHT D833 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$39k · you $57/2x vs
+D835 2032-04-16 | Crown Meridian | FLEET GREW 8→9 | none directly | FILTERED
+FIGHT D840 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$63k · you $57/2x vs
+D845 2032-04-26 | PacificBlue | FLEET GREW 9→10 | none directly | FILTERED
+FIGHT D847 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$86k · you $57/2x vs
+MONTH 2032-05 | player routes 7 fleet 7 cash $37.7M era regional | rivals alive 5 routes 16 | contested 0
+FIGHT D854 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$14k · you $57/2x vs
+FIGHT D861 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$38k · you $57/2x vs
+FIGHT D868 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$62k · you $57/2x vs
+FIGHT D875 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$85k · you $57/2x vs
+MONTH 2032-06 | player routes 7 fleet 7 cash $43.3M era regional | rivals alive 5 routes 16 | contested 0
+FIGHT D882 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$3,300 · you $57/2x vs
+FIGHT D889 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$22k · you $57/2x vs
+FIGHT D896 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$45k · you $57/2x vs
+FIGHT D903 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$69k · you $57/2x vs
+FIGHT D910 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$92k · you $57/2x vs
+MONTH 2032-07 | player routes 7 fleet 7 cash $48.1M era regional | rivals alive 5 routes 16 | contested 0
+FIGHT D917 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$21k · you $57/2x vs
+FIGHT D924 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$44k · you $57/2x vs
+FIGHT D931 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$68k · you $57/2x vs
+FIGHT D938 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$91k · you $57/2x vs
+D940 2032-07-30 | Crown Meridian | FLEET GREW 9→10 | none directly | FILTERED
+MONTH 2032-08 | player routes 7 fleet 7 cash $53.9M era regional | rivals alive 5 routes 16 | contested 0
+FIGHT D945 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$10k · you $57/2x vs
+FIGHT D952 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$34k · you $57/2x vs
+FIGHT D959 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$55k · you $57/2x vs
+FIGHT D966 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$79k · you $57/2x vs
+FIGHT D973 LHR-CDG share 100% (0 rivals) load 100% month-to-date $0 · you $57/2x vs
+MONTH 2032-09 | player routes 7 fleet 7 cash $58.9M era regional | rivals alive 5 routes 16 | contested 0
+FIGHT D980 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$11k · you $57/2x vs
+FIGHT D987 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$36k · you $57/2x vs
+FIGHT D994 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$60k · you $57/2x vs
+FIGHT D1001 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$85k · you $57/2x vs
+MONTH 2032-10 | player routes 8 fleet 8 cash $13.9M era regional | rivals alive 5 routes 16 | contested 0
+FIGHT D1008 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$18k · you $57/2x vs
+FIGHT D1015 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$40k · you $57/2x vs
+FIGHT D1022 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$65k · you $57/2x vs
+FIGHT D1029 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$89k · you $57/2x vs
+MONTH 2032-11 | player routes 8 fleet 8 cash $20.7M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1036 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$7,118 · you $57/2x vs
+FIGHT D1043 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$31k · you $57/2x vs
+FIGHT D1050 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$52k · you $57/2x vs
+FIGHT D1057 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$77k · you $57/2x vs
+FIGHT D1064 LHR-CDG share 100% (0 rivals) load 100% month-to-date $0 · you $57/2x vs
+MONTH 2032-12 | player routes 8 fleet 8 cash $26.8M era international | rivals alive 5 routes 16 | contested 0
+D1066 2032-12-03 | Crown Meridian | FLEET GREW 10→11 | none directly | FILTERED
+D1069 2032-12-06 | PacificBlue | FLEET GREW 10→11 | none directly | FILTERED
+FIGHT D1071 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$25k · you $57/2x vs
+FIGHT D1078 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$48k · you $57/2x vs
+FIGHT D1085 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$73k · you $57/2x vs
+D1089 2032-12-26 | Aurora Atlantic | FLEET GREW 4→5 | none directly | FILTERED
+FIGHT D1092 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$99k · you $57/2x vs
+MONTH 2033-01 | player routes 8 fleet 8 cash $34.3M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1099 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$13k · you $57/2x vs
+FIGHT D1106 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$38k · you $57/2x vs
+FIGHT D1113 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$63k · you $57/2x vs
+FIGHT D1120 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$85k · you $57/2x vs
+MONTH 2033-02 | player routes 8 fleet 8 cash $41.1M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1127 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$3,533 · you $57/2x vs
+FIGHT D1134 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$24k · you $57/2x vs
+FIGHT D1141 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$34k · you $57/2x vs
+D1143 2033-02-18 | Crown Meridian | FLEET GREW 11→12 | none directly | FILTERED
+FIGHT D1148 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$57k · you $57/2x vs
+MONTH 2033-03 | player routes 8 fleet 8 cash $46.2M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1155 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$3,649 · you $57/2x vs
+FIGHT D1162 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$30k · you $57/2x vs
+FIGHT D1169 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$54k · you $57/2x vs
+FIGHT D1176 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$76k · you $57/2x vs
+FIGHT D1183 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$101k · you $57/2x vs
+MONTH 2033-04 | player routes 8 fleet 8 cash $53.5M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1190 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$17k · you $57/2x vs
+FIGHT D1197 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$40k · you $57/2x vs
+FIGHT D1204 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$66k · you $57/2x vs
+FIGHT D1211 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$92k · you $57/2x vs
+MONTH 2033-05 | player routes 8 fleet 8 cash $59.9M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1218 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$12k · you $57/2x vs
+FIGHT D1225 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$40k · you $57/2x vs
+D1227 2033-05-13 | Crown Meridian | FLEET GREW 12→13 | none directly | FILTERED
+FIGHT D1232 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$69k · you $57/2x vs
+FIGHT D1239 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$99k · you $57/2x vs
+FIGHT D1246 LHR-CDG share 100% (0 rivals) load 100% month-to-date $0 · you $57/2x vs
+MONTH 2033-06 | player routes 9 fleet 9 cash $16.7M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1253 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$33k · you $57/2x vs
+FIGHT D1260 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$67k · you $57/2x vs
+FIGHT D1267 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$101k · you $57/2x vs
+FIGHT D1274 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$134k · you $57/2x vs
+MONTH 2033-07 | player routes 9 fleet 9 cash $24.2M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1281 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$26k · you $57/2x vs
+FIGHT D1288 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$60k · you $57/2x vs
+FIGHT D1295 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$89k · you $57/2x vs
+FIGHT D1302 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$108k · you $57/2x vs
+MONTH 2033-08 | player routes 9 fleet 9 cash $33.9M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1309 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$8,936 · you $57/2x vs
+FIGHT D1316 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$40k · you $57/2x vs
+FIGHT D1323 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$71k · you $57/2x vs
+FIGHT D1330 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$102k · you $57/2x vs
+FIGHT D1337 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$129k · you $57/2x vs
+MONTH 2033-09 | player routes 9 fleet 9 cash $42.9M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1344 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$25k · you $57/2x vs
+FIGHT D1351 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$54k · you $57/2x vs
+FIGHT D1358 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$82k · you $57/2x vs
+FIGHT D1365 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$108k · you $57/2x vs
+MONTH 2033-10 | player routes 9 fleet 9 cash $51.6M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1372 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$15k · you $57/2x vs
+D1374 2033-10-07 | Crown Meridian | FLEET GREW 13→14 | none directly | FILTERED
+FIGHT D1379 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$39k · you $57/2x vs
+FIGHT D1386 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$65k · you $57/2x vs
+FIGHT D1393 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$92k · you $57/2x vs
+MONTH 2033-11 | player routes 10 fleet 10 cash $10.1M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1400 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$3,781 · you $57/2x vs
+FIGHT D1407 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$30k · you $57/2x vs
+FIGHT D1414 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$56k · you $57/2x vs
+FIGHT D1421 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$82k · you $57/2x vs
+FIGHT D1428 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$105k · you $57/2x vs
+MONTH 2033-12 | player routes 10 fleet 10 cash $19.5M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1435 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$22k · you $57/2x vs
+D1437 2033-12-09 | Crown Meridian | FLEET GREW 14→15 | none directly | FILTERED
+FIGHT D1442 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$47k · you $57/2x vs
+FIGHT D1449 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$73k · you $57/2x vs
+FIGHT D1456 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$84k · you $57/2x vs
+MONTH 2034-01 | player routes 10 fleet 10 cash $31.2M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1463 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$9,439 · you $57/2x vs
+FIGHT D1470 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$36k · you $57/2x vs
+FIGHT D1477 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$62k · you $57/2x vs
+FIGHT D1484 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$88k · you $57/2x vs
+FIGHT D1491 LHR-CDG share 100% (0 rivals) load 100% month-to-date $0 · you $57/2x vs
+MONTH 2034-02 | player routes 10 fleet 10 cash $41.0M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1498 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$26k · you $57/2x vs
+FIGHT D1505 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$53k · you $57/2x vs
+FIGHT D1512 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$79k · you $57/2x vs
+FIGHT D1519 LHR-CDG share 100% (0 rivals) load 100% month-to-date $0 · you $57/2x vs
+MONTH 2034-03 | player routes 10 fleet 10 cash $50.4M era international | rivals alive 5 routes 16 | contested 0
+D1521 2034-03-03 | Crown Meridian | FLEET GREW 15→16 | none directly | FILTERED
+FIGHT D1526 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$26k · you $57/2x vs
+FIGHT D1533 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$49k · you $57/2x vs
+FIGHT D1540 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$73k · you $57/2x vs
+D1545 2034-03-27 | PacificBlue | FLEET GREW 11→12 | none directly | FILTERED
+FIGHT D1547 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$98k · you $57/2x vs
+MONTH 2034-04 | player routes 11 fleet 11 cash $11.4M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1554 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$15k · you $57/2x vs
+FIGHT D1561 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$40k · you $57/2x vs
+FIGHT D1568 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$66k · you $57/2x vs
+FIGHT D1575 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$89k · you $57/2x vs
+MONTH 2034-05 | player routes 11 fleet 11 cash $23.6M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1582 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$6,981 · you $57/2x vs
+FIGHT D1589 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$31k · you $57/2x vs
+FIGHT D1596 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$52k · you $57/2x vs
+D1598 2034-05-19 | Crown Meridian | FLEET GREW 16→17 | none directly | FILTERED
+FIGHT D1603 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$72k · you $57/2x vs
+FIGHT D1610 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$97k · you $57/2x vs
+MONTH 2034-06 | player routes 11 fleet 11 cash $37.3M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1617 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$11k · you $57/2x vs
+FIGHT D1624 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$37k · you $57/2x vs
+FIGHT D1631 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$63k · you $57/2x vs
+FIGHT D1638 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$88k · you $57/2x vs
+MONTH 2034-07 | player routes 11 fleet 11 cash $50.2M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1645 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$15k · you $57/2x vs
+FIGHT D1652 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$40k · you $57/2x vs
+FIGHT D1659 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$65k · you $57/2x vs
+FIGHT D1666 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$89k · you $57/2x vs
+D1668 2034-07-28 | Crown Meridian | FLEET GREW 17→18 | none directly | FILTERED
+MONTH 2034-08 | player routes 12 fleet 12 cash $15.3M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1673 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$3,510 · you $57/2x vs
+FIGHT D1680 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$27k · you $57/2x vs
+FIGHT D1687 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$52k · you $57/2x vs
+FIGHT D1694 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$76k · you $57/2x vs
+FIGHT D1701 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$99k · you $57/2x vs
+MONTH 2034-09 | player routes 12 fleet 12 cash $30.6M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1708 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$16k · you $57/2x vs
+FIGHT D1715 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$40k · you $57/2x vs
+FIGHT D1722 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$63k · you $57/2x vs
+D1727 2034-09-25 | PacificBlue | FLEET GREW 12→13 | none directly | FILTERED
+FIGHT D1729 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$86k · you $57/2x vs
+MONTH 2034-10 | player routes 12 fleet 12 cash $44.9M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1736 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$9,579 · you $57/2x vs
+D1738 2034-10-06 | Crown Meridian | FLEET GREW 18→19 | none directly | FILTERED
+FIGHT D1743 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$35k · you $57/2x vs
+FIGHT D1750 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$61k · you $57/2x vs
+FIGHT D1757 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$88k · you $57/2x vs
+D1759 2034-10-27 | Crown Meridian | FLEET GREW 19→20 | none directly | FILTERED
+FIGHT D1764 LHR-CDG share 100% (0 rivals) load 100% month-to-date $0 · you $57/2x vs
+MONTH 2034-11 | player routes 12 fleet 12 cash $58.1M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1771 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$17k · you $57/2x vs
+FIGHT D1778 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$42k · you $57/2x vs
+FIGHT D1785 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$73k · you $57/2x vs
+FIGHT D1792 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$106k · you $57/2x vs
+MONTH 2034-12 | player routes 13 fleet 13 cash $18.6M era international | rivals alive 5 routes 16 | contested 0
+FIGHT D1799 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$25k · you $57/2x vs
+FIGHT D1806 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$59k · you $57/2x vs
+FIGHT D1813 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$91k · you $57/2x vs
+FIGHT D1820 LHR-CDG share 100% (0 rivals) load 100% month-to-date −$122k · you $57/2x vs
+MONTH 2035-01 | player routes 13 fleet 13 cash $31.2M era international | rivals alive 5 routes 16 | contested 0
+saved /Users/runner/work/Airline-Empire/Airline-Empire/AirlineEmpireApp/UITests/Fixtures/store-campaign.json (GameDate(year: 2035, month: 1, day: 1, hour: 12, minute: 0, weekday: AirlineEmpireCore.Weekday.saturday, season: AirlineEmpireCore.Season.winter))
+
+== Summary ==
+first contested player market: day never
+FLEET GREW    72  touching the player: 0
+FREQUENCY UP   279  touching the player: 0
+OPENED CDG-MUC     1  touching the player: 1
+OPENED CDG-NCE     1  touching the player: 0
+OPENED CDG-ZRH     1  touching the player: 0
+OPENED CGK-BKK     1  touching the player: 0
+OPENED CGK-DPS     1  touching the player: 0
+OPENED CGK-KUL     1  touching the player: 0
+OPENED CGK-SGN     1  touching the player: 0
+OPENED CGK-SIN     1  touching the player: 0
+OPENED HND-KIX     1  touching the player: 0
+OPENED HND-PEK     1  touching the player: 0
+OPENED HND-TPE     1  touching the player: 0
+OPENED IST-BER     1  touching the player: 0
+OPENED IST-MUC     1  touching the player: 1
+OPENED IST-MXP     1  touching the player: 0
+OPENED LHR-BER     1  touching the player: 1
+OPENED LHR-MUC     1  touching the player: 1
+visibility of rival actions through the player's feed:
+   FEED: 2
+   FILTERED: 86
+   NO EVENT: 279
+final: player routes 13, fleet 13, era international, cash $31.7M
+   player routes: ARN-LHR ARN-CAI ARN-CDG ARN-IST LHR-CDG ARN-DEL ARN-MUC ARN-MAD ARN-BCN ARN-FCO ARN-BER ARN-AMS ARN-MXP
+   PacificBlue [lowCost] active routes 3 fleet 13 rep 0.69 cash $70.6M
+      IST-BER 20x/day target, 5 aircraft assigned, 7 needed (3 trips/aircraft/day) · last month 65299 pax $2.8M · load 61%
+      IST-MXP 20x/day target, 5 aircraft assigned, 7 needed (3 trips/aircraft/day) · last month 59426 pax $1.4M · load 64%
+      IST-MUC 20x/day target, 3 aircraft assigned, 7 needed (3 trips/aircraft/day) · last month 62066 pax $3.9M · load 98%
+   Aurora Atlantic [premium] active routes 2 fleet 5 rep 0.79 cash $39.0M
+      LHR-BER 20x/day target, 3 aircraft assigned, 5 needed (4 trips/aircraft/day) · last month 63843 pax $3.5M · load 70%
+      LHR-MUC 20x/day target, 2 aircraft assigned, 5 needed (4 trips/aircraft/day) · last month 60652 pax $4.1M · load 91%
+   SwiftJet [regional] active routes 3 fleet 3 rep 0.73 cash $87.2M
+      CDG-ZRH 20x/day target, 1 aircraft assigned, 4 needed (5 trips/aircraft/day) · last month 18224 pax $23k · load 100%
+      CDG-NCE 20x/day target, 1 aircraft assigned, 5 needed (4 trips/aircraft/day) · last month 14008 pax $274k · load 100%
+      CDG-MUC 20x/day target, 1 aircraft assigned, 5 needed (4 trips/aircraft/day) · last month 12512 pax $163k · load 100%
+   Crown Meridian [conservative] active routes 3 fleet 20 rep 0.75 cash $158.9M
+      HND-TPE 20x/day target, 10 aircraft assigned, 10 needed (2 trips/aircraft/day) · last month 98296 pax $10.0M · load 99%
+      HND-KIX 20x/day target, 4 aircraft assigned, 4 needed (6 trips/aircraft/day) · last month 83160 pax $704k · load 100%
+      HND-PEK 20x/day target, 6 aircraft assigned, 10 needed (2 trips/aircraft/day) · last month 58696 pax $6.0M · load 100%
+   TerraLink [expansionist] active routes 5 fleet 36 rep 0.78 cash $644.3M
+      CGK-DPS 11x/day target, 3 aircraft assigned, 3 needed (4 trips/aircraft/day) · last month 35452 pax $1.2M · load 60%
+      CGK-BKK 20x/day target, 10 aircraft assigned, 10 needed (2 trips/aircraft/day) · last month 95920 pax $10.3M · load 93%
+      CGK-SIN 20x/day target, 5 aircraft assigned, 5 needed (4 trips/aircraft/day) · last month 86152 pax $2.8M · load 99%
+      CGK-KUL 20x/day target, 7 aircraft assigned, 7 needed (3 trips/aircraft/day) · last month 97504 pax $5.5M · load 97%
+      CGK-SGN 20x/day target, 10 aircraft assigned, 10 needed (2 trips/aircraft/day) · last month 98014 pax $9.0M · load 86%

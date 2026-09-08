@@ -1,0 +1,341 @@
+{
+  "direction": "Premium aviation: real gameplay, precise typography, restrained blue and amber, one player benefit per frame.",
+  "exports": [
+    {
+      "file": "APP_IPHONE_67/01-network.png",
+      "width": 1320,
+      "height": 2868,
+      "bytes": 577385,
+      "sha256": "36908a057d28c2a2c23f181130f437b161ea0da0264f18e30c6c7cec23be5ffe",
+      "nativeSource": "iphone/01-network.png",
+      "nativeSha256": "087428b60cc846dca6bf5abc5386561f7c731861c01d5d8844982bfd810c9675",
+      "nativeWidth": 1320,
+      "nativeHeight": 2868,
+      "sourceCrop": [
+        0,
+        1180,
+        900,
+        770
+      ],
+      "detailCrop": [
+        48,
+        2090,
+        1200,
+        155
+      ],
+      "headline": "The world. Your network."
+    },
+    {
+      "file": "APP_IPHONE_67/02-fleet.png",
+      "width": 1320,
+      "height": 2868,
+      "bytes": 365445,
+      "sha256": "db93852f833624940b91e19d39f753c1a43db72d6c4cce55e00d6b8afc087f54",
+      "nativeSource": "iphone/02-fleet.png",
+      "nativeSha256": "fd07e14138b9a176065384dccc0d07590bd41522f205d420ad29a4fc1cadbc55",
+      "nativeWidth": 1320,
+      "nativeHeight": 2868,
+      "sourceCrop": [
+        48,
+        508,
+        1224,
+        1735
+      ],
+      "headline": "From one plane to a fleet."
+    },
+    {
+      "file": "APP_IPHONE_67/03-routes.png",
+      "width": 1320,
+      "height": 2868,
+      "bytes": 408953,
+      "sha256": "4f48f39dfc485fd44ba7190bd6949ffc9806086669d5c4a30973f08c3d0327b0",
+      "nativeSource": "iphone/03-route.png",
+      "nativeSha256": "83a74c1a3ae65adfa37936b507d87f84f916de00bd3d4d6f6b96739424ace1fc",
+      "nativeWidth": 1320,
+      "nativeHeight": 2868,
+      "sourceCrop": [
+        48,
+        348,
+        1224,
+        1515
+      ],
+      "headline": "Make every route count."
+    },
+    {
+      "file": "APP_IPHONE_67/04-finance.png",
+      "width": 1320,
+      "height": 2868,
+      "bytes": 320477,
+      "sha256": "f300f350a8373d46f684d0f07a1edb32c66c1513f48346920ce7e66d1f43739a",
+      "nativeSource": "iphone/04-finance.png",
+      "nativeSha256": "cb166d32cc435a60e7841e67eb4865021f8794a6379ad2542fe0bbe9a9a53d1e",
+      "nativeWidth": 1320,
+      "nativeHeight": 2868,
+      "sourceCrop": [
+        48,
+        348,
+        1224,
+        1845
+      ],
+      "headline": "Turn smart moves into profit."
+    },
+    {
+      "file": "APP_IPHONE_67/05-rivals.png",
+      "width": 1320,
+      "height": 2868,
+      "bytes": 360150,
+      "sha256": "02d9302d0dfb9a929b336d7d209f76584961f7534ef96e31e8a5e0eac937f11f",
+      "nativeSource": "iphone/05-rivals.png",
+      "nativeSha256": "b1268f277a49304faeff8fe9e44b5eb773cde14c3deadbd4cefb91f2203efbf6",
+      "nativeWidth": 1320,
+      "nativeHeight": 2868,
+      "sourceCrop": [
+        48,
+        735,
+        1224,
+        1420
+      ],
+      "headline": "Build an airline rivals notice."
+    },
+    {
+      "file": "APP_IPHONE_67/06-progression.png",
+      "width": 1320,
+      "height": 2868,
+      "bytes": 347342,
+      "sha256": "60bd8544b3f0dad13e0a089dddbaf837e2a6ee8523328c0dc5591f591629dd48",
+      "nativeSource": "iphone/06-progression.png",
+      "nativeSha256": "1ea1a3338eff416537ae6210b732183f552bffa9ab0e95153138b305f360b638",
+      "nativeWidth": 1320,
+      "nativeHeight": 2868,
+      "sourceCrop": [
+        48,
+        372,
+        1224,
+        1740
+      ],
+      "headline": "Your next milestone awaits."
+    },
+    {
+      "file": "APP_IPHONE_65/01-network.png",
+      "width": 1242,
+      "height": 2688,
+      "bytes": 546603,
+      "sha256": "7eddd7a23b98989b48fc69778e17beca95d7b49e8bb198a291d2fb6a031a55d4",
+      "nativeSource": "iphone/01-network.png",
+      "nativeSha256": "087428b60cc846dca6bf5abc5386561f7c731861c01d5d8844982bfd810c9675",
+      "nativeWidth": 1320,
+      "nativeHeight": 2868,
+      "sourceCrop": [
+        0,
+        1180,
+        900,
+        770
+      ],
+      "detailCrop": [
+        48,
+        2090,
+        1200,
+        155
+      ],
+      "headline": "The world. Your network."
+    },
+    {
+      "file": "APP_IPHONE_65/02-fleet.png",
+      "width": 1242,
+      "height": 2688,
+      "bytes": 333795,
+      "sha256": "51aedf7bb8c15c26fd4261056ae91bf4a09eace1cc093bfa5da99d618b797f28",
+      "nativeSource": "iphone/02-fleet.png",
+      "nativeSha256": "fd07e14138b9a176065384dccc0d07590bd41522f205d420ad29a4fc1cadbc55",
+      "nativeWidth": 1320,
+      "nativeHeight": 2868,
+      "sourceCrop": [
+        48,
+        508,
+        1224,
+        1735
+      ],
+      "headline": "From one plane to a fleet."
+    },
+    {
+      "file": "APP_IPHONE_65/03-routes.png",
+      "width": 1242,
+      "height": 2688,
+      "bytes": 374958,
+      "sha256": "1881bd643b7c77adb9d3b56c53f1e56ac818f5afd42d9d6d4027dce663d83a2e",
+      "nativeSource": "iphone/03-route.png",
+      "nativeSha256": "83a74c1a3ae65adfa37936b507d87f84f916de00bd3d4d6f6b96739424ace1fc",
+      "nativeWidth": 1320,
+      "nativeHeight": 2868,
+      "sourceCrop": [
+        48,
+        348,
+        1224,
+        1515
+      ],
+      "headline": "Make every route count."
+    },
+    {
+      "file": "APP_IPHONE_65/04-finance.png",
+      "width": 1242,
+      "height": 2688,
+      "bytes": 307622,
+      "sha256": "259fdc6d67b19354794ec6fff2b3325f9c71f65b31ce4f38a99bf896e576d655",
+      "nativeSource": "iphone/04-finance.png",
+      "nativeSha256": "cb166d32cc435a60e7841e67eb4865021f8794a6379ad2542fe0bbe9a9a53d1e",
+      "nativeWidth": 1320,
+      "nativeHeight": 2868,
+      "sourceCrop": [
+        48,
+        348,
+        1224,
+        1845
+      ],
+      "headline": "Turn smart moves into profit."
+    },
+    {
+      "file": "APP_IPHONE_65/05-rivals.png",
+      "width": 1242,
+      "height": 2688,
+      "bytes": 330593,
+      "sha256": "071908d146de4aa1b702885b08b1e8fdca4b039bedb034e4e4fd444f754a65eb",
+      "nativeSource": "iphone/05-rivals.png",
+      "nativeSha256": "b1268f277a49304faeff8fe9e44b5eb773cde14c3deadbd4cefb91f2203efbf6",
+      "nativeWidth": 1320,
+      "nativeHeight": 2868,
+      "sourceCrop": [
+        48,
+        735,
+        1224,
+        1420
+      ],
+      "headline": "Build an airline rivals notice."
+    },
+    {
+      "file": "APP_IPHONE_65/06-progression.png",
+      "width": 1242,
+      "height": 2688,
+      "bytes": 320290,
+      "sha256": "1421a44a50adb0153ad24b55f935d10f38717f01938f1ef7d9bc3486715e1158",
+      "nativeSource": "iphone/06-progression.png",
+      "nativeSha256": "1ea1a3338eff416537ae6210b732183f552bffa9ab0e95153138b305f360b638",
+      "nativeWidth": 1320,
+      "nativeHeight": 2868,
+      "sourceCrop": [
+        48,
+        372,
+        1224,
+        1740
+      ],
+      "headline": "Your next milestone awaits."
+    },
+    {
+      "file": "APP_IPAD_PRO_3GEN_129/01-network.png",
+      "width": 2064,
+      "height": 2752,
+      "bytes": 762798,
+      "sha256": "a1877f811b9ec4b213bfd941c344b0e270922f248ca145d7db379e2c02abb5ab",
+      "nativeSource": "ipad/01-network.png",
+      "nativeSha256": "25a8c9166acb44a42fc6c66ab10dc4b41117a145de26b85fa617c2afba6e0021",
+      "nativeWidth": 2064,
+      "nativeHeight": 2752,
+      "sourceCrop": [
+        680,
+        1090,
+        1384,
+        1200
+      ],
+      "headline": "The world. Your network."
+    },
+    {
+      "file": "APP_IPAD_PRO_3GEN_129/02-fleet.png",
+      "width": 2064,
+      "height": 2752,
+      "bytes": 485391,
+      "sha256": "2462ce3350cc508e6696db0c7d25efe5d52383e4bda377694417305758509fdc",
+      "nativeSource": "ipad/02-fleet.png",
+      "nativeSha256": "76d36cd832a3cfe7ee905ebc6720407f9f14f10b2a4d9b4847c6a8654fe79850",
+      "nativeWidth": 2064,
+      "nativeHeight": 2752,
+      "sourceCrop": [
+        688,
+        230,
+        1352,
+        1280
+      ],
+      "headline": "From one plane to a fleet."
+    },
+    {
+      "file": "APP_IPAD_PRO_3GEN_129/03-routes.png",
+      "width": 2064,
+      "height": 2752,
+      "bytes": 504019,
+      "sha256": "930e1d86fc96c4fa1f429d71dab9d40864edf5cfd9ff3b3d28791a86db17dff9",
+      "nativeSource": "ipad/03-route.png",
+      "nativeSha256": "eb26525f91049ced7f8b6a9ae2d73deea40f1ec5656de05a2c4c73e61b12e79c",
+      "nativeWidth": 2064,
+      "nativeHeight": 2752,
+      "sourceCrop": [
+        688,
+        172,
+        1352,
+        1200
+      ],
+      "headline": "Make every route count."
+    },
+    {
+      "file": "APP_IPAD_PRO_3GEN_129/04-finance.png",
+      "width": 2064,
+      "height": 2752,
+      "bytes": 438971,
+      "sha256": "89dae63feb6d2276bcc48aa26d332484d3d27f3e4a6cfd51effd85b225a2850a",
+      "nativeSource": "ipad/04-finance.png",
+      "nativeSha256": "26ad316a94b12beb1cf3791e3ddeadd3e795e51124e7c1f4acd9fea5bd37f632",
+      "nativeWidth": 2064,
+      "nativeHeight": 2752,
+      "sourceCrop": [
+        688,
+        168,
+        1352,
+        1195
+      ],
+      "headline": "Turn smart moves into profit."
+    },
+    {
+      "file": "APP_IPAD_PRO_3GEN_129/05-rivals.png",
+      "width": 2064,
+      "height": 2752,
+      "bytes": 476343,
+      "sha256": "98de8d168b71b0f6f61d29fa13da088246f9a3db80e00966592fe6679b3f7b78",
+      "nativeSource": "ipad/05-rivals.png",
+      "nativeSha256": "00bdb99447ae9e82bf43df681db46532bbce3f9fd5cfa1b1e0d07ac1a3570732",
+      "nativeWidth": 2064,
+      "nativeHeight": 2752,
+      "sourceCrop": [
+        688,
+        440,
+        1352,
+        1370
+      ],
+      "headline": "Build an airline rivals notice."
+    },
+    {
+      "file": "APP_IPAD_PRO_3GEN_129/06-progression.png",
+      "width": 2064,
+      "height": 2752,
+      "bytes": 467265,
+      "sha256": "5a68eb1b998086977a8e026562aef2043f2d76b2ccd9750434a9b51c9a0087f3",
+      "nativeSource": "ipad/06-progression.png",
+      "nativeSha256": "330542b4470ca7c4f0787c41bb8348c09da2ee97fb8e4b06e5147e11ab42466e",
+      "nativeWidth": 2064,
+      "nativeHeight": 2752,
+      "sourceCrop": [
+        688,
+        185,
+        1352,
+        1110
+      ],
+      "headline": "Your next milestone awaits."
+    }
+  ]
+}
