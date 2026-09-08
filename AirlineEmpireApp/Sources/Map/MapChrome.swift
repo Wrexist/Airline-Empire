@@ -20,45 +20,32 @@ struct MapTopBar: View {
 
     var body: some View {
         VStack(spacing: AETheme.spacingS) {
-            // Beside the speed control at reading sizes; above it at
-            // accessibility sizes, where the two together are wider than any
-            // phone.
-            //
-            // Both halves of this are things CI photographed rather than
-            // things anybody reasoned out. AE-048 first put the cash on the
-            // clock line, and run 171's frames showed the *date* wrapping to
-            // "2030-" / "01-01" — a one-line bar became four (BUG-063). The
-            // cash came out and the date was pinned with `fixedSize`, and run
-            // 172's frames showed what *that* cost: a date that refuses to
-            // compress makes this row wider than the screen, so the capsule
-            // ran past its own margin and the `Spacer()` in the row below
-            // pushed `MapZoomControls` — the only way to zoom without a pinch,
-            // and therefore an accessibility control — clean off the right
-            // edge (BUG-065). At AccessibilityL the same overflow put the
-            // whole speed control off-screen.
-            //
-            // So: never wrap, never force a width. The date shrinks a little
-            // before it does either, and at accessibility sizes the row stops
-            // being a row.
-            if typeSize.isAccessibilitySize {
+            // Use two rows when the full date and 44-point controls do not
+            // fit side by side. Shrinking the date previously left only “20…”.
+            ViewThatFits(in: .horizontal) {
+                if !typeSize.isAccessibilitySize {
+                    HStack(spacing: AETheme.spacingS) {
+                        clock.fixedSize(horizontal: true, vertical: false)
+                        Spacer(minLength: AETheme.spacingS)
+                        SpeedControl().fixedSize(horizontal: true, vertical: false)
+                    }
+                }
                 VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                    clock
+                    HStack {
+                        Text(Format.date(snapshot.currentDate))
+                            .font(.subheadline.weight(.semibold).monospacedDigit())
+                        Spacer(minLength: AETheme.spacingS)
+                        Text(Format.clock(snapshot.currentDate))
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
                     SpeedControl()
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, AETheme.spacingM)
-                .padding(.vertical, AETheme.spacingS)
-                .aeGlass(in: AETheme.cardShape)
-            } else {
-                HStack(spacing: AETheme.spacingS) {
-                    clock
-                    Spacer(minLength: AETheme.spacingS)
-                    SpeedControl()
-                }
-                .padding(.horizontal, AETheme.spacingM)
-                .padding(.vertical, AETheme.spacingS)
-                .aeGlass(in: Capsule(style: .continuous))
             }
+            .padding(.horizontal, AETheme.spacingM)
+            .padding(.vertical, AETheme.spacingS)
+            .aeGlass(in: AETheme.cardShape)
 
             if let banner = worldBanner {
                 HStack(spacing: AETheme.spacingXS) {

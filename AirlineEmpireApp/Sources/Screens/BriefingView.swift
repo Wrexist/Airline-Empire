@@ -71,6 +71,9 @@ struct BriefingView: View {
                         // (AE-037). Not a feed: the most decision-relevant
                         // thing a rival did or is doing to this airline.
                         RivalPressureCard()
+                        if snapshot.progression.hasMilestone("firstFlight") {
+                            NextEraBriefing()
+                        }
                         // The pulse comes before the history. This block
                         // used to sit fifth, below yesterday's digest and next
                         // week's calendar — so "how is my airline doing right

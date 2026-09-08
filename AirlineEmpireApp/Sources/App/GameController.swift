@@ -62,6 +62,9 @@ final class GameController {
     private let savesDirectory: URL?
     private var backgroundSaveTask: UIBackgroundTaskIdentifier = .invalid
     private(set) var isSavingAndQuitting = false
+    private var sessionCheckpoint: SessionCheckpoint?
+    private(set) var lastSessionReport: SessionReport?
+    private(set) var lastSessionNextMove: String?
     private var saveManager: SaveManager?
     private var pumpTask: Task<Void, Never>?
     private var eventTask: Task<Void, Never>?
@@ -131,6 +134,7 @@ final class GameController {
     @ObservationIgnored private var cachedFleetCards: [FleetCardModel]?
     @ObservationIgnored private var cachedCompetition: CompetitionSummary?
     @ObservationIgnored private var cachedDashboard: DashboardModel?
+    @ObservationIgnored private var cachedProgression: ProgressionModel?
     /// Doubly optional on purpose: the inner `nil` is a real answer — a quiet
     /// airline with nothing to do — and a single optional could not tell it
     /// apart from "not computed yet", so the most expensive derivation of the
@@ -162,6 +166,7 @@ final class GameController {
         cachedFleetSummary = nil
         cachedCompetition = nil
         cachedDashboard = nil
+        cachedProgression = nil
         cachedNextMove = nil
     }
 
@@ -213,6 +218,14 @@ final class GameController {
     /// A derivation over `OnboardingModel`, the fleet and `marketOpportunities`
     /// — no stored progress, nothing persisted, and therefore nothing that can
     /// survive a new game or go stale against the state it describes.
+    var progressionModel: ProgressionModel? {
+        guard let snapshot, let catalog else { return nil }
+        if let cachedProgression { return cachedProgression }
+        let model = snapshot.progressionModel(catalog: catalog)
+        cachedProgression = model
+        return model
+    }
+
     var homeNextMove: HomeNextMove? {
         guard let snapshot, let model = mapModel else { return nil }
         if let cachedNextMove { return cachedNextMove }
@@ -557,8 +570,16 @@ final class GameController {
             return false
         }
         guard self.session === session else { return false }
+        let closingState = await session.snapshot
+        guard self.session === session else { return false }
+        let report = sessionCheckpoint.flatMap { start in
+            SessionCheckpoint(closingState).flatMap { SessionReport(from: start, to: $0) }
+        }
+        let nextMove = homeNextMove?.title
         let outcome = lastSaveOutcome
         quitToMenu()
+        lastSessionReport = report
+        lastSessionNextMove = nextMove
         lastSaveOutcome = outcome
         return true
     }
@@ -604,6 +625,7 @@ final class GameController {
         rejectionTask = nil
         session = nil
         activeSaveSlot = nil
+        sessionCheckpoint = nil
         saveManager = nil
         snapshot = nil
         catalog = nil
@@ -861,6 +883,9 @@ final class GameController {
         let fraction = await session.pendingGameMinutes
         let sessionSpeed = await session.speed
         guard self.session === session else { return }
+        if sessionCheckpoint == nil {
+            sessionCheckpoint = SessionCheckpoint(state)
+        }
         if state.clock.tickCount != snapshot?.clock.tickCount {
             snapshotReceivedAt = Date()
         }

@@ -82,6 +82,9 @@ struct NewGameView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: AETheme.spacingL) {
                     masthead
+                    if let report = controller.lastSessionReport {
+                        SessionReportCard(report: report, nextMove: controller.lastSessionNextMove)
+                    }
                     nameField
                     liverySection
                     if !slots.isEmpty { continueSection }

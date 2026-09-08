@@ -22,12 +22,16 @@ final class LaunchSafetyTests: XCTestCase {
         let first = try XCTUnwrap(controller.activeSaveSlot)
         let firstSaved = await controller.saveAndQuit()
         XCTAssertTrue(firstSaved)
+        XCTAssertEqual(controller.lastSessionReport?.airlineName, "First")
+        XCTAssertEqual(controller.lastSessionReport?.flights, 0)
         controller.startNewGame(airlineName: "Second", home: "OSL", seed: 2, scenario: "founder")
         try await waitForGame(controller)
         let second = try XCTUnwrap(controller.activeSaveSlot)
         XCTAssertNotEqual(first, second)
         let secondSaved = await controller.saveAndQuit()
         XCTAssertTrue(secondSaved)
+        XCTAssertEqual(controller.lastSessionReport?.airlineName, "Second")
+        XCTAssertEqual(controller.lastSessionReport?.aircraftChange, 0)
         controller.loadGame(slot: first)
         try await waitForGame(controller)
         XCTAssertEqual(controller.activeSaveSlot, first)
@@ -52,12 +56,14 @@ final class LaunchSafetyTests: XCTestCase {
         let slot = controller.activeSaveSlot
         let failed = await controller.saveAndQuit()
         XCTAssertFalse(failed)
+        XCTAssertNil(controller.lastSessionReport, "A failed save must not show a saved-session recap")
         XCTAssertTrue(controller.hasGame)
         XCTAssertEqual(controller.activeSaveSlot, slot)
         guard case .failed = controller.lastSaveOutcome else { XCTFail("Missing save error"); return }
         try FileManager.default.removeItem(at: root)
         let retried = await controller.saveAndQuit()
         XCTAssertTrue(retried)
+        XCTAssertEqual(controller.lastSessionReport?.airlineName, "Survivor")
         XCTAssertFalse(controller.hasGame)
     }
 

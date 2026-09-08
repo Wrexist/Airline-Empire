@@ -1,5 +1,10 @@
 # The release pipeline
 
+> Current status: the September 5 membership failure described below is historical.
+> The September 6 [TestFlight run 34027843211](https://github.com/Wrexist/Airline-Empire/actions/runs/34027843211)
+> archived, uploaded and processed successfully. Check [LAUNCH_IMPLEMENTATION.md](LAUNCH_IMPLEMENTATION.md)
+> for current candidate evidence and remaining release gates. This does not assert today's account status.
+
 Four workflows and eight scripts, from a commit to a build on a phone and a
 listing on the store. This page is what they do, what it costs, what has
 actually been run, and what to do when a step fails.

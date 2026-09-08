@@ -58,6 +58,17 @@ struct MapHomeBriefing: View {
         let move = controller.homeNextMove
         return VStack(alignment: .leading, spacing: AETheme.spacingS) {
             stateRow(facts)
+            if snapshot.progression.hasMilestone("firstFlight"),
+               let model = controller.progressionModel, let next = model.nextEra {
+                Button(action: openBriefing) {
+                    Text("\(Vocab.era(next)): \(Format.percent(model.nextEraProgress)) of requirements met")
+                        .font(.caption).foregroundStyle(.white.opacity(0.8))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                }
+                .buttonStyle(.aePress)
+                .accessibilityIdentifier("ae-home-era-progress")
+            }
             if let move {
                 Divider().overlay(Color.white.opacity(0.14))
                 moveRow(move)

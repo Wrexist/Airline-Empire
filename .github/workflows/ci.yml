@@ -37,6 +37,7 @@ on:
   # staging work, not asking for the gate.
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   workflow_dispatch:
     inputs:
       suite:
@@ -264,6 +265,7 @@ jobs:
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PUSH_BEFORE: ${{ github.event.before }}
           SUITE_INPUT: ${{ inputs.suite }}
+          FULL_VALIDATION: ${{ contains(github.event.pull_request.labels.*.name, 'full-validation') }}
         run: |
           set -euo pipefail
 
@@ -289,6 +291,8 @@ jobs:
           #                     demand.
           if [ "$EVENT" = "workflow_dispatch" ]; then
             SUITE="${SUITE_INPUT:-full}"
+          elif [ "$EVENT" = "pull_request" ] && [ "$FULL_VALIDATION" = "true" ]; then
+            SUITE=full
           elif [ "$EVENT" = "push" ]; then
             SUITE=smoke
           else
@@ -298,7 +302,7 @@ jobs:
 
           # ── should macOS run at all ──────────────────────────────────────
           BASE=""
-          if [ "$EVENT" = "workflow_dispatch" ]; then
+          if [ "$EVENT" = "workflow_dispatch" ] || [ "$FULL_VALIDATION" = "true" ]; then
             echo "Dispatched by hand — building unconditionally."
           else
             LAST_GREEN=$(curl -fsS \
@@ -781,7 +785,7 @@ jobs:
   # and the detail screens are the whole of what regular width can change.
   app-ipad:
     name: iPad shell (regular width)
-    if: github.event_name == 'workflow_dispatch' && inputs.ipad
+    if: (github.event_name == 'workflow_dispatch' && inputs.ipad) || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-validation'))
     runs-on: macos-26
     timeout-minutes: 45
     steps:

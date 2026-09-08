@@ -1,6 +1,6 @@
 # Launch implementation status
 
-7 September 2026. Implementation branch: `codex/launch-readiness`, PR #22.
+8 September 2026. Implementation branch: `codex/launch-readiness`, PR #22.
 The original audit is preserved in [LAUNCH_AUDIT.md](LAUNCH_AUDIT.md). This file records what has actually changed; the full expansion backlog is not a completed feature list.
 
 ## Implemented
@@ -49,6 +49,18 @@ Campaign export/import is available through the system file picker. Export captu
 - Store descriptions now state 16× speed, separate campaign saves and the network requirement for Apple purchases. Planned hub/commonality mechanics are no longer advertised as shipped. TestFlight instructions follow the map-first controls and include save/purchase recovery checks.
 - All later fixes still require current-commit CI evidence. Earlier passes do not certify later edits.
 
+## Continuation: 8 September
+
+Candidate `b2420a1` completed both workflows successfully. The full 513-test Core suite passed in debug and release. The app lane passed all four save tests, all four StoreKit tests, free entry and the full map-to-first-flight/follow journey. The follow and later-map screenshots were inspected. Normal CI still skipped the full journey matrix and iPad.
+
+Additional implementations now awaiting candidate validation:
+
+- Home's existing briefing strip shows next-era progress after the first flight. The full briefing names the next unmet requirement and opens the existing progression screen, using the same cached Core model.
+- A successful save-and-quit produces a session recap with actual flights, passengers, days, cash movement, fleet/network changes and a next action. Failed saves produce no success recap. Each opened campaign starts a new baseline, and cash movement is explicitly distinguished from profit.
+- The map top bar switches to two rows when the full date and controls do not fit. The previous successful journey still photographed the date as “20…”.
+- A `full-validation` PR label requests all UI journey shards plus the iPad lane and forces a real build even after a prior green compile. PR #22 carries that label.
+- README, the go-live guide and release pipeline now distinguish dated signing failures from the later successful upload.
+
 ## Release sequence
 
 1. Resolve every current-commit Launch safety and CI failure; review the screenshot artifacts.
@@ -61,7 +73,7 @@ No merge, Pages deployment, TestFlight upload or App Store submission was perfor
 
 ## Accepted follow-up backlog
 
-The remaining audit recommendations need further implementation and validation: next-era progress on Home; session-end summaries; investor rescue; capped offline catch-up; contract variety; rival archetype balance; stronger fleet identity; connecting hubs and banked schedules; fleet commonality; bulk network management; versioned seed challenges; richer scenarios/historical starts; iCloud conflict-safe synchronization; cargo, alliances, terminals and subsidiaries.
+The remaining audit recommendations need further implementation and validation: investor rescue; capped offline catch-up; contract variety; rival archetype balance; stronger fleet identity; connecting hubs and banked schedules; fleet commonality; bulk network management; versioned seed challenges; richer scenarios/historical starts; iCloud conflict-safe synchronization; cargo, alliances, terminals and subsidiaries.
 
 These changes add persistent simulation or product behavior. Each needs a concrete design, migration where applicable, economic tests and device review. They have not been silently added to the launch feature claims.
 
