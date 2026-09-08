@@ -29,8 +29,13 @@ public struct CompetitorAISystem: SimulationSystem {
                         state: inout GameState, context: SimContext, tuning: AITuning) {
         let (runway, monthlyCosts) = cashRunway(airlineID, state: state, context: context)
 
-        // 1. Survival: deep trouble -> shed the worst loss-maker and idle metal.
-        if runway < tuning.retrenchRunwayMonths {
+        // 1. Survival: low reserves alone are not a reason to liquidate a
+        // cash-generating network. Include principal repayments, but exclude
+        // aircraft sales and loan proceeds from recurring cash generation.
+        let latest = state.finance.byAirline[airlineID]?.latest
+        let recurringCash = latest.map { $0.netProfit + $0.total(.loanPrincipal) }
+        if runway < tuning.retrenchRunwayMonths,
+           state.ledger.balance(of: airlineID) < .zero || (recurringCash.map { $0 < .zero } ?? true) {
             retrench(airlineID, state: &state, context: context)
             return
         }

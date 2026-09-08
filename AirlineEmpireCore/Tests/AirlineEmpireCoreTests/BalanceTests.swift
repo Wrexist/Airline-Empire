@@ -124,7 +124,7 @@ struct BalanceTests {
         if let best = positives.max(), let worst = positives.min(), worst > 0 {
             print(String(format: "ARCHETYPE-SPREAD %.3f", Double(best) / Double(worst)))
             // Keep the existing dominance bound. The measured nine-seed
-            // spread fell to about 2.46 after fixing idle expansion and
+            // spread fell to about 2.41 after fixing idle expansion and
             // low-cost ownership economics; no guard was relaxed.
             #expect(Double(best) / Double(worst) < 7.0,
                     "Archetype spread too wide: \(medians)")

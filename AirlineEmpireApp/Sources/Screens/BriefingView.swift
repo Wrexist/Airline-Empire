@@ -158,6 +158,12 @@ struct BriefingView: View {
                 OpenRouteSheet(suggestion: guided.suggestion)
             }
         }
+        .onChange(of: controller.hasGame) { _, hasGame in
+            // Settings is pushed inside this sheet. Saving and quitting
+            // replaces the world underneath it, so explicitly dismiss the
+            // presentation to reveal the saved-session recap.
+            if !hasGame { dismiss() }
+        }
     }
 
     @ViewBuilder

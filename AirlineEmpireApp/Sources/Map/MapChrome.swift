@@ -15,33 +15,36 @@ import AirlineEmpireCore
 struct MapTopBar: View {
     @Environment(GameController.self) private var controller
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.horizontalSizeClass) private var sizeClass
     let model: MapModel
     let snapshot: GameState
 
     var body: some View {
         VStack(spacing: AETheme.spacingS) {
-            // Use two rows when the full date and 44-point controls do not
-            // fit side by side. Shrinking the date previously left only “20…”.
-            ViewThatFits(in: .horizontal) {
-                if !typeSize.isAccessibilitySize {
+            // Compact screens use two rows. Instantiate only the visible
+            // controls: measuring two interactive ViewThatFits candidates
+            // can expose duplicate accessibility actions for the same tap.
+            Group {
+                if sizeClass == .regular && !typeSize.isAccessibilitySize {
                     HStack(spacing: AETheme.spacingS) {
                         clock.fixedSize(horizontal: true, vertical: false)
                         Spacer(minLength: AETheme.spacingS)
                         SpeedControl().fixedSize(horizontal: true, vertical: false)
                     }
-                }
-                VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                    HStack {
-                        Text(Format.date(snapshot.currentDate))
-                            .font(.subheadline.weight(.semibold).monospacedDigit())
-                        Spacer(minLength: AETheme.spacingS)
-                        Text(Format.clock(snapshot.currentDate))
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(.white.opacity(0.7))
+                } else {
+                    VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                        HStack {
+                            Text(Format.date(snapshot.currentDate))
+                                .font(.subheadline.weight(.semibold).monospacedDigit())
+                            Spacer(minLength: AETheme.spacingS)
+                            Text(Format.clock(snapshot.currentDate))
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.white.opacity(0.7))
+                        }
+                        SpeedControl()
                     }
-                    SpeedControl()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.horizontal, AETheme.spacingM)
             .padding(.vertical, AETheme.spacingS)

@@ -949,8 +949,9 @@ class AEUITestCase: XCTestCase {
     /// Indexing waits for the query the way a plain subscript does, and keeps
     /// the ambiguity safety the subscript lacks.
     private func labelledButton(_ label: String) -> XCUIElement {
-        app.buttons.matching(NSPredicate(format: "label == %@", label))
-            .element(boundBy: 0)
+        let matches = app.buttons.matching(NSPredicate(format: "label == %@", label))
+        return matches.allElementsBoundByIndex.first(where: { $0.isHittable })
+            ?? matches.element(boundBy: 0)
     }
 
     @discardableResult

@@ -23,7 +23,7 @@ The original audit is preserved in [LAUNCH_AUDIT.md](LAUNCH_AUDIT.md). This file
 | R15 | Refresh on foreground, product load, transaction updates and expiry. Only verified grace deadlines extend expired subscriptions. | Real Apple sandbox cancellation/refund/grace rehearsals remain. |
 | R16 | Initial checkpoint, daily autosaves, captured session/slot on background, UIKit background allowance, checked synchronization/rotation errors, future-version protection. | Forced termination/low-storage rehearsal on physical devices remains. |
 | R17 | First automatic offer follows the first completed flight; foreground nudges require that milestone. | Check presentation alongside the first-flight celebration. |
-| R18 | Low-cost rivals prefer used ownership; expansion waits for placed aircraft and nonnegative closed-month net profit. Nine-seed controlled runs improved all five strategies; the regression now requires every median to preserve starting capital. | See RIVAL_BALANCE_FIX.md. Integrated Core and curated player journeys still need to pass. |
+| R18 | Low-cost rivals prefer used ownership; expansion waits for placed aircraft and nonnegative closed-month net profit. Retrenchment distinguishes positive recurring cash from genuine cash drain. Nine-seed controlled runs improved all five strategies; the regression now requires every median to preserve starting capital. | See RIVAL_BALANCE_FIX.md. Integrated Core and curated player journeys still need to pass. |
 | R19 | Time-control hit targets are at least 44 points. Flight-follow menu gives a production accessibility path without tapping tiny moving markers. Follow test now fails when the path is unavailable. | Fresh small-phone, iPad, Dynamic Type and VoiceOver review remains. |
 | R20 | No unsupported performance claim added. | Physical-device memory, battery, thermal and frame-time evidence remains. |
 | R21 | Manifest, legal/support pages, review notes, generated store checklist and this status document updated. | Older design/audit documents describe historical behavior and are not release certification. |
@@ -84,6 +84,8 @@ Candidate `a9037e4` passed all **522 Core release tests** and all **11 launch-sa
 - Reviewer instructions now identify Founder as the well-funded free start and use the current map/briefing navigation. The generated store fill-in sheet was refreshed.
 
 The rival investigation and reproducible nine-seed measurements are in [RIVAL_BALANCE_FIX.md](RIVAL_BALANCE_FIX.md). No cash, fare, service, maintenance, aircraft-price or debt-limit subsidy was used.
+
+Candidate `4d918ab` passed iPad shell, map-home and release tooling. All eight hosted save/StoreKit tests passed. Its stricter recap test exposed an undismissed briefing/Settings sheet; the briefing now explicitly dismisses when the session ends. Core passed the strengthened archetype benchmark but found one quick aircraft sale in the existing seed-2039 credibility regression. The cash-flow retrenchment correction above removes it in the local reproduction; the final nine-seed benchmark retains 45/45 surviving rivals and improves every archetype median over starting capital. The campaign still lost a day-control tap after the banner change. The responsive map header now creates only one time-control group instead of measuring two interactive candidates, and the journey selects a hittable matching control. The exact target-date assertion remains. These subsequent fixes still require fresh integrated CI.
 
 ## Release sequence
 
