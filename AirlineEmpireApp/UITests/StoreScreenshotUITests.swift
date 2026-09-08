@@ -34,8 +34,8 @@ final class StoreScreenshotUITests: AEUITestCase {
         shot("03b-routes")
         let row = app.descendants(matching: .any).matching(NSPredicate(
             format: "identifier == %@ AND label CONTAINS %@ AND label CONTAINS %@",
-            "ae-route-row", "LHR", "CDG")).firstMatch
-        guard scrollUntil(row, "the London to Paris route"), tapWhenReady(row) else { return }
+            "ae-route-row", "ARN", "IST")).firstMatch
+        guard scrollUntil(row, "the Stockholm to Istanbul route"), tapWhenReady(row) else { return }
         shot("03-route")
 
         openTab("Finance")
