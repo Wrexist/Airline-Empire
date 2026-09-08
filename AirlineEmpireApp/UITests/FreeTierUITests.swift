@@ -16,6 +16,7 @@ final class FreeTierUITests: AEUITestCase {
         XCTAssertTrue(app.descendants(matching: .any)["ae-session-report"]
             .waitForExistence(timeout: 15))
         XCTAssertTrue(app.staticTexts["Since you opened this campaign"].exists)
+        XCTAssertFalse(app.alerts["Save"].exists, "A save alert must not cover the recap")
         capture("FREE-saved-session-summary")
     }
 

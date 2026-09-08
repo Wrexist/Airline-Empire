@@ -9,6 +9,7 @@ public struct ContractOffer: Equatable, Sendable {
     public let kind: MissionKind
     public let reward: Money
     public let baseline: Int64
+    public let deadline: SimTime
     public static let durationDays: Int64 = 28
     static let cooldownKey = "contract.lastAcceptedMonth"
 
@@ -29,13 +30,17 @@ public struct ContractOffer: Equatable, Sendable {
         let fleet = Int64(min(20, max(1, state.fleet(of: player.id).count)))
         let flights = min(300, fleet * 30)
         let passengers = fleet * 5_000
+        // Missions settle at midnight. Publish that exact deadline instead
+        // of promising a partial final day the daily resolver cannot honor.
+        let deadline = SimTime(rawMinutes: (state.clock.now.dayIndex + durationDays)
+                               * GameCalendar.minutesPerDay)
         return [
             ContractOffer(choice: .flights, kind: .flightContract(targetFlights: flights),
                           reward: .dollars(flights * 1_500),
-                          baseline: state.progression.counters.flightsCompleted),
+                          baseline: state.progression.counters.flightsCompleted, deadline: deadline),
             ContractOffer(choice: .passengers, kind: .passengerContract(targetPassengers: passengers),
                           reward: .dollars(passengers * 2),
-                          baseline: state.progression.counters.passengersCarried)
+                          baseline: state.progression.counters.passengersCarried, deadline: deadline)
         ]
     }
 }
@@ -59,7 +64,7 @@ public struct AcceptContractCommand: Command, Equatable {
         let mission = Mission(id: state.progression.nextMissionID,
                               sourceEventID: -10_000_000 - month,
                               kind: offer.kind,
-                              deadline: context.current + .days(ContractOffer.durationDays),
+                              deadline: offer.deadline,
                               reward: offer.reward, baseline: offer.baseline)
         state.progression.nextMissionID += 1
         state.progression.missions.append(mission)

@@ -295,6 +295,7 @@ final class Entitlements {
         let active = candidates.keys.sorted().compactMap { candidates[$0] }.filter { $0.isPro() }
         entitlement = active.first { $0.grantedBy == .lifetime }
             ?? active.max { accessDeadline($0) < accessDeadline($1) } ?? .free
+        if isPro { presentedGate = nil }
         scheduleExpiryRefresh()
     }
 
@@ -329,7 +330,7 @@ final class Entitlements {
         return true
     }
 
-    /// The once-only offer made after the first airline is founded.
+    /// The once-only offer made after the first completed flight.
     func offerOnFirstRunIfDue() {
         guard PaywallPolicy.shouldOfferOnFirstRun(access: access,
                                                   history: paywallHistory) else { return }

@@ -85,9 +85,9 @@ struct NewGameView: View {
                     if let report = controller.lastSessionReport {
                         SessionReportCard(report: report, nextMove: controller.lastSessionNextMove)
                     }
+                    if !slots.isEmpty { continueSection }
                     nameField
                     liverySection
-                    if !slots.isEmpty { continueSection }
                     Button {
                         if entitlements.access.allowsNewSave(existingSaves: slots.count) {
                             showingImport = true

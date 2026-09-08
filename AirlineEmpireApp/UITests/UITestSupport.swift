@@ -992,21 +992,32 @@ class AEUITestCase: XCTestCase {
                   let today = currentHomeDate(),
                   Self.days(from: today, to: target) > 14 {
                 week.tap()
+                guard waitForAdvance(from: today, days: 7) else { return false }
                 weekTaps += 1
             }
         }
 
         var taps = 0
         while taps < cap, !arrived.exists {
+            guard let today = currentHomeDate() else { return false }
             sunrise.tap()
-            // No fixed pause: `tap()` already waits for the app to go idle,
-            // and the `arrived.exists` query at the top of the loop is a
-            // second synchronisation point. The campaign tapped this control
-            // ninety times, so half a second each was half a minute of the
-            // suite spent asleep.
+            guard waitForAdvance(from: today, days: 1) else { return false }
             taps += 1
         }
         return arrived.exists
+    }
+
+    /// UI idleness does not mean the actor's asynchronous simulation task
+    /// has published its result. Wait for the requested calendar movement
+    /// before another tap, so advances cannot pile up and skip the target.
+    private func waitForAdvance(from previous: DateComponents, days: Int) -> Bool {
+        let moved = XCTNSPredicateExpectation(predicate: NSPredicate { [weak self] _, _ in
+            guard let current = self?.currentHomeDate() else { return false }
+            return Self.days(from: previous, to: current) >= days
+        }, object: nil)
+        if XCTWaiter.wait(for: [moved], timeout: 20) == .completed { return true }
+        checkpoint("TIME-advance-did-not-complete")
+        return false
     }
 
     /// The date Home shows, read back from the header ("2030-02-09").

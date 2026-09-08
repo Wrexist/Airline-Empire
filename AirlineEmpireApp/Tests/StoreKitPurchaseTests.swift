@@ -24,6 +24,11 @@ final class StoreKitPurchaseTests: XCTestCase {
         await entitlements.purchase(.lifetime)
         XCTAssertTrue(entitlements.isPro)
         XCTAssertEqual(entitlements.lastOutcome, .purchased(.lifetime))
+        // A stale offer must close when verified ownership is refreshed,
+        // including ownership obtained while the app was suspended.
+        entitlements.presentedGate = .direct
+        await entitlements.refreshEntitlement()
+        XCTAssertNil(entitlements.presentedGate)
         let restored = Entitlements(arguments: ["-AEUITestFree"])
         await restored.start()
         await restored.restore()

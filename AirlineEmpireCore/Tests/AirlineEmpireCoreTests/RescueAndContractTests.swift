@@ -134,4 +134,17 @@ struct RescueAndContractTests {
         #expect(engine.state.progression.missions.isEmpty)
         #expect(engine.state.ledger.balance(of: id) == state.ledger.balance(of: id))
     }
+
+    @Test func middayAcceptanceQuotesAnExactSettlementBoundary() throws {
+        let (original, _, _) = try DemandFixtures.market(fare: .dollars(129))
+        var state = original.state
+        state.clock.now += .minutes(12 * 60)
+        state.progression.milestones.append("firstFlight")
+        let offer = try #require(ContractOffer.offers(in: state).first)
+        #expect(offer.deadline.minuteOfDay == 0)
+        #expect(offer.deadline.dayIndex == state.clock.now.dayIndex + 28)
+        let engine = SimulationEngine(state: state, systems: [], catalog: original.catalog)
+        #expect(engine.applyNow(AcceptContractCommand(choice: offer.choice)) == .applied)
+        #expect(engine.state.progression.missions.first?.deadline == offer.deadline)
+    }
 }

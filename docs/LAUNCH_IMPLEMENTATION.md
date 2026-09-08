@@ -70,6 +70,12 @@ Additional implementations now awaiting candidate validation:
 
 On `3063ab9`, Core release tests, iPad shell, map-home and release-tooling checks passed. The full date is visible in inspected map screenshots. All eight hosted save/StoreKit tests passed. The recap UI test failed before founding due to shared saves; the isolation fix above requires a fresh run. Other full journey shards were still running when this entry was written.
 
+Candidate `9e6bd6b` passed all **521 Core release tests**, including rescue repayment, legacy migration and both contract reward paths. All **11 app/UI launch-safety tests** also passed: four save tests, four StoreKit tests, free entry, save recap and the first-flight/follow journey. The recap screenshot showed a redundant success alert covering the card; save-and-quit now uses the card as its success confirmation while preserving failure alerts. The full journey matrix and subsequent fixes still require final-candidate validation.
+
+The long economy journey now waits for the requested one-day or seven-day calendar movement after each tap. UI idleness alone did not await the asynchronous simulation task, allowing overlapping advances to skip an exact target date. The strict destination-date assertion remains in place.
+
+PR review identified a stale-ownership nudge on foreground. The foreground task now awaits ownership refresh and cancels when the scene changes; verified Pro ownership also clears any stale purchase prompt. The real StoreKit purchase regression checks that refresh behavior. Contract confirmations now quote an exact midnight deadline aligned with daily mission settlement, including when accepted at midday.
+
 ## Release sequence
 
 1. Resolve every current-commit Launch safety and CI failure; review the screenshot artifacts.

@@ -578,7 +578,7 @@ final class GameController {
         let wasPumping = pumpTask != nil
         setPumping(false)
         defer { isSavingAndQuitting = false }
-        guard await save(session: session, slot: slot, announce: true) else {
+        guard await save(session: session, slot: slot, announce: true, announceSuccess: false) else {
             if self.session === session { setPumping(wasPumping) }
             return false
         }
@@ -589,20 +589,20 @@ final class GameController {
             SessionCheckpoint(closingState).flatMap { SessionReport(from: start, to: $0) }
         }
         let nextMove = homeNextMove?.title
-        let outcome = lastSaveOutcome
         quitToMenu()
         lastSessionReport = report
         lastSessionNextMove = nextMove
-        lastSaveOutcome = outcome
+        lastSaveOutcome = nil // The saved-session card is the confirmation.
         return true
     }
 
-    private func save(session: GameSession, slot: String, announce: Bool) async -> Bool {
+    private func save(session: GameSession, slot: String, announce: Bool,
+                      announceSuccess: Bool = true) async -> Bool {
         do {
             try await session.saveNow(slot: slot)
             guard self.session === session else { return true }
             quietSaveFailure = nil
-            if announce { lastSaveOutcome = .saved(slot: slot) }
+            if announce && announceSuccess { lastSaveOutcome = .saved(slot: slot) }
             return true
         } catch {
             guard self.session === session else { return false }

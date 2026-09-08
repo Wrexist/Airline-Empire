@@ -22,6 +22,7 @@ final class LaunchSafetyTests: XCTestCase {
         let first = try XCTUnwrap(controller.activeSaveSlot)
         let firstSaved = await controller.saveAndQuit()
         XCTAssertTrue(firstSaved)
+        XCTAssertNil(controller.lastSaveOutcome, "The recap replaces the redundant save alert")
         XCTAssertEqual(controller.lastSessionReport?.airlineName, "First")
         XCTAssertEqual(controller.lastSessionReport?.flights, 0)
         controller.startNewGame(airlineName: "Second", home: "OSL", seed: 2, scenario: "founder")

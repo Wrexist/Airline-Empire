@@ -10,15 +10,18 @@ struct ContractBoard: View {
             AECard {
                 VStack(alignment: .leading, spacing: AETheme.spacingS) {
                     Text("Optional contracts").font(.headline)
-                    Text("Choose one per calendar month. Complete it within 28 game days for a bonus. There is no deposit or penalty for missing the target.")
+                    Text("Choose one per calendar month. Complete it by the stated deadline for a bonus. There is no deposit or penalty for missing the target.")
                         .font(.caption).foregroundStyle(.secondary)
                     ForEach(offers, id: \.choice) { offer in
+                        let deadline = Format.date(GameCalendar.date(at: offer.deadline, startYear: state.meta.startYear))
                         VStack(alignment: .leading, spacing: AETheme.spacingXS) {
                             Text(title(offer.kind)).font(.subheadline.weight(.semibold))
                             Text("Completion bonus: \(Format.money(offer.reward))")
                                 .font(.caption)
+                            Text("Deadline: \(deadline) at 00:00")
+                                .font(.caption).foregroundStyle(.secondary)
                             ConfirmableButton(title: "Accept this contract?",
-                                              message: "\(title(offer.kind)) in 28 game days. Earn \(Format.money(offer.reward)). Only activity after acceptance counts. This uses this month's offer.",
+                                              message: "\(title(offer.kind)) by \(deadline) at 00:00. Earn \(Format.money(offer.reward)). Only activity after acceptance counts. This uses this month's offer.",
                                               confirmTitle: "Accept contract", role: nil,
                                               action: { controller.submit(AcceptContractCommand(choice: offer.choice)) }) {
                                 Text("Accept \(offer.choice == .flights ? "flight" : "passenger") contract")
