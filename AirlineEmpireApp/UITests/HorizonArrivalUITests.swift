@@ -8,7 +8,7 @@ import XCTest
 /// day sells it never opens it. Munich is the start the measured ranking
 /// reaches, in every seed: `MunichHorizonTests` plays this exact script on
 /// seed 2030 and measures PacificBlue, the low-cost carrier based at
-/// Istanbul, opening Munich–Istanbul on day 61 at $142 against the
+/// Istanbul, opening Munich–Istanbul on day 33 at $142 against the
 /// player's $167; a month later the player holds 39%, trailing on fare,
 /// with a rotation to spare; one more rotation keeps the money, a fare cut
 /// keeps the share. This journey plays that world in the simulator and
@@ -19,10 +19,10 @@ final class HorizonArrivalUITests: AEUITestCase {
         launch(appearance: .light)
         guard foundAirline(seed: "2030", home: (code: "MUC", city: "Munich")) else { return }
 
-        // ── January: the guided first route, Munich–London ────────────────
+        // ── January: the guided first route, Munich–Istanbul ────────────────
         guard openAircraftMarket() else { return }
-        guard leaseAnAircraft() else { return }
-        guard openRouteBySearch(city: "London", code: "LHR") else { return }
+        guard leaseAnAircraft(model: "PA-184") else { return }
+        guard openARoute() else { return }
         guard assignFirstAircraft() else { return }
 
         // ── February: a used narrowbody, a lease, the two suggested markets ─
@@ -31,12 +31,17 @@ final class HorizonArrivalUITests: AEUITestCase {
             return
         }
         guard openAircraftMarket() else { return }
-        let usedDeal = app.buttons.matching(identifier: "ae-deal-buy-used").firstMatch
+        let usedDeal = app.buttons.matching(NSPredicate(
+            format: "identifier == %@ AND label CONTAINS %@",
+            "ae-deal-buy-used", "MR-180")).firstMatch
         guard scrollUntil(usedDeal, "the used-deal card in the market") else { return }
         usedDeal.tap()
         Thread.sleep(forTimeInterval: 0.5)
-        let buyUsed = app.buttons.matching(identifier: "ae-market-buy-used").firstMatch
-        guard require(buyUsed, "the buy-used commit row", timeout: 5) else { return }
+        let buyUsed = app.buttons.matching(NSPredicate(
+            format: "identifier == %@ AND label CONTAINS %@",
+            "ae-market-buy-used", "MR-180")).firstMatch
+        // The signature is a separate lazy List row below the deal cards.
+        guard scrollUntil(buyUsed, "the buy-used commit row") else { return }
         buyUsed.tap()
         let confirmUsed = app.buttons.matching(NSPredicate(
             format: "label BEGINSWITH %@", "Buy used")).firstMatch
@@ -45,7 +50,7 @@ final class HorizonArrivalUITests: AEUITestCase {
             .matching(identifier: "ae-fleet-row").firstMatch
         guard require(fleetRow, "the fleet after the used purchase", timeout: 10) else { return }
         guard openAircraftMarket() else { return }
-        guard leaseAnAircraft() else { return }
+        guard leaseAnAircraft(model: "PA-184") else { return }
         // The ranked markets are on the briefing's Next Moves card (AE-048).
         // The map home's own row offers one move, and with two aircraft just
         // bought that move is correctly "put them to work", not "grow".
@@ -75,8 +80,8 @@ final class HorizonArrivalUITests: AEUITestCase {
         checkpoint("HZ-network-after-february")
 
         // ── HORIZON-KEY-01 · before: Munich–Istanbul is the player's alone ─
-        guard advanceMornings(until: "2030-03-02", cap: 34) else {
-            XCTFail("The sunrise control could not reach March 2.")
+        guard advanceMornings(until: "2030-02-02", cap: 3) else {
+            XCTFail("The sunrise control could not reach February 2.")
             return
         }
         checkpoint("HZ1-home-before-the-world-moves")
@@ -87,8 +92,8 @@ final class HorizonArrivalUITests: AEUITestCase {
         app.navigationBars.buttons.firstMatch.tap()
 
         // ── HORIZON-KEY-02/03 · the morning after: Home says who and where ──
-        guard advanceMornings(until: "2030-03-04", cap: 4) else {
-            XCTFail("The sunrise control could not reach March 4.")
+        guard advanceMornings(until: "2030-02-04", cap: 4) else {
+            XCTFail("The sunrise control could not reach February 4.")
             return
         }
         // The rival-pressure card and the operations feed are in the briefing
@@ -112,8 +117,8 @@ final class HorizonArrivalUITests: AEUITestCase {
         app.navigationBars.buttons.firstMatch.tap()
 
         // ── HORIZON-KEY-04 · a month on: the split and what it costs ───────
-        guard advanceMornings(until: "2030-04-03", cap: 34) else {
-            XCTFail("The sunrise control could not reach April 3.")
+        guard advanceMornings(until: "2030-03-05", cap: 34) else {
+            XCTFail("The sunrise control could not reach March 5.")
             return
         }
         checkpoint("HZ4-home-a-month-on")
@@ -150,8 +155,8 @@ final class HorizonArrivalUITests: AEUITestCase {
         app.navigationBars.buttons.firstMatch.tap()
 
         // ── HORIZON-KEY-06 · two weeks later: the world after the response ─
-        guard advanceMornings(until: "2030-04-17", cap: 18) else {
-            XCTFail("The sunrise control could not reach April 17.")
+        guard advanceMornings(until: "2030-03-19", cap: 18) else {
+            XCTFail("The sunrise control could not reach March 19.")
             return
         }
         checkpoint("HZ6-home-after-response")

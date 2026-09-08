@@ -97,6 +97,12 @@ The `bf2f0fd` campaign/New York failures report unchanged manual-request acknowl
 
 The celebration animation was also attached to the entire game shell. It is now scoped to the non-interactive overlay container, and dismissal no longer creates a global `withAnimation` transaction. This keeps unrelated controls outside the banner's transition and retains Reduce Motion handling. The strict tap acknowledgement/date tests remain the validation gate.
 
+Candidate `ca13fe3` passed 523 Core release tests, all 11 launch-safety app/UI tests, the full Core debug/release-build gate, iPad, map-home and release tooling. Shell/map passed eight tests and skipped its synthetic flight-selection test; the separate first-flight/follow journey passed. Both performance measurements passed. The arrival journey advanced through January, then exposed a lazy-list test error: the selected Used card was visible but its separate purchase row was below the fold. Both long journeys now scroll to that row. They explicitly acquire the PA-184/MR-180 aircraft used by their simulation twins instead of buying whichever model sorts first. Market action accessibility labels include the aircraft name, making identical deal buttons distinguishable to VoiceOver as well. The Munich journey now follows the measured current script: Istanbul first, rival entry on day 33, then the response a month later. These scenario corrections still need fresh UI validation.
+
+The `ca13fe3` economy shard passed the New York advice/survival journey. Its first-month statement test still used an old unacknowledged tap loop; it now uses the shared exact-date helper and retains the January 31 checkpoint.
+
+The current iPad interaction assertions pass, but its exported Settings checkpoint shows an older aircraft screen despite the trace finding the Settings list and hittable toggle. That image is not treated as visual proof of Settings; native-device visual review remains required.
+
 ## Release sequence
 
 1. Resolve every current-commit Launch safety and CI failure; review the screenshot artifacts.

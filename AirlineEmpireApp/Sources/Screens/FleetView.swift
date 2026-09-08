@@ -1426,7 +1426,7 @@ struct ShopDealPicker: View {
         // row, and borderless is the style Lists hit-test per button.
         .buttonStyle(.borderless)
         .accessibilityIdentifier("ae-deal-\(facts.name(for: option))")
-        .accessibilityLabel("\(facts.caption(for: option)), \(Format.money(facts.price(for: option))), \(facts.subtitle(for: option))")
+        .accessibilityLabel("\(facts.caption(for: option)), \(facts.spec.manufacturer) \(facts.spec.model), \(Format.money(facts.price(for: option))), \(facts.subtitle(for: option))")
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
@@ -1517,6 +1517,7 @@ struct ShopCommitButton: View {
             // deal, so "ae-market-lease" is this row whenever Lease is
             // picked — which it is by default.
             .accessibilityIdentifier("ae-market-\(facts.name(for: deal))")
+            .accessibilityLabel("\(facts.ctaTitle(for: deal)), \(facts.spec.manufacturer) \(facts.spec.model)")
             .disabled(blocked != nil)
             if let blocked {
                 Text(blocked.message)

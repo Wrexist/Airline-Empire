@@ -36,7 +36,7 @@ final class CampaignUITests: AEUITestCase {
 
         // ── Month one, the guided path ─────────────────────────────────────
         guard openAircraftMarket() else { return }
-        guard leaseAnAircraft() else { return }
+        guard leaseAnAircraft(model: "PA-184") else { return }
         guard openARoute() else { return }
         guard assignFirstAircraft() else { return }
 
@@ -62,7 +62,7 @@ final class CampaignUITests: AEUITestCase {
         // (Addis Ababa, the alphabetical pick, is 5,850 km out — measured by
         // the Core twin when its own first script left that route unflown).
         guard openAircraftMarket() else { return }
-        guard leaseAnAircraft() else { return }
+        guard leaseAnAircraft(model: "PA-184") else { return }
         guard openAirlineSection("Routes") else { return }
         // The shell toolbar's "+" is labelled "Open route".
         let add = app.buttons["Open route"]
@@ -146,16 +146,18 @@ final class CampaignUITests: AEUITestCase {
         }
         checkpoint("32-month-two-home")
         guard openAircraftMarket() else { return }
-        let usedDeal = app.buttons.matching(identifier: "ae-deal-buy-used").firstMatch
+        let usedDeal = app.buttons.matching(NSPredicate(
+            format: "identifier == %@ AND label CONTAINS %@",
+            "ae-deal-buy-used", "MR-180")).firstMatch
         guard scrollUntil(usedDeal, "the used-deal card in the market") else { return }
         usedDeal.tap()
         Thread.sleep(forTimeInterval: 0.5)
-        let buyUsed = app.buttons.matching(identifier: "ae-market-buy-used").firstMatch
-        XCTAssertTrue(buyUsed.waitForExistence(timeout: 5), """
-            Picking the Used deal card did not hand the commit row the \
-            ae-market-buy-used identity — the deal picker's selection did \
-            not take.
-            """)
+        let buyUsed = app.buttons.matching(NSPredicate(
+            format: "identifier == %@ AND label CONTAINS %@",
+            "ae-market-buy-used", "MR-180")).firstMatch
+        // Selecting Used does not realise the separate signature row below
+        // the fold. Scroll to it before checking or committing the purchase.
+        guard scrollUntil(buyUsed, "the buy-used commit row") else { return }
         buyUsed.tap()
         let confirmUsed = app.buttons.matching(NSPredicate(
             format: "label BEGINSWITH %@", "Buy used")).firstMatch
@@ -172,7 +174,7 @@ final class CampaignUITests: AEUITestCase {
         // earns nothing and so never counts toward the gate's "routes that
         // made money last month". Run 100 reached March with three.
         guard openAircraftMarket() else { return }
-        guard leaseAnAircraft() else { return }
+        guard leaseAnAircraft(model: "PA-184") else { return }
 
         // Two more markets, from the Next Moves card itself.
         //
@@ -215,7 +217,7 @@ final class CampaignUITests: AEUITestCase {
         // it then climbs to twenty a day, and a week on the player holds
         // 54% at full load. COMP-01 … COMP-04 are these states, photographed.
         guard openAircraftMarket() else { return }
-        guard leaseAnAircraft() else { return }
+        guard leaseAnAircraft(model: "PA-184") else { return }
         guard openAirlineSection("Routes") else { return }
         let addFight = app.buttons["Open route"]
         guard require(addFight, "the Open route toolbar action (fight)") else { return }

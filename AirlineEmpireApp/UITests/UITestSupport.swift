@@ -429,7 +429,7 @@ class AEUITestCase: XCTestCase {
     }
 
     @discardableResult
-    func leaseAnAircraft(proof: LeaseProof = .fleetBoard) -> Bool {
+    func leaseAnAircraft(proof: LeaseProof = .fleetBoard, model: String? = nil) -> Bool {
         // Hide what the era cannot buy, so the first lease action on screen
         // belongs to an aircraft this airline is allowed to take.
         let eraFilter = app.switches["Hide what this era cannot buy"]
@@ -438,7 +438,9 @@ class AEUITestCase: XCTestCase {
             eraFilter.tap()
         }
 
-        let lease = app.buttons.matching(identifier: "ae-market-lease").firstMatch
+        let leaseQuery = app.buttons.matching(identifier: "ae-market-lease")
+        let lease = model.map { leaseQuery.matching(NSPredicate(
+            format: "label CONTAINS %@", $0)).firstMatch } ?? leaseQuery.firstMatch
         guard scrollUntil(lease, "a Lease action in the market") else { return false }
 
         // The dialog must be the LEASE dialog before anything is confirmed,
