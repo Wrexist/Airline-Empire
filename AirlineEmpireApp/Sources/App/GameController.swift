@@ -50,7 +50,20 @@ final class GameController {
     let feedback: Feedback
 
     init(savesDirectory: URL? = nil) {
+        #if DEBUG
+        // Isolate UI journeys without deleting saves or granting paid access.
+        // Keep the same directory when a journey deliberately relaunches.
+        if savesDirectory == nil,
+           let value = ProcessInfo.processInfo.environment["AE_UI_TEST_SAVE_ID"],
+           let id = UUID(uuidString: value) {
+            self.savesDirectory = FileManager.default.temporaryDirectory
+                .appendingPathComponent("AE-UI-\(id.uuidString)", isDirectory: true)
+        } else {
+            self.savesDirectory = savesDirectory
+        }
+        #else
         self.savesDirectory = savesDirectory
+        #endif
         let preferences = Preferences()
         self.preferences = preferences
         self.feedback = Feedback(preferences: preferences)

@@ -47,6 +47,7 @@ struct BriefingView: View {
                             SolvencyBanner(
                                 model: solvency,
                                 autoPaused: controller.autoPauseReason == .solvencyDanger)
+                            RescueOfferCard()
                         }
 
                         if let catalog = controller.catalog,

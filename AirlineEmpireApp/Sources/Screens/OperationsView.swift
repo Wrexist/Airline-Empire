@@ -549,6 +549,7 @@ struct ProgressionView: View {
                    let player = snapshot.playerAirline {
                     eraCard(model)
                     missionsCard(model)
+                    ContractBoard()
                     capabilitiesCard(model, player: player.id)
                     honoursCard(model)
                 } else {
@@ -635,6 +636,10 @@ struct ProgressionView: View {
         switch mission.kind {
         case .boomRush(let region, let target):
             "Carry \(Format.count(target)) passengers in \(Vocab.region(region))"
+        case .flightContract(let target):
+            "Complete \(Format.count(target)) flights"
+        case .passengerContract(let target):
+            "Carry \(Format.count(target)) passengers across your network"
         }
     }
 

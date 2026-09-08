@@ -61,6 +61,15 @@ Additional implementations now awaiting candidate validation:
 - A `full-validation` PR label requests all UI journey shards plus the iPad lane and forces a real build even after a prior green compile. PR #22 carries that label.
 - README, the go-live guide and release pipeline now distinguish dated signing failures from the later successful upload.
 
+## Rescue and contract implementation
+
+- A distressed airline can accept or permanently decline a one-time rescue before its first administration. Financing restores at least $2M cash, borrows $5M–$20M, and uses the existing loan system at 15% annually over 24 months. The briefing discloses the repayment and continued bankruptcy risk before confirmation.
+- Players who complete their first flight can choose a flight or passenger contract in Progression. One acceptance per calendar month, one active contract, 28 game days to complete, no deposit or expiry penalty. Only activity after acceptance counts. Rewards use the existing mission ledger and cannot be claimed again after reload.
+- Save format v13 migrates old rescue decisions and protects older clients from unknown contract kinds. Regression coverage exercises financing repayment, decision persistence, migration, both reward types, duplicate claims, expiry and late completion.
+- UI journeys use a unique debug-only save directory per test. Relaunches within a test retain it. The recap test exposed cross-test contamination from a prior free campaign; isolation does not grant Pro or delete player saves.
+
+On `3063ab9`, Core release tests, iPad shell, map-home and release-tooling checks passed. The full date is visible in inspected map screenshots. All eight hosted save/StoreKit tests passed. The recap UI test failed before founding due to shared saves; the isolation fix above requires a fresh run. Other full journey shards were still running when this entry was written.
+
 ## Release sequence
 
 1. Resolve every current-commit Launch safety and CI failure; review the screenshot artifacts.
@@ -73,7 +82,7 @@ No merge, Pages deployment, TestFlight upload or App Store submission was perfor
 
 ## Accepted follow-up backlog
 
-The remaining audit recommendations need further implementation and validation: investor rescue; capped offline catch-up; contract variety; rival archetype balance; stronger fleet identity; connecting hubs and banked schedules; fleet commonality; bulk network management; versioned seed challenges; richer scenarios/historical starts; iCloud conflict-safe synchronization; cargo, alliances, terminals and subsidiaries.
+The remaining audit recommendations need further implementation and validation: capped offline catch-up; rival archetype balance; stronger fleet identity; connecting hubs and banked schedules; fleet commonality; bulk network management; versioned seed challenges; richer scenarios/historical starts; iCloud conflict-safe synchronization; cargo, alliances, terminals and subsidiaries. Rescue financing and flight/passenger contracts are implemented above, pending final candidate validation.
 
 These changes add persistent simulation or product behavior. Each needs a concrete design, migration where applicable, economic tests and device review. They have not been silently added to the launch feature claims.
 

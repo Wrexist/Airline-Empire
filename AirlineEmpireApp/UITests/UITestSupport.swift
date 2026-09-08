@@ -23,6 +23,7 @@ class AEUITestCase: XCTestCase {
         super.setUp()
         continueAfterFailure = false
         app = XCUIApplication()
+        app.launchEnvironment["AE_UI_TEST_SAVE_ID"] = UUID().uuidString
         if usesProFixture { app.launchArguments.append("-AEUITestPro") }
         // The week control beside the sunrise, for the journeys only: the
         // two long journeys tapped the sunrise ninety and a hundred and ten

@@ -21,7 +21,8 @@ public enum SaveFormat {
     /// v10 shipped to TestFlight, so it migrates rather than refuses.
     /// v12 added `world.marketMoves` (AE-037: who entered and left which
     /// city pair, the record competition needs and the event log cannot keep).
-    public static let currentVersion = 12
+    /// v13 adds the persistent rescue decision and optional contract kinds.
+    public static let currentVersion = 13
 }
 
 public struct SaveEnvelope: Codable, Sendable {
