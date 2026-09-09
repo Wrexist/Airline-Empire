@@ -1,37 +1,30 @@
 # App Store handoff — checked 2026-09-09
 
-The marketing images and English listing copy are prepared. This is not a
-confirmation that the App Store Connect account or submission is complete.
+The repository assets and English copy are ready. Apple account completion is in progress; this is not a claim that a release has been approved or device-tested.
 
-## Ready
+## Completed
 
-- Six designs in three sizes: 18 unique RGB PNGs, mirrored for en-US/en-GB.
-- All exports decode and match their native-source hashes and dimensions.
-- Name, subtitle, promotional text, description, keywords, review notes,
-  TestFlight copy, and Pro purchase display names/descriptions.
-- [Copy/paste sheet](APP_STORE_CONNECT_FILL_IN.md), generated from the repository.
-- Subscription options and Apple Standard EULA/privacy references in listing copy.
-- 48 release-tooling tests passing; all listing character limits pass.
+- Six screenshot designs in three sizes: 18 unique RGB PNGs, mirrored for US/UK.
+- All exports decode, match the native sources and meet dimensions/no-alpha requirements.
+- New player-focused English descriptions, subtitle, promotional text and relevant search keywords within Apple limits.
+- Verified Isac Molin review contact and copyright; no contact placeholders remain.
+- Public support, privacy, terms and press website published at https://airline-empire-official.isacmolin.chatgpt.site. The deployment reports success and public access. This execution environment cannot independently fetch the public host (network restriction); no HTTP-200 verification is claimed.
+- US and UK version copy, review notes and contact saved in App Store Connect.
+- Pre-order date changed from 11 September to 16 October 2026 in all 175 regions, verified in Apple's availability table. Pre-order is pending review/publication, not yet live.
+- 48 release-tooling tests passing, listing validation and generated copy sheet passing.
 
-## Still required before submission
+## Account work being completed
 
-1. **Public pages:** the configured privacy and support URLs both returned
-   HTTP 404 on 2026-09-09. Publish the prepared `site/` pages or supply working
-   public URLs, then update and verify all listing and in-app links together.
-   Do not submit the currently broken URLs.
-2. **Account-holder details:** legal copyright/seller name, App Review first
-   and last name, email, and phone. These remain explicit `REPLACE_ME` values.
-   Do not infer the legal entity from the GitHub username or another business.
-3. **In-app purchases:** create/verify the three configured products and
-   weekly introductory offer in App Store Connect. Supply a genuine paywall
-   screenshot for IAP review. The marketing gallery is not that screenshot.
-4. **Account/build declarations:** attach and device-test the intended build;
-   complete age rating, privacy, content rights, and applicable account
-   agreements. These have not been checked in the signed-in Apple account.
+- Screenshot uploads and final order in every required size and locale.
+- Localized app subtitle and privacy URL.
+- Featuring nomination submission and verification.
+- App price, age rating, privacy label and purchase records.
 
-The privacy declaration must reflect the submitted build. The age-rating
-answers are recommendations based on the current single-player app, not a
-promise of a particular regional rating. Apple calculates the result from
-the answers: [official definitions](https://developer.apple.com/help/app-store-connect/reference/app-information/age-ratings-values-and-definitions/).
+## Release gates
 
-No Apple upload or submission was performed in preparing this handoff.
+- Build: no build was attached to version 1.0 when checked. The new in-game support links require a new build.
+- Verify the three actual Pro products, subscription prices/introductory offer and genuine paywall review screenshot. The marketing gallery is not an IAP review screenshot.
+- Run the required CI/full-device and launch-safety workflows on the exact intended release commit; attach and test the processed TestFlight build.
+- Complete applicable Apple account declarations and first-IAP submission. Apple approval is still required before pre-order publication.
+
+See [release setup](RELEASE_SETUP.md) and the [copy/paste sheet](APP_STORE_CONNECT_FILL_IN.md). Status will be updated after account verification; do not treat a checked-in plan as an Apple action.

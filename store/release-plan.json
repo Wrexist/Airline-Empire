@@ -1,0 +1,16 @@
+{
+  "appAppleId": "6806410538",
+  "sku": "airline-empire-ios",
+  "mode": "PRE_ORDER",
+  "plannedReleaseDate": "2026-10-16",
+  "status": "configured_pending_apple_review_and_publication",
+  "price": "FREE",
+  "territories": "175 countries or regions",
+  "versionReleaseType": "MANUAL",
+  "notes": [
+    "Pre-order is an availability setting, not an App Store version releaseType enum.",
+    "Verify all selected territories are pre-order before publishing an approved version.",
+    "Check Apple approval, purchases and device testing before the scheduled automatic launch."
+  ],
+  "previousReleaseDate": "2026-09-11"
+}

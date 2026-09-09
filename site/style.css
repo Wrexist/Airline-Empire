@@ -1,45 +1,5 @@
-/* One stylesheet for the three pages Apple requires a link to. Deliberately
-   small and dependency-free: this is a support surface, not a product. */
-:root {
-  color-scheme: light dark;
-  --ink: #101418;
-  --muted: #59636e;
-  --bg: #fbfaf7;
-  --rule: #e3e0d8;
-  --accent: #1f5f8b;
-}
-@media (prefers-color-scheme: dark) {
-  :root { --ink: #eef1f4; --muted: #a3adb8; --bg: #12161a; --rule: #262d34; --accent: #7fb8dd; }
-}
-* { box-sizing: border-box; }
-body {
-  margin: 0 auto;
-  max-width: 42rem;
-  padding: 3rem 1.25rem 6rem;
-  background: var(--bg);
-  color: var(--ink);
-  font: 17px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-}
-h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 .25rem; letter-spacing: -0.01em; }
-h2 { font-size: 1.15rem; margin: 2.5rem 0 .5rem; }
-p, li { color: var(--ink); }
-.lede { color: var(--muted); font-size: 1.05rem; margin-top: 0; }
-nav { margin: 0 0 2.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--rule); }
-nav a { color: var(--accent); text-decoration: none; margin-right: 1.25rem; }
-nav a:hover { text-decoration: underline; }
-footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: .9rem; }
-code { background: rgba(127,127,127,.14); padding: .1em .35em; border-radius: 4px; font-size: .9em; }
-
-/* The cover art, which is also the app icon. Capped well below its natural
-   size: it is 1200px square, and a hero that fills a laptop screen pushes the
-   first line of copy below the fold. The radius mirrors iOS's own icon mask
-   closely enough to read as an app icon rather than a photograph. */
-.cover {
-  display: block;
-  width: 100%;
-  max-width: 260px;
-  height: auto;
-  margin: 0 0 1.75rem;
-  border-radius: 22.5%;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, .28);
-}
+:root{color-scheme:light dark;--ink:#102c43;--muted:#506679;--bg:#f7fbff;--rule:#d3e1ed;--accent:#075b96;--panel:#eaf3fa}
+@media(prefers-color-scheme:dark){:root{--ink:#edf5fc;--muted:#b0c6d8;--bg:#0b1b2a;--rule:#294054;--accent:#92d1ff;--panel:#132c41}}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{max-width:72rem;margin:auto;padding:2rem clamp(1.25rem,4vw,3rem) 4rem;background:var(--bg);color:var(--ink);font:17px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}nav{display:flex;flex-wrap:wrap;gap:.6rem 1.4rem;align-items:center;border-bottom:1px solid var(--rule);padding-bottom:1.4rem;margin-bottom:3rem}nav a:first-child{font-weight:750;margin-right:auto}a{color:var(--accent);text-underline-offset:.2em}nav a{text-decoration:none}a:hover{text-decoration:underline}a:focus-visible{outline:3px solid var(--accent);outline-offset:5px}h1{font-size:clamp(2.25rem,5.4vw,4.5rem);line-height:1.07;letter-spacing:-.045em;margin:.4rem 0 1.25rem;max-width:17ch}h2{font-size:clamp(1.5rem,3vw,2.15rem);line-height:1.2;letter-spacing:-.025em;margin:2.7rem 0 .8rem}h3{font-size:1.2rem;line-height:1.35;margin:0 0 .5rem}p{margin:.6rem 0 1.2rem;max-width:72ch}.lede{font-size:1.25rem;color:var(--muted);line-height:1.5;max-width:43ch}.eyebrow{font-size:.8rem;font-weight:750;letter-spacing:.13em;color:var(--accent)}.hero{display:grid;grid-template-columns:1.2fr 1fr;gap:3rem;align-items:center;padding:1rem 0 3rem}.cover{width:100%;height:auto;border-radius:24%;box-shadow:0 20px 60px #072d4940}.button{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:.75rem 1.2rem;margin:.5rem 0 1rem;border-radius:10px;background:var(--ink);color:var(--bg);font-weight:650;text-decoration:none}.button:hover{opacity:.85;text-decoration:none}.secondary{background:var(--accent)}section{margin-bottom:3rem}.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:1.4rem 0;margin:2rem 0}.facts p{margin:0;color:var(--muted)}.facts strong{display:block;font-size:2.75rem;letter-spacing:-.04em;color:var(--ink);line-height:1.3}.features{display:grid;grid-template-columns:1fr 1fr;gap:2rem 3rem}.features article{padding-top:1rem}.features p,.note{color:var(--muted)}.note{font-size:.95rem}.help{background:var(--panel);padding:2rem;border-radius:16px}.help h2{margin-top:0}footer{margin-top:3rem;border-top:1px solid var(--rule);padding-top:1rem;font-size:.9rem;color:var(--muted)}dl{display:grid;grid-template-columns:9rem 1fr;gap:.75rem 1rem}dt{font-weight:650}dd{margin:0}.gallery-overview{display:block;width:100%;height:auto;margin:2rem 0;border:1px solid var(--rule);border-radius:12px}li{margin-bottom:.6rem}code{overflow-wrap:anywhere}body:has(> main > h1)>main{max-width:48rem}
+@media(max-width:640px){.hero{grid-template-columns:1fr;gap:2rem}.cover{max-width:300px;justify-self:center}.features{grid-template-columns:1fr;gap:.5rem}.facts strong{font-size:2.25rem}nav{margin-bottom:2rem}nav a:first-child{flex-basis:100%}dl{grid-template-columns:1fr;gap:.2rem}dd{margin-bottom:.75rem}.help{padding:1.3rem}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}

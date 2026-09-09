@@ -309,8 +309,9 @@ test('the committed listing passes (placeholders allowed)', () => {
   assert(errors.length === 0, `store/ has validation errors:\n    ${errors.join('\n    ')}`)
 })
 
-test('the committed listing blocks a real submission while placeholders remain', () => {
+test('unfinished contact details block submission independently of the completed listing', () => {
   const store = loadStore(join(REPO_ROOT, 'store'))
+  store.review.contactEmail = 'REPLACE_ME@example.com'
   const { errors } = validateStore(store)
   assertIncludes(errors, 'REPLACE_ME', 'placeholders did not block a strict validation')
 })

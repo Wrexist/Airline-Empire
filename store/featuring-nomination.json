@@ -1,0 +1,27 @@
+{
+  "name": "Airline Empire — Your first route to a global network",
+  "type": "App Launch",
+  "description": "Airline Empire brings the satisfaction of building an airline to iPhone and iPad. Start with a regional route, find an aircraft that fits, and turn good decisions into a network spanning 94 real airports. Fourteen fictional aircraft types and five progression eras give each expansion a purpose. Route breakdowns, monthly statements and a full ledger make success understandable, while AI rivals, seasonal demand and changing fuel prices keep strategy interesting. Players control the clock and can play their campaign offline. There are no ads, energy meters, premium currency or paid shortcuts. The free game includes one campaign, 20 nearby airports and two eras; optional Pro expands the world and starting scenarios. We are preparing the first App Store launch and a pre-order campaign, with a planned release on 16 October 2026. Our editorial priority is the player journey: the first profitable route becoming an airline they are proud of.",
+  "helpfulDetails": "Built with native SwiftUI for iPhone and iPad. Campaigns run locally without a game account or developer tracking. A pauseable clock supports thoughtful play; readable route explanations help players learn from decisions. Seeded worlds support replay, and campaign export/import gives players a portable backup. Developer: Isac Molin, Sweden. This is our highest-priority launch nomination.",
+  "plannedPublishDate": "2026-10-16",
+  "platforms": [
+    "iOS (iPhone)",
+    "iOS (iPad)"
+  ],
+  "localizations": [
+    "en-US",
+    "en-GB"
+  ],
+  "editorialFocusRegions": [
+    "USA",
+    "GBR",
+    "CAN",
+    "AUS",
+    "SWE"
+  ],
+  "supplementalMaterials": [
+    "https://airline-empire-official.isacmolin.chatgpt.site/press.html"
+  ],
+  "preorderPlanned": true,
+  "status": "prepared_not_submitted"
+}

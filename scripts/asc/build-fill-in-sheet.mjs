@@ -356,7 +356,8 @@ w('### Version Information')
 w()
 field('Copyright', store.config.copyright)
 w(`- **Routing App Coverage File** — none.`)
-w(`- **Release** — ${releaseWording(store.config.releaseType)}`)
+w(`- **Version publication** — ${releaseWording(store.config.releaseType)}`)
+w('- **Availability** — Pre-order, planned release **16 October 2026**, all 175 currently configured regions. See [release setup](RELEASE_SETUP.md). Version publication and pre-order availability are separate Apple settings.')
 w()
 w('---')
 w()
@@ -410,7 +411,7 @@ function humanCategory(id) {
 }
 
 function releaseWording(releaseType) {
-  if (releaseType === 'MANUAL') return '**Manually release this version** — an approved build waits for you to press Release.'
+  if (releaseType === 'MANUAL') return '**Manually release this version** — after approval, publish the pre-order only once every target region is configured correctly. The app downloads on its pre-order release date.'
   if (releaseType === 'AFTER_APPROVAL') return 'Automatically release this version as soon as it is approved.'
   if (releaseType === 'SCHEDULED') return 'Automatically release after a date you set.'
   return String(releaseType)

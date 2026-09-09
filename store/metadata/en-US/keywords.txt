@@ -1,1 +1,1 @@
-aviation,airport,aircraft,planes,manager,management,simulator,offline,business,network,economy
+airport,aircraft,aviation,planes,business,economy,management,simulator,network,transport,airliner
