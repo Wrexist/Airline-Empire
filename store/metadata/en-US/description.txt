@@ -38,3 +38,8 @@ OFFLINE GAMEPLAY
 
 A NOTE ON THE WORLD
 The map is the real one: ninety-four real airports, from Arlanda to Haneda, with real geography, distances and time zones. The airlines, aircraft and manufacturers are invented for the simulation, which is what lets the economics be honest instead of approximate.
+
+OPTIONAL PRO ACCESS
+Choose an auto-renewing weekly or yearly subscription, or a one-time Lifetime purchase. Manage subscriptions in your Apple Account settings.
+Terms of Use (Apple Standard EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacy Policy: https://wrexist.github.io/Airline-Empire/privacy.html

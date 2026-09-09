@@ -9,6 +9,8 @@
 Everything App Store Connect asks for, in the order its own screens ask for
 it, with the exact value to paste. Work top to bottom; nothing here needs
 you to open another file.
+Read the [handoff status](APP_STORE_HANDOFF_STATUS.md) before submitting:
+prepared copy does not confirm live URLs, account setup or a release build.
 
 Three kinds of line appear below:
 
@@ -128,14 +130,24 @@ https://wrexist.github.io/Airline-Empire/privacy.html
 > categories, and a second weak category dilutes browse ranking in the first
 > rather than adding traffic (`ASO.md` §4).
 
-**Content Rights** — "No, it does not contain, show, or access third-party
-content." True: the world is entirely invented — every airport, city,
-aircraft and manufacturer.
+**Content Rights** — **account-holder declaration; confirm before submission.**
+Cities, airports and geography are real. Commercial airlines, aircraft and
+manufacturers are fictional. The map uses public-domain Natural Earth data.
+Review the bundled asset licences and select the declaration that accurately
+covers the submitted build; fictional brands do not make every asset original.
 
-**Age Rating** → Edit. **hand-entry only.** Answer every question **None**:
+**Age Rating** → Edit. **hand-entry only.** Suggested answers for the current
+single-player build are below. Confirm against the actual submitted build.
 
 | Question | Answer |
 |---|---|
+| Parental Controls / Age Assurance | No / No |
+| User-Generated Content / Social Media / Messaging and Chat | No |
+| Advertising | No |
+| Health or Wellness Topics | No |
+| Guns or Other Weapons | None |
+| Graphic Sexual Content and Nudity | None |
+| Loot Boxes | No |
 | Cartoon or Fantasy Violence | None |
 | Realistic Violence | None |
 | Prolonged Graphic or Sadistic Realistic Violence | None |
@@ -150,10 +162,12 @@ aircraft and manufacturer.
 | Unrestricted Web Access | No |
 | Gambling and Contests | No |
 
-Expected result: **4+**. Anything higher means a question was answered
-wrong — the game has no violence (aircraft losses are financial and
-reputational events, never depicted), no gambling (seeded world randomness
-is not wagering), no web view and no user content.
+Expected general rating: **4+**, subject to Apple’s calculation and regional
+rules. Do not change truthful answers to force a target rating. Aircraft
+losses are financial events, not depicted violence. Contracts and AI rivals
+are single-player mechanics, not contests between users. External legal links
+do not provide unrestricted browsing inside the app.
+Reference: [Apple age-rating definitions](https://developer.apple.com/help/app-store-connect/reference/app-information/age-ratings-values-and-definitions/), checked 2026-09-09.
 
 ---
 
@@ -179,6 +193,48 @@ created.
 | Pro Yearly | `com.airlineempire.game.pro.yearly` | Auto-renewable, 1 year | 39.99 |
 | Pro Lifetime | `com.airlineempire.game.pro.lifetime` | Non-Consumable | 49.99 |
 
+**Localized purchase text — use for English (U.S.) and English (U.K.).**
+
+**Display name**
+
+```text
+Airline Empire Pro Weekly
+```
+
+**Description**
+
+```text
+All airports, all eras and unlimited saves.
+```
+
+**Display name**
+
+```text
+Airline Empire Pro Yearly
+```
+
+**Description**
+
+```text
+All airports, all eras and unlimited saves.
+```
+
+**Display name**
+
+```text
+Airline Empire Pro Lifetime
+```
+
+**Description**
+
+```text
+Full Pro access with a one-time purchase.
+```
+
+**IAP review screenshot:** a separate, genuine capture of the paywall showing
+the configured products and prices is still needed. The six marketing images
+are not substitutes for this review evidence. Verify products in StoreKit sandbox.
+
 - Subscription group: **`Airline Empire Pro`**, holding the weekly and the
   yearly at the same group level.
 - Introductory offer on the **weekly only**: **Pay As You Go, 1 week,
@@ -201,12 +257,10 @@ created.
 **"Do you or your third-party partners collect data from this app?"** →
 **No**
 
-That is the entire questionnaire, and it is true rather than convenient:
-there is no network code anywhere in the app or the core, no analytics, no
-crash reporter, no advertising SDK and no account. The bundled
-`PrivacyInfo.xcprivacy` says the same thing in the form Apple reads
-mechanically, and `site/privacy.html` says it in prose. If that ever stops
-being true, all three change in the same commit.
+The current app has no developer-operated analytics, advertising SDK, crash
+reporter or game account. Gameplay is local; purchases and restores use Apple
+services, and legal/support links open external web pages. Confirm the privacy
+declaration against the submitted build, its privacy manifest and public policy.
 
 **Privacy Policy URL (asked again here)** — 53/255 characters
 
@@ -224,16 +278,16 @@ pushes for you._
 
 ### English (U.S.)
 
-**Promotional Text** — 143/170 characters
+**Promotional Text** — 144/170 characters
 
 ```text
-Ninety-four real airports. Fourteen aircraft. One turboprop to start with. Free to play, with no ads and no timers — Pro opens the whole world.
+Ninety-four real airports. Fourteen aircraft types. Your airline to build. Free to start, with no ads or wait timers. Pro opens the whole world.
 ```
 
 > The only field that can be changed **without submitting a new version**.
 > Keep anything time-bound here and nothing permanent.
 
-**Description** — 2911/4000 characters
+**Description** — 3245/4000 characters
 
 ```text
 One aircraft. One route. Everything after that is yours to build.
@@ -276,6 +330,11 @@ OFFLINE GAMEPLAY
 
 A NOTE ON THE WORLD
 The map is the real one: ninety-four real airports, from Arlanda to Haneda, with real geography, distances and time zones. The airlines, aircraft and manufacturers are invented for the simulation, which is what lets the economics be honest instead of approximate.
+
+OPTIONAL PRO ACCESS
+Choose an auto-renewing weekly or yearly subscription, or a one-time Lifetime purchase. Manage subscriptions in your Apple Account settings.
+Terms of Use (Apple Standard EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacy Policy: https://wrexist.github.io/Airline-Empire/privacy.html
 ```
 
 **Keywords** — 94/100 characters
@@ -301,16 +360,16 @@ https://wrexist.github.io/Airline-Empire/
 
 ### English (U.K.)
 
-**Promotional Text** — 147/170 characters
+**Promotional Text** — 148/170 characters
 
 ```text
-Ninety-four real airports. Fourteen aircraft. One turboprop to start with. Free to play, with no adverts and no timers — Pro opens the whole world.
+Ninety-four real airports. Fourteen aircraft types. Your airline to build. Free to start, with no adverts or wait timers. Pro opens the whole world.
 ```
 
 > The only field that can be changed **without submitting a new version**.
 > Keep anything time-bound here and nothing permanent.
 
-**Description** — 2917/4000 characters
+**Description** — 3251/4000 characters
 
 ```text
 One aircraft. One route. Everything after that is yours to build.
@@ -353,6 +412,11 @@ OFFLINE GAMEPLAY
 
 A NOTE ON THE WORLD
 The map is the real one: ninety-four real airports, from Arlanda to Haneda, with real geography, distances and time zones. The airlines, aircraft and manufacturers are invented for the simulation, which is what lets the economics be honest instead of approximate.
+
+OPTIONAL PRO ACCESS
+Choose an auto-renewing weekly or yearly subscription, or a one-time Lifetime purchase. Manage subscriptions in your Apple Account settings.
+Terms of Use (Apple Standard EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacy Policy: https://wrexist.github.io/Airline-Empire/privacy.html
 ```
 
 **Keywords** — 95/100 characters
@@ -382,6 +446,7 @@ https://wrexist.github.io/Airline-Empire/
 |---|---|---|
 | iPhone 6.9" | 1320 × 2868 | in `store/screenshots/` |
 | iPad 13" | 2064 × 2752 | in `store/screenshots/` |
+| iPhone 6.5" (additional export) | 1242 × 2688 | six images in `store/screenshots/` |
 
 Portrait, PNG, **no alpha channel**, at most ten per size. The six-shot
 storyboard and the captions are `ASO.md` §5; the upload can be done for you
