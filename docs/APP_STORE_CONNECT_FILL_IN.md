@@ -126,9 +126,7 @@ https://airline-empire-official.isacmolin.chatgpt.site/privacy.html
 - **Primary Subcategory 2** — Strategy
 - **Secondary Category** — None
 
-> Why no secondary category: the only honest candidates are other game
-> categories, and a second weak category dilutes browse ranking in the first
-> rather than adding traffic (`ASO.md` §4).
+> Simulation and Strategy describe the game accurately. No additional category is needed; see [ASO rationale](ASO.md).
 
 **Content Rights** — **account-holder declaration; confirm before submission.**
 Cities, airports and geography are real. Commercial airlines, aircraft and
@@ -429,7 +427,7 @@ https://airline-empire-official.isacmolin.chatgpt.site/
 | iPhone 6.5" (additional export) | 1242 × 2688 | six images in `store/screenshots/` |
 
 Portrait, PNG, **no alpha channel**, at most ten per size. The six-shot
-storyboard and the captions are `ASO.md` §5; the upload can be done for you
+storyboard and captions are in `store/artwork/README.md`; the upload can be done for you
 by the metadata workflow with **screenshots** ticked.
 
 ### App Review Information

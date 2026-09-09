@@ -13,12 +13,23 @@ The repository assets and English copy are ready. Apple account completion is in
 - Pre-order date changed from 11 September to 16 October 2026 in all 175 regions, verified in Apple's availability table. Pre-order is pending review/publication, not yet live.
 - 48 release-tooling tests passing, listing validation and generated copy sheet passing.
 
-## Account work being completed
+## Verified Apple account edits
 
-- Screenshot uploads and final order in every required size and locale.
-- Localized app subtitle and privacy URL.
-- Featuring nomination submission and verification.
-- App price, age rating, privacy label and purchase records.
+- US screenshots: six in the 6.9-inch display slot (1320×2868), six in 6.5-inch (1242×2688), six in iPad 13-inch (2064×2752).
+- UK screenshots: six in 6.5-inch and six in iPad 13-inch; the largest iPhone slot explicitly inherits the identical US 6.9-inch set.
+- All five uploaded sets were reordered and their actual visible sequence checked: network, fleet, routes, finance, rivals, progression.
+- Both localized subtitles saved: Offline Fleet & Route Manager.
+- Categories already correctly set to Games / Simulation / Strategy; existing general age rating shows 4+ with regional exceptions; trader status was present.
+- Content Rights: the affirmative rights declaration for third-party content was selected and saved, reflecting the bundled public-domain Natural Earth map. Recheck persistence when Apple access resumes; navigation timed out after Save.
+
+## Blocked by Apple browser connection
+
+The signed-in browser stopped responding with CDP timeouts. A fresh-tab recovery failed too. No final success is claimed for these remaining actions:
+
+- Set the **App Privacy policy URL** to the new privacy page in both locales. Descriptions and support/marketing fields already contain the new host; the separate App Privacy field still needs a save.
+- Verify the existing privacy nutrition-label answers against the current build.
+- Submit the [prepared featuring nomination](APP_STORE_FEATURING_NOMINATION.md).
+- Verify the app is priced Free, all three Pro purchase records, regional requirements and the latest TestFlight build.
 
 ## Release gates
 
@@ -27,4 +38,4 @@ The repository assets and English copy are ready. Apple account completion is in
 - Run the required CI/full-device and launch-safety workflows on the exact intended release commit; attach and test the processed TestFlight build.
 - Complete applicable Apple account declarations and first-IAP submission. Apple approval is still required before pre-order publication.
 
-See [release setup](RELEASE_SETUP.md) and the [copy/paste sheet](APP_STORE_CONNECT_FILL_IN.md). Status will be updated after account verification; do not treat a checked-in plan as an Apple action.
+See [release setup](RELEASE_SETUP.md) and the [copy/paste sheet](APP_STORE_CONNECT_FILL_IN.md). Do not treat a checked-in plan as an Apple action. The latest known successful TestFlight workflow is 34027843211 on older commit e3d15e69da14ae31a1e2f08afbad94fa9939d9ec; it is not evidence for this updated release.
