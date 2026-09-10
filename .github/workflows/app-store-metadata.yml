@@ -56,8 +56,7 @@ permissions:
   contents: read
 
 jobs:
-  inspect-ipad-result:
-    if: ${{ false }}
+  inspect-phone-results:
     runs-on: macos-26
     timeout-minutes: 10
     permissions:
@@ -66,22 +65,35 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
-          run-id: 34518221954
-          name: ui-screenshots-ipad
-          path: FailedIPad.xcresult
+          run-id: 34522453247
+          name: ui-screenshots-shard5
+          path: MapHome.xcresult
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 34522453247
+          name: ui-screenshots-shard4
+          path: Arrival.xcresult
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 34522453247
+          name: ui-screenshots-shard3
+          path: Campaign.xcresult
       - name: Extract existing result diagnostics
         run: |
-          mkdir -p inspection
-          xcrun xcresulttool get test-results summary --path FailedIPad.xcresult > inspection/summary.json
-          xcrun xcresulttool get test-results tests --path FailedIPad.xcresult > inspection/tests.json
-          xcrun xcresulttool export diagnostics --path FailedIPad.xcresult --output-path inspection/diagnostics
-          xcrun xcresulttool export attachments --path FailedIPad.xcresult --output-path inspection/attachments
-          cat inspection/summary.json
-          find inspection/diagnostics -type f
+          for suite in MapHome Arrival Campaign; do
+            mkdir -p "inspection/$suite"
+            xcrun xcresulttool get test-results summary --path "$suite.xcresult" > "inspection/$suite/summary.json"
+            xcrun xcresulttool get test-results tests --path "$suite.xcresult" > "inspection/$suite/tests.json"
+            xcrun xcresulttool export diagnostics --path "$suite.xcresult" --output-path "inspection/$suite/diagnostics"
+            xcrun xcresulttool export attachments --path "$suite.xcresult" --output-path "inspection/$suite/attachments"
+            cat "inspection/$suite/summary.json"
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ipad-failure-inspection
+          name: phone-failure-inspection
           path: inspection
           retention-days: 45
   crash-audit:
