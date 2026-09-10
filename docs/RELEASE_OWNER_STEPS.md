@@ -68,9 +68,41 @@ the test environment. Check the localized price before confirming.
 
 The repository's StoreKit tests already exercise transaction states. Real
 Apple storefront eligibility, purchase/restore and device relaunch still
-require a device. For controlled expiry, refund and pending-approval cases,
-use a sandbox tester or the repository's Xcode StoreKit test configuration;
-the agent can prepare the exact scenario after the first device results.
+require a device. Ordinary TestFlight subscriptions renew daily, up to six
+times. For faster, controlled device checks, use a dedicated Sandbox Apple
+Account as described below. [Apple's TestFlight purchase guidance](https://developer.apple.com/help/app-store-connect/test-a-beta-version/testing-subscriptions-and-in-app-purchases-in-testflight).
+
+1. In App Store Connect, open **Users and Access → Sandbox**. Select your
+   dedicated tester, or follow **Create Sandbox Apple Account** with an
+   address and password you control. Keep its credentials private.
+2. Set **Subscription Renewal Rate → Every 3 Minutes → Save**. In this mode,
+   Weekly renews every three minutes; Yearly every 36 minutes. Use an account
+   without Lifetime ownership for expiry checks, since Lifetime correctly
+   preserves Pro after a subscription expires.
+3. On the test device, sign out under **Settings → your name → Media &
+   Purchases**, then sign into the sandbox account under **Settings →
+   Developer → Sandbox Apple Account**. Install/update the candidate through
+   TestFlight before switching accounts. Follow Apple's linked sign-in guide
+   if Developer settings are not available on your device.
+4. Buy Weekly in the game. Record the intro, renewal price and Pro access.
+   Open **Settings → Developer → Sandbox Account → Manage → Account Settings**
+   and turn **Allow Purchases & Renewals** off. Wait for renewal to fail.
+   After paid access and any configured grace period end, verify new Pro
+   access stops while existing airlines and earned assets remain usable.
+5. Turn **Allow Purchases & Renewals** back on. Verify successful renewal or
+   repurchase restores access, including after closing and reopening the game.
+   Test Lifetime separately, then Restore Purchases with the same account.
+6. For an interrupted purchase, enable **Interrupt Purchases for This Tester**
+   in the tester's App Store Connect settings. Attempt a purchase and verify
+   the game grants nothing before completion. Finish the sandbox resolution
+   or turn the setting off, then verify completion unlocks Pro.
+7. Restore the sandbox settings and your normal Media & Purchases sign-in
+   after testing. Record failures before resetting any test purchase history.
+
+The renewal and interruption controls are documented in
+[Apple's sandbox settings guide](https://developer.apple.com/help/app-store-connect/test-in-app-purchases/manage-sandbox-apple-account-settings);
+the failure/recovery sequence follows
+[Apple's billing test guide](https://developer.apple.com/documentation/storekit/testing-failing-subscription-renewals-and-in-app-purchases).
 
 ## 4. Complete the device and accessibility checks
 

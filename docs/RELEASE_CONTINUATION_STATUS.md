@@ -9,8 +9,8 @@ gate or a running workflow as a release pass.
 - PR #23 merged to main at `e11cea4b2bfe3407aefbf19bcbc2a7d1a682364d`.
 - Release fixes: [PR #24](https://github.com/Wrexist/Airline-Empire/pull/24),
   current candidate `18253b31333f4e7c0e9a8b9b4410cda2ea45b80d`, frozen on
-  `codex/release-candidate-2026-09-10`. Full CI `34532237542` and Launch safety
-  `34532239981` are running. Portability `34532242458`, iPad shell, the full
+  `codex/release-candidate-2026-09-10`. Full CI `34532237542` is running;
+  Launch safety `34532239981` passed. Portability `34532242458`, iPad shell, the full
   Debug Core job and all 523 Release Core tests passed. Shipping app/Core source is unchanged from
   `11ae4d2336073e7c9188e0c46e45ac6242c2a999`; test observation and release
   tooling include the corrections below. Duplicate PR native runs were
@@ -131,7 +131,7 @@ gate or a running workflow as a release pass.
   one-owner Tester group uses automatic distribution for Xcode builds;
   assignment of the new processed candidate still needs verification.
   Hardware confirmation remains required on the new candidate.
-- Current full CI `34518221954` has an iPad launch failure. The retained result
+- Earlier full CI `34518221954` has an iPad launch failure. The retained result
   bundle was exported using diagnostic run `34520664211`: the crash is
   `SIGABRT` in Core Audio `_ReportRPCTimeout` / `AURemoteIO::Cleanup`, reached
   from `AudioEngine.prepare()` line 120 while accessing `mainMixerNode` on
