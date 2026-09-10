@@ -8,10 +8,13 @@ gate or a running workflow as a release pass.
 
 - PR #23 merged to main at `e11cea4b2bfe3407aefbf19bcbc2a7d1a682364d`.
 - Release fixes: [PR #24](https://github.com/Wrexist/Airline-Empire/pull/24),
-  branch `codex/release-finalization`. Native app/Core source is unchanged
-  from `11ae4d2336073e7c9188e0c46e45ac6242c2a999`; the next candidate also
-  includes the CI corrections described below. Use the PR's current head
-  for the exact-SHA upload gate, not the earlier source baseline.
+  candidate `dff78b43119da654d2ea5518a96b0d472944e07a`, also frozen on
+  `codex/release-candidate-2026-09-10`. Shipping app/Core source is unchanged
+  from `11ae4d2336073e7c9188e0c46e45ac6242c2a999`; UI tests and release
+  tooling include the corrections below. Full CI `34525956478` and Launch
+  safety `34525959630` are running for the frozen commit; portability run
+  `34525962559` passed on Windows and Linux. Duplicate PR-triggered native
+  runs were canceled rather than repeating the same candidate checks.
 - App Store app `6806410538`; marketing version **1.0**, Prepare for Submission.
   No new candidate build has been attached or uploaded yet.
 - Full execution sequence: [release plan](RELEASE_PLAN.md).
@@ -65,6 +68,13 @@ gate or a running workflow as a release pass.
   Automatic expansion to future regions is off. Existing weekly intro prices
   remain listed for 175 regions, but the product itself cannot be sold in the
   two excluded regions.
+- Read-only API run `34526736960` confirms 173 available app territories,
+  all with pre-order enabled and release date 2026-10-16; the app and each
+  purchase have automatic future expansion disabled. An earlier API readback
+  caught that the app and Weekly still had expansion enabled despite the
+  intended scope. Both were corrected in Apple and verified again. The
+  final raw technical record is `validation/release-2026-09-10/apple-territories.json`.
+  A fresh browser load also confirmed Mac and Vision Pro distribution off.
 - App price is **Free**, pre-order date **16 October 2026**, pending developer
   publication. Both excluded regions show Not Available. See Apple's
   [game licensing requirements](https://developer.apple.com/help/app-store-connect/reference/app-information/app-information/).
@@ -131,8 +141,9 @@ gate or a running workflow as a release pass.
 
 - Full CI `34522453247` passed iPad and shell/map, but failed map-home,
   arrival and two campaign cases. Core Debug now passes, including the
-  isolated economy test and the remaining suite. The economy UI journey
-  was still running when this record was updated. This is not full release evidence.
+  isolated economy test in 80.9 seconds and 522 remaining tests. The economy
+  UI journey also passed all five tests. Launch safety `34522453285` passed.
+  The three failed UI jobs still make this a failed full CI result.
 - Arrival's captured screen remained on Routes after the Fleet tap. The
   helper returned success without checking selection. The next candidate
   requires selected state, allows at most two idempotent selection attempts,
@@ -154,9 +165,11 @@ gate or a running workflow as a release pass.
 
 ### Execution order
 
-1. Finish and verify all purchase fields, genuine review screenshots and app metadata.
+1. Upload the three prepared purchase review screenshots; other saved account
+   fields and territory/date settings have been verified.
 2. Finish exact-candidate full CI/Launch safety; investigate every failure.
-3. Freeze integration SHA, rerun required checks for it, archive/upload and await processing.
+3. Integrate validated release changes, archive/upload the exact tested candidate
+   SHA and await processing. Record any later documentation-only commit separately.
 4. Install the recorded build and execute device/save/purchase/accessibility acceptance.
 5. Submit the accepted app and first purchases together, handle Apple feedback,
    then publish using the verified pre-order/date/territory plan.

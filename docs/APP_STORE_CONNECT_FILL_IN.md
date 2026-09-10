@@ -500,7 +500,7 @@ Use the App Review contact supplied with the submission.
 
 - **Routing App Coverage File** — none.
 - **Version publication** — **Manually release this version** — after approval, publish the pre-order only once every target region is configured correctly. The app downloads on its pre-order release date.
-- **Availability** — Pre-order, planned release **16 October 2026**, all 175 currently configured regions. See [release setup](RELEASE_SETUP.md). Version publication and pre-order availability are separate Apple settings.
+- **Availability** — Pre-order, planned release **2026-10-16**, 173 countries or regions. Excludes China mainland and Vietnam. Automatic expansion to future regions is off. See [release setup](RELEASE_SETUP.md). Version publication and pre-order availability are separate Apple settings.
 
 ---
 

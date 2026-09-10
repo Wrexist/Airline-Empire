@@ -1,0 +1,2298 @@
+{
+  "checkedAt": "2026-09-10T20:31:15.032Z",
+  "appId": "6806410538",
+  "app": {
+    "availableInNewTerritories": false,
+    "territories": [
+      {
+        "territory": "IND",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "KAZ",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "JPN",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "TUN",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "TCD",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "LBR",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "GMB",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "TON",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "IRQ",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "PLW",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "MDG",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "MRT",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "PRT",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "HND",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "CMR",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "GAB",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "NOR",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "PHL",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "EST",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "FIN",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "VGB",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "DNK",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "ZWE",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "FSM",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "NIC",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "NER",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "NPL",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "MLT",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "ESP",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "HUN",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "VCT",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "IRL",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "ROU",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "URY",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "UZB",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "CPV",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "PAK",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "QAT",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "COL",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "DMA",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "AFG",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "BRA",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "LBN",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "TWN",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "SWE",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "ISR",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "LCA",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "MMR",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "VNM",
+        "available": false,
+        "releaseDate": null,
+        "preOrderEnabled": false,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "CANNOT_SELL"
+        ]
+      },
+      {
+        "territory": "BGR",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "AUT",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "BWA",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "PNG",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "SYC",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "NZL",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "VUT",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "MDV",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "BRN",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "SRB",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "NLD",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "HKG",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "GTM",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "SEN",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "GUY",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "BLR",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "MLI",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "JAM",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "KOR",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "USA",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "AIA",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "NGA",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "PRY",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "MNG",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "CRI",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "LKA",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "MAC",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "TKM",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "KGZ",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "CAN",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "TUR",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "KHM",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "SAU",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "GRD",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "BIH",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "TCA",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "PAN",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "CIV",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "THA",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "MSR",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "MOZ",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "NAM",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "TTO",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "SVK",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "YEM",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "GHA",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "OMN",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "BOL",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "KEN",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "BHS",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "UKR",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "MUS",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "LTU",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "ZMB",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "GEO",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "ARM",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "BEN",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "SGP",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "MWI",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "ARG",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "ALB",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "XKS",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "SLV",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "NRU",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "FJI",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "CZE",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "CYM",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "POL",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "SLE",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "ECU",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "DEU",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "COD",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "ATG",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "MEX",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "CYP",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "FRA",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "BMU",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "ZAF",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "CHE",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "MKD",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "MDA",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "GRC",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "BHR",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "BEL",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "TZA",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "BLZ",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "STP",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "HRV",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "PER",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "ITA",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "ISL",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "COG",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "GNB",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "SUR",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "DZA",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "BRB",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "CHL",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "EGY",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "MNE",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "SVN",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "LAO",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "IDN",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "UGA",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "AGO",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "DOM",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "JOR",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "RUS",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "MAR",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "MYS",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "TJK",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "BTN",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "CHN",
+        "available": false,
+        "releaseDate": null,
+        "preOrderEnabled": false,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "CANNOT_SELL"
+        ]
+      },
+      {
+        "territory": "BFA",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "ARE",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "RWA",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "VEN",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "SWZ",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "KWT",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "AZE",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "AUS",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "LUX",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "SLB",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "LVA",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "LBY",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "GBR",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      },
+      {
+        "territory": "KNA",
+        "available": true,
+        "releaseDate": "2026-10-16",
+        "preOrderEnabled": true,
+        "preOrderPublishDate": null,
+        "contentStatuses": [
+          "PREORDER_ON_UNRELEASED_APP"
+        ]
+      }
+    ]
+  },
+  "products": [
+    {
+      "name": "weekly",
+      "availableInNewTerritories": false,
+      "territories": [
+        "AFG",
+        "AGO",
+        "AIA",
+        "ALB",
+        "ARE",
+        "ARG",
+        "ARM",
+        "ATG",
+        "AUS",
+        "AUT",
+        "AZE",
+        "BEL",
+        "BEN",
+        "BFA",
+        "BGR",
+        "BHR",
+        "BHS",
+        "BIH",
+        "BLR",
+        "BLZ",
+        "BMU",
+        "BOL",
+        "BRA",
+        "BRB",
+        "BRN",
+        "BTN",
+        "BWA",
+        "CAN",
+        "CHE",
+        "CHL",
+        "CIV",
+        "CMR",
+        "COD",
+        "COG",
+        "COL",
+        "CPV",
+        "CRI",
+        "CYM",
+        "CYP",
+        "CZE",
+        "DEU",
+        "DMA",
+        "DNK",
+        "DOM",
+        "DZA",
+        "ECU",
+        "EGY",
+        "ESP",
+        "EST",
+        "FIN",
+        "FJI",
+        "FRA",
+        "FSM",
+        "GAB",
+        "GBR",
+        "GEO",
+        "GHA",
+        "GMB",
+        "GNB",
+        "GRC",
+        "GRD",
+        "GTM",
+        "GUY",
+        "HKG",
+        "HND",
+        "HRV",
+        "HUN",
+        "IDN",
+        "IND",
+        "IRL",
+        "IRQ",
+        "ISL",
+        "ISR",
+        "ITA",
+        "JAM",
+        "JOR",
+        "JPN",
+        "KAZ",
+        "KEN",
+        "KGZ",
+        "KHM",
+        "KNA",
+        "KOR",
+        "KWT",
+        "LAO",
+        "LBN",
+        "LBR",
+        "LBY",
+        "LCA",
+        "LKA",
+        "LTU",
+        "LUX",
+        "LVA",
+        "MAC",
+        "MAR",
+        "MDA",
+        "MDG",
+        "MDV",
+        "MEX",
+        "MKD",
+        "MLI",
+        "MLT",
+        "MMR",
+        "MNE",
+        "MNG",
+        "MOZ",
+        "MRT",
+        "MSR",
+        "MUS",
+        "MWI",
+        "MYS",
+        "NAM",
+        "NER",
+        "NGA",
+        "NIC",
+        "NLD",
+        "NOR",
+        "NPL",
+        "NRU",
+        "NZL",
+        "OMN",
+        "PAK",
+        "PAN",
+        "PER",
+        "PHL",
+        "PLW",
+        "PNG",
+        "POL",
+        "PRT",
+        "PRY",
+        "QAT",
+        "ROU",
+        "RUS",
+        "RWA",
+        "SAU",
+        "SEN",
+        "SGP",
+        "SLB",
+        "SLE",
+        "SLV",
+        "SRB",
+        "STP",
+        "SUR",
+        "SVK",
+        "SVN",
+        "SWE",
+        "SWZ",
+        "SYC",
+        "TCA",
+        "TCD",
+        "THA",
+        "TJK",
+        "TKM",
+        "TON",
+        "TTO",
+        "TUN",
+        "TUR",
+        "TWN",
+        "TZA",
+        "UGA",
+        "UKR",
+        "URY",
+        "USA",
+        "UZB",
+        "VCT",
+        "VEN",
+        "VGB",
+        "VUT",
+        "XKS",
+        "YEM",
+        "ZAF",
+        "ZMB",
+        "ZWE"
+      ]
+    },
+    {
+      "name": "yearly",
+      "availableInNewTerritories": false,
+      "territories": [
+        "AFG",
+        "AGO",
+        "AIA",
+        "ALB",
+        "ARE",
+        "ARG",
+        "ARM",
+        "ATG",
+        "AUS",
+        "AUT",
+        "AZE",
+        "BEL",
+        "BEN",
+        "BFA",
+        "BGR",
+        "BHR",
+        "BHS",
+        "BIH",
+        "BLR",
+        "BLZ",
+        "BMU",
+        "BOL",
+        "BRA",
+        "BRB",
+        "BRN",
+        "BTN",
+        "BWA",
+        "CAN",
+        "CHE",
+        "CHL",
+        "CIV",
+        "CMR",
+        "COD",
+        "COG",
+        "COL",
+        "CPV",
+        "CRI",
+        "CYM",
+        "CYP",
+        "CZE",
+        "DEU",
+        "DMA",
+        "DNK",
+        "DOM",
+        "DZA",
+        "ECU",
+        "EGY",
+        "ESP",
+        "EST",
+        "FIN",
+        "FJI",
+        "FRA",
+        "FSM",
+        "GAB",
+        "GBR",
+        "GEO",
+        "GHA",
+        "GMB",
+        "GNB",
+        "GRC",
+        "GRD",
+        "GTM",
+        "GUY",
+        "HKG",
+        "HND",
+        "HRV",
+        "HUN",
+        "IDN",
+        "IND",
+        "IRL",
+        "IRQ",
+        "ISL",
+        "ISR",
+        "ITA",
+        "JAM",
+        "JOR",
+        "JPN",
+        "KAZ",
+        "KEN",
+        "KGZ",
+        "KHM",
+        "KNA",
+        "KOR",
+        "KWT",
+        "LAO",
+        "LBN",
+        "LBR",
+        "LBY",
+        "LCA",
+        "LKA",
+        "LTU",
+        "LUX",
+        "LVA",
+        "MAC",
+        "MAR",
+        "MDA",
+        "MDG",
+        "MDV",
+        "MEX",
+        "MKD",
+        "MLI",
+        "MLT",
+        "MMR",
+        "MNE",
+        "MNG",
+        "MOZ",
+        "MRT",
+        "MSR",
+        "MUS",
+        "MWI",
+        "MYS",
+        "NAM",
+        "NER",
+        "NGA",
+        "NIC",
+        "NLD",
+        "NOR",
+        "NPL",
+        "NRU",
+        "NZL",
+        "OMN",
+        "PAK",
+        "PAN",
+        "PER",
+        "PHL",
+        "PLW",
+        "PNG",
+        "POL",
+        "PRT",
+        "PRY",
+        "QAT",
+        "ROU",
+        "RUS",
+        "RWA",
+        "SAU",
+        "SEN",
+        "SGP",
+        "SLB",
+        "SLE",
+        "SLV",
+        "SRB",
+        "STP",
+        "SUR",
+        "SVK",
+        "SVN",
+        "SWE",
+        "SWZ",
+        "SYC",
+        "TCA",
+        "TCD",
+        "THA",
+        "TJK",
+        "TKM",
+        "TON",
+        "TTO",
+        "TUN",
+        "TUR",
+        "TWN",
+        "TZA",
+        "UGA",
+        "UKR",
+        "URY",
+        "USA",
+        "UZB",
+        "VCT",
+        "VEN",
+        "VGB",
+        "VUT",
+        "XKS",
+        "YEM",
+        "ZAF",
+        "ZMB",
+        "ZWE"
+      ]
+    },
+    {
+      "name": "lifetime",
+      "availableInNewTerritories": false,
+      "territories": [
+        "AFG",
+        "AGO",
+        "AIA",
+        "ALB",
+        "ARE",
+        "ARG",
+        "ARM",
+        "ATG",
+        "AUS",
+        "AUT",
+        "AZE",
+        "BEL",
+        "BEN",
+        "BFA",
+        "BGR",
+        "BHR",
+        "BHS",
+        "BIH",
+        "BLR",
+        "BLZ",
+        "BMU",
+        "BOL",
+        "BRA",
+        "BRB",
+        "BRN",
+        "BTN",
+        "BWA",
+        "CAN",
+        "CHE",
+        "CHL",
+        "CIV",
+        "CMR",
+        "COD",
+        "COG",
+        "COL",
+        "CPV",
+        "CRI",
+        "CYM",
+        "CYP",
+        "CZE",
+        "DEU",
+        "DMA",
+        "DNK",
+        "DOM",
+        "DZA",
+        "ECU",
+        "EGY",
+        "ESP",
+        "EST",
+        "FIN",
+        "FJI",
+        "FRA",
+        "FSM",
+        "GAB",
+        "GBR",
+        "GEO",
+        "GHA",
+        "GMB",
+        "GNB",
+        "GRC",
+        "GRD",
+        "GTM",
+        "GUY",
+        "HKG",
+        "HND",
+        "HRV",
+        "HUN",
+        "IDN",
+        "IND",
+        "IRL",
+        "IRQ",
+        "ISL",
+        "ISR",
+        "ITA",
+        "JAM",
+        "JOR",
+        "JPN",
+        "KAZ",
+        "KEN",
+        "KGZ",
+        "KHM",
+        "KNA",
+        "KOR",
+        "KWT",
+        "LAO",
+        "LBN",
+        "LBR",
+        "LBY",
+        "LCA",
+        "LKA",
+        "LTU",
+        "LUX",
+        "LVA",
+        "MAC",
+        "MAR",
+        "MDA",
+        "MDG",
+        "MDV",
+        "MEX",
+        "MKD",
+        "MLI",
+        "MLT",
+        "MMR",
+        "MNE",
+        "MNG",
+        "MOZ",
+        "MRT",
+        "MSR",
+        "MUS",
+        "MWI",
+        "MYS",
+        "NAM",
+        "NER",
+        "NGA",
+        "NIC",
+        "NLD",
+        "NOR",
+        "NPL",
+        "NRU",
+        "NZL",
+        "OMN",
+        "PAK",
+        "PAN",
+        "PER",
+        "PHL",
+        "PLW",
+        "PNG",
+        "POL",
+        "PRT",
+        "PRY",
+        "QAT",
+        "ROU",
+        "RUS",
+        "RWA",
+        "SAU",
+        "SEN",
+        "SGP",
+        "SLB",
+        "SLE",
+        "SLV",
+        "SRB",
+        "STP",
+        "SUR",
+        "SVK",
+        "SVN",
+        "SWE",
+        "SWZ",
+        "SYC",
+        "TCA",
+        "TCD",
+        "THA",
+        "TJK",
+        "TKM",
+        "TON",
+        "TTO",
+        "TUN",
+        "TUR",
+        "TWN",
+        "TZA",
+        "UGA",
+        "UKR",
+        "URY",
+        "USA",
+        "UZB",
+        "VCT",
+        "VEN",
+        "VGB",
+        "VUT",
+        "XKS",
+        "YEM",
+        "ZAF",
+        "ZMB",
+        "ZWE"
+      ]
+    }
+  ]
+}
