@@ -1,0 +1,52 @@
+[
+  {
+    "file": "06b-briefing.png",
+    "attachment": "STORE-06b-briefing_0_E00AAFF9-BF31-4542-ACB4-8221D0F177EC.png",
+    "sha256": "059b71471cbec37146d51491f46c15c328c3222280a2f8dcbd3f2b1ce321bd8a"
+  },
+  {
+    "file": "06-progression.png",
+    "attachment": "STORE-06-progression_0_059DB981-CB0E-4DBD-B639-53454A7EE166.png",
+    "sha256": "330542b4470ca7c4f0787c41bb8348c09da2ee97fb8e4b06e5147e11ab42466e"
+  },
+  {
+    "file": "05-rivals.png",
+    "attachment": "STORE-05-rivals_0_D264B208-D35C-40C6-B731-90B4A5748757.png",
+    "sha256": "00bdb99447ae9e82bf43df681db46532bbce3f9fd5cfa1b1e0d07ac1a3570732"
+  },
+  {
+    "file": "05b-world.png",
+    "attachment": "STORE-05b-world_0_E3C2E859-7696-4DE9-A187-DDB5022FBCD0.png",
+    "sha256": "8d13ef0750cc23bab227cc9012ac477675afb63da6af7469c588db00c4c0834f"
+  },
+  {
+    "file": "04-finance.png",
+    "attachment": "STORE-04-finance_0_D3386A26-D0A0-4497-8AD6-892A8CB52EB2.png",
+    "sha256": "26ad316a94b12beb1cf3791e3ddeadd3e795e51124e7c1f4acd9fea5bd37f632"
+  },
+  {
+    "file": "03-route.png",
+    "attachment": "STORE-03-route_0_E48E6463-A9EC-4470-A9DF-D343AA55A666.png",
+    "sha256": "eb26525f91049ced7f8b6a9ae2d73deea40f1ec5656de05a2c4c73e61b12e79c"
+  },
+  {
+    "file": "03b-routes.png",
+    "attachment": "STORE-03b-routes_0_49618E9C-1F75-4B99-8C4E-4CC6709FFAEF.png",
+    "sha256": "f65e228551ce781135cda6bc33360efd5e1a4fa6939829989ee0f04db984b41b"
+  },
+  {
+    "file": "02b-market.png",
+    "attachment": "STORE-02b-market_0_273DA0B2-52E4-4CBC-B711-0C40FFFF7202.png",
+    "sha256": "2f61885edae1c0a2683d026d0f8cfe1a7eae5b6762610c77e8f2e36c5abeec8b"
+  },
+  {
+    "file": "02-fleet.png",
+    "attachment": "STORE-02-fleet_0_9915397C-7E57-4481-B728-40B6A1D46BC1.png",
+    "sha256": "76d36cd832a3cfe7ee905ebc6720407f9f14f10b2a4d9b4847c6a8654fe79850"
+  },
+  {
+    "file": "01-network.png",
+    "attachment": "STORE-01-network_0_2AA91597-B599-4D18-A0F6-BEB3157B7EDA.png",
+    "sha256": "25a8c9166acb44a42fc6c66ab10dc4b41117a145de26b85fa617c2afba6e0021"
+  }
+]

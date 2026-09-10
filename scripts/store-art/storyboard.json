@@ -1,0 +1,211 @@
+{
+  "locale": "en-US",
+  "creativeDirection": "Premium aviation: real gameplay, precise typography, restrained blue and amber, one player benefit per frame.",
+  "shots": [
+    {
+      "id": "01-network",
+      "source": "01-network.png",
+      "headline": [
+        "The world.",
+        "Your network."
+      ],
+      "body": [
+        "Pick your cities. Watch your airline take flight."
+      ],
+      "accent": "blue",
+      "theme": "dark",
+      "label": "BUILD YOUR NETWORK",
+      "proof": "94",
+      "proofLabel": "real airports",
+      "proofBody": [
+        "Find your hub.",
+        "Make your connections."
+      ],
+      "detailCrop": { "iphone": [48, 2090, 1200, 155] },
+      "crop": {
+        "iphone": [
+          0,
+          1180,
+          900,
+          770
+        ],
+        "ipad": [
+          680,
+          1090,
+          1384,
+          1200
+        ]
+      }
+    },
+    {
+      "id": "02-fleet",
+      "source": "02-fleet.png",
+      "headline": [
+        "From one plane",
+        "to a fleet."
+      ],
+      "body": [
+        "Buy new. Find used deals. Lease your next leap."
+      ],
+      "accent": "blue",
+      "theme": "light",
+      "label": "GROW YOUR FLEET",
+      "proof": "14",
+      "proofLabel": "aircraft types",
+      "proofBody": [
+        "Turboprops to widebodies.",
+        "Build the fleet that fits."
+      ],
+      "crop": {
+        "iphone": [
+          48,
+          508,
+          1224,
+          1735
+        ],
+        "ipad": [
+          688,
+          230,
+          1352,
+          1280
+        ]
+      }
+    },
+    {
+      "id": "03-routes",
+      "source": "03-route.png",
+      "headline": [
+        "Make every",
+        "route count."
+      ],
+      "body": [
+        "Choose the fare, the aircraft and the schedule."
+      ],
+      "accent": "blue",
+      "theme": "dark",
+      "label": "MAKE THE CALLS",
+      "proof": "Your call.",
+      "proofLabel": "Your competitive edge.",
+      "proofBody": [
+        "Better fares. Fuller planes.",
+        "More reasons to fly with you."
+      ],
+      "crop": {
+        "iphone": [
+          48,
+          348,
+          1224,
+          1515
+        ],
+        "ipad": [
+          688,
+          172,
+          1352,
+          1200
+        ]
+      }
+    },
+    {
+      "id": "04-finance",
+      "source": "04-finance.png",
+      "headline": [
+        "Turn smart moves",
+        "into profit."
+      ],
+      "body": [
+        "See what earns. Know where to grow."
+      ],
+      "accent": "blue",
+      "theme": "light",
+      "label": "BUILD A BUSINESS",
+      "proof": "Every $",
+      "proofLabel": "has a story.",
+      "proofBody": [
+        "Read your real performance.",
+        "Invest in your next chapter."
+      ],
+      "crop": {
+        "iphone": [
+          48,
+          348,
+          1224,
+          1845
+        ],
+        "ipad": [
+          688,
+          168,
+          1352,
+          1195
+        ]
+      }
+    },
+    {
+      "id": "05-rivals",
+      "source": "05-rivals.png",
+      "headline": [
+        "Build an airline",
+        "rivals notice."
+      ],
+      "body": [
+        "Win passengers in a world of competing airlines."
+      ],
+      "accent": "amber",
+      "theme": "dark",
+      "label": "RISE TO THE CHALLENGE",
+      "proof": "5",
+      "proofLabel": "rival personalities",
+      "proofBody": [
+        "Read their next move.",
+        "Find your own advantage."
+      ],
+      "crop": {
+        "iphone": [
+          48,
+          735,
+          1224,
+          1420
+        ],
+        "ipad": [
+          688,
+          440,
+          1352,
+          1370
+        ]
+      }
+    },
+    {
+      "id": "06-progression",
+      "source": "06-progression.png",
+      "headline": [
+        "Your next",
+        "milestone awaits."
+      ],
+      "body": [
+        "Complete contracts. Reach new eras. Keep growing."
+      ],
+      "accent": "amber",
+      "theme": "dark",
+      "label": "GO FURTHER",
+      "proof": "5",
+      "proofLabel": "eras of ambition",
+      "proofBody": [
+        "From startup to empire.",
+        "Build a story worth keeping."
+      ],
+      "crop": {
+        "iphone": [
+          48,
+          372,
+          1224,
+          1740
+        ],
+        "ipad": [
+          688,
+          185,
+          1352,
+          1110
+        ]
+      }
+    }
+  ]
+}

@@ -3,12 +3,15 @@
 from pathlib import Path
 from html.parser import HTMLParser
 import argparse
+import json
 import plistlib
 import urllib.request
 import urllib.parse
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE = "https://wrexist.github.io/Airline-Empire/"
+BASE = json.loads((ROOT / "store/config.json").read_text())["websiteUrl"]
+if not BASE.startswith("https://") or not BASE.endswith("/"):
+    raise SystemExit("websiteUrl must be an HTTPS origin with a trailing slash")
 parser = argparse.ArgumentParser()
 parser.add_argument("--live", action="store_true")
 args = parser.parse_args()
@@ -27,7 +30,7 @@ class Links(HTMLParser):
                 if not target.exists():
                     errors.append(f"Broken local site link: {value}")
 
-for name in ("index", "privacy", "support", "terms"):
+for name in ("index", "privacy", "support", "terms", "press"):
     text = (ROOT / f"site/{name}.html").read_text()
     if "REPLACE_ME" in text:
         errors.append(f"Placeholder in {name}.html")
@@ -42,7 +45,7 @@ for page in ("terms.html", "privacy.html"):
     if BASE + page not in paywall:
         errors.append(f"Paywall does not link to {page}")
 if args.live:
-    for page in ("", "privacy.html", "support.html", "terms.html"):
+    for page in ("", "privacy.html", "support.html", "terms.html", "press.html"):
         try:
             with urllib.request.urlopen(BASE + page, timeout=15) as response:
                 text = response.read().decode()

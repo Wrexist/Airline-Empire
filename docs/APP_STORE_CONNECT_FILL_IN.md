@@ -9,6 +9,8 @@
 Everything App Store Connect asks for, in the order its own screens ask for
 it, with the exact value to paste. Work top to bottom; nothing here needs
 you to open another file.
+Read the [handoff status](APP_STORE_HANDOFF_STATUS.md) before submitting:
+prepared copy does not confirm live URLs, account setup or a release build.
 
 Three kinds of line appear below:
 
@@ -83,16 +85,16 @@ _Left sidebar → General → App Information._
 Airline Empire: Flight Tycoon
 ```
 
-**Subtitle** — 26/30 characters
+**Subtitle** — 29/30 characters
 
 ```text
-Route & fleet strategy sim
+Offline Fleet & Route Manager
 ```
 
-**Privacy Policy URL** — 53/255 characters
+**Privacy Policy URL** — 67/255 characters
 
 ```text
-https://wrexist.github.io/Airline-Empire/privacy.html
+https://airline-empire-official.isacmolin.chatgpt.site/privacy.html
 ```
 
 #### English (U.K.)
@@ -105,16 +107,16 @@ _Add this localization first: the language dropdown at the top right of the page
 Airline Empire: Flight Tycoon
 ```
 
-**Subtitle** — 26/30 characters
+**Subtitle** — 29/30 characters
 
 ```text
-Route & fleet strategy sim
+Offline Fleet & Route Manager
 ```
 
-**Privacy Policy URL** — 53/255 characters
+**Privacy Policy URL** — 67/255 characters
 
 ```text
-https://wrexist.github.io/Airline-Empire/privacy.html
+https://airline-empire-official.isacmolin.chatgpt.site/privacy.html
 ```
 
 ### General Information
@@ -124,18 +126,26 @@ https://wrexist.github.io/Airline-Empire/privacy.html
 - **Primary Subcategory 2** — Strategy
 - **Secondary Category** — None
 
-> Why no secondary category: the only honest candidates are other game
-> categories, and a second weak category dilutes browse ranking in the first
-> rather than adding traffic (`ASO.md` §4).
+> Simulation and Strategy describe the game accurately. No additional category is needed; see [ASO rationale](ASO.md).
 
-**Content Rights** — "No, it does not contain, show, or access third-party
-content." True: the world is entirely invented — every airport, city,
-aircraft and manufacturer.
+**Content Rights** — **account-holder declaration; confirm before submission.**
+Cities, airports and geography are real. Commercial airlines, aircraft and
+manufacturers are fictional. The map uses public-domain Natural Earth data.
+Review the bundled asset licences and select the declaration that accurately
+covers the submitted build; fictional brands do not make every asset original.
 
-**Age Rating** → Edit. **hand-entry only.** Answer every question **None**:
+**Age Rating** → Edit. **hand-entry only.** Suggested answers for the current
+single-player build are below. Confirm against the actual submitted build.
 
 | Question | Answer |
 |---|---|
+| Parental Controls / Age Assurance | No / No |
+| User-Generated Content / Social Media / Messaging and Chat | No |
+| Advertising | No |
+| Health or Wellness Topics | No |
+| Guns or Other Weapons | None |
+| Graphic Sexual Content and Nudity | None |
+| Loot Boxes | No |
 | Cartoon or Fantasy Violence | None |
 | Realistic Violence | None |
 | Prolonged Graphic or Sadistic Realistic Violence | None |
@@ -150,10 +160,12 @@ aircraft and manufacturer.
 | Unrestricted Web Access | No |
 | Gambling and Contests | No |
 
-Expected result: **4+**. Anything higher means a question was answered
-wrong — the game has no violence (aircraft losses are financial and
-reputational events, never depicted), no gambling (seeded world randomness
-is not wagering), no web view and no user content.
+Expected general rating: **4+**, subject to Apple’s calculation and regional
+rules. Do not change truthful answers to force a target rating. Aircraft
+losses are financial events, not depicted violence. Contracts and AI rivals
+are single-player mechanics, not contests between users. External legal links
+do not provide unrestricted browsing inside the app.
+Reference: [Apple age-rating definitions](https://developer.apple.com/help/app-store-connect/reference/app-information/age-ratings-values-and-definitions/), checked 2026-09-09.
 
 ---
 
@@ -179,6 +191,48 @@ created.
 | Pro Yearly | `com.airlineempire.game.pro.yearly` | Auto-renewable, 1 year | 39.99 |
 | Pro Lifetime | `com.airlineempire.game.pro.lifetime` | Non-Consumable | 49.99 |
 
+**Localized purchase text — use for English (U.S.) and English (U.K.).**
+
+**Display name**
+
+```text
+Airline Empire Pro Weekly
+```
+
+**Description**
+
+```text
+All airports, all eras and unlimited saves.
+```
+
+**Display name**
+
+```text
+Airline Empire Pro Yearly
+```
+
+**Description**
+
+```text
+All airports, all eras and unlimited saves.
+```
+
+**Display name**
+
+```text
+Airline Empire Pro Lifetime
+```
+
+**Description**
+
+```text
+Full Pro access with a one-time purchase.
+```
+
+**IAP review screenshot:** a separate, genuine capture of the paywall showing
+the configured products and prices is still needed. The six marketing images
+are not substitutes for this review evidence. Verify products in StoreKit sandbox.
+
 - Subscription group: **`Airline Empire Pro`**, holding the weekly and the
   yearly at the same group level.
 - Introductory offer on the **weekly only**: **Pay As You Go, 1 week,
@@ -201,17 +255,15 @@ created.
 **"Do you or your third-party partners collect data from this app?"** →
 **No**
 
-That is the entire questionnaire, and it is true rather than convenient:
-there is no network code anywhere in the app or the core, no analytics, no
-crash reporter, no advertising SDK and no account. The bundled
-`PrivacyInfo.xcprivacy` says the same thing in the form Apple reads
-mechanically, and `site/privacy.html` says it in prose. If that ever stops
-being true, all three change in the same commit.
+The current app has no developer-operated analytics, advertising SDK, crash
+reporter or game account. Gameplay is local; purchases and restores use Apple
+services, and legal/support links open external web pages. Confirm the privacy
+declaration against the submitted build, its privacy manifest and public policy.
 
-**Privacy Policy URL (asked again here)** — 53/255 characters
+**Privacy Policy URL (asked again here)** — 67/255 characters
 
 ```text
-https://wrexist.github.io/Airline-Empire/privacy.html
+https://airline-empire-official.isacmolin.chatgpt.site/privacy.html
 ```
 
 ---
@@ -224,167 +276,158 @@ pushes for you._
 
 ### English (U.S.)
 
-**Promotional Text** — 143/170 characters
+**Promotional Text** — 151/170 characters
 
 ```text
-Ninety-four real airports. Fourteen aircraft. One turboprop to start with. Free to play, with no ads and no timers — Pro opens the whole world.
+Build a regional airline into a global network. Master routes, grow your fleet and outsmart rivals. 94 airports to discover. No ads. Play at your pace.
 ```
 
 > The only field that can be changed **without submitting a new version**.
 > Keep anything time-bound here and nothing permanent.
 
-**Description** — 2911/4000 characters
+**Description** — 2921/4000 characters
 
 ```text
-One aircraft. One route. Everything after that is yours to build.
+Your first aircraft. Your first profitable route. Your airline, growing into an empire.
 
-Airline Empire is a deep, offline airline management simulator. You decide where to fly, what to fly and what to charge — and a living world answers back. Demand shifts with the seasons, fuel prices move, rivals undercut you on your best route, and every number you see can be opened up and explained.
+Build the network you have always wanted to run. Airline Empire is an offline airline management simulator for iPhone and iPad, where smart decisions turn a regional startup into a global business.
 
-BUILD A NETWORK THAT IS YOURS
-• Ninety-four real airports across nine world regions — Arlanda, Heathrow, Haneda, Landvetter — each with its own demand, slot capacity, runway limits and weather risk
-• Open routes, set frequencies, set the fare, and watch the map fill in behind you
-• Grow from a single regional hop to widebodies and long-haul as you earn new eras and expand your fleet
+FIND YOUR NEXT GREAT ROUTE
+Connect real places across a world map. Plan around demand, distance, runway limits and airport capacity. Set fares and frequencies, assign the right aircraft, and see how each decision changes your results.
 
-RUN A REAL BUSINESS
-• Fourteen aircraft types, from a 68-seat turboprop to a 422-seat widebody — buy new, buy used, or lease
-• Monthly statements and a full ledger: every cent traceable to the flight that earned or spent it
-• Loans when you need them, and the interest that comes with them
-• A service tier and a reputation built out of punctuality, comfort and delays — and lost the same way
+BUILD A FLEET TO BE PROUD OF
+Choose from 14 fictional aircraft types, from regional turboprops to long-haul widebodies. Buy new, find a used aircraft or lease your next addition. Balance capacity, range and running costs as your ambitions grow.
 
-A WORLD THAT MOVES WITHOUT YOU
-• Competitor airlines expand, fight you on price, retreat, and sometimes collapse
-• Seasons, fuel markets, storms and world events reshape demand while you are deciding
-• A daily digest tells you what yesterday made or lost, and why
+MAKE THE NUMBERS WORK FOR YOU
+Understand what your airline earns and where the money goes. Route breakdowns, monthly statements and a detailed ledger help you spot opportunities, manage loans and build a stronger business.
 
-PLAY IT YOUR WAY
-• Three starting scenarios, from a careful regional debut to a well-funded launch
-• Pick your seed — the same seed always grows the same world, so a run can be replayed exactly
-• Pause, or run at up to 16×. It works in five minutes and it works for an hour
-• Daily autosaves, backup recovery and campaign export/import — with Pro, keep multiple airlines in separate saves
+OUTSMART A CHANGING WORLD
+Compete with AI airlines as they expand and adjust their fares. Seasonal demand, fuel prices, storms and world events keep your strategy moving. Build a reputation through the service your passengers experience.
 
-FREE TO FLY, AND WE MEAN IT
-• The whole simulation is free: the full ledger, every explainer, rivals that fight back, the seeded world you can replay exactly
-• No ads. No timers. No energy meter. No premium currency. Nothing to wait out and nothing to pay to skip
-• A free airline flies the twenty airports nearest its home, through the Startup and Regional eras
-• Airline Empire Pro opens the rest: National, International and Empire, all 94 airports across nine regions, widebodies and long-haul, every scenario, and as many airlines as you like
-• Pro is more world, never a shortcut through it — no aircraft, route or advantage is ever sold
+EARN YOUR NEXT MILESTONE
+Grow through five eras: Startup, Regional, National, International and Empire. The full game includes 94 real airports across nine world regions and three starting scenarios. Progress opens new opportunities to build the airline your way.
 
-OFFLINE GAMEPLAY
-• No game account, advertising or tracking
-• Play your campaign in Airplane Mode; purchases and restoring Pro use Apple’s App Store services
-• iPhone and iPad
+PLAY AT YOUR PACE
+Pause to plan or speed up the simulation to 16×. Daily autosaves, rolling backups and campaign export/import help protect your progress. Replay a seed to explore a different strategy. Campaigns run offline, without a game account.
 
-A NOTE ON THE WORLD
-The map is the real one: ninety-four real airports, from Arlanda to Haneda, with real geography, distances and time zones. The airlines, aircraft and manufacturers are invented for the simulation, which is what lets the economics be honest instead of approximate.
+START FREE. EXPAND WITH PRO.
+Start with the Founder scenario, one campaign, the 20 airports nearest your home and the first two eras. Explore the core economy, fleet management and AI competition before choosing to expand.
+
+Optional Airline Empire Pro opens all 94 airports, all five eras, every starting scenario and unlimited campaign saves. Choose an auto-renewing weekly or yearly subscription, or a one-time Lifetime purchase. All three provide the same Pro access.
+
+No ads, energy meters, premium currency or paid shortcuts. You control the simulation clock; aircraft deliveries and other operations use game time.
+
+Purchases and restoring Pro require Apple’s App Store services. Subscriptions renew automatically unless cancelled; manage them in your Apple Account settings. Saves stay on your device unless you export them. There is no multiplayer or automatic cloud save sync.
+
+Real geography. Fictional airlines, aircraft and manufacturers. An empire shaped by your decisions.
+
+Terms of Use (Apple Standard EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacy Policy: https://airline-empire-official.isacmolin.chatgpt.site/privacy.html
 ```
 
-**Keywords** — 94/100 characters
+**Keywords** — 97/100 characters
 
 ```text
-aviation,airport,aircraft,planes,manager,management,simulator,offline,business,network,economy
+airport,aircraft,aviation,planes,business,economy,management,simulator,network,transport,airliner
 ```
 
 > Comma-separated, **no spaces after the commas** — a space is a character
 > spent on nothing. Hidden from users; this is pure search surface.
 
-**Support URL** — 53/255 characters
+**Support URL** — 67/255 characters
 
 ```text
-https://wrexist.github.io/Airline-Empire/support.html
+https://airline-empire-official.isacmolin.chatgpt.site/support.html
 ```
 
-**Marketing URL** — 41/255 characters
+**Marketing URL** — 55/255 characters
 
 ```text
-https://wrexist.github.io/Airline-Empire/
+https://airline-empire-official.isacmolin.chatgpt.site/
 ```
 
 ### English (U.K.)
 
-**Promotional Text** — 147/170 characters
+**Promotional Text** — 155/170 characters
 
 ```text
-Ninety-four real airports. Fourteen aircraft. One turboprop to start with. Free to play, with no adverts and no timers — Pro opens the whole world.
+Build a regional airline into a global network. Master routes, grow your fleet and outsmart rivals. 94 airports to discover. No adverts. Play at your pace.
 ```
 
 > The only field that can be changed **without submitting a new version**.
 > Keep anything time-bound here and nothing permanent.
 
-**Description** — 2917/4000 characters
+**Description** — 2925/4000 characters
 
 ```text
-One aircraft. One route. Everything after that is yours to build.
+Your first aircraft. Your first profitable route. Your airline, growing into an empire.
 
-Airline Empire is a deep, offline airline management simulator. You decide where to fly, what to fly and what to charge — and a living world answers back. Demand shifts with the seasons, fuel prices move, rivals undercut you on your best route, and every number you see can be opened up and explained.
+Build the network you have always wanted to run. Airline Empire is an offline airline management simulator for iPhone and iPad, where smart decisions turn a regional startup into a global business.
 
-BUILD A NETWORK THAT IS YOURS
-• Ninety-four real airports across nine world regions — Arlanda, Heathrow, Haneda, Landvetter — each with its own demand, slot capacity, runway limits and weather risk
-• Open routes, set frequencies, set the fare, and watch the map fill in behind you
-• Grow from a single regional hop to widebodies and long-haul as you earn new eras and expand your fleet
+FIND YOUR NEXT GREAT ROUTE
+Connect real places across a world map. Plan around demand, distance, runway limits and airport capacity. Set fares and frequencies, assign the right aircraft, and see how each decision changes your results.
 
-RUN A REAL BUSINESS
-• Fourteen aircraft types, from a 68-seat turboprop to a 422-seat widebody — buy new, buy used, or lease
-• Monthly statements and a full ledger: every penny traceable to the flight that earned or spent it
-• Loans when you need them, and the interest that comes with them
-• A service tier and a reputation built out of punctuality, comfort and delays — and lost the same way
+BUILD A FLEET TO BE PROUD OF
+Choose from 14 fictional aircraft types, from regional turboprops to long-haul widebodies. Buy new, find a used aircraft or lease your next addition. Balance capacity, range and running costs as your ambitions grow.
 
-A WORLD THAT MOVES WITHOUT YOU
-• Competitor airlines expand, fight you on price, retreat, and sometimes collapse
-• Seasons, fuel markets, storms and world events reshape demand while you are deciding
-• A daily digest tells you what yesterday made or lost, and why
+MAKE THE NUMBERS WORK FOR YOU
+Understand what your airline earns and where the money goes. Route breakdowns, monthly statements and a detailed ledger help you spot opportunities, manage loans and build a stronger business.
 
-PLAY IT YOUR WAY
-• Three starting scenarios, from a careful regional debut to a well-funded launch
-• Pick your seed — the same seed always grows the same world, so a run can be replayed exactly
-• Pause, or run at up to 16×. It works in five minutes and it works for an hour
-• Daily autosaves, backup recovery and campaign export/import — with Pro, keep multiple airlines in separate saves
+OUTSMART A CHANGING WORLD
+Compete with AI airlines as they expand and adjust their fares. Seasonal demand, fuel prices, storms and world events keep your strategy moving. Build a reputation through the service your passengers experience.
 
-FREE TO FLY, AND WE MEAN IT
-• The whole simulation is free: the full ledger, every explainer, rivals that fight back, the seeded world you can replay exactly
-• No adverts. No timers. No energy meter. No premium currency. Nothing to wait out and nothing to pay to skip
-• A free airline flies the twenty airports nearest its home, through the Startup and Regional eras
-• Airline Empire Pro opens the rest: National, International and Empire, all 94 airports across nine regions, widebodies and long-haul, every scenario, and as many airlines as you like
-• Pro is more world, never a shortcut through it — no aircraft, route or advantage is ever sold
+EARN YOUR NEXT MILESTONE
+Grow through five eras: Startup, Regional, National, International and Empire. The full game includes 94 real airports across nine world regions and three starting scenarios. Progress opens new opportunities to build the airline your way.
 
-OFFLINE GAMEPLAY
-• No game account, advertising or tracking
-• Play your campaign in Aeroplane Mode; purchases and restoring Pro use Apple’s App Store services
-• iPhone and iPad
+PLAY AT YOUR PACE
+Pause to plan or speed up the simulation to 16×. Daily autosaves, rolling backups and campaign export/import help protect your progress. Replay a seed to explore a different strategy. Campaigns run offline, without a game account.
 
-A NOTE ON THE WORLD
-The map is the real one: ninety-four real airports, from Arlanda to Haneda, with real geography, distances and time zones. The airlines, aircraft and manufacturers are invented for the simulation, which is what lets the economics be honest instead of approximate.
+START FREE. EXPAND WITH PRO.
+Start with the Founder scenario, one campaign, the 20 airports nearest your home and the first two eras. Explore the core economy, fleet management and AI competition before choosing to expand.
+
+Optional Airline Empire Pro opens all 94 airports, all five eras, every starting scenario and unlimited campaign saves. Choose an auto-renewing weekly or yearly subscription, or a one-time Lifetime purchase. All three provide the same Pro access.
+
+No adverts, energy meters, premium currency or paid shortcuts. You control the simulation clock; aircraft deliveries and other operations use game time.
+
+Purchases and restoring Pro require Apple’s App Store services. Subscriptions renew automatically unless cancelled; manage them in your Apple Account settings. Saves stay on your device unless you export them. There is no multiplayer or automatic cloud save sync.
+
+Real geography. Fictional airlines, aircraft and manufacturers. An empire shaped by your decisions.
+
+Terms of Use (Apple Standard EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacy Policy: https://airline-empire-official.isacmolin.chatgpt.site/privacy.html
 ```
 
 **Keywords** — 95/100 characters
 
 ```text
-aviation,airport,aeroplane,airliner,aircraft,manager,management,simulator,offline,timetable,hub
+airport,aircraft,aviation,aeroplane,business,economy,management,simulator,network,transport,hub
 ```
 
 > Comma-separated, **no spaces after the commas** — a space is a character
 > spent on nothing. Hidden from users; this is pure search surface.
 
-**Support URL** — 53/255 characters
+**Support URL** — 67/255 characters
 
 ```text
-https://wrexist.github.io/Airline-Empire/support.html
+https://airline-empire-official.isacmolin.chatgpt.site/support.html
 ```
 
-**Marketing URL** — 41/255 characters
+**Marketing URL** — 55/255 characters
 
 ```text
-https://wrexist.github.io/Airline-Empire/
+https://airline-empire-official.isacmolin.chatgpt.site/
 ```
 
 ### Screenshots
 
 | App Store Connect tab | Canvas (px) | Status |
 |---|---|---|
-| iPhone 6.9" | 1320 × 2868 | **missing — blocks submission** |
-| iPad 13" | 2064 × 2752 | **missing — blocks submission** |
+| iPhone 6.9" | 1320 × 2868 | in `store/screenshots/` |
+| iPad 13" | 2064 × 2752 | in `store/screenshots/` |
+| iPhone 6.5" (additional export) | 1242 × 2688 | six images in `store/screenshots/` |
 
 Portrait, PNG, **no alpha channel**, at most ten per size. The six-shot
-storyboard and the captions are `ASO.md` §5; the upload can be done for you
+storyboard and captions are in `store/artwork/README.md`; the upload can be done for you
 by the metadata workflow with **screenshots** ticked.
 
 ### App Review Information
@@ -393,10 +436,10 @@ by the metadata workflow with **screenshots** ticked.
 
 - **Sign-in required** — **No**. The game has no accounts of any kind.
 
-- **First Name** — `REPLACE_ME`  ⚠️ **you must replace this**
-- **Last Name** — `REPLACE_ME`  ⚠️ **you must replace this**
-- **Phone Number** — `REPLACE_ME`  ⚠️ **you must replace this**
-- **Email** — `REPLACE_ME@example.com`  ⚠️ **you must replace this**
+- **First Name** — `Isac`
+- **Last Name** — `Molin`
+- **Phone Number** — `+46723241663`
+- **Email** — `isacmolin@gmail.com`
 
 **Notes** — 3956/4000 characters
 
@@ -449,14 +492,15 @@ Use the App Review contact supplied with the submission.
 
 ### Version Information
 
-**Copyright**  ⚠️ **you must replace this**
+**Copyright**
 
 ```text
-2026 REPLACE_ME
+2026 Isac Molin
 ```
 
 - **Routing App Coverage File** — none.
-- **Release** — **Manually release this version** — an approved build waits for you to press Release.
+- **Version publication** — **Manually release this version** — after approval, publish the pre-order only once every target region is configured correctly. The app downloads on its pre-order release date.
+- **Availability** — Pre-order, planned release **16 October 2026**, all 175 currently configured regions. See [release setup](RELEASE_SETUP.md). Version publication and pre-order availability are separate Apple settings.
 
 ---
 
@@ -491,9 +535,9 @@ WHAT WE MOST WANT TO HEAR ABOUT
 Report crashes, unreadable layouts, controls that do not respond, slow or hot devices, missing saves, incorrect purchase access, and numbers whose assumptions are unclear. Include device, iOS version, scenario, seed and steps. Do not include account passwords or payment details.
 ```
 
-- **Feedback Email** — `REPLACE_ME@example.com`  ⚠️ **you must replace this**
-- **Marketing URL** — `https://wrexist.github.io/Airline-Empire/`
-- **Privacy Policy URL** — `https://wrexist.github.io/Airline-Empire/privacy.html`
+- **Feedback Email** — `isacmolin@gmail.com`
+- **Marketing URL** — `https://airline-empire-official.isacmolin.chatgpt.site/`
+- **Privacy Policy URL** — `https://airline-empire-official.isacmolin.chatgpt.site/privacy.html`
 - **Beta App Review Information** — the same contact and notes as §5.
 
 ---

@@ -1,0 +1,52 @@
+[
+  {
+    "file": "06b-briefing.png",
+    "attachment": "STORE-06b-briefing_0_9B52FB27-E0D3-45CB-AE6A-F56C1D12E450.png",
+    "sha256": "9809d70bca3ac2d93a1bc945d24d9229acc4dfcfa36d6c3a741cfdaae99ec5ac"
+  },
+  {
+    "file": "06-progression.png",
+    "attachment": "STORE-06-progression_0_9FB6EDD3-C909-4D95-B86A-24D4A37554C8.png",
+    "sha256": "1ea1a3338eff416537ae6210b732183f552bffa9ab0e95153138b305f360b638"
+  },
+  {
+    "file": "05-rivals.png",
+    "attachment": "STORE-05-rivals_0_74E3F913-F54C-4F07-A145-6D6738065F13.png",
+    "sha256": "b1268f277a49304faeff8fe9e44b5eb773cde14c3deadbd4cefb91f2203efbf6"
+  },
+  {
+    "file": "05b-world.png",
+    "attachment": "STORE-05b-world_0_85E0B038-2A30-4724-9DAC-38C7E11CD36F.png",
+    "sha256": "9366f9344f3a8dc66930f246dc8cef196e27122ea081b424d325bd54a7f1be3f"
+  },
+  {
+    "file": "04-finance.png",
+    "attachment": "STORE-04-finance_0_9454A07F-CDE3-4123-A3A8-89080E8B8864.png",
+    "sha256": "cb166d32cc435a60e7841e67eb4865021f8794a6379ad2542fe0bbe9a9a53d1e"
+  },
+  {
+    "file": "03-route.png",
+    "attachment": "STORE-03-route_0_8F3B452B-79CC-4110-9776-E0557637E35C.png",
+    "sha256": "83a74c1a3ae65adfa37936b507d87f84f916de00bd3d4d6f6b96739424ace1fc"
+  },
+  {
+    "file": "03b-routes.png",
+    "attachment": "STORE-03b-routes_0_DD82A8D9-31BB-436C-BE9F-EAFC5BCA43C8.png",
+    "sha256": "243d7e02cf530627a02965201acc1122a456a428dc8b8eb105b9bb3fdc441588"
+  },
+  {
+    "file": "02b-market.png",
+    "attachment": "STORE-02b-market_0_1512338D-FD0E-42B9-B38A-0C6B6630AA43.png",
+    "sha256": "46058c9eeca9a92ca1f98fbe89903b4aa953846163946674603e2ccb3f24921d"
+  },
+  {
+    "file": "02-fleet.png",
+    "attachment": "STORE-02-fleet_0_9798A9A2-967D-4750-8F71-B6CA53483888.png",
+    "sha256": "fd07e14138b9a176065384dccc0d07590bd41522f205d420ad29a4fc1cadbc55"
+  },
+  {
+    "file": "01-network.png",
+    "attachment": "STORE-01-network_0_05EA85FD-F897-4175-B63D-598EAAAE91A0.png",
+    "sha256": "087428b60cc846dca6bf5abc5386561f7c731861c01d5d8844982bfd810c9675"
+  }
+]
