@@ -47,10 +47,16 @@ for page in ("terms.html", "privacy.html"):
 if args.live:
     for page in ("", "privacy.html", "support.html", "terms.html", "press.html"):
         try:
-            with urllib.request.urlopen(BASE + page, timeout=15) as response:
+            request = urllib.request.Request(BASE + page, headers={
+                "User-Agent": "AirlineEmpire-ReleaseCheck/1.0",
+                "Accept": "text/html",
+            })
+            with urllib.request.urlopen(request, timeout=15) as response:
                 text = response.read().decode()
                 if response.status != 200 or "Airline Empire" not in text or "<h1>" not in text:
                     errors.append(f"Invalid public page: {BASE + page}")
+                else:
+                    print(f"Public page verified: {response.status} {response.url}")
         except Exception as error:
             errors.append(f"Unreachable public page {BASE + page}: {error}")
 for error in errors:

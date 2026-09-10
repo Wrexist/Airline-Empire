@@ -420,7 +420,7 @@ function flag(value) {
 }
 
 if (check) {
-  const current = existsSync(OUT) ? readFileSync(OUT, 'utf8') : null
+  const current = existsSync(OUT) ? readFileSync(OUT, 'utf8').replace(/\r\n/g, '\n') : null
   if (current !== rendered) {
     console.error('✗ docs/APP_STORE_CONNECT_FILL_IN.md is stale.')
     console.error('  The listing in store/ has changed since it was generated.')

@@ -652,7 +652,7 @@ jobs:
           path: |
             AirlineEmpireApp/UITestResults.xcresult
             AirlineEmpireApp/UITestResults-baseline.xcresult
-          retention-days: 3
+          retention-days: 45
           if-no-files-found: warn
 
       # Print the screenshots into the log, small, as base64.
@@ -849,7 +849,7 @@ jobs:
         with:
           name: ui-screenshots-ipad
           path: AirlineEmpireApp/UITestResults.xcresult
-          retention-days: 3
+          retention-days: 45
           if-no-files-found: warn
 
       # Identical to the iPhone job's step, for the identical reason: the

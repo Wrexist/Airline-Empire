@@ -13,9 +13,8 @@ final class StoreScreenshotUITests: AEUITestCase {
             XCTAssertEqual(capturedShots, 10, "Every storyboard source must be photographed.")
         }
         let bundle = Bundle(for: StoreScreenshotUITests.self)
-        let fixture = bundle.url(forResource: "store-campaign", withExtension: "json")
-            ?? bundle.url(forResource: "rival-pressure-late-game", withExtension: "json")
-        let url = try XCTUnwrap(fixture)
+        let url = try XCTUnwrap(bundle.url(forResource: "store-campaign", withExtension: "json"),
+                                "Generate the intended store campaign before capturing marketing images")
         launch(appearance: .dark, arguments: ["-AEUITestLoadSave", url.path,
                                              "-AEUITestDarkAppearance"])
         XCTAssertNotNil(waitForTab("Home", timeout: 30))

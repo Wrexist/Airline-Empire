@@ -1,0 +1,2371 @@
+{
+  "checked_at_utc": "2026-09-10T18:23:45.879617+00:00",
+  "main_sha": "8b95b1928a14151782f2f37210725e1a06618ea4",
+  "candidate_sha": "c65c98d1e6ff573acf6c7081f93e38408cb0250a",
+  "prs": [
+    {
+      "headRefName": "codex/app-store-screenshots",
+      "mergedAt": null,
+      "number": 23,
+      "state": "OPEN",
+      "title": "Prepare App Store release: premium screenshots, complete listing and live support pages",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/23"
+    },
+    {
+      "headRefName": "codex/launch-readiness",
+      "mergedAt": "2026-09-08T21:03:46Z",
+      "number": 22,
+      "state": "MERGED",
+      "title": "Launch readiness: protect campaigns, verify Pro, and improve the first-flight journey",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/22"
+    },
+    {
+      "headRefName": "claude/ae-048-map-home-screen-uvtp09",
+      "mergedAt": "2026-09-08T04:22:17Z",
+      "number": 21,
+      "state": "MERGED",
+      "title": "AE-048: the world is the home screen, and the dashboard is what you are handed",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/21"
+    },
+    {
+      "headRefName": "claude/map-airplane-snapping-qplvfo",
+      "mergedAt": "2026-09-07T03:05:05Z",
+      "number": 20,
+      "state": "MERGED",
+      "title": "A pull request asks one question, and pays two minutes for it",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/20"
+    },
+    {
+      "headRefName": "claude/iap-subscription-pricing-5r3j1k",
+      "mergedAt": "2026-09-07T03:05:19Z",
+      "number": 19,
+      "state": "MERGED",
+      "title": "Implement free-to-start monetization with Pro entitlement",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/19"
+    },
+    {
+      "headRefName": "claude/map-airplane-snapping-qplvfo",
+      "mergedAt": "2026-09-06T21:36:02Z",
+      "number": 18,
+      "state": "MERGED",
+      "title": "The map stops snapping, and starts being worth watching",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/18"
+    },
+    {
+      "headRefName": "claude/airframe-day-value-demand-4kepf3",
+      "mergedAt": "2026-09-06T09:55:02Z",
+      "number": 17,
+      "state": "MERGED",
+      "title": "Release pipeline: unblock the timeout, and stop paying 10x to learn Apple said no",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/17"
+    },
+    {
+      "headRefName": "claude/airframe-day-value-demand-4kepf3",
+      "mergedAt": "2026-09-04T20:04:32Z",
+      "number": 16,
+      "state": "MERGED",
+      "title": "Fix aircraft demand estimation to respond to capacity offered",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/16"
+    },
+    {
+      "headRefName": "claude/ae041-profit-revenue-strategy-4r2wgi",
+      "mergedAt": "2026-09-04T13:10:22Z",
+      "number": 15,
+      "state": "MERGED",
+      "title": "AE-044: three test time limits were measuring the runner, not the test",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/15"
+    },
+    {
+      "headRefName": "claude/ae041-profit-revenue-strategy-4r2wgi",
+      "mergedAt": "2026-09-04T11:38:54Z",
+      "number": 14,
+      "state": "MERGED",
+      "title": "AE-042: Gate market recommendations on airframe economics",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/14"
+    },
+    {
+      "headRefName": "claude/rival-pressure-visibility-2ouiny",
+      "mergedAt": "2026-09-03T10:51:36Z",
+      "number": 13,
+      "state": "MERGED",
+      "title": "feat(rivals): make the world push back — measure the competition, then let the player see it",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/13"
+    },
+    {
+      "headRefName": "claude/airline-empire-visual-validation-odbbs8",
+      "mergedAt": "2026-09-01T20:11:14Z",
+      "number": 12,
+      "state": "MERGED",
+      "title": "AE-034/035/036: the first month, the first era, and the next decision",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/12"
+    },
+    {
+      "headRefName": "claude/airline-empire-visual-validation-odbbs8",
+      "mergedAt": "2026-09-01T04:02:13Z",
+      "number": 11,
+      "state": "MERGED",
+      "title": "AE-034: measured map performance + the market becomes a deal you pick",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/11"
+    },
+    {
+      "headRefName": "claude/airline-empire-visual-validation-odbbs8",
+      "mergedAt": "2026-08-31T15:43:04Z",
+      "number": 10,
+      "state": "MERGED",
+      "title": "AE-033: the command map — immersion pass, and the six defects looking at it found",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/10"
+    },
+    {
+      "headRefName": "claude/airline-empire-visual-validation-odbbs8",
+      "mergedAt": "2026-08-31T04:46:43Z",
+      "number": 9,
+      "state": "MERGED",
+      "title": "test(app): reach the screens the journey never has, and measure what it can",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/9"
+    },
+    {
+      "headRefName": "claude/first-master-prompt-2yw459",
+      "mergedAt": "2026-08-30T19:40:01Z",
+      "number": 8,
+      "state": "MERGED",
+      "title": "The app runs: simulator UI tests, real geography, and the defects looking at it found",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/8"
+    },
+    {
+      "headRefName": "claude/first-master-prompt-2yw459",
+      "mergedAt": "2026-08-30T14:23:06Z",
+      "number": 7,
+      "state": "MERGED",
+      "title": "UI/UX polish: design system, information density, and read models that agree",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/7"
+    },
+    {
+      "headRefName": "claude/first-master-prompt-2yw459",
+      "mergedAt": "2026-08-30T10:09:20Z",
+      "number": 6,
+      "state": "MERGED",
+      "title": "Audio system, map overhaul, and UI/UX audit remediation",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/6"
+    },
+    {
+      "headRefName": "claude/airline-empire-workflows-aso-fbvml7",
+      "mergedAt": "2026-08-29T07:23:33Z",
+      "number": 5,
+      "state": "MERGED",
+      "title": "BUG-008 crash fix, and a Liquid Glass pass over the whole game",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/5"
+    },
+    {
+      "headRefName": "claude/airline-empire-workflows-aso-fbvml7",
+      "mergedAt": "2026-08-28T22:48:13Z",
+      "number": 4,
+      "state": "MERGED",
+      "title": "Fix Apple error 90474 (iPad orientations), gate that class of rejection, and cut runner cost ~45%",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/4"
+    },
+    {
+      "headRefName": "claude/airline-empire-workflows-aso-fbvml7",
+      "mergedAt": "2026-08-28T22:17:59Z",
+      "number": 3,
+      "state": "MERGED",
+      "title": "App icon, the App Store Connect fill-in sheet, and the first green CI run",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/3"
+    },
+    {
+      "headRefName": "claude/airline-empire-workflows-aso-fbvml7",
+      "mergedAt": "2026-08-28T21:46:50Z",
+      "number": 2,
+      "state": "MERGED",
+      "title": "Add release pipeline and App Store listing infrastructure",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/2"
+    },
+    {
+      "headRefName": "claude/airline-empire-plan-oln7v7",
+      "mergedAt": "2026-08-28T19:36:23Z",
+      "number": 1,
+      "state": "MERGED",
+      "title": "AE-023: Linux-first hardening — 6 P1 defects, player-journey/contract/content test suites, and the Apple validation handoff",
+      "url": "https://github.com/Wrexist/Airline-Empire/pull/1"
+    }
+  ],
+  "review_threads": {
+    "data": {
+      "repository": {
+        "pullRequest": {
+          "reviewThreads": {
+            "nodes": [
+              {
+                "isResolved": false,
+                "path": "store/artwork/README.md",
+                "comments": {
+                  "nodes": [
+                    {
+                      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Run the probe from its Swift package directory**\n\nWhen a developer follows the reproduction instructions from the repository root, this command fails because `Package.swift` is under `AirlineEmpireCore/`, not the root. Prefix the command with `cd AirlineEmpireCore` (and adjust the save path), or use `swift run --package-path AirlineEmpireCore ...`, so the documented screenshot-generation process is actually reproducible.\n\nUseful? React with 👍 / 👎.",
+                      "url": "https://github.com/Wrexist/Airline-Empire/pull/23#discussion_r3975430565"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "runs": {
+    "34310565863": {
+      "head_sha": "c65c98d1e6ff573acf6c7081f93e38408cb0250a",
+      "conclusion": "success",
+      "run_attempt": 2,
+      "html_url": "https://github.com/Wrexist/Airline-Empire/actions/runs/34310565863",
+      "created_at": "2026-09-09T04:20:08Z",
+      "jobs": [
+        {
+          "name": "iOS app (xcodebuild) · map home",
+          "conclusion": "success",
+          "id": 102743045740,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-09-10T04:18:30Z",
+              "completed_at": "2026-09-10T04:18:31Z"
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-09-10T04:18:31Z",
+              "completed_at": "2026-09-10T04:18:37Z"
+            },
+            {
+              "name": "Xcode version",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-09-10T04:18:37Z",
+              "completed_at": "2026-09-10T04:18:38Z"
+            },
+            {
+              "name": "Generate the Xcode project",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-09-10T04:18:38Z",
+              "completed_at": "2026-09-10T04:18:41Z"
+            },
+            {
+              "name": "Build for the simulator",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-09-10T04:18:41Z",
+              "completed_at": "2026-09-10T04:20:50Z"
+            },
+            {
+              "name": "Pick a simulator",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-09-10T04:20:50Z",
+              "completed_at": "2026-09-10T04:20:54Z"
+            },
+            {
+              "name": "Measure (alone, so the numbers stay comparable)",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7,
+              "started_at": "2026-09-10T04:20:54Z",
+              "completed_at": "2026-09-10T04:20:54Z"
+            },
+            {
+              "name": "Run the UI tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-09-10T04:20:54Z",
+              "completed_at": "2026-09-10T04:32:06Z"
+            },
+            {
+              "name": "Failure messages into the log",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-09-10T04:32:06Z",
+              "completed_at": "2026-09-10T04:32:10Z"
+            },
+            {
+              "name": "Keep the screenshots",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-09-10T04:32:10Z",
+              "completed_at": "2026-09-10T04:32:10Z"
+            },
+            {
+              "name": "Screenshots into the log",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-09-10T04:32:10Z",
+              "completed_at": "2026-09-10T04:32:12Z"
+            },
+            {
+              "name": "What failed",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-09-10T04:32:12Z",
+              "completed_at": "2026-09-10T04:32:13Z"
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-09-10T04:32:13Z",
+              "completed_at": "2026-09-10T04:32:13Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 25,
+              "started_at": "2026-09-10T04:32:13Z",
+              "completed_at": "2026-09-10T04:32:15Z"
+            }
+          ]
+        },
+        {
+          "name": "iOS app (xcodebuild) · arrival",
+          "conclusion": "success",
+          "id": 102743045874,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-09-10T04:18:30Z",
+              "completed_at": "2026-09-10T04:18:31Z"
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-09-10T04:18:32Z",
+              "completed_at": "2026-09-10T04:18:38Z"
+            },
+            {
+              "name": "Xcode version",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-09-10T04:18:38Z",
+              "completed_at": "2026-09-10T04:18:38Z"
+            },
+            {
+              "name": "Generate the Xcode project",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-09-10T04:18:38Z",
+              "completed_at": "2026-09-10T04:18:41Z"
+            },
+            {
+              "name": "Build for the simulator",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-09-10T04:18:41Z",
+              "completed_at": "2026-09-10T04:20:45Z"
+            },
+            {
+              "name": "Pick a simulator",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-09-10T04:20:45Z",
+              "completed_at": "2026-09-10T04:20:49Z"
+            },
+            {
+              "name": "Measure (alone, so the numbers stay comparable)",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7,
+              "started_at": "2026-09-10T04:20:49Z",
+              "completed_at": "2026-09-10T04:20:49Z"
+            },
+            {
+              "name": "Run the UI tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-09-10T04:20:49Z",
+              "completed_at": "2026-09-10T04:41:19Z"
+            },
+            {
+              "name": "Failure messages into the log",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-09-10T04:41:19Z",
+              "completed_at": "2026-09-10T04:41:23Z"
+            },
+            {
+              "name": "Keep the screenshots",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-09-10T04:41:23Z",
+              "completed_at": "2026-09-10T04:41:23Z"
+            },
+            {
+              "name": "Screenshots into the log",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-09-10T04:41:23Z",
+              "completed_at": "2026-09-10T04:41:25Z"
+            },
+            {
+              "name": "What failed",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-09-10T04:41:25Z",
+              "completed_at": "2026-09-10T04:41:25Z"
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-09-10T04:41:25Z",
+              "completed_at": "2026-09-10T04:41:26Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 25,
+              "started_at": "2026-09-10T04:41:26Z",
+              "completed_at": "2026-09-10T04:41:29Z"
+            }
+          ]
+        },
+        {
+          "name": "Release tooling (selftest + listing)",
+          "conclusion": "success",
+          "id": 102743045892,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-09-09T04:20:15Z",
+              "completed_at": "2026-09-09T04:20:15Z"
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-09-09T04:20:15Z",
+              "completed_at": "2026-09-09T04:20:20Z"
+            },
+            {
+              "name": "Run actions/setup-node@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-09-09T04:20:20Z",
+              "completed_at": "2026-09-09T04:20:21Z"
+            },
+            {
+              "name": "Release tooling selftest",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-09-09T04:20:21Z",
+              "completed_at": "2026-09-09T04:20:21Z"
+            },
+            {
+              "name": "Validate store listing",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-09-09T04:20:21Z",
+              "completed_at": "2026-09-09T04:20:21Z"
+            },
+            {
+              "name": "Fill-in sheet is current",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-09-09T04:20:21Z",
+              "completed_at": "2026-09-09T04:20:21Z"
+            },
+            {
+              "name": "Bundle configuration",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-09-09T04:20:21Z",
+              "completed_at": "2026-09-09T04:20:21Z"
+            },
+            {
+              "name": "App symbols and key paths resolve",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-09-09T04:20:21Z",
+              "completed_at": "2026-09-09T04:20:21Z"
+            },
+            {
+              "name": "Audio assets resolve",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-09-09T04:20:21Z",
+              "completed_at": "2026-09-09T04:20:23Z"
+            },
+            {
+              "name": "Post Run actions/setup-node@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17,
+              "started_at": "2026-09-09T04:20:23Z",
+              "completed_at": "2026-09-09T04:20:23Z"
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18,
+              "started_at": "2026-09-09T04:20:23Z",
+              "completed_at": "2026-09-09T04:20:23Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19,
+              "started_at": "2026-09-09T04:20:23Z",
+              "completed_at": "2026-09-09T04:20:23Z"
+            }
+          ]
+        },
+        {
+          "name": "iOS app (xcodebuild) · economy",
+          "conclusion": "success",
+          "id": 102743046337,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-09-09T04:20:43Z",
+              "completed_at": "2026-09-09T04:20:44Z"
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-09-09T04:20:44Z",
+              "completed_at": "2026-09-09T04:20:50Z"
+            },
+            {
+              "name": "Xcode version",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-09-09T04:20:50Z",
+              "completed_at": "2026-09-09T04:20:50Z"
+            },
+            {
+              "name": "Generate the Xcode project",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-09-09T04:20:50Z",
+              "completed_at": "2026-09-09T04:20:53Z"
+            },
+            {
+              "name": "Build for the simulator",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-09-09T04:20:53Z",
+              "completed_at": "2026-09-09T04:22:33Z"
+            },
+            {
+              "name": "Pick a simulator",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-09-09T04:22:33Z",
+              "completed_at": "2026-09-09T04:22:37Z"
+            },
+            {
+              "name": "Measure (alone, so the numbers stay comparable)",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7,
+              "started_at": "2026-09-09T04:22:37Z",
+              "completed_at": "2026-09-09T04:22:37Z"
+            },
+            {
+              "name": "Run the UI tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-09-09T04:22:37Z",
+              "completed_at": "2026-09-09T04:42:48Z"
+            },
+            {
+              "name": "Failure messages into the log",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-09-09T04:42:48Z",
+              "completed_at": "2026-09-09T04:42:52Z"
+            },
+            {
+              "name": "Keep the screenshots",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-09-09T04:42:52Z",
+              "completed_at": "2026-09-09T04:42:52Z"
+            },
+            {
+              "name": "Screenshots into the log",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-09-09T04:42:52Z",
+              "completed_at": "2026-09-09T04:42:58Z"
+            },
+            {
+              "name": "What failed",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-09-09T04:42:58Z",
+              "completed_at": "2026-09-09T04:42:58Z"
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-09-09T04:42:58Z",
+              "completed_at": "2026-09-09T04:42:59Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 25,
+              "started_at": "2026-09-09T04:42:59Z",
+              "completed_at": "2026-09-09T04:43:01Z"
+            }
+          ]
+        },
+        {
+          "name": "Plan the macOS work",
+          "conclusion": "success",
+          "id": 102743046579,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-09-09T04:20:15Z",
+              "completed_at": "2026-09-09T04:20:15Z"
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-09-09T04:20:15Z",
+              "completed_at": "2026-09-09T04:20:22Z"
+            },
+            {
+              "name": "Decide",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-09-09T04:20:22Z",
+              "completed_at": "2026-09-09T04:20:22Z"
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-09-09T04:20:22Z",
+              "completed_at": "2026-09-09T04:20:22Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-09-09T04:20:22Z",
+              "completed_at": "2026-09-09T04:20:22Z"
+            }
+          ]
+        },
+        {
+          "name": "iOS app (xcodebuild) · shell + map",
+          "conclusion": "success",
+          "id": 102743046771,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-09-09T04:20:30Z",
+              "completed_at": "2026-09-09T04:20:31Z"
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-09-09T04:20:31Z",
+              "completed_at": "2026-09-09T04:20:37Z"
+            },
+            {
+              "name": "Xcode version",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-09-09T04:20:37Z",
+              "completed_at": "2026-09-09T04:20:37Z"
+            },
+            {
+              "name": "Generate the Xcode project",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-09-09T04:20:37Z",
+              "completed_at": "2026-09-09T04:20:40Z"
+            },
+            {
+              "name": "Build for the simulator",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-09-09T04:20:40Z",
+              "completed_at": "2026-09-09T04:22:18Z"
+            },
+            {
+              "name": "Pick a simulator",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-09-09T04:22:18Z",
+              "completed_at": "2026-09-09T04:22:21Z"
+            },
+            {
+              "name": "Measure (alone, so the numbers stay comparable)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-09-09T04:22:21Z",
+              "completed_at": "2026-09-09T04:28:49Z"
+            },
+            {
+              "name": "Run the UI tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-09-09T04:28:49Z",
+              "completed_at": "2026-09-09T04:42:05Z"
+            },
+            {
+              "name": "Failure messages into the log",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-09-09T04:42:05Z",
+              "completed_at": "2026-09-09T04:42:11Z"
+            },
+            {
+              "name": "Keep the screenshots",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-09-09T04:42:11Z",
+              "completed_at": "2026-09-09T04:42:11Z"
+            },
+            {
+              "name": "Screenshots into the log",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-09-09T04:42:11Z",
+              "completed_at": "2026-09-09T04:42:16Z"
+            },
+            {
+              "name": "What failed",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-09-09T04:42:16Z",
+              "completed_at": "2026-09-09T04:42:16Z"
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-09-09T04:42:16Z",
+              "completed_at": "2026-09-09T04:42:17Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 25,
+              "started_at": "2026-09-09T04:42:17Z",
+              "completed_at": "2026-09-09T04:42:18Z"
+            }
+          ]
+        },
+        {
+          "name": "iPad shell (regular width)",
+          "conclusion": "success",
+          "id": 102743064399,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-09-09T04:20:20Z",
+              "completed_at": "2026-09-09T04:20:21Z"
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-09-09T04:20:21Z",
+              "completed_at": "2026-09-09T04:20:27Z"
+            },
+            {
+              "name": "Generate the Xcode project",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-09-09T04:20:27Z",
+              "completed_at": "2026-09-09T04:20:30Z"
+            },
+            {
+              "name": "Pick an iPad simulator",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-09-09T04:20:30Z",
+              "completed_at": "2026-09-09T04:20:34Z"
+            },
+            {
+              "name": "Run the shell journey on the iPad",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-09-09T04:20:34Z",
+              "completed_at": "2026-09-09T04:30:42Z"
+            },
+            {
+              "name": "Keep the screenshots",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-09-09T04:30:42Z",
+              "completed_at": "2026-09-09T04:30:42Z"
+            },
+            {
+              "name": "Screenshots into the log",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-09-09T04:30:42Z",
+              "completed_at": "2026-09-09T04:30:50Z"
+            },
+            {
+              "name": "What failed",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-09-09T04:30:50Z",
+              "completed_at": "2026-09-09T04:30:50Z"
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 16,
+              "started_at": "2026-09-09T04:30:50Z",
+              "completed_at": "2026-09-09T04:30:51Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17,
+              "started_at": "2026-09-09T04:30:51Z",
+              "completed_at": "2026-09-09T04:30:54Z"
+            }
+          ]
+        },
+        {
+          "name": "Core (swift build + test)",
+          "conclusion": "success",
+          "id": 102743071345,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-09-09T04:20:15Z",
+              "completed_at": "2026-09-09T04:20:15Z"
+            },
+            {
+              "name": "Initialize containers",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-09-09T04:20:15Z",
+              "completed_at": "2026-09-09T04:20:39Z"
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-09-09T04:20:39Z",
+              "completed_at": "2026-09-09T04:20:44Z"
+            },
+            {
+              "name": "Restore the SwiftPM build cache",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-09-09T04:20:44Z",
+              "completed_at": "2026-09-09T04:20:48Z"
+            },
+            {
+              "name": "What changed?",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-09-09T04:20:48Z",
+              "completed_at": "2026-09-09T04:20:48Z"
+            },
+            {
+              "name": "Swift version",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-09-09T04:20:48Z",
+              "completed_at": "2026-09-09T04:20:48Z"
+            },
+            {
+              "name": "Test (debug)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-09-09T04:20:48Z",
+              "completed_at": "2026-09-09T04:45:21Z"
+            },
+            {
+              "name": "Build (release, warnings are errors)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-09-09T04:45:21Z",
+              "completed_at": "2026-09-09T04:46:04Z"
+            },
+            {
+              "name": "Post Restore the SwiftPM build cache",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-09-09T04:46:04Z",
+              "completed_at": "2026-09-09T04:46:21Z"
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-09-09T04:46:21Z",
+              "completed_at": "2026-09-09T04:46:21Z"
+            },
+            {
+              "name": "Stop containers",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 16,
+              "started_at": "2026-09-09T04:46:21Z",
+              "completed_at": "2026-09-09T04:46:21Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17,
+              "started_at": "2026-09-09T04:46:21Z",
+              "completed_at": "2026-09-09T04:46:21Z"
+            }
+          ]
+        },
+        {
+          "name": "iOS app (xcodebuild) · campaign",
+          "conclusion": "success",
+          "id": 102743079197,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-09-09T04:31:07Z",
+              "completed_at": "2026-09-09T04:31:08Z"
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-09-09T04:31:08Z",
+              "completed_at": "2026-09-09T04:31:14Z"
+            },
+            {
+              "name": "Xcode version",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-09-09T04:31:14Z",
+              "completed_at": "2026-09-09T04:31:14Z"
+            },
+            {
+              "name": "Generate the Xcode project",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-09-09T04:31:14Z",
+              "completed_at": "2026-09-09T04:31:19Z"
+            },
+            {
+              "name": "Build for the simulator",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-09-09T04:31:19Z",
+              "completed_at": "2026-09-09T04:33:29Z"
+            },
+            {
+              "name": "Pick a simulator",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-09-09T04:33:29Z",
+              "completed_at": "2026-09-09T04:33:34Z"
+            },
+            {
+              "name": "Measure (alone, so the numbers stay comparable)",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7,
+              "started_at": "2026-09-09T04:33:34Z",
+              "completed_at": "2026-09-09T04:33:34Z"
+            },
+            {
+              "name": "Run the UI tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-09-09T04:33:34Z",
+              "completed_at": "2026-09-09T05:06:15Z"
+            },
+            {
+              "name": "Failure messages into the log",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-09-09T05:06:15Z",
+              "completed_at": "2026-09-09T05:06:23Z"
+            },
+            {
+              "name": "Keep the screenshots",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-09-09T05:06:23Z",
+              "completed_at": "2026-09-09T05:06:23Z"
+            },
+            {
+              "name": "Screenshots into the log",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-09-09T05:06:23Z",
+              "completed_at": "2026-09-09T05:06:33Z"
+            },
+            {
+              "name": "What failed",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-09-09T05:06:33Z",
+              "completed_at": "2026-09-09T05:06:33Z"
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-09-09T05:06:33Z",
+              "completed_at": "2026-09-09T05:06:35Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 25,
+              "started_at": "2026-09-09T05:06:35Z",
+              "completed_at": "2026-09-09T05:06:37Z"
+            }
+          ]
+        }
+      ]
+    },
+    "34309158812": {
+      "head_sha": "c65c98d1e6ff573acf6c7081f93e38408cb0250a",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "html_url": "https://github.com/Wrexist/Airline-Empire/actions/runs/34309158812",
+      "created_at": "2026-09-09T03:58:30Z",
+      "jobs": [
+        {
+          "name": "app",
+          "conclusion": "success",
+          "id": 102332012056,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-09-09T03:58:38Z",
+              "completed_at": "2026-09-09T03:58:39Z"
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-09-09T03:58:39Z",
+              "completed_at": "2026-09-09T03:58:48Z"
+            },
+            {
+              "name": "Generate project",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-09-09T03:58:48Z",
+              "completed_at": "2026-09-09T03:58:51Z"
+            },
+            {
+              "name": "Select iPhone simulator",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-09-09T03:58:51Z",
+              "completed_at": "2026-09-09T03:59:12Z"
+            },
+            {
+              "name": "App save safety and real StoreKit tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-09-09T03:59:12Z",
+              "completed_at": "2026-09-09T04:09:31Z"
+            },
+            {
+              "name": "Run actions/upload-artifact@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-09-09T04:09:31Z",
+              "completed_at": "2026-09-09T04:09:36Z"
+            },
+            {
+              "name": "UI checkpoints in the log",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-09-09T04:09:36Z",
+              "completed_at": "2026-09-09T04:09:40Z"
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-09-09T04:09:40Z",
+              "completed_at": "2026-09-09T04:09:41Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-09-09T04:09:41Z",
+              "completed_at": "2026-09-09T04:09:42Z"
+            }
+          ]
+        },
+        {
+          "name": "core",
+          "conclusion": "success",
+          "id": 102332012198,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-09-09T03:58:33Z",
+              "completed_at": "2026-09-09T03:58:33Z"
+            },
+            {
+              "name": "Initialize containers",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-09-09T03:58:33Z",
+              "completed_at": "2026-09-09T03:59:09Z"
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-09-09T03:59:09Z",
+              "completed_at": "2026-09-09T03:59:16Z"
+            },
+            {
+              "name": "Full simulation regression suite",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-09-09T03:59:16Z",
+              "completed_at": "2026-09-09T04:02:34Z"
+            },
+            {
+              "name": "Release source checks",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-09-09T04:02:34Z",
+              "completed_at": "2026-09-09T04:02:35Z"
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-09-09T04:02:35Z",
+              "completed_at": "2026-09-09T04:02:35Z"
+            },
+            {
+              "name": "Stop containers",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-09-09T04:02:35Z",
+              "completed_at": "2026-09-09T04:02:35Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-09-09T04:02:35Z",
+              "completed_at": "2026-09-09T04:02:35Z"
+            }
+          ]
+        }
+      ]
+    },
+    "34309158836": {
+      "head_sha": "c65c98d1e6ff573acf6c7081f93e38408cb0250a",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "html_url": "https://github.com/Wrexist/Airline-Empire/actions/runs/34309158836",
+      "created_at": "2026-09-09T03:58:30Z",
+      "jobs": [
+        {
+          "name": "capture (iphone)",
+          "conclusion": "success",
+          "id": 102332012452,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-09-09T03:58:37Z",
+              "completed_at": "2026-09-09T03:58:38Z"
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-09-09T03:58:38Z",
+              "completed_at": "2026-09-09T03:58:44Z"
+            },
+            {
+              "name": "Generate an earned campaign from the current simulation",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-09-09T03:58:44Z",
+              "completed_at": "2026-09-09T04:00:02Z"
+            },
+            {
+              "name": "Generate Xcode project",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-09-09T04:00:02Z",
+              "completed_at": "2026-09-09T04:00:08Z"
+            },
+            {
+              "name": "Select the correct native display",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-09-09T04:00:08Z",
+              "completed_at": "2026-09-09T04:02:13Z"
+            },
+            {
+              "name": "Capture real gameplay",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-09-09T04:02:13Z",
+              "completed_at": "2026-09-09T04:09:24Z"
+            },
+            {
+              "name": "Export full-resolution captures",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-09-09T04:09:24Z",
+              "completed_at": "2026-09-09T04:09:27Z"
+            },
+            {
+              "name": "Run actions/upload-artifact@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-09-09T04:09:27Z",
+              "completed_at": "2026-09-09T04:09:30Z"
+            },
+            {
+              "name": "Run actions/upload-artifact@v4",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 9,
+              "started_at": "2026-09-09T04:09:30Z",
+              "completed_at": "2026-09-09T04:09:30Z"
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18,
+              "started_at": "2026-09-09T04:09:30Z",
+              "completed_at": "2026-09-09T04:09:30Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19,
+              "started_at": "2026-09-09T04:09:30Z",
+              "completed_at": "2026-09-09T04:09:46Z"
+            }
+          ]
+        },
+        {
+          "name": "capture (ipad)",
+          "conclusion": "success",
+          "id": 102332012607,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-09-09T03:58:38Z",
+              "completed_at": "2026-09-09T03:58:39Z"
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-09-09T03:58:39Z",
+              "completed_at": "2026-09-09T03:58:46Z"
+            },
+            {
+              "name": "Generate an earned campaign from the current simulation",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-09-09T03:58:46Z",
+              "completed_at": "2026-09-09T03:59:47Z"
+            },
+            {
+              "name": "Generate Xcode project",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-09-09T03:59:47Z",
+              "completed_at": "2026-09-09T03:59:50Z"
+            },
+            {
+              "name": "Select the correct native display",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-09-09T03:59:50Z",
+              "completed_at": "2026-09-09T04:01:59Z"
+            },
+            {
+              "name": "Capture real gameplay",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-09-09T04:02:00Z",
+              "completed_at": "2026-09-09T04:08:52Z"
+            },
+            {
+              "name": "Export full-resolution captures",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-09-09T04:08:52Z",
+              "completed_at": "2026-09-09T04:08:57Z"
+            },
+            {
+              "name": "Run actions/upload-artifact@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-09-09T04:08:57Z",
+              "completed_at": "2026-09-09T04:08:59Z"
+            },
+            {
+              "name": "Run actions/upload-artifact@v4",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 9,
+              "started_at": "2026-09-09T04:08:59Z",
+              "completed_at": "2026-09-09T04:08:59Z"
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18,
+              "started_at": "2026-09-09T04:08:59Z",
+              "completed_at": "2026-09-09T04:09:00Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19,
+              "started_at": "2026-09-09T04:09:00Z",
+              "completed_at": "2026-09-09T04:09:14Z"
+            }
+          ]
+        }
+      ]
+    },
+    "34027843211": {
+      "head_sha": "e3d15e69da14ae31a1e2f08afbad94fa9939d9ec",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "html_url": "https://github.com/Wrexist/Airline-Empire/actions/runs/34027843211",
+      "created_at": "2026-09-06T10:35:25Z",
+      "jobs": [
+        {
+          "name": "Preflight (ubuntu, 1x)",
+          "conclusion": "success",
+          "id": 101471893935,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-09-06T10:35:29Z",
+              "completed_at": "2026-09-06T10:35:30Z"
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-09-06T10:35:30Z",
+              "completed_at": "2026-09-06T10:35:32Z"
+            },
+            {
+              "name": "Validate the version input",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-09-06T10:35:32Z",
+              "completed_at": "2026-09-06T10:35:32Z"
+            },
+            {
+              "name": "Require signing and upload secrets",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-09-06T10:35:32Z",
+              "completed_at": "2026-09-06T10:35:32Z"
+            },
+            {
+              "name": "Run actions/setup-node@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-09-06T10:35:32Z",
+              "completed_at": "2026-09-06T10:35:33Z"
+            },
+            {
+              "name": "Release tooling selftest",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-09-06T10:35:33Z",
+              "completed_at": "2026-09-06T10:35:33Z"
+            },
+            {
+              "name": "Validate store listing",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-09-06T10:35:33Z",
+              "completed_at": "2026-09-06T10:35:33Z"
+            },
+            {
+              "name": "Bundle configuration",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-09-06T10:35:33Z",
+              "completed_at": "2026-09-06T10:35:33Z"
+            },
+            {
+              "name": "Check the app icon",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-09-06T10:35:33Z",
+              "completed_at": "2026-09-06T10:35:33Z"
+            },
+            {
+              "name": "App Store Connect preflight",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-09-06T10:35:33Z",
+              "completed_at": "2026-09-06T10:35:34Z"
+            },
+            {
+              "name": "Can this team still sign?",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-09-06T10:35:34Z",
+              "completed_at": "2026-09-06T10:35:34Z"
+            },
+            {
+              "name": "Post Run actions/setup-node@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 21,
+              "started_at": "2026-09-06T10:35:34Z",
+              "completed_at": "2026-09-06T10:35:34Z"
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 22,
+              "started_at": "2026-09-06T10:35:34Z",
+              "completed_at": "2026-09-06T10:35:35Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 23,
+              "started_at": "2026-09-06T10:35:35Z",
+              "completed_at": "2026-09-06T10:35:35Z"
+            }
+          ]
+        },
+        {
+          "name": "Core tests (ubuntu, 1x)",
+          "conclusion": "success",
+          "id": 101471893964,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-09-06T10:35:29Z",
+              "completed_at": "2026-09-06T10:35:30Z"
+            },
+            {
+              "name": "Initialize containers",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-09-06T10:35:30Z",
+              "completed_at": "2026-09-06T10:36:09Z"
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-09-06T10:36:09Z",
+              "completed_at": "2026-09-06T10:36:16Z"
+            },
+            {
+              "name": "Restore the SwiftPM build cache",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-09-06T10:36:16Z",
+              "completed_at": "2026-09-06T10:36:20Z"
+            },
+            {
+              "name": "swift test",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-09-06T10:36:20Z",
+              "completed_at": "2026-09-06T10:51:31Z"
+            },
+            {
+              "name": "Post Restore the SwiftPM build cache",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-09-06T10:51:31Z",
+              "completed_at": "2026-09-06T10:51:32Z"
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-09-06T10:51:32Z",
+              "completed_at": "2026-09-06T10:51:32Z"
+            },
+            {
+              "name": "Stop containers",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-09-06T10:51:32Z",
+              "completed_at": "2026-09-06T10:51:33Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-09-06T10:51:33Z",
+              "completed_at": "2026-09-06T10:51:33Z"
+            }
+          ]
+        },
+        {
+          "name": "Archive and upload (macOS, 10x)",
+          "conclusion": "success",
+          "id": 101473880073,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-09-06T10:51:44Z",
+              "completed_at": "2026-09-06T10:51:46Z"
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-09-06T10:51:46Z",
+              "completed_at": "2026-09-06T10:51:50Z"
+            },
+            {
+              "name": "Run actions/setup-node@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-09-06T10:51:50Z",
+              "completed_at": "2026-09-06T10:51:51Z"
+            },
+            {
+              "name": "Xcode version",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-09-06T10:51:51Z",
+              "completed_at": "2026-09-06T10:51:51Z"
+            },
+            {
+              "name": "Show the iOS SDK this runner will build against",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-09-06T10:51:51Z",
+              "completed_at": "2026-09-06T10:51:52Z"
+            },
+            {
+              "name": "Install the App Store Connect API key",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-09-06T10:51:52Z",
+              "completed_at": "2026-09-06T10:51:53Z"
+            },
+            {
+              "name": "Import the signing certificate and profile",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-09-06T10:51:53Z",
+              "completed_at": "2026-09-06T10:51:53Z"
+            },
+            {
+              "name": "Compute the build number",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-09-06T10:51:53Z",
+              "completed_at": "2026-09-06T10:51:53Z"
+            },
+            {
+              "name": "Generate the Xcode project",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-09-06T10:51:53Z",
+              "completed_at": "2026-09-06T10:51:56Z"
+            },
+            {
+              "name": "Archive",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-09-06T10:51:56Z",
+              "completed_at": "2026-09-06T10:54:01Z"
+            },
+            {
+              "name": "Why the archive failed",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 11,
+              "started_at": "2026-09-06T10:54:01Z",
+              "completed_at": "2026-09-06T10:54:01Z"
+            },
+            {
+              "name": "Export the .ipa",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-09-06T10:54:01Z",
+              "completed_at": "2026-09-06T10:54:17Z"
+            },
+            {
+              "name": "Upload the .ipa as an artifact",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-09-06T10:54:17Z",
+              "completed_at": "2026-09-06T10:54:19Z"
+            },
+            {
+              "name": "Upload the dSYMs",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-09-06T10:54:19Z",
+              "completed_at": "2026-09-06T10:54:21Z"
+            },
+            {
+              "name": "Validate the app with Apple (archive-only runs)",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 15,
+              "started_at": "2026-09-06T10:54:21Z",
+              "completed_at": "2026-09-06T10:54:21Z"
+            },
+            {
+              "name": "Upload to App Store Connect",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 16,
+              "started_at": "2026-09-06T10:54:21Z",
+              "completed_at": "2026-09-06T10:55:36Z"
+            },
+            {
+              "name": "Remove the API key",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17,
+              "started_at": "2026-09-06T10:55:36Z",
+              "completed_at": "2026-09-06T10:55:37Z"
+            },
+            {
+              "name": "Post Run actions/setup-node@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 33,
+              "started_at": "2026-09-06T10:55:37Z",
+              "completed_at": "2026-09-06T10:55:37Z"
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 34,
+              "started_at": "2026-09-06T10:55:37Z",
+              "completed_at": "2026-09-06T10:55:37Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 35,
+              "started_at": "2026-09-06T10:55:37Z",
+              "completed_at": "2026-09-06T10:55:38Z"
+            }
+          ]
+        },
+        {
+          "name": "Wait for processing (ubuntu, 1x)",
+          "conclusion": "success",
+          "id": 101474369570,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-09-06T10:55:43Z",
+              "completed_at": "2026-09-06T10:55:44Z"
+            },
+            {
+              "name": "Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-09-06T10:55:44Z",
+              "completed_at": "2026-09-06T10:55:46Z"
+            },
+            {
+              "name": "Run actions/setup-node@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-09-06T10:55:46Z",
+              "completed_at": "2026-09-06T10:55:47Z"
+            },
+            {
+              "name": "Poll App Store Connect",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-09-06T10:55:47Z",
+              "completed_at": "2026-09-06T10:57:47Z"
+            },
+            {
+              "name": "What happens next",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-09-06T10:57:47Z",
+              "completed_at": "2026-09-06T10:57:47Z"
+            },
+            {
+              "name": "Post Run actions/setup-node@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-09-06T10:57:47Z",
+              "completed_at": "2026-09-06T10:57:47Z"
+            },
+            {
+              "name": "Post Run actions/checkout@v4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-09-06T10:57:47Z",
+              "completed_at": "2026-09-06T10:57:48Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-09-06T10:57:48Z",
+              "completed_at": "2026-09-06T10:57:48Z"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "full_device_job_gate": true,
+  "live_github_evidence_gate": {
+    "exit_code": 0,
+    "output": "Release evidence passed for c65c98d1e6ff573acf6c7081f93e38408cb0250a: CI 34310565863, Launch safety 34309158812\n"
+  },
+  "screenshots": [
+    {
+      "locale": "en-US",
+      "file": "APP_IPHONE_67/01-network.png",
+      "size": [
+        1320,
+        2868
+      ],
+      "mode": "RGB",
+      "sha256": "36908a057d28c2a2c23f181130f437b161ea0da0264f18e30c6c7cec23be5ffe",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-US",
+      "file": "APP_IPHONE_67/02-fleet.png",
+      "size": [
+        1320,
+        2868
+      ],
+      "mode": "RGB",
+      "sha256": "db93852f833624940b91e19d39f753c1a43db72d6c4cce55e00d6b8afc087f54",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-US",
+      "file": "APP_IPHONE_67/03-routes.png",
+      "size": [
+        1320,
+        2868
+      ],
+      "mode": "RGB",
+      "sha256": "4f48f39dfc485fd44ba7190bd6949ffc9806086669d5c4a30973f08c3d0327b0",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-US",
+      "file": "APP_IPHONE_67/04-finance.png",
+      "size": [
+        1320,
+        2868
+      ],
+      "mode": "RGB",
+      "sha256": "f300f350a8373d46f684d0f07a1edb32c66c1513f48346920ce7e66d1f43739a",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-US",
+      "file": "APP_IPHONE_67/05-rivals.png",
+      "size": [
+        1320,
+        2868
+      ],
+      "mode": "RGB",
+      "sha256": "02d9302d0dfb9a929b336d7d209f76584961f7534ef96e31e8a5e0eac937f11f",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-US",
+      "file": "APP_IPHONE_67/06-progression.png",
+      "size": [
+        1320,
+        2868
+      ],
+      "mode": "RGB",
+      "sha256": "60bd8544b3f0dad13e0a089dddbaf837e2a6ee8523328c0dc5591f591629dd48",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-US",
+      "file": "APP_IPHONE_65/01-network.png",
+      "size": [
+        1242,
+        2688
+      ],
+      "mode": "RGB",
+      "sha256": "7eddd7a23b98989b48fc69778e17beca95d7b49e8bb198a291d2fb6a031a55d4",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-US",
+      "file": "APP_IPHONE_65/02-fleet.png",
+      "size": [
+        1242,
+        2688
+      ],
+      "mode": "RGB",
+      "sha256": "51aedf7bb8c15c26fd4261056ae91bf4a09eace1cc093bfa5da99d618b797f28",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-US",
+      "file": "APP_IPHONE_65/03-routes.png",
+      "size": [
+        1242,
+        2688
+      ],
+      "mode": "RGB",
+      "sha256": "1881bd643b7c77adb9d3b56c53f1e56ac818f5afd42d9d6d4027dce663d83a2e",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-US",
+      "file": "APP_IPHONE_65/04-finance.png",
+      "size": [
+        1242,
+        2688
+      ],
+      "mode": "RGB",
+      "sha256": "259fdc6d67b19354794ec6fff2b3325f9c71f65b31ce4f38a99bf896e576d655",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-US",
+      "file": "APP_IPHONE_65/05-rivals.png",
+      "size": [
+        1242,
+        2688
+      ],
+      "mode": "RGB",
+      "sha256": "071908d146de4aa1b702885b08b1e8fdca4b039bedb034e4e4fd444f754a65eb",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-US",
+      "file": "APP_IPHONE_65/06-progression.png",
+      "size": [
+        1242,
+        2688
+      ],
+      "mode": "RGB",
+      "sha256": "1421a44a50adb0153ad24b55f935d10f38717f01938f1ef7d9bc3486715e1158",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-US",
+      "file": "APP_IPAD_PRO_3GEN_129/01-network.png",
+      "size": [
+        2064,
+        2752
+      ],
+      "mode": "RGB",
+      "sha256": "a1877f811b9ec4b213bfd941c344b0e270922f248ca145d7db379e2c02abb5ab",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-US",
+      "file": "APP_IPAD_PRO_3GEN_129/02-fleet.png",
+      "size": [
+        2064,
+        2752
+      ],
+      "mode": "RGB",
+      "sha256": "2462ce3350cc508e6696db0c7d25efe5d52383e4bda377694417305758509fdc",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-US",
+      "file": "APP_IPAD_PRO_3GEN_129/03-routes.png",
+      "size": [
+        2064,
+        2752
+      ],
+      "mode": "RGB",
+      "sha256": "930e1d86fc96c4fa1f429d71dab9d40864edf5cfd9ff3b3d28791a86db17dff9",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-US",
+      "file": "APP_IPAD_PRO_3GEN_129/04-finance.png",
+      "size": [
+        2064,
+        2752
+      ],
+      "mode": "RGB",
+      "sha256": "89dae63feb6d2276bcc48aa26d332484d3d27f3e4a6cfd51effd85b225a2850a",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-US",
+      "file": "APP_IPAD_PRO_3GEN_129/05-rivals.png",
+      "size": [
+        2064,
+        2752
+      ],
+      "mode": "RGB",
+      "sha256": "98de8d168b71b0f6f61d29fa13da088246f9a3db80e00966592fe6679b3f7b78",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-US",
+      "file": "APP_IPAD_PRO_3GEN_129/06-progression.png",
+      "size": [
+        2064,
+        2752
+      ],
+      "mode": "RGB",
+      "sha256": "5a68eb1b998086977a8e026562aef2043f2d76b2ccd9750434a9b51c9a0087f3",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-GB",
+      "file": "APP_IPHONE_67/01-network.png",
+      "size": [
+        1320,
+        2868
+      ],
+      "mode": "RGB",
+      "sha256": "36908a057d28c2a2c23f181130f437b161ea0da0264f18e30c6c7cec23be5ffe",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-GB",
+      "file": "APP_IPHONE_67/02-fleet.png",
+      "size": [
+        1320,
+        2868
+      ],
+      "mode": "RGB",
+      "sha256": "db93852f833624940b91e19d39f753c1a43db72d6c4cce55e00d6b8afc087f54",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-GB",
+      "file": "APP_IPHONE_67/03-routes.png",
+      "size": [
+        1320,
+        2868
+      ],
+      "mode": "RGB",
+      "sha256": "4f48f39dfc485fd44ba7190bd6949ffc9806086669d5c4a30973f08c3d0327b0",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-GB",
+      "file": "APP_IPHONE_67/04-finance.png",
+      "size": [
+        1320,
+        2868
+      ],
+      "mode": "RGB",
+      "sha256": "f300f350a8373d46f684d0f07a1edb32c66c1513f48346920ce7e66d1f43739a",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-GB",
+      "file": "APP_IPHONE_67/05-rivals.png",
+      "size": [
+        1320,
+        2868
+      ],
+      "mode": "RGB",
+      "sha256": "02d9302d0dfb9a929b336d7d209f76584961f7534ef96e31e8a5e0eac937f11f",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-GB",
+      "file": "APP_IPHONE_67/06-progression.png",
+      "size": [
+        1320,
+        2868
+      ],
+      "mode": "RGB",
+      "sha256": "60bd8544b3f0dad13e0a089dddbaf837e2a6ee8523328c0dc5591f591629dd48",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-GB",
+      "file": "APP_IPHONE_65/01-network.png",
+      "size": [
+        1242,
+        2688
+      ],
+      "mode": "RGB",
+      "sha256": "7eddd7a23b98989b48fc69778e17beca95d7b49e8bb198a291d2fb6a031a55d4",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-GB",
+      "file": "APP_IPHONE_65/02-fleet.png",
+      "size": [
+        1242,
+        2688
+      ],
+      "mode": "RGB",
+      "sha256": "51aedf7bb8c15c26fd4261056ae91bf4a09eace1cc093bfa5da99d618b797f28",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-GB",
+      "file": "APP_IPHONE_65/03-routes.png",
+      "size": [
+        1242,
+        2688
+      ],
+      "mode": "RGB",
+      "sha256": "1881bd643b7c77adb9d3b56c53f1e56ac818f5afd42d9d6d4027dce663d83a2e",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-GB",
+      "file": "APP_IPHONE_65/04-finance.png",
+      "size": [
+        1242,
+        2688
+      ],
+      "mode": "RGB",
+      "sha256": "259fdc6d67b19354794ec6fff2b3325f9c71f65b31ce4f38a99bf896e576d655",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-GB",
+      "file": "APP_IPHONE_65/05-rivals.png",
+      "size": [
+        1242,
+        2688
+      ],
+      "mode": "RGB",
+      "sha256": "071908d146de4aa1b702885b08b1e8fdca4b039bedb034e4e4fd444f754a65eb",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-GB",
+      "file": "APP_IPHONE_65/06-progression.png",
+      "size": [
+        1242,
+        2688
+      ],
+      "mode": "RGB",
+      "sha256": "1421a44a50adb0153ad24b55f935d10f38717f01938f1ef7d9bc3486715e1158",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-GB",
+      "file": "APP_IPAD_PRO_3GEN_129/01-network.png",
+      "size": [
+        2064,
+        2752
+      ],
+      "mode": "RGB",
+      "sha256": "a1877f811b9ec4b213bfd941c344b0e270922f248ca145d7db379e2c02abb5ab",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-GB",
+      "file": "APP_IPAD_PRO_3GEN_129/02-fleet.png",
+      "size": [
+        2064,
+        2752
+      ],
+      "mode": "RGB",
+      "sha256": "2462ce3350cc508e6696db0c7d25efe5d52383e4bda377694417305758509fdc",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-GB",
+      "file": "APP_IPAD_PRO_3GEN_129/03-routes.png",
+      "size": [
+        2064,
+        2752
+      ],
+      "mode": "RGB",
+      "sha256": "930e1d86fc96c4fa1f429d71dab9d40864edf5cfd9ff3b3d28791a86db17dff9",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-GB",
+      "file": "APP_IPAD_PRO_3GEN_129/04-finance.png",
+      "size": [
+        2064,
+        2752
+      ],
+      "mode": "RGB",
+      "sha256": "89dae63feb6d2276bcc48aa26d332484d3d27f3e4a6cfd51effd85b225a2850a",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-GB",
+      "file": "APP_IPAD_PRO_3GEN_129/05-rivals.png",
+      "size": [
+        2064,
+        2752
+      ],
+      "mode": "RGB",
+      "sha256": "98de8d168b71b0f6f61d29fa13da088246f9a3db80e00966592fe6679b3f7b78",
+      "native_hash_matches": true
+    },
+    {
+      "locale": "en-GB",
+      "file": "APP_IPAD_PRO_3GEN_129/06-progression.png",
+      "size": [
+        2064,
+        2752
+      ],
+      "mode": "RGB",
+      "sha256": "5a68eb1b998086977a8e026562aef2043f2d76b2ccd9750434a9b51c9a0087f3",
+      "native_hash_matches": true
+    }
+  ],
+  "content_counts": {
+    "airports": 94,
+    "aircraft": 14
+  }
+}

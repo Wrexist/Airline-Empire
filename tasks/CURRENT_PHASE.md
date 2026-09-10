@@ -1,5 +1,16 @@
 # Current Phase
 
+**Current release work — 10 September 2026: stabilization and submission readiness.**
+PR #22 is merged; #23 is open at `c65c98d`. Its full CI and Launch safety pass,
+with two retried UI journeys. Publication remains blocked by a fresh binary,
+live-link verification, Apple privacy/purchase completion and device acceptance.
+The [release checklist](RELEASE_CHECKLIST.md) is the current execution order;
+the [dated audit](../docs/RELEASE_AUDIT_2026-09-10.md) records evidence and limits.
+Rescue financing and contracts are implemented in #22; capped offline catch-up
+and hub connections remain later work. The phase entries below are historical.
+
+## Previous phase record
+
 **AE-048 — The map is the home screen.** 2026-09-07.
 
 Phase 27 of Direction II. The game opens on the world. `MapScreen` is the Home

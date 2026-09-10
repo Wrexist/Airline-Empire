@@ -71,7 +71,7 @@ jobs:
             captures/
             store-campaign-ledger.txt
             AirlineEmpireApp/UITests/Fixtures/store-campaign.json
-          retention-days: 14
+          retention-days: 45
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -79,4 +79,4 @@ jobs:
           path: |
             AirlineEmpireApp/StoreCaptures.xcresult
             store-capture-log.txt
-          retention-days: 3
+          retention-days: 45

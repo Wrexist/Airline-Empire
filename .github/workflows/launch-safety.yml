@@ -59,11 +59,23 @@ jobs:
             -only-testing:AirlineEmpireUITests/FreeTierUITests \
             -only-testing:AirlineEmpireUITests/MapHomeUITests/testTheMapIsTheHomeScreen \
             CODE_SIGNING_ALLOWED=NO -resultBundlePath LaunchSafety.xcresult
+      - name: Release build ignores test entitlement overrides
+        working-directory: AirlineEmpireApp
+        run: |
+          xcodebuild test -project AirlineEmpire.xcodeproj -scheme AirlineEmpire \
+            -configuration Release ENABLE_TESTABILITY=YES \
+            -destination 'platform=iOS Simulator,id=${{ steps.sim.outputs.id }}' \
+            -parallel-testing-enabled NO \
+            -only-testing:AirlineEmpireTests/LaunchSafetyTests/testUnrelatedUITestFlagsDoNotGrantPro \
+            CODE_SIGNING_ALLOWED=NO -resultBundlePath ReleaseSafety.xcresult
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: launch-safety-results
-          path: AirlineEmpireApp/LaunchSafety.xcresult
+          path: |
+            AirlineEmpireApp/LaunchSafety.xcresult
+            AirlineEmpireApp/ReleaseSafety.xcresult
+          retention-days: 45
       - name: UI checkpoints in the log
         if: always()
         run: python3 scripts/export-ci-checkpoints.py AirlineEmpireApp/LaunchSafety.xcresult

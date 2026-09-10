@@ -3,6 +3,11 @@
 Active task list. Format follows the Master Task Rule (see
 `/tasks/MASTER_PLAN.md`). Completed tasks move to `/tasks/COMPLETED.md`.
 
+**Release priority, 10 September 2026:** follow [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)
+and the [current audit](../docs/RELEASE_AUDIT_2026-09-10.md). The historical
+phase entries below are not a current list of unimplemented features; #22
+already delivered rescue financing, contracts and the launch trust fixes.
+
 ---
 
 

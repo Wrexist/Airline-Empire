@@ -72,7 +72,12 @@ final class LaunchSafetyTests: XCTestCase {
     func testUnrelatedUITestFlagsDoNotGrantPro() {
         let entitlements = Entitlements(arguments: ["-AEUITestDarkAppearance"])
         XCTAssertFalse(entitlements.isPro)
+        #if DEBUG
         XCTAssertTrue(Entitlements(arguments: ["-AEUITestPro"]).isPro)
+        #else
+        XCTAssertFalse(Entitlements(arguments: ["-AEUITestPro"]).isPro,
+                       "Release builds must obtain Pro only through verified StoreKit ownership")
+        #endif
     }
 
     @MainActor

@@ -429,10 +429,12 @@ final class GameController {
     /// assembled for the camera. A late-game world is ~1,800 sunrise taps
     /// away from a fresh one; a save is how a player reaches it too.
     func loadFixtureIfRequested() {
+        #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
         guard let flag = arguments.firstIndex(of: "-AEUITestLoadSave"),
               arguments.indices.contains(flag + 1), session == nil else { return }
         loadGame(fileURL: URL(fileURLWithPath: arguments[flag + 1]))
+        #endif
     }
 
     private func loadGame(fileURL: URL) {
