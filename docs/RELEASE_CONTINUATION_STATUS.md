@@ -7,19 +7,34 @@ gate or a running workflow as a release pass.
 ## Candidate
 
 - PR #23 merged to main at `e11cea4b2bfe3407aefbf19bcbc2a7d1a682364d`.
-- Release fixes: [PR #24](https://github.com/Wrexist/Airline-Empire/pull/24),
+- Release fixes: [PR #24](https://github.com/Wrexist/Airline-Empire/pull/24) merged
+  at `1cdb46fb944d47464d0ddcb1035a43d3cebe4e5d` on 10 September 22:10 UTC.
+  Its full tree is identical to the tested candidate. The
   current candidate `18253b31333f4e7c0e9a8b9b4410cda2ea45b80d`, frozen on
-  `codex/release-candidate-2026-09-10`. Full CI `34532237542` is running;
+  `codex/release-candidate-2026-09-10`. Full CI `34532237542` passed;
   Launch safety `34532239981` passed. Portability `34532242458`, iPad shell, the full
   Debug Core job and all 523 Release Core tests passed. Shipping app/Core source is unchanged from
   `11ae4d2336073e7c9188e0c46e45ac6242c2a999`; test observation and release
   tooling include the corrections below. Duplicate PR native runs were
   canceled; the manual frozen-candidate runs remain authoritative.
-- Live candidate progress: arrival passed; the economy aircraft-flight case
-  passed in 167.890 seconds and the complete New York journey passed in
-  562.356 seconds. The whole suite remains pending until every job completes.
+- All five phone jobs passed. Economy passed all five cases: acquisition,
+  aircraft flight, New York, currency and first-month statement. The complete
+  New York journey passed in 562.356 seconds; the suite had zero failures.
+  Exact run/job/step receipts are in `candidate-18253b3-ci.json` in the dated
+  validation directory. Redundant main-merge native runs were canceled after
+  verifying tree identity; no failed run was counted as a pass.
+- Shell/map passed eight tests with one existing NOT VERIFIED skip because
+  thirty synthetic taps did not select a tiny aircraft marker. Its camera
+  assertion was not reached. The separate map-home Follow path passed;
+  physical marker selection and Follow remain required.
+- Simulator performance tests completed, but cold-launch samples include
+  35.283 seconds and 128.879% relative variation. No stored regression baseline
+  exists. `performance-18253b3.json` records all samples and map timings;
+  these numbers do not establish acceptable physical-device performance.
 - App Store app `6806410538`; marketing version **1.0**, Prepare for Submission.
-  No new candidate build has been attached or uploaded yet.
+  TestFlight workflow `34535969370` started for exact candidate `18253b3`,
+  version input 1.0.0. Preflight passed; the build/upload is still running.
+  No new candidate build has been attached or confirmed processed yet.
 - Previous candidate `2a7a8e1` failed full CI `34530096281`: economy and the
   performance startup phase of shell/map failed. Core, iPad, arrival, campaign
   and map-home passed, as did Launch safety, portability and store captures.

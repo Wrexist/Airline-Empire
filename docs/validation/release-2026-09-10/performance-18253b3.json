@@ -1,0 +1,46 @@
+{
+  "candidate": "18253b31333f4e7c0e9a8b9b4410cda2ea45b80d",
+  "run": 34532237542,
+  "job": 103055525522,
+  "environment": "GitHub-hosted macOS iPhone simulator; not physical-device certification",
+  "coldLaunchSeconds": [
+    3.521338,
+    3.054426,
+    35.283005,
+    4.200598,
+    3.268154
+  ],
+  "coldLaunchMeanSeconds": 9.866,
+  "coldLaunchRelativeStdDevPercent": 128.879,
+  "map": [
+    {
+      "scenario": "slow-drag",
+      "frames": 322,
+      "averageMs": 10.52,
+      "worstMs": 202.02
+    },
+    {
+      "scenario": "fast-drag",
+      "frames": 804,
+      "averageMs": 8.14,
+      "worstMs": 202.02
+    },
+    {
+      "scenario": "zoom-cycles",
+      "frames": 588,
+      "averageMs": 11.13,
+      "worstMs": 202.02
+    }
+  ],
+  "shellTests": {
+    "executed": 9,
+    "passed": 8,
+    "skipped": 1,
+    "failed": 0
+  },
+  "skip": {
+    "test": "testFollowingAFlightRidesTheCamera",
+    "reason": "Thirty synthetic taps selected no aircraft marker; follow camera assertion not reached. NOT VERIFIED."
+  },
+  "interpretation": "Performance measurement tests passed without a saved regression baseline. High launch variance and a 35.283-second sample prevent treating the mean as a stable target. Device profiling and marker selection/Follow acceptance remain mandatory."
+}
