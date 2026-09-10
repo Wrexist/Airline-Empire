@@ -1,0 +1,13 @@
+{
+  "checkedAt": "2026-09-10T20:00:18Z",
+  "workflowRun": 34523703984,
+  "bundleIdentifier": "com.airlineempire.game",
+  "developerPortalReachable": true,
+  "registeredBundleId": "83Y2F29HSY",
+  "usableAppStoreProfiles": 1,
+  "unexpiredDistributionCertificates": 3,
+  "membershipRefusalObserved": false,
+  "archiveSigningVerifiedForNewCandidate": false,
+  "warningDisposition": "The helper's two-certificate assumption also warned about the same three certificates in successful upload run 34027843211 on 2026-09-06. This warning alone does not establish that automatic signing is unavailable. The new archive/export must still pass.",
+  "appleReference": "https://developer.apple.com/help/account/certificates/cloud-managed-certificates/"
+}

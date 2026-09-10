@@ -27,6 +27,12 @@ gate or a running workflow as a release pass.
   HTTP client. Status and actual-content assertions remain enforced.
 - Hosted Windows and Linux portability/public-page checks passed for `11ae4d2`.
 - Native CI artifacts are retained for 45 days.
+- The next candidate checks the actual exported IPA before uploading: bundle
+  identity/version, iPhone/iPad support, privacy manifest and absence of test
+  resources. Six zip/plist selftests pass locally; Windows/Linux CI will run
+  them too. The binary itself remains unverified until it is exported.
+  See [release operations](RELEASE_OPERATIONS.md) for binary retention and
+  launch monitoring.
 - Added actual paywall UI capture coverage and unaltered review-image export.
   The first run `34515993864` failed to load StoreKit products in the new UI
   capture test. Existing StoreKit purchase tests passed. Commit `11ae4d2`
@@ -120,6 +126,33 @@ gate or a running workflow as a release pass.
   candidate tests are the required evidence; the main badge is not a pass.
 
 ## Remaining release gates
+
+### Current native findings (candidate `51b295b`)
+
+- Full CI `34522453247` passed iPad and shell/map, but failed map-home,
+  arrival and two campaign cases. Core Debug now passes, including the
+  isolated economy test and the remaining suite. The economy UI journey
+  was still running when this record was updated. This is not full release evidence.
+- Arrival's captured screen remained on Routes after the Fleet tap. The
+  helper returned success without checking selection. The next candidate
+  requires selected state, allows at most two idempotent selection attempts,
+  and retains failed-attempt screenshots.
+- The World-tab failure screenshot already showed World selected. The
+  next candidate avoids tapping an already selected tab.
+- The four-second frame-stability helper could expire before its required
+  two comparisons because individual accessibility queries took longer than
+  four seconds. The next candidate always performs those two comparisons;
+  the requirement that frames agree is unchanged.
+- The calendar failure acknowledged request 24 -> 25; its failure screenshot
+  showed 26 January. Accessibility snapshot retries consumed the original
+  20-second observation window. The next candidate waits up to 60 seconds
+  for the same calendar assertion and reconciles one final read, without
+  resending an acknowledged advance.
+- Diagnostic run `34525098373` exported the original failed native results.
+  Its separate read-only Apple metadata plan returned HTTP 401 once and
+  passed on retry using the same credentials. No credential was changed.
+
+### Execution order
 
 1. Finish and verify all purchase fields, genuine review screenshots and app metadata.
 2. Finish exact-candidate full CI/Launch safety; investigate every failure.

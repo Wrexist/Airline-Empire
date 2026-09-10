@@ -27,6 +27,8 @@ jobs:
           python-version: '3.13'
       - name: Clean-checkout release selftests
         run: node scripts/asc/selftest.mjs
+      - name: Exported app inspection selftests
+        run: python -B scripts/test-inspect-release-ipa.py
       - name: Strict listing validation
         run: node scripts/asc/validate-metadata.mjs
       - name: Verify public review pages without authentication

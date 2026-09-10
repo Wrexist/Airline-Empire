@@ -515,6 +515,28 @@ jobs:
             "${EXTRA[@]}"
           ls -la "$EXPORT_PATH"
 
+      - name: Inspect the exported app
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_BUILD: ${{ steps.build-number.outputs.value }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          IPAS=("$EXPORT_PATH"/*.ipa)
+          [ "${#IPAS[@]}" -eq 1 ] || { echo 'Expected one exported IPA'; exit 1; }
+          python3 scripts/inspect-release-ipa.py "${IPAS[0]}" \
+            --version "$RELEASE_VERSION" --build "$RELEASE_BUILD" \
+            --report "$EXPORT_PATH/bundle-inspection.json"
+
+      - name: Keep the exported app inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: airline-empire-inspection-${{ inputs.version }}-${{ steps.build-number.outputs.value }}
+          path: ${{ env.EXPORT_PATH }}/bundle-inspection.json
+          retention-days: 90
+          if-no-files-found: ignore
+
       # Kept whether or not the upload runs or succeeds: with the .ipa in hand
       # someone can always fall back to Transporter and upload it by hand.
       - name: Upload the .ipa as an artifact

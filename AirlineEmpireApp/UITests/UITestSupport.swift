@@ -271,11 +271,16 @@ class AEUITestCase: XCTestCase {
         guard element.exists else { return false }
         var last = element.frame
         var agreements = 0
+        var samples = 0
         let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
+        // An AX snapshot can itself take longer than the polling budget on
+        // a hosted simulator. Still take the two comparisons this assertion
+        // requires; a slow first query is not evidence of a moving frame.
+        while samples < 2 || Date() < deadline {
             Thread.sleep(forTimeInterval: 0.15)
             guard element.exists else { return false }
             let now = element.frame
+            samples += 1
             if abs(now.midY - last.midY) < 0.5, abs(now.midX - last.midX) < 0.5 {
                 agreements += 1
                 if agreements >= 2 { return true }
@@ -922,16 +927,33 @@ class AEUITestCase: XCTestCase {
     func openAirlineSection(_ name: String) -> Bool {
         openTab("Airline")
         let segment = app.buttons[name]
+        func selectSection() -> Bool {
+            for attempt in 1...2 {
+                if segment.isSelected { return true }
+                guard segment.isHittable, waitUntilStill(segment) else {
+                    checkpoint("SECTION-NOT-READY-\(name)")
+                    XCTFail("The \(name) segment did not settle into a hittable control.")
+                    return false
+                }
+                segment.tap()
+                let selected = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                    segment.exists && segment.isSelected
+                }, object: nil)
+                if XCTWaiter.wait(for: [selected], timeout: 10) == .completed { return true }
+                checkpoint("SECTION-\(name)-ATTEMPT-\(attempt)")
+            }
+            XCTFail("The \(name) section did not become selected after two idempotent attempts.")
+            return false
+        }
         for _ in 0..<3 {
-            if segment.exists, segment.isHittable { segment.tap(); return true }
+            if segment.exists, segment.isHittable { return selectSection() }
             let back = app.navigationBars.buttons.firstMatch
             guard back.exists, back.isHittable else { break }
             back.tap()
             Thread.sleep(forTimeInterval: 0.6)
         }
         if segment.waitForExistence(timeout: 5), segment.isHittable {
-            segment.tap()
-            return true
+            return selectSection()
         }
         capture(Self.logPrefix + "NO-AIRLINE-SECTION-\(name)")
         XCTFail("The Airline tab's \(name) segment never appeared, even after popping the screens above it.")
@@ -1057,7 +1079,12 @@ class AEUITestCase: XCTestCase {
             }
             return false
         }, object: nil)
-        if XCTWaiter.wait(for: [moved], timeout: 20) == .completed { return true }
+        if XCTWaiter.wait(for: [moved], timeout: 60) == .completed { return true }
+        // A query that straddles the waiter's deadline can return after the
+        // waiter has timed out. Reconcile once without sending another tap.
+        if let current = currentHomeDate(), Self.days(from: previous, to: current) >= days {
+            return true
+        }
         print("TIME advance failed: requested \(days) days; acknowledgements \(String(describing: requests)) -> \(String(describing: manualAdvanceRequestCount())); system interruption \(interrupted)")
         print("TIME control: \(labelledButton(label).debugDescription)")
         checkpoint("TIME-advance-did-not-complete")
@@ -1343,6 +1370,7 @@ class AEUITestCase: XCTestCase {
             XCTFail("The \(title) tab never appeared in any shape. Screenshot attached.")
             return
         }
+        if button.isSelected { return }
         guard button.isHittable, waitUntilStill(button),
               let current = tabButton(title), current.isHittable else {
             checkpoint("TAB-NOT-HITTABLE-\(title)")
