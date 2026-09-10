@@ -18,6 +18,10 @@ gate or a running workflow as a release pass.
   full CI stopped the upload watcher; no archive/upload was dispatched.
 - App Store app `6806410538`; marketing version **1.0**, Prepare for Submission.
   No new candidate build has been attached or uploaded yet.
+- Candidate `2a7a8e1220d88669a184e63d0cf562dd4216bd0d` is blocked by the
+  economy job in full CI `34530096281`. Its portability `34530096280`,
+  store captures `34530096286` and iPad shell passed. The lease observation
+  correction below is being prepared; do not upload this failed candidate.
 - Full execution sequence: [release plan](RELEASE_PLAN.md).
 
 ## Completed engineering work
@@ -144,7 +148,37 @@ gate or a running workflow as a release pass.
 
 ## Remaining release gates
 
-### Latest native findings (candidate `dff78b4`)
+### Latest native findings (candidate `2a7a8e1`)
+
+- Economy job `103048517562` passed aircraft acquisition/route creation,
+  currency checks and the first-month statement. It failed flight-on-map
+  during lease observation, then New York during simulator app termination.
+- The lease confirmation was tapped at t=58.06. The eight-second disappearance
+  wait ran from t=59.01 to t=97.31 across slow accessibility queries. The
+  original screenshot at t=99.34 shows a populated Fleet with one leased
+  Meridian MR-180 at $740k/month. The helper short-circuited its aircraft
+  check when the waiter timed out, then looked for the empty-fleet market
+  entry. The prepared correction reconciles the current disappearance state
+  and still requires `leaseLanded` proof; it does not repeat the lease.
+- New York failed at `app.launch()` before founding or any journey assertion:
+  XCTest could not terminate previous app PID 17432, then reported PID 0.
+  This does not validate or invalidate the navigation correction. Native
+  diagnostic export `34531523765` completed. The runner requested termination
+  at 21:13:01.677, Xcode received it at 21:13:54.048, and the simulator reported
+  the requested SIGTERM at 21:13:54.343. XCTest still reported Running
+  Foreground at its 21:14:01.721 timeout, then received not-running state.
+  This is a host/runner state timeout, not evidence of a spontaneous app crash.
+  The sanitized timeline is `phone-failures/economy-lifecycle.json` in the
+  dated validation directory. No lifecycle workaround or automatic test
+  retry was added; the next candidate must execute the full journey.
+- Launch safety `34530096278` passed: Core Release, hosted save/StoreKit,
+  paywall captures, map-home, and Release entitlement isolation.
+- Fresh store captures contain all ten source views on both iPhone and iPad.
+  The phone network and iPad Fleet images were inspected; the sidebar and
+  Fleet selected states are visible. These captures do not replace the failed
+  economy journey.
+
+### Earlier native findings (candidate `dff78b4`)
 
 - Full CI `34525956478` passed Core, iPad, arrival, campaign, map-home and
   shell/map. Economy passed four of five cases, including the first-month

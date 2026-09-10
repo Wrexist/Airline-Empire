@@ -33,3 +33,19 @@ the route command completed, but navigation did not. The first-month test passed
 The new helper waits for the route sheet's disappearance and selected-tab state
 before allowing the journey to continue. This screenshot documents the failure;
 the new candidate still requires fresh native validation.
+
+## Lease observation failure on 2a7a8e1
+
+CI [34530096281](https://github.com/Wrexist/Airline-Empire/actions/runs/34530096281),
+economy job `103048517562`: `lease-after-timeout.png` is the unaltered
+`KEY-LEASE-ATTEMPT-1` checkpoint. It shows one leased Meridian MR-180 at
+$740k/month on Fleet. The preceding eight-second market-disappearance wait
+ran from t=59.01 to t=97.31 through slow accessibility queries. The helper
+skipped the aircraft proof because that waiter returned false, even though
+the market had closed. The correction reconciles the current sheet state
+and retains the aircraft proof. The following New York case failed while
+XCTest tried to terminate the previous app, before a journey assertion.
+`economy-lifecycle.json` records the native diagnostic timeline: the host
+received the termination request 52 seconds late, the app then exited on
+SIGTERM, and XCTest's foreground-state wait still timed out. No spontaneous
+app crash is established by this failure.

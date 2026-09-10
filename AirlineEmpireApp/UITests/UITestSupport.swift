@@ -538,7 +538,12 @@ class AEUITestCase: XCTestCase {
                 // fallback any more. Blind-tapping Done has never rescued a
                 // stuck sheet; in runs 62 and 63 it closed a healthy market
                 // over a lease that had not happened, three times each.
-                if market.waitForNonExistence(timeout: 8),
+                // A slow accessibility query can finish after the waiter's
+                // deadline even though the sheet has already disappeared.
+                // Reconcile its current state, then require the aircraft
+                // proof before returning or considering another lease tap.
+                let closed = market.waitForNonExistence(timeout: 8)
+                if (closed || !market.exists),
                    leaseLanded(proof, fleetRow: fleetRow) {
                     return true
                 }
