@@ -206,6 +206,7 @@ jobs:
         if: inputs.mode == 'apply'
         run: |
           echo "::notice::The listing is written. Nothing has been submitted for review."
+          echo "Attach a build and submit from App Store Connect when the release is ready."
 
   purchase-review-images:
     if: inputs.review_images
@@ -241,4 +242,3 @@ jobs:
           name: purchase-review-image-report
           path: apple-audit/iap-review.json
           retention-days: 45
-          echo "Attach a build and submit from App Store Connect when the release is ready."
