@@ -138,6 +138,7 @@ jobs:
       # skip the strongest check the suite has.
       - name: Test (debug)
         if: steps.changes.outputs.test == 'true'
+        shell: bash
         run: |
           set -o pipefail
           # Run 34518221954 exceeded this test's 10-minute wall limit while
