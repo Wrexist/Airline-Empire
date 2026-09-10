@@ -1,8 +1,9 @@
-# Release continuation — 10 September 2026
+# Release continuation — 11 September 2026
 
-Work in progress. This record supersedes account-access assumptions in the
-9 September handoff and the before-merge audit. Do not interpret an unchecked
-gate or a running workflow as a release pass.
+**Build 1.0.0 (5) is processed, assigned to Tester and attached to the five-item
+App Review draft. Physical-device acceptance remains open; nothing has been
+submitted or published.** This record supersedes account-access assumptions
+in the 9 September handoff and the before-merge audit.
 
 ## Candidate
 
@@ -31,10 +32,31 @@ gate or a running workflow as a release pass.
   35.283 seconds and 128.879% relative variation. No stored regression baseline
   exists. `performance-18253b3.json` records all samples and map timings;
   these numbers do not establish acceptable physical-device performance.
-- App Store app `6806410538`; marketing version **1.0**, Prepare for Submission.
-  TestFlight workflow `34535969370` started for exact candidate `18253b3`,
-  version input 1.0.0. Preflight passed; the build/upload is still running.
-  No new candidate build has been attached or confirmed processed yet.
+- PR #25 merged at `075ba5eacf3bff0e6d78a90a36f9e7712fff5acc`; PR #26 merged
+  at `c48cba29f4aaf0ac50b6761142d61524349578c9`. No PRs remain open. These
+  changes add account evidence and improve future archive orchestration;
+  app/Core/UI-test source remains identical to the frozen candidate.
+- App Store app `6806410538`, listing version **1.0 / Ready for Review**, now has processed
+  **1.0.0 (5)** attached. TestFlight workflow [34535969370](https://github.com/Wrexist/Airline-Empire/actions/runs/34535969370)
+  passed on attempt 2 for exact source `18253b3`. Apple build
+  `ac776d10-7bb0-4dc6-aadd-07d9cab19e05` became **VALID** at
+  10 September 22:42:23 UTC. It is assigned to the existing one-owner
+  **Tester** internal group; build-specific What to Test notes are saved.
+- The first archive attempt failed while gathering provisioning inputs,
+  before compilation. One bounded retry succeeded with unchanged Xcode
+  26.6 (17F113), credentials and signing settings. The original failure is
+  preserved in `archive-signing-attempt1.json`; exact server cause is unknown.
+  The archive workflow's original Core batch passed all 523 tests. PR #26's
+  isolated-test/source-pin improvement is for subsequent workflows and was
+  not used by this binary.
+- The downloaded IPA passes local inspection, exactly matching the runner's
+  report. Its SHA-256 is
+  `03ed4c7e2edc97f7e44c319d26448b6388996c483f54d3d80dd32ac1712bf515`.
+  Executable and dSYM UUIDs match: `8C6045C1-59F4-399A-965A-617D42294367`.
+  Binary, symbols, reports and CI/account receipts are retained outside the
+  repository at `C:/Users/IsacC/Airline-Empire-release-artifacts/candidate-18253b3`.
+  See `binary-1.0.0-5.json` and `bundle-inspection-1.0.0-5.json` in the dated
+  validation directory. Local retention covers the GitHub IPA's 14-day expiry.
 - Previous candidate `2a7a8e1` failed full CI `34530096281`: economy and the
   performance startup phase of shell/map failed. Core, iPad, arrival, campaign
   and map-home passed, as did Launch safety, portability and store captures.
@@ -52,12 +74,12 @@ gate or a running workflow as a release pass.
   HTTP client. Status and actual-content assertions remain enforced.
 - Hosted Windows and Linux portability/public-page checks passed for `11ae4d2`.
 - Native CI artifacts are retained for 45 days.
-- The next candidate checks the actual exported IPA before uploading: bundle
-  identity/version, iPhone/iPad support, privacy manifest and absence of test
-  resources. Six zip/plist selftests pass locally; Windows/Linux CI will run
-  them too. The binary itself remains unverified until it is exported.
-  See [release operations](RELEASE_OPERATIONS.md) for binary retention and
-  launch monitoring.
+- The actual exported IPA passed bundle identity/version, iPhone/iPad support,
+  privacy manifest and test-resource exclusion checks. The six inspector
+  selftests and candidate Windows/Linux CI passed. No test resources ship;
+  minimum iOS is 17.0, tracking/data collection are absent, and the private
+  UserDefaults reason is CA92.1. See [release operations](RELEASE_OPERATIONS.md)
+  for binary retention and launch monitoring.
 - Added actual paywall UI capture coverage and unaltered review-image export.
   The first run `34515993864` failed to load StoreKit products in the new UI
   capture test. Existing StoreKit purchase tests passed. Commit `11ae4d2`
@@ -113,26 +135,26 @@ gate or a running workflow as a release pass.
 - US/UK phone 6.5-inch and iPad 13-inch sets contain the six intended images
   in network/fleet/routes/finance/rivals/progression order. Media Manager
   confirms UK 6.9-inch inherits the complete US 6.9-inch set.
-- Apple's app-version **Add for Review** validation reports only
-  **You must choose a build**. The app version has not joined the draft yet.
 - All three genuine purchase review images were uploaded through Apple's
   supported API in run `34533267128`, after read-only plan `34533194273`.
   Apple returned COMPLETE for each, no delivery errors/warnings, matching
   source checksums, and the correct product attachment. All three products
   became READY_TO_SUBMIT. See `validation/release-2026-09-10/apple-iap-review-images.json`.
   The browser also loaded Weekly's 1206 × 2622 review thumbnail successfully.
-- Weekly, Yearly, Lifetime and subscription group Airline Empire Pro are now
-  together in one **unsubmitted iOS draft**, created 10 September at 23:40
-  Stockholm time. The draft contains four ready items; Apple's only remaining
-  draft validation message is to add the app version. Final Submit for Review
-  is disabled and was not clicked. Add the accepted app version to this same
-  draft to make five items; do not create separate first-purchase submissions.
+- App version **1.0 / build 1.0.0 (5)**, Weekly, Yearly, Lifetime and
+  subscription group Airline Empire Pro are together in one **unsubmitted iOS
+  draft**, started 10 September at 23:40 Stockholm time and updated
+  11 September at 00:50. Apple shows **Items Ready to Submit (5)** with
+  **Submit for Review enabled** and no remaining draft validation message.
+  The build attachment was saved and verified after reload. Final submission
+  is pending physical acceptance; the final Submit button was not clicked.
 - The earlier Chrome file-chooser restriction was resolved by using the
   authenticated Apple API. No extension setting or manual upload is needed.
 
 ## Existing beta evidence and limits
 
-- Internal group `Tester` already contains the owner and four historical builds.
+- Internal group `Tester` contains the owner and the new build 1.0.0 (5),
+  in addition to four historical builds.
   The owner has installed 1.0.14 (4) on iPhone 15 / iOS 26.5.2. Preserve that
   installation and its saves for the candidate upgrade test.
 - Apple exposes one submitted crash-feedback entry from build 1, dated
@@ -147,8 +169,9 @@ gate or a running workflow as a release pass.
   and four sessions respectively and dashes for crashes; 1.0.14 (4) shows
   dashes for both. Dashes are not a device-acceptance result. The existing
   one-owner Tester group uses automatic distribution for Xcode builds;
-  assignment of the new processed candidate still needs verification.
-  Hardware confirmation remains required on the new candidate.
+  assignment of build 1.0.0 (5) is now verified. No installed-device
+  sessions or acceptance results were present for build 5 at handoff.
+  Hardware confirmation remains required on this candidate.
 - Earlier full CI `34518221954` has an iPad launch failure. The retained result
   bundle was exported using diagnostic run `34520664211`: the crash is
   `SIGABRT` in Core Audio `_ReportRPCTimeout` / `AURemoteIO::Cleanup`, reached
@@ -171,7 +194,7 @@ gate or a running workflow as a release pass.
   terminate/relaunch the app, before a campaign assertion. The new full
   candidate tests are the required evidence; the main badge is not a pass.
 
-## Remaining release gates
+## Preserved investigation evidence
 
 ### Previous native findings (candidate `2a7a8e1`)
 
@@ -252,15 +275,20 @@ gate or a running workflow as a release pass.
   Its separate read-only Apple metadata plan returned HTTP 401 once and
   passed on retry using the same credentials. No credential was changed.
 
-### Execution order
+## Remaining execution order
 
-1. Finish exact-candidate full CI/Launch safety; investigate every failure.
-2. Integrate validated release changes, archive/upload the exact tested candidate
-   SHA and await processing. Record any later documentation-only commit separately.
-3. Attach the processed build and add app version 1.0 to the existing four-item draft.
-4. Install the recorded build and execute device/save/purchase/accessibility acceptance.
-5. Submit the accepted app, first purchases and subscription group together, handle Apple feedback,
-   then publish using the verified pre-order/date/territory plan.
+1. Export existing saves, then install **1.0.0 (5)** through TestFlight and
+   execute the device/save/purchase/accessibility/audio/performance matrix.
+2. Triage actual device findings; fix any blocking issue and repeat affected
+   gates on a replacement build if necessary. Simulator marker selection,
+   variable launch timings and current-OS iPad audio remain explicit limits.
+3. Once acceptance passes, submit the existing five-item draft, handle Apple
+   feedback, then publish the approved pre-order in the verified 173 regions
+   for 16 October 2026. Submission, approval and publication remain incomplete.
+
+Engineering, full candidate CI, archive/upload/processing, build attachment
+and purchase draft preparation are complete. Later documentation commits do
+not change the source identity of the already-uploaded candidate.
 
 Physical iPhone/iPad use and human comprehension/listening cannot be completed
 from this Windows workspace. Follow the [remaining owner steps](RELEASE_OWNER_STEPS.md).

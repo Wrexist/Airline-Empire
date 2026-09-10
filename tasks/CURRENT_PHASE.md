@@ -1,13 +1,13 @@
 # Current Phase
 
 **Current release work — 11 September 2026: signed candidate and device acceptance.**
-PRs #22, #23 and #24 are merged. Candidate `18253b3` passed full native CI,
-Launch safety and portability. The gated TestFlight run `34535969370` is
-building that exact candidate; no new processed binary is confirmed yet.
+PRs #22 through #26 are merged. Candidate `18253b3` passed full native CI,
+Launch safety and portability. TestFlight run `34535969370` attempt 2 passed;
+**1.0.0 (5)** is processed, assigned to Tester and attached to App Store 1.0.
 Apple is configured for 173 regions, excluding China mainland and Vietnam,
-with all three purchase review images complete. The purchases and subscription
-group are together in an unsubmitted iOS draft awaiting the app version.
-Publication still requires the processed candidate and installed-device acceptance.
+with all three purchase review images complete. The app, purchases and group
+are together in a five-item unsubmitted draft; Submit for Review is enabled.
+Physical-device acceptance, submission, approval and publication remain.
 The [current execution record](../docs/RELEASE_CONTINUATION_STATUS.md) tracks
 build identity, measured limits and the remaining gates.
 The [release checklist](RELEASE_CHECKLIST.md) is the current execution order;

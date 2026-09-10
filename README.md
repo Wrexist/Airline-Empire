@@ -5,12 +5,15 @@ The player starts with a single aircraft on a single route and builds a
 global aviation empire — driven by a deterministic, testable simulation, not
 a collection of menus.
 
-**Status, 10 September 2026:** Launch stabilization; not ready to publish.
-PRs #22 and #23 are merged. Release finalization fixes Windows validation,
-isolates test-only Pro access and adds genuine purchase review captures.
-All five official pages pass anonymous checks; the Apple privacy URLs and
-three Pro product records are configured. Exact-candidate native tests,
-the processed TestFlight build and physical-device acceptance remain gates.
+**Status, 11 September 2026:** TestFlight **1.0.0 (5)** is ready; physical
+acceptance remains before submission. PRs #22 through #26 are merged. Exact-candidate
+full native CI, Launch safety and portability passed. Apple processed build 5,
+assigned it to Tester and has the app plus all three purchases and their group
+in one five-item draft. The launch is configured for **173 regions**, excluding
+China mainland and Vietnam, with a **16 October 2026** pre-order release date.
+The app has not been submitted or published. Start with the
+[remaining owner steps](docs/RELEASE_OWNER_STEPS.md) and
+[current execution record](docs/RELEASE_CONTINUATION_STATUS.md).
 See the [release plan](docs/RELEASE_PLAN.md),
 [dated audit](docs/RELEASE_AUDIT_2026-09-10.md),
 [ordered checklist](tasks/RELEASE_CHECKLIST.md) and
@@ -28,7 +31,8 @@ See the [release plan](docs/RELEASE_PLAN.md),
 | `/tasks/DECISIONS.md` | Decision log |
 | `/tasks/TECH_DEBT.md` | Debt register |
 | `/tasks/BUGS.md` | Bug register |
-| `/docs/GO_LIVE.md` | **Step by step from here to the App Store — start here for shipping** |
+| `/docs/RELEASE_OWNER_STEPS.md` | **Current device acceptance and final submission steps** |
+| `/docs/GO_LIVE.md` | Historical account/build setup walkthrough |
 | `/docs/MONETIZATION.md` | Free-to-play, the Pro entitlement, the gates, and the paywall's compliance rules |
 | `/docs/APP_STORE_CONNECT_FILL_IN.md` | Every App Store Connect field with the exact value to paste (generated from `/store`) |
 | `/docs/RELEASE_PIPELINE.md` | How a commit becomes a build and a listing |

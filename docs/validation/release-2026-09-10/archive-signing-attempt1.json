@@ -1,0 +1,28 @@
+{
+  "run": 34535969370,
+  "attempt": 1,
+  "job": 103074188630,
+  "candidate": "18253b31333f4e7c0e9a8b9b4410cda2ea45b80d",
+  "version": "1.0.0",
+  "assignedBuildNumber": "5",
+  "xcode": "26.6 (17F113)",
+  "signing": "automatic via existing App Store Connect API key",
+  "coreTests": {
+    "passed": 523,
+    "durationSeconds": 1402.331
+  },
+  "failureStage": "GatherProvisioningInputs / archive before compilation",
+  "errors": [
+    "The data couldn?t be read because it isn?t in the correct format.",
+    "No profiles for com.airlineempire.game were found: Xcode could not find matching iOS App Development provisioning profiles."
+  ],
+  "uploaded": false,
+  "comparison": {
+    "successfulRun": 34027843211,
+    "xcode": "26.6 (17F113)",
+    "signing": "same automatic signing flags"
+  },
+  "nextAction": "One bounded rerun of failed archive stage on the same commit, retaining successful Core/preflight. No certificate or profile revoked or replaced.",
+  "rootCause": "Exact server-side cause unknown. Success with unchanged credentials/settings on the bounded retry supports a transient provisioning-response failure.",
+  "retryOutcome": "Attempt 2 passed archive, export, IPA inspection and Apple upload using the same Xcode 26.6 (17F113) and credentials. Apple processing returned VALID."
+}

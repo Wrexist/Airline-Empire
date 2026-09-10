@@ -1,11 +1,18 @@
 # Airline Empire — execution plan for the first release
 
-Updated 10 September 2026. PR #23 is merged at `e11cea4`. Version 1.0 is still
-Prepare for Submission in the live Apple account; no build is attached.
-The pre-order date is 16 October 2026. The owner chose to launch in 173 regions,
-excluding China mainland and Vietnam because game licenses are not held.
-Release finalization is being
-implemented on `codex/release-finalization`.
+Updated 11 September 2026. PRs #22 through #26 are merged; no PRs remain open.
+Candidate `18253b31333f4e7c0e9a8b9b4410cda2ea45b80d` passed full CI,
+Launch safety and portability. TestFlight **1.0.0 (5)** is processed and
+assigned to Tester, with test notes saved. App Store version **1.0** has
+this build attached and is **Ready for Review** in a five-item draft with
+Weekly, Yearly, Lifetime and their subscription group. Nothing is submitted
+or published. The remaining critical path is physical-device acceptance,
+App Review, then authorized publication.
+
+The pre-order release date is **16 October 2026**, in **173 regions**,
+excluding China mainland and Vietnam as instructed. Future expansion is off
+for the app and all three products. Detailed current evidence is in
+[the execution record](RELEASE_CONTINUATION_STATUS.md).
 
 ## Sequence and completion evidence
 
@@ -22,10 +29,17 @@ implemented on `codex/release-finalization`.
 | 9 — publication | Recheck date/territories and pre-order versus immediate-download behavior; publish approved version when ready | Actual public listing state and eventual download/purchase verification | Approval and accepted release decision |
 | 10 — support | Retain dSYMs/build identity, monitor crashes/purchases/support and prepare a save-compatible hotfix | Named owner and reproducible triage instructions | Publication |
 
-Stages 4 and applicable parts of 5 run while hosted tests execute. A merge or
-code edit changes the release SHA, so the exact-SHA gate must be rerun where
-required. Compilation, generated assets and an old uploaded build do not
-replace installed-device acceptance. No estimated date overrides a failed gate.
+Stages 1 through 4 and 6 are complete. Stage 5 account configuration is complete;
+its device transactions remain in stage 7. Stage 8's complete draft is ready,
+but submission awaits acceptance. Stage 10's retention and hotfix procedures
+are documented; actual launch monitoring begins at publication.
+
+The binary source is frozen at `18253b3`. Later documentation and workflow
+merges do not alter that uploaded source. Future uploads can use PR #26's
+full `candidate_sha` input to check out and verify an already-tested source;
+this build used the original workflow at `18253b3`. Any replacement binary
+requires evidence for its own source and affected acceptance checks.
+Compilation and screenshots do not replace installed-device acceptance.
 
 ## Current corrections
 
@@ -56,39 +70,39 @@ replace installed-device acceptance. No estimated date overrides a failed gate.
 Use [RELEASE_CHECKLIST.md](../tasks/RELEASE_CHECKLIST.md) for individual device,
 purchase and submission checks. The [dated audit](RELEASE_AUDIT_2026-09-10.md)
 preserves the before-state and known reliability gaps. The current execution
-report will distinguish tests completed, Apple changes saved, and remaining
+report distinguishes tests completed, Apple changes saved, and remaining
 owner-only steps. Do not mark a step complete from this plan alone.
 
 The concrete owner handoff is [RELEASE_OWNER_STEPS.md](RELEASE_OWNER_STEPS.md).
 It includes the remaining device work and a manual fallback for final
 submission. All three purchase review images are uploaded and verified. The
-three purchases and subscription group are in one unsubmitted iOS draft;
-Apple now requires the app version. The app version still needs its accepted
-build before it can join that draft.
+app, three purchases and subscription group are in one five-item unsubmitted
+iOS draft with **1.0.0 (5)** attached. Apple enables Submit for Review; device
+acceptance is the remaining prerequisite.
 
-## Owner-only handoff template
+## Remaining owner-only sequence
 
-Use only steps left unfinished in the final continuation report:
+1. Export existing saved airlines to Files before updating. Install exact
+   **1.0.0 (5)** from TestFlight; if the older 1.0.14 train is shown, use
+   Previous Builds > 1.0.0 > build 5. Preserve the existing installation.
+2. With network off, found a free Founder airline, acquire an aircraft, open
+   and assign a route, watch departure/arrival and a month statement, then
+   save/quit/reopen and verify the same airline. Test export/import.
+3. Reconnect and test the three sandbox products, intro eligibility, cancel,
+   restore, lapse/recovery and paid offline relaunch using the
+   [detailed sandbox guide](RELEASE_OWNER_STEPS.md#3-verify-pro-and-purchase-trust).
+4. Complete the small-phone/iOS 17/current-iPhone/iPad device matrix, save
+   upgrades/failures, VoiceOver, appearance, audio and measured performance.
+   Record device, OS, build, exact steps and pass/fail evidence. See the
+   [checklist, section E](../tasks/RELEASE_CHECKLIST.md).
+5. After all mandatory acceptance passes, App Store Connect > Airline Empire
+   → App Review → existing draft started 10 September at 23:40 Stockholm.
+   Verify all five items and **1.0.0 (5)**, then Submit for Review.
+6. Address Apple feedback. After approval, recheck 173 regions, both exclusions
+   and 16 October 2026 before manual publication of the pre-order. Monitor the
+   public listing, scheduled download availability, purchases and crash feedback
+   using [release operations](RELEASE_OPERATIONS.md).
 
-1. On your iPhone/iPad, install TestFlight from Apple, open the Airline Empire
-   tester invitation/internal build and install the exact recorded build.
-2. Launch with network off. Found a free Founder airline, acquire an aircraft,
-   open and assign a route, advance through midnight, watch a departure and
-   arrival, save/quit, close/reopen and confirm the same campaign.
-3. Reconnect. Open Home's briefing → Settings → Airline Empire Pro. Test the
-   sandbox products/restore with the appropriate sandbox/TestFlight account;
-   confirm the Apple sheet indicates a test transaction before accepting.
-   Never make an unintended real purchase for this test.
-4. Check existing campaign upgrades, two Pro saves, export/import, expiry/lapse
-   and the device/accessibility/audio matrix in the checklist. Report exact
-   failing steps and the build number; do not reinstall before exporting saves.
-5. In App Store Connect → Airline Empire → Distribution → 1.0, select the
-   recorded processed build, finish any specifically named missing fields,
-   include the required purchases and submit only after acceptance passes.
-6. After approval, review Pricing and Availability. Confirm the intended date
-   and every region's pre-order state before Release This Version. That action
-   can make the game downloadable immediately in non-pre-order regions.
-
-Steps that the agent successfully completes will be removed from the final
-owner handoff. Do not create or change products, prices, agreements, dates or
-territories merely to make this generic template shorter.
+The agent cannot operate physical iPhone/iPad hardware or supply human
+listening/comprehension results from this Windows workspace. No Apple license,
+Chrome extension setting, product creation or image upload remains for the owner.

@@ -1,10 +1,17 @@
-# Release checklist — 10 September 2026
+# Release checklist — 11 September 2026
 
-**Publication: blocked pending the gates below.** PRs #22 and #23 are merged. Release finalization is in PR #24; [release plan](../docs/RELEASE_PLAN.md). The [dated audit](../docs/RELEASE_AUDIT_2026-09-10.md) preserves the before-state. This is the current release work list; older phase records retain historical context.
+**Build 1.0.0 (5) is ready; physical acceptance and publication are pending.**
+PRs #22 through #26 are merged; no PRs remain open. Candidate `18253b3` passed full
+CI, Launch safety and portability, then Apple processing. The app and four
+purchase/group items are staged in one unsubmitted draft. See the
+[current evidence](../docs/RELEASE_CONTINUATION_STATUS.md),
+[release plan](../docs/RELEASE_PLAN.md) and
+[owner steps](../docs/RELEASE_OWNER_STEPS.md). The
+[dated audit](../docs/RELEASE_AUDIT_2026-09-10.md) preserves the before-state.
 
 Check a box only when its acceptance evidence is linked. Apple account tasks require actual saved state, and physical-device tasks require device/OS/build results. A source change or a previous build's pass does not satisfy them.
 
-## A. Already delivered and verified at the recorded candidate
+## A. Historical baseline evidence (superseded by candidate evidence in C)
 
 - [x] PR #22 merged: campaign isolation/recovery, Pro verification, free entry, export/import, rescue financing, contracts and launch-journey improvements.
 - [x] #23's 523 Core release tests and 11 launch-safety hosted/UI tests passed.
@@ -15,37 +22,39 @@ Check a box only when its acceptance evidence is linked. Apple account tasks req
 - [x] Source privacy/link checks, explicit bundle validator, icon, symbols and audio assets passed.
 - [x] All 48 release-tooling selftests passed after isolated Windows line-ending regeneration; clean-checkout portability remains below.
 
-## B. Finish the release preparation PR — engineering
+## B. Release engineering completed
 
-- [x] **AUD-01 implementation:** Corrected probe package selection and save path in `store/artwork/README.md`; resolve the old review thread once integrated.
+- [x] **AUD-01 implementation:** Corrected probe package selection and save path in `store/artwork/README.md`; old review thread resolved after integration.
 - [x] **AUD-02:** Clean Windows/LF checks pass without regeneration, including hosted Windows/Linux portability runs.
 - [x] **AUD-03:** Windows bundle entry point fixed; positive and negative actual CLI tests pass, including paths with spaces.
 - [x] **AUD-04:** Pro overrides/fixture loading guarded from Release; actual Release entitlement-isolation test passed in run `34518221910` on `11ae4d2`, with Debug fixture coverage retained.
 - [x] **AUD-05:** Store capture now fails if its intended fixture is missing.
-- [ ] **REL-06:** Investigate missed calendar/Pause actions. Preserve failed evidence and substantive assertions; distinguish app defect from harness/OS cause.
+- [x] **REL-06:** Investigated calendar/Pause/navigation/lease observation and simulator termination failures. Original assertions and evidence retained; corrected candidate passed all five economy cases. See the current execution record and `phone-failures/economy-lifecycle.json`.
 - [x] **AUD-06/08:** Current release pointers and #23 handoff wording reconciled; dated history preserved. Historical feature lists are labeled as historical.
-- [x] PR #23 reviewed and merged at `e11cea4`; PR #24 carries follow-up release corrections.
+- [x] PR #23 reviewed and merged at `e11cea4`; #24, #25 and #26 are merged with release corrections, account receipts and future archive source pinning.
 
 ## C. Establish the final candidate — engineering/release owner
 
-- [ ] Record final release SHA and intended Apple marketing version. Account handoff says version 1.0; do not assume this is an already-live app update.
+- [x] Final source `18253b31333f4e7c0e9a8b9b4410cda2ea45b80d`; App Store listing 1.0, binary **1.0.0 (5)**. This is the first release.
 - [x] **REL-02 browser/HTTP:** All five official destinations return actual page content anonymously; browser privacy page inspected. Installed-device links remain in device acceptance.
 - [x] **REL-02:** Live checker passes locally and on hosted Windows/Linux. An identified client resolves the default User-Agent rejection; HTTP/content validation remains enforced.
-- [ ] Run full CI with `suite=full` and `ipad=true` for that exact SHA, plus Launch safety; inspect jobs and steps, not only the workflow badge.
-- [ ] Run strict metadata/selftests, generated-sheet, bundle/icon, symbol/audio and artwork checks on the final tree.
-- [ ] Run the exact-SHA release evidence gate. Earlier #23 passes do not satisfy a new merge SHA.
-- [x] **AUD-07 retention:** Native CI/capture artifact retention increased to 45 days, past the planned launch. Retain the final archive/dSYMs and acceptance packet too.
+- [x] Full CI `34532237542`, Launch safety `34532239981` and portability `34532242458` passed for the exact source. All job/step receipts: `docs/validation/release-2026-09-10/candidate-18253b3-ci.json`. One existing direct-marker camera case remained NOT VERIFIED; separate Follow path passed. Physical follow remains in E.
+- [x] Final candidate strict metadata/generated sheet, 50 tooling selftests, six IPA-inspection selftests, bundle/icon/symbol/audio/artwork gates passed in CI and archive preflight; actual IPA inspected and dSYM UUID matched. See `binary-1.0.0-5.json` and `bundle-inspection-1.0.0-5.json`.
+- [x] Exact-SHA release evidence gate passed for `18253b3` in TestFlight preflight `34535969370`. Later docs/workflow merges do not change the uploaded binary source.
+- [x] **AUD-07 retention:** Native CI/capture artifact retention increased to 45 days, past the planned launch. Final IPA/dSYMs and CI/account reports copied to `C:/Users/IsacC/Airline-Empire-release-artifacts/candidate-18253b3`; installed-device acceptance packet remains in E/F.
 
 ## D. Complete the Apple account — account holder/release owner
 
-- [x] **REL-03 account fields:** Separate US/UK official privacy URLs saved; existing published label is Data Not Collected. Final archive privacy validation remains required.
+- [x] **REL-03 account fields:** Separate US/UK official privacy URLs saved; existing published label is Data Not Collected. Actual build 5 archive privacy validation passed.
 - [x] **REL-04 account fields:** App price Free; weekly/yearly auto-renewable and lifetime non-consumable IDs created with documented prices. Weekly/yearly share group level 1. US/UK localizations and Family Sharing match the plan.
-- [ ] Verify localized prices, regional availability, weekly introductory offer and eligibility behavior; record Apple product states.
+- [x] Apple prices, product states, weekly introductory offer configuration and 173-region availability verified; future territory expansion off for app and all products. See `apple-territories.json` and `apple-iap-review-images.json`.
+- [ ] Verify localized Apple purchase sheets and introductory eligibility on a physical device (E).
 - [x] Supply genuine review images for Weekly, Yearly and Lifetime; Apple API run `34533267128` verified COMPLETE, checksums and product attachments. Add all three purchases and the subscription group to one unsubmitted iOS draft.
-- [ ] Add the accepted app version to that draft and verify all five items before submission.
-- [ ] **REL-09:** Recheck uploaded screenshot slots/order/UK inheritance, copy, contact, age rating, content rights, export compliance and applicable agreements/trader/regional/payment requirements.
-- [ ] **REL-01:** Archive/upload the final SHA with a fresh build number; wait for successful processing; record SHA/version/build/processing evidence.
-- [ ] Attach the processed build to the intended App Store version and install it from TestFlight.
+- [x] App version 1.0 / **1.0.0 (5)** joined the same draft; Apple shows **Items Ready to Submit (5)** and enables Submit for Review. Final submission remains pending device acceptance.
+- [x] **REL-09:** Screenshot slots/order/UK inheritance, copy, review contact, 4+ age rating, content rights, export compliance and agreements/trader/regional/payment statuses verified. Saved account evidence is in the current execution record. All 20 native source captures visually inspected; see `store-capture-review.json`.
+- [x] **REL-01:** TestFlight `34535969370` attempt 2 successfully archived/uploaded build **1.0.0 (5)**; Apple returned VALID at 10 September 22:42:23 UTC. Original signing failure retained; same credentials succeeded on bounded retry.
+- [x] Build 5 attached to App Store version 1.0 and verified after reload; Tester group assignment and build-specific test notes verified.
+- [ ] Install build **1.0.0 (5)** from TestFlight and record physical acceptance below.
 
 ## E. Accept the installed build — QA/product owner
 
@@ -71,10 +80,12 @@ Record each result with device model, OS, build, date, steps, pass/fail and arti
 - [ ] Resolve review feedback on the actual candidate; if the binary changes, repeat relevant gates.
 - [ ] After approval, confirm the final publication action matches the intended pre-order/download behavior in every territory.
 - [ ] Publish using the authorized release decision; verify public listing and store product access, then scheduled download availability.
-- [ ] Establish release-day crash/purchase/support monitoring and a saved-campaign-safe hotfix procedure; preserve dSYMs/build artifacts.
+- [x] Monitoring and save-compatible hotfix procedure documented in `docs/RELEASE_OPERATIONS.md`; binary/dSYMs preserved and UUIDs matched.
+- [ ] Execute release-day crash/purchase/support monitoring after publication; record actual storefront/download/product results.
 
 ## Optional work and post-release queue
 
+- [ ] Fleet wording: summary excludes maintenance aircraft while the "Flying" filter includes assigned maintenance aircraft. Non-blocking; align wording/predicate in a later tested change.
 - [ ] Featuring nomination after launch plan/assets stabilize; it is not a publication blocker.
 - [ ] Storefront-size crop/readability review and unambiguous route wording; preview video/localizations/rating prompt only if prioritized.
 - [ ] First-hour/fleet polish from observed friction, then capped offline catch-up, fleet identity/challenges, hub connections and bulk operations.

@@ -1,5 +1,10 @@
 # Release audit — 10 September 2026
 
+> **Historical before-state.** Follow the [11 September execution record](RELEASE_CONTINUATION_STATUS.md)
+> for completed fixes and saved Apple state. PRs #22–#26 are now merged;
+> build **1.0.0 (5)** is processed and attached to the five-item review draft.
+> Physical-device acceptance, final submission and publication remain pending.
+
 **Decision: not ready to publish.** The launch implementation and store artwork are substantially complete. The remaining work is release integration, reliable runtime evidence, live legal/support access, real Apple purchase configuration, and final device acceptance. Starting another major simulation feature now would expand the release risk without closing these gates.
 
 This is a repository, PR, CI, release-tooling and artifact audit. It is **not** a physical-device certification or a fresh inspection of the signed-in Apple account. Apple account facts below are dated handoff evidence, explicitly distinguished from checks performed today.

@@ -1,34 +1,36 @@
 # The remaining owner steps
 
-Updated 10 September 2026. The agent has configured the Apple record and
+Updated 11 September 2026. The agent has configured the Apple record and
 all three purchases for **173 regions**, excluding China mainland and Vietnam.
 The app remains a first release, version 1.0, with a **16 October 2026**
 pre-order date. It has not been submitted or published.
 
 Use [the current execution record](RELEASE_CONTINUATION_STATUS.md) for the
-candidate's actual build/upload state. Do not treat the old TestFlight
-1.0.14 (4) installation as the new release candidate.
+candidate evidence. **TestFlight 1.0.0 (5) is ready in your Tester group.**
+The old 1.0.14 (4) installation is the upgrade source, not this candidate.
 
 All three purchase review images are now uploaded through Apple's API, with
 processed checksums and product attachments verified. No Chrome setting or
 manual image upload is needed. Weekly, Yearly, Lifetime and the subscription
-group are already in one **unsubmitted iOS draft**. Its remaining Apple
-validation message is to add the app version.
+group and app version 1.0 with **build 1.0.0 (5)** are already together in
+one **unsubmitted iOS draft**. Apple shows five ready items and enables
+Submit for Review. Device acceptance is the remaining prerequisite.
 
 ## 1. Upgrade your existing TestFlight installation
 
-After a new candidate is uploaded, processed and assigned to your existing
+The new build is uploaded, processed and assigned to your existing
 **Tester** group:
 
 1. Open the current game and export each important saved airline to Files.
-2. Open TestFlight → Airline Empire. Check its version/build against the
-   execution record, then tap **Update**. Keep the existing app installation.
+2. Open TestFlight → Airline Empire and install **1.0.0 (5)**. If Update
+   offers the older 1.0.14 train, open **Previous Builds → 1.0.0 → build 5**
+   and install that exact build. Keep the existing app installation.
 3. Open every existing saved airline. Compare airline name, date, cash, fleet
    and routes. Save, quit, reopen and confirm those same values.
 4. Keep the exported backups until the release is accepted. Reinstall testing
    belongs on a separate test device or after backups are safely verified.
 
-The agent can build, upload, assign and attach the candidate. Installing and
+The agent has built, uploaded, assigned and attached the candidate. Installing and
 operating your physical phone cannot be done from this Windows workspace.
 
 ## 2. Play one complete free session
@@ -160,9 +162,10 @@ states that manual release publishes the pre-order listing; approval alone
 does not mean the game is downloadable everywhere.
 
 If continuing manually: App Store Connect → Airline Empire → Distribution →
-version 1.0 → select the accepted build → **Add for Review** → choose the
-existing iOS draft started on 10 September at 23:40 Stockholm time. Verify
-the app, Weekly, Yearly, Lifetime and Airline Empire Pro group are together
-(five items), then submit after device acceptance passes.
+**App Review** → open the existing iOS draft started on 10 September at
+23:40 Stockholm time. Verify **iOS App 1.0 / 1.0.0 (5)**, Weekly, Yearly,
+Lifetime and Airline Empire Pro group are together (five items), then select
+**Submit for Review** after device acceptance passes. No build attachment
+or product/image setup remains to do.
 After approval, follow the release controls for the verified pre-order plan.
 Never substitute a different build simply because it is already selectable.

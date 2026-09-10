@@ -1,0 +1,45 @@
+{
+  "version": "1.0.0",
+  "build": "5",
+  "candidateSHA": "18253b31333f4e7c0e9a8b9b4410cda2ea45b80d",
+  "workflowSHA": "18253b31333f4e7c0e9a8b9b4410cda2ea45b80d",
+  "workflowRun": 34535969370,
+  "workflowAttempt": 2,
+  "ipaSHA256": "03ed4c7e2edc97f7e44c319d26448b6388996c483f54d3d80dd32ac1712bf515",
+  "appMachOUUID": "8C6045C1-59F4-399A-965A-617D42294367",
+  "dSYMMachOUUID": "8C6045C1-59F4-399A-965A-617D42294367",
+  "symbolMatch": true,
+  "localInspectionMatchesRunner": true,
+  "appleBuildID": "ac776d10-7bb0-4dc6-aadd-07d9cab19e05",
+  "processingState": "VALID",
+  "processingVerifiedAt": "2026-09-10T22:42:23Z",
+  "testFlightGroup": {
+    "id": "cd94c3af-ec64-4784-b44f-76d74b393cb8",
+    "name": "Tester",
+    "type": "Internal",
+    "testers": 1
+  },
+  "uploadSucceededAt": "2026-09-10T22:40:11Z",
+  "testFlightNotesSaved": true,
+  "appStoreVersion": "1.0",
+  "appStoreVersionState": "Ready for Review",
+  "buildAttachmentVerifiedAfterReload": true,
+  "reviewDraft": {
+    "id": "96ad6900-cbe6-43a9-aa49-61b9b2f05736",
+    "createdLocal": "2026-09-10T23:40:00+02:00",
+    "updatedLocal": "2026-09-11T00:50:00+02:00",
+    "items": 5,
+    "appBuild": "1.0.0 (5)",
+    "subscriptions": [
+      "6810782782",
+      "6810785364"
+    ],
+    "nonConsumable": "6810786506",
+    "subscriptionGroup": "22374948",
+    "state": "Ready for Review",
+    "submitForReviewEnabled": true,
+    "submitted": false,
+    "persistedAfterNavigation": true
+  },
+  "uiVerifiedAt": "2026-09-10T22:54:44.002249+00:00"
+}
