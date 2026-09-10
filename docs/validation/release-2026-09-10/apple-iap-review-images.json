@@ -1,0 +1,75 @@
+{
+  "checkedAt": "2026-09-10T21:38:37.371Z",
+  "mode": "apply",
+  "products": [
+    {
+      "name": "weekly",
+      "productId": "com.airlineempire.game.pro.weekly",
+      "appleId": "6810782782",
+      "productState": "READY_TO_SUBMIT",
+      "sha256": "2e220c42d5071f6c7a84c95c8b60144100818e7c3cc7739620a7a057615553c9",
+      "action": "uploaded and verified",
+      "asset": {
+        "id": "deaa40d1-9550-4263-acab-83cd864bf237",
+        "fileName": "SOURCE",
+        "fileSize": 1486034,
+        "sourceFileChecksum": "fdb5452eef8add8f35425e66fe7a2d95",
+        "delivery": {
+          "errors": null,
+          "warnings": null,
+          "state": "COMPLETE"
+        },
+        "image": {
+          "width": 1206,
+          "height": 2622
+        }
+      }
+    },
+    {
+      "name": "yearly",
+      "productId": "com.airlineempire.game.pro.yearly",
+      "appleId": "6810785364",
+      "productState": "READY_TO_SUBMIT",
+      "sha256": "73ef59c3215ce79ca567c0be12f7020b8bc3071790eb88379e101a0798e033d5",
+      "action": "uploaded and verified",
+      "asset": {
+        "id": "7ee0a42b-7a75-4d70-ab8f-0e071afa4419",
+        "fileName": "SOURCE",
+        "fileSize": 1471798,
+        "sourceFileChecksum": "ff6208575528df880a1700946cb1b551",
+        "delivery": {
+          "errors": null,
+          "warnings": null,
+          "state": "COMPLETE"
+        },
+        "image": {
+          "width": 1206,
+          "height": 2622
+        }
+      }
+    },
+    {
+      "name": "lifetime",
+      "productId": "com.airlineempire.game.pro.lifetime",
+      "appleId": "6810786506",
+      "productState": "READY_TO_SUBMIT",
+      "sha256": "d3a77848a11f81ed8141a88e55702d891c7f561791fbd9f11ac29dacb932f120",
+      "action": "uploaded and verified",
+      "asset": {
+        "id": "547bc245-a0d3-432f-a0e8-a0d387e577d6",
+        "fileName": "SOURCE",
+        "fileSize": 1479277,
+        "sourceFileChecksum": "f08116e90d59a7e9e548315afe9cd703",
+        "delivery": {
+          "errors": null,
+          "warnings": null,
+          "state": "COMPLETE"
+        },
+        "image": {
+          "width": 1206,
+          "height": 2622
+        }
+      }
+    }
+  ]
+}

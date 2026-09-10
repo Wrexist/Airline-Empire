@@ -8,20 +8,19 @@ gate or a running workflow as a release pass.
 
 - PR #23 merged to main at `e11cea4b2bfe3407aefbf19bcbc2a7d1a682364d`.
 - Release fixes: [PR #24](https://github.com/Wrexist/Airline-Empire/pull/24),
-  next candidate includes the tab-selection correction below and the verified
-  account handoff. `codex/release-candidate-2026-09-10` records the exact commit
-  under validation. Shipping app/Core source is unchanged
-  from `11ae4d2336073e7c9188e0c46e45ac6242c2a999`; UI tests and release
-  tooling include the corrections below. Previous candidate `dff78b4` failed
-  full CI `34525956478` on one economy navigation case; every other job passed.
-  Launch safety `34525959630` and portability `34525962559` passed. The failed
-  full CI stopped the upload watcher; no archive/upload was dispatched.
+  current candidate `18253b31333f4e7c0e9a8b9b4410cda2ea45b80d`, frozen on
+  `codex/release-candidate-2026-09-10`. Full CI `34532237542` and Launch safety
+  `34532239981` are running. Portability `34532242458`, iPad shell, the full
+  Debug Core job and all 523 Release Core tests passed. Shipping app/Core source is unchanged from
+  `11ae4d2336073e7c9188e0c46e45ac6242c2a999`; test observation and release
+  tooling include the corrections below. Duplicate PR native runs were
+  canceled; the manual frozen-candidate runs remain authoritative.
 - App Store app `6806410538`; marketing version **1.0**, Prepare for Submission.
   No new candidate build has been attached or uploaded yet.
-- Candidate `2a7a8e1220d88669a184e63d0cf562dd4216bd0d` is blocked by the
-  economy job in full CI `34530096281`. Its portability `34530096280`,
-  store captures `34530096286` and iPad shell passed. The lease observation
-  correction below is being prepared; do not upload this failed candidate.
+- Previous candidate `2a7a8e1` failed full CI `34530096281`: economy and the
+  performance startup phase of shell/map failed. Core, iPad, arrival, campaign
+  and map-home passed, as did Launch safety, portability and store captures.
+  Its upload watcher stopped; this candidate is not eligible for upload.
 - Full execution sequence: [release plan](RELEASE_PLAN.md).
 
 ## Completed engineering work
@@ -97,13 +96,21 @@ gate or a running workflow as a release pass.
   in network/fleet/routes/finance/rivals/progression order. Media Manager
   confirms UK 6.9-inch inherits the complete US 6.9-inch set.
 - Apple's app-version **Add for Review** validation reports only
-  **You must choose a build**. No review submission was created.
-- Products are still Prepare for Submission. None has been submitted for review.
-- Weekly's **Add for Review** validation reports the missing Review Information
-  screenshot. Chrome's extension refuses file chooser uploads until the owner
-  enables **Allow access to file URLs**. All three genuine files are ready;
-  [the owner guide](RELEASE_OWNER_STEPS.md) gives the exact setting and an
-  alternative manual upload path. No product screenshot upload is claimed.
+  **You must choose a build**. The app version has not joined the draft yet.
+- All three genuine purchase review images were uploaded through Apple's
+  supported API in run `34533267128`, after read-only plan `34533194273`.
+  Apple returned COMPLETE for each, no delivery errors/warnings, matching
+  source checksums, and the correct product attachment. All three products
+  became READY_TO_SUBMIT. See `validation/release-2026-09-10/apple-iap-review-images.json`.
+  The browser also loaded Weekly's 1206 × 2622 review thumbnail successfully.
+- Weekly, Yearly, Lifetime and subscription group Airline Empire Pro are now
+  together in one **unsubmitted iOS draft**, created 10 September at 23:40
+  Stockholm time. The draft contains four ready items; Apple's only remaining
+  draft validation message is to add the app version. Final Submit for Review
+  is disabled and was not clicked. Add the accepted app version to this same
+  draft to make five items; do not create separate first-purchase submissions.
+- The earlier Chrome file-chooser restriction was resolved by using the
+  authenticated Apple API. No extension setting or manual upload is needed.
 
 ## Existing beta evidence and limits
 
@@ -148,7 +155,7 @@ gate or a running workflow as a release pass.
 
 ## Remaining release gates
 
-### Latest native findings (candidate `2a7a8e1`)
+### Previous native findings (candidate `2a7a8e1`)
 
 - Economy job `103048517562` passed aircraft acquisition/route creation,
   currency checks and the first-month statement. It failed flight-on-map
@@ -173,6 +180,10 @@ gate or a running workflow as a release pass.
   retry was added; the next candidate must execute the full journey.
 - Launch safety `34530096278` passed: Core Release, hosted save/StoreKit,
   paywall captures, map-home, and Release entitlement isolation.
+- The shell/map job's performance phase failed before measurements:
+  `testColdLaunchBaseline` timed out launching via Xcode, followed by PID 0
+  background-assertion failure for map measurement. The original log is
+  retained in job `103048518023`; this is not a valid performance baseline.
 - Fresh store captures contain all ten source views on both iPhone and iPad.
   The phone network and iPad Fleet images were inspected; the sidebar and
   Fleet selected states are visible. These captures do not replace the failed
@@ -223,13 +234,12 @@ gate or a running workflow as a release pass.
 
 ### Execution order
 
-1. Upload the three prepared purchase review screenshots; other saved account
-   fields and territory/date settings have been verified.
-2. Finish exact-candidate full CI/Launch safety; investigate every failure.
-3. Integrate validated release changes, archive/upload the exact tested candidate
+1. Finish exact-candidate full CI/Launch safety; investigate every failure.
+2. Integrate validated release changes, archive/upload the exact tested candidate
    SHA and await processing. Record any later documentation-only commit separately.
+3. Attach the processed build and add app version 1.0 to the existing four-item draft.
 4. Install the recorded build and execute device/save/purchase/accessibility acceptance.
-5. Submit the accepted app and first purchases together, handle Apple feedback,
+5. Submit the accepted app, first purchases and subscription group together, handle Apple feedback,
    then publish using the verified pre-order/date/territory plan.
 
 Physical iPhone/iPad use and human comprehension/listening cannot be completed

@@ -60,10 +60,11 @@ report will distinguish tests completed, Apple changes saved, and remaining
 owner-only steps. Do not mark a step complete from this plan alone.
 
 The concrete owner handoff is [RELEASE_OWNER_STEPS.md](RELEASE_OWNER_STEPS.md).
-It includes only the remaining upload-setting/device work and a manual fallback
-for final submission. The app version currently passes Apple's draft validation
-apart from the missing build; purchase draft validation requires the prepared
-review screenshots to be uploaded.
+It includes the remaining device work and a manual fallback for final
+submission. All three purchase review images are uploaded and verified. The
+three purchases and subscription group are in one unsubmitted iOS draft;
+Apple now requires the app version. The app version still needs its accepted
+build before it can join that draft.
 
 ## Owner-only handoff template
 
