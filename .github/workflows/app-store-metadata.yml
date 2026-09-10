@@ -78,16 +78,18 @@ jobs:
         with:
           github-token: ${{ github.token }}
           run-id: 34522453247
-          name: ui-screenshots-shard3
+          name: ui-screenshots-shard1
           path: Campaign.xcresult
       - name: Extract existing result diagnostics
         run: |
           for suite in MapHome Arrival Campaign; do
             mkdir -p "inspection/$suite"
-            xcrun xcresulttool get test-results summary --path "$suite.xcresult" > "inspection/$suite/summary.json"
-            xcrun xcresulttool get test-results tests --path "$suite.xcresult" > "inspection/$suite/tests.json"
-            xcrun xcresulttool export diagnostics --path "$suite.xcresult" --output-path "inspection/$suite/diagnostics"
-            xcrun xcresulttool export attachments --path "$suite.xcresult" --output-path "inspection/$suite/attachments"
+            bundle="$suite.xcresult"
+            if [ -d "$bundle/UITestResults.xcresult" ]; then bundle="$bundle/UITestResults.xcresult"; fi
+            xcrun xcresulttool get test-results summary --path "$bundle" > "inspection/$suite/summary.json"
+            xcrun xcresulttool get test-results tests --path "$bundle" > "inspection/$suite/tests.json"
+            xcrun xcresulttool export diagnostics --path "$bundle" --output-path "inspection/$suite/diagnostics"
+            xcrun xcresulttool export attachments --path "$bundle" --output-path "inspection/$suite/attachments"
             cat "inspection/$suite/summary.json"
           done
       - uses: actions/upload-artifact@v4
