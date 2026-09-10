@@ -1,4 +1,5 @@
 import XCTest
+import StoreKitTest
 
 final class FreeTierUITests: AEUITestCase {
     override var usesProFixture: Bool { false }
@@ -6,7 +7,15 @@ final class FreeTierUITests: AEUITestCase {
 
     /// Captures genuine purchase UI using the scheme's StoreKit products.
     /// This verifies disclosure and navigation, without making a purchase.
-    func testPaywallDisclosuresAndReviewCaptures() {
+    func testPaywallDisclosuresAndReviewCaptures() throws {
+        // The scheme's Run action does not configure xcodebuild's Test action.
+        // Activate the real StoreKit test server before launching the app.
+        let store = try SKTestSession(configurationFileNamed: "AirlineEmpire")
+        store.resetToDefaultState()
+        store.clearTransactions()
+        store.storefront = "USA"
+        store.locale = Locale(identifier: "en_US")
+        defer { store.clearTransactions(); store.resetToDefaultState() }
         launch(appearance: .light, arguments: ["-AEUITestFree"])
         guard foundAirline(), openBriefing() else { return }
         let settings = app.buttons["Settings"]
@@ -22,7 +31,9 @@ final class FreeTierUITests: AEUITestCase {
             let loaded = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
                 buy.exists && buy.isEnabled
             }, object: nil)
-            XCTAssertEqual(XCTWaiter.wait(for: [loaded], timeout: 20), .completed,
+            let loadingResult = XCTWaiter.wait(for: [loaded], timeout: 20)
+            if loadingResult != .completed { capture("KEY-IAP-products-unavailable") }
+            XCTAssertEqual(loadingResult, .completed,
                            "Real StoreKit test products must load before photographing the paywall")
             let commitment = app.staticTexts["ae-paywall-commitment"]
             XCTAssertTrue(commitment.exists)
