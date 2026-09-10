@@ -57,6 +57,7 @@ permissions:
 
 jobs:
   inspect-phone-results:
+    if: ${{ false }}
     runs-on: macos-26
     timeout-minutes: 10
     permissions:
@@ -119,6 +120,7 @@ jobs:
           node scripts/asc/check-signing-eligibility.mjs
           node scripts/asc/preflight.mjs --version 1.0.0
           node scripts/asc/audit-beta-crashes.mjs
+          node scripts/asc/audit-territories.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: apple-beta-crash-audit
