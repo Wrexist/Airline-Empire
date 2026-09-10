@@ -5,9 +5,11 @@
   "plannedReleaseDate": "2026-10-16",
   "status": "configured_pending_apple_review_and_publication",
   "price": "FREE",
-  "territories": "175 countries or regions",
+  "territories": "173 countries or regions",
+  "excludedTerritories": ["CHN", "VNM"],
   "versionReleaseType": "MANUAL",
   "notes": [
+    "On 2026-09-10 the owner confirmed no China mainland or Vietnam game licenses and selected launch in the other 173 regions; saved in App Store Connect.",
     "Pre-order is an availability setting, not an App Store version releaseType enum.",
     "Verify all selected territories are pre-order before publishing an approved version.",
     "Check Apple approval, purchases and device testing before the scheduled automatic launch."

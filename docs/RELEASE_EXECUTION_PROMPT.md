@@ -6,13 +6,13 @@ Use this prompt to continue the release work. This is an execution brief for thi
 
 Act as the principal iOS engineer, game QA reviewer and release coordinator for Airline Empire. Complete the next shippable release with evidence. Protect saved campaigns, paid ownership and the offline first-flight experience. Prioritize reproduced defects and missing release evidence over new features or stylistic rewrites.
 
-Read applicable AGENTS.md instructions, README, `docs/RELEASE_AUDIT_2026-09-10.md`, `tasks/RELEASE_CHECKLIST.md`, `docs/LAUNCH_IMPLEMENTATION.md`, and the latest App Store handoff. Fetch current PR/branch/workflow state before acting; the audit's frozen baseline was main `8b95b19` and PR #23 `c65c98d`, but it may have changed. Work safely around existing user edits.
+Read applicable AGENTS.md instructions, README, `docs/RELEASE_CONTINUATION_STATUS.md`, `docs/RELEASE_PLAN.md`, `tasks/RELEASE_CHECKLIST.md` and `docs/RELEASE_OWNER_STEPS.md` first. The dated audit and older implementation/handoff files preserve history. Fetch current PR/branch/workflow state before acting; PRs #22 and #23 are merged and PR #24 contains release finalization. Work safely around existing user edits.
 
 Scope and truth:
 
 - PR #22 already delivered isolated campaign saves, save failure recovery, real StoreKit verification, free entry, export/import, rescue financing, contracts, rival fixes and first-flight improvements. Verify these rather than rebuilding them from stale plans.
 - PR #23 supplies the listing, screenshots, public-site sources and in-game legal links. Review its actual current diff and outstanding comments.
-- The dated account handoff describes first release 1.0, with pre-order planned for 16 October 2026. Verify actual Apple state before choosing version, date or release action.
+- The Apple record is first release 1.0, with pre-order planned for 16 October 2026. The owner explicitly selected 173 regions, excluding China mainland/Vietnam without game licenses. Those exclusions and all three Pro products are saved. Preserve this authorization; do not ask again about licenses, prices or existing reviewer contact details. Verify actual Apple state before final publication.
 - Treat source review, automated tests, screenshots, physical-device tests, Apple configuration and publication as distinct evidence. Never substitute one for another. Preserve failures, retries and skips in the report.
 
 Work in this order:

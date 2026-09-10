@@ -138,7 +138,16 @@ jobs:
       # skip the strongest check the suite has.
       - name: Test (debug)
         if: steps.changes.outputs.test == 'true'
-        run: swift test
+        run: |
+          set -o pipefail
+          # Run 34518221954 exceeded this test's 10-minute wall limit while
+          # even tiny tests waited 18 minutes for the cooperative pool. Keep
+          # its timeout and economic assertions; execute it without contention,
+          # then run every other test in the normal parallel batch.
+          ISOLATED_TEST=regionalRivalKeepsMoneyInTheStandardCast
+          swift test --filter "$ISOLATED_TEST" 2>&1 | tee isolated-debug-test.log
+          grep -Eq 'Test run with 1 test passed' isolated-debug-test.log
+          swift test --skip "$ISOLATED_TEST"
 
       # Release is what ships, and Swift 6 strict concurrency diagnostics
       # differ between configurations. `-warnings-as-errors` holds the
@@ -783,6 +792,11 @@ jobs:
     name: iPad shell (regular width)
     if: (github.event_name == 'workflow_dispatch' && inputs.ipad) || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-validation'))
     runs-on: macos-26
+    # Match the native capture lane after the 26.5 simulator's Core Audio
+    # RPC timeout at launch (34518221954). Phone CI retains current Xcode;
+    # current-OS iPad audio acceptance remains a physical-device gate.
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -799,33 +813,25 @@ jobs:
         id: sim
         run: |
           set -euo pipefail
-          NAME=$(xcrun simctl list devices available --json \
-            | python3 -c "
-          import json, sys
-          data = json.load(sys.stdin)['devices']
-          best = None
-          for runtime, devices in data.items():
-              if 'iOS' not in runtime:
-                  continue
-              for device in devices:
-                  if not device.get('isAvailable'):
-                      continue
-                  name = device['name']
-                  if name.startswith('iPad'):
-                      # Prefer a plain iPad; any regular-width canvas answers
-                      # the question this job asks.
-                      score = (0 if 'Pro' in name or 'mini' in name else 1, name)
-                      if best is None or score > best[0]:
-                          best = (score, name)
-          print(best[1] if best else '')
-          ")
-          if [ -z "$NAME" ]; then
-            echo 'No available iPad simulator on this runner.' >&2
-            xcrun simctl list devices available >&2
-            exit 1
-          fi
-          echo "Using simulator: $NAME"
-          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          xcodebuild -version
+          python3 - <<'PY'
+          import json, os, subprocess
+          devices = json.loads(subprocess.check_output(
+              ['xcrun', 'simctl', 'list', 'devices', 'available', '--json']))['devices']
+          candidates = [d for runtime, entries in devices.items()
+                        if runtime.endswith('iOS-26-2') for d in entries
+                        if d.get('isAvailable') and d['name'].startswith('iPad')]
+          if not candidates:
+              raise SystemExit('Required iOS 26.2 iPad simulator is not installed')
+          device = max(candidates, key=lambda d: (
+              'Pro' not in d['name'] and 'mini' not in d['name'], d['name']))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('id=' + device['udid'] + '\n')
+          print('Using simulator:', device['name'], device['udid'])
+          if device['state'] != 'Booted':
+              subprocess.run(['xcrun', 'simctl', 'boot', device['udid']], check=True)
+          subprocess.run(['xcrun', 'simctl', 'bootstatus', device['udid'], '-b'], check=True)
+          PY
 
       - name: Run the shell journey on the iPad
         working-directory: AirlineEmpireApp
@@ -835,7 +841,8 @@ jobs:
             -project AirlineEmpire.xcodeproj \
             -scheme AirlineEmpire \
             -configuration Debug \
-            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
+            -destination 'platform=iOS Simulator,id=${{ steps.sim.outputs.id }}' \
+            -parallel-testing-enabled NO \
             -resultBundlePath UITestResults.xcresult \
             -only-testing:AirlineEmpireUITests/CampaignUITests/testFoundingAnAirlineReachesEveryTab \
             -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testDetailScreensAndSettingsRender \

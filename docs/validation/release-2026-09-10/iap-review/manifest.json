@@ -1,0 +1,17 @@
+[
+  {
+    "file": "lifetime.png",
+    "attachment": "IAP-lifetime_0_181600C9-9FFD-4859-A9CF-BE0AB5DE4C0F.png",
+    "sha256": "d3a77848a11f81ed8141a88e55702d891c7f561791fbd9f11ac29dacb932f120"
+  },
+  {
+    "file": "yearly.png",
+    "attachment": "IAP-yearly_0_A84D4D8D-547E-4887-9CC3-FEDA3F360D18.png",
+    "sha256": "73ef59c3215ce79ca567c0be12f7020b8bc3071790eb88379e101a0798e033d5"
+  },
+  {
+    "file": "weekly.png",
+    "attachment": "IAP-weekly_0_3EA38311-FCD0-4011-BBF5-36DBA1C48FE5.png",
+    "sha256": "2e220c42d5071f6c7a84c95c8b60144100818e7c3cc7739620a7a057615553c9"
+  }
+]

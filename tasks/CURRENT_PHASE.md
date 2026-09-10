@@ -1,11 +1,14 @@
 # Current Phase
 
 **Current release work — 10 September 2026: stabilization and submission readiness.**
-PR #22 is merged; #23 is open at `c65c98d`. Its full CI and Launch safety pass,
-with two retried UI journeys. Publication remains blocked by a fresh binary,
-live-link verification, Apple privacy/purchase completion and device acceptance.
+PRs #22 and #23 are merged. Release finalization addresses the audit's
+tooling, entitlement-isolation and capture gaps. Anonymous public-page checks
+pass; Apple privacy URLs and the three Pro product records are configured.
+Publication still requires exact-candidate native evidence, a processed binary,
+complete purchase-review assets and installed-device acceptance.
 The [release checklist](RELEASE_CHECKLIST.md) is the current execution order;
-the [dated audit](../docs/RELEASE_AUDIT_2026-09-10.md) records evidence and limits.
+the [release plan](../docs/RELEASE_PLAN.md) describes dependencies and acceptance.
+The [dated audit](../docs/RELEASE_AUDIT_2026-09-10.md) preserves the before-state.
 Rescue financing and contracts are implemented in #22; capped offline catch-up
 and hub connections remain later work. The phase entries below are historical.
 

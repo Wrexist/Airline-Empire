@@ -6,11 +6,13 @@ global aviation empire — driven by a deterministic, testable simulation, not
 a collection of menus.
 
 **Status, 10 September 2026:** Launch stabilization; not ready to publish.
-PR #22 is merged. Open release-preparation PR #23 (`c65c98d`) has 523 Core
-release tests, 11 launch-safety hosted/UI tests and all nine full CI jobs
-passing; two UI journeys required retries. A fresh TestFlight build, public
-URL verification, Apple privacy/purchase completion and physical-device
-acceptance remain. See the [current release audit](docs/RELEASE_AUDIT_2026-09-10.md),
+PRs #22 and #23 are merged. Release finalization fixes Windows validation,
+isolates test-only Pro access and adds genuine purchase review captures.
+All five official pages pass anonymous checks; the Apple privacy URLs and
+three Pro product records are configured. Exact-candidate native tests,
+the processed TestFlight build and physical-device acceptance remain gates.
+See the [release plan](docs/RELEASE_PLAN.md),
+[dated audit](docs/RELEASE_AUDIT_2026-09-10.md),
 [ordered checklist](tasks/RELEASE_CHECKLIST.md) and
 [execution prompt](docs/RELEASE_EXECUTION_PROMPT.md).
 

@@ -2,7 +2,9 @@
 
 Updated 10 September 2026. PR #23 is merged at `e11cea4`. Version 1.0 is still
 Prepare for Submission in the live Apple account; no build is attached.
-The existing pre-order plan is 16 October 2026. Release finalization is being
+The pre-order date is 16 October 2026. The owner chose to launch in 173 regions,
+excluding China mainland and Vietnam because game licenses are not held.
+Release finalization is being
 implemented on `codex/release-finalization`.
 
 ## Sequence and completion evidence
@@ -39,7 +41,15 @@ replace installed-device acceptance. No estimated date overrides a failed gate.
   the Pro override cannot grant ownership.
 - Marketing capture fails if its generated campaign is absent. Capture
   instructions explicitly select the Swift package and correct save path.
+- Paywall UI tests explicitly start a StoreKit test session. The first capture
+  run failed because the scheme's Run configuration did not activate StoreKit
+  products during the Test action; the product-loading assertion was preserved.
 - CI and screenshot evidence is retained for 45 days, past the planned launch.
+- The bounded two-year Debug economy regression runs alone before the rest
+  of the suite; its original ten-minute limit and all assertions remain.
+- iPad CI uses an explicitly booted iOS 26.2 simulator after a diagnosed
+  26.5 Core Audio RPC abort. Phone CI remains on current Xcode. Physical
+  current-OS iPad audio testing remains mandatory.
 
 ## Gate details
 
@@ -48,6 +58,12 @@ purchase and submission checks. The [dated audit](RELEASE_AUDIT_2026-09-10.md)
 preserves the before-state and known reliability gaps. The current execution
 report will distinguish tests completed, Apple changes saved, and remaining
 owner-only steps. Do not mark a step complete from this plan alone.
+
+The concrete owner handoff is [RELEASE_OWNER_STEPS.md](RELEASE_OWNER_STEPS.md).
+It includes only the remaining upload-setting/device work and a manual fallback
+for final submission. The app version currently passes Apple's draft validation
+apart from the missing build; purchase draft validation requires the prepared
+review screenshots to be uploaded.
 
 ## Owner-only handoff template
 
