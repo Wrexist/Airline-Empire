@@ -3,6 +3,22 @@
 Release owner: Isac Molin. The current release identity and evidence belong in
 [RELEASE_CONTINUATION_STATUS.md](RELEASE_CONTINUATION_STATUS.md).
 
+## Pinning a previously tested candidate
+
+The TestFlight workflow accepts an optional `candidate_sha`, restricted to a
+full 40-character commit SHA. An empty value uses the workflow's own commit.
+Preflight verifies the checkout and checks successful full CI/Launch safety
+for that actual source commit. Core, archive and processing check out the
+same verified SHA. A workflow-only correction therefore need not move the
+frozen app candidate or claim evidence from a different app revision.
+
+The archive repeats the same Debug suite arrangement as full CI: the costly
+`regionalRivalKeepsMoneyInTheStandardCast` test runs alone with its original
+limit and assertions, followed by all remaining tests. No test is omitted.
+The inspection artifact includes `release-source.json` with the candidate SHA,
+workflow SHA, version and run ID, alongside the actual IPA inspection report.
+Retain both records with the binary and dSYMs.
+
 ## Purchase review-image receipt
 
 Apple API run `34533267128` uploaded the three inspected paywall captures.
