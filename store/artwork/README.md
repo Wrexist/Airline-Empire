@@ -42,7 +42,7 @@ both `store-captures-*` artifacts; place their device folders in `captures/`.
 The campaign is generated with:
 
 ```sh
-swift run -c release ae-rival-probe 2039 1825 ARN LHR-CDG:0.88 --snapshot-hour 12 --save store-campaign.json
+swift run --package-path AirlineEmpireCore -c release ae-rival-probe 2039 1825 ARN LHR-CDG:0.88 --snapshot-hour 12 --save store/artwork/captures/store-campaign.json
 ```
 
 The editable composition and copy live in `scripts/store-art/build.cjs` and
@@ -71,7 +71,8 @@ upload them. Simulator/system overlays are excluded by intentional crops.
 
 Upload only the six ordered PNGs per device slot from `store/screenshots/`.
 Native sources and overview sheets are supporting material, not upload assets.
-No Apple upload, submission, publication or merge was performed for this task.
-Seller and review-contact placeholders remain a separate launch prerequisite.
+PR #23 was merged on 10 September. Screenshot uploads and contact completion
+are recorded in `docs/APP_STORE_HANDOFF_STATUS.md`; App Review, fresh build
+and physical-device acceptance remain separate release requirements.
 Apple's [screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/)
 were checked on 2026-09-08.

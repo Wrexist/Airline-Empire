@@ -183,7 +183,7 @@ for bugs that escape a phase.)*
 
 ## BUG-008 — First screen after founding an airline crashes the app
 **Severity:** P0 (crash on the primary path) · **Phase found:** TestFlight
-build 1.0.0 (1) on a physical iPhone 15 Pro, iOS 26.5.2, 2026-08-29 — the
+build 1.0.0 (1) on a physical iPhone 15, iOS 26.5.2, 2026-08-29 — the
 first time the app has ever run on a device.
 **Repro:** Launch, name an airline, tap "Found the airline". The Dashboard
 appears and the process dies immediately. 100% reproducible; it is the first
@@ -226,6 +226,13 @@ crash with the same trap, and with it they pass.
 `previousDayIndexIsSafe`. Full suite 257 tests green on Linux, Swift 6.0.3.
 **Status:** FIXED 2026-08-29, awaiting a device run of the next build to
 confirm on hardware.
+
+**Release audit, 2026-09-10:** Apple's official crash-feedback API returned
+the original stack and device model `iPhone15_4`, confirming the diagnosis
+and correcting the earlier "Pro" model attribution. The current candidate
+`11ae4d2` passes the 523-test Release suite, including the negative-day and
+previous-day regression cases. See
+[`beta-crashes.json`](../docs/validation/release-2026-09-10/apple-beta-crashes/beta-crashes.json).
 
 
 

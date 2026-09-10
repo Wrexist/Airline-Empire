@@ -5,12 +5,16 @@ The player starts with a single aircraft on a single route and builds a
 global aviation empire — driven by a deterministic, testable simulation, not
 a collection of menus.
 
-**Status:** Launch stabilization. Candidate `b2420a1` passed all 513 Core
-regressions, the debug and release builds, iOS compilation, save/StoreKit
-integration tests, free entry and the map-first flight journey. Full device
-coverage and the App Store submission package remain release gates.
-See [launch implementation status](docs/LAUNCH_IMPLEMENTATION.md) for dated
-evidence and [the audit](docs/LAUNCH_AUDIT.md) for outstanding work.
+**Status, 10 September 2026:** Launch stabilization; not ready to publish.
+PRs #22 and #23 are merged. Release finalization fixes Windows validation,
+isolates test-only Pro access and adds genuine purchase review captures.
+All five official pages pass anonymous checks; the Apple privacy URLs and
+three Pro product records are configured. Exact-candidate native tests,
+the processed TestFlight build and physical-device acceptance remain gates.
+See the [release plan](docs/RELEASE_PLAN.md),
+[dated audit](docs/RELEASE_AUDIT_2026-09-10.md),
+[ordered checklist](tasks/RELEASE_CHECKLIST.md) and
+[execution prompt](docs/RELEASE_EXECUTION_PROMPT.md).
 
 ## Project navigation
 

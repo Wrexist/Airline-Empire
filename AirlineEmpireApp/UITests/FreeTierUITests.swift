@@ -1,8 +1,51 @@
 import XCTest
+import StoreKitTest
 
 final class FreeTierUITests: AEUITestCase {
     override var usesProFixture: Bool { false }
     override var wantsSunriseWeek: Bool { false }
+
+    /// Captures genuine purchase UI using the scheme's StoreKit products.
+    /// This verifies disclosure and navigation, without making a purchase.
+    func testPaywallDisclosuresAndReviewCaptures() throws {
+        // The scheme's Run action does not configure xcodebuild's Test action.
+        // Activate the real StoreKit test server before launching the app.
+        let store = try SKTestSession(configurationFileNamed: "AirlineEmpire")
+        store.resetToDefaultState()
+        store.clearTransactions()
+        store.storefront = "USA"
+        store.locale = Locale(identifier: "en_US")
+        defer { store.clearTransactions(); store.resetToDefaultState() }
+        launch(appearance: .light, arguments: ["-AEUITestFree"])
+        guard foundAirline(), openBriefing() else { return }
+        let settings = app.buttons["Settings"]
+        guard require(settings, "Settings"), tapWhenReady(settings) else { return }
+        let pro = app.buttons["ae-settings-pro"]
+        guard scrollUntil(pro, "Airline Empire Pro"), tapWhenReady(pro) else { return }
+
+        for tier in ["weekly", "yearly", "lifetime"] {
+            let plan = app.buttons["ae-paywall-plan-com.airlineempire.game.pro.\(tier)"]
+            guard scrollUntil(plan, "the \(tier) plan"), tapWhenReady(plan) else { return }
+            let buy = app.buttons["ae-paywall-buy"]
+            guard scrollUntil(buy, "the purchase disclosure and button") else { return }
+            let loaded = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                buy.exists && buy.isEnabled
+            }, object: nil)
+            let loadingResult = XCTWaiter.wait(for: [loaded], timeout: 20)
+            if loadingResult != .completed { capture("KEY-IAP-products-unavailable") }
+            XCTAssertEqual(loadingResult, .completed,
+                           "Real StoreKit test products must load before photographing the paywall")
+            let commitment = app.staticTexts["ae-paywall-commitment"]
+            XCTAssertTrue(commitment.exists)
+            XCTAssertFalse(commitment.label.isEmpty)
+            _ = waitUntilStill(buy)
+            capture("IAP-\(tier)")
+        }
+        let restore = app.buttons["ae-paywall-restore"]
+        XCTAssertTrue(scrollUntil(restore, "Restore Purchases and legal links"))
+        XCTAssertTrue(app.buttons["Terms of Use"].exists)
+        XCTAssertTrue(app.buttons["Privacy Policy"].exists)
+    }
 
     func testSuccessfulSaveShowsSessionSummary() {
         launch(appearance: .light, arguments: ["-AEUITestFree"])

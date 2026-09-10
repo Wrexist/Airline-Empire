@@ -1,0 +1,127 @@
+﻿{
+    "run":  34518221954,
+    "job":  103010615831,
+    "sha":  "11ae4d2336073e7c9188e0c46e45ac6242c2a999",
+    "diagnosticRun":  34520664211,
+    "device":  "iPad Air 13-inch (M4) simulator",
+    "osVersion":  "26.5",
+    "exception":  {
+                      "codes":  "0x0000000000000000, 0x0000000000000000",
+                      "rawCodes":  [
+                                       0,
+                                       0
+                                   ],
+                      "type":  "EXC_CRASH",
+                      "signal":  "SIGABRT"
+                  },
+    "termination":  {
+                        "flags":  0,
+                        "code":  6,
+                        "namespace":  "SIGNAL",
+                        "indicator":  "Abort trap: 6",
+                        "byProc":  "AirlineEmpire",
+                        "byPid":  8882
+                    },
+    "frames":  [
+                   {
+                       "symbol":  "__pthread_kill",
+                       "sourceFile":  null,
+                       "sourceLine":  null
+                   },
+                   {
+                       "symbol":  "pthread_kill",
+                       "sourceFile":  null,
+                       "sourceLine":  null
+                   },
+                   {
+                       "symbol":  "abort",
+                       "sourceFile":  null,
+                       "sourceLine":  null
+                   },
+                   {
+                       "symbol":  "_ReportRPCTimeout(char const*, int)",
+                       "sourceFile":  null,
+                       "sourceLine":  null
+                   },
+                   {
+                       "symbol":  "_CheckRPCError(char const*, int, int)",
+                       "sourceFile":  null,
+                       "sourceLine":  null
+                   },
+                   {
+                       "symbol":  "AURemoteIO::Cleanup()",
+                       "sourceFile":  null,
+                       "sourceLine":  null
+                   },
+                   {
+                       "symbol":  "ausdk::AUMethodUninitialize(void*)",
+                       "sourceFile":  null,
+                       "sourceLine":  null
+                   },
+                   {
+                       "symbol":  "-[AUAudioUnitV2Bridge internalDeallocateRenderResources]",
+                       "sourceFile":  null,
+                       "sourceLine":  null
+                   },
+                   {
+                       "symbol":  "-[AUAudioUnit deallocateRenderResources]",
+                       "sourceFile":  null,
+                       "sourceLine":  null
+                   },
+                   {
+                       "symbol":  "AUInterfaceBaseV3::Uninitialize()",
+                       "sourceFile":  null,
+                       "sourceLine":  null
+                   },
+                   {
+                       "symbol":  "AVAudioIONodeImpl::GetOutputFormat(unsigned long)",
+                       "sourceFile":  null,
+                       "sourceLine":  null
+                   },
+                   {
+                       "symbol":  "-[AVAudioNode outputFormatForBus:]",
+                       "sourceFile":  null,
+                       "sourceLine":  null
+                   },
+                   {
+                       "symbol":  "AVAudioEngineImpl::UpdateOutputNode(bool)",
+                       "sourceFile":  null,
+                       "sourceLine":  null
+                   },
+                   {
+                       "symbol":  "AVAudioEngineImpl::GetOutputNode()",
+                       "sourceFile":  null,
+                       "sourceLine":  null
+                   },
+                   {
+                       "symbol":  "-[AVAudioEngine mainMixerNode]",
+                       "sourceFile":  null,
+                       "sourceLine":  null
+                   },
+                   {
+                       "symbol":  "AudioEngine.prepare()",
+                       "sourceFile":  "AudioEngine.swift",
+                       "sourceLine":  120
+                   },
+                   {
+                       "symbol":  "Feedback.prepare()",
+                       "sourceFile":  "Feedback.swift",
+                       "sourceLine":  53
+                   },
+                   {
+                       "symbol":  "closure #4 in closure #1 in AirlineEmpireApp.body.getter",
+                       "sourceFile":  "AirlineEmpireApp.swift",
+                       "sourceLine":  72
+                   },
+                   {
+                       "symbol":  "partial apply for closure #4 in closure #1 in AirlineEmpireApp.body.getter",
+                       "sourceFile":  "/\u003ccompiler-generated\u003e",
+                       "sourceLine":  null
+                   },
+                   {
+                       "symbol":  "\u003cdeduplicated_symbol\u003e",
+                       "sourceFile":  null,
+                       "sourceLine":  null
+                   }
+               ]
+}

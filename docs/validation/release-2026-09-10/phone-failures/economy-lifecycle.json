@@ -1,0 +1,17 @@
+{
+  "candidate": "2a7a8e1220d88669a184e63d0cf562dd4216bd0d",
+  "ciRun": 34530096281,
+  "job": 103048517562,
+  "diagnosticExportRun": 34531523765,
+  "source": "Session-AirlineEmpireUITests-2026-09-10_210705-ULWhBz.log",
+  "device": "iPhone Air simulator, iOS 26.5 (23F77)",
+  "test": "EconomyJourneyUITests.testNewYorkAdviceIsWorthFollowing",
+  "phase": "app.launch(), before founding or journey assertions",
+  "timelineUTC": [
+    { "time": "21:13:01.677", "event": "Test runner requests termination through Xcode and starts its 60-second wait." },
+    { "time": "21:13:54.048", "event": "xcodebuild receives termination request for token 2, approximately 52.37 seconds later." },
+    { "time": "21:13:54.343", "event": "Simulator reports app PID 17432 died with signal 15 (the requested SIGTERM)." },
+    { "time": "21:14:01.721", "event": "XCTest times out, reports stale Running Foreground state, resets PID to 0, and receives the not-running state update." }
+  ],
+  "assessment": "Host/runner termination-state timeout before the test could execute. The recorded exit follows the requested termination; this evidence does not show a spontaneous app crash. No app lifecycle workaround or test retry was added to turn this failed run green."
+}

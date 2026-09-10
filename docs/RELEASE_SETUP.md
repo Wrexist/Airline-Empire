@@ -16,7 +16,9 @@ The prior GitHub Pages host returned 404 and repository metadata showed has_page
 
 ## Pre-order
 
-Apple record: 6806410538. SKU: airline-empire-ios. Version: 1.0. The account already had pre-order configured in 175 countries or regions for 11 September 2026, pending developer release. The revised planned release is 16 October 2026, allowing review and editorial lead time. store/release-plan.json records the current verified status.
+Apple record: 6806410538. SKU: airline-empire-ios. Version: 1.0. The planned release is 16 October 2026, pending review and developer publication. On 10 September the owner confirmed that China mainland and Vietnam game licenses are not held and chose the other 173 regions. That scope is saved in Apple. store/release-plan.json records the current verified status.
+
+Apple requires game approval/licensing for those excluded regions: [App information reference](https://developer.apple.com/help/app-store-connect/reference/app-information/app-information/). Add them only after the required documentation is accepted.
 
 Pre-order is an app availability setting, separate from the version's MANUAL release type. Apple still needs a reviewed version before customers can pre-order. After approval, publishing a version in a territory without pre-order can make it downloadable immediately: verify the territory summary first. A configured date is not proof of a live pre-order page or release readiness.
 

@@ -1,0 +1,63 @@
+{
+  "bundle_validation_explicit_import": {
+    "exit_code": 0,
+    "output": "[]\n"
+  },
+  "public_links": [
+    {
+      "url": "https://airline-empire-official.isacmolin.chatgpt.site/",
+      "status": 403,
+      "headers": {
+        "Date": "Thu, 10 Sep 2026 18:24:45 GMT",
+        "Content-Type": "text/plain; charset=UTF-8",
+        "Server": "cloudflare",
+        "CF-RAY": "a39078a9f83db354-CPH"
+      },
+      "response_excerpt": "error code: 1010\n"
+    },
+    {
+      "url": "https://airline-empire-official.isacmolin.chatgpt.site/privacy.html",
+      "status": 403,
+      "headers": {
+        "Date": "Thu, 10 Sep 2026 18:24:45 GMT",
+        "Content-Type": "text/plain; charset=UTF-8",
+        "Server": "cloudflare",
+        "CF-RAY": "a39078aa2d6bc8b6-CPH"
+      },
+      "response_excerpt": "error code: 1010\n"
+    },
+    {
+      "url": "https://airline-empire-official.isacmolin.chatgpt.site/support.html",
+      "status": 403,
+      "headers": {
+        "Date": "Thu, 10 Sep 2026 18:24:45 GMT",
+        "Content-Type": "text/plain; charset=UTF-8",
+        "Server": "cloudflare",
+        "CF-RAY": "a39078aa69d9df6d-CPH"
+      },
+      "response_excerpt": "error code: 1010\n"
+    },
+    {
+      "url": "https://airline-empire-official.isacmolin.chatgpt.site/terms.html",
+      "status": 403,
+      "headers": {
+        "Date": "Thu, 10 Sep 2026 18:24:45 GMT",
+        "Content-Type": "text/plain; charset=UTF-8",
+        "Server": "cloudflare",
+        "CF-RAY": "a39078aa9b2929ae-CPH"
+      },
+      "response_excerpt": "error code: 1010\n"
+    },
+    {
+      "url": "https://airline-empire-official.isacmolin.chatgpt.site/press.html",
+      "status": 403,
+      "headers": {
+        "Date": "Thu, 10 Sep 2026 18:24:45 GMT",
+        "Content-Type": "text/plain; charset=UTF-8",
+        "Server": "cloudflare",
+        "CF-RAY": "a39078aacfa095e5-CPH"
+      },
+      "response_excerpt": "error code: 1010\n"
+    }
+  ]
+}

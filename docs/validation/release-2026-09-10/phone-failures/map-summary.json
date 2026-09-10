@@ -1,0 +1,49 @@
+{
+  "devicesAndConfigurations" : [
+    {
+      "device" : {
+        "architecture" : "arm64",
+        "deviceId" : "D8661337-7CF0-4F5F-B9B7-BF00428555EA",
+        "deviceName" : "iPhone Air",
+        "modelName" : "iPhone Air",
+        "osBuildNumber" : "23F77",
+        "osVersion" : "26.5",
+        "platform" : "iOS Simulator"
+      },
+      "expectedFailures" : 0,
+      "failedTests" : 1,
+      "passedTests" : 1,
+      "skippedTests" : 0,
+      "testPlanConfiguration" : {
+        "configurationId" : "1",
+        "configurationName" : "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription" : "AirlineEmpire · Built with macOS 26.6.2",
+  "expectedFailures" : 0,
+  "failedTests" : 1,
+  "finishTime" : 1789070562.037,
+  "passedTests" : 1,
+  "result" : "Failed",
+  "skippedTests" : 0,
+  "startTime" : 1789069882.481,
+  "statistics" : [
+
+  ],
+  "testFailures" : [
+    {
+      "failureText" : "failed - The Pause control was not stable and hittable.",
+      "targetName" : "AirlineEmpireUITests",
+      "testIdentifier" : 1,
+      "testIdentifierString" : "MapHomeUITests/testTheMapIsTheHomeScreen()",
+      "testIdentifierURL" : "test://com.apple.xcode/AirlineEmpire/AirlineEmpireUITests/MapHomeUITests/testTheMapIsTheHomeScreen",
+      "testName" : "testTheMapIsTheHomeScreen()"
+    }
+  ],
+  "title" : "Test - AirlineEmpire",
+  "topInsights" : [
+
+  ],
+  "totalTestCount" : 2
+}

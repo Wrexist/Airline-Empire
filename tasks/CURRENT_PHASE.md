@@ -1,5 +1,19 @@
 # Current Phase
 
+**Current release work — 10 September 2026: stabilization and submission readiness.**
+PRs #22 and #23 are merged. Release finalization addresses the audit's
+tooling, entitlement-isolation and capture gaps. Anonymous public-page checks
+pass; Apple privacy URLs and the three Pro product records are configured.
+Publication still requires exact-candidate native evidence, a processed binary,
+complete purchase-review assets and installed-device acceptance.
+The [release checklist](RELEASE_CHECKLIST.md) is the current execution order;
+the [release plan](../docs/RELEASE_PLAN.md) describes dependencies and acceptance.
+The [dated audit](../docs/RELEASE_AUDIT_2026-09-10.md) preserves the before-state.
+Rescue financing and contracts are implemented in #22; capped offline catch-up
+and hub connections remain later work. The phase entries below are historical.
+
+## Previous phase record
+
 **AE-048 — The map is the home screen.** 2026-09-07.
 
 Phase 27 of Direction II. The game opens on the world. `MapScreen` is the Home

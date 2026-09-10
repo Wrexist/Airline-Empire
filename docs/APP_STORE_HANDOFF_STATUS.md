@@ -1,5 +1,11 @@
 # App Store handoff — checked 2026-09-09
 
+Historical snapshot. The 10 September continuation can access Apple and has
+saved privacy URLs, created the three Pro products and checked active agreements.
+Use the [release plan](RELEASE_PLAN.md) and [checklist](../tasks/RELEASE_CHECKLIST.md)
+for current release work. The approved launch scope is now 173 regions,
+excluding China mainland and Vietnam; the 16 October date is unchanged.
+
 The repository assets and English copy are ready. Apple account completion is in progress; this is not a claim that a release has been approved or device-tested.
 
 ## Completed

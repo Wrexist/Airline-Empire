@@ -1,0 +1,14 @@
+{
+  "commit": "51b295b082b988c90aace07e0ba595f9f0afa3c0",
+  "run": 34522453247,
+  "job": 103023088212,
+  "scope": "Debug simulator measurements, uncontended xcodebuild pass; not a physical-device or Release performance acceptance",
+  "coldLaunchSeconds": {"average": 2.170, "samples": [2.640126, 2.063844, 2.102990, 1.949357, 2.093808]},
+  "mapDraw": {
+    "slowDrag": {"frames": 518, "averageMilliseconds": 6.82},
+    "fastDrag": {"frames": 439, "averageMilliseconds": 6.42},
+    "zoomCycles": {"frames": 677, "averageMilliseconds": 7.67},
+    "cumulativeWorstMillisecondsIncludingInitialDraw": 244.83
+  },
+  "acceptance": "Baseline test records measurements and verifies that frames were drawn; it does not enforce a latency threshold. Physical-device smoothness, thermal and memory acceptance remain pending."
+}

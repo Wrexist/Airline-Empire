@@ -33,6 +33,7 @@ const OUT = join(REPO_ROOT, 'docs', 'APP_STORE_CONNECT_FILL_IN.md')
 const check = process.argv.includes('--check')
 
 const store = loadStore(join(REPO_ROOT, 'store'))
+const releasePlan = JSON.parse(readFileSync(join(REPO_ROOT, 'store', 'release-plan.json'), 'utf8'))
 
 /** App Store Connect's own label for each locale directory. */
 const LOCALE_LABELS = {
@@ -355,7 +356,10 @@ w()
 field('Copyright', store.config.copyright)
 w(`- **Routing App Coverage File** — none.`)
 w(`- **Version publication** — ${releaseWording(store.config.releaseType)}`)
-w('- **Availability** — Pre-order, planned release **16 October 2026**, all 175 currently configured regions. See [release setup](RELEASE_SETUP.md). Version publication and pre-order availability are separate Apple settings.')
+const territoryNames = { CHN: 'China mainland', VNM: 'Vietnam' }
+const exclusions = (releasePlan.excludedTerritories ?? []).map(code => territoryNames[code] ?? code)
+const availabilityMode = releasePlan.mode === 'PRE_ORDER' ? 'Pre-order' : releasePlan.mode
+w(`- **Availability** — ${availabilityMode}, planned release **${releasePlan.plannedReleaseDate}**, ${releasePlan.territories}.${exclusions.length ? ` Excludes ${exclusions.join(' and ')}.` : ''} Automatic expansion to future regions is ${releasePlan.availableInNewTerritories ? 'on' : 'off'}. See [release setup](RELEASE_SETUP.md). Version publication and pre-order availability are separate Apple settings.`)
 w()
 w('---')
 w()
@@ -420,7 +424,7 @@ function flag(value) {
 }
 
 if (check) {
-  const current = existsSync(OUT) ? readFileSync(OUT, 'utf8') : null
+  const current = existsSync(OUT) ? readFileSync(OUT, 'utf8').replace(/\r\n/g, '\n') : null
   if (current !== rendered) {
     console.error('✗ docs/APP_STORE_CONNECT_FILL_IN.md is stale.')
     console.error('  The listing in store/ has changed since it was generated.')

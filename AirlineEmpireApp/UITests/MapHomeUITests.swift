@@ -154,6 +154,7 @@ final class MapHomeUITests: AEUITestCase {
                 let control = app.buttons.matching(identifier: label).firstMatch
                 guard require(control, "the \(label) control", timeout: 8),
                       control.isHittable, waitUntilStill(control) else {
+                    checkpoint("AE048-SPEED-\(label)-NOT-READY")
                     XCTFail("The \(label) control was not stable and hittable.")
                     return false
                 }

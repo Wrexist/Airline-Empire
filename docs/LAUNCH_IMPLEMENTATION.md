@@ -1,5 +1,9 @@
 # Launch implementation status
 
+> Historical PR #22 implementation record. PRs #22 and #23 are now merged.
+> The [current release execution record](RELEASE_CONTINUATION_STATUS.md)
+> supersedes the account-access, website-deployment and test assumptions below.
+
 8 September 2026. Implementation branch: `codex/launch-readiness`, PR #22.
 The original audit is preserved in [LAUNCH_AUDIT.md](LAUNCH_AUDIT.md). This file records what has actually changed; the full expansion backlog is not a completed feature list.
 

@@ -96,6 +96,7 @@ final class Entitlements {
     init(defaults: UserDefaults = .standard,
          arguments: [String] = ProcessInfo.processInfo.arguments) {
         self.defaults = defaults
+        #if DEBUG
         if arguments.contains("-AEUITestFree") {
             self.testingOverride = .free
         } else if arguments.contains("-AEUITestPro") {
@@ -103,6 +104,9 @@ final class Entitlements {
         } else {
             self.testingOverride = nil
         }
+        #else
+        self.testingOverride = nil
+        #endif
         self.paywallHistory = Self.loadHistory(from: defaults)
         if let testingOverride { entitlement = testingOverride }
     }

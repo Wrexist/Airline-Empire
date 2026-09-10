@@ -1,5 +1,10 @@
 # Apple Validation — handoff for the first Mac/Xcode session
 
+> Historical first-Mac handoff. The 28 August status below is preserved as
+> history. Current native test, TestFlight, account and device evidence lives
+> in [RELEASE_CONTINUATION_STATUS.md](RELEASE_CONTINUATION_STATUS.md), with
+> the remaining device steps in [RELEASE_OWNER_STEPS.md](RELEASE_OWNER_STEPS.md).
+
 **Status of this document: §2 has now been executed; nothing else has.** On
 2026-08-28, CI run 33213797384 compiled the app with `xcodebuild` on a
 `macos-26` runner — `** BUILD SUCCEEDED **`, Xcode 26.6, iPhoneSimulator 26.5

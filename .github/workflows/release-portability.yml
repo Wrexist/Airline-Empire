@@ -1,0 +1,35 @@
+name: Release portability and public pages
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tooling:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Clean-checkout release selftests
+        run: node scripts/asc/selftest.mjs
+      - name: Exported app inspection selftests
+        run: python -B scripts/test-inspect-release-ipa.py
+      - name: Strict listing validation
+        run: node scripts/asc/validate-metadata.mjs
+      - name: Verify public review pages without authentication
+        run: python -X utf8 scripts/check-release-readiness.py --live

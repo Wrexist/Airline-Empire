@@ -19,7 +19,8 @@
 // Run: node scripts/asc/selftest.mjs
 
 import crypto from 'node:crypto'
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync, readFileSync } from 'node:fs'
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync, readFileSync, copyFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -575,6 +576,24 @@ test('an unused keyword budget is a warning', () => {
     files['keywords.txt'] = 'aviation'
   })
   assertIncludes(validateStore(store).warnings, 'unused', 'a mostly empty keyword field drew no comment')
+})
+
+test('bundle CLI runs validation when launched by an absolute path', () => {
+  const result = spawnSync(process.execPath, [join(REPO_ROOT, 'scripts/asc/check-bundle-config.mjs')], { encoding: 'utf8' })
+  assert(result.status === 0, result.stderr)
+  assert(result.stdout.includes('Bundle configuration is sound'), 'CLI exited without validating the bundle')
+})
+
+test('bundle CLI rejects an invalid manifest from a path containing spaces', () => {
+  const root = join(scratch, 'bundle CLI checkout')
+  mkdirSync(join(root, 'scripts/asc'), { recursive: true })
+  mkdirSync(join(root, 'AirlineEmpireApp'), { recursive: true })
+  const script = join(root, 'scripts/asc/check-bundle-config.mjs')
+  copyFileSync(join(REPO_ROOT, 'scripts/asc/check-bundle-config.mjs'), script)
+  writeFileSync(join(root, 'AirlineEmpireApp/project.yml'), 'name: InvalidBundle\n')
+  const result = spawnSync(process.execPath, [script], { encoding: 'utf8' })
+  assert(result.status === 1, `Invalid bundle unexpectedly returned ${result.status}`)
+  assert(result.stderr.includes('would produce a bundle Apple rejects'), result.stderr)
 })
 
 await asyncTest('the committed fill-in sheet matches store/', async () => {
