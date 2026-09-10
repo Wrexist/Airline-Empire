@@ -56,6 +56,34 @@ permissions:
   contents: read
 
 jobs:
+  inspect-ipad-result:
+    if: inputs.mode == 'plan'
+    runs-on: macos-26
+    timeout-minutes: 10
+    permissions:
+      actions: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 34518221954
+          name: ui-screenshots-ipad
+          path: FailedIPad.xcresult
+      - name: Extract existing result diagnostics
+        run: |
+          mkdir -p inspection
+          xcrun xcresulttool get test-results summary --path FailedIPad.xcresult > inspection/summary.json
+          xcrun xcresulttool get test-results tests --path FailedIPad.xcresult > inspection/tests.json
+          xcrun xcresulttool export diagnostics --path FailedIPad.xcresult --output-path inspection/diagnostics
+          xcrun xcresulttool export attachments --path FailedIPad.xcresult --output-path inspection/attachments
+          cat inspection/summary.json
+          find inspection/diagnostics -type f
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ipad-failure-inspection
+          path: inspection
+          retention-days: 45
   crash-audit:
     name: Read existing beta crash diagnostics
     if: inputs.mode == 'plan'
