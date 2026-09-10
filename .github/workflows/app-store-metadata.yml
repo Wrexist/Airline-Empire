@@ -57,7 +57,7 @@ permissions:
 
 jobs:
   inspect-phone-results:
-    if: ${{ false }}
+    if: inputs.mode == 'plan'
     runs-on: macos-26
     timeout-minutes: 10
     permissions:
@@ -66,24 +66,12 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
-          run-id: 34522453247
-          name: ui-screenshots-shard5
-          path: MapHome.xcresult
-      - uses: actions/download-artifact@v4
-        with:
-          github-token: ${{ github.token }}
-          run-id: 34522453247
-          name: ui-screenshots-shard4
-          path: Arrival.xcresult
-      - uses: actions/download-artifact@v4
-        with:
-          github-token: ${{ github.token }}
-          run-id: 34522453247
-          name: ui-screenshots-shard1
-          path: Campaign.xcresult
+          run-id: 34530096281
+          name: ui-screenshots-shard2
+          path: Economy.xcresult
       - name: Extract existing result diagnostics
         run: |
-          for suite in MapHome Arrival Campaign; do
+          for suite in Economy; do
             mkdir -p "inspection/$suite"
             bundle="$suite.xcresult"
             if [ -d "$bundle/UITestResults.xcresult" ]; then bundle="$bundle/UITestResults.xcresult"; fi
