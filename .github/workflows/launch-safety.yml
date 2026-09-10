@@ -59,6 +59,13 @@ jobs:
             -only-testing:AirlineEmpireUITests/FreeTierUITests \
             -only-testing:AirlineEmpireUITests/MapHomeUITests/testTheMapIsTheHomeScreen \
             CODE_SIGNING_ALLOWED=NO -resultBundlePath LaunchSafety.xcresult
+      - name: Export genuine paywall review screenshots
+        run: python3 scripts/export-iap-review.py AirlineEmpireApp/LaunchSafety.xcresult iap-review
+      - uses: actions/upload-artifact@v4
+        with:
+          name: iap-review-screenshots
+          path: iap-review/
+          retention-days: 45
       - name: Release build ignores test entitlement overrides
         working-directory: AirlineEmpireApp
         run: |

@@ -126,6 +126,7 @@ struct PaywallView: View {
                     footnote: entitlements.footnote(tier)) {
                         withAnimation(AEMotion.selection) { selection = tier }
                     }
+                    .accessibilityIdentifier("ae-paywall-plan-\(tier.rawValue)")
             }
 
             if let failure = entitlements.loadFailure {
