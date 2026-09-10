@@ -15,6 +15,9 @@ gate or a running workflow as a release pass.
   `11ae4d2336073e7c9188e0c46e45ac6242c2a999`; test observation and release
   tooling include the corrections below. Duplicate PR native runs were
   canceled; the manual frozen-candidate runs remain authoritative.
+- Live candidate progress: arrival passed; the economy aircraft-flight case
+  passed in 167.890 seconds and the complete New York journey passed in
+  562.356 seconds. The whole suite remains pending until every job completes.
 - App Store app `6806410538`; marketing version **1.0**, Prepare for Submission.
   No new candidate build has been attached or uploaded yet.
 - Previous candidate `2a7a8e1` failed full CI `34530096281`: economy and the
@@ -185,9 +188,11 @@ gate or a running workflow as a release pass.
   background-assertion failure for map measurement. The original log is
   retained in job `103048518023`; this is not a valid performance baseline.
 - Fresh store captures contain all ten source views on both iPhone and iPad.
-  The phone network and iPad Fleet images were inspected; the sidebar and
-  Fleet selected states are visible. These captures do not replace the failed
-  economy journey.
+  All twenty source images have now been inspected and their checksums
+  verified. The dated validation directory contains `store-capture-review.json`
+  and `visual-review.md`, including a non-blocking Fleet filter wording
+  inconsistency and the limits of screenshot inspection. These captures do
+  not replace the full native journeys or physical acceptance.
 
 ### Earlier native findings (candidate `dff78b4`)
 

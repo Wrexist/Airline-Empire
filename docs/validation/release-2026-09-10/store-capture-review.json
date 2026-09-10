@@ -1,0 +1,191 @@
+{
+  "sourceRun": 34530096286,
+  "sourceCommit": "2a7a8e1",
+  "inspectedAt": "2026-09-10T22:04:48.904304+00:00",
+  "captures": [
+    {
+      "device": "iphone",
+      "file": "06b-briefing.png",
+      "attachment": "STORE-06b-briefing_0_00325989-F54A-4CB4-A83E-218EF6563EFD.png",
+      "sha256": "9809d70bca3ac2d93a1bc945d24d9229acc4dfcfa36d6c3a741cfdaae99ec5ac",
+      "width": 1320,
+      "height": 2868,
+      "visuallyInspected": true
+    },
+    {
+      "device": "iphone",
+      "file": "06-progression.png",
+      "attachment": "STORE-06-progression_0_7195767C-2704-4C55-B77C-2341CC368D7A.png",
+      "sha256": "1ea1a3338eff416537ae6210b732183f552bffa9ab0e95153138b305f360b638",
+      "width": 1320,
+      "height": 2868,
+      "visuallyInspected": true
+    },
+    {
+      "device": "iphone",
+      "file": "05-rivals.png",
+      "attachment": "STORE-05-rivals_0_086AAC23-B868-4DFA-BEC5-DD774602EFE1.png",
+      "sha256": "b1268f277a49304faeff8fe9e44b5eb773cde14c3deadbd4cefb91f2203efbf6",
+      "width": 1320,
+      "height": 2868,
+      "visuallyInspected": true
+    },
+    {
+      "device": "iphone",
+      "file": "05b-world.png",
+      "attachment": "STORE-05b-world_0_D9B179C6-6B92-4F49-A4AC-4CF0B97B551D.png",
+      "sha256": "9366f9344f3a8dc66930f246dc8cef196e27122ea081b424d325bd54a7f1be3f",
+      "width": 1320,
+      "height": 2868,
+      "visuallyInspected": true
+    },
+    {
+      "device": "iphone",
+      "file": "04-finance.png",
+      "attachment": "STORE-04-finance_0_66F909B1-47A0-470A-8053-51283B0D0E3E.png",
+      "sha256": "cb166d32cc435a60e7841e67eb4865021f8794a6379ad2542fe0bbe9a9a53d1e",
+      "width": 1320,
+      "height": 2868,
+      "visuallyInspected": true
+    },
+    {
+      "device": "iphone",
+      "file": "03-route.png",
+      "attachment": "STORE-03-route_0_D2F12CCE-3623-4411-B0F8-746B06FDAB13.png",
+      "sha256": "7cc308d6fe1d75a30cb7ad6bf034d18a2c210bc2088f0af34f3374954645f064",
+      "width": 1320,
+      "height": 2868,
+      "visuallyInspected": true
+    },
+    {
+      "device": "iphone",
+      "file": "03b-routes.png",
+      "attachment": "STORE-03b-routes_0_2DF7F053-299D-4D19-8221-81C67C71623D.png",
+      "sha256": "debde1418bb8abdbf190b3a6a8638b35461df6915d391dc627fbe74a6c7b68f7",
+      "width": 1320,
+      "height": 2868,
+      "visuallyInspected": true
+    },
+    {
+      "device": "iphone",
+      "file": "02b-market.png",
+      "attachment": "STORE-02b-market_0_6A76A679-363E-48D4-BB4E-0C0A2822A6D5.png",
+      "sha256": "a881cddd698808f440f6e19c00cff6f90c73b7812cda4d3259e3e3c5a3168ba5",
+      "width": 1320,
+      "height": 2868,
+      "visuallyInspected": true
+    },
+    {
+      "device": "iphone",
+      "file": "02-fleet.png",
+      "attachment": "STORE-02-fleet_0_709606DB-D878-4D0F-91AB-57FCCD9F841F.png",
+      "sha256": "4ec5f88cb108d93604ba42031614248000f2c87f5ffd0ad9bbc50bbb842b9f5a",
+      "width": 1320,
+      "height": 2868,
+      "visuallyInspected": true
+    },
+    {
+      "device": "iphone",
+      "file": "01-network.png",
+      "attachment": "STORE-01-network_0_D5B049A2-690A-496F-9BEC-49B4936084FB.png",
+      "sha256": "087428b60cc846dca6bf5abc5386561f7c731861c01d5d8844982bfd810c9675",
+      "width": 1320,
+      "height": 2868,
+      "visuallyInspected": true
+    },
+    {
+      "device": "ipad",
+      "file": "06b-briefing.png",
+      "attachment": "STORE-06b-briefing_0_95ADA7A7-DC91-43A9-9730-B587B293753A.png",
+      "sha256": "92e1fabd281f6c76791a10860674cf0af8a90cdaca3cdb772b0f5c2dbf52b02f",
+      "width": 2064,
+      "height": 2752,
+      "visuallyInspected": true
+    },
+    {
+      "device": "ipad",
+      "file": "06-progression.png",
+      "attachment": "STORE-06-progression_0_013387C2-F7A2-47F8-8E2E-6E4E77BC1927.png",
+      "sha256": "1fa6fe126e8fd8e8a72374494ea455023d773efff192a09c9eafb1cfa3a44bc2",
+      "width": 2064,
+      "height": 2752,
+      "visuallyInspected": true
+    },
+    {
+      "device": "ipad",
+      "file": "05-rivals.png",
+      "attachment": "STORE-05-rivals_0_71B1CF8B-AC22-4DCE-BD8B-8280BB7F18FD.png",
+      "sha256": "3037c8761fc2bcaca41b6ea1476230b6d42b3712a97c51fa0c2d4d28a936bb47",
+      "width": 2064,
+      "height": 2752,
+      "visuallyInspected": true
+    },
+    {
+      "device": "ipad",
+      "file": "05b-world.png",
+      "attachment": "STORE-05b-world_0_6A415624-F12E-4BDA-B97A-639A342BE567.png",
+      "sha256": "b75e335ebf278f4b82cddc8afb4ace58972383e56b6c4c9a9c64f1d121f90b5e",
+      "width": 2064,
+      "height": 2752,
+      "visuallyInspected": true
+    },
+    {
+      "device": "ipad",
+      "file": "04-finance.png",
+      "attachment": "STORE-04-finance_0_BBD5BF3E-8291-45E3-9DD4-DAC9ED5DF74C.png",
+      "sha256": "79dfaaeeff5b15c46a24dbe8e344bb4570505217bd72bdb51cf5bb8b1594666b",
+      "width": 2064,
+      "height": 2752,
+      "visuallyInspected": true
+    },
+    {
+      "device": "ipad",
+      "file": "03-route.png",
+      "attachment": "STORE-03-route_0_5119B374-98ED-49E4-B88F-B8F55FF45788.png",
+      "sha256": "fcba90a63c069ee7a8c4cb170546055145801f3f958c1a25cef13102e0bfa7c4",
+      "width": 2064,
+      "height": 2752,
+      "visuallyInspected": true
+    },
+    {
+      "device": "ipad",
+      "file": "03b-routes.png",
+      "attachment": "STORE-03b-routes_0_7863DD55-44E9-4B35-85AA-5EF0963155DF.png",
+      "sha256": "004f128258d054f72c6361a4e02dd34d5893cf094d9f18c28d342ff088aba1f3",
+      "width": 2064,
+      "height": 2752,
+      "visuallyInspected": true
+    },
+    {
+      "device": "ipad",
+      "file": "02b-market.png",
+      "attachment": "STORE-02b-market_0_9391D031-B54A-4C83-BFE7-F1AAEFA4B108.png",
+      "sha256": "77129ef0a20de353cd31a447885550966a84b1a6425a5769d6522342b9cb617b",
+      "width": 2064,
+      "height": 2752,
+      "visuallyInspected": true
+    },
+    {
+      "device": "ipad",
+      "file": "02-fleet.png",
+      "attachment": "STORE-02-fleet_0_C1E11355-FEAA-402F-A687-92172127B490.png",
+      "sha256": "eac05936feca68cf1bae3067a44045a83c5611b618e5ca265da59ddf05aaf492",
+      "width": 2064,
+      "height": 2752,
+      "visuallyInspected": true
+    },
+    {
+      "device": "ipad",
+      "file": "01-network.png",
+      "attachment": "STORE-01-network_0_6B39A7D4-4523-48C8-B045-3A455A4C589A.png",
+      "sha256": "a2a018078cdc83d42b519a633b9389b26d40299e02dd71a035f1c016b111f140",
+      "width": 2064,
+      "height": 2752,
+      "visuallyInspected": true
+    }
+  ],
+  "limitations": [
+    "Default dark appearance and source capture sizes only; physical accessibility, touch and audio acceptance remain pending.",
+    "Fleet Flying filter includes assigned aircraft in maintenance; summary excludes them. See visual-review.md."
+  ]
+}
