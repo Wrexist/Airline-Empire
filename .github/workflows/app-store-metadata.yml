@@ -56,6 +56,29 @@ permissions:
   contents: read
 
 jobs:
+  crash-audit:
+    name: Read existing beta crash diagnostics
+    if: inputs.mode == 'plan'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fetch technical crash evidence
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+        run: node scripts/asc/audit-beta-crashes.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apple-beta-crash-audit
+          path: apple-audit/
+          retention-days: 45
   # Kept for dispatch runs only, where it does something CI cannot: validation
   # WITHOUT --allow-placeholders, so a listing still containing REPLACE_ME
   # never reaches Apple.
