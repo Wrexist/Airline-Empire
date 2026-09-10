@@ -9,31 +9,13 @@ Use [the current execution record](RELEASE_CONTINUATION_STATUS.md) for the
 candidate's actual build/upload state. Do not treat the old TestFlight
 1.0.14 (4) installation as the new release candidate.
 
-## 1. Allow the three prepared purchase screenshots to upload
+All three purchase review images are now uploaded through Apple's API, with
+processed checksums and product attachments verified. No Chrome setting or
+manual image upload is needed. Weekly, Yearly, Lifetime and the subscription
+group are already in one **unsubmitted iOS draft**. Its remaining Apple
+validation message is to add the app version.
 
-Chrome's extension currently refuses local-file uploads. The images are
-already captured from the real app and visually checked.
-
-1. In Chrome, open `chrome://extensions`.
-2. Find the ChatGPT browser extension and click **Details**.
-3. Turn on **Allow access to file URLs**, then tell the agent it is enabled.
-   The agent can finish the three uploads and their saved-state verification.
-
-Alternatively, upload them yourself in App Store Connect:
-
-| Product page | File in this repository |
-|---|---|
-| [Pro Weekly](https://appstoreconnect.apple.com/apps/6806410538/distribution/subscriptions/6810782782) | `docs/validation/release-2026-09-10/iap-review/weekly.png` |
-| [Pro Yearly](https://appstoreconnect.apple.com/apps/6806410538/distribution/subscriptions/6810785364) | `docs/validation/release-2026-09-10/iap-review/yearly.png` |
-| [Pro Lifetime](https://appstoreconnect.apple.com/apps/6806410538/distribution/iaps/6810786506) | `docs/validation/release-2026-09-10/iap-review/lifetime.png` |
-
-On each page, scroll to **Review Information → Screenshot → Choose File**,
-select the matching image, wait for its thumbnail and click **Save**.
-Use the Review Information slot; the separate optional promotional image
-expects a different asset. Apple explicitly reported the missing review
-screenshot when the agent validated Weekly's **Add for Review** action.
-
-## 2. Upgrade your existing TestFlight installation
+## 1. Upgrade your existing TestFlight installation
 
 After a new candidate is uploaded, processed and assigned to your existing
 **Tester** group:
@@ -49,7 +31,7 @@ After a new candidate is uploaded, processed and assigned to your existing
 The agent can build, upload, assign and attach the candidate. Installing and
 operating your physical phone cannot be done from this Windows workspace.
 
-## 3. Play one complete free session
+## 2. Play one complete free session
 
 On your iPhone 15, record the iOS version and candidate build, then:
 
@@ -67,7 +49,7 @@ Pass means no crash, lost progress, wrong campaign, blocked control or
 unexplained first-flight step. The original TestFlight founding crash was
 diagnosed as BUG-008 and fixed; this hardware journey confirms the candidate.
 
-## 4. Verify Pro and purchase trust
+## 3. Verify Pro and purchase trust
 
 Reconnect and open **Home briefing → Settings → Airline Empire Pro**.
 Use TestFlight/sandbox transactions and confirm the Apple sheet identifies
@@ -86,11 +68,43 @@ the test environment. Check the localized price before confirming.
 
 The repository's StoreKit tests already exercise transaction states. Real
 Apple storefront eligibility, purchase/restore and device relaunch still
-require a device. For controlled expiry, refund and pending-approval cases,
-use a sandbox tester or the repository's Xcode StoreKit test configuration;
-the agent can prepare the exact scenario after the first device results.
+require a device. Ordinary TestFlight subscriptions renew daily, up to six
+times. For faster, controlled device checks, use a dedicated Sandbox Apple
+Account as described below. [Apple's TestFlight purchase guidance](https://developer.apple.com/help/app-store-connect/test-a-beta-version/testing-subscriptions-and-in-app-purchases-in-testflight).
 
-## 5. Complete the device and accessibility checks
+1. In App Store Connect, open **Users and Access → Sandbox**. Select your
+   dedicated tester, or follow **Create Sandbox Apple Account** with an
+   address and password you control. Keep its credentials private.
+2. Set **Subscription Renewal Rate → Every 3 Minutes → Save**. In this mode,
+   Weekly renews every three minutes; Yearly every 36 minutes. Use an account
+   without Lifetime ownership for expiry checks, since Lifetime correctly
+   preserves Pro after a subscription expires.
+3. On the test device, sign out under **Settings → your name → Media &
+   Purchases**, then sign into the sandbox account under **Settings →
+   Developer → Sandbox Apple Account**. Install/update the candidate through
+   TestFlight before switching accounts. Follow Apple's linked sign-in guide
+   if Developer settings are not available on your device.
+4. Buy Weekly in the game. Record the intro, renewal price and Pro access.
+   Open **Settings → Developer → Sandbox Account → Manage → Account Settings**
+   and turn **Allow Purchases & Renewals** off. Wait for renewal to fail.
+   After paid access and any configured grace period end, verify new Pro
+   access stops while existing airlines and earned assets remain usable.
+5. Turn **Allow Purchases & Renewals** back on. Verify successful renewal or
+   repurchase restores access, including after closing and reopening the game.
+   Test Lifetime separately, then Restore Purchases with the same account.
+6. For an interrupted purchase, enable **Interrupt Purchases for This Tester**
+   in the tester's App Store Connect settings. Attempt a purchase and verify
+   the game grants nothing before completion. Finish the sandbox resolution
+   or turn the setting off, then verify completion unlocks Pro.
+7. Restore the sandbox settings and your normal Media & Purchases sign-in
+   after testing. Record failures before resetting any test purchase history.
+
+The renewal and interruption controls are documented in
+[Apple's sandbox settings guide](https://developer.apple.com/help/app-store-connect/test-in-app-purchases/manage-sandbox-apple-account-settings);
+the failure/recovery sequence follows
+[Apple's billing test guide](https://developer.apple.com/documentation/storekit/testing-failing-subscription-renewals-and-in-app-purchases).
+
+## 4. Complete the device and accessibility checks
 
 The detailed matrix is [section E of the release checklist](../tasks/RELEASE_CHECKLIST.md).
 At minimum, record results on the current iPhone, a small supported iPhone
@@ -115,7 +129,7 @@ Use a tester with the missing hardware if you do not own it.
    [performance measurement guidance](PERFORMANCE.md). Record measured values;
    simulator timings are not a hardware frame-rate certification.
 
-## 6. Return an easy-to-use result
+## 5. Return an easy-to-use result
 
 Copy this for each device; attach a screenshot or TestFlight feedback for failures:
 
@@ -136,17 +150,19 @@ The agent can triage these results, fix code, rebuild, complete Apple draft
 submission fields and track review. No new game license, product creation,
 banking change or tester invitation is needed for your existing account.
 
-## 7. Final submission and launch
+## 6. Final submission and launch
 
 After the recorded candidate passes the mandatory gates, submit the accepted
-app and the three first purchases together. Address any Apple feedback on
+app, the three first purchases and their subscription group together. Address any Apple feedback on
 that exact build. Once approved, recheck **173 regions**, the two exclusions
 and **16 October 2026** before the manual publication action. Apple currently
 states that manual release publishes the pre-order listing; approval alone
 does not mean the game is downloadable everywhere.
 
 If continuing manually: App Store Connect → Airline Empire → Distribution →
-version 1.0 → select the accepted build → **Add for Review**. Add each prepared
-purchase to the same draft submission, inspect all four items, then submit.
+version 1.0 → select the accepted build → **Add for Review** → choose the
+existing iOS draft started on 10 September at 23:40 Stockholm time. Verify
+the app, Weekly, Yearly, Lifetime and Airline Empire Pro group are together
+(five items), then submit after device acceptance passes.
 After approval, follow the release controls for the verified pre-order plan.
 Never substitute a different build simply because it is already selectable.

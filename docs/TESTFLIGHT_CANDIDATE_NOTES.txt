@@ -1,0 +1,11 @@
+Please test this release candidate on your iPhone or iPad.
+
+Before updating, export any important saved airlines to Files. Update the existing installation, then confirm each airline keeps its name, date, cash, fleet and routes. Save, close and reopen it.
+
+Start a new Founder airline offline. Follow Home's advice, lease an aircraft, open and assign its route, watch a departure and arrival, and advance to the first monthly statement. Try selecting an aircraft, Follow, and interrupting Follow with a pan or pinch.
+
+Reconnect and test Pro using TestFlight's sandbox purchases: Weekly, Yearly, Lifetime, cancellation and Restore Purchases. Check that the displayed billing period and price are clear. Existing saves and earned assets must remain safe when access changes.
+
+Try larger text, VoiceOver, light/dark appearance, Reduce Motion, iPad rotation, sound on/off, and repeated background/relaunch. Report crashes, blocked controls, lost progress, confusing advice or long stalls.
+
+Send TestFlight feedback with your device, OS version, build number, exact taps, expected result and what happened. Include a screenshot for visual failures. The detailed owner checklist also covers controlled renewal and expiry testing.

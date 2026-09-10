@@ -41,7 +41,8 @@ Check a box only when its acceptance evidence is linked. Apple account tasks req
 - [x] **REL-03 account fields:** Separate US/UK official privacy URLs saved; existing published label is Data Not Collected. Final archive privacy validation remains required.
 - [x] **REL-04 account fields:** App price Free; weekly/yearly auto-renewable and lifetime non-consumable IDs created with documented prices. Weekly/yearly share group level 1. US/UK localizations and Family Sharing match the plan.
 - [ ] Verify localized prices, regional availability, weekly introductory offer and eligibility behavior; record Apple product states.
-- [ ] Supply a genuine paywall screenshot for purchase review and attach required first IAP/subscription submissions with the app version.
+- [x] Supply genuine review images for Weekly, Yearly and Lifetime; Apple API run `34533267128` verified COMPLETE, checksums and product attachments. Add all three purchases and the subscription group to one unsubmitted iOS draft.
+- [ ] Add the accepted app version to that draft and verify all five items before submission.
 - [ ] **REL-09:** Recheck uploaded screenshot slots/order/UK inheritance, copy, contact, age rating, content rights, export compliance and applicable agreements/trader/regional/payment requirements.
 - [ ] **REL-01:** Archive/upload the final SHA with a fresh build number; wait for successful processing; record SHA/version/build/processing evidence.
 - [ ] Attach the processed build to the intended App Store version and install it from TestFlight.

@@ -3,6 +3,25 @@
 Release owner: Isac Molin. The current release identity and evidence belong in
 [RELEASE_CONTINUATION_STATUS.md](RELEASE_CONTINUATION_STATUS.md).
 
+## Purchase review-image receipt
+
+Apple API run `34533267128` uploaded the three inspected paywall captures.
+All three assets reached COMPLETE with matching source checksums and correct
+product attachments; see `validation/release-2026-09-10/apple-iap-review-images.json`.
+Weekly, Yearly, Lifetime and Airline Empire Pro group are in one unsubmitted
+iOS draft. Add the accepted app version to that same draft after processing.
+
+`scripts/asc/upload-iap-review.mjs --check` verifies the local PNGs against
+the inspected manifest without credentials. Its default authenticated mode
+is read-only; `--apply` fills missing slots and verifies processing. Matching
+complete images are left alone; different or incomplete existing assets stop
+the operation for inspection. The metadata workflow's `review_images=true`
+mode skips listing/pricing operations. No Chrome file permission is involved.
+
+The implementation uses Apple's documented
+[subscription review-image API](https://developer.apple.com/documentation/appstoreconnectapi/subscription-app-store-review-screenshots)
+and [in-app purchase review-image API](https://developer.apple.com/documentation/appstoreconnectapi/in-app-purchase-app-store-review-screenshots).
+
 ## Before submitting
 
 Record the accepted Git SHA, marketing version/build, App Store build ID,
