@@ -21,3 +21,15 @@ evidence, not passing acceptance screenshots.
 The original native artifacts also preserve the World-tab failure screenshot:
 World was already visibly selected. The next candidate corrects observation
 and selection handling; a fresh full test run must establish the outcome.
+
+## Subsequent economy navigation failure on dff78b4
+
+CI [34525956478](https://github.com/Wrexist/Airline-Empire/actions/runs/34525956478)
+passed every job except economy, which passed four of five cases.
+`economy-tab-selection.png` is the unaltered 360-pixel CI checkpoint
+`KEY-NO-AIRLINE-SECTION-Routes` from job `103034830762`. Home remains selected
+after the log records an Airline tap. One route and one aircraft are visible;
+the route command completed, but navigation did not. The first-month test passed.
+The new helper waits for the route sheet's disappearance and selected-tab state
+before allowing the journey to continue. This screenshot documents the failure;
+the new candidate still requires fresh native validation.

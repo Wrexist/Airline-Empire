@@ -8,13 +8,14 @@ gate or a running workflow as a release pass.
 
 - PR #23 merged to main at `e11cea4b2bfe3407aefbf19bcbc2a7d1a682364d`.
 - Release fixes: [PR #24](https://github.com/Wrexist/Airline-Empire/pull/24),
-  candidate `dff78b43119da654d2ea5518a96b0d472944e07a`, also frozen on
-  `codex/release-candidate-2026-09-10`. Shipping app/Core source is unchanged
+  next candidate includes the tab-selection correction below and the verified
+  account handoff. `codex/release-candidate-2026-09-10` records the exact commit
+  under validation. Shipping app/Core source is unchanged
   from `11ae4d2336073e7c9188e0c46e45ac6242c2a999`; UI tests and release
-  tooling include the corrections below. Full CI `34525956478` and Launch
-  safety `34525959630` are running for the frozen commit; portability run
-  `34525962559` passed on Windows and Linux. Duplicate PR-triggered native
-  runs were canceled rather than repeating the same candidate checks.
+  tooling include the corrections below. Previous candidate `dff78b4` failed
+  full CI `34525956478` on one economy navigation case; every other job passed.
+  Launch safety `34525959630` and portability `34525962559` passed. The failed
+  full CI stopped the upload watcher; no archive/upload was dispatched.
 - App Store app `6806410538`; marketing version **1.0**, Prepare for Submission.
   No new candidate build has been attached or uploaded yet.
 - Full execution sequence: [release plan](RELEASE_PLAN.md).
@@ -112,6 +113,12 @@ gate or a running workflow as a release pass.
   guard and safe previous-day accessor are present; their regression suite
   passes in the current 523-test Release run. Sanitized evidence is in
   `validation/release-2026-09-10/apple-beta-crashes/beta-crashes.json`.
+- A fresh TestFlight group check attributes both historical crash counts to
+  1.0.0 (1), with three sessions. Builds 1.0.1 (2) and 1.0.11 (3) show one
+  and four sessions respectively and dashes for crashes; 1.0.14 (4) shows
+  dashes for both. Dashes are not a device-acceptance result. The existing
+  one-owner Tester group uses automatic distribution for Xcode builds;
+  assignment of the new processed candidate still needs verification.
   Hardware confirmation remains required on the new candidate.
 - Current full CI `34518221954` has an iPad launch failure. The retained result
   bundle was exported using diagnostic run `34520664211`: the crash is
@@ -137,7 +144,24 @@ gate or a running workflow as a release pass.
 
 ## Remaining release gates
 
-### Current native findings (candidate `51b295b`)
+### Latest native findings (candidate `dff78b4`)
+
+- Full CI `34525956478` passed Core, iPad, arrival, campaign, map-home and
+  shell/map. Economy passed four of five cases, including the first-month
+  statement; `testNewYorkAdviceIsWorthFollowing` failed at navigation to Routes.
+- Its original `KEY-NO-AIRLINE-SECTION-Routes` screenshot shows Home still
+  selected, one opened route and one aircraft. The log records an Airline tap,
+  but `openTab` returned without checking that selection changed. This is
+  evidence of a missed navigation transition, not an economy balance failure.
+- The next candidate waits for the route sheet to disappear, then requires
+  actual selected-tab state. It permits two total idempotent navigation taps
+  and captures each unsuccessful attempt. Route creation and time advancement
+  are not repeated. The original journey assertions remain in place.
+- Launch safety passed all 523 Release Core tests, hosted save/StoreKit tests,
+  genuine paywall captures, map-home on iOS 26.2, and Release override isolation.
+  These passes do not override the failed full CI gate or prove device acceptance.
+
+### Earlier native findings (candidate `51b295b`)
 
 - Full CI `34522453247` passed iPad and shell/map, but failed map-home,
   arrival and two campaign cases. Core Debug now passes, including the

@@ -1365,21 +1365,32 @@ class AEUITestCase: XCTestCase {
     /// and fail on a screen that is perfectly healthy.
     func openTab(_ title: String) {
         closeBriefing()
-        guard let button = waitForTab(title, timeout: 15) else {
+        guard waitForTab(title, timeout: 15) != nil else {
             capture(Self.logPrefix + "MISSING-the \(title) tab")
             XCTFail("The \(title) tab never appeared in any shape. Screenshot attached.")
             return
         }
-        if button.isSelected { return }
-        guard button.isHittable, waitUntilStill(button),
-              let current = tabButton(title), current.isHittable else {
-            checkpoint("TAB-NOT-HITTABLE-\(title)")
-            XCTFail("The \(title) tab did not settle into a hittable control.")
-            return
+        for attempt in 1...2 {
+            guard let target = tabButton(title) else { break }
+            if target.isSelected { return }
+            guard target.isHittable, waitUntilStill(target),
+                  let current = tabButton(title), current.isHittable else {
+                checkpoint("TAB-NOT-HITTABLE-\(title)")
+                XCTFail("The \(title) tab did not settle into a hittable control.")
+                return
+            }
+            // A sheet can finish dismissing while XCTest resolves a tap.
+            // Confirm selection before returning; retry only this idempotent
+            // navigation action, never the purchase/route command before it.
+            current.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            let selected = XCTNSPredicateExpectation(predicate: NSPredicate { [self] _, _ in
+                tabButton(title)?.isSelected == true
+            }, object: nil)
+            if XCTWaiter.wait(for: [selected], timeout: 10) == .completed { return }
+            if tabButton(title)?.isSelected == true { return }
+            checkpoint("TAB-\(title)-ATTEMPT-\(attempt)")
         }
-        // Resolve and tap the current frame after a sheet dismissal. A
-        // retained synthetic Home tap left the arrival journey on Fleet.
-        current.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTFail("The \(title) tab did not become selected after two navigation attempts.")
     }
 
     // MARK: The briefing (AE-048)
