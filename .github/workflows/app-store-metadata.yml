@@ -57,7 +57,7 @@ permissions:
 
 jobs:
   inspect-ipad-result:
-    if: inputs.mode == 'plan'
+    if: ${{ false }}
     runs-on: macos-26
     timeout-minutes: 10
     permissions:
@@ -101,7 +101,10 @@ jobs:
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
-        run: node scripts/asc/audit-beta-crashes.mjs
+        run: |
+          node scripts/asc/check-signing-eligibility.mjs
+          node scripts/asc/preflight.mjs --version 1.0.0
+          node scripts/asc/audit-beta-crashes.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: apple-beta-crash-audit
