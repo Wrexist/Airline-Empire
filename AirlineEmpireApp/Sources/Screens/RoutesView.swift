@@ -35,11 +35,7 @@ struct RoutesList: View {
                 } else {
                     List {
                         if cards.isEmpty {
-                            EmptyStateView(icon: "magnifyingglass",
-                                           title: "No matches",
-                                           message: "No route matches “\(search)”.",
-                                           actionTitle: "Clear search",
-                                           action: { search = "" })
+                            RouteSearchEmptyState(search: $search)
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
                         }
@@ -133,6 +129,21 @@ struct RoutesList: View {
         if card.thisMonthProfit.isNegative { return 1 }
         if card.loadFactor < 0.5 { return 2 }
         return 3
+    }
+}
+
+/// Dismiss search from inside its environment so the next route tap navigates.
+private struct RouteSearchEmptyState: View {
+    @Environment(\.dismissSearch) private var dismissSearch
+    @Binding var search: String
+
+    var body: some View {
+        EmptyStateView(icon: "magnifyingglass", title: "No matches",
+                       message: "No route matches “\(search)”.",
+                       actionTitle: "Clear search") {
+            search = ""
+            dismissSearch()
+        }
     }
 }
 

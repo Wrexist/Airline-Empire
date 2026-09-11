@@ -1,0 +1,74 @@
+name: Launch clips and search regression
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: launch-clips-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [iphone, ipad]
+    runs-on: macos-26
+    timeout-minutes: 35
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Generate earned campaign
+        working-directory: AirlineEmpireCore
+        run: swift run -c release ae-rival-probe 2039 1825 ARN LHR-CDG:0.88 --snapshot-hour 12 --save ../AirlineEmpireApp/UITests/Fixtures/store-campaign.json > ../launch-ledger.txt
+      - name: Generate project
+        working-directory: AirlineEmpireApp
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Select simulator
+        id: sim
+        env:
+          DEVICE: ${{ matrix.device }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+          devices = json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','--json']))['devices']
+          matches = [d for runtime, ds in devices.items() if runtime.endswith('iOS-26-2') for d in ds
+                     if d.get('isAvailable') and ((os.environ['DEVICE']=='iphone' and d['name']=='iPhone 17 Pro Max')
+                     or (os.environ['DEVICE']=='ipad' and 'iPad Pro' in d['name'] and '13-inch' in d['name']))]
+          if not matches: raise SystemExit('Required simulator missing')
+          device = matches[0]['udid']
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f: f.write('id='+device+'\n')
+          subprocess.run(['xcrun','simctl','boot',device],check=True)
+          subprocess.run(['xcrun','simctl','bootstatus',device,'-b'],check=True)
+          subprocess.run(['xcrun','simctl','status_bar',device,'override','--time','9:41','--dataNetwork','wifi','--wifiMode','active','--wifiBars','3','--batteryState','charged','--batteryLevel','100'],check=True)
+          PY
+      - name: Build native app and tests
+        working-directory: AirlineEmpireApp
+        run: xcodebuild build-for-testing -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -configuration Debug -derivedDataPath LaunchDerived -destination 'platform=iOS Simulator,id=${{ steps.sim.outputs.id }}' CODE_SIGNING_ALLOWED=NO
+      - name: Verify one-tap route navigation after empty search
+        working-directory: AirlineEmpireApp
+        run: |
+          set -o pipefail
+          xcodebuild test-without-building -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -configuration Debug -derivedDataPath LaunchDerived -destination 'platform=iOS Simulator,id=${{ steps.sim.outputs.id }}' -parallel-testing-enabled NO -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testDetailScreensAndSettingsRender -resultBundlePath SearchRegression.xcresult CODE_SIGNING_ALLOWED=NO 2>&1 | tee ../search-regression.log
+      - name: Record actual iPhone gameplay
+        if: matrix.device == 'iphone'
+        working-directory: AirlineEmpireApp
+        run: python3 ../scripts/capture-launch-video.py '${{ steps.sim.outputs.id }}' ../launch-capture
+      - name: Export review screenshots
+        if: always()
+        run: |
+          mkdir -p launch-capture/search-screenshots
+          xcrun xcresulttool export attachments --path AirlineEmpireApp/SearchRegression.xcresult --output-path launch-capture/search-screenshots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: launch-review-${{ matrix.device }}
+          path: |
+            launch-capture/
+            launch-ledger.txt
+            search-regression.log
+          retention-days: 14
