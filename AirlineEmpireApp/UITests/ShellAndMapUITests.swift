@@ -598,6 +598,15 @@ final class ShellAndMapUITests: AEUITestCase {
         XCTAssertTrue(panel.waitForExistence(timeout: 5),
                       "The map reported a selection but no panel opened")
         checkpoint("86-airport-selected")
+        let expand = app.buttons["ae-airport-expand"]
+        guard require(expand, "the airport expansion action") else { return }
+        expand.tap()
+        let create = app.buttons["ae-airport-create-route"]
+        guard require(create, "route creation in the expanded airport") else { return }
+        XCTAssertLessThan(panel.frame.maxY - create.frame.maxY, 44,
+                          "An airport with no routes should fit its actions without an empty scroll area.")
+        checkpoint("86b-airport-expanded-fits-content")
+        expand.tap()
 
         // Zoomed out one more time with the selection held: this is the frame
         // where the hub rings on the other global airports are visible beside

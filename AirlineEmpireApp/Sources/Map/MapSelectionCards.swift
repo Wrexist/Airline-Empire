@@ -127,10 +127,14 @@ struct MapAirportCard: View {
             .accessibilityIdentifier("ae-airport-expand")
             .accessibilityValue(expanded ? "Expanded" : "Collapsed")
             if expanded {
-                ScrollView {
+                ViewThatFits(in: .vertical) {
                     VStack(alignment: .leading, spacing: AETheme.spacingS) { actions }
+                        .fixedSize(horizontal: false, vertical: true)
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: AETheme.spacingS) { actions }
+                    }
+                    .frame(maxHeight: 220)
                 }
-                .frame(maxHeight: 220)
                 .transition(.opacity)
             }
         }
