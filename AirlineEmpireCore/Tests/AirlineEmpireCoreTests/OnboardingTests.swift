@@ -111,7 +111,7 @@ struct OnboardingTests {
             kind: .revenue, from: route.origin, to: route.destination,
             distanceKm: route.distanceKm, flightMinutes: 90,
             scheduledDeparture: state.clock.now)
-        for phase: FlightPhase in [.scheduled, .boarding] {
+        for phase in [FlightPhase.scheduled, .boarding] {
             state.flights[id]?.phase = phase
             let model = try #require(state.onboardingModel(catalog: engine.catalog, suggestionLimit: 0))
             #expect(model.nextStep == .watchFirstFlight)
