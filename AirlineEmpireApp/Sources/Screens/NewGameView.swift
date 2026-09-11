@@ -88,8 +88,17 @@ struct NewGameView: View {
                     }
                     if !slots.isEmpty { continueSection }
                     nameField
-                    liverySection
-                    Button {
+                    homeSection
+                    difficultySection
+                    DisclosureGroup("Personalize your airline") {
+                        liverySection.padding(.top, AETheme.spacingS)
+                    }
+                    .padding(AETheme.spacingM)
+                    .aeGlass(in: AETheme.cardShape)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("ae-setup-personalize")
+                    DisclosureGroup("Advanced options & backups") {
+                        Button {
                         if entitlements.access.allowsNewSave(existingSaves: slots.count) {
                             showingImport = true
                         } else {
@@ -100,9 +109,12 @@ struct NewGameView: View {
                     }
                     .buttonStyle(.aeTertiary)
                     .accessibilityIdentifier("ae-import-campaign")
-                    homeSection
-                    difficultySection
-                    seedSection
+                        seedSection
+                    }
+                    .padding(AETheme.spacingM)
+                    .aeGlass(in: AETheme.cardShape)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("ae-setup-advanced")
                     // Room for the pinned button, so the last card is never
                     // trapped underneath it.
                     Color.clear.frame(height: AETheme.spacingL)

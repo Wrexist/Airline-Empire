@@ -235,6 +235,9 @@ struct GameShell: View {
                 .tint(AETheme.accent)
             }
         }
+        .onChange(of: controller.mapRouteRequest) { _, request in
+            if request != nil { selection = .home }
+        }
         // Above whichever tab is open: a milestone should not depend on the
         // player happening to be on the Home screen when it lands.
         .overlay(alignment: .top) {

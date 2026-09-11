@@ -21,6 +21,21 @@ import XCTest
 /// one after another.
 final class ShellAndMapUITests: AEUITestCase {
 
+    func testOptionalSetupAndFirstFlightProgress() throws {
+        launch(appearance: .light)
+        XCTAssertFalse(app.buttons["ae-import-campaign"].exists)
+        let advanced = app.buttons["Advanced options & backups"]
+        guard scrollUntil(advanced, "advanced setup options") else { return }
+        advanced.tap()
+        XCTAssertTrue(app.buttons["ae-import-campaign"].waitForExistence(timeout: 5))
+        checkpoint("GUIDE-optional-setup")
+        advanced.tap()
+        guard foundAirline() else { return }
+        XCTAssertTrue(app.descendants(matching: .any)["ae-first-flight-progress"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Airline overview"].exists)
+        checkpoint("GUIDE-first-flight-home")
+    }
+
     func testAirportRouteFiltersAndContextualAircraftAcquisition() throws {
         launch(appearance: .light)
         guard foundAirline() else { return }
@@ -64,7 +79,18 @@ final class ShellAndMapUITests: AEUITestCase {
         guard leaseAnAircraft(proof: .routeAssignment) else { return }
         XCTAssertTrue(app.buttons["Unassign"].exists, "The acquired aircraft must be assigned to the selected route.")
         checkpoint("SMART-leased-and-assigned")
-        finishRouteSetup()
+        let viewMap = app.buttons["ae-route-view-map"]
+        for _ in 0..<6 {
+            if viewMap.isHittable { break }
+            app.swipeDown()
+        }
+        guard require(viewMap, "the route's direct map action") else { return }
+        checkpoint("GUIDE-assigned-route-status")
+        viewMap.tap()
+        XCTAssertTrue(map.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["ae-route-setup-done"].waitForNonExistence(timeout: 10))
+        XCTAssertTrue((map.value as? String ?? "").contains("Selected route"))
+        checkpoint("GUIDE-returned-to-selected-route")
     }
 
 

@@ -915,6 +915,7 @@ struct AircraftShopSheet: View {
                    let player = snapshot.playerAirline {
                     List {
                         Section {
+                            FirstFlightProgress()
                             wallet(snapshot: snapshot, player: player.id)
                         }
                         if !snapshot.routes(of: player.id).isEmpty {
@@ -1300,6 +1301,12 @@ struct AircraftShopSheet: View {
                 .foregroundStyle(AETheme.mutedText)
                 .fixedSize(horizontal: false, vertical: true)
 
+            if !isLocked, selectedRouteID != nil {
+                Label("Fits this route's range and runways", systemImage: "checkmark.circle")
+                    .font(.caption).foregroundStyle(AETheme.positive)
+                Text("Compare seats with demand. Best fit balances capacity, then monthly lease cost.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             if isLocked {
                 // A locked row used to show nothing at all, so the player
                 // could not plan toward it.

@@ -86,7 +86,7 @@ extension GameState {
         }
 
         let next = OnboardingModel.Step.allCases.first { !completed.contains($0) }
-        let suggestions = completed.contains(.openRoute)
+        let suggestions = completed.contains(.openRoute) || suggestionLimit <= 0
             ? []
             : firstRouteSuggestions(for: player, catalog: catalog,
                                     limit: suggestionLimit)

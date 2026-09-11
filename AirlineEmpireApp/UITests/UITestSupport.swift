@@ -1303,6 +1303,9 @@ class AEUITestCase: XCTestCase {
         // seed is pinned by the Core twin (FirstEraCampaignTests), so the
         // simulator walks the world Linux already proved.
         if let seed {
+            let advanced = app.buttons["Advanced options & backups"]
+            guard scrollUntil(advanced, "advanced setup options") else { return false }
+            advanced.tap()
             let disclosure = app.buttons["World seed"]
             if disclosure.waitForExistence(timeout: 5) {
                 let field = app.textFields["Seed number"]
