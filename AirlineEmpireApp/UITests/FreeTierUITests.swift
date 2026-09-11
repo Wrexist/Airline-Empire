@@ -15,7 +15,7 @@ final class FreeTierUITests: AEUITestCase {
         try verifyPaywall(arguments: [
             "-UIPreferredContentSizeCategoryName",
             "UICTContentSizeCategoryAccessibilityL",
-        ], capturePrefix: "KEY-paywall-accessibility-")
+        ], capturePrefix: "KEY-00-paywall-accessibility-")
     }
 
     private func verifyPaywall(arguments: [String], capturePrefix: String) throws {
@@ -43,12 +43,12 @@ final class FreeTierUITests: AEUITestCase {
         _ = waitUntilStill(buy)
         XCTAssertTrue(app.frame.contains(buy.frame),
                       "The whole purchase button must fit inside the initial viewport")
-        capture("KEY-\(capturePrefix)on-open")
+        capture("KEY-00-\(capturePrefix)on-open")
 
         let paywallScroll = app.scrollViews["ae-paywall-content"]
         for tier in ["weekly", "yearly", "lifetime"] {
             let plan = app.buttons["ae-paywall-plan-com.airlineempire.game.pro.\(tier)"]
-            guard scrollUntil(plan, "the \(tier) plan", in: paywallScroll),
+            guard scrollPaywallUntil(plan, "the \(tier) plan", in: paywallScroll),
                   tapWhenReady(plan) else { return }
             XCTAssertTrue(buy.isHittable,
                           "The purchase button must remain visible while selecting plans")
@@ -69,10 +69,34 @@ final class FreeTierUITests: AEUITestCase {
             capture("\(capturePrefix)\(tier)")
         }
         let restore = app.buttons["ae-paywall-restore"]
-        XCTAssertTrue(scrollUntil(restore, "Restore Purchases and legal links",
-                                  swipes: 30, in: paywallScroll))
+        XCTAssertTrue(scrollPaywallUntil(restore, "Restore Purchases and legal links",
+                                        in: paywallScroll))
         XCTAssertTrue(app.buttons["Terms of Use"].exists)
         XCTAssertTrue(app.buttons["Privacy Policy"].exists)
+    }
+
+    private func scrollPaywallUntil(_ element: XCUIElement, _ what: String,
+                                    in scroll: XCUIElement) -> Bool {
+        for _ in 0..<30 {
+            if element.exists && element.isHittable {
+                _ = waitUntilStill(element)
+                return true
+            }
+            // safeAreaInset reserves content space, but XCTest still reports
+            // the scroll view's frame behind checkout. At accessibility size
+            // a 75%-height gesture starts on the fixed footer and cannot scroll.
+            // Restrict the gesture to the visible content above the plan label.
+            let checkoutTop = app.staticTexts["ae-paywall-selected-plan"].frame.minY
+            let visibleHeight = min(scroll.frame.maxY, checkoutTop) - scroll.frame.minY
+            guard visibleHeight > 44 else { break }
+            let top = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0))
+            top.withOffset(CGVector(dx: 0, dy: visibleHeight * 0.65))
+                .press(forDuration: 0.05,
+                       thenDragTo: top.withOffset(CGVector(dx: 0, dy: visibleHeight * 0.25)))
+        }
+        capture("KEY-00-paywall-missing-\(what)")
+        XCTFail("\(what) must remain reachable above the fixed purchase area")
+        return false
     }
 
     func testSuccessfulSaveShowsSessionSummary() {
