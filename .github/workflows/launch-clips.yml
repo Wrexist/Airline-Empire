@@ -1,6 +1,11 @@
 name: Launch clips and search regression
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/launch-clips.yml'
+      - 'scripts/capture-launch-video.py'
+      - 'AirlineEmpireApp/UITests/LaunchClipCaptureUITests.swift'
 permissions:
   contents: read
 concurrency:
