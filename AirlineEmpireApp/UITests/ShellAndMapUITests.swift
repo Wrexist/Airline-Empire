@@ -21,6 +21,34 @@ import XCTest
 /// one after another.
 final class ShellAndMapUITests: AEUITestCase {
 
+    func testRouteFiltersAndContextualAircraftAcquisition() throws {
+        launch(appearance: .light)
+        guard foundAirline(), openAirlineSection("Routes") else { return }
+        app.buttons["Open a route"].tap()
+        let idle = app.buttons["Fits idle aircraft"]
+        guard require(idle, "the idle-aircraft route filter") else { return }
+        idle.tap()
+        XCTAssertTrue(app.staticTexts["No destinations match your search and filter."].waitForExistence(timeout: 5))
+        checkpoint("SMART-empty-idle-filter")
+        app.buttons["Reset filters"].tap()
+        let destination = app.buttons.matching(identifier: "ae-route-destination").firstMatch
+        guard require(destination, "destinations after resetting filters") else { return }
+        destination.tap()
+        let commit = app.buttons["ae-route-open"]
+        guard require(commit, "the selected route's commit") else { return }
+        commit.tap()
+        guard require(app.buttons["ae-route-setup-done"], "the route setup continuation", timeout: 15) else { return }
+        let market = app.buttons["ae-route-find-aircraft"]
+        guard scrollUntil(market, "the route's aircraft market") else { return }
+        market.tap()
+        XCTAssertTrue(app.buttons["ae-market-route"].waitForExistence(timeout: 10))
+        checkpoint("SMART-route-matched-market")
+        guard leaseAnAircraft(proof: .routeAssignment) else { return }
+        XCTAssertTrue(app.buttons["Unassign"].exists, "The acquired aircraft must be assigned to the selected route.")
+        checkpoint("SMART-leased-and-assigned")
+        finishRouteSetup()
+    }
+
 
     // MARK: Appearance
     //

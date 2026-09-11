@@ -230,6 +230,7 @@ struct RouteRow: View {
 /// The route P&L breakdown: "why did this route make or lose money"
 /// (docs/ECONOMY.md) — the exact simulation figures, no UI math.
 struct RouteDetailView: View {
+    @State private var showingAircraftMarket = false
     @Environment(GameController.self) private var controller
     @Environment(\.feedback) private var feedback
     @Environment(\.dismiss) private var dismiss
@@ -279,6 +280,9 @@ struct RouteDetailView: View {
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .aeTimeToolbar()
+        .sheet(isPresented: $showingAircraftMarket) {
+            AircraftShopSheet(routeID: routeID)
+        }
     }
 
     private var title: String {
@@ -620,6 +624,12 @@ struct RouteDetailView: View {
                             .frame(minHeight: 44)
                     }
                 }
+                Button { showingAircraftMarket = true } label: {
+                    Label("Find an aircraft for this route", systemImage: "airplane.circle")
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.aeSecondary)
+                .accessibilityIdentifier("ae-route-find-aircraft")
                 // The ones that cannot, and why. Listing them is the fix for
                 // the original defect: an aeroplane the player owns silently
                 // missing from the picker is indistinguishable from a bug.
@@ -865,6 +875,31 @@ struct OpenRouteSheet: View {
     @State private var fareTouched = false
     @State private var search = ""
     @State private var rejection: CommandRejection?
+    @State private var filter: RouteDiscoveryFilter = .all
+    @State private var createdRoute: RouteID?
+    @State private var primed = false
+    @State private var opening = false
+    @State private var markets: [MarketOpportunity] = []
+
+    private enum RouteDiscoveryFilter: String, CaseIterable {
+        case all, idle, fleet, uncontested
+        var title: String {
+            switch self {
+            case .all: "All destinations"
+            case .idle: "Fits idle aircraft"
+            case .fleet: "Fits my fleet"
+            case .uncontested: "No competitors"
+            }
+        }
+        var symbol: String {
+            switch self {
+            case .all: "globe"
+            case .idle: "airplane"
+            case .fleet: "checkmark.circle"
+            case .uncontested: "sparkles"
+            }
+        }
+    }
     /// The airports this player may serve, resolved once.
     ///
     /// Cached in state rather than computed in `destinations`, which runs
@@ -875,8 +910,14 @@ struct OpenRouteSheet: View {
     @State private var servableAirports: Set<AirportCode> = []
 
     private let prefill: FirstRouteSuggestion?
+    private var selectedAirport: AirportCode?
 
     init() { self.prefill = nil }
+
+    init(airport: AirportCode) {
+        self.prefill = nil
+        self.selectedAirport = airport
+    }
 
     /// Pre-filled from an onboarding suggestion (guided first route).
     init(suggestion: FirstRouteSuggestion) {
@@ -895,13 +936,45 @@ struct OpenRouteSheet: View {
                 }
             }
             .navigationTitle("Open a route")
+            .disabled(opening)
+            .interactiveDismissDisabled(opening)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
+                        .disabled(opening)
                 }
             }
             .onAppear(perform: prime)
+            .onChange(of: origin) { refreshMarkets() }
+            .onChange(of: controller.snapshot?.currentDate) { refreshMarkets() }
+            .onChange(of: controller.snapshot?.orderedAircraftIDs) { refreshMarkets() }
+            .onChange(of: controller.snapshot?.orderedRouteIDs) {
+                refreshMarkets()
+                guard opening, let player = controller.snapshot?.playerAirline,
+                      let from = origin, let to = destination,
+                      let route = controller.snapshot?.routes(of: player.id).first(where: {
+                          $0.sameMarket(origin: from, destination: to)
+                      }) else { return }
+                opening = false
+                createdRoute = route.id
+            }
+            .onChange(of: controller.lastRejection) {
+                guard opening, let failure = controller.lastRejection else { return }
+                opening = false
+                rejection = failure
+                controller.clearRejection()
+            }
+            .navigationDestination(item: $createdRoute) { routeID in
+                RouteDetailView(routeID: routeID)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { dismiss() }
+                                .accessibilityIdentifier("ae-route-setup-done")
+                        }
+                    }
+            }
+            .navigationDestination(for: AircraftID.self) { AircraftDetailView(aircraftID: $0) }
             // Buying Pro from inside this sheet opens the rest of the map
             // without closing and reopening it.
             .onChange(of: entitlements.access) { _, _ in
@@ -920,7 +993,24 @@ struct OpenRouteSheet: View {
     }
 
     private func prime() {
+        defer { refreshMarkets() }
         refreshServableAirports()
+        guard !primed else { return }
+        primed = true
+        if let selectedAirport, let snapshot = controller.snapshot,
+           let player = snapshot.playerAirline, let catalog = controller.catalog {
+            if servedOrHome(snapshot: snapshot, player: player).contains(selectedAirport) {
+                origin = selectedAirport
+            } else {
+                origin = player.homeAirport
+                destination = selectedAirport
+                if let distance = catalog.distanceKm(player.homeAirport, selectedAirport) {
+                    fare = DemandSystem.referenceFare(distanceKm: distance,
+                                                      tuning: catalog.tuning.demand)
+                }
+            }
+            return
+        }
         if let prefill {
             origin = prefill.origin
             // The guided first route is chosen from near home and so is
@@ -954,10 +1044,20 @@ struct OpenRouteSheet: View {
             }
 
             Section {
+                PlanningFilters(options: RouteDiscoveryFilter.allCases.map {
+                    PlanningFilterOption(value: $0, title: $0.title, symbol: $0.symbol)
+                }, selection: $filter)
+                .listRowBackground(Color.clear)
+                Text("\(candidates.count) destinations · ranked by passenger demand")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
+            Section {
                 if candidates.isEmpty {
-                    Text("No airport matches “\(search)”.")
+                    Text("No destinations match your search and filter.")
                         .font(.subheadline)
                         .foregroundStyle(AETheme.mutedText)
+                    Button("Reset filters") { search = ""; filter = .all }
                 }
                 ForEach(candidates, id: \.code) { candidate in
                     destinationRow(candidate)
@@ -1020,7 +1120,7 @@ struct OpenRouteSheet: View {
                               player: Airline) -> some View {
         Picker("From", selection: Binding(
             get: { origin ?? player.homeAirport },
-            set: { origin = $0 })) {
+            set: { origin = $0; destination = nil; rejection = nil; fareTouched = false })) {
             ForEach(servedOrHome(snapshot: snapshot, player: player), id: \.self) { code in
                 Text("\(code.raw) — \(catalog.airport(code).map(Vocab.airportDisplay) ?? "")").tag(code)
             }
@@ -1064,6 +1164,7 @@ struct OpenRouteSheet: View {
         /// §14 asks for that a player cannot see for themselves — who else is
         /// already there — was the one thing missing.
         let incumbents: Int
+        let idleCount: Int
     }
 
     /// Every airport the player could fly to from `from`, ranked by
@@ -1085,9 +1186,17 @@ struct OpenRouteSheet: View {
     private func destinations(from: AirportCode, snapshot: GameState,
                               catalog: ContentCatalog) -> [Candidate] {
         let needle = search.uppercased()
-        return snapshot.marketCandidates(from: from, catalog: catalog)
+        return markets
             .compactMap { market -> Candidate? in
                 guard let spec = catalog.airport(market.destination) else { return nil }
+                let idleCount = snapshot.idleAircraft(from: from, to: market.destination,
+                                                       catalog: catalog).count
+                switch filter {
+                case .all: break
+                case .idle: guard idleCount > 0 else { return nil }
+                case .fleet: guard market.servableNow else { return nil }
+                case .uncontested: guard market.incumbents == 0 else { return nil }
+                }
                 if !needle.isEmpty,
                    !market.destination.raw.uppercased().contains(needle),
                    !spec.city.uppercased().contains(needle) { return nil }
@@ -1100,10 +1209,14 @@ struct OpenRouteSheet: View {
                     servable: market.servableNow,
                     servableByEra: market.servableByEra,
                     expectedDailyPassengers: market.expectedDailyPassengers,
-                    incumbents: market.incumbents)
+                    incumbents: market.incumbents, idleCount: idleCount)
             }
-            .prefix(40)
-            .map { $0 }
+    }
+
+    private func refreshMarkets() {
+        guard let snapshot = controller.snapshot, let catalog = controller.catalog,
+              let from = origin ?? snapshot.playerAirline?.homeAirport else { return }
+        markets = snapshot.marketCandidates(from: from, catalog: catalog)
     }
 
     private func destinationRow(_ candidate: Candidate) -> some View {
@@ -1131,6 +1244,11 @@ struct OpenRouteSheet: View {
                     Text("≈\(Format.count(Int64(candidate.expectedDailyPassengers))) passengers/day · \(Format.count(Int64(candidate.distanceKm))) km · fare ≈ \(Format.money(candidate.referenceFare))")
                         .font(AEType.secondary)
                         .foregroundStyle(AETheme.mutedText)
+                    // Who is already there. An open market and a contested one
+                    if candidate.idleCount > 0 {
+                        Label("\(candidate.idleCount) idle aircraft fit", systemImage: "airplane")
+                            .font(.caption).foregroundStyle(AETheme.positive)
+                    }
                     // Who is already there. An open market and a contested one
                     // are different decisions at the same demand.
                     Text(candidate.incumbents == 0
@@ -1313,14 +1431,14 @@ struct OpenRouteSheet: View {
                     rejection = refusal
                     controller.clearRejection()
                 } else {
-                    dismiss()
+                    opening = true
                 }
             } label: {
-                Label("Open this route", systemImage: "airplane.departure")
+                Label(opening ? "Opening route…" : "Open this route", systemImage: "airplane.departure")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.aePrimary)
-            .disabled(blocked != nil)
+            .disabled(blocked != nil || opening)
             .accessibilityIdentifier("ae-route-open")
         }
     }

@@ -118,6 +118,7 @@ final class CampaignUITests: AEUITestCase {
         guard require(open, "the commit bar after picking Cairo", timeout: 8)
         else { return }
         open.tap()
+        finishRouteSetup()
         Thread.sleep(forTimeInterval: 1)
         assignAllBareRoutes()
 
@@ -208,6 +209,7 @@ final class CampaignUITests: AEUITestCase {
             let commit = app.buttons.matching(identifier: "ae-route-open").firstMatch
             if commit.waitForExistence(timeout: 8), commit.isEnabled {
                 commit.tap()
+                finishRouteSetup()
                 Thread.sleep(forTimeInterval: 1)
             } else {
                 // Run 102 grew the network by one route across two taps and
@@ -293,6 +295,7 @@ final class CampaignUITests: AEUITestCase {
         if openFight.waitForExistence(timeout: 8) {
             checkpoint("41-fight-commit")
             openFight.tap()
+            finishRouteSetup()
             Thread.sleep(forTimeInterval: 1)
         } else if app.buttons["Done"].exists || app.buttons["Cancel"].exists {
             capture(Self.logPrefix + "NO-FIGHT-COMMIT-BAR")
