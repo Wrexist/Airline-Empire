@@ -2,7 +2,7 @@
 
 Updated 11 September 2026. PRs #22 through #26 are merged; no PRs remain open.
 Candidate `18253b31333f4e7c0e9a8b9b4410cda2ea45b80d` passed full CI,
-Launch safety and portability. TestFlight **1.0.0 (5)** is processed and
+Launch safety and portability. TestFlight **1.0.16 (6)** is processed and
 assigned to Tester, with test notes saved. App Store version **1.0** has
 this build attached and is **Ready for Review** in a five-item draft with
 Weekly, Yearly, Lifetime and their subscription group. Nothing is submitted
@@ -37,7 +37,7 @@ are documented; actual launch monitoring begins at publication.
 The binary source is frozen at `18253b3`. Later documentation and workflow
 merges do not alter that uploaded source. Future uploads can use PR #26's
 full `candidate_sha` input to check out and verify an already-tested source;
-this build used the original workflow at `18253b3`. Any replacement binary
+build 1.0.16 (6) uses that input in run `34579597613`. Any replacement binary
 requires evidence for its own source and affected acceptance checks.
 Compilation and screenshots do not replace installed-device acceptance.
 
@@ -77,14 +77,13 @@ The concrete owner handoff is [RELEASE_OWNER_STEPS.md](RELEASE_OWNER_STEPS.md).
 It includes the remaining device work and a manual fallback for final
 submission. All three purchase review images are uploaded and verified. The
 app, three purchases and subscription group are in one five-item unsubmitted
-iOS draft with **1.0.0 (5)** attached. Apple enables Submit for Review; device
+iOS draft with **1.0.16 (6)** attached. Apple enables Submit for Review; device
 acceptance is the remaining prerequisite.
 
 ## Remaining owner-only sequence
 
 1. Export existing saved airlines to Files before updating. Install exact
-   **1.0.0 (5)** from TestFlight; if the older 1.0.14 train is shown, use
-   Previous Builds > 1.0.0 > build 5. Preserve the existing installation.
+   **1.0.16 (6)** from TestFlight. Preserve the existing installation.
 2. With network off, found a free Founder airline, acquire an aircraft, open
    and assign a route, watch departure/arrival and a month statement, then
    save/quit/reopen and verify the same airline. Test export/import.
@@ -97,7 +96,7 @@ acceptance is the remaining prerequisite.
    [checklist, section E](../tasks/RELEASE_CHECKLIST.md).
 5. After all mandatory acceptance passes, App Store Connect > Airline Empire
    → App Review → existing draft started 10 September at 23:40 Stockholm.
-   Verify all five items and **1.0.0 (5)**, then Submit for Review.
+   Verify all five items and **1.0.16 (6)**, then Submit for Review.
 6. Address Apple feedback. After approval, recheck 173 regions, both exclusions
    and 16 October 2026 before manual publication of the pre-order. Monitor the
    public listing, scheduled download availability, purchases and crash feedback

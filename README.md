@@ -5,9 +5,9 @@ The player starts with a single aircraft on a single route and builds a
 global aviation empire — driven by a deterministic, testable simulation, not
 a collection of menus.
 
-**Status, 11 September 2026:** TestFlight **1.0.0 (5)** is ready; physical
+**Status, 11 September 2026:** TestFlight **1.0.16 (6)** is ready; physical
 acceptance remains before submission. PRs #22 through #26 are merged. Exact-candidate
-full native CI, Launch safety and portability passed. Apple processed build 5,
+full native CI, Launch safety and portability passed. Apple processed build 6,
 assigned it to Tester and has the app plus all three purchases and their group
 in one five-item draft. The launch is configured for **173 regions**, excluding
 China mainland and Vietnam, with a **16 October 2026** pre-order release date.

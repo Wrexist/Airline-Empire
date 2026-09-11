@@ -1,0 +1,42 @@
+{
+  "candidateSHA": "18253b31333f4e7c0e9a8b9b4410cda2ea45b80d",
+  "workflowSHA": "6f506ce3a2e39154f0500ec124a82e9e56ac4f3b",
+  "version": "1.0.16",
+  "runID": "34579597613",
+  "build": "6",
+  "ipaSHA256": "332820d13bd3ef6c0c67793661fe05683be8b0574c739fe419fa9f6846d49f5d",
+  "appMachOUUID": "8C6045C1-59F4-399A-965A-617D42294367",
+  "dSYMMachOUUID": "8C6045C1-59F4-399A-965A-617D42294367",
+  "symbolMatch": true,
+  "localInspectionMatchesRunner": true,
+  "appleBuildID": "717e0a4e-6403-4261-92a5-757536e4ab54",
+  "uploadSucceededAt": "2026-09-11T08:52:11Z",
+  "processingState": "VALID",
+  "coreTests": {
+    "isolatedPassed": 1,
+    "isolatedSeconds": 37.099,
+    "remainingPassed": 522,
+    "remainingSeconds": 858.934
+  },
+  "supersedes": "1.0.0 (5)",
+  "failedPriorRun": 34578192830,
+  "failedPriorReason": "Documentation SHA had no successful Launch safety run; corrected dispatch pins tested candidate.",
+  "processingVerifiedAt": "2026-09-11T08:54:00Z",
+  "workflowConclusion": "success",
+  "testFlightGroup": {
+    "name": "Tester",
+    "type": "Internal",
+    "testers": 1
+  },
+  "testFlightNotesSaved": true,
+  "appStoreVersion": "1.0",
+  "appStoreVersionState": "Ready for Review",
+  "reviewDraft": {
+    "id": "96ad6900-cbe6-43a9-aa49-61b9b2f05736",
+    "items": 5,
+    "appBuild": "1.0.16 (6)",
+    "updatedLocal": "2026-09-11T10:57:00+02:00",
+    "submitForReviewEnabled": true,
+    "submitted": false
+  }
+}

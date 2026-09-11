@@ -1,11 +1,20 @@
 # Release continuation — 11 September 2026
 
-**Build 1.0.0 (5) is processed, assigned to Tester and attached to the five-item
-App Review draft. Physical-device acceptance remains open; nothing has been
-submitted or published.** This record supersedes account-access assumptions
-in the 9 September handoff and the before-merge audit.
+**Current build: 1.0.16 (6), superseding 1.0.0 (5).** The owner requested
+an increase above 1.0.15. [Version correction and receipts](TESTFLIGHT_VERSION_1_0_16.md)
+record successful run `34579597613`: exact source `18253b3`, all 523
+simulation tests passed, archive/upload/inspection passed, and Apple returned
+VALID at 11 September 08:54 UTC. Tester assignment and test notes are saved.
+App Store version 1.0 has build 6 attached in the same five-item ready draft.
+Physical acceptance is pending; nothing has been submitted or published.
 
-## Candidate
+Run `34578192830` failed because it selected the documentation commit without
+passing Launch safety evidence. The corrected dispatch explicitly sets
+`candidate_sha=18253b31333f4e7c0e9a8b9b4410cda2ea45b80d`; no gate was bypassed.
+The older build 5 evidence below is preserved as history and is superseded
+for installation/draft selection by the linked build 6 receipt.
+
+## Previous build 5 evidence
 
 - PR #23 merged to main at `e11cea4b2bfe3407aefbf19bcbc2a7d1a682364d`.
 - Release fixes: [PR #24](https://github.com/Wrexist/Airline-Empire/pull/24) merged
@@ -277,7 +286,7 @@ in the 9 September handoff and the before-merge audit.
 
 ## Remaining execution order
 
-1. Export existing saves, then install **1.0.0 (5)** through TestFlight and
+1. Export existing saves, then install **1.0.16 (6)** through TestFlight and
    execute the device/save/purchase/accessibility/audio/performance matrix.
 2. Triage actual device findings; fix any blocking issue and repeat affected
    gates on a replacement build if necessary. Simulator marker selection,

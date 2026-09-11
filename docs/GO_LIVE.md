@@ -1,7 +1,7 @@
 # Go live — the step-by-step
 
 > **Historical setup walkthrough.** As of 11 September 2026, PRs #22 through #26 are
-> merged and TestFlight **1.0.0 (5)** is processed and attached to a five-item
+> merged and TestFlight **1.0.16 (6)** is processed and attached to a five-item
 > release draft. Follow [RELEASE_OWNER_STEPS.md](RELEASE_OWNER_STEPS.md) for
 > the remaining device acceptance/submission steps and
 > [RELEASE_CONTINUATION_STATUS.md](RELEASE_CONTINUATION_STATUS.md) for evidence.
