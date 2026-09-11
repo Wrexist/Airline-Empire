@@ -1,0 +1,59 @@
+[
+  {
+    "name": "network",
+    "shots": [
+      {
+        "source": "/home/user/network.mp4",
+        "from": 0,
+        "duration": 6,
+        "title": "Where would you build your airline?",
+        "label": "Live network"
+      },
+      {
+        "source": "/home/user/finance.mp4",
+        "from": 0,
+        "duration": 6,
+        "title": "Make the whole airline work.",
+        "label": "Campaign finances"
+      }
+    ]
+  },
+  {
+    "name": "fleet",
+    "shots": [
+      {
+        "source": "/home/user/fleet.mp4",
+        "from": 0,
+        "duration": 6,
+        "title": "An idle plane is a decision.",
+        "label": "Earned fleet"
+      },
+      {
+        "source": "/home/user/route.mp4",
+        "from": 0,
+        "duration": 6,
+        "title": "Empty routes still cost money.",
+        "label": "Unassigned route"
+      }
+    ]
+  },
+  {
+    "name": "finance",
+    "shots": [
+      {
+        "source": "/home/user/route.mp4",
+        "from": 0,
+        "duration": 6,
+        "title": "Can your airline stay profitable?",
+        "label": "Unassigned route costs"
+      },
+      {
+        "source": "/home/user/finance.mp4",
+        "from": 0,
+        "duration": 6,
+        "title": "Every decision reaches the ledger.",
+        "label": "Campaign finances"
+      }
+    ]
+  }
+]
