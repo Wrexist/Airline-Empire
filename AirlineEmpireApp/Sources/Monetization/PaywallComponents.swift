@@ -37,7 +37,7 @@ struct PaywallSky: View {
             }
             emblem
         }
-        .frame(height: 190)
+        .frame(height: 112)
         .frame(maxWidth: .infinity)
         .accessibilityElement()
         .accessibilityLabel("Airline Empire Pro")
@@ -297,7 +297,10 @@ struct PaywallPlanCard: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(alignment: .center, spacing: AETheme.spacingM) {
+            let layout = typeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: AETheme.spacingS))
+                : AnyLayout(HStackLayout(alignment: .center, spacing: AETheme.spacingM))
+            layout {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.title3)
                     .foregroundStyle(isSelected ? AETheme.ember
@@ -305,17 +308,15 @@ struct PaywallPlanCard: View {
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: AETheme.spacingS) {
-                        Text(tier.displayName)
-                            .font(AEType.sectionTitle)
-                            .foregroundStyle(.primary)
-                        if let badge {
-                            Text(badge)
-                                .font(AEType.badge)
-                                .foregroundStyle(.black)
-                                .padding(.horizontal, 7)
-                                .padding(.vertical, 3)
-                                .background(AETheme.ember, in: Capsule())
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: AETheme.spacingS) {
+                            planName
+                            planBadge
+                        }
+                        .fixedSize(horizontal: true, vertical: true)
+                        VStack(alignment: .leading, spacing: AETheme.spacingXS) {
+                            planName
+                            planBadge
                         }
                     }
                     Text(tier.renewalDescription)
@@ -332,6 +333,7 @@ struct PaywallPlanCard: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 priceBlock
@@ -348,6 +350,26 @@ struct PaywallPlanCard: View {
         .buttonStyle(.aePress)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+    }
+
+    private var planName: some View {
+        Text(tier.displayName)
+            .font(AEType.sectionTitle)
+            .foregroundStyle(.primary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder
+    private var planBadge: some View {
+        if let badge {
+            Text(badge)
+                .font(AEType.badge)
+                .foregroundStyle(.black)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(AETheme.ember, in: Capsule())
+        }
     }
 
     @ViewBuilder

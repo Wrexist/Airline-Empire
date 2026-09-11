@@ -8,6 +8,17 @@ final class FreeTierUITests: AEUITestCase {
     /// Captures genuine purchase UI using the scheme's StoreKit products.
     /// This verifies disclosure and navigation, without making a purchase.
     func testPaywallDisclosuresAndReviewCaptures() throws {
+        try verifyPaywall(arguments: [], capturePrefix: "IAP-")
+    }
+
+    func testPaywallPurchaseVisibleWithAccessibilityText() throws {
+        try verifyPaywall(arguments: [
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityL",
+        ], capturePrefix: "KEY-paywall-accessibility-")
+    }
+
+    private func verifyPaywall(arguments: [String], capturePrefix: String) throws {
         // The scheme's Run action does not configure xcodebuild's Test action.
         // Activate the real StoreKit test server before launching the app.
         let store = try SKTestSession(configurationFileNamed: "AirlineEmpire")
@@ -16,18 +27,31 @@ final class FreeTierUITests: AEUITestCase {
         store.storefront = "USA"
         store.locale = Locale(identifier: "en_US")
         defer { store.clearTransactions(); store.resetToDefaultState() }
-        launch(appearance: .light, arguments: ["-AEUITestFree"])
+        launch(appearance: .light, arguments: ["-AEUITestFree"] + arguments)
         guard foundAirline(), openBriefing() else { return }
         let settings = app.buttons["Settings"]
         guard require(settings, "Settings"), tapWhenReady(settings) else { return }
         let pro = app.buttons["ae-settings-pro"]
         guard scrollUntil(pro, "Airline Empire Pro"), tapWhenReady(pro) else { return }
 
+        let buy = app.buttons["ae-paywall-buy"]
+        let initiallyVisible = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            buy.exists && buy.isEnabled && buy.isHittable
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [initiallyVisible], timeout: 20), .completed,
+                      "Purchase must be visible when the paywall opens, without scrolling")
+        _ = waitUntilStill(buy)
+        XCTAssertTrue(app.frame.contains(buy.frame),
+                      "The whole purchase button must fit inside the initial viewport")
+        capture("KEY-\(capturePrefix)on-open")
+
+        let paywallScroll = app.scrollViews["ae-paywall-content"]
         for tier in ["weekly", "yearly", "lifetime"] {
             let plan = app.buttons["ae-paywall-plan-com.airlineempire.game.pro.\(tier)"]
-            guard scrollUntil(plan, "the \(tier) plan"), tapWhenReady(plan) else { return }
-            let buy = app.buttons["ae-paywall-buy"]
-            guard scrollUntil(buy, "the purchase disclosure and button") else { return }
+            guard scrollUntil(plan, "the \(tier) plan", in: paywallScroll),
+                  tapWhenReady(plan) else { return }
+            XCTAssertTrue(buy.isHittable,
+                          "The purchase button must remain visible while selecting plans")
             let loaded = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
                 buy.exists && buy.isEnabled
             }, object: nil)
@@ -38,11 +62,15 @@ final class FreeTierUITests: AEUITestCase {
             let commitment = app.staticTexts["ae-paywall-commitment"]
             XCTAssertTrue(commitment.exists)
             XCTAssertFalse(commitment.label.isEmpty)
+            XCTAssertTrue(app.frame.contains(commitment.frame),
+                          "The full billing disclosure must stay visible with the button")
+            XCTAssertLessThanOrEqual(commitment.frame.maxY, buy.frame.minY)
             _ = waitUntilStill(buy)
-            capture("IAP-\(tier)")
+            capture("\(capturePrefix)\(tier)")
         }
         let restore = app.buttons["ae-paywall-restore"]
-        XCTAssertTrue(scrollUntil(restore, "Restore Purchases and legal links"))
+        XCTAssertTrue(scrollUntil(restore, "Restore Purchases and legal links",
+                                  swipes: 30, in: paywallScroll))
         XCTAssertTrue(app.buttons["Terms of Use"].exists)
         XCTAssertTrue(app.buttons["Privacy Policy"].exists)
     }
