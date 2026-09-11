@@ -110,10 +110,10 @@ final class FreeTierUITests: AEUITestCase {
     private func scrollPaywallUntil(_ element: XCUIElement, _ what: String,
                                     in scroll: XCUIElement) -> Bool {
         for _ in 0..<30 {
-            if element.exists && element.isHittable,
-               element.frame.intersection(paywallViewport(in: scroll)).height >= 32 {
+            if element.exists && element.isHittable, element.frame.height > 0,
+               element.frame.intersection(paywallViewport(in: scroll)).height >= min(32, element.frame.height) {
                 _ = waitUntilStill(element)
-                if element.frame.intersection(paywallViewport(in: scroll)).height >= 32 {
+                if element.frame.intersection(paywallViewport(in: scroll)).height >= min(32, element.frame.height) {
                     return true
                 }
             }
