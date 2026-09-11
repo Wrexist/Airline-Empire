@@ -38,7 +38,12 @@ final class FreeTierUITests: AEUITestCase {
         let initiallyVisible = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             buy.exists && buy.isEnabled && buy.isHittable
         }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [initiallyVisible], timeout: 20), .completed,
+        let initialResult = XCTWaiter.wait(for: [initiallyVisible], timeout: 20)
+        if initialResult != .completed {
+            capture("KEY-00-\(capturePrefix)on-open-failure")
+            print("PAYWALL purchase exists=\(buy.exists) enabled=\(buy.isEnabled) hittable=\(buy.isHittable) label=\(buy.label)")
+        }
+        XCTAssertEqual(initialResult, .completed,
                       "Purchase must be visible when the paywall opens, without scrolling")
         _ = waitUntilStill(buy)
         XCTAssertTrue(app.frame.contains(buy.frame),
