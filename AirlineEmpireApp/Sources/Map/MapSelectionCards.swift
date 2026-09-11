@@ -75,6 +75,7 @@ private struct MapFact: View {
 // MARK: - Airport
 
 struct MapAirportCard: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var expanded = false
     let airport: MapModel.MapAirport
     let model: MapModel
@@ -127,13 +128,15 @@ struct MapAirportCard: View {
             .accessibilityIdentifier("ae-airport-expand")
             .accessibilityValue(expanded ? "Expanded" : "Collapsed")
             if expanded {
-                ViewThatFits(in: .vertical) {
-                    VStack(alignment: .leading, spacing: AETheme.spacingS) { actions }
-                        .fixedSize(horizontal: false, vertical: true)
-                    ScrollView {
+                Group {
+                    if playerRoutes.count > 2 || (typeSize.isAccessibilitySize && !playerRoutes.isEmpty) {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: AETheme.spacingS) { actions }
+                        }
+                        .frame(maxHeight: 220)
+                    } else {
                         VStack(alignment: .leading, spacing: AETheme.spacingS) { actions }
                     }
-                    .frame(maxHeight: 220)
                 }
                 .transition(.opacity)
             }
@@ -160,13 +163,17 @@ struct MapAirportCard: View {
         }
     }
 
-    @ViewBuilder
-    private var actions: some View {
-        let mine = snapshot.playerAirline.map { player in
+    private var playerRoutes: [Route] {
+        snapshot.playerAirline.map { player in
             snapshot.routes(of: player.id).filter {
                 $0.origin == airport.code || $0.destination == airport.code
             }
         } ?? []
+    }
+
+    @ViewBuilder
+    private var actions: some View {
+        let mine = playerRoutes
         if !mine.isEmpty {
             ForEach(mine, id: \.id) { route in
                 NavigationLink(value: route.id) {
