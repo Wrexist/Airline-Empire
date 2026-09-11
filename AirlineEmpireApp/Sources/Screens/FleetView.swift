@@ -863,6 +863,26 @@ struct AircraftShopSheet: View {
     @State private var sort: Sort = .recommended
     @State private var hidesLocked = true
     @State private var starterOpportunity: MarketOpportunity?
+    @State private var selectedRouteID: RouteID?
+    @State private var routeFocus: RouteFocus = .all
+    @State private var acquisitionReceipt: String?
+    @State private var assignmentPending: AircraftID?
+    @State private var assignmentRoute: RouteID?
+    @State private var acquiring = false
+    init(routeID: RouteID? = nil) {
+        _selectedRouteID = State(initialValue: routeID)
+    }
+
+    private enum RouteFocus: String, CaseIterable {
+        case all, unassigned, capacity
+        var title: String {
+            switch self {
+            case .all: "All routes"
+            case .unassigned: "No aircraft"
+            case .capacity: "More capacity"
+            }
+        }
+    }
     /// Which way in is picked, per aircraft. Lives here because the picker
     /// and the commit button are separate List rows (see `ShopCommitButton`)
     /// that must see the same choice. Absent means the default, lease.
@@ -897,6 +917,33 @@ struct AircraftShopSheet: View {
                         Section {
                             wallet(snapshot: snapshot, player: player.id)
                         }
+                        if !snapshot.routes(of: player.id).isEmpty {
+                            Section("Match your network") {
+                                PlanningFilters(options: RouteFocus.allCases.map {
+                                    PlanningFilterOption(value: $0, title: $0.title,
+                                                         symbol: $0 == .unassigned ? "airplane" : "point.topleft.down.to.point.bottomright.curvepath")
+                                }, selection: $routeFocus)
+                                .listRowBackground(Color.clear)
+                                routePicker(snapshot: snapshot, catalog: catalog, player: player.id)
+                                if let route = selectedRouteID.flatMap({ snapshot.routes[$0] }) {
+                                    Text("Aircraft that fit \(route.origin.raw)–\(route.destination.raw)'s range and runways, ranked by demand and capacity, then lease cost. New routes use estimated demand.")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                    Text("Leased and used aircraft are assigned here automatically. New aircraft must arrive before assignment.")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                    if let need = snapshot.fleetNeeds(catalog: catalog).first(where: { $0.routeID == route.id }) {
+                                        Text(needDescription(need))
+                                            .font(.subheadline).foregroundStyle(AETheme.caution)
+                                    }
+                                } else if let need = snapshot.fleetNeeds(catalog: catalog).first,
+                                          let route = snapshot.routes[need.routeID] {
+                                    Button {
+                                        selectedRouteID = route.id
+                                    } label: {
+                                        Label("Match aircraft to \(route.origin.raw)–\(route.destination.raw)", systemImage: "sparkles")
+                                    }
+                                }
+                            }
+                        }
                         if let market = starterOpportunity,
                            let code = market.bestAirframe,
                            let spec = catalog.aircraftTypes[code] {
@@ -927,6 +974,12 @@ struct AircraftShopSheet: View {
                                     value: $leaseTermMonths, in: 12...120, step: 12)
                                 .frame(minHeight: 44)
                         }
+                        if types(catalog: catalog, snapshot: snapshot).isEmpty {
+                            Section {
+                                Text("No available aircraft fit this route's range and runways.")
+                                Button("Browse all aircraft") { selectedRouteID = nil }
+                            }
+                        }
                         ForEach(types(catalog: catalog, snapshot: snapshot),
                                 id: \.code) { spec in
                             Section {
@@ -942,7 +995,10 @@ struct AircraftShopSheet: View {
                                                      snapshot: snapshot,
                                                      player: player.id),
                                         deal: deals[spec.code] ?? .lease,
-                                        onCommitted: { dismiss() })
+                                        onPendingChange: { acquiring = $0 },
+                                        onCommitted: { [routeID = selectedRouteID] aircraftID in
+                                            completeAcquisition(aircraftID: aircraftID, routeID: routeID)
+                                        })
                                 }
                             }
                         }
@@ -979,9 +1035,44 @@ struct AircraftShopSheet: View {
                         && airports.contains($0.destination) }
             }
             .navigationBarTitleDisplayMode(.inline)
+            .onChange(of: assignedRoute) {
+                if assignmentPending != nil, assignedRoute == assignmentRoute {
+                    assignmentPending = nil
+                    dismiss()
+                }
+            }
+            .onChange(of: controller.lastRejection) {
+                guard assignmentPending != nil, let failure = controller.lastRejection else { return }
+                assignmentPending = nil
+                acquisitionReceipt = "Aircraft acquired. Assignment could not finish: \(failure.message)"
+                controller.clearRejection()
+            }
+            .disabled(acquiring || assignmentPending != nil)
+            .interactiveDismissDisabled(acquiring || assignmentPending != nil)
+            .overlay {
+                if acquiring || assignmentPending != nil {
+                    ProgressView(assignmentPending != nil ? "Assigning aircraft…" : "Completing acquisition…")
+                        .padding(24)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+                }
+            }
+            .onChange(of: routeFocus) {
+                guard let state = controller.snapshot, let catalog = controller.catalog,
+                      let player = state.playerAirline else { return }
+                let routes = focusedRoutes(snapshot: state, catalog: catalog, player: player.id)
+                if !routes.contains(where: { $0.id == selectedRouteID }) {
+                    selectedRouteID = routes.first?.id
+                }
+            }
+            .alert("Aircraft acquired", isPresented: Binding(
+                get: { acquisitionReceipt != nil },
+                set: { if !$0 { acquisitionReceipt = nil } })) {
+                Button("Done") { dismiss() }
+            } message: { Text(acquisitionReceipt ?? "") }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
+                        .disabled(acquiring || assignmentPending != nil)
                 }
             }
         }
@@ -995,8 +1086,23 @@ struct AircraftShopSheet: View {
         let specs = catalog.orderedAircraftTypeCodes
             .compactMap { catalog.aircraftTypes[$0] }
             .filter { !hidesLocked || allowed.contains($0.category) }
+            .filter { spec in
+                guard let route = selectedRouteID.flatMap({ snapshot.routes[$0] }) else { return true }
+                return catalog.routeEligibility(from: route.origin, to: route.destination,
+                    aircraftRangeKm: spec.rangeKm,
+                    aircraftRunwayRequirement: spec.runwayRequirement).isEmpty
+            }
         switch sort {
         case .recommended:
+            if let route = selectedRouteID.flatMap({ snapshot.routes[$0] }) {
+                let ranked = snapshot.aircraftFits(route: route, catalog: catalog,
+                    era: min(snapshot.progression.era, controller.eraCeiling))
+                let ranks = Dictionary(uniqueKeysWithValues: ranked.enumerated().map { ($0.element.code, $0.offset) })
+                return specs.sorted {
+                    let a = ranks[$0.code] ?? Int.max, b = ranks[$1.code] ?? Int.max
+                    return a == b ? $0.code.raw < $1.code.raw : a < b
+                }
+            }
             let recommended = starterOpportunity?.bestAirframe
             return specs.sorted {
                 if ($0.code == recommended) != ($1.code == recommended) { return $0.code == recommended }
@@ -1016,6 +1122,69 @@ struct AircraftShopSheet: View {
             }
         case .price:
             return specs.sorted { $0.listPrice.cents < $1.listPrice.cents }
+        }
+    }
+
+    private func focusedRoutes(snapshot: GameState, catalog: ContentCatalog,
+                               player: AirlineID) -> [Route] {
+        let needs = snapshot.fleetNeeds(catalog: catalog)
+        return snapshot.routes(of: player).filter { route in
+            switch routeFocus {
+            case .all: true
+            case .unassigned: needs.contains { $0.routeID == route.id && $0.reason == .unassigned }
+            case .capacity: needs.contains { $0.routeID == route.id && $0.reason != .unassigned }
+            }
+        }.sorted { $0.id < $1.id }
+    }
+
+    private func routePicker(snapshot: GameState, catalog: ContentCatalog,
+                             player: AirlineID) -> some View {
+        let routes = focusedRoutes(snapshot: snapshot, catalog: catalog, player: player)
+        return VStack(alignment: .leading, spacing: AETheme.spacingS) {
+            Picker("Aircraft for", selection: $selectedRouteID) {
+                Text("Browse all aircraft").tag(Optional<RouteID>.none)
+                ForEach(routes, id: \.id) { route in
+                    Text("\(route.origin.raw)–\(route.destination.raw)").tag(Optional(route.id))
+                }
+            }
+            .accessibilityIdentifier("ae-market-route")
+            if routes.isEmpty {
+                Text("No routes match this filter. You can still browse the aircraft market.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func needDescription(_ need: RouteFleetNeed) -> String {
+        switch need.reason {
+        case .unassigned: "No aircraft assigned. Lease or buy used to put one to work now."
+        case .frequency: "Your assigned fleet cannot cover the requested daily frequency. Aircraft in maintenance may also cause this gap."
+        case .seats: "Today's demand exceeds scheduled capacity by \(need.dailySeatShortfall) seats. Consider a larger aircraft or increase frequency; adding aircraft alone may not increase flights."
+        }
+    }
+
+    private var assignedRoute: RouteID? {
+        guard let assignmentPending else { return nil }
+        return controller.snapshot?.aircraft[assignmentPending]?.assignedRoute
+    }
+
+    private func completeAcquisition(aircraftID: AircraftID, routeID: RouteID?) {
+        guard let routeID, let state = controller.snapshot, let player = state.playerAirline,
+              let acquired = state.aircraft[aircraftID] else {
+            dismiss()
+            return
+        }
+        if case .ordered = acquired.status {
+            acquisitionReceipt = "Your new aircraft is on order. Return to this route after delivery to assign it."
+            return
+        }
+        if let failure = controller.submit(AssignAircraftToRouteCommand(
+            airline: player.id, route: routeID, aircraftID: acquired.id)) {
+            controller.clearRejection()
+            acquisitionReceipt = "The aircraft was acquired, but could not be assigned: \(failure.message) It is available in your fleet."
+        } else {
+            assignmentRoute = routeID
+            assignmentPending = aircraftID
         }
     }
 
@@ -1484,12 +1653,16 @@ struct ShopDealPicker: View {
 /// or by the test runner.
 struct ShopCommitButton: View {
     @Environment(GameController.self) private var controller
+    @State private var pending = false
+    @State private var previousAircraft: Set<AircraftID> = []
+    @State private var failure: String?
 
     let facts: ShopDealFacts
     let deal: ShopDeal
+    let onPendingChange: (Bool) -> Void
     /// The sheet owns dismissal; a child inside its NavigationStack must
     /// not resolve a different dismiss action and leave the market open.
-    let onCommitted: () -> Void
+    let onCommitted: (AircraftID) -> Void
 
     var body: some View {
         let command = facts.command(for: deal)
@@ -1502,7 +1675,15 @@ struct ShopCommitButton: View {
                 // Dismiss on success, like every other sheet in the app —
                 // the payoff is the aircraft in the fleet, not this sheet.
                 action: {
-                    if controller.submit(command) == nil { onCommitted() }
+                    previousAircraft = Set(controller.snapshot?.fleet(of: facts.player).map(\.id) ?? [])
+                    if let rejection = controller.submit(command) {
+                        failure = rejection.message
+                        controller.clearRejection()
+                    } else {
+                        pending = true
+                        onPendingChange(true)
+                        failure = nil
+                    }
                 }
             ) {
                 Label(facts.ctaTitle(for: deal), systemImage: "signature")
@@ -1517,13 +1698,31 @@ struct ShopCommitButton: View {
             // picked — which it is by default.
             .accessibilityIdentifier("ae-market-\(facts.name(for: deal))")
             .accessibilityLabel("\(facts.ctaTitle(for: deal)), \(facts.spec.manufacturer) \(facts.spec.model)")
-            .disabled(blocked != nil)
+            .disabled(blocked != nil || pending)
+            if pending { ProgressView("Completing acquisition…") }
+            if let failure { Text(failure).font(.caption).foregroundStyle(AETheme.caution) }
             if let blocked {
                 Text(blocked.message)
                     .font(.caption2)
                     .foregroundStyle(AETheme.caution)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+        .onChange(of: controller.snapshot?.orderedAircraftIDs) {
+            guard pending,
+                  let aircraft = controller.snapshot?.fleet(of: facts.player).first(where: {
+                      !previousAircraft.contains($0.id) && $0.typeCode == facts.spec.code
+                  }) else { return }
+            pending = false
+            onPendingChange(false)
+            onCommitted(aircraft.id)
+        }
+        .onChange(of: controller.lastRejection) {
+            guard pending, let rejection = controller.lastRejection else { return }
+            pending = false
+            onPendingChange(false)
+            failure = rejection.message
+            controller.clearRejection()
         }
     }
 }

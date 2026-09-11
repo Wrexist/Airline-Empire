@@ -40,6 +40,11 @@ struct MapScreen: View {
     @State private var selection: MapHit?
     @State private var overlay: MapOverlay = .network
     @State private var routeDraft: RouteDraft?
+    @State private var airportDraft: AirportDraft?
+    private struct AirportDraft: Identifiable {
+        let airport: AirportCode
+        var id: AirportCode { airport }
+    }
     /// The dashboard, raised over the world. AE-048 moved Home *onto* the
     /// map; this is where everything the dashboard held went, and it is a
     /// sheet rather than a panel so the map keeps its whole surface
@@ -145,6 +150,9 @@ struct MapScreen: View {
             .toolbar(.hidden, for: .navigationBar)
             .sheet(item: $routeDraft) { draft in
                 OpenRouteSheet(suggestion: draft.suggestion)
+            }
+            .sheet(item: $airportDraft) { draft in
+                OpenRouteSheet(airport: draft.airport)
             }
             // Attached out here, outside the ZStack that pins
             // `colorScheme: .dark` for the map's chrome: the briefing is an
@@ -349,7 +357,7 @@ struct MapScreen: View {
                             followMemory.clear()
                             withAnimation(AEMotion.content) { selection = nil }
                         },
-                        openRoute: { routeDraft = RouteDraft(suggestion: $0) })
+                        openAirportRoute: { airportDraft = AirportDraft(airport: $0) })
                 }
             }
             .padding(.horizontal, AETheme.spacingM)

@@ -75,12 +75,13 @@ private struct MapFact: View {
 // MARK: - Airport
 
 struct MapAirportCard: View {
-    @Environment(GameController.self) private var controller
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @State private var expanded = false
     let airport: MapModel.MapAirport
     let model: MapModel
     let snapshot: GameState
     let dismiss: () -> Void
-    let openRoute: (FirstRouteSuggestion) -> Void
+    let openRoute: (AirportCode) -> Void
 
     var body: some View {
         MapCardShell(title: "\(airport.city) · \(airport.code.raw)",
@@ -118,8 +119,30 @@ struct MapAirportCard: View {
                     .foregroundStyle(AETheme.rivalRoute)
             }
 
-            actions
+            Button { expanded.toggle() } label: {
+                Label(expanded ? "Collapse airport" : "Routes and aircraft",
+                      systemImage: expanded ? "chevron.down" : "chevron.up")
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.aePress)
+            .accessibilityIdentifier("ae-airport-expand")
+            .accessibilityValue(expanded ? "Expanded" : "Collapsed")
+            if expanded {
+                Group {
+                    if playerRoutes.count > 2 || (typeSize.isAccessibilitySize && !playerRoutes.isEmpty) {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: AETheme.spacingS) { actions }
+                        }
+                        .frame(maxHeight: 220)
+                    } else {
+                        VStack(alignment: .leading, spacing: AETheme.spacingS) { actions }
+                    }
+                }
+                .transition(.opacity)
+            }
         }
+        .aeAnimation(AEMotion.content, value: expanded)
+        .onChange(of: airport.code) { expanded = false }
     }
 
     private var accent: Color {
@@ -140,15 +163,19 @@ struct MapAirportCard: View {
         }
     }
 
-    @ViewBuilder
-    private var actions: some View {
-        let mine = snapshot.playerAirline.map { player in
+    private var playerRoutes: [Route] {
+        snapshot.playerAirline.map { player in
             snapshot.routes(of: player.id).filter {
                 $0.origin == airport.code || $0.destination == airport.code
             }
         } ?? []
+    }
+
+    @ViewBuilder
+    private var actions: some View {
+        let mine = playerRoutes
         if !mine.isEmpty {
-            ForEach(mine.prefix(3), id: \.id) { route in
+            ForEach(mine, id: \.id) { route in
                 NavigationLink(value: route.id) {
                     HStack {
                         Text("\(route.origin.raw) – \(route.destination.raw)")
@@ -162,30 +189,26 @@ struct MapAirportCard: View {
                 }
             }
         }
+        Button { openRoute(airport.code) } label: {
+            Label(airport.servedByPlayer || airport.isPlayerHome
+                  ? "Create a route from \(airport.code.raw)"
+                  : "Create a route to \(airport.code.raw)",
+                  systemImage: "plus.circle.fill")
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .buttonStyle(.aePrimary)
+        .disabled(airport.closed)
+        .accessibilityIdentifier("ae-airport-create-route")
         if let player = snapshot.playerAirline, airport.code != player.homeAirport,
            let market = model.opportunities.first(where: {
                $0.destination == airport.code || $0.origin == airport.code
            }) {
-            Button {
-                openRoute(FirstRouteSuggestion(
-                    origin: market.origin, destination: market.destination,
-                    // The selected airport can be either end of the market, so
-                    // its own city is the destination only half the time.
-                    destinationCity: model.airports.first {
-                        $0.code == market.destination
-                    }?.city ?? market.destination.raw,
-                    distanceKm: market.distanceKm,
-                    expectedDailyPassengers: market.expectedDailyPassengers,
-                    referenceFare: market.referenceFare))
-            } label: {
-                Label("Open a route here — about \(Format.count(Int64(market.expectedDailyPassengers))) passengers a day",
-                      systemImage: "plus.circle")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(AETheme.positive)
-                    .frame(minHeight: 44)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .buttonStyle(.aePress)
+            Label("About \(Format.count(Int64(market.expectedDailyPassengers))) passengers a day in this market",
+                  systemImage: "person.2")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }
