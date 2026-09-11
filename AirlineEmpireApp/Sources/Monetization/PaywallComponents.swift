@@ -132,7 +132,6 @@ struct PaywallSky: View {
                 .tracking(1.6)
                 .foregroundStyle(AETheme.ember)
         }
-        .padding(.bottom, AETheme.spacingL)
     }
 }
 
