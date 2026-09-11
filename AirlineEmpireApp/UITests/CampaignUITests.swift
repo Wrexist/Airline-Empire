@@ -159,9 +159,21 @@ final class CampaignUITests: AEUITestCase {
         // the fold. Scroll to it before checking or committing the purchase.
         guard scrollUntil(buyUsed, "the buy-used commit row") else { return }
         buyUsed.tap()
-        let confirmUsed = app.buttons.matching(NSPredicate(
-            format: "label BEGINSWITH %@", "Buy used")).firstMatch
-        if confirmUsed.waitForExistence(timeout: 4) { confirmUsed.tap() }
+        // Match the action, not the dialog's similarly named container.
+        // A Fleet row can exist behind the market while confirmation is up.
+        let confirmUsed = app.buttons.matching(identifier: "ae-confirm-action").firstMatch
+        guard require(confirmUsed, "the used-aircraft confirmation"),
+              waitUntilStill(confirmUsed), confirmUsed.isHittable else {
+            XCTFail("The used-aircraft confirmation did not become ready to tap.")
+            return
+        }
+        confirmUsed.tap()
+        let market = app.staticTexts["Aircraft market"]
+        guard market.waitForNonExistence(timeout: 15) else {
+            capture("KEY-00-USED-PURCHASE-NOT-CLOSED")
+            XCTFail("Confirming the used purchase did not close the market. Do not continue using Fleet rows behind the sheet.")
+            return
+        }
         let fleetRow = app.descendants(matching: .any)
             .matching(identifier: "ae-fleet-row").firstMatch
         XCTAssertTrue(fleetRow.waitForExistence(timeout: 10), """
