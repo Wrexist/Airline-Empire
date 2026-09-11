@@ -1,6 +1,6 @@
 # Release checklist — 11 September 2026
 
-**Build 1.0.0 (5) is ready; physical acceptance and publication are pending.**
+**Build 1.0.16 (6) is ready; physical acceptance and publication are pending.**
 PRs #22 through #26 are merged; no PRs remain open. Candidate `18253b3` passed full
 CI, Launch safety and portability, then Apple processing. The app and four
 purchase/group items are staged in one unsubmitted draft. See the
@@ -35,26 +35,26 @@ Check a box only when its acceptance evidence is linked. Apple account tasks req
 
 ## C. Establish the final candidate — engineering/release owner
 
-- [x] Final source `18253b31333f4e7c0e9a8b9b4410cda2ea45b80d`; App Store listing 1.0, binary **1.0.0 (5)**. This is the first release.
+- [x] Final source `18253b31333f4e7c0e9a8b9b4410cda2ea45b80d`; App Store listing 1.0, binary **1.0.16 (6)**. This is the first release.
 - [x] **REL-02 browser/HTTP:** All five official destinations return actual page content anonymously; browser privacy page inspected. Installed-device links remain in device acceptance.
 - [x] **REL-02:** Live checker passes locally and on hosted Windows/Linux. An identified client resolves the default User-Agent rejection; HTTP/content validation remains enforced.
 - [x] Full CI `34532237542`, Launch safety `34532239981` and portability `34532242458` passed for the exact source. All job/step receipts: `docs/validation/release-2026-09-10/candidate-18253b3-ci.json`. One existing direct-marker camera case remained NOT VERIFIED; separate Follow path passed. Physical follow remains in E.
-- [x] Final candidate strict metadata/generated sheet, 50 tooling selftests, six IPA-inspection selftests, bundle/icon/symbol/audio/artwork gates passed in CI and archive preflight; actual IPA inspected and dSYM UUID matched. See `binary-1.0.0-5.json` and `bundle-inspection-1.0.0-5.json`.
-- [x] Exact-SHA release evidence gate passed for `18253b3` in TestFlight preflight `34535969370`. Later docs/workflow merges do not change the uploaded binary source.
+- [x] Final candidate strict metadata/generated sheet, 50 tooling selftests, six IPA-inspection selftests, bundle/icon/symbol/audio/artwork gates passed in CI and archive preflight; actual IPA inspected and dSYM UUID matched. See `../docs/validation/release-2026-09-11/binary-1.0.16-6.json` and `../docs/validation/release-2026-09-11/bundle-inspection-1.0.16-6.json`.
+- [x] Exact-SHA release evidence gate passed for `18253b3` in TestFlight preflight `34579597613`. Later docs/workflow merges do not change the uploaded binary source.
 - [x] **AUD-07 retention:** Native CI/capture artifact retention increased to 45 days, past the planned launch. Final IPA/dSYMs and CI/account reports copied to `C:/Users/IsacC/Airline-Empire-release-artifacts/candidate-18253b3`; installed-device acceptance packet remains in E/F.
 
 ## D. Complete the Apple account — account holder/release owner
 
-- [x] **REL-03 account fields:** Separate US/UK official privacy URLs saved; existing published label is Data Not Collected. Actual build 5 archive privacy validation passed.
+- [x] **REL-03 account fields:** Separate US/UK official privacy URLs saved; existing published label is Data Not Collected. Actual build 6 archive privacy validation passed.
 - [x] **REL-04 account fields:** App price Free; weekly/yearly auto-renewable and lifetime non-consumable IDs created with documented prices. Weekly/yearly share group level 1. US/UK localizations and Family Sharing match the plan.
 - [x] Apple prices, product states, weekly introductory offer configuration and 173-region availability verified; future territory expansion off for app and all products. See `apple-territories.json` and `apple-iap-review-images.json`.
 - [ ] Verify localized Apple purchase sheets and introductory eligibility on a physical device (E).
 - [x] Supply genuine review images for Weekly, Yearly and Lifetime; Apple API run `34533267128` verified COMPLETE, checksums and product attachments. Add all three purchases and the subscription group to one unsubmitted iOS draft.
-- [x] App version 1.0 / **1.0.0 (5)** joined the same draft; Apple shows **Items Ready to Submit (5)** and enables Submit for Review. Final submission remains pending device acceptance.
+- [x] App version 1.0 / **1.0.16 (6)** joined the same draft; Apple shows **Items Ready to Submit (5)** and enables Submit for Review. Final submission remains pending device acceptance.
 - [x] **REL-09:** Screenshot slots/order/UK inheritance, copy, review contact, 4+ age rating, content rights, export compliance and agreements/trader/regional/payment statuses verified. Saved account evidence is in the current execution record. All 20 native source captures visually inspected; see `store-capture-review.json`.
-- [x] **REL-01:** TestFlight `34535969370` attempt 2 successfully archived/uploaded build **1.0.0 (5)**; Apple returned VALID at 10 September 22:42:23 UTC. Original signing failure retained; same credentials succeeded on bounded retry.
-- [x] Build 5 attached to App Store version 1.0 and verified after reload; Tester group assignment and build-specific test notes verified.
-- [ ] Install build **1.0.0 (5)** from TestFlight and record physical acceptance below.
+- [x] **REL-01:** TestFlight `34579597613` attempt 1 successfully archived/uploaded **1.0.16 (6)**; Apple returned VALID at 11 September 08:54:00 UTC. See `docs/TESTFLIGHT_VERSION_1_0_16.md`; older build 5 signing evidence remains historical.
+- [x] Build 6 attached to App Store version 1.0 and verified after reload; Tester group assignment and build-specific test notes verified.
+- [ ] Install build **1.0.16 (6)** from TestFlight and record physical acceptance below.
 
 ## E. Accept the installed build — QA/product owner
 

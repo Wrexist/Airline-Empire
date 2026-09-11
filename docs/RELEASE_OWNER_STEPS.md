@@ -6,13 +6,13 @@ The app remains a first release, version 1.0, with a **16 October 2026**
 pre-order date. It has not been submitted or published.
 
 Use [the current execution record](RELEASE_CONTINUATION_STATUS.md) for the
-candidate evidence. **TestFlight 1.0.0 (5) is ready in your Tester group.**
+candidate evidence. **TestFlight 1.0.16 (6) is ready in your Tester group.**
 The old 1.0.14 (4) installation is the upgrade source, not this candidate.
 
 All three purchase review images are now uploaded through Apple's API, with
 processed checksums and product attachments verified. No Chrome setting or
 manual image upload is needed. Weekly, Yearly, Lifetime and the subscription
-group and app version 1.0 with **build 1.0.0 (5)** are already together in
+group and app version 1.0 with **build 1.0.16 (6)** are already together in
 one **unsubmitted iOS draft**. Apple shows five ready items and enables
 Submit for Review. Device acceptance is the remaining prerequisite.
 
@@ -22,9 +22,8 @@ The new build is uploaded, processed and assigned to your existing
 **Tester** group:
 
 1. Open the current game and export each important saved airline to Files.
-2. Open TestFlight → Airline Empire and install **1.0.0 (5)**. If Update
-   offers the older 1.0.14 train, open **Previous Builds → 1.0.0 → build 5**
-   and install that exact build. Keep the existing app installation.
+2. Open TestFlight and select Airline Empire, then **Update** to **1.0.16 (6)**.
+   Confirm that exact version and build. Preserve the existing installation.
 3. Open every existing saved airline. Compare airline name, date, cash, fleet
    and routes. Save, quit, reopen and confirm those same values.
 4. Keep the exported backups until the release is accepted. Reinstall testing
@@ -163,7 +162,7 @@ does not mean the game is downloadable everywhere.
 
 If continuing manually: App Store Connect → Airline Empire → Distribution →
 **App Review** → open the existing iOS draft started on 10 September at
-23:40 Stockholm time. Verify **iOS App 1.0 / 1.0.0 (5)**, Weekly, Yearly,
+23:40 Stockholm time. Verify **iOS App 1.0 / 1.0.16 (6)**, Weekly, Yearly,
 Lifetime and Airline Empire Pro group are together (five items), then select
 **Submit for Review** after device acceptance passes. No build attachment
 or product/image setup remains to do.

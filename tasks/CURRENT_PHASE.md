@@ -2,8 +2,8 @@
 
 **Current release work — 11 September 2026: signed candidate and device acceptance.**
 PRs #22 through #26 are merged. Candidate `18253b3` passed full native CI,
-Launch safety and portability. TestFlight run `34535969370` attempt 2 passed;
-**1.0.0 (5)** is processed, assigned to Tester and attached to App Store 1.0.
+Launch safety and portability. TestFlight run `34579597613` attempt 1 passed;
+**1.0.16 (6)** is processed, assigned to Tester and attached to App Store 1.0.
 Apple is configured for 173 regions, excluding China mainland and Vietnam,
 with all three purchase review images complete. The app, purchases and group
 are together in a five-item unsubmitted draft; Submit for Review is enabled.
