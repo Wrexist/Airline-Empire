@@ -126,13 +126,14 @@ struct MapTopBar: View {
 
 /// One overlay at a time, each labelled with the question it answers.
 struct MapOverlayPicker: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Binding var selection: MapOverlay
     @State private var expanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: AETheme.spacingXS) {
             Button {
-                withAnimation(AEMotion.selection) { expanded.toggle() }
+                withAnimation(reduceMotion ? nil : AEMotion.selection) { expanded.toggle() }
             } label: {
                 HStack(spacing: AETheme.spacingXS) {
                     Image(systemName: selection.icon).font(.caption)
@@ -156,7 +157,7 @@ struct MapOverlayPicker: View {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(MapOverlay.allCases) { option in
                         Button {
-                            withAnimation(AEMotion.selection) {
+                            withAnimation(reduceMotion ? nil : AEMotion.selection) {
                                 selection = option
                                 expanded = false
                             }

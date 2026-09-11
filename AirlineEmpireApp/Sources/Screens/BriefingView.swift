@@ -90,8 +90,7 @@ struct BriefingView: View {
                             .frame(minHeight: 240)
                     }
                 }
-                .padding(.horizontal)
-                .padding(.bottom, AETheme.spacingM)
+                .aePageInsets()
             }
             .aeScreenBackground()
             // Registered on the stack rather than inside the stat grid, which
@@ -275,8 +274,7 @@ struct BriefingView: View {
     /// explanation"; these were inert labels, so a player reading "Reputation
     /// 61%" had no way to find out which of the five components moved.
     private func statGrid(_ dashboard: DashboardModel) -> some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())],
-                  spacing: AETheme.spacingS) {
+        AEStatGrid {
             NavigationLink(value: DashboardRoute.fleet) {
                 StatTile(label: "Fleet", value: "\(dashboard.fleetCount)")
             }

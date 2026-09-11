@@ -46,6 +46,14 @@ struct AEGameBackdrop: View {
 }
 
 extension View {
+    /// Common gutters and vertical rhythm for scrolling dashboard/detail pages.
+    func aePageInsets() -> some View {
+        self
+            .padding(.horizontal, AETheme.spacingM)
+            .padding(.top, AETheme.spacingS)
+            .padding(.bottom, AETheme.spacingL)
+    }
+
     /// The standard game-screen surface: the quiet gradient behind, and the
     /// system's own opaque scroll background out of the way so it shows.
     ///
@@ -109,9 +117,12 @@ struct StatTile: View {
             Text(label)
                 .font(AEType.metricLabel)
                 .foregroundStyle(AETheme.mutedText)
+                .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: AETheme.spacingXS) {
                 Text(value)
                     .font(AEType.metric)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                     .contentTransition(.numericText())
                 switch trend {
                 case .up:
@@ -136,6 +147,7 @@ struct StatTile: View {
         // way the numbers stay readable at all.
         .contentTransition(.numericText())
         .aeAnimation(AEMotion.content, value: value)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -150,6 +162,7 @@ struct AEBadge: View {
                 Image(systemName: icon).font(.caption2)
             }
             Text(text).font(AEType.badge)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, AETheme.spacingS)
         .padding(.vertical, 3)
@@ -304,6 +317,8 @@ struct EmptyStateView: View {
                 .foregroundStyle(AETheme.accent.opacity(0.85))
                 .padding(.bottom, AETheme.spacingXS)
             Text(title).font(.headline)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
             Text(message)
                 .font(.subheadline)
                 .foregroundStyle(AETheme.mutedText)
@@ -611,21 +626,78 @@ struct AEChip: View {
 
 /// The container chips sit in.
 ///
-/// A row at reading sizes; a column at accessibility sizes. The first
-/// Dynamic Type screenshot this project produced (run 60, AccessibilityL)
-/// showed why the fixed HStack cannot stand: three chips shared one market
-/// card's width, hyphenated into "Ex-cel-lent fuel per…" towers, and
-/// truncated the one word the chip existed to carry.
+/// Wrap chips at their natural width; use a column for accessibility sizes.
 struct AEChipRow<Content: View>: View {
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.layoutDirection) private var direction
     @ViewBuilder var content: Content
 
     var body: some View {
         if typeSize.isAccessibilitySize {
             VStack(alignment: .leading, spacing: AETheme.spacingXS) { content }
         } else {
-            HStack(spacing: AETheme.spacingXS) { content }
+            AEFlowLayout(spacing: AETheme.spacingXS, direction: direction) { content }
         }
+    }
+}
+
+/// Measures and places the same rows, without geometry state or duplicate controls.
+private struct AEFlowLayout: Layout {
+    var spacing: CGFloat
+    var direction: LayoutDirection
+
+    private func arrangement(width: CGFloat, subviews: Subviews)
+        -> (size: CGSize, frames: [CGRect]) {
+        var frames: [CGRect] = []
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        var usedWidth: CGFloat = 0
+        for subview in subviews {
+            let ideal = subview.sizeThatFits(.unspecified)
+            let size = subview.sizeThatFits(
+                ProposedViewSize(width: min(ideal.width, width), height: nil))
+            if x > 0 && x + size.width > width {
+                x = 0
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            frames.append(CGRect(origin: CGPoint(x: x, y: y), size: size))
+            usedWidth = max(usedWidth, x + size.width)
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+        return (CGSize(width: usedWidth, height: y + rowHeight), frames)
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews,
+                     cache: inout ()) -> CGSize {
+        arrangement(width: max(0, proposal.width ?? .infinity), subviews: subviews).size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize,
+                       subviews: Subviews, cache: inout ()) {
+        let result = arrangement(width: bounds.width, subviews: subviews)
+        for (subview, frame) in zip(subviews, result.frames) {
+            let x = direction == .rightToLeft
+                ? bounds.maxX - frame.maxX : bounds.minX + frame.minX
+            subview.place(at: CGPoint(x: x, y: bounds.minY + frame.minY),
+                          anchor: .topLeading,
+                          proposal: ProposedViewSize(frame.size))
+        }
+    }
+}
+
+/// A shared, evenly spaced dashboard grid that lets large text breathe.
+struct AEStatGrid<Content: View>: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(),
+                    spacing: AETheme.spacingS, alignment: .topLeading),
+                    count: typeSize.isAccessibilitySize ? 1 : 2),
+                  spacing: AETheme.spacingS) { content }
     }
 }
 
@@ -864,22 +936,17 @@ struct AECompactMetric: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(metric.value)
-                .font(metric.emphasised ? AEType.metric : AEType.metricCompact)
+                .font(AEType.metricCompact)
+                .fontWeight(metric.emphasised ? .bold : .semibold)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
                 .foregroundStyle(metric.tint ?? .primary)
                 .contentTransition(.numericText())
                 .aeAnimation(AEMotion.content, value: metric.value)
             Text(metric.label)
                 .font(AEType.caption)
                 .foregroundStyle(AETheme.mutedText)
-                // No line limit on purpose. These sit in an 88pt adaptive
-                // column, and a label like "revenue, month to date" at an
-                // accessibility Dynamic Type size cannot fit on one line at
-                // any tolerable scale — so a single line means truncation,
-                // which is the one outcome worse than a taller cell. The grid
-                // sizes each cell independently, so wrapping costs nothing but
-                // height. `minimumScaleFactor` stays as a gentle assist before
-                // the wrap, not as a substitute for it.
-                .minimumScaleFactor(0.85)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
@@ -918,18 +985,19 @@ struct AEMetricStrip: View {
     /// any width, and every other count keeps the adaptive behaviour that
     /// serves three metrics or nine without a decision at the call site.
     ///
-    /// The floor grows with the type size for the older reason: at a fixed
-    /// 88pt, AccessibilityL squeezed three price columns into one card and
-    /// broke the figures mid-string — "$110. / 0M" — which run 62's market
-    /// frame photographed.
+    /// Accessibility sizes use one column, including four-metric strips,
+    /// so prices and descriptive labels retain enough room to read.
     private var columns: [GridItem] {
+        if typeSize.isAccessibilitySize {
+            return [GridItem(.flexible(), alignment: .topLeading)]
+        }
         if metrics.count == 4 {
             return Array(repeating: GridItem(.flexible(), spacing: AETheme.spacingM,
-                                             alignment: .leading),
+                                             alignment: .topLeading),
                          count: 2)
         }
-        return [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 150 : 88),
-                         spacing: AETheme.spacingM, alignment: .leading)]
+        return [GridItem(.adaptive(minimum: 88),
+                         spacing: AETheme.spacingM, alignment: .topLeading)]
     }
 
     var body: some View {

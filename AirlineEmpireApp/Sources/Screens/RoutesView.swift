@@ -32,13 +32,17 @@ struct RoutesList: View {
                                    action: openRoute)
                         .padding(.horizontal, AETheme.spacingM)
                         .aeEmptyStatePlacement()
-                } else if cards.isEmpty {
-                    EmptyStateView(icon: "magnifyingglass",
-                                   title: "No matches",
-                                   message: "No route matches “\(search)”.")
-                        .padding(.horizontal, AETheme.spacingM)
                 } else {
                     List {
+                        if cards.isEmpty {
+                            EmptyStateView(icon: "magnifyingglass",
+                                           title: "No matches",
+                                           message: "No route matches “\(search)”.",
+                                           actionTitle: "Clear search",
+                                           action: { search = "" })
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                        }
                         // The board had no header at all: a player with forty
                         // routes had to read forty rows to learn whether the
                         // network was making money (MASTER PROMPT 4 §12).
@@ -61,13 +65,10 @@ struct RoutesList: View {
                     }
                     .listStyle(.plain)
                     .aeScreenBackground()
-                    // Pinned to the destination list rather than left to float. iOS 26
-        // anchors a bare `.searchable` to the bottom of the sheet, which put
-        // the search field *below* the "Open this route" bar: browse, commit,
-        // then search (AE-033 audit §6.5). `.navigationBarDrawer` puts it
-        // back above the thing it filters.
-        .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always),
-                    prompt: "Airport code or city")
+                    // Keep search mounted even when its results are empty.
+                    .searchable(text: $search,
+                                placement: .navigationBarDrawer(displayMode: .always),
+                                prompt: "Airport code or city")
                     .aeAnimation(AEMotion.content, value: cards.count)
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) { sortMenu }
@@ -200,7 +201,7 @@ struct RouteRow: View {
                         .foregroundStyle(AETheme.mutedText)
                 }
             }
-            HStack(spacing: AETheme.spacingS) {
+            AEChipRow {
                 AEBadge(text: "\(card.dailyRoundTrips)×/day", color: AETheme.accent)
                 AEBadge(text: "load \(Format.percent(card.loadFactor))",
                         color: card.loadFactor > 0.7 ? AETheme.positive : AETheme.caution)
@@ -256,8 +257,7 @@ struct RouteDetailView: View {
                     fareControls(card, player: player.id)
                     dangerZone(player: player.id)
                 }
-                .padding(.horizontal)
-                .padding(.bottom, AETheme.spacingL)
+                .aePageInsets()
             } else {
                 EmptyStateView(icon: "xmark.circle", title: "Route closed",
                                message: "This route no longer exists.")
