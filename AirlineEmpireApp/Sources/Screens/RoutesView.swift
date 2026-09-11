@@ -947,6 +947,16 @@ struct OpenRouteSheet: View {
             }
             .onAppear(perform: prime)
             .onChange(of: origin) { refreshMarkets() }
+            .onChange(of: filter) {
+                guard let destination, let snapshot = controller.snapshot,
+                      let catalog = controller.catalog,
+                      let from = origin ?? snapshot.playerAirline?.homeAirport else { return }
+                if !destinations(from: from, snapshot: snapshot, catalog: catalog)
+                    .contains(where: { $0.code == destination }) {
+                    self.destination = nil
+                    rejection = nil
+                }
+            }
             .onChange(of: controller.snapshot?.currentDate) { refreshMarkets() }
             .onChange(of: controller.snapshot?.orderedAircraftIDs) { refreshMarkets() }
             .onChange(of: controller.snapshot?.orderedRouteIDs) {
@@ -1126,6 +1136,7 @@ struct OpenRouteSheet: View {
             }
         }
         .accessibilityHint("Routes start from an airport you already serve")
+        .accessibilityIdentifier("ae-route-origin")
     }
 
     /// You can only start a route where you already have a presence. Offering
@@ -1186,8 +1197,10 @@ struct OpenRouteSheet: View {
     private func destinations(from: AirportCode, snapshot: GameState,
                               catalog: ContentCatalog) -> [Candidate] {
         let needle = search.uppercased()
+        let existingMarkets = Set(snapshot.playerAirline.map { snapshot.routes(of: $0.id).map(\.market) } ?? [])
         return markets
             .compactMap { market -> Candidate? in
+                guard !existingMarkets.contains(Route.market(from, market.destination)) else { return nil }
                 guard let spec = catalog.airport(market.destination) else { return nil }
                 let idleCount = snapshot.idleAircraft(from: from, to: market.destination,
                                                        catalog: catalog).count
@@ -1244,7 +1257,6 @@ struct OpenRouteSheet: View {
                     Text("≈\(Format.count(Int64(candidate.expectedDailyPassengers))) passengers/day · \(Format.count(Int64(candidate.distanceKm))) km · fare ≈ \(Format.money(candidate.referenceFare))")
                         .font(AEType.secondary)
                         .foregroundStyle(AETheme.mutedText)
-                    // Who is already there. An open market and a contested one
                     if candidate.idleCount > 0 {
                         Label("\(candidate.idleCount) idle aircraft fit", systemImage: "airplane")
                             .font(.caption).foregroundStyle(AETheme.positive)

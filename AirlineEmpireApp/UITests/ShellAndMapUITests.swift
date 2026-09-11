@@ -21,10 +21,28 @@ import XCTest
 /// one after another.
 final class ShellAndMapUITests: AEUITestCase {
 
-    func testRouteFiltersAndContextualAircraftAcquisition() throws {
+    func testAirportRouteFiltersAndContextualAircraftAcquisition() throws {
         launch(appearance: .light)
-        guard foundAirline(), openAirlineSection("Routes") else { return }
-        app.buttons["Open a route"].tap()
+        guard foundAirline() else { return }
+        let map = app.descendants(matching: .any)["ae-map-canvas"]
+        guard require(map, "the home map") else { return }
+        app.buttons["Frame my network"].tap()
+        Thread.sleep(forTimeInterval: 1)
+        map.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let expand = app.buttons["ae-airport-expand"]
+        guard require(expand, "the selected home airport's expansion control") else { return }
+        expand.tap()
+        let create = app.buttons["ae-airport-create-route"]
+        guard require(create, "route creation inside the expanded airport") else { return }
+        XCTAssertTrue(create.label.contains("ARN"))
+        checkpoint("SMART-expanded-airport")
+        expand.tap()
+        XCTAssertTrue(create.waitForNonExistence(timeout: 5))
+        expand.tap()
+        create.tap()
+        let origin = app.buttons["ae-route-origin"]
+        guard require(origin, "the map airport preselected as origin") else { return }
+        XCTAssertTrue((origin.label + (origin.value as? String ?? "")).contains("ARN"))
         let idle = app.buttons["Fits idle aircraft"]
         guard require(idle, "the idle-aircraft route filter") else { return }
         idle.tap()

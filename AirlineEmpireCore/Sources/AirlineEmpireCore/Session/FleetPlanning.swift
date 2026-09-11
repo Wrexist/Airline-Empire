@@ -61,9 +61,22 @@ extension GameState {
     public func aircraftFits(route: Route, catalog: ContentCatalog,
                              era: Era) -> [AircraftTypeSpec] {
         let observedDemand = route.demandOutboundToday + route.demandInboundToday
-        let demand = observedDemand > 0 ? observedDemand
-            : marketCandidates(from: route.origin, catalog: catalog)
-                .first(where: { $0.destination == route.destination })?.expectedDailyPassengers ?? 0
+        let demand: Int
+        if observedDemand > 0 {
+            demand = observedDemand
+        } else {
+            // Price only this pair. Scanning every market here would run the
+            // full opportunity model again whenever the shop redraws.
+            let quality = DemandSystem.representativeStarterQuality(tuning: catalog.tuning.demand)
+            func captured(from: AirportCode, to: AirportCode) -> Double {
+                DemandSystem.expectedCapturedPassengers(
+                    pool: DemandSystem.demandPool(from: from, to: to, date: currentDate,
+                        economicIndex: world.economicIndex, catalog: catalog),
+                    fareRatio: 1, quality: quality, tuning: catalog.tuning.demand)
+            }
+            demand = Int((captured(from: route.origin, to: route.destination)
+                + captured(from: route.destination, to: route.origin)).rounded())
+        }
         let specs = catalog.orderedAircraftTypeCodes.compactMap { catalog.aircraftType($0) }
             .filter { era.allowedCategories.contains($0.category)
                 && catalog.routeEligibility(from: route.origin, to: route.destination,
