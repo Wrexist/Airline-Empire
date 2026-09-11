@@ -72,7 +72,11 @@ extension GameState {
             completed.insert(.assignAircraft)
         }
         let hasLiveFlight = flights.values.contains { flight in
-            self.routes[flight.route]?.airline == player.id
+            guard self.routes[flight.route]?.airline == player.id else { return false }
+            switch flight.phase {
+            case .enRoute, .turnaround: return true
+            case .scheduled, .boarding: return false
+            }
         }
         if hasLiveFlight || routes.contains(where: { $0.stats.totalFlights > 0 }) {
             completed.insert(.watchFirstFlight)
