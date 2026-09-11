@@ -53,11 +53,9 @@ struct FleetPlanningTests {
         }
         let demand = try #require(engine.state.marketCandidates(from: route.origin, catalog: catalog)
             .first(where: { $0.destination == route.destination })).expectedDailyPassengers
-        func mismatch(_ spec: AircraftTypeSpec) -> Int {
-            let trips = min(route.dailyRoundTrips, FlightSchedulingSystem.roundTripsPerAircraftPerDay(
-                distanceKm: route.distanceKm, spec: spec, ops: catalog.tuning.ops))
-            return abs(demand - trips * spec.seats * 2)
-        }
-        #expect(fits.map(mismatch) == fits.map(mismatch).sorted())
+        #expect(demand > 0)
+        route.demandOutboundToday = demand
+        let publishedDemandFits = engine.state.aircraftFits(route: route, catalog: catalog, era: .startup)
+        #expect(fits.map(\.code) == publishedDemandFits.map(\.code))
     }
 }

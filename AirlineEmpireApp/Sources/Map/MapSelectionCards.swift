@@ -76,11 +76,11 @@ private struct MapFact: View {
 
 struct MapAirportCard: View {
     @State private var expanded = false
-    @State private var showingPlanner = false
     let airport: MapModel.MapAirport
     let model: MapModel
     let snapshot: GameState
     let dismiss: () -> Void
+    let openRoute: (AirportCode) -> Void
 
     var body: some View {
         MapCardShell(title: "\(airport.city) · \(airport.code.raw)",
@@ -136,7 +136,6 @@ struct MapAirportCard: View {
         }
         .aeAnimation(AEMotion.content, value: expanded)
         .onChange(of: airport.code) { expanded = false }
-        .sheet(isPresented: $showingPlanner) { OpenRouteSheet(airport: airport.code) }
     }
 
     private var accent: Color {
@@ -179,7 +178,7 @@ struct MapAirportCard: View {
                 }
             }
         }
-        Button { showingPlanner = true } label: {
+        Button { openRoute(airport.code) } label: {
             Label(airport.servedByPlayer || airport.isPlayerHome
                   ? "Create a route from \(airport.code.raw)"
                   : "Create a route to \(airport.code.raw)",

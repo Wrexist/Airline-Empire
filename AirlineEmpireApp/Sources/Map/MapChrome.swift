@@ -247,7 +247,7 @@ struct MapSelectionPanel: View {
     let followed: FlightID?
     let toggleFollow: (FlightID) -> Void
     let dismiss: () -> Void
-    let openRoute: (FirstRouteSuggestion) -> Void
+    let openAirportRoute: (AirportCode) -> Void
 
     var body: some View {
         Group {
@@ -258,7 +258,7 @@ struct MapSelectionPanel: View {
             case .some(.airport(let code)):
                 if let airport = model.airports.first(where: { $0.code == code }) {
                     MapAirportCard(airport: airport, model: model, snapshot: snapshot,
-                                   dismiss: dismiss)
+                                   dismiss: dismiss, openRoute: openAirportRoute)
                 }
             case .some(.route(let id)):
                 if let route = model.routes.first(where: { $0.id == id }) {
