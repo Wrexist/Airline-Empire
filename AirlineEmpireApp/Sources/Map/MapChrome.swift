@@ -283,6 +283,7 @@ struct MapSelectionPanel: View {
         // an airport can prove the panel opened rather than photographing the
         // map and hoping. The identifier is on the selected states only: the
         // briefing below is not a selection and must not answer to the name.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(selection == nil ? "" : "ae-map-selection")
         .aeAnimation(AEMotion.content, value: selection)
     }

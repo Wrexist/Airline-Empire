@@ -87,6 +87,7 @@ final class CampaignUITests: AEUITestCase {
             "ae-route-destination", "Addis")).firstMatch
         if addis.waitForExistence(timeout: 6) {
             checkpoint("38-future-opportunity-row")
+            XCTAssertTrue(addis.isHittable, "The destination must remain tappable above the keyboard and action bar.")
             addis.tap()
             let caution = app.descendants(matching: .any)
                 .matching(identifier: "ae-route-unservable").firstMatch

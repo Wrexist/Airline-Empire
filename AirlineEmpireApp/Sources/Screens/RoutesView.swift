@@ -1049,17 +1049,29 @@ struct OpenRouteSheet: View {
             // No header here: the picker inside carries the label "From", and
             // a section header saying it again stacked the word on itself
             // (AE-033 audit §6.5).
-            Section {
-                originPicker(catalog: catalog, snapshot: snapshot, player: player)
-            }
-
-            Section {
-                PlanningFilters(options: RouteDiscoveryFilter.allCases.map {
-                    PlanningFilterOption(value: $0, title: $0.title, symbol: $0.symbol)
-                }, selection: $filter)
-                .listRowBackground(Color.clear)
-                Text("\(candidates.count) destinations · ranked by passenger demand")
+            if search.isEmpty {
+                Section {
+                    originPicker(catalog: catalog, snapshot: snapshot, player: player)
+                }
+                Section {
+                    PlanningFilters(options: RouteDiscoveryFilter.allCases.map {
+                        PlanningFilterOption(value: $0, title: $0.title, symbol: $0.symbol)
+                    }, selection: $filter)
+                    .listRowBackground(Color.clear)
+                    Text("Destinations: \(candidates.count) · ranked by passenger demand")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            } else {
+                // Leave room for actual results above the keyboard and the
+                // pinned action bar. Clearing search restores the controls.
+                Section {
+                    HStack {
+                        Text("From \(from.raw)")
+                        Spacer()
+                        Text(filter.title)
+                    }
                     .font(.caption).foregroundStyle(.secondary)
+                }
             }
 
             Section {
@@ -1073,7 +1085,7 @@ struct OpenRouteSheet: View {
                     destinationRow(candidate)
                 }
             } header: {
-                Text("To — ranked by how many people want to fly it")
+                Text(search.isEmpty ? "To — ranked by how many people want to fly it" : "Matching destinations")
             }
 
             if let destination, destination != from {
@@ -1091,6 +1103,7 @@ struct OpenRouteSheet: View {
         // back above the thing it filters.
         .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always),
                     prompt: "Airport code or city")
+        .scrollDismissesKeyboard(.interactively)
         // The chosen row's marker fills rather than swaps: at the moment of
         // the tap, the only feedback this sheet gives is that circle.
         .aeAnimation(AEMotion.selection, value: destination)
@@ -1258,7 +1271,7 @@ struct OpenRouteSheet: View {
                         .font(AEType.secondary)
                         .foregroundStyle(AETheme.mutedText)
                     if candidate.idleCount > 0 {
-                        Label("\(candidate.idleCount) idle aircraft fit", systemImage: "airplane")
+                        Label(candidate.idleCount == 1 ? "1 idle aircraft fits" : "\(candidate.idleCount) idle aircraft fit", systemImage: "airplane")
                             .font(.caption).foregroundStyle(AETheme.positive)
                     }
                     // Who is already there. An open market and a contested one

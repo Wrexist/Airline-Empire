@@ -869,9 +869,9 @@ struct AircraftShopSheet: View {
     @State private var assignmentPending: AircraftID?
     @State private var assignmentRoute: RouteID?
     @State private var acquiring = false
-    private let requestedRouteID: RouteID?
-
-    init(routeID: RouteID? = nil) { requestedRouteID = routeID }
+    init(routeID: RouteID? = nil) {
+        _selectedRouteID = State(initialValue: routeID)
+    }
 
     private enum RouteFocus: String, CaseIterable {
         case all, unassigned, capacity
@@ -933,6 +933,13 @@ struct AircraftShopSheet: View {
                                     if let need = snapshot.fleetNeeds(catalog: catalog).first(where: { $0.routeID == route.id }) {
                                         Text(needDescription(need))
                                             .font(.subheadline).foregroundStyle(AETheme.caution)
+                                    }
+                                } else if let need = snapshot.fleetNeeds(catalog: catalog).first,
+                                          let route = snapshot.routes[need.routeID] {
+                                    Button {
+                                        selectedRouteID = route.id
+                                    } label: {
+                                        Label("Match aircraft to \(route.origin.raw)–\(route.destination.raw)", systemImage: "sparkles")
                                     }
                                 }
                             }
@@ -1018,11 +1025,6 @@ struct AircraftShopSheet: View {
             // voiced by `aircraftOrdered`/`aircraftDelivered` from Core.
             .aeSheetFeedback()
             .onAppear {
-                if selectedRouteID == nil, let state = controller.snapshot,
-                   let catalog = controller.catalog {
-                    selectedRouteID = requestedRouteID
-                        ?? state.fleetNeeds(catalog: catalog).first?.routeID
-                }
                 guard let state = controller.snapshot, let player = state.playerAirline,
                       state.fleet(of: player.id).isEmpty, state.routes(of: player.id).isEmpty,
                       let catalog = controller.catalog else { return }
