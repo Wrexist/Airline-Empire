@@ -3,14 +3,9 @@ import AirlineEmpireCore
 
 /// The screen that sells Pro (docs/MONETIZATION.md §5).
 ///
-/// Its structure is the argument, in order: what this game is → how big it is
-/// → what Pro adds → what it costs → exactly what will be charged → the
-/// button. Nothing about the price is hidden behind a scroll, and the
-/// commitment sentence sits directly above the button rather than in the
-/// footnote, which is where the reference designs put it and where App Review
-/// rejects it from ("Your auto-renewable subscription promotes the free trial
-/// or introductory period more clearly and conspicuously than the billed
-/// amount").
+/// Plans and benefits scroll above a persistent purchase area. The selected
+/// plan's complete billing sentence stays with its button from first display,
+/// including the recurring amount after an introductory offer.
 ///
 /// The copy is all `PaywallContent`, in Core, where a Linux test asserts that
 /// the required clauses are present. This file is layout.
@@ -41,6 +36,9 @@ struct PaywallView: View {
         ZStack {
             AEDuskBackdrop()
             content
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    purchaseArea
+                }
         }
         .aeSheetFeedback()
         .onAppear {
@@ -80,34 +78,45 @@ struct PaywallView: View {
                     PaywallStatBar(stats: PaywallContent.stats(catalog: catalog))
                 }
 
-                PaywallBenefits()
-
                 plans
 
-                // Everything below is required disclosure and the button it
-                // qualifies. Grouped so it can never be separated by an edit.
-                VStack(spacing: AETheme.spacingM) {
-                    Text(PaywallContent.subscriptionTerms)
-                        .font(AEType.caption)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Divider().overlay(AETheme.glassEdge)
-
-                    commitment
-                    callToAction
-                    PurchaseFeedback()
-                    assurances
-                }
-
+                PaywallBenefits()
+                assurances
+                Text(PaywallContent.subscriptionTerms)
+                    .font(AEType.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
                 declineButton
                 legalRow
             }
             .padding(AETheme.spacingM)
             .padding(.bottom, AETheme.spacingL)
+            .frame(maxWidth: 640)
+            .frame(maxWidth: .infinity)
         }
+        .accessibilityIdentifier("ae-paywall-content")
         .scrollBounceBehavior(.basedOnSize)
+    }
+
+    /// Inset rather than overlay: the last scrolling controls remain reachable
+    /// above checkout, and the price disclosure cannot scroll off its button.
+    private var purchaseArea: some View {
+        VStack(spacing: AETheme.spacingS) {
+            Text(selection.displayName)
+                .font(AEType.secondary.weight(.semibold))
+                .accessibilityIdentifier("ae-paywall-selected-plan")
+            commitment
+            callToAction
+            PurchaseFeedback()
+        }
+        .padding(AETheme.spacingM)
+        .frame(maxWidth: 640)
+        .frame(maxWidth: .infinity)
+        .background(.regularMaterial)
+        .overlay(alignment: .top) {
+            Divider().overlay(AETheme.glassEdge)
+        }
     }
 
     // MARK: - Plans
