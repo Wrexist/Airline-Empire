@@ -122,6 +122,18 @@ final class ShellAndMapUITests: AEUITestCase {
         let routeRow = app.descendants(matching: .any)
             .matching(identifier: "ae-route-row").firstMatch
         require(routeRow, "the new route on the board")
+
+        // A zero-result query must leave its search field mounted and usable.
+        let search = app.searchFields.firstMatch
+        guard require(search, "route search"), tapWhenReady(search) else { return }
+        search.typeText("zzzznomatchingairport")
+        let clearSearch = app.buttons["Clear search"]
+        guard require(clearSearch, "recovery from an empty route search") else { return }
+        XCTAssertTrue(search.exists, "Search disappeared when there were no matches")
+        XCTAssertTrue(search.isHittable, "The empty state hid the search field")
+        checkpoint("90b-route-search-empty")
+        guard tapWhenReady(clearSearch) else { return }
+        guard require(routeRow, "the route restored after clearing search") else { return }
         routeRow.tap()
         let routeRendered = app.buttons["Assign an aircraft"]
             .waitForExistence(timeout: 10)

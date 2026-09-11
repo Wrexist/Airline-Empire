@@ -1,0 +1,34 @@
+{
+  "verifiedOn": "2026-09-11",
+  "status": "drafts-created-not-sent",
+  "followUp": "One follow-up 7 days after actual send if there is no reply; stop after that.",
+  "contacts": [
+    {
+      "outlet": "MiniReview / NimbleThor",
+      "to": "contact@minireview.io",
+      "source": "https://minireview.io/about",
+      "priority": 1,
+      "subject": "Airline Empire: offline airline strategy for iOS — planned 16 October",
+      "body": "Hi Sune and the MiniReview team,\n\nI'm Isac, the developer of Airline Empire: Flight Tycoon, planned for iPhone and iPad on 16 October 2026.\n\nI'm reaching out because MiniReview helps players find mobile games by how they actually play. Airline Empire is about choosing routes, matching aircraft to demand, and keeping a growing network profitable. It plays offline, saves locally, and has no ads, energy system, or paid currency.\n\nThe free game includes one campaign, 20 nearby airports and two eras; optional Pro expands the campaign to 94 real airports and five eras.\n\nScreenshots and a concise fact sheet: https://airline-empire-official.isacmolin.chatgpt.site/press.html\n\nWould this be a fit for editorial consideration? I'm finishing release validation and can follow up with preview access when it is ready.\n\nBest,\nIsac Molin",
+      "gmailDraftId": "r-8941413022188389829"
+    },
+    {
+      "outlet": "Pocket Gamer",
+      "to": "news@pocketgamer.co.uk",
+      "source": "https://www.pocketgamer.com/pages/contact-us/",
+      "priority": 2,
+      "subject": "Upcoming iOS strategy game: Airline Empire targets 16 October",
+      "body": "Hi Pocket Gamer team,\n\nI'm Isac, the developer of Airline Empire: Flight Tycoon, an airline management game planned for iPhone and iPad on 16 October 2026.\n\nPlayers build an airline by opening routes, choosing aircraft and balancing fares, demand and operating costs. The campaign spans five aviation eras and 94 real airports with optional Pro. A free starting campaign includes 20 nearby airports and two eras.\n\nIt is designed for offline play with local saves, no account, no ads and no paid currency.\n\nFor your upcoming mobile games coverage, the fact sheet and downloadable screenshots are here: https://airline-empire-official.isacmolin.chatgpt.site/press.html\n\nThe release is still undergoing final validation. Would you like an update when preview access and the public store listing are ready?\n\nBest,\nIsac Molin",
+      "gmailDraftId": "r-4066659405340130672"
+    },
+    {
+      "outlet": "AppUnwrapper",
+      "to": "appunwrapper@gmail.com",
+      "source": "https://www.appunwrapper.com/contact-us/",
+      "priority": 3,
+      "subject": "For My Week Unwrapped: an offline airline strategy game for iOS",
+      "body": "Hi AppUnwrapper,\n\nI'm Isac, the developer of Airline Empire: Flight Tycoon, planned for iPhone and iPad on 16 October 2026.\n\nI saw that you welcome early looks for My Week Unwrapped. This is a management game, so it sits outside your main adventure and puzzle focus: players choose routes, match aircraft to demand and try to keep their airline profitable across aviation eras.\n\nIt plays offline with local saves and no ads or paid currency. There is a free starting campaign, with optional Pro for the wider world and later eras.\n\nHere's the fact sheet and downloadable gameplay screenshots: https://airline-empire-official.isacmolin.chatgpt.site/press.html\n\nIf it sounds interesting for a first look, may I follow up with preview access once final validation is complete?\n\nBest,\nIsac Molin",
+      "gmailDraftId": "r-7803056114027903120"
+    }
+  ]
+}

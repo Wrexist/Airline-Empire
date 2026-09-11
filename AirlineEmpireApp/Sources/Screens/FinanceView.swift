@@ -57,8 +57,7 @@ struct FinanceContent: View {
                     statementCard(snapshot: snapshot, player: player.id)
                     loansCard(model, snapshot: snapshot, player: player.id)
                 }
-                .padding(.horizontal)
-                .padding(.bottom, AETheme.spacingL)
+                .aePageInsets()
             } else {
                 LoadingState(message: "Adding it up")
                     .frame(minHeight: 240)
@@ -76,8 +75,7 @@ struct FinanceContent: View {
     }
 
     private func topLine(_ model: FinanceModel) -> some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())],
-                  spacing: AETheme.spacingS) {
+        AEStatGrid {
             StatTile(label: "Cash", value: Format.money(model.cash),
                      trend: model.cash.isNegative ? .down : .neutral)
             StatTile(label: "Net worth", value: Format.money(model.netWorth))

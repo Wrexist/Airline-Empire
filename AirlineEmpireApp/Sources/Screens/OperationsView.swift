@@ -38,9 +38,7 @@ struct OperationsView: View {
                     }
                     conditions
                 }
-                .padding(.horizontal, AETheme.spacingM)
-                .padding(.top, AETheme.spacingS)
-                .padding(.bottom, AETheme.spacingL)
+                .aePageInsets()
             }
             .aeScreenBackground()
             .navigationTitle("World")
@@ -153,7 +151,7 @@ private extension OperationsView {
                     .foregroundStyle(AETheme.accent)
                     .frame(width: 32)
                 VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: AETheme.spacingS) {
+                    AEChipRow {
                         Text(title)
                             .font(.headline)
                             .foregroundStyle(.primary)
@@ -216,8 +214,7 @@ struct WorldEventsView: View {
                         .frame(minHeight: 240)
                 }
             }
-            .padding(.horizontal, AETheme.spacingM)
-            .padding(.vertical, AETheme.spacingS)
+            .aePageInsets()
         }
         .aeScreenBackground()
         .navigationTitle("World events")
@@ -349,8 +346,7 @@ struct CompetitorsView: View {
                         .frame(minHeight: 240)
                 }
             }
-            .padding(.horizontal, AETheme.spacingM)
-            .padding(.vertical, AETheme.spacingS)
+            .aePageInsets()
         }
         .aeScreenBackground()
         .navigationTitle("Competitors")
@@ -557,8 +553,7 @@ struct ProgressionView: View {
                         .frame(minHeight: 240)
                 }
             }
-            .padding(.horizontal, AETheme.spacingM)
-            .padding(.vertical, AETheme.spacingS)
+            .aePageInsets()
         }
         .aeScreenBackground()
         .navigationTitle("Progression")
@@ -803,8 +798,7 @@ struct ReputationDetailView: View {
                         .frame(minHeight: 240)
                 }
             }
-            .padding(.horizontal, AETheme.spacingM)
-            .padding(.vertical, AETheme.spacingS)
+            .aePageInsets()
         }
         .aeScreenBackground()
         .navigationTitle("Reputation")
@@ -923,8 +917,7 @@ struct EconomyDetailView: View {
                         .frame(minHeight: 240)
                 }
             }
-            .padding(.horizontal, AETheme.spacingM)
-            .padding(.vertical, AETheme.spacingS)
+            .aePageInsets()
         }
         .aeScreenBackground()
         .navigationTitle("Economy")

@@ -34,7 +34,7 @@ The signed-in browser stopped responding with CDP timeouts. A fresh-tab recovery
 
 - Set the **App Privacy policy URL** to the new privacy page in both locales. Descriptions and support/marketing fields already contain the new host; the separate App Privacy field still needs a save.
 - Verify the existing privacy nutrition-label answers against the current build.
-- Submit the [prepared featuring nomination](APP_STORE_FEATURING_NOMINATION.md).
+- Featuring nomination [submitted and verified on 11 September 2026](APP_STORE_FEATURING_NOMINATION.md). Monitor Apple editorial correspondence; do not create a duplicate launch nomination.
 - Verify the app is priced Free, all three Pro purchase records, regional requirements and the latest TestFlight build.
 
 ## Release gates

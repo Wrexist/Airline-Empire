@@ -31,6 +31,7 @@ import AirlineEmpireCore
 /// Liquid Glass carries it (`aeGlass`, availability-gated to iOS 26 with a
 /// material fallback), over the dusk sky the app icon already uses.
 struct NewGameView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(GameController.self) private var controller
     @Environment(Entitlements.self) private var entitlements
     @State private var airlineName = ""
@@ -218,7 +219,7 @@ struct NewGameView: View {
                 HStack(spacing: AETheme.spacingS) {
                     ForEach(Livery.allCases, id: \.self) { option in
                         Button {
-                            withAnimation(.snappy(duration: 0.22)) { livery = option }
+                            withAnimation(reduceMotion ? nil : AEMotion.selection) { livery = option }
                         } label: {
                             Circle()
                                 .fill(Vocab.liveryColor(option))
@@ -260,7 +261,7 @@ struct NewGameView: View {
             SectionLabel("Where you start")
             ForEach(CuratedStart.all) { start in
                 AEChoiceCard(isSelected: customHome == nil && start.id == selectedStart.id) {
-                    withAnimation(.snappy(duration: 0.22)) {
+                    withAnimation(reduceMotion ? nil : AEMotion.selection) {
                         selectedStart = start
                         customHome = nil
                     }
@@ -284,7 +285,7 @@ struct NewGameView: View {
         .aeFeedback(.uiSelect, on: customHome?.raw ?? selectedStart.id)
         .sheet(isPresented: $showingAllAirports) {
             HomeAirportPicker(catalog: catalog) { code in
-                withAnimation(.snappy(duration: 0.22)) { customHome = code }
+                withAnimation(reduceMotion ? nil : AEMotion.selection) { customHome = code }
             }
         }
     }
@@ -409,7 +410,7 @@ struct NewGameView: View {
             if isLocked {
                 entitlements.present(.scenario)
             } else {
-                withAnimation(.snappy(duration: 0.22)) { scenario = code }
+                withAnimation(reduceMotion ? nil : AEMotion.selection) { scenario = code }
             }
         } label: {
             HStack(spacing: 4) {
@@ -482,7 +483,7 @@ struct NewGameView: View {
     private var seedSection: some View {
         VStack(alignment: .leading, spacing: AETheme.spacingS) {
             Button {
-                withAnimation(.snappy(duration: 0.22)) { showsSeed.toggle() }
+                withAnimation(reduceMotion ? nil : AEMotion.selection) { showsSeed.toggle() }
             } label: {
                 HStack(spacing: AETheme.spacingXS) {
                     Text("World seed")

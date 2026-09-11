@@ -38,7 +38,12 @@ final class FreeTierUITests: AEUITestCase {
         let initiallyVisible = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             buy.exists && buy.isEnabled && buy.isHittable
         }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [initiallyVisible], timeout: 20), .completed,
+        let initialResult = XCTWaiter.wait(for: [initiallyVisible], timeout: 20)
+        if initialResult != .completed {
+            capture("KEY-00-\(capturePrefix)on-open-failure")
+            print("PAYWALL purchase exists=\(buy.exists) enabled=\(buy.isEnabled) hittable=\(buy.isHittable) label=\(buy.label)")
+        }
+        XCTAssertEqual(initialResult, .completed,
                       "Purchase must be visible when the paywall opens, without scrolling")
         _ = waitUntilStill(buy)
         XCTAssertTrue(app.frame.contains(buy.frame),
@@ -48,15 +53,32 @@ final class FreeTierUITests: AEUITestCase {
         let paywallScroll = app.scrollViews["ae-paywall-content"]
         for tier in ["weekly", "yearly", "lifetime"] {
             let plan = app.buttons["ae-paywall-plan-com.airlineempire.game.pro.\(tier)"]
-            guard scrollPaywallUntil(plan, "the \(tier) plan", in: paywallScroll),
-                  tapWhenReady(plan) else { return }
+            guard scrollPaywallUntil(plan, "the \(tier) plan", in: paywallScroll) else { return }
+            // XCTest can report a card behind the fixed checkout as hittable.
+            // Tap only the portion we have verified is above that checkout.
+            let visiblePlan = plan.frame.intersection(paywallViewport(in: paywallScroll))
+            guard !visiblePlan.isNull, visiblePlan.height >= 32 else {
+                XCTFail("The plan must have a visible tap target above checkout")
+                return
+            }
+            app.coordinate(withNormalizedOffset: .zero)
+                .withOffset(CGVector(dx: visiblePlan.midX - app.frame.minX,
+                                     dy: visiblePlan.midY - app.frame.minY)).tap()
+            let selected = app.staticTexts["ae-paywall-selected-plan"]
+            let expectedName = ["weekly": "Pro Weekly", "yearly": "Pro Yearly",
+                                "lifetime": "Pro Lifetime"][tier]!
+            let changed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                selected.exists && selected.label == expectedName
+            }, object: nil)
+            XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 10), .completed,
+                           "Selecting a plan must update checkout without starting a purchase")
             XCTAssertTrue(buy.isHittable,
                           "The purchase button must remain visible while selecting plans")
             let loaded = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
                 buy.exists && buy.isEnabled
             }, object: nil)
             let loadingResult = XCTWaiter.wait(for: [loaded], timeout: 20)
-            if loadingResult != .completed { capture("KEY-IAP-products-unavailable") }
+            if loadingResult != .completed { capture("KEY-00-IAP-products-unavailable") }
             XCTAssertEqual(loadingResult, .completed,
                            "Real StoreKit test products must load before photographing the paywall")
             let commitment = app.staticTexts["ae-paywall-commitment"]
@@ -75,12 +97,25 @@ final class FreeTierUITests: AEUITestCase {
         XCTAssertTrue(app.buttons["Privacy Policy"].exists)
     }
 
+    private func paywallViewport(in scroll: XCUIElement) -> CGRect {
+        let frame = scroll.frame.intersection(app.frame)
+        // The label is padded 16 points inside the fixed checkout.
+        let bottom = min(frame.maxY,
+                         app.staticTexts["ae-paywall-selected-plan"].frame.minY - 20)
+        return CGRect(x: frame.minX + 8, y: frame.minY + 8,
+                      width: max(0, frame.width - 16),
+                      height: max(0, bottom - frame.minY - 8))
+    }
+
     private func scrollPaywallUntil(_ element: XCUIElement, _ what: String,
                                     in scroll: XCUIElement) -> Bool {
         for _ in 0..<30 {
-            if element.exists && element.isHittable {
+            if element.exists && element.isHittable, element.frame.height > 0,
+               element.frame.intersection(paywallViewport(in: scroll)).height >= min(32, element.frame.height) {
                 _ = waitUntilStill(element)
-                return true
+                if element.frame.intersection(paywallViewport(in: scroll)).height >= min(32, element.frame.height) {
+                    return true
+                }
             }
             // safeAreaInset reserves content space, but XCTest still reports
             // the scroll view's frame behind checkout. At accessibility size

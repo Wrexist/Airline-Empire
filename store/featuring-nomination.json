@@ -23,5 +23,14 @@
     "https://airline-empire-official.isacmolin.chatgpt.site/press.html"
   ],
   "preorderPlanned": true,
-  "status": "prepared_not_submitted"
+  "status": "submitted",
+  "nominationId": "1a115aef-1fda-4b6c-9047-5e1f72777747",
+  "submittedDate": "2026-09-11",
+  "submittedAtDisplay": "11 September 2026 at 17:51 CEST",
+  "supportedRegionCount": 173,
+  "excludedRegions": [
+    "CHN",
+    "VNM"
+  ],
+  "verification": "App Store Connect displayed One new nomination was successfully submitted and Submitted (1)."
 }

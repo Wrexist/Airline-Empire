@@ -74,15 +74,21 @@ struct AirportBrowserView: View {
                         .pickerStyle(.segmented)
                     }
                     if rows.isEmpty {
-                        Text(emptyMessage)
-                            .font(.subheadline)
-                            .foregroundStyle(AETheme.mutedText)
+                        EmptyStateView(icon: "magnifyingglass",
+                                       title: "No airports found",
+                                       message: emptyMessage,
+                                       actionTitle: "Show all airports",
+                                       action: { search = ""; scope = .all })
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
                     }
                     ForEach(rows, id: \.code) { row in
                         NavigationLink(value: row.code) { airportRow(row) }
                     }
                 }
-                .searchable(text: $search, prompt: "Airport code, city or country")
+                .searchable(text: $search,
+                            placement: .navigationBarDrawer(displayMode: .always),
+                            prompt: "Airport code, city or country")
                 .aeScreenBackground()
                 .navigationDestination(for: AirportCode.self) {
                     AirportDetailView(code: $0)
@@ -215,8 +221,7 @@ struct AirportDetailView: View {
                     capacity(spec, snapshot: snapshot)
                     presence(spec, snapshot: snapshot, player: player, catalog: catalog)
                 }
-                .padding(.horizontal)
-                .padding(.bottom, AETheme.spacingL)
+                .aePageInsets()
             } else {
                 LoadingState(message: "Loading the airport")
                     .frame(minHeight: 240)

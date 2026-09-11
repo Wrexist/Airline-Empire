@@ -96,10 +96,12 @@ struct MapHomeBriefing: View {
                     VStack(alignment: .leading, spacing: AETheme.spacingXS) {
                         ForEach(facts, id: \.label) { fact($0) }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
-                    ForEach(facts, id: \.label) { fact($0) }
+                    ForEach(facts, id: \.label) {
+                        fact($0).frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
-                Spacer(minLength: 0)
                 Image(systemName: "chevron.up")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.white.opacity(0.55))
@@ -160,12 +162,15 @@ struct MapHomeBriefing: View {
         VStack(alignment: .leading, spacing: 1) {
             Text(fact.value)
                 .font(.subheadline.weight(.semibold).monospacedDigit())
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
                 .foregroundStyle(fact.tint)
                 .contentTransition(.numericText())
                 .aeAnimation(AEMotion.content, value: fact.value)
             Text(fact.label)
                 .font(.caption2)
                 .foregroundStyle(.white.opacity(0.55))
+                .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityHidden(true)
     }

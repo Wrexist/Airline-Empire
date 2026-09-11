@@ -319,7 +319,7 @@ struct FleetRow: View {
                 Spacer()
                 statusBadge
             }
-            HStack(spacing: AETheme.spacingS) {
+            AEChipRow {
                 AEBadge(text: "\(Format.decimal(card.ageYears, places: 0))y",
                         color: .secondary)
                 AEBadge(text: "cond \(Format.percent(card.condition))",
@@ -376,8 +376,7 @@ struct AircraftDetailView: View {
                     condition(card, spec: spec)
                     ownership(card, spec: spec, player: player.id)
                 }
-                .padding(.horizontal)
-                .padding(.bottom, AETheme.spacingL)
+                .aePageInsets()
             } else {
                 EmptyStateView(icon: "airplane.slash", title: "Aircraft gone",
                                message: "This aircraft is no longer in your fleet.")
