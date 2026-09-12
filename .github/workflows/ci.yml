@@ -139,8 +139,17 @@ jobs:
       - name: Test (debug)
         if: steps.changes.outputs.test == 'true'
         shell: bash
+        env:
+          VALIDATION_SUITE: ${{ inputs.suite }}
         run: |
           set -o pipefail
+          # Focused UI follow-ups still verify the onboarding state model.
+          # Full, smoke, PR and push runs retain the complete Core suite.
+          if [ "$VALIDATION_SUITE" = "onboarding" ]; then
+            swift test --filter OnboardingTests 2>&1 | tee onboarding-test.log
+            grep -Eq 'Test run with [1-9][0-9]* tests? passed' onboarding-test.log
+            exit 0
+          fi
           # Run 34518221954 exceeded this test's 10-minute wall limit while
           # even tiny tests waited 18 minutes for the cooperative pool. Keep
           # its timeout and economic assertions; execute it without contention,

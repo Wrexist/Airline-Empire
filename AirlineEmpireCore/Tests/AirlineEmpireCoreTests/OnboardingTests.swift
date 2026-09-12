@@ -121,6 +121,13 @@ struct OnboardingTests {
         state.flights[id]?.phase = .enRoute(actualDeparture: state.clock.now)
         #expect(state.onboardingModel(catalog: engine.catalog, suggestionLimit: 0)?
             .isDone(.watchFirstFlight) == true)
+        state.flights.removeValue(forKey: id)
+        state.routes[route.id]?.stats.flightsCancelled = 1
+        #expect(state.onboardingModel(catalog: engine.catalog, suggestionLimit: 0)?
+            .nextStep == .watchFirstFlight)
+        state.routes[route.id]?.stats.flightsCompleted = 1
+        #expect(state.onboardingModel(catalog: engine.catalog, suggestionLimit: 0)?
+            .isDone(.watchFirstFlight) == true)
     }
 
     @Test func noPlayerNoModel() throws {

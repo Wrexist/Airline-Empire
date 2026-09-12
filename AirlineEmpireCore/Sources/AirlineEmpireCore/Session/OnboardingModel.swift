@@ -78,7 +78,7 @@ extension GameState {
             case .scheduled, .boarding: return false
             }
         }
-        if hasLiveFlight || routes.contains(where: { $0.stats.totalFlights > 0 }) {
+        if hasLiveFlight || routes.contains(where: { $0.stats.flightsCompleted > 0 }) {
             completed.insert(.watchFirstFlight)
         }
         if routes.contains(where: {

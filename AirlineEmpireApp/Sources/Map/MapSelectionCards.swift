@@ -267,7 +267,7 @@ struct MapRouteCard: View {
     }
 
     private var healthAdvice: String {
-        if let real = snapshot.routes[route.id], real.stats.totalFlights == 0,
+        if let real = snapshot.routes[route.id], real.stats.flightsCompleted == 0,
            !real.assignedAircraft.isEmpty, route.health != .disrupted {
             return "New route. Aircraft assigned; performance will appear after the first completed flight."
         }
