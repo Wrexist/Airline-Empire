@@ -41,7 +41,9 @@ struct RootView: View {
             }
         }
         .aeAnimation(AEMotion.screen, value: state)
-        // A UI-test affordance, and deliberately a narrow one.
+        // Setup uses the dusk theme. Set its window appearance here so
+        // native interactive glass agrees with the white setup text.
+        // Gameplay follows the device unless the UI-test override below is on.
         //
         // `XCUIDevice.shared.appearance = .dark` is the faithful way to test
         // dark mode — it switches the simulator, so what is captured is what a
