@@ -1437,7 +1437,20 @@ class AEUITestCase: XCTestCase {
             XCTFail("The map home shows no briefing handle. Screenshot attached.")
             return false
         }
-        handle.tap()
+        // Tab selection can finish before the map's overlay has settled.
+        // Resolve a fresh, stationary hit target before sending a single tap.
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            handle.exists && handle.isHittable
+        }, object: nil)
+        guard XCTWaiter.wait(for: [ready], timeout: 10) == .completed,
+              waitUntilStill(handle),
+              app.buttons["ae-home-briefing"].isHittable else {
+            capture(Self.logPrefix + "BRIEFING-HANDLE-NOT-READY")
+            XCTFail("The briefing handle did not settle into a hittable control.")
+            return false
+        }
+        app.buttons["ae-home-briefing"]
+            .coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         guard app.buttons["ae-briefing-close"].waitForExistence(timeout: 10) else {
             capture(Self.logPrefix + "BRIEFING-DID-NOT-OPEN")
             XCTFail("Pressing the briefing handle did not raise the briefing.")

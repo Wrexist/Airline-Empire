@@ -173,6 +173,15 @@ final class MapHomeUITests: AEUITestCase {
         }
         // Observe real departures at normal speed so a short flight remains
         // airborne long enough for accessibility discovery and Pause.
+        // Resolve Pause while time is stopped. Repeated accessibility
+        // queries after detecting a flight can consume its entire duration
+        // on the 26.2 hosted simulator (the failed run took over 30 seconds).
+        let pauseControl = app.buttons.matching(identifier: "Pause").firstMatch
+        guard require(pauseControl, "Pause before starting the flight"),
+              pauseControl.isHittable, waitUntilStill(pauseControl) else { return }
+        let pauseFrame = pauseControl.frame
+        let pausePoint = app.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: pauseFrame.midX, dy: pauseFrame.midY))
         guard selectSpeed("Normal speed") else { return }
 
         func value() -> String { map.value as? String ?? "" }
@@ -190,8 +199,16 @@ final class MapHomeUITests: AEUITestCase {
         // Pause before taking a screenshot or querying the canvas. On a
         // loaded runner those operations took five game hours at 16x, so
         // the flight landed between its discovery and the Pause tap.
-        guard selectSpeed("Pause") else { return }
-        Thread.sleep(forTimeInterval: 1)
+        pausePoint.tap()
+        let pausedAfterDeparture = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let current = self.app.buttons.matching(identifier: "Pause").firstMatch
+            return current.exists && current.isSelected
+        }, object: nil)
+        guard XCTWaiter.wait(for: [pausedAfterDeparture], timeout: 10) == .completed else {
+            checkpoint("AE048-F-PAUSE-NOT-SELECTED")
+            XCTFail("Pause did not stop the clock after flight discovery.")
+            return
+        }
         checkpoint("AE048-F0-map-with-the-network-running")
 
         if airborne() > 0 {
