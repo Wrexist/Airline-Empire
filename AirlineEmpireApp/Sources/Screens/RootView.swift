@@ -59,7 +59,7 @@ struct RootView: View {
         // Reads a launch argument, not a build flag: the shipping binary is
         // the one under test, and no player will ever pass this.
         .preferredColorScheme(
-            ProcessInfo.processInfo.arguments.contains("-AEUITestDarkAppearance")
+            state == .newGame || ProcessInfo.processInfo.arguments.contains("-AEUITestDarkAppearance")
                 ? .dark : nil)
         .accessibilityIdentifier(appearanceIdentifier)
         // The audio pipeline's state, as something a UI test can read.

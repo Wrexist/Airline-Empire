@@ -90,6 +90,8 @@ final class ShellAndMapUITests: AEUITestCase {
         XCTAssertTrue(map.waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["ae-route-setup-done"].waitForNonExistence(timeout: 10))
         XCTAssertTrue((map.value as? String ?? "").contains("Selected route"))
+        XCTAssertTrue(app.staticTexts["New route. Aircraft assigned; performance will appear after the first completed flight."].exists)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Underperforming:")).firstMatch.exists)
         checkpoint("GUIDE-returned-to-selected-route")
     }
 

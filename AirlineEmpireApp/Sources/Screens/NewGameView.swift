@@ -99,16 +99,16 @@ struct NewGameView: View {
                     .accessibilityIdentifier("ae-setup-personalize")
                     DisclosureGroup("Advanced options & backups") {
                         Button {
-                        if entitlements.access.allowsNewSave(existingSaves: slots.count) {
-                            showingImport = true
-                        } else {
-                            entitlements.present(.saveSlot)
+                            if entitlements.access.allowsNewSave(existingSaves: slots.count) {
+                                showingImport = true
+                            } else {
+                                entitlements.present(.saveSlot)
+                            }
+                        } label: {
+                            Label("Import campaign backup", systemImage: "square.and.arrow.down")
                         }
-                    } label: {
-                        Label("Import campaign backup", systemImage: "square.and.arrow.down")
-                    }
-                    .buttonStyle(.aeTertiary)
-                    .accessibilityIdentifier("ae-import-campaign")
+                        .buttonStyle(.aeTertiary)
+                        .accessibilityIdentifier("ae-import-campaign")
                         seedSection
                     }
                     .padding(AETheme.spacingM)
@@ -125,6 +125,7 @@ struct NewGameView: View {
             .scrollDismissesKeyboard(.interactively)
         }
         .safeAreaInset(edge: .bottom) { foundBar }
+        .environment(\.colorScheme, .dark)
         .preferredColorScheme(.dark)
         .fileImporter(isPresented: $showingImport, allowedContentTypes: [.data]) { result in
             do {

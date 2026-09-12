@@ -97,22 +97,22 @@ struct MapHomeBriefing: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.white.opacity(0.8))
                 HStack(alignment: .center, spacing: AETheme.spacingM) {
-                if typeSize.isAccessibilitySize {
-                    VStack(alignment: .leading, spacing: AETheme.spacingXS) {
-                        ForEach(facts, id: \.label) { fact($0) }
+                    if typeSize.isAccessibilitySize {
+                        VStack(alignment: .leading, spacing: AETheme.spacingXS) {
+                            ForEach(facts, id: \.label) { fact($0) }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        ForEach(facts, id: \.label) {
+                            fact($0).frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                } else {
-                    ForEach(facts, id: \.label) {
-                        fact($0).frame(maxWidth: .infinity, alignment: .leading)
-                    }
+                    Image(systemName: "chevron.up")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.55))
+                        .accessibilityHidden(true)
                 }
-                Image(systemName: "chevron.up")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.55))
-                    .accessibilityHidden(true)
             }
-                }
             .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
