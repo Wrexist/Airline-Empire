@@ -34,14 +34,17 @@ diffing the last push: a change whose run was cancelled by `concurrency` is
 still in the diff, because that run never went green. When the answer is no,
 the macOS job does not start, so it costs nothing at all.
 
-**Which suite?** Three, graded by signal per macOS minute — the only currency
+**Which suite?** Four, graded by signal per macOS minute — the only currency
 that matters at 10×.
 
 | Suite | When | Cost | What it answers |
 | --- | --- | --- | --- |
 | **compile** | every pull request | ~2 min | Does the SwiftUI app build? |
 | **smoke** | every merge to `main` | ~10 min | ...and do eight core journeys pass? |
+| **onboarding** | manual UI follow-up | one UI runner | Four setup/first-flight journeys and the focused onboarding Core tests |
 | **full** | dispatch | ~40 min | ...and every journey class, plus the performance baselines, on four runners |
+
+`onboarding` is a focused follow-up after broad validation. It keeps the release build with warnings as errors and can include iPad checks, but does not replace the full Core and campaign suites for broader changes. Ordinary PR and push behavior is unchanged.
 
 `compile` is `build-for-testing` and nothing else: no simulator is booted, no
 test bundle runs, no evidence steps fire. It costs 56 seconds of xcodebuild

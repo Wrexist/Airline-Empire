@@ -104,6 +104,7 @@ final class MapHomeUITests: AEUITestCase {
         guard require(commit, "the route sheet's commit bar", timeout: 10) else { return }
         checkpoint("AE048-D-route-sheet-from-the-map")
         commit.tap()
+        finishRouteSetup()
 
         // ── FRAME E · the move becomes the assignment ──────────────────────
         XCTAssertTrue(move.waitForExistence(timeout: 15), """

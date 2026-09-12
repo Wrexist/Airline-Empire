@@ -95,6 +95,41 @@ struct OnboardingTests {
         #expect(model.nextStep == nil)
     }
 
+    @Test func scheduledFlightsDoNotCompleteTheTakeoffStep() throws {
+        let (engine, player) = try freshGame()
+        #expect(engine.applyNow(BuyUsedAircraftCommand(buyer: player, type: "MR180",
+                                                       ageYears: 10)) == .applied)
+        #expect(engine.applyNow(OpenRouteCommand(airline: player, origin: "ARN",
+            destination: "LHR", dailyRoundTrips: 2, ticketPrice: .dollars(100))) == .applied)
+        let route = try #require(engine.state.routes(of: player).first)
+        let aircraft = try #require(engine.state.fleet(of: player).first)
+        #expect(engine.applyNow(AssignAircraftToRouteCommand(airline: player,
+            route: route.id, aircraftID: aircraft.id)) == .applied)
+        var state = engine.state
+        let id = FlightID(raw: 999)
+        state.flights[id] = Flight(id: id, route: route.id, aircraft: aircraft.id,
+            kind: .revenue, from: route.origin, to: route.destination,
+            distanceKm: route.distanceKm, flightMinutes: 90,
+            scheduledDeparture: state.clock.now)
+        for phase in [FlightPhase.scheduled, .boarding] {
+            state.flights[id]?.phase = phase
+            let model = try #require(state.onboardingModel(catalog: engine.catalog, suggestionLimit: 0))
+            #expect(model.nextStep == .watchFirstFlight)
+            #expect(!model.isDone(.watchFirstFlight))
+            #expect(model.suggestions.isEmpty)
+        }
+        state.flights[id]?.phase = .enRoute(actualDeparture: state.clock.now)
+        #expect(state.onboardingModel(catalog: engine.catalog, suggestionLimit: 0)?
+            .isDone(.watchFirstFlight) == true)
+        state.flights.removeValue(forKey: id)
+        state.routes[route.id]?.stats.flightsCancelled = 1
+        #expect(state.onboardingModel(catalog: engine.catalog, suggestionLimit: 0)?
+            .nextStep == .watchFirstFlight)
+        state.routes[route.id]?.stats.flightsCompleted = 1
+        #expect(state.onboardingModel(catalog: engine.catalog, suggestionLimit: 0)?
+            .isDone(.watchFirstFlight) == true)
+    }
+
     @Test func noPlayerNoModel() throws {
         let catalog = try ContentCatalog.loadBundled()
         let engine = SimulationEngine(state: Fixtures.newState(seed: 3),

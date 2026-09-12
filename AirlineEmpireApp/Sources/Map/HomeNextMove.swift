@@ -30,6 +30,7 @@ struct HomeNextMove: Equatable {
         case route(RouteID)
         case aircraft(AircraftID)
         case startClock
+        case nextMorning
         case follow(FlightID)
         case briefing
     }
@@ -182,8 +183,17 @@ struct HomeNextMove: Equatable {
             return HomeNextMove(icon: icon, title: title, detail: detail,
                                 move: .startClock)
         case .earnFirstRevenue:
-            return HomeNextMove(icon: icon, title: title, detail: detail,
-                                move: .briefing)
+            if let flight = snapshot.flights.values.sorted(by: { $0.id < $1.id }).first(where: {
+                guard snapshot.routes[$0.route]?.airline == player.id else { return false }
+                if case .enRoute = $0.phase { return true }
+                return false
+            }) {
+                return HomeNextMove(icon: "airplane", title: "Watch your first flight",
+                                    detail: "Ticket revenue arrives when your passengers land.",
+                                    move: .follow(flight.id))
+            }
+            return HomeNextMove(icon: icon, title: "Waiting for your first arrival",
+                                detail: detail, move: .startClock)
         }
     }
 }

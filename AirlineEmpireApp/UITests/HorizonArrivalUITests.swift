@@ -65,6 +65,7 @@ final class HorizonArrivalUITests: AEUITestCase {
             let commit = app.buttons.matching(identifier: "ae-route-open").firstMatch
             if commit.waitForExistence(timeout: 8), commit.isEnabled {
                 commit.tap()
+                finishRouteSetup()
                 Thread.sleep(forTimeInterval: 1)
             } else {
                 checkpoint("HZ-FEB-ROUTE-SHEET-STUCK-\(attempt)")

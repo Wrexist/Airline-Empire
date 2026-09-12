@@ -77,6 +77,7 @@ final class EconomyJourneyUITests: AEUITestCase {
         guard require(commit, "the route sheet's commit bar", timeout: 8) else { return }
         checkpoint("AE042-3-route-sheet-for-the-recommendation")
         commit.tap()
+        finishRouteSetup()
         guard commit.waitForNonExistence(timeout: 10) else {
             checkpoint("AE042-ROUTE-SHEET-DID-NOT-CLOSE")
             XCTFail("Opening the recommended route did not dismiss its sheet.")

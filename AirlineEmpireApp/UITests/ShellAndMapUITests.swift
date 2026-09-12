@@ -21,6 +21,80 @@ import XCTest
 /// one after another.
 final class ShellAndMapUITests: AEUITestCase {
 
+    func testOptionalSetupAndFirstFlightProgress() throws {
+        launch(appearance: .light)
+        XCTAssertFalse(app.buttons["ae-import-campaign"].exists)
+        let advanced = app.buttons["Advanced options & backups"]
+        guard scrollUntil(advanced, "advanced setup options") else { return }
+        advanced.tap()
+        XCTAssertTrue(app.buttons["ae-import-campaign"].waitForExistence(timeout: 5))
+        checkpoint("GUIDE-optional-setup")
+        advanced.tap()
+        guard foundAirline() else { return }
+        XCTAssertTrue(app.descendants(matching: .any)["ae-first-flight-progress"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Airline overview"].exists)
+        checkpoint("GUIDE-first-flight-home")
+    }
+
+    func testAirportRouteFiltersAndContextualAircraftAcquisition() throws {
+        launch(appearance: .light)
+        guard foundAirline() else { return }
+        let map = app.descendants(matching: .any)["ae-map-canvas"]
+        guard require(map, "the home map") else { return }
+        app.buttons["Frame my network"].tap()
+        Thread.sleep(forTimeInterval: 1)
+        map.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let expand = app.buttons["ae-airport-expand"]
+        guard require(expand, "the selected home airport's expansion control") else { return }
+        expand.tap()
+        let create = app.buttons["ae-airport-create-route"]
+        guard require(create, "route creation inside the expanded airport") else { return }
+        XCTAssertTrue(create.label.contains("ARN"))
+        checkpoint("SMART-expanded-airport")
+        expand.tap()
+        XCTAssertTrue(create.waitForNonExistence(timeout: 5))
+        expand.tap()
+        create.tap()
+        let origin = app.buttons["ae-route-origin"]
+        guard require(origin, "the map airport preselected as origin") else { return }
+        XCTAssertTrue((origin.label + (origin.value as? String ?? "")).contains("ARN"))
+        let idle = app.buttons["Fits idle aircraft"]
+        guard require(idle, "the idle-aircraft route filter") else { return }
+        idle.tap()
+        XCTAssertTrue(app.staticTexts["No destinations match your search and filter."].waitForExistence(timeout: 5))
+        checkpoint("SMART-empty-idle-filter")
+        app.buttons["Reset filters"].tap()
+        let destination = app.buttons.matching(identifier: "ae-route-destination").firstMatch
+        guard require(destination, "destinations after resetting filters") else { return }
+        destination.tap()
+        let commit = app.buttons["ae-route-open"]
+        guard require(commit, "the selected route's commit") else { return }
+        commit.tap()
+        guard require(app.buttons["ae-route-setup-done"], "the route setup continuation", timeout: 15) else { return }
+        let market = app.buttons["ae-route-find-aircraft"]
+        guard scrollUntil(market, "the route's aircraft market") else { return }
+        market.tap()
+        XCTAssertTrue(app.buttons["ae-market-route"].waitForExistence(timeout: 10))
+        checkpoint("SMART-route-matched-market")
+        guard leaseAnAircraft(proof: .routeAssignment) else { return }
+        XCTAssertTrue(app.buttons["Unassign"].exists, "The acquired aircraft must be assigned to the selected route.")
+        checkpoint("SMART-leased-and-assigned")
+        let viewMap = app.buttons["ae-route-view-map"]
+        for _ in 0..<6 {
+            if viewMap.isHittable { break }
+            app.swipeDown()
+        }
+        guard require(viewMap, "the route's direct map action") else { return }
+        checkpoint("GUIDE-assigned-route-status")
+        viewMap.tap()
+        XCTAssertTrue(map.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["ae-route-setup-done"].waitForNonExistence(timeout: 10))
+        XCTAssertTrue((map.value as? String ?? "").contains("Selected route"))
+        XCTAssertTrue(app.staticTexts["New route. Aircraft assigned; performance will appear after the first completed flight."].exists)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Underperforming:")).firstMatch.exists)
+        checkpoint("GUIDE-returned-to-selected-route")
+    }
+
 
     // MARK: Appearance
     //
@@ -552,6 +626,15 @@ final class ShellAndMapUITests: AEUITestCase {
         XCTAssertTrue(panel.waitForExistence(timeout: 5),
                       "The map reported a selection but no panel opened")
         checkpoint("86-airport-selected")
+        let expand = app.buttons["ae-airport-expand"]
+        guard require(expand, "the airport expansion action") else { return }
+        expand.tap()
+        let create = app.buttons["ae-airport-create-route"]
+        guard require(create, "route creation in the expanded airport") else { return }
+        XCTAssertLessThan(panel.frame.maxY - create.frame.maxY, 44,
+                          "An airport with no routes should fit its actions without an empty scroll area.")
+        checkpoint("86b-airport-expanded-fits-content")
+        expand.tap()
 
         // Zoomed out one more time with the selection held: this is the frame
         // where the hub rings on the other global airports are visible beside

@@ -37,9 +37,13 @@ struct MapTopBar: View {
                             Text(Format.date(snapshot.currentDate))
                                 .font(.subheadline.weight(.semibold).monospacedDigit())
                             Spacer(minLength: AETheme.spacingS)
-                            Text(Format.clock(snapshot.currentDate))
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.white.opacity(0.7))
+                            VStack(alignment: .trailing, spacing: 1) {
+                                Text(Format.clock(snapshot.currentDate))
+                                    .font(.caption.monospacedDigit())
+                                Text(controller.speed == .paused ? "Paused" : "Time running")
+                                    .font(.caption2)
+                            }
+                            .foregroundStyle(.white.opacity(0.7))
                         }
                         SpeedControl()
                     }
@@ -247,7 +251,7 @@ struct MapSelectionPanel: View {
     let followed: FlightID?
     let toggleFollow: (FlightID) -> Void
     let dismiss: () -> Void
-    let openRoute: (FirstRouteSuggestion) -> Void
+    let openAirportRoute: (AirportCode) -> Void
 
     var body: some View {
         Group {
@@ -258,7 +262,7 @@ struct MapSelectionPanel: View {
             case .some(.airport(let code)):
                 if let airport = model.airports.first(where: { $0.code == code }) {
                     MapAirportCard(airport: airport, model: model, snapshot: snapshot,
-                                   dismiss: dismiss, openRoute: openRoute)
+                                   dismiss: dismiss, openRoute: openAirportRoute)
                 }
             case .some(.route(let id)):
                 if let route = model.routes.first(where: { $0.id == id }) {
@@ -283,6 +287,7 @@ struct MapSelectionPanel: View {
         // an airport can prove the panel opened rather than photographing the
         // map and hoping. The identifier is on the selected states only: the
         // briefing below is not a selection and must not answer to the name.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(selection == nil ? "" : "ae-map-selection")
         .aeAnimation(AEMotion.content, value: selection)
     }

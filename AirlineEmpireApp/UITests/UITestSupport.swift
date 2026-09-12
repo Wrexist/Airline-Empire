@@ -431,6 +431,7 @@ class AEUITestCase: XCTestCase {
         case fleetBoard
         /// Opened from the map home: the briefing strip reports the count.
         case mapHomeBriefing
+        case routeAssignment
     }
 
     @discardableResult
@@ -602,6 +603,8 @@ class AEUITestCase: XCTestCase {
     /// Did the lease actually land? Asked of whichever surface can answer.
     private func leaseLanded(_ proof: LeaseProof, fleetRow: XCUIElement) -> Bool {
         switch proof {
+        case .routeAssignment:
+            return app.buttons["Unassign"].waitForExistence(timeout: 15)
         case .fleetBoard:
             return fleetRow.waitForExistence(timeout: 6)
         case .mapHomeBriefing:
@@ -667,6 +670,7 @@ class AEUITestCase: XCTestCase {
             return false
         }
         open.tap()
+        finishRouteSetup()
 
         // AGREEMENT: opening a route must put one on the board.
         let emptyRoutes = app.staticTexts["No routes yet"]
@@ -710,10 +714,19 @@ class AEUITestCase: XCTestCase {
         let open = app.buttons.matching(identifier: "ae-route-open").firstMatch
         guard require(open, "the commit bar after picking \(city)", timeout: 8) else { return false }
         open.tap()
+        finishRouteSetup()
         Thread.sleep(forTimeInterval: 1)
         return true
     }
 
+
+    /// Creation continues to the live route, ready for assignment or shopping.
+    func finishRouteSetup() {
+        let done = app.buttons["ae-route-setup-done"]
+        guard require(done, "the newly created route's setup screen", timeout: 15) else { return }
+        checkpoint("SMART-route-created-ready-for-aircraft")
+        done.tap()
+    }
 
     /// Assign the fleet's aircraft to the board's first route, and prove the
     /// assignment took. One implementation for both journeys that need a
@@ -1290,6 +1303,9 @@ class AEUITestCase: XCTestCase {
         // seed is pinned by the Core twin (FirstEraCampaignTests), so the
         // simulator walks the world Linux already proved.
         if let seed {
+            let advanced = app.buttons["Advanced options & backups"]
+            guard scrollUntil(advanced, "advanced setup options") else { return false }
+            advanced.tap()
             let disclosure = app.buttons["World seed"]
             if disclosure.waitForExistence(timeout: 5) {
                 let field = app.textFields["Seed number"]

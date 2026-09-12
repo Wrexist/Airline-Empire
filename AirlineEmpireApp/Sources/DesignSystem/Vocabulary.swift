@@ -813,7 +813,7 @@ extension Vocab {
         case .acquireAircraft: "Get an aircraft"
         case .openRoute: "Open your first route"
         case .assignAircraft: "Put the aircraft on the route"
-        case .watchFirstFlight: "Un-pause and watch it fly"
+        case .watchFirstFlight: "Start your first flight"
         case .earnFirstRevenue: "Earn your first ticket revenue"
         }
     }
