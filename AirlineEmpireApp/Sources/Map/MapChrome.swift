@@ -37,9 +37,13 @@ struct MapTopBar: View {
                             Text(Format.date(snapshot.currentDate))
                                 .font(.subheadline.weight(.semibold).monospacedDigit())
                             Spacer(minLength: AETheme.spacingS)
-                            Text(Format.clock(snapshot.currentDate))
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.white.opacity(0.7))
+                            VStack(alignment: .trailing, spacing: 1) {
+                                Text(Format.clock(snapshot.currentDate))
+                                    .font(.caption.monospacedDigit())
+                                Text(controller.speed == .paused ? "Paused" : "Time running")
+                                    .font(.caption2)
+                            }
+                            .foregroundStyle(.white.opacity(0.7))
                         }
                         SpeedControl()
                     }

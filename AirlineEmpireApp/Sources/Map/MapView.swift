@@ -36,6 +36,7 @@ struct MapScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.feedback) private var feedback
 
+    @State private var path = NavigationPath()
     @State private var camera = MapCamera()
     @State private var selection: MapHit?
     @State private var overlay: MapOverlay = .network
@@ -77,7 +78,7 @@ struct MapScreen: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             GeometryReader { geometry in
                 if let snapshot = controller.snapshot, let model = controller.mapModel {
                     ZStack {
@@ -145,6 +146,19 @@ struct MapScreen: View {
             // The bar is hidden — the world is the screen — but the title is
             // still what the accessibility tree and the iPad sidebar call
             // this stack, and it is the airline's home, not "Map".
+            .onChange(of: controller.mapRouteRequest, initial: true) { _, request in
+                guard let request, let model = controller.mapModel,
+                      model.routes.contains(where: { $0.id == request.routeID }) else { return }
+                routeDraft = nil
+                airportDraft = nil
+                showingBriefing = false
+                showingAircraftMarket = false
+                path = NavigationPath()
+                camera.stopFollowing(landingAt: followMemory.lastPoint)
+                followMemory.clear()
+                camera.frameNetwork(model, animated: !reduceMotion)
+                selection = .route(request.routeID)
+            }
             .navigationTitle(controller.snapshot?.playerAirline?.name ?? "Airline Empire")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)

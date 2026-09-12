@@ -255,6 +255,11 @@ struct RouteDetailView: View {
                     // breakdown second and operations fifth — so a player
                     // asking "is this route working" read an expense table
                     // before they reached the load factor.
+                    FirstFlightProgress()
+                    RouteFlightStatus(routeID: routeID) {
+                        controller.showRouteOnMap(routeID)
+                        dismiss()
+                    }
                     headline(card, snapshot: snapshot, catalog: catalog)
                     if card.assignedAircraftCount == 0 {
                         aircraftSection(card, player: player.id, catalog: catalog)
@@ -935,6 +940,9 @@ struct OpenRouteSheet: View {
                     LoadingState(message: "Loading the world")
                 }
             }
+            .onChange(of: controller.mapRouteRequest) { _, request in
+                if request != nil { dismiss() }
+            }
             .navigationTitle("Open a route")
             .disabled(opening)
             .interactiveDismissDisabled(opening)
@@ -1051,6 +1059,7 @@ struct OpenRouteSheet: View {
             // (AE-033 audit §6.5).
             if search.isEmpty {
                 Section {
+                    FirstFlightProgress()
                     originPicker(catalog: catalog, snapshot: snapshot, player: player)
                 }
                 Section {

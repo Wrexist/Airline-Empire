@@ -41,7 +41,9 @@ struct RootView: View {
             }
         }
         .aeAnimation(AEMotion.screen, value: state)
-        // A UI-test affordance, and deliberately a narrow one.
+        // Setup uses the dusk theme. Set its window appearance here so
+        // native interactive glass agrees with the white setup text.
+        // Gameplay follows the device unless the UI-test override below is on.
         //
         // `XCUIDevice.shared.appearance = .dark` is the faithful way to test
         // dark mode — it switches the simulator, so what is captured is what a
@@ -59,7 +61,7 @@ struct RootView: View {
         // Reads a launch argument, not a build flag: the shipping binary is
         // the one under test, and no player will ever pass this.
         .preferredColorScheme(
-            ProcessInfo.processInfo.arguments.contains("-AEUITestDarkAppearance")
+            state == .newGame || ProcessInfo.processInfo.arguments.contains("-AEUITestDarkAppearance")
                 ? .dark : nil)
         .accessibilityIdentifier(appearanceIdentifier)
         // The audio pipeline's state, as something a UI test can read.
@@ -234,6 +236,9 @@ struct GameShell: View {
                 }
                 .tint(AETheme.accent)
             }
+        }
+        .onChange(of: controller.mapRouteRequest) { _, request in
+            if request != nil { selection = .home }
         }
         // Above whichever tab is open: a milestone should not depend on the
         // player happening to be on the Home screen when it lands.

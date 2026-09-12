@@ -55,9 +55,10 @@ struct MapHomeBriefing: View {
     /// there (UIUX_FORENSIC_AUDIT UI-016).
     var body: some View {
         let facts = self.facts
-        let move = controller.homeNextMove
+        let move = currentMove
         return VStack(alignment: .leading, spacing: AETheme.spacingS) {
             stateRow(facts)
+            FirstFlightProgress(compact: true)
             if snapshot.progression.hasMilestone("firstFlight"),
                let model = controller.progressionModel, let next = model.nextEra {
                 Button(action: openBriefing) {
@@ -91,21 +92,26 @@ struct MapHomeBriefing: View {
     /// gesture, so they are the same button.
     private func stateRow(_ facts: [Fact]) -> some View {
         Button(action: openBriefing) {
-            HStack(alignment: .center, spacing: AETheme.spacingM) {
-                if typeSize.isAccessibilitySize {
-                    VStack(alignment: .leading, spacing: AETheme.spacingXS) {
-                        ForEach(facts, id: \.label) { fact($0) }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                } else {
-                    ForEach(facts, id: \.label) {
-                        fact($0).frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-                Image(systemName: "chevron.up")
+            VStack(alignment: .leading, spacing: AETheme.spacingXS) {
+                Text("Airline overview")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.55))
-                    .accessibilityHidden(true)
+                    .foregroundStyle(.white.opacity(0.8))
+                HStack(alignment: .center, spacing: AETheme.spacingM) {
+                    if typeSize.isAccessibilitySize {
+                        VStack(alignment: .leading, spacing: AETheme.spacingXS) {
+                            ForEach(facts, id: \.label) { fact($0) }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        ForEach(facts, id: \.label) {
+                            fact($0).frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                    Image(systemName: "chevron.up")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.55))
+                        .accessibilityHidden(true)
+                }
             }
             .frame(minHeight: 44)
             .contentShape(Rectangle())
@@ -195,11 +201,26 @@ struct MapHomeBriefing: View {
         }
     }
 
+    private var currentMove: HomeNextMove? {
+        guard let move = controller.homeNextMove else { return nil }
+        if move.move == .startClock {
+            if controller.speed == .paused {
+                return HomeNextMove(icon: "play.fill", title: "Paused - resume flights",
+                                    detail: "Run at 1x. Your schedule updates at midnight.", move: .startClock)
+            }
+            return HomeNextMove(icon: "sunrise", title: "Waiting for your next flight",
+                                detail: "Advance to next morning to run the schedule. This moves game time forward.",
+                                move: .nextMorning)
+        }
+        return move
+    }
+
     private func perform(_ move: HomeNextMove.Move) {
         switch move {
         case .aircraftMarket: openAircraftMarket()
         case .openRoute(let suggestion): openRoute(suggestion)
         case .startClock: controller.setSpeed(.x1)
+        case .nextMorning: controller.advanceToNextMorning()
         case .follow(let flight): followFlight(flight)
         case .briefing: openBriefing()
         case .route, .aircraft: break   // navigation links, handled above

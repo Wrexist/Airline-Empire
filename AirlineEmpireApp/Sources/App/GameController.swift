@@ -14,6 +14,16 @@ final class GameController {
     private(set) var catalog: ContentCatalog?
     private(set) var recentEvents: [SimEvent] = []
     private(set) var speed: SimSpeed = .paused
+    struct MapRouteRequest: Equatable {
+        let id = UUID()
+        let routeID: RouteID
+    }
+    var mapRouteRequest: MapRouteRequest?
+
+    func showRouteOnMap(_ routeID: RouteID) {
+        mapRouteRequest = MapRouteRequest(routeID: routeID)
+    }
+
     #if DEBUG
     /// Test acknowledgement: distinguishes an OS-intercepted tap from a
     /// request already delivered to the asynchronous simulation.
@@ -637,6 +647,7 @@ final class GameController {
     /// game-over screen is a dead end — no new game, no other save
     /// (tasks/BUGS.md BUG-003).
     func quitToMenu() {
+        mapRouteRequest = nil
         pumpTask?.cancel()
         pumpTask = nil
         eventTask?.cancel()

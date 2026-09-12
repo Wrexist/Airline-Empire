@@ -72,9 +72,13 @@ extension GameState {
             completed.insert(.assignAircraft)
         }
         let hasLiveFlight = flights.values.contains { flight in
-            self.routes[flight.route]?.airline == player.id
+            guard self.routes[flight.route]?.airline == player.id else { return false }
+            switch flight.phase {
+            case .enRoute, .turnaround: return true
+            case .scheduled, .boarding: return false
+            }
         }
-        if hasLiveFlight || routes.contains(where: { $0.stats.totalFlights > 0 }) {
+        if hasLiveFlight || routes.contains(where: { $0.stats.flightsCompleted > 0 }) {
             completed.insert(.watchFirstFlight)
         }
         if routes.contains(where: {
@@ -86,7 +90,7 @@ extension GameState {
         }
 
         let next = OnboardingModel.Step.allCases.first { !completed.contains($0) }
-        let suggestions = completed.contains(.openRoute)
+        let suggestions = completed.contains(.openRoute) || suggestionLimit <= 0
             ? []
             : firstRouteSuggestions(for: player, catalog: catalog,
                                     limit: suggestionLimit)
