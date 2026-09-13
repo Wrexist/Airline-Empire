@@ -14,18 +14,18 @@ The artwork was generated with the built-in image_gen tool. It is decorative mar
 
 ## Export
 
-`sh
+```sh
 npm ci --prefix scripts/store-art --ignore-scripts
 node scripts/store-art/build.cjs store/artwork/captures store/screenshots/en-US
-`
+```
 
 Copy the three output display directories and export manifest to en-GB, then run:
 
-`sh
+```sh
 node scripts/store-art/verify.cjs
 node scripts/store-art/overview.cjs
 node scripts/asc/validate-metadata.mjs --allow-placeholders
-`
+```
 
 The composition uses Arial with Helvetica/sans-serif fallback. Reproduction requires Node and the pinned sharp dependency; no image generation or Apple credential is needed to render the saved artwork.
 
