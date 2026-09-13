@@ -52,11 +52,9 @@ name: iOS TestFlight
 #   ephemeral runner cannot reuse the one it made last time. Fine for the first
 #   build; move to manual before it becomes routine.
 #
-# NONE OF THIS HAS EVER RUN. As of 2026-08-28 the project has no Apple
-# Developer account, no app record, no certificate and no icon
-# (docs/APPLE_VALIDATION.md). Every claim about what happens here is derived
-# from Apple's documentation and from WorldQuest's runs of the same shape, not
-# from a run of this file. docs/RELEASE_PIPELINE.md tracks that honestly.
+# Signed uploads have run successfully. The release now invokes full CI and
+# Launch safety itself, on the preflight candidate, before starting an archive.
+# See .github/workflows/README.md for the current validation order.
 
 on:
   workflow_dispatch:
@@ -70,7 +68,7 @@ on:
         type: boolean
         default: false
       candidate_sha:
-        description: 'Optional full tested commit SHA to archive; empty uses this workflow commit'
+        description: 'Full commit SHA to validate and archive; empty uses this workflow commit'
         type: string
         default: ''
 
@@ -112,13 +110,15 @@ jobs:
           EXPECTED_SHA: ${{ steps.candidate.outputs.sha }}
         run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
 
-      - name: Require tested release and live review pages
-        if: inputs.upload
+      - name: Validate release sources and live review pages
         env:
-          GH_TOKEN: ${{ github.token }}
+          UPLOAD: ${{ inputs.upload }}
         run: |
-          GITHUB_SHA="$(git rev-parse HEAD)" python3 scripts/check-release-evidence.py
-          python3 scripts/check-release-readiness.py --live
+          if [ "$UPLOAD" = "true" ]; then
+            python3 scripts/check-release-readiness.py --live
+          else
+            python3 scripts/check-release-readiness.py
+          fi
 
       # The archive job writes this straight into the binary. A malformed
       # value would surface as an Apple rejection after the compile is paid
@@ -236,73 +236,26 @@ jobs:
           APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
         run: node scripts/asc/check-signing-eligibility.mjs
 
-  # ── 2 · The core must be green before anything is archived ─────────────────
-  core-tests:
-    name: Core tests (ubuntu, 1x)
+  # Every gate checks the same immutable candidate before signing starts.
+  full-validation:
+    name: Full release validation
     needs: preflight
-    runs-on: ubuntu-latest
-    container: swift:6.0.3-jammy
-    # Forty-five, the same allowance ci.yml gives the identical suite on the
-    # identical runner class. Thirty was right when it was written — 253 tests
-    # in 8m02s on 2026-08-28, nearly 4x headroom — and the suite is now 469
-    # tests. MEASURED wall clock of `swift test` since:
-    #
-    #   CI run 153 · Core          2026-09-04   27m13s   passed (45-minute job)
-    #   release run 6 · core-tests 2026-09-05   20m01s   passed
-    #   release run 7 · core-tests 2026-09-06   29m28s   CANCELLED at 30
-    #
-    # Run 7 was not hung: its log goes quiet for the last twelve minutes, which
-    # is what the two balance tests look like from outside — they print nothing
-    # until they finish, and they finished at 1434.7 s and 1107.6 s in CI run
-    # 153. So 30 was simply under the observed maximum, and CI passing at 27m13s
-    # the day before means a release of that same commit could only ever have
-    # had three minutes of room.
-    #
-    # This is a job timeout, not an assertion: nothing about what the suite
-    # checks changes. The reason it keeps needing more is TD-034 — one test is
-    # over half the suite's wall clock — and raising the ceiling is not that
-    # entry's fix, only the thing that stops a release failing for it today.
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-          ref: ${{ needs.preflight.outputs.candidate-sha }}
+    uses: ./.github/workflows/ci.yml
+    with:
+      suite: full
+      ipad: true
+      candidate_sha: ${{ needs.preflight.outputs.candidate-sha }}
 
-      # Shares CI's cache key, so a release of a commit CI has already built
-      # restores that build rather than repeating it: measured 9m16s cold on
-      # run 33216345773, and most of it compilation.
-      - name: Restore the SwiftPM build cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            AirlineEmpireCore/.build
-            /root/.cache/org.swift.swiftpm
-          key: swiftpm-6.0.3-${{ hashFiles('AirlineEmpireCore/Package.swift') }}-${{ hashFiles('AirlineEmpireCore/Sources/**/*.swift', 'AirlineEmpireCore/Tests/**/*.swift') }}
-          restore-keys: |
-            swiftpm-6.0.3-${{ hashFiles('AirlineEmpireCore/Package.swift') }}-
-            swiftpm-6.0.3-
+  launch-validation:
+    name: Launch safety validation
+    needs: preflight
+    uses: ./.github/workflows/launch-safety.yml
+    with:
+      candidate_sha: ${{ needs.preflight.outputs.candidate-sha }}
 
-      # The release ships whatever the simulation does. Running the suite here
-      # rather than trusting CI's last green run means the exact commit being
-      # archived is the exact commit that passed — cheap now that the build is
-      # cached, and the one check whose absence would be discovered by players.
-      - name: swift test
-        working-directory: AirlineEmpireCore
-        shell: bash
-        run: |
-          set -o pipefail
-          # Match full CI: preserve the expensive test's ten-minute limit,
-          # execute it without cooperative-pool contention, then run the rest.
-          ISOLATED_TEST=regionalRivalKeepsMoneyInTheStandardCast
-          swift test --filter "$ISOLATED_TEST" 2>&1 | tee isolated-debug-test.log
-          grep -Eq 'Test run with 1 test passed' isolated-debug-test.log
-          swift test --skip "$ISOLATED_TEST"
-
-  # ── 3 · Archive, export and upload ─────────────────────────────────────────
   archive:
     name: Archive and upload (macOS, 10x)
-    needs: [preflight, core-tests]
+    needs: [preflight, full-validation, launch-validation]
     runs-on: macos-26
     # A hung compile must not sit on a 10x runner until the six-hour default.
     timeout-minutes: 75

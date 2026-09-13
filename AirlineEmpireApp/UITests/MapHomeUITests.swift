@@ -204,7 +204,13 @@ final class MapHomeUITests: AEUITestCase {
             let current = self.app.buttons.matching(identifier: "Pause").firstMatch
             return current.exists && current.isSelected
         }, object: nil)
-        guard XCTWaiter.wait(for: [pausedAfterDeparture], timeout: 10) == .completed else {
+        let observedPause = XCTWaiter.wait(for: [pausedAfterDeparture], timeout: 10) == .completed
+        // A hosted accessibility lookup can itself exceed the wait budget.
+        // Run 34726944483's failure frame showed Pause selected at 06:30,
+        // with a live flight, after `exists` spent 11 seconds retrying.
+        // Read the settled control once before declaring the action failed;
+        // this still requires the real selected state and sends no extra tap.
+        guard observedPause || pauseControl.isSelected else {
             checkpoint("AE048-F-PAUSE-NOT-SELECTED")
             XCTFail("Pause did not stop the clock after flight discovery.")
             return
