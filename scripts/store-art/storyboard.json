@@ -1,39 +1,52 @@
 {
   "locale": "en-US",
-  "creativeDirection": "Premium aviation: real gameplay, precise typography, restrained blue and amber, one player benefit per frame.",
+  "creativeDirection": "Cinematic midnight aviation: six original 3D-style key-art scenes, warm gold editorial headlines, reflective gameplay frames and genuine current iPhone/iPad captures.",
   "shots": [
     {
       "id": "01-network",
       "source": "01-network.png",
       "headline": [
-        "The world.",
-        "Your network."
+        "One airline.",
+        "Endless ambition."
       ],
       "body": [
-        "Pick your cities. Watch your airline take flight."
+        "Connect cities. Build your airline."
       ],
       "accent": "blue",
       "theme": "dark",
-      "label": "BUILD YOUR NETWORK",
+      "label": "YOUR WORLD, CONNECTED",
       "proof": "94",
       "proofLabel": "real airports",
       "proofBody": [
         "Find your hub.",
         "Make your connections."
       ],
-      "detailCrop": { "iphone": [48, 2090, 1200, 155] },
+      "detailCrop": {
+        "iphone": [
+          48,
+          2060,
+          1224,
+          200
+        ],
+        "ipad": [
+          688,
+          2340,
+          1352,
+          160
+        ]
+      },
       "crop": {
         "iphone": [
           0,
           1180,
           900,
-          770
+          748
         ],
         "ipad": [
-          680,
-          1090,
-          1384,
-          1200
+          790,
+          1160,
+          1200,
+          780
         ]
       }
     },
@@ -41,15 +54,15 @@
       "id": "02-fleet",
       "source": "02-fleet.png",
       "headline": [
-        "From one plane",
-        "to a fleet."
+        "Your fleet.",
+        "Your future."
       ],
       "body": [
-        "Buy new. Find used deals. Lease your next leap."
+        "Find the right aircraft for your next move."
       ],
       "accent": "blue",
       "theme": "light",
-      "label": "GROW YOUR FLEET",
+      "label": "A FLEET OF YOUR OWN",
       "proof": "14",
       "proofLabel": "aircraft types",
       "proofBody": [
@@ -59,9 +72,9 @@
       "crop": {
         "iphone": [
           48,
-          508,
+          500,
           1224,
-          1735
+          1760
         ],
         "ipad": [
           688,
@@ -76,14 +89,14 @@
       "source": "03-route.png",
       "headline": [
         "Make every",
-        "route count."
+        "route matter."
       ],
       "body": [
-        "Choose the fare, the aircraft and the schedule."
+        "Set the fare. Choose the aircraft. Make the call."
       ],
       "accent": "blue",
       "theme": "dark",
-      "label": "MAKE THE CALLS",
+      "label": "EVERY ROUTE IS A DECISION",
       "proof": "Your call.",
       "proofLabel": "Your competitive edge.",
       "proofBody": [
@@ -93,15 +106,15 @@
       "crop": {
         "iphone": [
           48,
-          348,
+          1024,
           1224,
-          1515
+          1510
         ],
         "ipad": [
           688,
-          172,
+          584,
           1352,
-          1200
+          1152
         ]
       }
     },
@@ -109,15 +122,15 @@
       "id": "04-finance",
       "source": "04-finance.png",
       "headline": [
-        "Turn smart moves",
-        "into profit."
+        "Build more",
+        "than a network."
       ],
       "body": [
-        "See what earns. Know where to grow."
+        "Read your results. Invest in what comes next."
       ],
       "accent": "blue",
       "theme": "light",
-      "label": "BUILD A BUSINESS",
+      "label": "KNOW YOUR BUSINESS",
       "proof": "Every $",
       "proofLabel": "has a story.",
       "proofBody": [
@@ -127,7 +140,7 @@
       "crop": {
         "iphone": [
           48,
-          348,
+          372,
           1224,
           1845
         ],
@@ -143,15 +156,15 @@
       "id": "05-rivals",
       "source": "05-rivals.png",
       "headline": [
-        "Build an airline",
-        "rivals notice."
+        "Give rivals",
+        "competition."
       ],
       "body": [
-        "Win passengers in a world of competing airlines."
+        "Win passengers in a world that competes."
       ],
       "accent": "amber",
       "theme": "dark",
-      "label": "RISE TO THE CHALLENGE",
+      "label": "FIND YOUR ADVANTAGE",
       "proof": "5",
       "proofLabel": "rival personalities",
       "proofBody": [
@@ -177,15 +190,15 @@
       "id": "06-progression",
       "source": "06-progression.png",
       "headline": [
-        "Your next",
-        "milestone awaits."
+        "From startup.",
+        "To global player."
       ],
       "body": [
-        "Complete contracts. Reach new eras. Keep growing."
+        "Reach new eras. Build a story worth keeping."
       ],
       "accent": "amber",
       "theme": "dark",
-      "label": "GO FURTHER",
+      "label": "YOUR NEXT CHAPTER",
       "proof": "5",
       "proofLabel": "eras of ambition",
       "proofBody": [

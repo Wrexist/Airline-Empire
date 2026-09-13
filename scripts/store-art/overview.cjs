@@ -11,7 +11,7 @@ const root = path.resolve(__dirname, '../..');
       input: await sharp(path.join(dir,f)).resize(w,h).toBuffer(),
       left: i%3*(w+20)+10, top: Math.floor(i/3)*(h+20)+10,
     })));
-    await sharp({create:{width:(w+20)*3,height:(h+20)*2+20,channels:3,background:'#D9E1EC'}})
+    await sharp({create:{width:(w+20)*3,height:(h+20)*2+20,channels:3,background:'#050B14'}})
       .composite(tiles).jpeg({quality:94}).toFile(path.join(root,'store/artwork',`overview-${device}.jpg`));
   }
 })().catch(e=>{console.error(e);process.exit(1);});

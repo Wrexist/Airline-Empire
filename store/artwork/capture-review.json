@@ -1,0 +1,251 @@
+{
+  "captureRun": {
+    "conclusion": "success",
+    "headSha": "68c3b956211da4eae6b0cfb8eb7a4386e1ac051b",
+    "jobs": [
+      {
+        "completedAt": "2026-09-13T20:58:16Z",
+        "conclusion": "success",
+        "databaseId": 103789690548,
+        "name": "capture (ipad)",
+        "startedAt": "2026-09-13T20:43:58Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-09-13T20:44:00Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-09-13T20:43:59Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-13T20:44:08Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-09-13T20:44:00Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-13T20:45:33Z",
+            "conclusion": "success",
+            "name": "Generate an earned campaign from the current simulation",
+            "number": 3,
+            "startedAt": "2026-09-13T20:44:08Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-13T20:45:39Z",
+            "conclusion": "success",
+            "name": "Generate Xcode project",
+            "number": 4,
+            "startedAt": "2026-09-13T20:45:33Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-13T20:50:43Z",
+            "conclusion": "success",
+            "name": "Select the correct native display",
+            "number": 5,
+            "startedAt": "2026-09-13T20:45:39Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-13T20:57:46Z",
+            "conclusion": "success",
+            "name": "Capture real gameplay",
+            "number": 6,
+            "startedAt": "2026-09-13T20:50:43Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-13T20:57:51Z",
+            "conclusion": "success",
+            "name": "Export full-resolution captures",
+            "number": 7,
+            "startedAt": "2026-09-13T20:57:46Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-13T20:57:56Z",
+            "conclusion": "success",
+            "name": "Run actions/upload-artifact@v4",
+            "number": 8,
+            "startedAt": "2026-09-13T20:57:51Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-13T20:57:56Z",
+            "conclusion": "skipped",
+            "name": "Run actions/upload-artifact@v4",
+            "number": 9,
+            "startedAt": "2026-09-13T20:57:56Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-13T20:57:58Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 18,
+            "startedAt": "2026-09-13T20:57:56Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-13T20:58:14Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 19,
+            "startedAt": "2026-09-13T20:57:58Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/Wrexist/Airline-Empire/actions/runs/34781663429/job/103789690548"
+      },
+      {
+        "completedAt": "2026-09-13T20:57:51Z",
+        "conclusion": "success",
+        "databaseId": 103789690748,
+        "name": "capture (iphone)",
+        "startedAt": "2026-09-13T20:43:58Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-09-13T20:44:00Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-09-13T20:43:59Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-13T20:44:07Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-09-13T20:44:00Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-13T20:45:32Z",
+            "conclusion": "success",
+            "name": "Generate an earned campaign from the current simulation",
+            "number": 3,
+            "startedAt": "2026-09-13T20:44:07Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-13T20:45:36Z",
+            "conclusion": "success",
+            "name": "Generate Xcode project",
+            "number": 4,
+            "startedAt": "2026-09-13T20:45:32Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-13T20:48:56Z",
+            "conclusion": "success",
+            "name": "Select the correct native display",
+            "number": 5,
+            "startedAt": "2026-09-13T20:45:36Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-13T20:57:07Z",
+            "conclusion": "success",
+            "name": "Capture real gameplay",
+            "number": 6,
+            "startedAt": "2026-09-13T20:48:56Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-13T20:57:13Z",
+            "conclusion": "success",
+            "name": "Export full-resolution captures",
+            "number": 7,
+            "startedAt": "2026-09-13T20:57:07Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-13T20:57:16Z",
+            "conclusion": "success",
+            "name": "Run actions/upload-artifact@v4",
+            "number": 8,
+            "startedAt": "2026-09-13T20:57:13Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-13T20:57:16Z",
+            "conclusion": "skipped",
+            "name": "Run actions/upload-artifact@v4",
+            "number": 9,
+            "startedAt": "2026-09-13T20:57:16Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-13T20:57:18Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 18,
+            "startedAt": "2026-09-13T20:57:16Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-13T20:57:48Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 19,
+            "startedAt": "2026-09-13T20:57:18Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/Wrexist/Airline-Empire/actions/runs/34781663429/job/103789690748"
+      }
+    ],
+    "status": "completed",
+    "url": "https://github.com/Wrexist/Airline-Empire/actions/runs/34781663429"
+  },
+  "sourceCommit": "68c3b956211da4eae6b0cfb8eb7a4386e1ac051b",
+  "capturedDevices": [
+    "iPhone 17 Pro Max",
+    "iPad Pro 13-inch"
+  ],
+  "runtime": "iOS 26.2 / Xcode 26.2",
+  "nativeCaptureCount": 20,
+  "campaignSHA256": "414a3be03672b1e096704f262781ac55132e498fc36b165f9ddcddb2f69215ee",
+  "campaignSource": "Generated by ae-rival-probe using ordinary simulation commands; both device jobs produced byte-identical saves",
+  "gameplayTreatment": "Native PNG pixels, cropped and uniformly scaled; no generated or retouched game UI",
+  "artworkTreatment": "Six built-in image_gen illustrations used outside gameplay panels",
+  "reviewStatus": "Passed: final iPhone and iPad overview review, full-size hero and route crop checks, and source-frame inspection",
+  "uploadedToApple": false,
+  "validation": {
+    "pngExports": 36,
+    "uniqueImages": 18,
+    "nativeCaptures": 20,
+    "artworkVerifier": "passed",
+    "ascSelftests": 50,
+    "listingValidation": "passed with four pre-existing description URL/price warnings",
+    "visualChecks": [
+      "Headline fit and thumbnail readability",
+      "Native gameplay content remains legible",
+      "No partial navigation or system overlays in selected crops",
+      "Consistent scene palette and reflective frame treatment",
+      "Separate native iPad crops",
+      "Decorative artwork identified separately from gameplay"
+    ],
+    "displaySizes": [
+      [
+        1320,
+        2868
+      ],
+      [
+        1242,
+        2688
+      ],
+      [
+        2064,
+        2752
+      ]
+    ]
+  }
+}

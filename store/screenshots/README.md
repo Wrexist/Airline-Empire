@@ -1,7 +1,8 @@
 # Screenshots
 
-Six benefit-led designs, based on genuine iPhone and iPad gameplay from one
-simulated campaign. English artwork is supplied for both en-US and en-GB.
+Six cinematic designs combine original 3D-style aviation illustrations with
+genuine iPhone and iPad gameplay from one simulated campaign. English artwork
+is supplied for both en-US and en-GB.
 
 ## Layout
 
@@ -34,11 +35,12 @@ product page, so the numeric prefix is the storyboard.
 - Caption text legible at gallery-thumbnail size.
 - Nothing on screen the app cannot actually do.
 
-The artwork identifies Pro gameplay. Numbers in UI are actual simulation
-results, not a promise of what every player will earn. UI is cropped and
-uniformly scaled from native captures, never regenerated. Upload only the six
-ordered PNGs per slot, not the overview sheets or manifests. The 18 unique
-exports are reused for the two English locales. No Apple upload was performed.
+The artwork identifies Pro gameplay and labels the aviation art as illustrative.
+Numbers in UI are actual simulation results, not a promise of what every player
+will earn. UI is cropped and uniformly scaled from native captures, never
+regenerated. Upload only the six ordered PNGs per slot, not the overview sheets
+or manifests. The 18 unique exports are reused for the two English locales.
+This collection is prepared locally for upload; it has not been uploaded to Apple.
 
 See [artwork provenance and reproduction](../artwork/README.md).
 The six shots, what each one has to prove, and the captions:
