@@ -80,7 +80,7 @@ struct MapHomeBriefing: View {
         }
         .padding(.horizontal, AETheme.spacingM)
         .padding(.vertical, AETheme.spacingS)
-        .aeGlass(in: AETheme.cardShape)
+        .aeClay(in: AETheme.cardShape)
         .aeAnimation(AEMotion.content, value: move?.title ?? "")
     }
 

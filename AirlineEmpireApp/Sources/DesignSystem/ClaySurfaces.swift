@@ -12,7 +12,7 @@ struct AEPageIntro: View {
             AEClayIcon(systemName: icon, tint: tint, size: 52)
             Text(title).font(.system(.title2, design: .rounded, weight: .bold))
                 .accessibilityAddTraits(.isHeader)
-            Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
+            Text(subtitle).font(.subheadline).foregroundStyle(AETheme.mutedText)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -109,7 +109,7 @@ struct AEInstrument: View {
                 .accessibilityHidden(true)
             Text(value).font(.title3.weight(.semibold)).monospacedDigit()
                 .foregroundStyle(.primary).fixedSize(horizontal: false, vertical: true)
-            Text(label).font(AEType.caption).foregroundStyle(.secondary)
+            Text(label).font(AEType.caption).foregroundStyle(AETheme.mutedText)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

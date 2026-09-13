@@ -52,7 +52,7 @@ struct MapTopBar: View {
             }
             .padding(.horizontal, AETheme.spacingM)
             .padding(.vertical, AETheme.spacingS)
-            .aeGlass(in: AETheme.cardShape)
+            .aeClay(in: AETheme.cardShape)
 
             if let banner = worldBanner {
                 HStack(spacing: AETheme.spacingXS) {

@@ -37,7 +37,7 @@ enum AETheme {
     static let positive = adaptive(0x187B56, 0x6BD6A5)
     static let negative = adaptive(0xC63543, 0xFF8791)
     static let caution = adaptive(0x996014, 0xF4BF72)
-    static let mutedText = Color.secondary
+    static let mutedText = adaptive(0x596B7D, 0xACBDD1)
 
     // Badge hues. Five call sites reached past the tokens for `.purple`,
     // `.indigo` and `.teal`, which is exactly the drift a token set exists to

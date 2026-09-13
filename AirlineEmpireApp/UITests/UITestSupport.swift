@@ -447,10 +447,14 @@ class AEUITestCase: XCTestCase {
         // Hide what the era cannot buy, so the first lease action on screen
         // belongs to an aircraft this airline is allowed to take.
         let eraFilter = app.switches["Hide what this era cannot buy"]
+        let options = app.buttons["ae-market-options"]
+        let openedOptions = !eraFilter.exists && options.isHittable
+        if openedOptions { options.tap() }
         if eraFilter.waitForExistence(timeout: 5),
            eraFilter.value as? String == "0" {
             eraFilter.tap()
         }
+        if openedOptions { options.tap() }
 
         let leaseQuery = app.buttons.matching(identifier: "ae-market-lease")
         let lease = model.map { leaseQuery.matching(NSPredicate(

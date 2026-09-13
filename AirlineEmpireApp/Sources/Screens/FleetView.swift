@@ -856,6 +856,7 @@ struct AircraftShopSheet: View {
     @State private var leaseTermMonths = 60
     @State private var sort: Sort = .recommended
     @State private var hidesLocked = true
+    @State private var showingOptions = false
     @State private var starterOpportunity: MarketOpportunity?
     @State private var selectedRouteID: RouteID?
     @State private var routeFocus: RouteFocus = .all
@@ -914,6 +915,25 @@ struct AircraftShopSheet: View {
                         Section {
                             FirstFlightProgress()
                             wallet(snapshot: snapshot, player: player.id)
+                            Button { showingOptions.toggle() } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "slider.horizontal.3")
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text("Filters and purchase terms").font(.subheadline.weight(.semibold))
+                                        Text("\(sort.title) ? used \(usedAge)y ? lease \(leaseTermMonths) months")
+                                            .font(.caption).foregroundStyle(AETheme.mutedText)
+                                    }
+                                    Spacer(minLength: 8)
+                                    Image(systemName: showingOptions ? "chevron.up" : "chevron.down")
+                                        .font(.caption.weight(.semibold))
+                                }
+                                .frame(minHeight: 44)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.aePress)
+                            .accessibilityIdentifier("ae-market-options")
+                            .accessibilityValue(showingOptions ? "Expanded" : "Collapsed")
+
                         }
                         if !snapshot.routes(of: player.id).isEmpty {
                             Section("Match your network") {
@@ -954,23 +974,25 @@ struct AircraftShopSheet: View {
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
-                        Section("Show") {
-                            Picker("Sort", selection: $sort) {
-                                ForEach(Sort.allCases, id: \.self) { option in
-                                    Text(option.title).tag(option)
+                        if showingOptions {
+                            Section("Show") {
+                                Picker("Sort", selection: $sort) {
+                                    ForEach(Sort.allCases, id: \.self) { option in
+                                        Text(option.title).tag(option)
+                                    }
                                 }
+                                .pickerStyle(.menu)
+                                Toggle("Hide what this era cannot buy", isOn: $hidesLocked)
                             }
-                            .pickerStyle(.menu)
-                            Toggle("Hide what this era cannot buy", isOn: $hidesLocked)
-                        }
-                        Section("Terms") {
-                            Stepper("Used aircraft age: \(usedAge) \(usedAge == 1 ? "year" : "years")",
-                                    value: $usedAge,
-                                    in: 1...catalog.tuning.fleet.maxUsedPurchaseAgeYears)
-                                .frame(minHeight: 44)
-                            Stepper("Lease term: \(leaseTermMonths) months",
-                                    value: $leaseTermMonths, in: 12...120, step: 12)
-                                .frame(minHeight: 44)
+                            Section("Terms") {
+                                Stepper("Used aircraft age: \(usedAge) \(usedAge == 1 ? "year" : "years")",
+                                        value: $usedAge,
+                                        in: 1...catalog.tuning.fleet.maxUsedPurchaseAgeYears)
+                                    .frame(minHeight: 44)
+                                Stepper("Lease term: \(leaseTermMonths) months",
+                                        value: $leaseTermMonths, in: 12...120, step: 12)
+                                    .frame(minHeight: 44)
+                            }
                         }
                         if types(catalog: catalog, snapshot: snapshot).isEmpty {
                             Section {
@@ -1694,7 +1716,7 @@ struct ShopCommitButton: View {
                     .font(.headline)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: 44)
-                    .background(AETheme.accent, in: Capsule())
+                    .modifier(AEActionSurface(role: .primary))
                     .opacity(blocked != nil ? 0.45 : 1)
             }
             // The stable name a UI test scrolls to. It follows the selected

@@ -377,7 +377,7 @@ struct SpeedControl: View {
                         .background {
                             if isSelected {
                                 Capsule(style: .continuous)
-                                    .fill(AETheme.accent)
+                                    .fill(AETheme.actionBlue)
                                     .matchedGeometryEffect(id: "speed", in: indicator)
                             }
                         }

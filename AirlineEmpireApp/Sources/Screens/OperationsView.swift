@@ -562,7 +562,7 @@ struct ProgressionView: View {
                 HStack(spacing: 16) {
                     AEClayIcon(systemName: "flag.checkered", tint: AETheme.owned, size: 56)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Your airline's next chapter").font(.caption).foregroundStyle(.secondary)
+                        Text("Your airline's next chapter").font(.caption).foregroundStyle(AETheme.mutedText)
                         Text(Vocab.era(model.era))
                             .accessibilityIdentifier("ae-progression-era")
                             .font(.system(.title2, design: .rounded, weight: .bold))

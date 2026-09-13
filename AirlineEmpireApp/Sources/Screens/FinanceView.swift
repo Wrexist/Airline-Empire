@@ -79,7 +79,7 @@ struct FinanceContent: View {
             VStack(alignment: .leading, spacing: 20) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Cash available").font(.subheadline).foregroundStyle(.secondary)
+                        Text("Cash available").font(.subheadline).foregroundStyle(AETheme.mutedText)
                         MoneyText(money: model.cash)
                             .font(.system(.largeTitle, design: .rounded, weight: .bold))
                             .fixedSize(horizontal: false, vertical: true)
@@ -417,7 +417,7 @@ struct LoanSheet: View {
             VStack(alignment: .leading, spacing: 16) {
                 AESectionHeader(text: "What this costs", systemImage: "receipt")
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Monthly payment").font(.caption).foregroundStyle(.secondary)
+                    Text("Monthly payment").font(.caption).foregroundStyle(AETheme.mutedText)
                     Text(Format.money(payment))
                         .font(.system(.title, design: .rounded, weight: .semibold))
                         .monospacedDigit()

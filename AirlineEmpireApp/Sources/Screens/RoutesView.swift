@@ -329,11 +329,11 @@ struct RouteDetailView: View {
                     Text(card.destination.raw)
                         .font(.system(.largeTitle, design: .rounded, weight: .bold))
                 }
-                Text(cityPair(catalog)).font(AEType.body).foregroundStyle(.secondary)
+                Text(cityPair(catalog)).font(AEType.body).foregroundStyle(AETheme.mutedText)
                     .fixedSize(horizontal: false, vertical: true)
                 Divider().padding(.vertical, 8)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("This month so far").font(AEType.caption).foregroundStyle(.secondary)
+                    Text("This month so far").font(AEType.caption).foregroundStyle(AETheme.mutedText)
                     MoneyText(money: card.thisMonthProfit)
                         .font(.system(.largeTitle, design: .rounded, weight: .semibold))
                 }
@@ -1084,7 +1084,7 @@ struct OpenRouteSheet: View {
                     }, selection: $filter)
                     .listRowBackground(Color.clear)
                     Text("Destinations: \(candidates.count) · ranked by passenger demand")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(AETheme.mutedText)
                 }
             } else {
                 // Leave room for actual results above the keyboard and the
@@ -1095,7 +1095,7 @@ struct OpenRouteSheet: View {
                         Spacer()
                         Text(filter.title)
                     }
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(AETheme.mutedText)
                 }
             }
 

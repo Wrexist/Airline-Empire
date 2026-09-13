@@ -186,7 +186,7 @@ struct AirportBrowserView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(Vocab.airportDisplay(row.spec)).font(.headline)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text(row.spec.country).font(.caption).foregroundStyle(.secondary)
+                    Text(row.spec.country).font(.caption).foregroundStyle(AETheme.mutedText)
                 }
             }
             AEChipRow {

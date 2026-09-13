@@ -768,7 +768,7 @@ struct NextMovesCard: View {
                                 openSuggestion(market.asFirstRouteSuggestion)
                             } label: {
                                 HStack {
-                                    VStack(alignment: .leading, spacing: 2) {
+                                    VStack(alignment: .leading, spacing: 8) {
                                         Text("\(market.origin.raw) → \(market.destination.raw) · \(market.destinationCity)")
                                             .font(.subheadline.weight(.medium))
                                         Text("≈\(market.expectedDailyPassengers) passengers/day · \(market.distanceKm) km · \(market.incumbents == 0 ? "no competition yet" : "\(market.incumbents) rival\(market.incumbents == 1 ? "" : "s") already here")")
@@ -788,18 +788,9 @@ struct NextMovesCard: View {
                                         .foregroundStyle(AETheme.mutedText)
                                 }
                                 .frame(minHeight: 44)
-                                .padding(.horizontal, AETheme.spacingS)
-                                .padding(.vertical, AETheme.spacingXS)
+                                .padding(AETheme.spacingM)
                                 .contentShape(AETheme.cardShape)
-                                // The app's own glass, tinted, rather than
-                                // `.bordered` + `.tint` — which is a system
-                                // control shape this design system does not
-                                // use anywhere else, and read as a solid blue
-                                // slab wrapping three lines of small grey
-                                // text (BUG-059).
-                                .aeGlass(in: AETheme.cardShape,
-                                         tint: AETheme.accent.opacity(0.22),
-                                         interactive: true)
+                                .background(AETheme.accent.opacity(0.06), in: AETheme.cardShape)
                             }
                             .buttonStyle(.aePress)
                         }
