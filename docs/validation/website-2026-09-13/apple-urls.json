@@ -1,0 +1,66 @@
+{
+  "checkedAt": "2026-09-13T21:44:31.393Z",
+  "version": "1.0",
+  "mode": "apply",
+  "pages": [
+    {
+      "url": "https://wrexist.github.io/Airline-Empire/",
+      "status": 200
+    },
+    {
+      "url": "https://wrexist.github.io/Airline-Empire/support.html",
+      "status": 200
+    },
+    {
+      "url": "https://wrexist.github.io/Airline-Empire/privacy.html",
+      "status": 200
+    },
+    {
+      "url": "https://wrexist.github.io/Airline-Empire/terms.html",
+      "status": 200
+    },
+    {
+      "url": "https://wrexist.github.io/Airline-Empire/press.html",
+      "status": 200
+    }
+  ],
+  "changes": [
+    {
+      "type": "appStoreVersionLocalizations",
+      "id": "b02c313f-63f1-4e16-9104-e2c0b8b89017",
+      "locale": "en-US",
+      "attributes": {
+        "supportUrl": "https://wrexist.github.io/Airline-Empire/support.html",
+        "marketingUrl": "https://wrexist.github.io/Airline-Empire/",
+        "description": "Your first aircraft. Your first profitable route. Your airline, growing into an empire.\n\nBuild the network you have always wanted to run. Airline Empire is an offline airline management simulator for iPhone and iPad, where smart decisions turn a regional startup into a global business.\n\nFIND YOUR NEXT GREAT ROUTE\nConnect real places across a world map. Plan around demand, distance, runway limits and airport capacity. Set fares and frequencies, assign the right aircraft, and see how each decision changes your results.\n\nBUILD A FLEET TO BE PROUD OF\nChoose from 14 fictional aircraft types, from regional turboprops to long-haul widebodies. Buy new, find a used aircraft or lease your next addition. Balance capacity, range and running costs as your ambitions grow.\n\nMAKE THE NUMBERS WORK FOR YOU\nUnderstand what your airline earns and where the money goes. Route breakdowns, monthly statements and a detailed ledger help you spot opportunities, manage loans and build a stronger business.\n\nOUTSMART A CHANGING WORLD\nCompete with AI airlines as they expand and adjust their fares. Seasonal demand, fuel prices, storms and world events keep your strategy moving. Build a reputation through the service your passengers experience.\n\nEARN YOUR NEXT MILESTONE\nGrow through five eras: Startup, Regional, National, International and Empire. The full game includes 94 real airports across nine world regions and three starting scenarios. Progress opens new opportunities to build the airline your way.\n\nPLAY AT YOUR PACE\nPause to plan or speed up the simulation to 16×. Daily autosaves, rolling backups and campaign export/import help protect your progress. Replay a seed to explore a different strategy. Campaigns run offline, without a game account.\n\nSTART FREE. EXPAND WITH PRO.\nStart with the Founder scenario, one campaign, the 20 airports nearest your home and the first two eras. Explore the core economy, fleet management and AI competition before choosing to expand.\n\nOptional Airline Empire Pro opens all 94 airports, all five eras, every starting scenario and unlimited campaign saves. Choose an auto-renewing weekly or yearly subscription, or a one-time Lifetime purchase. All three provide the same Pro access.\n\nNo ads, energy meters, premium currency or paid shortcuts. You control the simulation clock; aircraft deliveries and other operations use game time.\n\nPurchases and restoring Pro require Apple’s App Store services. Subscriptions renew automatically unless cancelled; manage them in your Apple Account settings. Saves stay on your device unless you export them. There is no multiplayer or automatic cloud save sync.\n\nReal geography. Fictional airlines, aircraft and manufacturers. An empire shaped by your decisions.\n\nTerms of Use (Apple Standard EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/\nPrivacy Policy: https://wrexist.github.io/Airline-Empire/privacy.html"
+      }
+    },
+    {
+      "type": "appInfoLocalizations",
+      "id": "d7c16eec-84cb-47a4-a3ff-99c1a6ac879e",
+      "locale": "en-US",
+      "attributes": {
+        "privacyPolicyUrl": "https://wrexist.github.io/Airline-Empire/privacy.html"
+      }
+    },
+    {
+      "type": "appStoreVersionLocalizations",
+      "id": "ee016830-1008-4680-ac91-3a4eb2230ca0",
+      "locale": "en-GB",
+      "attributes": {
+        "supportUrl": "https://wrexist.github.io/Airline-Empire/support.html",
+        "marketingUrl": "https://wrexist.github.io/Airline-Empire/",
+        "description": "Your first aircraft. Your first profitable route. Your airline, growing into an empire.\n\nBuild the network you have always wanted to run. Airline Empire is an offline airline management simulator for iPhone and iPad, where smart decisions turn a regional startup into a global business.\n\nFIND YOUR NEXT GREAT ROUTE\nConnect real places across a world map. Plan around demand, distance, runway limits and airport capacity. Set fares and frequencies, assign the right aircraft, and see how each decision changes your results.\n\nBUILD A FLEET TO BE PROUD OF\nChoose from 14 fictional aircraft types, from regional turboprops to long-haul widebodies. Buy new, find a used aircraft or lease your next addition. Balance capacity, range and running costs as your ambitions grow.\n\nMAKE THE NUMBERS WORK FOR YOU\nUnderstand what your airline earns and where the money goes. Route breakdowns, monthly statements and a detailed ledger help you spot opportunities, manage loans and build a stronger business.\n\nOUTSMART A CHANGING WORLD\nCompete with AI airlines as they expand and adjust their fares. Seasonal demand, fuel prices, storms and world events keep your strategy moving. Build a reputation through the service your passengers experience.\n\nEARN YOUR NEXT MILESTONE\nGrow through five eras: Startup, Regional, National, International and Empire. The full game includes 94 real airports across nine world regions and three starting scenarios. Progress opens new opportunities to build the airline your way.\n\nPLAY AT YOUR PACE\nPause to plan or speed up the simulation to 16×. Daily autosaves, rolling backups and campaign export/import help protect your progress. Replay a seed to explore a different strategy. Campaigns run offline, without a game account.\n\nSTART FREE. EXPAND WITH PRO.\nStart with the Founder scenario, one campaign, the 20 airports nearest your home and the first two eras. Explore the core economy, fleet management and AI competition before choosing to expand.\n\nOptional Airline Empire Pro opens all 94 airports, all five eras, every starting scenario and unlimited campaign saves. Choose an auto-renewing weekly or yearly subscription, or a one-time Lifetime purchase. All three provide the same Pro access.\n\nNo adverts, energy meters, premium currency or paid shortcuts. You control the simulation clock; aircraft deliveries and other operations use game time.\n\nPurchases and restoring Pro require Apple’s App Store services. Subscriptions renew automatically unless cancelled; manage them in your Apple Account settings. Saves stay on your device unless you export them. There is no multiplayer or automatic cloud save sync.\n\nReal geography. Fictional airlines, aircraft and manufacturers. An empire shaped by your decisions.\n\nTerms of Use (Apple Standard EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/\nPrivacy Policy: https://wrexist.github.io/Airline-Empire/privacy.html"
+      }
+    },
+    {
+      "type": "appInfoLocalizations",
+      "id": "b60ed981-10aa-4eca-a198-0d5abaa0cf16",
+      "locale": "en-GB",
+      "attributes": {
+        "privacyPolicyUrl": "https://wrexist.github.io/Airline-Empire/privacy.html"
+      }
+    }
+  ],
+  "verified": true
+}
