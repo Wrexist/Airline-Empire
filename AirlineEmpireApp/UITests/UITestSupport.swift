@@ -1243,7 +1243,7 @@ class AEUITestCase: XCTestCase {
             XCTFail("The World hub shows no Progression card in any shape.")
             return false
         }
-        return app.staticTexts["ERA"].waitForExistence(timeout: 8)
+        return app.staticTexts["ae-progression-era"].waitForExistence(timeout: 8)
     }
 
     // MARK: The journey's shared opening

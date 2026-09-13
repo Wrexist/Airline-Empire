@@ -417,10 +417,7 @@ struct AircraftDetailView: View {
                     // §10 asks for an aircraft visual here. The silhouette is
                     // the airline's own livery colour, so a player's fleet
                     // reads as theirs rather than as generic stock.
-                    AircraftShape(category: card.category)
-                        .fill(livery)
-                        .frame(width: 44, height: 44)
-                        .accessibilityHidden(true)
+                    AEAircraftMedallion(category: card.category, tint: livery, size: 76)
                     VStack(alignment: .leading, spacing: 1) {
                         Text("\(spec.manufacturer) \(spec.model)").font(.headline)
                         Text(Vocab.role(spec.role))
@@ -910,6 +907,9 @@ struct AircraftShopSheet: View {
                 if let catalog = controller.catalog,
                    let snapshot = controller.snapshot,
                    let player = snapshot.playerAirline {
+                    let fleetTypes = catalog.orderedAircraftTypeCodes.compactMap { catalog.aircraftTypes[$0] }
+                    let limits = (seats: fleetTypes.map(\.seats).max() ?? 1,
+                                  range: fleetTypes.map(\.rangeKm).max() ?? 1)
                     List {
                         Section {
                             FirstFlightProgress()
@@ -982,7 +982,8 @@ struct AircraftShopSheet: View {
                                 id: \.code) { spec in
                             Section {
                                 shopRow(spec, catalog: catalog, snapshot: snapshot,
-                                        player: player.id)
+                                        player: player.id, limits: limits)
+                                    .listRowBackground(AETheme.cardBackground)
                                 // The commit is its own row on purpose: a row
                                 // whose only button is default-styled makes
                                 // the whole row the tap target (the pattern
@@ -1005,6 +1006,8 @@ struct AircraftShopSheet: View {
                     LoadingState(message: "Loading the market")
                 }
             }
+            .listStyle(.insetGrouped)
+            .listSectionSpacing(AETheme.spacingM)
             .aeScreenBackground()
             .navigationTitle("Aircraft market")
             // EXP-06: at accessibility type sizes the run-84/85 frames showed
@@ -1221,11 +1224,9 @@ struct AircraftShopSheet: View {
         // header" — and until now only the map used the underlying path. A
         // regional jet and a widebody looked identical in the one screen where
         // telling them apart is the entire decision (MASTER PROMPT 4 §11).
-        let silhouette = AircraftShape(category: spec.category)
-            .fill(locked ? AnyShapeStyle(AETheme.mutedText)
-                         : AnyShapeStyle(AETheme.accent))
-            .frame(width: 34, height: 34)
-            .accessibilityHidden(true)
+        let silhouette = AEAircraftMedallion(category: spec.category,
+                                              tint: locked ? .secondary : AETheme.accent,
+                                              size: 58)
         let names = VStack(alignment: .leading, spacing: 1) {
             Text("\(spec.manufacturer) \(spec.model)")
                 .font(AEType.body.weight(.semibold))
@@ -1263,15 +1264,14 @@ struct AircraftShopSheet: View {
     }
 
     private func shopRow(_ spec: AircraftTypeSpec, catalog: ContentCatalog,
-                         snapshot: GameState, player: AirlineID) -> some View {
+                         snapshot: GameState, player: AirlineID,
+                         limits: (seats: Int, range: Int)) -> some View {
         let isLocked = locked(spec, snapshot: snapshot)
         // The bars are comparative against the whole catalogue, locked types
         // included: "184 of a possible 422 seats" is a fact about the world,
         // and the bars must not re-scale when the era filter flips.
-        let all = catalog.orderedAircraftTypeCodes
-            .compactMap { catalog.aircraftTypes[$0] }
-        let maxSeats = all.map(\.seats).max() ?? spec.seats
-        let maxRange = all.map(\.rangeKm).max() ?? spec.rangeKm
+        let maxSeats = limits.seats
+        let maxRange = limits.range
         return VStack(alignment: .leading, spacing: AETheme.spacingS) {
             shopRowHeader(spec, locked: isLocked)
             // The spec as bars, not prose: three chips of digits made every
@@ -1319,7 +1319,7 @@ struct AircraftShopSheet: View {
                                   set: { deals[spec.code] = $0 }))
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 10)
     }
 
     private func locked(_ spec: AircraftTypeSpec,

@@ -75,13 +75,29 @@ struct FinanceContent: View {
     }
 
     private func topLine(_ model: FinanceModel) -> some View {
-        AEStatGrid {
-            StatTile(label: "Cash", value: Format.money(model.cash),
-                     trend: model.cash.isNegative ? .down : .neutral)
-            StatTile(label: "Net worth", value: Format.money(model.netWorth))
-            StatTile(label: "Debt", value: Format.money(model.totalDebt))
-            StatTile(label: "Leverage", value: Format.percent(model.debtRatio),
-                     trend: model.debtRatio > 0.6 ? .down : .neutral)
+        AECard {
+            VStack(alignment: .leading, spacing: 20) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Cash available").font(.subheadline).foregroundStyle(.secondary)
+                        MoneyText(money: model.cash)
+                            .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 8)
+                    AEClayIcon(systemName: "building.columns.fill", size: 52)
+                }
+                Divider()
+                AEStatGrid {
+                    AEInstrument(label: "Net worth", value: Format.money(model.netWorth),
+                                 icon: "chart.pie", tint: AETheme.leased)
+                    AEInstrument(label: "Debt", value: Format.money(model.totalDebt),
+                                 icon: "creditcard", tint: AETheme.owned)
+                }
+                LabeledContent("Leverage", value: Format.percent(model.debtRatio))
+                    .font(.subheadline)
+                    .foregroundStyle(model.debtRatio > 0.6 ? AETheme.negative : AETheme.mutedText)
+            }
         }
     }
 
@@ -342,53 +358,20 @@ struct LoanSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    VStack(alignment: .leading) {
-                        HStack {
-                            Text("Amount")
-                            Spacer()
-                            Text("\(Format.money(amount))").monospacedDigit()
-                        }
-                        Slider(value: $amountMillions, in: 1...200, step: 1)
-                    }
-                    VStack(alignment: .leading) {
-                        HStack {
-                            Text("Term")
-                            Spacer()
-                            Text("\(Int(termMonths)) months").monospacedDigit()
-                        }
-                        Slider(value: $termMonths, in: 6...120, step: 6)
+            ScrollView {
+                VStack(spacing: AETheme.spacingM) {
+                    AEPageIntro(title: "Room to grow",
+                                subtitle: "Choose your funding. See the full cost before you commit.",
+                                icon: "building.columns")
+                    requestCard
+                    if let snapshot = controller.snapshot,
+                       let player = snapshot.playerAirline,
+                       let catalog = controller.catalog {
+                        quote(snapshot: snapshot, player: player, catalog: catalog)
+                        AECard { confirm(player: player.id) }
                     }
                 }
-
-                if let snapshot = controller.snapshot,
-                   let player = snapshot.playerAirline,
-                   let catalog = controller.catalog {
-                    let ratio = CreditMath.debtRatio(of: player, state: snapshot,
-                                                     additional: amount)
-                    let rate = CreditMath.offeredRateBasisPoints(
-                        debtRatio: ratio, tuning: catalog.tuning.finance)
-                    let payment = CreditMath.annuityPayment(
-                        principal: amount,
-                        monthlyRate: Double(rate) / 10_000 / 12,
-                        months: Int(termMonths))
-                    let total = payment * Int64(termMonths)
-                    Section("What this costs") {
-                        // The exact numbers the simulation will charge.
-                        LabeledContent("Offered rate",
-                                       value: "\(Format.decimal(Double(rate) / 100, places: 1))%")
-                        LabeledContent("Monthly payment", value: Format.money(payment))
-                        LabeledContent("Total repaid", value: Format.money(total))
-                        LabeledContent("Interest over the term",
-                                       value: Format.money(total - amount))
-                        LabeledContent("Leverage after", value: Format.percent(ratio))
-                    }
-
-                    Section {
-                        confirm(player: player.id)
-                    }
-                }
+                .aePageInsets()
             }
             .aeScreenBackground()
             .navigationTitle("Borrow")
@@ -397,6 +380,53 @@ struct LoanSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
+            }
+        }
+    }
+
+    private var requestCard: some View {
+        AECard {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 10) {
+                    LabeledContent("Amount", value: Format.money(amount))
+                        .font(.headline).monospacedDigit()
+                    Slider(value: $amountMillions, in: 1...200, step: 1)
+                        .accessibilityLabel("Loan amount")
+                        .accessibilityValue(Format.money(amount))
+                }
+                VStack(alignment: .leading, spacing: 10) {
+                    LabeledContent("Term", value: "\(Int(termMonths)) months")
+                        .font(.headline).monospacedDigit()
+                    Slider(value: $termMonths, in: 6...120, step: 6)
+                        .accessibilityLabel("Loan term")
+                        .accessibilityValue("\(Int(termMonths)) months")
+                }
+            }
+            .tint(AETheme.accent)
+        }
+    }
+
+    private func quote(snapshot: GameState, player: Airline, catalog: ContentCatalog) -> some View {
+        let ratio = CreditMath.debtRatio(of: player, state: snapshot, additional: amount)
+        let rate = CreditMath.offeredRateBasisPoints(debtRatio: ratio, tuning: catalog.tuning.finance)
+        let payment = CreditMath.annuityPayment(principal: amount,
+                                               monthlyRate: Double(rate) / 10_000 / 12,
+                                               months: Int(termMonths))
+        let total = payment * Int64(termMonths)
+        return AEPanel {
+            VStack(alignment: .leading, spacing: 16) {
+                AESectionHeader(text: "What this costs", systemImage: "receipt")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Monthly payment").font(.caption).foregroundStyle(.secondary)
+                    Text(Format.money(payment))
+                        .font(.system(.title, design: .rounded, weight: .semibold))
+                        .monospacedDigit()
+                }
+                Divider()
+                LabeledContent("Offered rate", value: "\(Format.decimal(Double(rate) / 100, places: 1))%")
+                LabeledContent("Total repaid", value: Format.money(total))
+                LabeledContent("Interest over the term", value: Format.money(total - amount))
+                LabeledContent("Leverage after", value: Format.percent(ratio))
             }
         }
     }

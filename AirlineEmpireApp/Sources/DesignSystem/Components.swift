@@ -5,14 +5,7 @@ import AirlineEmpireCore
 /// Reusable component library (Phase 14). Touch-first: every interactive
 /// element ≥ 44pt; color never carries meaning alone.
 
-/// The surface every screen is built from.
-///
-/// Glass rather than a flat fill (iOS 26 `glassEffect`, `.ultraThinMaterial`
-/// below — see `aeGlass`): a simulation is a lot of stacked panels, and glass
-/// is what keeps a stack of them reading as depth instead of as a wall of
-/// grey rectangles. `tint` is for cards that carry a state — a warning, a
-/// selection — and is deliberately weak, because a tinted card should be
-/// noticed without being read as an alert.
+/// A raised clay content surface. Interactive controls use the separate glass layer.
 struct AECard<Content: View>: View {
     var tint: Color? = nil
     @ViewBuilder var content: Content
@@ -140,7 +133,7 @@ struct StatTile: View {
         }
         .padding(AETheme.spacingM)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .aeGlass(in: AETheme.cardShape)
+        .aeClay(in: AETheme.cardShape)
         // The simulation changes these while you watch. Rolling the digits
         // instead of swapping them is the difference between a dashboard that
         // is alive and one that flickers — and at 16× speed it is the only
@@ -312,10 +305,8 @@ struct EmptyStateView: View {
 
     var body: some View {
         VStack(spacing: AETheme.spacingS) {
-            Image(systemName: icon)
-                .font(.system(size: 34))
-                .foregroundStyle(AETheme.accent.opacity(0.85))
-                .padding(.bottom, AETheme.spacingXS)
+            AEClayIcon(systemName: icon, size: 64)
+                .padding(.bottom, AETheme.spacingS)
             Text(title).font(.headline)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
@@ -341,7 +332,7 @@ struct EmptyStateView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, AETheme.spacingL)
         .padding(.horizontal, AETheme.spacingM)
-        .aeGlass(in: AETheme.cardShape)
+        .aeClay(in: AETheme.cardShape)
         // Combined only when there is nothing to press; a button inside a
         // combined element is unreachable to VoiceOver.
         .accessibilityElement(children: action == nil ? .combine : .contain)
@@ -1058,10 +1049,6 @@ struct AEButtonStyle: ButtonStyle {
                 .scaleEffect(reduceMotion || !configuration.isPressed ? 1 : 0.972)
                 .animation(reduceMotion ? .easeOut(duration: 0.12) : AEMotion.selection,
                            value: configuration.isPressed)
-        }
-
-        private var accent: Color {
-            role == .destructive ? AETheme.negative : AETheme.accent
         }
 
         private var foreground: Color {

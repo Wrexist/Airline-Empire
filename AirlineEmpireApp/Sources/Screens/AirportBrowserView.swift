@@ -84,8 +84,10 @@ struct AirportBrowserView: View {
                     }
                     ForEach(rows, id: \.code) { row in
                         NavigationLink(value: row.code) { airportRow(row) }
+                            .aeListRow()
                     }
                 }
+                .listStyle(.plain)
                 .searchable(text: $search,
                             placement: .navigationBarDrawer(displayMode: .always),
                             prompt: "Airport code, city or country")
@@ -174,33 +176,35 @@ struct AirportBrowserView: View {
     }
 
     private func airportRow(_ row: Row) -> some View {
-        VStack(alignment: .leading, spacing: AETheme.spacingXS) {
-            HStack(spacing: AETheme.spacingS) {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
                 Text(row.code.raw)
-                    .font(.subheadline.weight(.semibold)).monospaced()
-                Text(Vocab.airportDisplay(row.spec)).font(.subheadline)
-                Spacer()
+                    .font(.system(.title3, design: .rounded, weight: .bold))
+                    .foregroundStyle(AETheme.accent)
+                    .padding(10)
+                    .background(AETheme.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(Vocab.airportDisplay(row.spec)).font(.headline)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(row.spec.country).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            AEChipRow {
                 if row.closed {
                     AEBadge(text: "closed", color: AETheme.negative, icon: "xmark.octagon")
                 } else if row.served {
-                    AEBadge(text: "you fly here", color: AETheme.playerRoute)
+                    AEBadge(text: "you fly here", color: AETheme.positive, icon: "checkmark")
                 } else if !row.reachable {
                     AEBadge(text: "out of reach", color: .secondary, icon: "lock")
                 }
-            }
-            HStack(spacing: AETheme.spacingS) {
-                Text(row.spec.country)
                 if let distance = row.distanceKm, distance > 0 {
-                    Text("· \(distance) km from home")
+                    AEBadge(text: "\(distance) km from home", color: .secondary)
                 }
-                Spacer()
-                Text("\(row.slotsUsed)/\(row.spec.slotCapacityPerDay) slots")
+                AEBadge(text: "\(row.slotsUsed)/\(row.spec.slotCapacityPerDay) slots", color: .secondary)
             }
-            .font(.caption)
-            .foregroundStyle(AETheme.mutedText)
         }
-        .padding(.vertical, 2)
     }
+
 }
 
 /// One market, in the terms that decide whether to fly there.

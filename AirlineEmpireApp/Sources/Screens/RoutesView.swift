@@ -314,7 +314,10 @@ struct RouteDetailView: View {
                           catalog: ContentCatalog) -> some View {
         AECard {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                HStack(alignment: .center, spacing: 16) {
+                let endpoints = typeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+                    : AnyLayout(HStackLayout(alignment: .center, spacing: 16))
+                endpoints {
                     Text(card.origin.raw)
                         .font(.system(.largeTitle, design: .rounded, weight: .bold))
                     VStack(spacing: 6) {

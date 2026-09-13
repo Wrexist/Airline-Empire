@@ -1,4 +1,44 @@
 import SwiftUI
+import AirlineEmpireCore
+
+struct AEPageIntro: View {
+    let title: String
+    let subtitle: String
+    let icon: String
+    var tint: Color = AETheme.accent
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            AEClayIcon(systemName: icon, tint: tint, size: 52)
+            Text(title).font(.system(.title2, design: .rounded, weight: .bold))
+                .accessibilityAddTraits(.isHeader)
+            Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 8)
+    }
+}
+
+/// The actual aircraft category silhouette, lit like a small clay model.
+struct AEAircraftMedallion: View {
+    let category: AircraftCategory
+    var tint: Color = AETheme.accent
+    var size: CGFloat = 72
+
+    var body: some View {
+        AircraftShape(category: category)
+            .fill(LinearGradient(colors: [tint.opacity(0.55), tint],
+                                 startPoint: .topLeading, endPoint: .bottomTrailing))
+            .overlay(AircraftShape(category: category).stroke(.white.opacity(0.5), lineWidth: 0.8))
+            .rotationEffect(.degrees(32))
+            .padding(size * 0.16)
+            .frame(width: size, height: size)
+            .shadow(color: tint.opacity(0.25), radius: 3, x: 2, y: 4)
+            .background(tint.opacity(0.07), in: RoundedRectangle(cornerRadius: size * 0.3))
+            .accessibilityHidden(true)
+    }
+}
 
 /// Opaque, inexpensive content surfaces beneath the interactive glass layer.
 /// Gradients and a fine rim provide depth without sampling a blur for every row.

@@ -329,7 +329,7 @@ final class CampaignUITests: AEUITestCase {
         // are the evidence this journey exists for, and a query that
         // cannot see a card the frame shows must not hide them. The
         // failure is still recorded.
-        let rivalsHeader = app.staticTexts["RIVALS"]
+        let rivalsHeader = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "RIVALS")).firstMatch
         let rivalsLink = app.descendants(matching: .any)
             .matching(identifier: "ae-rival-pressure").firstMatch
         let rivalsLine = app.descendants(matching: .any).matching(NSPredicate(
@@ -464,7 +464,7 @@ final class CampaignUITests: AEUITestCase {
             XCTFail("The \(code) row did not accept a tap.")
             return false
         }
-        let header = app.staticTexts["WHO ELSE FLIES THIS"]
+        let header = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "WHO ELSE FLIES THIS")).firstMatch
         if header.waitForExistence(timeout: 8) { return true }
         return scrollUntil(header, "the competition section on the route screen")
     }
@@ -495,7 +495,7 @@ final class CampaignUITests: AEUITestCase {
             XCTFail("The LHR–\(farEnd) row did not accept a tap.")
             return false
         }
-        let header = app.staticTexts["WHO ELSE FLIES THIS"]
+        let header = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "WHO ELSE FLIES THIS")).firstMatch
         if header.waitForExistence(timeout: 8) { return true }
         // The section may be below the fold on a small phone.
         return scrollUntil(header, "the competition section on the route screen")
