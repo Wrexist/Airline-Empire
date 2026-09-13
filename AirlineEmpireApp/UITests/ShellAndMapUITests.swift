@@ -23,11 +23,34 @@ final class ShellAndMapUITests: AEUITestCase {
 
     func testOptionalSetupAndFirstFlightProgress() throws {
         launch(appearance: .light)
+        let start = app.buttons["ae-menu-new-airline"]
+        guard require(start, "the welcome menu's new airline action") else { return }
+        XCTAssertFalse(app.textFields["Airline name"].exists)
+        checkpoint("MENU-welcome")
+        start.tap()
+        let name = app.textFields["Airline name"]
+        guard require(name, "the dedicated founding screen") else { return }
+        name.tap()
+        name.typeText("Aurora Air")
+        app.buttons["ae-setup-back"].tap()
+        XCTAssertTrue(start.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.textFields["Airline name"].exists)
+        start.tap()
+        XCTAssertEqual(name.value as? String, "Aurora Air", "Returning to the menu must preserve the draft")
+        name.tap()
+        name.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 10))
+        app.keyboards.buttons["Done"].tap()
+        checkpoint("MENU-founding")
         XCTAssertFalse(app.buttons["ae-import-campaign"].exists)
         let advanced = app.buttons["Advanced options & backups"]
         guard scrollUntil(advanced, "advanced setup options") else { return }
         advanced.tap()
         XCTAssertTrue(app.buttons["ae-import-campaign"].waitForExistence(timeout: 5))
+        let importButton = app.buttons["ae-import-campaign"]
+        guard scrollUntil(importButton, "the backup action above the founding footer") else { return }
+        let found = app.buttons["Found Skyline Air"]
+        XCTAssertLessThanOrEqual(importButton.frame.maxY, found.frame.minY,
+                                 "The pinned action must not cover setup controls")
         checkpoint("GUIDE-optional-setup")
         advanced.tap()
         guard foundAirline() else { return }
@@ -261,6 +284,9 @@ final class ShellAndMapUITests: AEUITestCase {
             "-UIPreferredContentSizeCategoryName",
             "UICTContentSizeCategoryAccessibilityL",
         ])
+        let start = app.buttons["ae-menu-new-airline"]
+        guard scrollUntil(start, "Start your airline at accessibility size"), tapWhenReady(start) else { return }
+        checkpoint("MENU-accessibility-founding")
         guard foundAirline() else { return }
         checkpoint("95-dynamictype-home")
 

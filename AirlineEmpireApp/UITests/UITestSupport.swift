@@ -1291,6 +1291,10 @@ class AEUITestCase: XCTestCase {
         // on the first poll alone (the cell query twelve seconds, the
         // static-text query twelve more) before concluding what one query
         // for the new-game screen's own button answers immediately.
+        let newAirline = app.buttons["ae-menu-new-airline"]
+        if newAirline.waitForExistence(timeout: 3) {
+            guard scrollUntil(newAirline, "the new airline action"), tapWhenReady(newAirline) else { return false }
+        }
         let found = app.buttons["Found Skyline Air"]
         if !found.waitForExistence(timeout: 15) {
             if waitForTab("Home", timeout: 3) != nil { return true }

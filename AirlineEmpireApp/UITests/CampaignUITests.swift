@@ -614,6 +614,12 @@ final class CampaignUITests: AEUITestCase {
     /// photographed here too, because dropping a tab must not drop a surface.
     func testFoundingAnAirlineReachesEveryTab() throws {
         launch(appearance: .light)
+        let start = app.buttons["ae-menu-new-airline"]
+        guard require(start, "the welcome menu") else { return }
+        checkpoint("MENU-device-welcome")
+        start.tap()
+        guard require(app.textFields["Airline name"], "the founding form") else { return }
+        checkpoint("MENU-device-founding")
         guard foundAirline() else { return }
 
         for (index, tab) in ["Home", "Airline", "Finance", "World"].enumerated() {

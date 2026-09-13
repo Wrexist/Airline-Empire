@@ -1,39 +1,13 @@
 import SwiftUI
 import AirlineEmpireCore
 
-/// First five minutes (docs/PLAYER_JOURNEY.md §1): name it, choose where to
-/// start, choose how hard, fly.
-///
-/// ## Why this is not a Form
-///
-/// It was, and it read like the Settings app: four grouped sections of equal
-/// weight, a title bar that ate a third of the screen, and the one button that
-/// matters buried in the scroll between "World seed" and "Continue". A player's
-/// first screen is the game's only chance to say what kind of game it is.
-///
-/// The shape now follows the decision, not the data model:
-///
-///   1. **Name** — one field, given the room a headline deserves.
-///   2. **Where** — three cards, each carrying three real signals from
-///      `airports.json` (market size, what flies there, weather exposure)
-///      instead of one line of prose. The choice has consequences; the card
-///      should show them.
-///   3. **How hard** — three pills rather than three stacked cards. Difficulty
-///      is one decision, so it gets one control, and the selected scenario's
-///      real numbers (starting cash, rivals, year) sit underneath.
-///   4. **Fly** — pinned to the bottom, always reachable, never scrolled past.
-///
-/// The seed moved into a disclosure: it matters enormously to the handful of
-/// players who share challenge runs and not at all to everyone else, and
-/// putting it fourth in a list of five taught every new player that this game
-/// is about form-filling.
-///
-/// Liquid Glass carries it (`aeGlass`, availability-gated to iOS 26 with a
-/// material fallback), over the dusk sky the app icon already uses.
+/// Separates resuming an airline from configuring a new campaign.
 struct NewGameView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(GameController.self) private var controller
     @Environment(Entitlements.self) private var entitlements
+    @State private var showingSetup = false
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var airlineName = ""
     @State private var selectedStart = CuratedStart.all[0]
     /// A home chosen from the whole world rather than the three curated ones.
@@ -80,51 +54,17 @@ struct NewGameView: View {
         ZStack {
             AEDuskBackdrop()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: AETheme.spacingL) {
-                    masthead
-                    if let report = controller.lastSessionReport {
-                        SessionReportCard(report: report, nextMove: controller.lastSessionNextMove)
-                    }
-                    if !slots.isEmpty { continueSection }
-                    nameField
-                    homeSection
-                    difficultySection
-                    DisclosureGroup("Personalize your airline") {
-                        liverySection.padding(.top, AETheme.spacingS)
-                    }
-                    .padding(AETheme.spacingM)
-                    .aeGlass(in: AETheme.cardShape)
-                    .accessibilityElement(children: .contain)
-                    .accessibilityIdentifier("ae-setup-personalize")
-                    DisclosureGroup("Advanced options & backups") {
-                        Button {
-                            if entitlements.access.allowsNewSave(existingSaves: slots.count) {
-                                showingImport = true
-                            } else {
-                                entitlements.present(.saveSlot)
-                            }
-                        } label: {
-                            Label("Import campaign backup", systemImage: "square.and.arrow.down")
-                        }
-                        .buttonStyle(.aeTertiary)
-                        .accessibilityIdentifier("ae-import-campaign")
-                        seedSection
-                    }
-                    .padding(AETheme.spacingM)
-                    .aeGlass(in: AETheme.cardShape)
-                    .accessibilityElement(children: .contain)
-                    .accessibilityIdentifier("ae-setup-advanced")
-                    // Room for the pinned button, so the last card is never
-                    // trapped underneath it.
-                    Color.clear.frame(height: AETheme.spacingL)
-                }
-                .padding(.horizontal, AETheme.spacingM)
-                .padding(.top, AETheme.spacingS)
-            }
-            .scrollDismissesKeyboard(.interactively)
+            if showingSetup { setupScreen }
+            else { welcomeScreen }
         }
-        .safeAreaInset(edge: .bottom) { foundBar }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if showingSetup { foundBar }
+        }
+        .sheet(isPresented: $showingAllAirports) {
+            HomeAirportPicker(catalog: catalog) { code in
+                withAnimation(reduceMotion ? nil : AEMotion.selection) { customHome = code }
+            }
+        }
         .environment(\.colorScheme, .dark)
         .preferredColorScheme(.dark)
         .fileImporter(isPresented: $showingImport, allowedContentTypes: [.data]) { result in
@@ -177,27 +117,168 @@ struct NewGameView: View {
         }
     }
 
-    // MARK: - Masthead
+    // MARK: - Welcome
 
-    private var masthead: some View {
-        VStack(alignment: .leading, spacing: AETheme.spacingXS) {
-            Text("FOUND YOUR AIRLINE")
-                .font(.caption.weight(.semibold))
-                .tracking(1.6)
-                .foregroundStyle(AETheme.ember)
-            Text("Airline Empire")
-                .font(.system(.largeTitle, design: .default, weight: .bold))
-                .foregroundStyle(.white)
-            Text("One aircraft. One route. Everything after that is yours to build.")
-                .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.65))
-                .fixedSize(horizontal: false, vertical: true)
+    private var welcomeScreen: some View {
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(alignment: .leading, spacing: AETheme.spacingL) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "airplane")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(AETheme.ember)
+                        Text("AIRLINE EMPIRE")
+                            .font(.caption.weight(.bold))
+                            .tracking(2.5)
+                    }
+                    .padding(.top, AETheme.spacingM)
+                    .accessibilityElement(children: .combine)
+
+                    if let report = controller.lastSessionReport {
+                        SessionReportCard(report: report, nextMove: controller.lastSessionNextMove)
+                    } else {
+                        MenuRouteAtlas()
+                            .frame(height: slots.isEmpty ? 220 : 170)
+                            .padding(.horizontal, -AETheme.spacingL)
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(slots.isEmpty ? "A world of possibility." : "Welcome back, Captain.")
+                            .font(.largeTitle.weight(.bold))
+                            .tracking(-1)
+                            .foregroundStyle(.white)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(slots.isEmpty
+                             ? "One aircraft. Your first route. An airline with your name on it."
+                             : "Your airline. Your next destination.")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.65))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if !slots.isEmpty { continueSection }
+
+                    VStack(spacing: 12) {
+                        Button {
+                            withAnimation(reduceMotion ? nil : AEMotion.screen) { showingSetup = true }
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: "airplane.departure")
+                                Text(slots.isEmpty ? "Start your airline" : "Found a new airline")
+                                Spacer(minLength: 8)
+                                Image(systemName: "arrow.right")
+                            }
+                            .font(.headline)
+                            .foregroundStyle(slots.isEmpty ? AETheme.duskTop : .white)
+                            .padding(18)
+                            .frame(maxWidth: .infinity, minHeight: 56)
+                            .background(slots.isEmpty ? AETheme.ember : .white.opacity(0.06),
+                                        in: AETheme.cardShape)
+                            .overlay(AETheme.cardShape.stroke(.white.opacity(0.12), lineWidth: 1))
+                        }
+                        .buttonStyle(.aePress)
+                        .accessibilityIdentifier("ae-menu-new-airline")
+                        if !canFoundAnother {
+                            Text("Your current airline stays saved. Extra save slots require Pro.")
+                                .font(.caption)
+                                .foregroundStyle(.white.opacity(0.6))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        Button {
+                            if canFoundAnother { showingImport = true }
+                            else { entitlements.present(.saveSlot) }
+                        } label: {
+                            Label("Import a backup", systemImage: "square.and.arrow.down")
+                                .font(.subheadline)
+                                .foregroundStyle(.white.opacity(0.65))
+                                .frame(minHeight: 44)
+                        }
+                        .buttonStyle(.aePress)
+                        .accessibilityIdentifier("ae-menu-import")
+                    }
+                    Spacer(minLength: 0)
+                    HStack(spacing: 6) {
+                        Image(systemName: "globe.europe.africa")
+                        Text("BUILD CONNECTIONS. LEAVE A LEGACY.").tracking(1)
+                    }
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.4))
+                    .frame(maxWidth: .infinity)
+                    .padding(.bottom, AETheme.spacingM)
+                }
+                .padding(.horizontal, AETheme.spacingL)
+                .frame(maxWidth: 600)
+                .frame(minHeight: geometry.size.height, alignment: .top)
+                .frame(maxWidth: .infinity)
+            }
         }
-        .padding(.bottom, AETheme.spacingXS)
-        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("ae-menu-welcome")
     }
 
-    // MARK: - 1 · Name
+    // MARK: - Founding
+
+    private var setupScreen: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Button {
+                    nameFocused = false
+                    withAnimation(reduceMotion ? nil : AEMotion.screen) { showingSetup = false }
+                } label: {
+                    Label("Menu", systemImage: "chevron.left")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.aePress)
+                .accessibilityIdentifier("ae-setup-back")
+                Spacer()
+                Text("NEW AIRLINE")
+                    .font(.caption2.weight(.semibold))
+                    .tracking(1.8)
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, AETheme.spacingL)
+            .frame(maxWidth: 640)
+            ScrollView {
+                VStack(alignment: .leading, spacing: AETheme.spacingL) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Make it yours.")
+                            .font(.title.weight(.bold))
+                            .foregroundStyle(.white)
+                        Text("Choose a name and a home. The rest is your story.")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.65))
+                    }
+                    nameField
+                    homeSection
+                    difficultySection
+                    DisclosureGroup("Personalize your airline") {
+                        liverySection.padding(.top, AETheme.spacingS)
+                    }
+                    .padding(AETheme.spacingM)
+                    .background(.white.opacity(0.04), in: AETheme.cardShape)
+                    .accessibilityIdentifier("ae-setup-personalize")
+                    DisclosureGroup("Advanced options & backups") {
+                        Button {
+                            if canFoundAnother { showingImport = true }
+                            else { entitlements.present(.saveSlot) }
+                        } label: {
+                            Label("Import campaign backup", systemImage: "square.and.arrow.down")
+                        }
+                        .buttonStyle(.aeTertiary)
+                        .accessibilityIdentifier("ae-import-campaign")
+                        seedSection
+                    }
+                    .padding(AETheme.spacingM)
+                    .background(.white.opacity(0.04), in: AETheme.cardShape)
+                    .accessibilityIdentifier("ae-setup-advanced")
+                }
+                .padding(AETheme.spacingL)
+                .frame(maxWidth: 640)
+                .frame(maxWidth: .infinity)
+            }
+            .scrollDismissesKeyboard(.interactively)
+        }
+    }
 
     private var nameField: some View {
         VStack(alignment: .leading, spacing: AETheme.spacingS) {
@@ -212,7 +293,8 @@ struct NewGameView: View {
                 .foregroundStyle(.white)
                 .padding(AETheme.spacingM)
                 .frame(minHeight: 56)
-                .aeGlass(in: AETheme.cardShape)
+                .background(.white.opacity(0.06), in: AETheme.cardShape)
+                .overlay(AETheme.cardShape.stroke(.white.opacity(0.16), lineWidth: 1))
                 .accessibilityLabel("Airline name")
                 .accessibilityHint("Leave empty to be called Skyline Air")
         }
@@ -271,106 +353,78 @@ struct NewGameView: View {
 
     private var homeSection: some View {
         VStack(alignment: .leading, spacing: AETheme.spacingS) {
-            SectionLabel("Where you start")
-            ForEach(CuratedStart.all) { start in
-                AEChoiceCard(isSelected: customHome == nil && start.id == selectedStart.id) {
-                    withAnimation(reduceMotion ? nil : AEMotion.selection) {
-                        selectedStart = start
-                        customHome = nil
+            SectionLabel("Home airport")
+            VStack(spacing: 0) {
+                ForEach(CuratedStart.all) { start in
+                    let selected = customHome == nil && start.id == selectedStart.id
+                    Button {
+                        withAnimation(reduceMotion ? nil : AEMotion.selection) {
+                            selectedStart = start
+                            customHome = nil
+                        }
+                    } label: {
+                        HStack(spacing: 14) {
+                            Text(start.home.raw)
+                                .font(.subheadline.weight(.semibold).monospaced())
+                                .foregroundStyle(selected ? AETheme.ember : .white.opacity(0.55))
+                                .frame(width: 42)
+                            Text(start.city).font(.body.weight(selected ? .semibold : .regular))
+                            Spacer(minLength: 0)
+                            Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(selected ? AETheme.ember : .white.opacity(0.25))
+                        }
+                        .foregroundStyle(.white)
+                        .padding(AETheme.spacingM)
+                        .frame(minHeight: 56)
+                        .background(selected ? .white.opacity(0.06) : .clear)
+                        .contentShape(Rectangle())
                     }
-                } content: {
-                    startCardBody(start)
+                    .buttonStyle(.aePress)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+                    if start.id != CuratedStart.all.last?.id {
+                        Divider().overlay(.white.opacity(0.05)).padding(.horizontal, 16)
+                    }
                 }
             }
-            // Three curated openings on a world of eighty airports capped
-            // replayability at three (UIUX_FORENSIC_AUDIT UI-025). The curated
-            // three stay first because they are the ones tuned to teach.
-            AEChoiceCard(isSelected: customHome != nil) {
-                showingAllAirports = true
-            } content: {
-                anywhereCardBody
+            .background(.white.opacity(0.035), in: AETheme.cardShape)
+            .clipShape(AETheme.cardShape)
+            .overlay(AETheme.cardShape.stroke(.white.opacity(0.1), lineWidth: 1))
+            Button { showingAllAirports = true } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "globe")
+                    Text(customHome == nil ? "Somewhere else" : "\(homeCityName) · \(home.raw)")
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right").font(.caption.weight(.semibold))
+                }
+                .font(.subheadline)
+                .foregroundStyle(customHome == nil ? .white.opacity(0.7) : AETheme.ember)
+                .padding(.horizontal, AETheme.spacingM)
+                .frame(minHeight: 48)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.aePress)
+            .accessibilityIdentifier("ae-setup-other-airport")
+            if let spec = catalog?.airport(home) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(customHome == nil ? selectedStart.blurb : "\(spec.city), \(spec.country)")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.7))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("\(Self.market(spec)) · \(Self.lean(spec)) · \(Vocab.weatherRisk(spec.weatherRisk))")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.5))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.horizontal, 4)
+                .accessibilityElement(children: .combine)
             }
         }
-        // Keyed on the resolved home rather than on `selectedStart.id`,
-        // which does not change when the player picks from the full airport
-        // list — so choosing a curated start made a sound and choosing any of
-        // the other seventy-odd made none.
-        .aeFeedback(.uiSelect, on: customHome?.raw ?? selectedStart.id)
-        .sheet(isPresented: $showingAllAirports) {
-            HomeAirportPicker(catalog: catalog) { code in
-                withAnimation(reduceMotion ? nil : AEMotion.selection) { customHome = code }
-            }
-        }
+        .aeFeedback(.uiSelect, on: home.raw)
     }
 
     /// The chosen home, curated or not.
     private var home: AirportCode {
         customHome ?? selectedStart.home
-    }
-
-    @ViewBuilder
-    private var anywhereCardBody: some View {
-        VStack(alignment: .leading, spacing: AETheme.spacingS) {
-            HStack(spacing: AETheme.spacingS) {
-                Text(customHome.flatMap { catalog?.airport($0)?.city } ?? "Somewhere else")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                if let customHome {
-                    Text(customHome.raw)
-                        .font(.caption.weight(.semibold))
-                        .monospaced()
-                        .foregroundStyle(AETheme.ember)
-                }
-            }
-            Text(customHome.flatMap { home in
-                catalog?.airport(home).map {
-                    "\($0.country) · \(Vocab.runwayDetail($0.runwayClass))"
-                }
-            } ?? (customHome == nil
-                  ? "Choose any of the world's airports. Some of them are very hard openings — that is the point."
-                  : ""))
-                .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.62))
-                .fixedSize(horizontal: false, vertical: true)
-            if let customHome, let spec = catalog?.airport(customHome) {
-                AEChipRow {
-                    AEChip(icon: "person.2.fill", text: Self.market(spec))
-                    AEChip(icon: "briefcase.fill", text: Self.lean(spec))
-                    AEChip(icon: "cloud.rain.fill", text: Vocab.weatherRisk(spec.weatherRisk))
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func startCardBody(_ start: CuratedStart) -> some View {
-        let spec = catalog?.airport(start.home)
-        VStack(alignment: .leading, spacing: AETheme.spacingS) {
-            HStack(spacing: AETheme.spacingS) {
-                Text(spec?.city ?? start.city)
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                Text(start.home.raw)
-                    .font(.caption.weight(.semibold))
-                    .monospaced()
-                    .foregroundStyle(AETheme.ember)
-            }
-            Text(start.blurb)
-                .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.62))
-                .fixedSize(horizontal: false, vertical: true)
-
-            // Three real signals from the content pack. A start's difficulty
-            // is not flavour text — it is market size, who else wants it, and
-            // how often weather takes the day off you.
-            if let spec {
-                AEChipRow {
-                    AEChip(icon: "person.2.fill", text: Self.market(spec))
-                    AEChip(icon: "briefcase.fill", text: Self.lean(spec))
-                    AEChip(icon: "cloud.rain.fill", text: Vocab.weatherRisk(spec.weatherRisk))
-                }
-            }
-        }
     }
 
     /// Market size, rounded to something a person reads rather than parses.
@@ -391,9 +445,12 @@ struct NewGameView: View {
 
     private var difficultySection: some View {
         VStack(alignment: .leading, spacing: AETheme.spacingS) {
-            SectionLabel("How hard")
+            SectionLabel("Your challenge")
             if let catalog {
-                HStack(spacing: AETheme.spacingS) {
+                let layout = dynamicTypeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(spacing: AETheme.spacingS))
+                    : AnyLayout(HStackLayout(spacing: AETheme.spacingS))
+                layout {
                     ForEach(catalog.orderedScenarioCodes, id: \.self) { code in
                         if let spec = catalog.scenarios[code] {
                             difficultyPill(code: code, spec: spec)
@@ -479,7 +536,7 @@ struct NewGameView: View {
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.62))
                 .fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: AETheme.spacingXS) {
+            AEChipRow {
                 AEChip(icon: "banknote.fill", text: "\(Format.money(spec.playerStartingCash)) to start")
                 AEChip(icon: "airplane.circle.fill", text: "\(spec.competitorCount) rivals")
                 AEChip(icon: "calendar", text: String(spec.startYear))
@@ -543,18 +600,22 @@ struct NewGameView: View {
 
     private var continueSection: some View {
         VStack(alignment: .leading, spacing: AETheme.spacingS) {
-            SectionLabel("Continue")
+            SectionLabel("Your airlines")
             ForEach(slots, id: \.slot) { entry in
                 Button {
                     controller.loadGame(slot: entry.slot)
                 } label: {
                     HStack(spacing: AETheme.spacingM) {
                         VStack(alignment: .leading, spacing: 2) {
+                            Text("CONTINUE")
+                                .font(.caption2.weight(.bold))
+                                .tracking(1.4)
+                                .foregroundStyle(AETheme.ember)
                             Text(entry.meta?.airlineName ?? "Save \(entry.slot)")
-                                .font(.headline)
+                                .font(.title3.weight(.semibold))
                                 .foregroundStyle(.white)
                             if let meta = entry.meta {
-                                Text("\(meta.gameDateDescription) · \(meta.era) · \(GameController.slotLabel(entry.slot))")
+                                Text("\(meta.gameDateDescription) · \(GameController.slotLabel(entry.slot))")
                                     .font(.caption)
                                     .foregroundStyle(.white.opacity(0.6))
                             }
@@ -568,13 +629,13 @@ struct NewGameView: View {
                     .padding(AETheme.spacingM)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(AETheme.cardShape)
-                    .aeGlass(in: AETheme.cardShape,
-                             tint: AETheme.ember.opacity(0.16),
-                             interactive: true)
+                    .background(AETheme.ember.opacity(0.08), in: AETheme.cardShape)
+                    .overlay(AETheme.cardShape.stroke(AETheme.ember.opacity(0.3), lineWidth: 1))
                 }
                 .buttonStyle(.aePress)
                 .accessibilityElement(children: .combine)
                 .accessibilityHint("Resumes this airline")
+                .accessibilityIdentifier("ae-menu-continue-\(entry.slot)")
                 .contextMenu {
                     Button("Delete this save", role: .destructive) {
                         pendingDeletion = entry.slot
@@ -592,8 +653,7 @@ struct NewGameView: View {
             // player with a save already open needs to know why the button
             // is about to talk about Pro before they reach for it.
             if !canFoundAnother {
-                Label("A free airline keeps one save. Pro runs as many as "
-                      + "you like.", systemImage: "crown.fill")
+                Label("Extra airlines require Pro. Your current save stays safe.", systemImage: "crown.fill")
                     .font(AEType.secondary)
                     .foregroundStyle(.white.opacity(0.7))
                     .multilineTextAlignment(.center)
@@ -618,20 +678,17 @@ struct NewGameView: View {
                     Text(canFoundAnother ? "Found \(effectiveName)"
                          : "Found another airline")
                         .font(.headline)
-                        .lineLimit(1)
+                        .fixedSize(horizontal: false, vertical: true)
                     Image(systemName: canFoundAnother
                           ? "airplane.departure" : "crown.fill")
                         .font(.headline)
                         .accessibilityHidden(true)
                 }
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .frame(minHeight: 54)
-                .contentShape(Capsule(style: .continuous))
-                .aeGlass(in: Capsule(style: .continuous),
-                         tint: (canFoundAnother ? AETheme.accent : AETheme.ember)
-                            .opacity(0.55),
-                         interactive: true)
+                .foregroundStyle(AETheme.duskTop)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .frame(maxWidth: .infinity, minHeight: 54)
+                .background(AETheme.ember, in: AETheme.cardShape)
             }
             .buttonStyle(.aePress)
             .accessibilityLabel(canFoundAnother ? "Found \(effectiveName)"
@@ -640,8 +697,12 @@ struct NewGameView: View {
                                ? "Starts a new game at \(homeCityName)"
                                : "Opens the Pro options")
         }
-        .padding(.horizontal, AETheme.spacingM)
-        .padding(.bottom, AETheme.spacingS)
+        .padding(.horizontal, AETheme.spacingL)
+        .padding(.vertical, 12)
+        .frame(maxWidth: 640)
+        .frame(maxWidth: .infinity)
+        .background { AETheme.duskTop.ignoresSafeArea(edges: .bottom) }
+        .overlay(alignment: .top) { Rectangle().fill(.white.opacity(0.1)).frame(height: 1) }
     }
 }
 
