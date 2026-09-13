@@ -425,7 +425,7 @@ jobs:
             onboarding)
               MATRIX=$(jq -cn '{include: [
                 {shard: 0, name: "onboarding", job: 25, ui: 18, run: true, measure: false,
-                 tests: "-only-testing:AirlineEmpireUITests/ShellAndMapUITests/testOptionalSetupAndFirstFlightProgress -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testAirportRouteFiltersAndContextualAircraftAcquisition -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testAccessibilityTextSizeKeepsTheShellUsable -only-testing:AirlineEmpireUITests/CampaignUITests/testFoundingAnAirlineReachesEveryTab"}
+                 tests: "-only-testing:AirlineEmpireUITests/ShellAndMapUITests/testMenuSeedAndHomeSelection -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testOptionalSetupAndFirstFlightProgress -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testAirportRouteFiltersAndContextualAircraftAcquisition -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testAccessibilityTextSizeKeepsTheShellUsable -only-testing:AirlineEmpireUITests/CampaignUITests/testFoundingAnAirlineReachesEveryTab"}
               ]}') ;;
             full)
               MATRIX=$(jq -cn '{include: [

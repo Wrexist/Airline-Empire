@@ -21,6 +21,13 @@ import XCTest
 /// one after another.
 final class ShellAndMapUITests: AEUITestCase {
 
+    func testMenuSeedAndHomeSelection() throws {
+        launch(appearance: .light)
+        guard foundAirline(seed: "2030", home: (code: "MUC", city: "Munich")) else { return }
+        XCTAssertTrue(app.descendants(matching: .any)["ae-map-canvas"].exists)
+        checkpoint("MENU-custom-campaign-founded")
+    }
+
     func testOptionalSetupAndFirstFlightProgress() throws {
         launch(appearance: .light)
         let start = app.buttons["ae-menu-new-airline"]
@@ -45,11 +52,11 @@ final class ShellAndMapUITests: AEUITestCase {
         checkpoint("MENU-founding")
         XCTAssertFalse(app.buttons["ae-import-campaign"].exists)
         let advanced = app.buttons["Advanced options & backups"]
-        guard scrollUntil(advanced, "advanced setup options") else { return }
+        guard revealSetupControl(advanced, "advanced setup options") else { return }
         advanced.tap()
         XCTAssertTrue(app.buttons["ae-import-campaign"].waitForExistence(timeout: 5))
         let importButton = app.buttons["ae-import-campaign"]
-        guard scrollUntil(importButton, "the backup action above the founding footer") else { return }
+        guard revealSetupControl(importButton, "the backup action above the founding footer") else { return }
         let found = app.buttons["Found Skyline Air"]
         XCTAssertLessThanOrEqual(importButton.frame.maxY, found.frame.minY,
                                  "The pinned action must not cover setup controls")

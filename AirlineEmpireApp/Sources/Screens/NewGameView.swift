@@ -257,6 +257,7 @@ struct NewGameView: View {
                     }
                     .padding(AETheme.spacingM)
                     .background(.white.opacity(0.04), in: AETheme.cardShape)
+                    .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("ae-setup-personalize")
                     DisclosureGroup("Advanced options & backups") {
                         Button {
@@ -271,6 +272,7 @@ struct NewGameView: View {
                     }
                     .padding(AETheme.spacingM)
                     .background(.white.opacity(0.04), in: AETheme.cardShape)
+                    .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("ae-setup-advanced")
                 }
                 .padding(AETheme.spacingL)
@@ -280,6 +282,7 @@ struct NewGameView: View {
             .scrollDismissesKeyboard(.interactively)
             .clipped()
         }
+        .accessibilityElement(children: .contain)
     }
 
     private var nameField: some View {
