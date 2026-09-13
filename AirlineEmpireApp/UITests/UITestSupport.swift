@@ -43,6 +43,14 @@ class AEUITestCase: XCTestCase {
     var usesProFixture: Bool { true }
 
     override func tearDown() {
+        if let run = testRun, run.failureCount > 0 {
+            // A device capture still works when the app has exited or a
+            // keyboard/scroll failure prevents resolving its own screenshot.
+            let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            shot.name = Self.logPrefix + "FAIL-" + name
+            shot.lifetime = .keepAlways
+            add(shot)
+        }
         app = nil
         super.tearDown()
     }
@@ -1284,9 +1292,9 @@ class AEUITestCase: XCTestCase {
     /// Setup controls must be inside the scroll viewport before tapping.
     /// Existence alone includes rows below the pinned founding action.
     @discardableResult
-    func revealSetupControl(_ element: XCUIElement, _ what: String) -> Bool {
+    func revealMenuControl(_ element: XCUIElement, _ what: String) -> Bool {
         let scroll = app.scrollViews.firstMatch
-        guard require(scroll, "the founding scroll view") else { return false }
+        guard require(scroll, "the menu scroll view") else { return false }
         for _ in 0..<10 {
             let viewport = scroll.frame.intersection(app.frame)
             let found = app.buttons["Found Skyline Air"]
@@ -1321,7 +1329,7 @@ class AEUITestCase: XCTestCase {
         // for the new-game screen's own button answers immediately.
         let newAirline = app.buttons["ae-menu-new-airline"]
         if newAirline.waitForExistence(timeout: 3) {
-            guard scrollUntil(newAirline, "the new airline action"), tapWhenReady(newAirline) else { return false }
+            guard revealMenuControl(newAirline, "the new airline action"), tapWhenReady(newAirline) else { return false }
         }
         let found = app.buttons["Found Skyline Air"]
         if !found.waitForExistence(timeout: 15) {
@@ -1336,19 +1344,19 @@ class AEUITestCase: XCTestCase {
         // simulator walks the world Linux already proved.
         if let seed {
             let advanced = app.buttons["Advanced options & backups"]
-            guard revealSetupControl(advanced, "advanced setup options") else { return false }
+            guard revealMenuControl(advanced, "advanced setup options") else { return false }
             advanced.tap()
             let disclosure = app.buttons["World seed"]
             guard require(disclosure, "World seed", timeout: 8),
-                  revealSetupControl(disclosure, "World seed") else { return false }
+                  revealMenuControl(disclosure, "World seed") else { return false }
             disclosure.tap()
             let field = app.textFields["Seed number"]
             guard require(field, "the expanded seed field", timeout: 8),
-                  revealSetupControl(field, "the seed field") else { return false }
+                  revealMenuControl(field, "the seed field") else { return false }
             field.tap()
             field.typeText(seed)
             XCTAssertEqual(field.value as? String, seed, "The campaign must use the requested seed")
-            guard revealSetupControl(disclosure, "the expanded World seed control") else { return false }
+            guard revealMenuControl(disclosure, "the expanded World seed control") else { return false }
             disclosure.tap()
             Thread.sleep(forTimeInterval: 0.5)
         }
@@ -1358,7 +1366,7 @@ class AEUITestCase: XCTestCase {
         if let home {
             let anywhere = app.buttons.matching(NSPredicate(
                 format: "label CONTAINS %@", "Somewhere else")).firstMatch
-            guard revealSetupControl(anywhere, "the Somewhere-else home card") else { return false }
+            guard revealMenuControl(anywhere, "the Somewhere-else home card") else { return false }
             anywhere.tap()
             let search = app.searchFields.firstMatch
             guard require(search, "the home picker's search field", timeout: 8) else { return false }

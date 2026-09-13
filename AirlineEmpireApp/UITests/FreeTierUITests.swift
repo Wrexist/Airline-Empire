@@ -160,14 +160,14 @@ final class FreeTierUITests: AEUITestCase {
         XCTAssertFalse(app.alerts["Save"].exists, "A save alert must not cover the recap")
 
         let newAirline = app.buttons["ae-menu-new-airline"]
-        guard scrollUntil(newAirline, "the saved menu's new airline action"), tapWhenReady(newAirline) else { return }
+        guard revealMenuControl(newAirline, "the saved menu's new airline action"), tapWhenReady(newAirline) else { return }
         let lockedFound = app.buttons["Found another airline, requires Pro"]
         XCTAssertTrue(lockedFound.waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Extra airlines require Pro. Your current save stays safe."].exists)
         checkpoint("MENU-free-extra-airline")
         app.buttons["Menu"].tap()
         let resume = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "ae-menu-continue-")).firstMatch
-        guard scrollUntil(resume, "Continue after leaving the founding draft"), tapWhenReady(resume) else { return }
+        guard revealMenuControl(resume, "Continue after leaving the founding draft"), tapWhenReady(resume) else { return }
         XCTAssertNotNil(waitForTab("Home", timeout: 15), "The saved airline must still resume")
     }
 

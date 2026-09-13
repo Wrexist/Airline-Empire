@@ -52,11 +52,11 @@ final class ShellAndMapUITests: AEUITestCase {
         checkpoint("MENU-founding")
         XCTAssertFalse(app.buttons["ae-import-campaign"].exists)
         let advanced = app.buttons["Advanced options & backups"]
-        guard revealSetupControl(advanced, "advanced setup options") else { return }
+        guard revealMenuControl(advanced, "advanced setup options") else { return }
         advanced.tap()
         XCTAssertTrue(app.buttons["ae-import-campaign"].waitForExistence(timeout: 5))
         let importButton = app.buttons["ae-import-campaign"]
-        guard revealSetupControl(importButton, "the backup action above the founding footer") else { return }
+        guard revealMenuControl(importButton, "the backup action above the founding footer") else { return }
         let found = app.buttons["Found Skyline Air"]
         XCTAssertLessThanOrEqual(importButton.frame.maxY, found.frame.minY,
                                  "The pinned action must not cover setup controls")
@@ -294,7 +294,7 @@ final class ShellAndMapUITests: AEUITestCase {
             "UICTContentSizeCategoryAccessibilityL",
         ])
         let start = app.buttons["ae-menu-new-airline"]
-        guard scrollUntil(start, "Start your airline at accessibility size"), tapWhenReady(start) else { return }
+        guard revealMenuControl(start, "Start your airline at accessibility size"), tapWhenReady(start) else { return }
         checkpoint("MENU-accessibility-founding")
         guard foundAirline() else { return }
         checkpoint("95-dynamictype-home")
