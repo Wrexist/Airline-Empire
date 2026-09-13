@@ -1294,7 +1294,9 @@ class AEUITestCase: XCTestCase {
             let top = viewport.minY + 8
             let frame = element.exists ? element.frame : .zero
             if !frame.isEmpty, frame.minY >= top, frame.maxY <= bottom, element.isHittable {
-                return waitUntilStill(element)
+                let settled = waitUntilStill(element)
+                XCTAssertTrue(settled, "\(what) must stop scrolling before interaction")
+                return settled
             }
             let upward = frame.isEmpty || frame.minY >= top
             let startY = top + (bottom - top) * (upward ? 0.8 : 0.25)
