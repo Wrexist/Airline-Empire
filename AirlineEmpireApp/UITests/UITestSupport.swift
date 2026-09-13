@@ -43,6 +43,14 @@ class AEUITestCase: XCTestCase {
     var usesProFixture: Bool { true }
 
     override func tearDown() {
+        if let run = testRun, run.failureCount > 0 {
+            // A device capture still works when the app has exited or a
+            // keyboard/scroll failure prevents resolving its own screenshot.
+            let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            shot.name = Self.logPrefix + "FAIL-" + name
+            shot.lifetime = .keepAlways
+            add(shot)
+        }
         app = nil
         super.tearDown()
     }
@@ -1281,7 +1289,35 @@ class AEUITestCase: XCTestCase {
         return nil
     }
 
-    /// Found an airline and arrive in the shell. Every journey starts here.
+    /// Setup controls must be inside the scroll viewport before tapping.
+    /// Existence alone includes rows below the pinned founding action.
+    @discardableResult
+    func revealMenuControl(_ element: XCUIElement, _ what: String) -> Bool {
+        let scroll = app.scrollViews.firstMatch
+        guard require(scroll, "the menu scroll view") else { return false }
+        for _ in 0..<10 {
+            let viewport = scroll.frame.intersection(app.frame)
+            let found = app.buttons["Found Skyline Air"]
+            let bottom = found.exists ? min(viewport.maxY, found.frame.minY) - 12 : viewport.maxY - 12
+            let top = viewport.minY + 8
+            let frame = element.exists ? element.frame : .zero
+            if !frame.isEmpty, frame.minY >= top, frame.maxY <= bottom, element.isHittable {
+                let settled = waitUntilStill(element)
+                XCTAssertTrue(settled, "\(what) must stop scrolling before interaction")
+                return settled
+            }
+            let upward = frame.isEmpty || frame.minY >= top
+            let startY = top + (bottom - top) * (upward ? 0.8 : 0.25)
+            let endY = top + (bottom - top) * (upward ? 0.25 : 0.8)
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            origin.withOffset(CGVector(dx: viewport.midX, dy: startY))
+                .press(forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: viewport.midX, dy: endY)))
+        }
+        checkpoint("MENU-control-not-visible-\(what)")
+        XCTFail("\(what) did not become visible above the founding footer")
+        return false
+    }
+
     @discardableResult
     func foundAirline(seed: String? = nil, home: (code: String, city: String)? = nil) -> Bool {
         // Ask the cheap question first. A relaunch inside one test may come
@@ -1291,6 +1327,10 @@ class AEUITestCase: XCTestCase {
         // on the first poll alone (the cell query twelve seconds, the
         // static-text query twelve more) before concluding what one query
         // for the new-game screen's own button answers immediately.
+        let newAirline = app.buttons["ae-menu-new-airline"]
+        if newAirline.waitForExistence(timeout: 3) {
+            guard revealMenuControl(newAirline, "the new airline action"), tapWhenReady(newAirline) else { return false }
+        }
         let found = app.buttons["Found Skyline Air"]
         if !found.waitForExistence(timeout: 15) {
             if waitForTab("Home", timeout: 3) != nil { return true }
@@ -1304,45 +1344,21 @@ class AEUITestCase: XCTestCase {
         // simulator walks the world Linux already proved.
         if let seed {
             let advanced = app.buttons["Advanced options & backups"]
-            guard scrollUntil(advanced, "advanced setup options") else { return false }
+            guard revealMenuControl(advanced, "advanced setup options") else { return false }
             advanced.tap()
             let disclosure = app.buttons["World seed"]
-            if disclosure.waitForExistence(timeout: 5) {
-                let field = app.textFields["Seed number"]
-                // The disclosure is the last row of a long scroll, sitting
-                // just above the pinned Found bar, so the first tap has to
-                // scroll it into view — and run 127 computed its hit point
-                // from the frame mid-scroll ({210, 738} for a row that
-                // settled roughly thirty points higher), tapped the gap
-                // above the pinned bar, and the disclosure stayed shut. The
-                // frame the failure screenshot caught still read "World
-                // seed >", chevron unturned. A second tap needs no scroll,
-                // so it lands where the row actually is.
-                //
-                // This waits for the tap to take; it does not relax what the
-                // journey asserts. If three taps cannot open the disclosure,
-                // the failure below is still the failure.
-                var opened = false
-                for _ in 0..<3 {
-                    disclosure.tap()
-                    if field.waitForExistence(timeout: 5) {
-                        opened = true
-                        break
-                    }
-                }
-                guard opened else {
-                    capture(Self.logPrefix + "SEED-FIELD-MISSING")
-                    XCTFail("The World seed field did not appear after expanding the disclosure.")
-                    return false
-                }
-                field.tap()
-                field.typeText(seed)
-                // Collapse the disclosure again: it keeps the typed seed
-                // (the collapsed row echoes it) and puts the keyboard
-                // away, so the Found button below is hittable.
-                disclosure.tap()
-                Thread.sleep(forTimeInterval: 0.5)
-            }
+            guard require(disclosure, "World seed", timeout: 8),
+                  revealMenuControl(disclosure, "World seed") else { return false }
+            disclosure.tap()
+            let field = app.textFields["Seed number"]
+            guard require(field, "the expanded seed field", timeout: 8),
+                  revealMenuControl(field, "the seed field") else { return false }
+            field.tap()
+            field.typeText(seed)
+            XCTAssertEqual(field.value as? String, seed, "The campaign must use the requested seed")
+            guard revealMenuControl(disclosure, "the expanded World seed control") else { return false }
+            disclosure.tap()
+            Thread.sleep(forTimeInterval: 0.5)
         }
         // A home beyond the curated three: the "Somewhere else" card opens
         // the whole-world picker (UI-025). AE-038's world-initiated rival
@@ -1350,7 +1366,7 @@ class AEUITestCase: XCTestCase {
         if let home {
             let anywhere = app.buttons.matching(NSPredicate(
                 format: "label CONTAINS %@", "Somewhere else")).firstMatch
-            guard require(anywhere, "the Somewhere-else home card") else { return false }
+            guard revealMenuControl(anywhere, "the Somewhere-else home card") else { return false }
             anywhere.tap()
             let search = app.searchFields.firstMatch
             guard require(search, "the home picker's search field", timeout: 8) else { return false }

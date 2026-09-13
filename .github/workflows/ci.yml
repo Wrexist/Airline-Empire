@@ -425,7 +425,7 @@ jobs:
             onboarding)
               MATRIX=$(jq -cn '{include: [
                 {shard: 0, name: "onboarding", job: 25, ui: 18, run: true, measure: false,
-                 tests: "-only-testing:AirlineEmpireUITests/ShellAndMapUITests/testOptionalSetupAndFirstFlightProgress -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testAirportRouteFiltersAndContextualAircraftAcquisition -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testAccessibilityTextSizeKeepsTheShellUsable -only-testing:AirlineEmpireUITests/CampaignUITests/testFoundingAnAirlineReachesEveryTab"}
+                 tests: "-only-testing:AirlineEmpireUITests/ShellAndMapUITests/testMenuSeedAndHomeSelection -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testOptionalSetupAndFirstFlightProgress -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testAirportRouteFiltersAndContextualAircraftAcquisition -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testAccessibilityTextSizeKeepsTheShellUsable -only-testing:AirlineEmpireUITests/CampaignUITests/testFoundingAnAirlineReachesEveryTab"}
               ]}') ;;
             full)
               MATRIX=$(jq -cn '{include: [
@@ -737,7 +737,7 @@ jobs:
           # The exporter writes a manifest plus files whose names are uuids;
           # the manifest carries the human name each attachment was given.
           python3 - "$OUT" <<'PYEOF'
-          import base64, json, os, subprocess, sys
+          import base64, json, os, shutil, subprocess, sys
           out = sys.argv[1]
           pairs = []
           for root, _dirs, files in os.walk(out):
@@ -767,6 +767,9 @@ jobs:
               if name in seen:
                   continue
               seen.add(name)
+              if name.startswith("KEY-MENU-"):
+                  os.makedirs("MenuScreenshots", exist_ok=True)
+                  shutil.copyfile(path, os.path.join("MenuScreenshots", os.path.basename(name) + ".png"))
               small = path + ".small.png"
               subprocess.run(["sips", "--resampleWidth", "360", path,
                               "--out", small],
@@ -779,6 +782,15 @@ jobs:
               print("===ENDSHOT")
           PYEOF
           exit 0
+
+      - name: Keep full-resolution menu previews
+        if: always() && matrix.run
+        uses: actions/upload-artifact@v4
+        with:
+          name: menu-screenshots-shard${{ matrix.shard }}
+          path: AirlineEmpireApp/MenuScreenshots
+          retention-days: 14
+          if-no-files-found: ignore
 
       # The same failures again, at the very bottom of the log.
       #
@@ -910,7 +922,7 @@ jobs:
           xcrun xcresulttool export attachments \
             --path UITestResults.xcresult --output-path "$OUT" >/dev/null 2>&1
           python3 - "$OUT" <<'PYEOF'
-          import base64, json, os, subprocess, sys
+          import base64, json, os, shutil, subprocess, sys
           out = sys.argv[1]
           manifest = os.path.join(out, "manifest.json")
           pairs = []
@@ -934,6 +946,9 @@ jobs:
               if name in seen:
                   continue
               seen.add(name)
+              if name.startswith("KEY-MENU-"):
+                  os.makedirs("MenuScreenshots", exist_ok=True)
+                  shutil.copyfile(path, os.path.join("MenuScreenshots", os.path.basename(name) + ".png"))
               small = path + ".small.png"
               subprocess.run(["sips", "--resampleWidth", "360", path,
                               "--out", small],
@@ -946,6 +961,15 @@ jobs:
               print("===ENDSHOT")
           PYEOF
           exit 0
+
+      - name: Keep full-resolution menu previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: menu-screenshots-ipad
+          path: AirlineEmpireApp/MenuScreenshots
+          retention-days: 14
+          if-no-files-found: ignore
 
       - name: What failed
         if: always()
