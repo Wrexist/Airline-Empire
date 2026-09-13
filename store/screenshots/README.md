@@ -40,7 +40,11 @@ Numbers in UI are actual simulation results, not a promise of what every player
 will earn. UI is cropped and uniformly scaled from native captures, never
 regenerated. Upload only the six ordered PNGs per slot, not the overview sheets
 or manifests. The 18 unique exports are reused for the two English locales.
-This collection is prepared locally for upload; it has not been uploaded to Apple.
+This collection was uploaded to App Store Connect version 1.0 on 13 September
+2026. All 36 files across both English locales and all three display types
+passed remote checksum, order and COMPLETE-processing verification in
+[run 34784324536](https://github.com/Wrexist/Airline-Empire/actions/runs/34784324536).
+The upload did not submit or publish the app.
 
 See [artwork provenance and reproduction](../artwork/README.md).
 The six shots, what each one has to prove, and the captions:

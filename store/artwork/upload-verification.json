@@ -1,0 +1,465 @@
+{
+  "appId": "6806410538",
+  "version": "1.0",
+  "versionId": "7e1722cd-bb99-478b-a021-c09e4a8ede2a",
+  "checkedAt": "2026-09-13T21:38:23.492Z",
+  "passed": true,
+  "sets": [
+    {
+      "locale": "en-GB",
+      "displayType": "APP_IPAD_PRO_3GEN_129",
+      "setId": "9e3e1cdf-4596-4c05-a954-d3ea4447faf1",
+      "matches": true,
+      "wanted": [
+        {
+          "name": "01-network.png",
+          "checksum": "423313bbf6d57e2d278474a1206c52e2"
+        },
+        {
+          "name": "02-fleet.png",
+          "checksum": "709f5dbeccec4ffd6eb284d85bb0d321"
+        },
+        {
+          "name": "03-routes.png",
+          "checksum": "7ec64ad606489b4a85f5fd641165d070"
+        },
+        {
+          "name": "04-finance.png",
+          "checksum": "8920c9a72793f3ba6db6922c8d95480e"
+        },
+        {
+          "name": "05-rivals.png",
+          "checksum": "0742b59c25816239fd0650142f1a22b4"
+        },
+        {
+          "name": "06-progression.png",
+          "checksum": "8e697fa84b5db654c842827c0208eb3e"
+        }
+      ],
+      "actual": [
+        {
+          "id": "481dcdd8-cf07-4232-b1c8-4db258e2d49c",
+          "name": "01-network.png",
+          "checksum": "423313bbf6d57e2d278474a1206c52e2",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "b1d9cf8b-a999-4076-84a7-6823e3cc92a1",
+          "name": "02-fleet.png",
+          "checksum": "709f5dbeccec4ffd6eb284d85bb0d321",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "8f07bcf0-e629-4b1f-815e-90d39b67440d",
+          "name": "03-routes.png",
+          "checksum": "7ec64ad606489b4a85f5fd641165d070",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "0cda2e7c-220f-4336-9e1c-3c94393d03b3",
+          "name": "04-finance.png",
+          "checksum": "8920c9a72793f3ba6db6922c8d95480e",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "16487253-dcf0-42c6-99da-3dc251ef244f",
+          "name": "05-rivals.png",
+          "checksum": "0742b59c25816239fd0650142f1a22b4",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "45a90191-d481-45de-bac1-bcfeda3e0e82",
+          "name": "06-progression.png",
+          "checksum": "8e697fa84b5db654c842827c0208eb3e",
+          "state": "COMPLETE",
+          "errors": []
+        }
+      ]
+    },
+    {
+      "locale": "en-GB",
+      "displayType": "APP_IPHONE_65",
+      "setId": "c622c236-f9a1-4339-b119-adea0bcafac4",
+      "matches": true,
+      "wanted": [
+        {
+          "name": "01-network.png",
+          "checksum": "9d6a05eecef6d4976f8b8b1e52e195b8"
+        },
+        {
+          "name": "02-fleet.png",
+          "checksum": "b3fcc03cdf0e2f900fe2f24555d2d62f"
+        },
+        {
+          "name": "03-routes.png",
+          "checksum": "4bb327fcf79eef0738cc1276ca2164b3"
+        },
+        {
+          "name": "04-finance.png",
+          "checksum": "5b79e4d5a4dbd79d043984ede2853547"
+        },
+        {
+          "name": "05-rivals.png",
+          "checksum": "3e6bacfde40af3dab1383e4ca2df8955"
+        },
+        {
+          "name": "06-progression.png",
+          "checksum": "3453728022ed65704230a2bae8cc3a00"
+        }
+      ],
+      "actual": [
+        {
+          "id": "e5c6f46e-c9fa-42f1-831b-bdcb97d3a5e0",
+          "name": "01-network.png",
+          "checksum": "9d6a05eecef6d4976f8b8b1e52e195b8",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "3b42d536-b124-4e9d-8bf7-1b22fc8714e7",
+          "name": "02-fleet.png",
+          "checksum": "b3fcc03cdf0e2f900fe2f24555d2d62f",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "cc8f670a-42b8-41cd-88e1-40a609be610d",
+          "name": "03-routes.png",
+          "checksum": "4bb327fcf79eef0738cc1276ca2164b3",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "34a613a2-9b1e-47db-b832-c05e9995ab85",
+          "name": "04-finance.png",
+          "checksum": "5b79e4d5a4dbd79d043984ede2853547",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "e3122da6-4c93-4f93-825c-ebf86adff9fd",
+          "name": "05-rivals.png",
+          "checksum": "3e6bacfde40af3dab1383e4ca2df8955",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "81127895-5d3a-4661-8cdc-3c3836d626be",
+          "name": "06-progression.png",
+          "checksum": "3453728022ed65704230a2bae8cc3a00",
+          "state": "COMPLETE",
+          "errors": []
+        }
+      ]
+    },
+    {
+      "locale": "en-GB",
+      "displayType": "APP_IPHONE_67",
+      "setId": "103db86d-6111-40e0-9c9e-216849d77608",
+      "matches": true,
+      "wanted": [
+        {
+          "name": "01-network.png",
+          "checksum": "38abda4fc31f989fed12e95d51caf12d"
+        },
+        {
+          "name": "02-fleet.png",
+          "checksum": "f00ddcf027f9fe09f44f92a3e5058d79"
+        },
+        {
+          "name": "03-routes.png",
+          "checksum": "708d800adba154ff8bbf13c8259d7194"
+        },
+        {
+          "name": "04-finance.png",
+          "checksum": "a4d9d232977ec692b2307f16f96b10de"
+        },
+        {
+          "name": "05-rivals.png",
+          "checksum": "cc064cf591991d0457c172680325eb1e"
+        },
+        {
+          "name": "06-progression.png",
+          "checksum": "3c890989056762c3be753842fc25acc4"
+        }
+      ],
+      "actual": [
+        {
+          "id": "0d6161dc-e084-4e5d-ab0a-a9f2cdee7cc1",
+          "name": "01-network.png",
+          "checksum": "38abda4fc31f989fed12e95d51caf12d",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "67040423-cbf8-4240-a312-5f961104c442",
+          "name": "02-fleet.png",
+          "checksum": "f00ddcf027f9fe09f44f92a3e5058d79",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "e223da51-ae94-4dbf-ab26-9ca55ed07527",
+          "name": "03-routes.png",
+          "checksum": "708d800adba154ff8bbf13c8259d7194",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "74ebc161-ef78-45a1-a03e-6e9cc26a27f1",
+          "name": "04-finance.png",
+          "checksum": "a4d9d232977ec692b2307f16f96b10de",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "3e8d9704-002e-43fe-a448-6426cd01e020",
+          "name": "05-rivals.png",
+          "checksum": "cc064cf591991d0457c172680325eb1e",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "4f237b29-3e08-47d8-a566-31c745811a78",
+          "name": "06-progression.png",
+          "checksum": "3c890989056762c3be753842fc25acc4",
+          "state": "COMPLETE",
+          "errors": []
+        }
+      ]
+    },
+    {
+      "locale": "en-US",
+      "displayType": "APP_IPAD_PRO_3GEN_129",
+      "setId": "ec6e7f93-17f5-4a2f-8a5a-827e1a75344b",
+      "matches": true,
+      "wanted": [
+        {
+          "name": "01-network.png",
+          "checksum": "423313bbf6d57e2d278474a1206c52e2"
+        },
+        {
+          "name": "02-fleet.png",
+          "checksum": "709f5dbeccec4ffd6eb284d85bb0d321"
+        },
+        {
+          "name": "03-routes.png",
+          "checksum": "7ec64ad606489b4a85f5fd641165d070"
+        },
+        {
+          "name": "04-finance.png",
+          "checksum": "8920c9a72793f3ba6db6922c8d95480e"
+        },
+        {
+          "name": "05-rivals.png",
+          "checksum": "0742b59c25816239fd0650142f1a22b4"
+        },
+        {
+          "name": "06-progression.png",
+          "checksum": "8e697fa84b5db654c842827c0208eb3e"
+        }
+      ],
+      "actual": [
+        {
+          "id": "cc3e1e50-7160-40f2-b60a-3953087a14f6",
+          "name": "01-network.png",
+          "checksum": "423313bbf6d57e2d278474a1206c52e2",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "7a184383-cd99-42cc-a5bd-54cc3077926d",
+          "name": "02-fleet.png",
+          "checksum": "709f5dbeccec4ffd6eb284d85bb0d321",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "6239f5b7-78e8-4122-bbc8-12a7fc543669",
+          "name": "03-routes.png",
+          "checksum": "7ec64ad606489b4a85f5fd641165d070",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "0340dcb7-2f61-458e-881d-0a14cd14622a",
+          "name": "04-finance.png",
+          "checksum": "8920c9a72793f3ba6db6922c8d95480e",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "76c72628-aaba-41cd-8047-6e561c3b6b01",
+          "name": "05-rivals.png",
+          "checksum": "0742b59c25816239fd0650142f1a22b4",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "9e5695b0-5936-4555-a69f-37e57ad5f425",
+          "name": "06-progression.png",
+          "checksum": "8e697fa84b5db654c842827c0208eb3e",
+          "state": "COMPLETE",
+          "errors": []
+        }
+      ]
+    },
+    {
+      "locale": "en-US",
+      "displayType": "APP_IPHONE_65",
+      "setId": "1a020a88-f638-499e-a201-f11a752c84a3",
+      "matches": true,
+      "wanted": [
+        {
+          "name": "01-network.png",
+          "checksum": "9d6a05eecef6d4976f8b8b1e52e195b8"
+        },
+        {
+          "name": "02-fleet.png",
+          "checksum": "b3fcc03cdf0e2f900fe2f24555d2d62f"
+        },
+        {
+          "name": "03-routes.png",
+          "checksum": "4bb327fcf79eef0738cc1276ca2164b3"
+        },
+        {
+          "name": "04-finance.png",
+          "checksum": "5b79e4d5a4dbd79d043984ede2853547"
+        },
+        {
+          "name": "05-rivals.png",
+          "checksum": "3e6bacfde40af3dab1383e4ca2df8955"
+        },
+        {
+          "name": "06-progression.png",
+          "checksum": "3453728022ed65704230a2bae8cc3a00"
+        }
+      ],
+      "actual": [
+        {
+          "id": "08b9b1da-25a3-446b-8889-d1930df50dff",
+          "name": "01-network.png",
+          "checksum": "9d6a05eecef6d4976f8b8b1e52e195b8",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "8aeabaef-ddcb-4ffe-98d7-9ab9d16156a7",
+          "name": "02-fleet.png",
+          "checksum": "b3fcc03cdf0e2f900fe2f24555d2d62f",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "b8b1fd60-96f5-4b9c-ac44-aedda6b38828",
+          "name": "03-routes.png",
+          "checksum": "4bb327fcf79eef0738cc1276ca2164b3",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "3b63b38f-e526-4c40-a81d-c8ec67b34260",
+          "name": "04-finance.png",
+          "checksum": "5b79e4d5a4dbd79d043984ede2853547",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "62e0b1b6-8e94-4399-9185-15cb7f215006",
+          "name": "05-rivals.png",
+          "checksum": "3e6bacfde40af3dab1383e4ca2df8955",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "149346bb-8ca6-4c6d-839c-03c48151cb79",
+          "name": "06-progression.png",
+          "checksum": "3453728022ed65704230a2bae8cc3a00",
+          "state": "COMPLETE",
+          "errors": []
+        }
+      ]
+    },
+    {
+      "locale": "en-US",
+      "displayType": "APP_IPHONE_67",
+      "setId": "94111a52-8d34-4b3e-bcf2-26330c720997",
+      "matches": true,
+      "wanted": [
+        {
+          "name": "01-network.png",
+          "checksum": "38abda4fc31f989fed12e95d51caf12d"
+        },
+        {
+          "name": "02-fleet.png",
+          "checksum": "f00ddcf027f9fe09f44f92a3e5058d79"
+        },
+        {
+          "name": "03-routes.png",
+          "checksum": "708d800adba154ff8bbf13c8259d7194"
+        },
+        {
+          "name": "04-finance.png",
+          "checksum": "a4d9d232977ec692b2307f16f96b10de"
+        },
+        {
+          "name": "05-rivals.png",
+          "checksum": "cc064cf591991d0457c172680325eb1e"
+        },
+        {
+          "name": "06-progression.png",
+          "checksum": "3c890989056762c3be753842fc25acc4"
+        }
+      ],
+      "actual": [
+        {
+          "id": "a707c8a4-ccbb-4fb5-a12f-a3db12de5923",
+          "name": "01-network.png",
+          "checksum": "38abda4fc31f989fed12e95d51caf12d",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "92e4b4b8-d56c-476c-8390-29e704c0a362",
+          "name": "02-fleet.png",
+          "checksum": "f00ddcf027f9fe09f44f92a3e5058d79",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "4c7ca9af-c8de-4808-b796-acab4304d263",
+          "name": "03-routes.png",
+          "checksum": "708d800adba154ff8bbf13c8259d7194",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "72431846-cd5b-44d2-9a59-4572af1c4ef8",
+          "name": "04-finance.png",
+          "checksum": "a4d9d232977ec692b2307f16f96b10de",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "1ec17c51-cf87-43ce-bf52-95bef0c7ef35",
+          "name": "05-rivals.png",
+          "checksum": "cc064cf591991d0457c172680325eb1e",
+          "state": "COMPLETE",
+          "errors": []
+        },
+        {
+          "id": "572bf53f-687a-46ab-9c9f-d3c1a470283e",
+          "name": "06-progression.png",
+          "checksum": "3c890989056762c3be753842fc25acc4",
+          "state": "COMPLETE",
+          "errors": []
+        }
+      ]
+    }
+  ]
+}

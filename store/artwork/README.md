@@ -32,3 +32,15 @@ The composition uses Arial with Helvetica/sans-serif fallback. Reproduction requ
 Exports: six ordered RGB PNGs for each of 1320×2868, 1242×2688 and 2064×2752. English wording is shared by en-US and en-GB, giving 18 unique images and 36 upload files. The overview JPEGs are review material, not upload assets.
 
 Apple [screenshot sizes](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications) and [accurate metadata guidance](https://developer.apple.com/app-store/review/guidelines/#accurate-metadata) were checked on 13 September 2026. Native capture provenance and final visual review are recorded in capture-review.json.
+
+## App Store Connect upload
+
+Uploaded to Airline Empire: Flight Tycoon (6806410538), iOS listing version 1.0,
+on 13 September 2026. [The upload run](https://github.com/Wrexist/Airline-Empire/actions/runs/34784324536)
+changed screenshots only. All 36 source checksums, six ordered sets and Apple's
+COMPLETE processing states were verified; see [verification report](upload-verification.json).
+
+The version was removed from its unsubmitted review draft to unlock screenshot
+editing. The open page subsequently showed build 1.0.21 (10) selected and
+concurrent unsaved listing edits. Those edits were left intact, with the version
+in Prepare for Submission. No review submission or publication was performed.
