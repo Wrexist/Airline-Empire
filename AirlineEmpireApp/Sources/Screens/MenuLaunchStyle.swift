@@ -45,8 +45,16 @@ struct MenuLaunchStyle: ButtonStyle {
             if solid {
                 label.background(prominent ? AETheme.ember : AETheme.mapLand, in: shape)
             } else if #available(iOS 26.0, *) {
-                label.glassEffect(.regular.tint(prominent ? AETheme.ember.opacity(0.32) : nil)
-                    .interactive(), in: shape)
+                label
+                    .glassEffect(.clear.tint(prominent ? AETheme.ember.opacity(0.18) : nil)
+                        .interactive(), in: shape)
+                    .overlay {
+                        shape.stroke(LinearGradient(
+                            colors: [.white.opacity(0.38), .white.opacity(0.06),
+                                     AETheme.ember.opacity(prominent ? 0.28 : 0.1)],
+                            startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 0.75)
+                            .allowsHitTesting(false)
+                    }
             } else {
                 label
                     .background(prominent ? AETheme.ember.opacity(0.18) : .clear, in: shape)
