@@ -1,5 +1,24 @@
 # Workflows
 
+## TestFlight release validation (13 September 2026)
+
+Start `iOS TestFlight` with the marketing version and upload option. It now
+validates the immutable `candidate_sha` itself: preflight, full CI (all five
+iPhone journey shards, performance, iPad, Core and release tooling), Launch
+safety (save recovery, StoreKit and free tier), then archive and processing.
+Every checkout uses the SHA resolved by preflight. A failed or cancelled
+validation prevents the archive from starting. No separate manual CI dispatch
+is required before this workflow, and a green smoke run cannot authorize it.
+
+The reusable validation workflows receive no signing secrets. Their concurrency
+groups differ from the release and standalone workflows. Archive serialization
+and the existing binary/source identity checks remain in place.
+
+For standalone pre-release checks, dispatch `CI` with `suite=full`, `ipad=true`
+and `Launch safety` on the same commit. `check-release-evidence.py` remains a
+read-only checker for that standalone evidence; the integrated release uses
+job dependencies to require freshly completed validation.
+
 Four workflows. One rule: **a new job runs on `ubuntu-latest` unless it needs
 Xcode.** macOS runners bill at **10×**, so every macOS minute costs what ten
 Linux minutes cost, and the arrangement below exists to spend as few of them

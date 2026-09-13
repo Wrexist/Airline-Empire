@@ -1449,9 +1449,23 @@ class AEUITestCase: XCTestCase {
             XCTFail("The briefing handle did not settle into a hittable control.")
             return false
         }
-        app.buttons["ae-home-briefing"]
-            .coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        guard app.buttons["ae-briefing-close"].waitForExistence(timeout: 10) else {
+        // Capture the verified frame once. Element-relative coordinates cause
+        // XCTest to resolve the element again during event synthesis; run
+        // 34722107862 spent 31 seconds retrying that lookup and delivered no
+        // effective tap even though the handle was stationary and hittable.
+        // Opening is idempotent: allow one observed retry, never tap again
+        // after the sheet appears, and retain evidence of a missed event.
+        for attempt in 1...2 {
+            if briefingIsOpen { return true }
+            let current = app.buttons["ae-home-briefing"]
+            guard current.exists, current.isHittable, waitUntilStill(current) else { break }
+            let frame = current.frame
+            app.coordinate(withNormalizedOffset: .zero)
+                .withOffset(CGVector(dx: frame.midX, dy: frame.midY)).tap()
+            if app.buttons["ae-briefing-close"].waitForExistence(timeout: 10) { return true }
+            capture(Self.logPrefix + "BRIEFING-TAP-ATTEMPT-\(attempt)")
+        }
+        guard briefingIsOpen else {
             capture(Self.logPrefix + "BRIEFING-DID-NOT-OPEN")
             XCTFail("Pressing the briefing handle did not raise the briefing.")
             return false

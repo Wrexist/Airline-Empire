@@ -13,6 +13,17 @@ name: CI
 # unnecessary compilation for ordinary documentation changes.
 
 on:
+  workflow_call:
+    inputs:
+      suite:
+        type: string
+        default: full
+      ipad:
+        type: boolean
+        default: true
+      candidate_sha:
+        type: string
+        required: true
   # Docs-only pushes to main do not need a compiler. This filter is safe
   # *here* and deliberately absent from `pull_request` below: GitHub reports
   # no status at all for a workflow a paths filter skipped, and this file's
@@ -55,7 +66,7 @@ on:
         default: false
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -86,6 +97,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          ref: ${{ inputs.candidate_sha || github.sha }}
           fetch-depth: 0
 
       # Most of a `swift test` run is compilation, not assertions: measured at
@@ -118,7 +130,7 @@ jobs:
         env:
           BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+          if [ -n "${{ inputs.candidate_sha }}" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
             echo "test=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -176,6 +188,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          ref: ${{ inputs.candidate_sha || github.sha }}
 
       # Node is preinstalled on the runner image; this pins the major version
       # so a runner-image bump cannot change what the release tooling runs on.
@@ -188,6 +201,12 @@ jobs:
       # signature trap that produces a silent 401), the HTTP client's paging
       # and retry rules, PNG alpha detection, and the listing validator
       # against deliberate mistakes.
+      - name: Release workflow and IPA regression tests
+        run: |
+          python3 -m pip install PyYAML==6.0.3
+          python3 scripts/test-release-workflows.py
+          python3 scripts/test-inspect-release-ipa.py
+
       - name: Release tooling selftest
         run: node scripts/asc/selftest.mjs
 
@@ -266,6 +285,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          ref: ${{ inputs.candidate_sha || github.sha }}
           # The diff below needs history: a shallow clone has no base commit.
           fetch-depth: 0
 
@@ -275,7 +295,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           EVENT: ${{ github.event_name }}
-          HEAD_SHA: ${{ github.sha }}
+          HEAD_SHA: ${{ inputs.candidate_sha || github.sha }}
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
           BRANCH: ${{ github.head_ref || github.ref_name }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PUSH_BEFORE: ${{ github.event.before }}
@@ -304,7 +325,7 @@ jobs:
           #   full    ~40 min   ...plus every journey class and the
           #                     performance baselines, on four runners. On
           #                     demand.
-          if [ "$EVENT" = "workflow_dispatch" ]; then
+          if [ -n "$CANDIDATE_SHA" ] || [ "$EVENT" = "workflow_dispatch" ]; then
             SUITE="${SUITE_INPUT:-full}"
           elif [ "$EVENT" = "pull_request" ] && [ "$FULL_VALIDATION" = "true" ]; then
             SUITE=full
@@ -317,7 +338,7 @@ jobs:
 
           # ── should macOS run at all ──────────────────────────────────────
           BASE=""
-          if [ "$EVENT" = "workflow_dispatch" ] || [ "$FULL_VALIDATION" = "true" ]; then
+          if [ -n "$CANDIDATE_SHA" ] || [ "$EVENT" = "workflow_dispatch" ] || [ "$FULL_VALIDATION" = "true" ]; then
             echo "Dispatched by hand — building unconditionally."
           else
             LAST_GREEN=$(curl -fsS \
@@ -483,6 +504,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          ref: ${{ inputs.candidate_sha || github.sha }}
 
       - name: Xcode version
         run: xcodebuild -version
@@ -805,7 +827,7 @@ jobs:
   # and the detail screens are the whole of what regular width can change.
   app-ipad:
     name: iPad shell (regular width)
-    if: (github.event_name == 'workflow_dispatch' && inputs.ipad) || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-validation'))
+    if: inputs.ipad || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-validation'))
     runs-on: macos-26
     # Match the native capture lane after the 26.5 simulator's Core Audio
     # RPC timeout at launch (34518221954). Phone CI retains current Xcode;
@@ -817,6 +839,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          ref: ${{ inputs.candidate_sha || github.sha }}
 
       - name: Generate the Xcode project
         working-directory: AirlineEmpireApp
