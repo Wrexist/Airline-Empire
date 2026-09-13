@@ -29,6 +29,7 @@ struct NewGameView: View {
     @State private var catalog: ContentCatalog?
     @State private var slots: [(slot: String, meta: SlotMeta?)] = []
     @FocusState private var nameFocused: Bool
+    @Namespace private var airportSelection
 
     private var deletionPresented: Binding<Bool> {
         Binding(get: { pendingDeletion != nil },
@@ -54,11 +55,19 @@ struct NewGameView: View {
         ZStack {
             AEDuskBackdrop()
 
-            if showingSetup { setupScreen }
-            else { welcomeScreen }
+            if showingSetup {
+                setupScreen.transition(reduceMotion ? .opacity
+                    : .opacity.combined(with: .offset(y: 12)))
+            } else {
+                welcomeScreen.transition(reduceMotion ? .opacity
+                    : .opacity.combined(with: .scale(scale: 0.985)))
+            }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if showingSetup { foundBar }
+            if showingSetup {
+                foundBar.transition(reduceMotion ? .opacity
+                    : .opacity.combined(with: .offset(y: 8)))
+            }
         }
         .sheet(isPresented: $showingAllAirports) {
             HomeAirportPicker(catalog: catalog) { code in
@@ -169,14 +178,8 @@ struct NewGameView: View {
                                 Image(systemName: "arrow.right")
                             }
                             .font(.headline)
-                            .foregroundStyle(slots.isEmpty ? AETheme.duskTop : .white)
-                            .padding(18)
-                            .frame(maxWidth: .infinity, minHeight: 56)
-                            .background(slots.isEmpty ? AETheme.ember : .white.opacity(0.06),
-                                        in: AETheme.cardShape)
-                            .overlay(AETheme.cardShape.stroke(.white.opacity(0.12), lineWidth: 1))
                         }
-                        .buttonStyle(.aePress)
+                        .buttonStyle(MenuLaunchStyle(prominent: slots.isEmpty))
                         .accessibilityIdentifier("ae-menu-new-airline")
                         if !canFoundAnother {
                             Text("Your current airline stays saved. Extra save slots require Pro.")
@@ -281,6 +284,13 @@ struct NewGameView: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .clipped()
+            .mask {
+                VStack(spacing: 0) {
+                    Rectangle()
+                    LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+                        .frame(height: 12)
+                }
+            }
         }
         .accessibilityElement(children: .contain)
     }
@@ -299,7 +309,10 @@ struct NewGameView: View {
                 .padding(AETheme.spacingM)
                 .frame(minHeight: 56)
                 .background(.white.opacity(0.06), in: AETheme.cardShape)
-                .overlay(AETheme.cardShape.stroke(.white.opacity(0.16), lineWidth: 1))
+                .overlay(AETheme.cardShape.stroke(
+                    nameFocused ? AETheme.ember.opacity(0.65) : .white.opacity(0.16), lineWidth: 1))
+                .shadow(color: AETheme.ember.opacity(nameFocused ? 0.08 : 0), radius: 12)
+                .aeAnimation(AEMotion.selection, value: nameFocused)
                 .accessibilityLabel("Airline name")
                 .accessibilityHint("Leave empty to be called Skyline Air")
         }
@@ -378,11 +391,18 @@ struct NewGameView: View {
                             Spacer(minLength: 0)
                             Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                                 .foregroundStyle(selected ? AETheme.ember : .white.opacity(0.25))
+                                .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
                         }
                         .foregroundStyle(.white)
                         .padding(AETheme.spacingM)
                         .frame(minHeight: 56)
-                        .background(selected ? .white.opacity(0.06) : .clear)
+                        .background {
+                            if selected {
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .fill(AETheme.ember.opacity(0.09))
+                                    .matchedGeometryEffect(id: "home-selection", in: airportSelection)
+                            }
+                        }
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.aePress)
@@ -423,6 +443,8 @@ struct NewGameView: View {
                 }
                 .padding(.horizontal, 4)
                 .accessibilityElement(children: .combine)
+                .id(home.raw)
+                .transition(.opacity)
             }
         }
         .aeFeedback(.uiSelect, on: home.raw)
@@ -504,7 +526,7 @@ struct NewGameView: View {
             .frame(minHeight: 44)
             .contentShape(shape)
             .aeGlass(in: shape,
-                     tint: isSelected ? AETheme.accent.opacity(0.35) : nil,
+                     tint: isSelected ? AETheme.ember.opacity(0.22) : nil,
                      interactive: true)
             .overlay(shape.stroke(borderColor(isSelected: isSelected,
                                               isLocked: isLocked),
@@ -693,13 +715,8 @@ struct NewGameView: View {
                         .font(.headline)
                         .accessibilityHidden(true)
                 }
-                .foregroundStyle(AETheme.duskTop)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-                .frame(maxWidth: .infinity, minHeight: 54)
-                .background(AETheme.ember, in: AETheme.cardShape)
             }
-            .buttonStyle(.aePress)
+            .buttonStyle(MenuLaunchStyle())
             .accessibilityLabel(canFoundAnother ? "Found \(effectiveName)"
                                 : "Found another airline, requires Pro")
             .accessibilityHint(canFoundAnother
@@ -710,8 +727,6 @@ struct NewGameView: View {
         .padding(.vertical, 12)
         .frame(maxWidth: 640)
         .frame(maxWidth: .infinity)
-        .background { AETheme.duskTop.ignoresSafeArea(edges: .bottom) }
-        .overlay(alignment: .top) { Rectangle().fill(.white.opacity(0.1)).frame(height: 1) }
     }
 }
 
