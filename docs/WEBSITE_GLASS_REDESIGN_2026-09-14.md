@@ -32,3 +32,9 @@ Validation completed locally:
   decorative animations. System reduced-motion preference takes priority.
 
 Original native game captures and App Store screenshot exports are unchanged.
+
+Published successfully in [Pages run 34785767568](https://github.com/Wrexist/Airline-Empire/actions/runs/34785767568).
+The live browser initially reused a cached pre-redesign stylesheet; content-hash
+query strings were added to CSS, JavaScript and updated press assets. The final
+live rendering was visually verified, all 22 checked website files matched the
+deployed sources, and all five HTML pages matched the final versioned release.
