@@ -230,6 +230,7 @@ struct RouteRow: View {
 /// The route P&L breakdown: "why did this route make or lose money"
 /// (docs/ECONOMY.md) — the exact simulation figures, no UI math.
 struct RouteDetailView: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var showingAircraftMarket = false
     @Environment(GameController.self) private var controller
     @Environment(\.feedback) private var feedback
@@ -313,21 +314,25 @@ struct RouteDetailView: View {
                           catalog: ContentCatalog) -> some View {
         AECard {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(cityPair(catalog)).font(.headline)
-                        Text("\(card.distanceKm) km")
-                            .font(.caption)
-                            .foregroundStyle(AETheme.mutedText)
+                HStack(alignment: .center, spacing: 16) {
+                    Text(card.origin.raw)
+                        .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                    VStack(spacing: 6) {
+                        Image(systemName: "airplane").font(.title3)
+                        Capsule().fill(AETheme.accent.opacity(0.18)).frame(height: 2)
                     }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 1) {
-                        MoneyText(money: card.thisMonthProfit)
-                            .font(AEType.metric)
-                        Text("this month so far")
-                            .font(AEType.caption)
-                            .foregroundStyle(AETheme.mutedText)
-                    }
+                    .foregroundStyle(AETheme.accent)
+                    .accessibilityHidden(true)
+                    Text(card.destination.raw)
+                        .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                }
+                Text(cityPair(catalog)).font(AEType.body).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Divider().padding(.vertical, 8)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("This month so far").font(AEType.caption).foregroundStyle(.secondary)
+                    MoneyText(money: card.thisMonthProfit)
+                        .font(.system(.largeTitle, design: .rounded, weight: .semibold))
                 }
                 // Why, not just how much. The screen listed every term that
                 // goes into the profit and left the player to work out which
@@ -436,8 +441,13 @@ struct RouteDetailView: View {
                     let offered = route.demandOutboundToday + route.demandInboundToday
                     let left = route.remainingOutboundToday + route.remainingInboundToday
                     let taken = max(0, offered - left)
-                    labelled("People wanting to fly today", "\(Format.count(Int64(offered)))")
-                    labelled("Seats you have sold today", "\(Format.count(Int64(taken)))")
+                    LazyVGrid(columns: instrumentColumns, spacing: 10) {
+                        AEInstrument(label: "People wanting to fly today",
+                                     value: Format.count(Int64(offered)), icon: "person.2")
+                        AEInstrument(label: "Seats you have sold today",
+                                     value: Format.count(Int64(taken)), icon: "ticket",
+                                     tint: AETheme.positive)
+                    }
                     if offered > 0 {
                         ProgressView(value: Double(taken) / Double(offered))
                             .tint(AETheme.accent)
@@ -455,26 +465,29 @@ struct RouteDetailView: View {
 
     private func operations(_ card: RouteCardModel) -> some View {
         AEPanel {
-            VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                AESectionHeader(text: "Operations", systemImage: "gauge")
-                labelled("Load factor", Format.percent(card.loadFactor))
-                // Frequency and distance were on the screen nowhere except the
-                // headline's subtitle, though both are operations figures a
-                // player compares against the load factor.
+            VStack(alignment: .leading, spacing: AETheme.spacingM) {
+                AESectionHeader(text: "Flight performance", systemImage: "gauge.with.dots.needle.67percent")
+                LazyVGrid(columns: instrumentColumns, spacing: 10) {
+                    AEInstrument(label: "Load factor", value: Format.percent(card.loadFactor),
+                                 icon: "person.2.fill")
+                    AEInstrument(label: "Aircraft assigned", value: "\(card.assignedAircraftCount)",
+                                 icon: "airplane", tint: AETheme.leased)
+                    AEInstrument(label: "Punctuality",
+                                 value: card.hasFlown ? Format.percent(card.punctuality) : "—",
+                                 icon: "clock", tint: AETheme.positive)
+                    AEInstrument(label: "Completion",
+                                 value: card.hasFlown ? Format.percent(card.completionRate) : "—",
+                                 icon: "checkmark.seal", tint: AETheme.positive)
+                }
                 labelled("Frequency", "\(card.dailyRoundTrips)× round trips a day")
                 labelled("Distance", "\(Format.count(Int64(card.distanceKm))) km")
-                // Empty history is not a perfect record. `RouteStats`
-                // returns 1.0 for both with nothing flown — correct for the
-                // reputation maths, a lie on screen: a route with no aircraft
-                // reported 100% punctuality directly under a banner saying it
-                // was not flying (AE-033 audit §6.2).
-                labelled("Punctuality",
-                         card.hasFlown ? Format.percent(card.punctuality) : "—")
-                labelled("Completion",
-                         card.hasFlown ? Format.percent(card.completionRate) : "—")
-                labelled("Aircraft assigned", "\(card.assignedAircraftCount)")
             }
         }
+    }
+
+    private var instrumentColumns: [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: 10, alignment: .top),
+              count: typeSize.isAccessibilitySize ? 1 : 2)
     }
 
     private func fareControls(_ card: RouteCardModel, player: AirlineID) -> some View {
@@ -511,7 +524,7 @@ struct RouteDetailView: View {
                                 airline: player, route: routeID,
                                 ticketPrice: newFare))
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.aeSecondary)
                         .frame(minHeight: 44)
                     }
                 }

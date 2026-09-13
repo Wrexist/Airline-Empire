@@ -15,8 +15,7 @@ final class StoreScreenshotUITests: AEUITestCase {
         let bundle = Bundle(for: StoreScreenshotUITests.self)
         let url = try XCTUnwrap(bundle.url(forResource: "store-campaign", withExtension: "json"),
                                 "Generate the intended store campaign before capturing marketing images")
-        launch(appearance: .dark, arguments: ["-AEUITestLoadSave", url.path,
-                                             "-AEUITestDarkAppearance"])
+        launch(appearance: .light, arguments: ["-AEUITestLoadSave", url.path])
         XCTAssertNotNil(waitForTab("Home", timeout: 30))
         openTab("Home")
         // The workflow advances the real engine to noon before saving. Keeping

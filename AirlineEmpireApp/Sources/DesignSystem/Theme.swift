@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UIKit
 import AirlineEmpireCore
 
 /// Design tokens (docs/UI_ARCHITECTURE.md §2): the single source of visual
@@ -16,7 +17,7 @@ enum AETheme {
     /// Nine call sites wrote `AETheme.cornerRadius + 4`, which meant the token
     /// said 14 and the app drew 18 — a token that is not the source of truth
     /// is worse than no token (UIUX_FORENSIC_AUDIT UI-028).
-    static let cornerRadius: CGFloat = 18
+    static let cornerRadius: CGFloat = 24
     /// The tighter radius, for capsule-adjacent controls and small chips.
     static let cornerRadiusSmall: CGFloat = 12
 
@@ -32,10 +33,10 @@ enum AETheme {
     // (UIUX_FORENSIC_AUDIT §9). This is that palette's blue: deep enough to
     // sit under white text, bright enough to read on the dusk backdrop, and
     // distinct from the cyan the map already spends on the player's routes.
-    static let accent = Color(red: 0.24, green: 0.51, blue: 0.92)
-    static let positive = Color.green
-    static let negative = Color.red
-    static let caution = Color.orange
+    static let accent = adaptive(0x1268BE, 0x80B9FF)
+    static let positive = adaptive(0x187B56, 0x6BD6A5)
+    static let negative = adaptive(0xC63543, 0xFF8791)
+    static let caution = adaptive(0x996014, 0xF4BF72)
     static let mutedText = Color.secondary
 
     // Badge hues. Five call sites reached past the tokens for `.purple`,
@@ -47,7 +48,23 @@ enum AETheme {
     static let owned = Color(red: 0.31, green: 0.35, blue: 0.76)
     /// Assets the airline rents.
     static let leased = Color(red: 0.17, green: 0.56, blue: 0.60)
-    static let cardBackground = Color(.secondarySystemBackground)
+    static let cardBackground = adaptive(0xEDF2F8, 0x202D40)
+    static let surfaceHighlight = adaptive(0xFFFFFF, 0x2B3B51)
+    static let surfaceRim = adaptive(0xFFFFFF, 0x43546B)
+    static let canvas = adaptive(0xF3F6FA, 0x101A29)
+    static let sky = adaptive(0xDDEDFB, 0x1B314B)
+    static let surfaceShadow = Color(red: 0.15, green: 0.26, blue: 0.40)
+    /// White labels always sit on this deeper blue, including in dark mode.
+    static let actionBlue = Color(red: 0.07, green: 0.36, blue: 0.67)
+
+    private static func adaptive(_ light: UInt32, _ dark: UInt32) -> Color {
+        Color(uiColor: UIColor { traits in
+            let hex = traits.userInterfaceStyle == .dark ? dark : light
+            return UIColor(red: CGFloat((hex >> 16) & 255) / 255,
+                           green: CGFloat((hex >> 8) & 255) / 255,
+                           blue: CGFloat(hex & 255) / 255, alpha: 1)
+        })
+    }
     // The map's own palette (docs/MAP_ARCHITECTURE.md §2). Near-black ocean,
     // land a few points above it, coast a few points above that — the whole
     // geography sits inside a narrow value range so it can never compete with

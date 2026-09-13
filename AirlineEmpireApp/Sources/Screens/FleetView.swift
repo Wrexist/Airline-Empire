@@ -309,12 +309,9 @@ struct FleetRow: View {
     let catalog: ContentCatalog
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AETheme.spacingXS) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: AETheme.spacingS) {
-                Image(systemName: Vocab.categoryIcon(card.category))
-                    .font(.caption)
-                    .foregroundStyle(AETheme.accent)
-                    .accessibilityHidden(true)
+                AEClayIcon(systemName: Vocab.categoryIcon(card.category), size: 40)
                 Text(card.typeName).font(.body.weight(.semibold))
                 Spacer()
                 statusBadge
