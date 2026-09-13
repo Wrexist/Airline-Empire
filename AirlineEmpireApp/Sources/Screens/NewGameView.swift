@@ -134,11 +134,12 @@ struct NewGameView: View {
                     .padding(.top, AETheme.spacingM)
                     .accessibilityElement(children: .combine)
 
+                    Spacer(minLength: 0)
                     if let report = controller.lastSessionReport {
                         SessionReportCard(report: report, nextMove: controller.lastSessionNextMove)
                     } else {
                         MenuRouteAtlas()
-                            .frame(height: slots.isEmpty ? 220 : 170)
+                            .frame(height: geometry.size.width > 700 ? 280 : (slots.isEmpty ? 220 : 170))
                             .padding(.horizontal, -AETheme.spacingL)
                     }
 
@@ -277,6 +278,7 @@ struct NewGameView: View {
                 .frame(maxWidth: .infinity)
             }
             .scrollDismissesKeyboard(.interactively)
+            .clipped()
         }
     }
 
@@ -284,7 +286,7 @@ struct NewGameView: View {
         VStack(alignment: .leading, spacing: AETheme.spacingS) {
             SectionLabel("Your airline")
             TextField("", text: $airlineName, prompt: Text("Name your airline")
-                .foregroundColor(.white.opacity(0.35)))
+                .foregroundColor(.white.opacity(0.55)))
                 .textInputAutocapitalization(.words)
                 .autocorrectionDisabled()
                 .submitLabel(.done)
@@ -367,7 +369,8 @@ struct NewGameView: View {
                             Text(start.home.raw)
                                 .font(.subheadline.weight(.semibold).monospaced())
                                 .foregroundStyle(selected ? AETheme.ember : .white.opacity(0.55))
-                                .frame(width: 42)
+                                .fixedSize()
+                                .frame(minWidth: 42)
                             Text(start.city).font(.body.weight(selected ? .semibold : .regular))
                             Spacer(minLength: 0)
                             Image(systemName: selected ? "checkmark.circle.fill" : "circle")
@@ -613,6 +616,7 @@ struct NewGameView: View {
                                 .foregroundStyle(AETheme.ember)
                             Text(entry.meta?.airlineName ?? "Save \(entry.slot)")
                                 .font(.title3.weight(.semibold))
+                                .lineLimit(2)
                                 .foregroundStyle(.white)
                             if let meta = entry.meta {
                                 Text("\(meta.gameDateDescription) · \(GameController.slotLabel(entry.slot))")
@@ -678,6 +682,8 @@ struct NewGameView: View {
                     Text(canFoundAnother ? "Found \(effectiveName)"
                          : "Found another airline")
                         .font(.headline)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                     Image(systemName: canFoundAnother
                           ? "airplane.departure" : "crown.fill")
@@ -716,7 +722,7 @@ private struct SectionLabel: View {
         Text(text.uppercased())
             .font(.caption.weight(.semibold))
             .tracking(1.2)
-            .foregroundStyle(.white.opacity(0.45))
+            .foregroundStyle(.white.opacity(0.6))
             .accessibilityAddTraits(.isHeader)
     }
 }

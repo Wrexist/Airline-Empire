@@ -32,7 +32,9 @@ final class ShellAndMapUITests: AEUITestCase {
         guard require(name, "the dedicated founding screen") else { return }
         name.tap()
         name.typeText("Aurora Air")
-        app.buttons["ae-setup-back"].tap()
+        // SwiftUI propagates RootView's appearance identifier to this button
+        // while the keyboard is present. Its visible label stays stable.
+        app.buttons["Menu"].tap()
         XCTAssertTrue(start.waitForExistence(timeout: 5))
         XCTAssertFalse(app.textFields["Airline name"].exists)
         start.tap()
