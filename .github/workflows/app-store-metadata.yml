@@ -49,6 +49,10 @@ on:
         description: 'Update screenshots only; preserve all other listing metadata'
         type: boolean
         default: false
+      urls_only:
+        description: 'Update support, marketing and privacy URLs only'
+        type: boolean
+        default: false
       review_images:
         description: 'Only plan or fill the three prepared purchase review images'
         type: boolean
@@ -66,7 +70,7 @@ permissions:
 jobs:
   crash-audit:
     name: Read existing beta crash diagnostics
-    if: inputs.mode == 'plan' && !inputs.review_images && !inputs.screenshots_only
+    if: inputs.mode == 'plan' && !inputs.review_images && !inputs.screenshots_only && !inputs.urls_only
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -158,7 +162,7 @@ jobs:
           fi
 
       - name: Push metadata
-        if: '!inputs.screenshots_only'
+        if: '!inputs.screenshots_only && !inputs.urls_only'
         run: |
           node scripts/asc/push-metadata.mjs \
             --version "${{ inputs.version }}" \
@@ -173,6 +177,21 @@ jobs:
           node scripts/asc/upload-screenshots.mjs \
             --version "${{ inputs.version }}" \
             ${{ inputs.mode == 'apply' && '--apply --replace' || '' }}
+
+      - name: Update website links only
+        if: inputs.urls_only
+        env:
+          STORE_VERSION: ${{ inputs.version }}
+          URL_MODE: ${{ inputs.mode }}
+        run: |
+          node scripts/asc/update-website-urls.mjs --version "$STORE_VERSION" ${{ inputs.mode == 'apply' && '--apply' || '' }}
+
+      - uses: actions/upload-artifact@v4
+        if: always() && inputs.urls_only
+        with:
+          name: website-url-verification
+          path: apple-audit/website-urls.json
+          retention-days: 45
 
       - name: Verify screenshot checksums, order and processing
         if: (inputs.screenshots || inputs.screenshots_only) && inputs.mode == 'apply'

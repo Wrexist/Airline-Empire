@@ -32,4 +32,4 @@ Purchases and restoring Pro require Apple’s App Store services. Subscriptions 
 Real geography. Fictional airlines, aircraft and manufacturers. An empire shaped by your decisions.
 
 Terms of Use (Apple Standard EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
-Privacy Policy: https://airline-empire-official.isacmolin.chatgpt.site/privacy.html
+Privacy Policy: https://wrexist.github.io/Airline-Empire/privacy.html
