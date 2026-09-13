@@ -170,14 +170,11 @@ final class EconomyJourneyUITests: AEUITestCase {
 
         // ── The statement (the never-seen state) ───────────────────────────
         openTab("Finance")
-        // AESectionHeader renders its text uppercased, and XCUITest matches
-        // the rendered string: run 94 failed this assertion against
-        // "Jan 2030 statement" while KEY-11's populated "Last month $959k"
-        // tile proved the statement existed — the only defect was this
-        // test's casing.
-        let statementHeader = app.staticTexts["JAN 2030 STATEMENT"]
+        // Verify the statement's month and year independently of heading style.
+        let statementHeader = app.staticTexts.matching(
+            NSPredicate(format: "label ==[c] %@", "Jan 2030 statement")).firstMatch
         XCTAssertTrue(statementHeader.waitForExistence(timeout: 10), """
-            February has begun but Finance shows no "JAN 2030 STATEMENT" \
+            February has begun but Finance shows no "Jan 2030 statement" \
             header — the month closed without a statement the player can \
             see, or the rollup did not run.
             """)
