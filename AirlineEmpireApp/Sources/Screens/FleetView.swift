@@ -920,7 +920,7 @@ struct AircraftShopSheet: View {
                                     Image(systemName: "slider.horizontal.3")
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text("Filters and purchase terms").font(.subheadline.weight(.semibold))
-                                        Text("\(sort.title) ? used \(usedAge)y ? lease \(leaseTermMonths) months")
+                                        Text("\(sort.title) \u{00B7} used \(usedAge)y \u{00B7} lease \(leaseTermMonths) months")
                                             .font(.caption).foregroundStyle(AETheme.mutedText)
                                     }
                                     Spacer(minLength: 8)
