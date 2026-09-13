@@ -539,7 +539,7 @@ struct NewGameView: View {
     }
 
     private func borderColor(isSelected: Bool, isLocked: Bool) -> Color {
-        if isSelected { return AETheme.accent.opacity(0.75) }
+        if isSelected { return AETheme.ember.opacity(0.6) }
         if isLocked { return AETheme.ember.opacity(0.35) }
         return .clear
     }
