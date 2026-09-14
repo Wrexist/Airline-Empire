@@ -94,7 +94,13 @@ final class ShellAndMapUITests: AEUITestCase {
         XCTAssertTrue((origin.label + (origin.value as? String ?? "")).contains("ARN"))
         let idle = app.buttons["Fits idle aircraft"]
         guard require(idle, "the idle-aircraft route filter") else { return }
-        idle.tap()
+        XCTAssertGreaterThanOrEqual(idle.frame.height, 44,
+                                    "Unselected filters must expose their full touch target")
+        guard tapWhenReady(idle) else { return }
+        let selectedIdle = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            idle.exists && idle.isSelected
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [selectedIdle], timeout: 5), .completed)
         XCTAssertTrue(app.staticTexts["No destinations match your search and filter."].waitForExistence(timeout: 5))
         checkpoint("SMART-empty-idle-filter")
         app.buttons["Reset filters"].tap()

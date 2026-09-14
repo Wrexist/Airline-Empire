@@ -24,6 +24,9 @@ struct PlanningFilters<Value: Hashable>: View {
                             .frame(minHeight: 44)
                             .background(selection == option.value
                                 ? AETheme.accent.opacity(0.2) : .clear, in: Capsule())
+                            // Plain buttons otherwise hit only their painted
+                            // text when the unselected background is clear.
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityAddTraits(selection == option.value ? .isSelected : [])
