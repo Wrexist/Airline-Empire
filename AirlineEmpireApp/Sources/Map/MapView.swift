@@ -99,6 +99,11 @@ struct MapScreen: View {
                             .ignoresSafeArea(edges: .bottom)
                         chrome(model: model, snapshot: snapshot)
                     }
+                    // Only the presented sheet is interactive. Keep covered
+                    // map controls out of VoiceOver/XCTest's navigation tree;
+                    // the sheet modifiers live outside this content subtree.
+                    .accessibilityHidden(showingBriefing || showingAircraftMarket
+                                         || routeDraft != nil || airportDraft != nil)
                     // Every edge, deliberately. A bare `Color` background
                     // bleeds into the safe areas on its own; the moment it is
                     // wrapped in a modifier it stops, and run 75 photographed
@@ -190,7 +195,9 @@ struct MapScreen: View {
             // `colorScheme: .dark` for the map's chrome: the briefing is an
             // ordinary surface and follows the system appearance, exactly as
             // the route sheet and the pushed destinations already do.
-            .sheet(isPresented: $showingBriefing) { BriefingView() }
+            .sheet(isPresented: $showingBriefing) {
+                BriefingView(onClose: { showingBriefing = false })
+            }
             .sheet(isPresented: $showingAircraftMarket) { AircraftShopSheet() }
             .navigationDestination(for: RouteID.self) { RouteDetailView(routeID: $0) }
             .navigationDestination(for: AircraftID.self) { AircraftDetailView(aircraftID: $0) }

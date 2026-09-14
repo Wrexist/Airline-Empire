@@ -67,7 +67,9 @@ final class MapHomeUITests: AEUITestCase {
         checkpoint("AE048-B2-briefing-over-the-world")
         XCTAssertTrue(app.staticTexts["Get an aircraft"].waitForExistence(timeout: 10),
                       "The briefing does not carry the onboarding checklist.")
-        closeBriefing()
+        XCTAssertFalse(handle.exists, "The briefing must hide covered map controls from accessibility.")
+        XCTAssertFalse(move.exists, "A covered next-move action must not remain accessible.")
+        guard closeBriefing() else { return }
         XCTAssertTrue(map.waitForExistence(timeout: 10),
                       "Closing the briefing did not return to the map.")
 

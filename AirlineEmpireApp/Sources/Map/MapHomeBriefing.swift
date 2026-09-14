@@ -6,7 +6,7 @@ import AirlineEmpireCore
 /// The map is the home screen. This is the strip that makes it a *home*
 /// rather than a diagram: who the player is (Layer 2 — the airline's state)
 /// and what is worth doing (Layer 3 — one move, from real state), with
-/// everything the dashboard used to hold one tap away behind the first row.
+/// everything the dashboard used to hold one tap away behind the fixed footer.
 ///
 /// ## Nothing here is a second simulation
 ///
