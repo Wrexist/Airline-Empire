@@ -2,7 +2,7 @@
 
 ## Current pre-TestFlight work - 14 September 2026
 
-Current app source: `2c54dee` (steps 1 and 2 implemented; production UI unchanged from `6653c7f`). Distributed build: **1.0.22 (11)**. **No new TestFlight build or upload until the user explicitly approves.**
+Current app source: `eeb0bc7` (steps 1/2 and portrait map framing implemented; production app code identical to `df7a45c`). Distributed build: **1.0.22 (11)**. **No new TestFlight build or upload until the user explicitly approves.**
 The [six-part current audit](../docs/PRE_TESTFLIGHT_AUDIT_2026-09-14.md) is the source of priorities and acceptance criteria. Historical phases below are not an accurate open-feature queue.
 
 - [x] AUD-08: Fix informative badge contrast in light/dark appearances.
@@ -10,7 +10,7 @@ The [six-part current audit](../docs/PRE_TESTFLIGHT_AUDIT_2026-09-14.md) is the 
 - [x] AUD-10: Show actual version/build in Settings.
 - [x] AUD-02: Compact Fleet/Routes summaries and filters; show useful rows sooner.
 - [x] AUD-03: Unify aircraft-market model and purchase-row surfaces.
-- [ ] AUD-01: Improve portrait map framing; verify fit, pan, zoom and follow behavior.
+- [x] AUD-01: Improve portrait map framing; verify fit, pan, zoom, follow and iPad rotation behavior.
 - [ ] AUD-07/09: Review fresh-game and secondary screens, large text, VoiceOver, motion/transparency/contrast settings and older supported iOS fallback.
 - [ ] AUD-12/14: Compare affected-screen performance; run full exact-source iPhone/iPad journeys and safety/tooling checks after fixes.
 - [ ] Present final previews and obtain explicit TestFlight build/upload approval.

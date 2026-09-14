@@ -896,6 +896,7 @@ jobs:
             -resultBundlePath UITestResults.xcresult \
             -only-testing:AirlineEmpireUITests/CampaignUITests/testFoundingAnAirlineReachesEveryTab \
             -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testDetailScreensAndSettingsRender \
+            -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testLargestAccessibilityTextKeepsActionsReachable \
             CODE_SIGNING_ALLOWED=NO \
             test 2>&1 | tee ui-test-output.txt
 

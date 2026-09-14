@@ -175,8 +175,19 @@ No TestFlight build/upload, version bump or App Store Connect changes were made.
 
 ## Portrait map framing implementation - 14 September 2026
 
-AUD-01 is being verified. Network fit now uses canvas dimensions, measured top controls and bottom panel/tab occlusion. Each projection axis uses its pixel scale; a single airport retains regional context, and global fits can zoom out to 0.75x so edge airports have breathing room. Rotation refits an automatically framed network while preserving a manual camera position.
+AUD-01 is complete. Final source is `eeb0bc7`; production app code is identical to `df7a45c`, with later commits limited to test parsing and orientation capture. Network fit now uses canvas dimensions, measured top controls and bottom panel/tab occlusion. Each projection axis uses its pixel scale; a single airport retains regional context, and global fits can zoom out to 0.75x so edge airports have breathing room. Rotation refits an automatically framed network while preserving a manual camera position.
 
 Follow positions the aircraft in the clear map region. Frame network cancels follow and clears transient gesture state; a double tap now releases follow before applying its anchor. Drag/pinch take over as before. Added native camera geometry tests and a dedicated unsigned iPhone/iPad simulator journey with actual pan, pinch, double tap, moving-aircraft follow, fit-from-follow and iPad rotation checks. Test-only observations report the actual drawn airport coverage and follow position; they do not drive the camera.
 
-Validation pending. No TestFlight, signing/upload, version bump or App Store Connect action is authorized or performed. Next after this pass: AUD-07/09 accessibility/new-player states, then AUD-12/14 performance and full current-source release journeys.
+Validation: nine native camera geometry tests passed on both iPhone and iPad, including regional/global/separated/single-airport cases, anchored gestures, limits, reduced motion and follow transitions. Both native camera journeys passed actual pan, pinch, double tap, zoom-button, moving-aircraft follow, fit/drag releasing follow, and iPad rotation/manual-camera preservation checks. These are simulator results; they do not certify physical-device frame pacing or touch feel.
+
+The iPhone/iPad story journeys passed (20 capture hashes verified). Home and follow frames were visually reviewed. The first landscape screenshot was cropped by the app screenshot API despite passing geometry/control checks; it is excluded from visual evidence. A subsequent full-display iPad rotation capture passed and both orientations were reviewed successfully. Fourteen accepted camera checkpoint hashes are recorded in `build/ui-polish/map-framing/validation.json`.
+
+- [Camera geometry and interaction journeys](https://github.com/Wrexist/Airline-Empire/actions/runs/34815089848)
+- [Full-display iPad rotation recapture](https://github.com/Wrexist/Airline-Empire/actions/runs/34816204340)
+- [Native story captures](https://github.com/Wrexist/Airline-Empire/actions/runs/34814378443)
+- [CI](https://github.com/Wrexist/Airline-Empire/actions/runs/34814378464): passed native compile, Debug Core and release tooling. Compile mode skips the CI iPad job; the targeted native iPad checks above supply this pass's iPad coverage.
+- [Launch safety](https://github.com/Wrexist/Airline-Empire/actions/runs/34814378490): passed 527 Release simulation tests, 21 hosted app tests, five selected safety UI tests and Release entitlement isolation.
+- [Portability/public pages](https://github.com/Wrexist/Airline-Empire/actions/runs/34814378415): passed.
+
+CI/safety/story evidence uses `df7a45c`; production-source identity with the final commit was verified. Full release journeys, accessibility and performance remain separate open gates. No TestFlight, signing/upload, version bump or App Store Connect action is authorized or performed. Next after this pass: AUD-07/09 accessibility/new-player states, then AUD-12/14 performance and full current-source release journeys.

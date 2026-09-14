@@ -1021,6 +1021,7 @@ class AEUITestCase: XCTestCase {
 
     @discardableResult
     func advanceMornings(until datePrefix: String, cap: Int = 35) -> Bool {
+        dismissOptionalFreeOffer()
         openTabIfNeeded("Home")
         let sunrise = labelledButton("Advance to next day")
         guard sunrise.waitForExistence(timeout: 8) else { return false }
@@ -1076,6 +1077,7 @@ class AEUITestCase: XCTestCase {
     /// before another tap, so advances cannot pile up and skip the target.
     private func advanceAndWait(_ label: String, from previous: DateComponents,
                                 days: Int) -> Bool {
+        dismissOptionalFreeOffer()
         _ = dismissSimulatorSetupBanner()
         // SwiftUI replaces accessibility nodes as the world and milestone
         // overlays update. Resolve the visible control for each interaction.
@@ -1093,6 +1095,7 @@ class AEUITestCase: XCTestCase {
         var retryAfter: Date?
         let moved = XCTNSPredicateExpectation(predicate: NSPredicate { [weak self] _, _ in
             guard let self else { return false }
+            self.dismissOptionalFreeOffer()
             if let current = self.currentHomeDate(), Self.days(from: previous, to: current) >= days {
                 return true
             }
@@ -1125,6 +1128,16 @@ class AEUITestCase: XCTestCase {
         let probe = app.descendants(matching: .any)["ae-time-advance-requests"]
         guard probe.exists, let value = probe.value as? String else { return nil }
         return Int(value)
+    }
+
+    /// Exercise declining the genuine first-flight offer in free journeys.
+    /// No entitlement is granted and the offer's production policy stays active.
+    func dismissOptionalFreeOffer() {
+        guard app.launchArguments.contains("-AEUITestFree"),
+              app.buttons["ae-paywall-buy"].exists,
+              app.buttons["Close"].firstMatch.isHittable else { return }
+        checkpoint("FREE-first-flight-offer")
+        app.buttons["Close"].firstMatch.tap()
     }
 
     @discardableResult

@@ -142,6 +142,8 @@ final class EconomyJourneyUITests: AEUITestCase {
     /// *profitable* belongs to the balance, not this test — the milestone
     /// celebration is photographed when it appears, never required.
     func testTheFirstMonthClosesWithAStatement() throws {
+        app.launchArguments.removeAll { $0 == "-AEUITestPro" }
+        app.launchArguments.append("-AEUITestFree")
         launch(appearance: .light)
         guard foundAirline() else { return }
 
@@ -209,6 +211,21 @@ final class EconomyJourneyUITests: AEUITestCase {
         openTab("World")
         Thread.sleep(forTimeInterval: 1)
         checkpoint("15-world-after-month")
+
+        guard openBriefing() else { return }
+        let settings = app.buttons["Settings"]
+        guard require(settings, "Settings after the first month"), tapWhenReady(settings) else { return }
+        let save = app.buttons["Save and quit to menu"]
+        guard scrollUntil(save, "Save and quit after the first month"), tapWhenReady(save) else { return }
+        XCTAssertTrue(app.descendants(matching: .any)["ae-session-report"].waitForExistence(timeout: 15))
+        checkpoint("FREE-first-month-saved")
+        app.terminate()
+        app.launch()
+        let resume = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "ae-menu-continue-")).firstMatch
+        guard revealMenuControl(resume, "Continue the free first-month campaign"), tapWhenReady(resume) else { return }
+        openTab("Finance")
+        XCTAssertTrue(statementHeader.waitForExistence(timeout: 15), "The closed statement must survive a process restart")
+        checkpoint("FREE-first-month-reopened")
     }
 
 

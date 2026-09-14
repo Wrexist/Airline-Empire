@@ -289,15 +289,44 @@ final class ShellAndMapUITests: AEUITestCase {
     /// action must still be reachable. Whether it *looks* right is what the
     /// checkpoints are for.
     func testAccessibilityTextSizeKeepsTheShellUsable() throws {
+        try verifyAccessibleShell(category: "UICTContentSizeCategoryAccessibilityL")
+    }
+
+    func testLargestAccessibilityTextKeepsActionsReachable() throws {
+        try verifyAccessibleShell(category: "UICTContentSizeCategoryAccessibilityXXXL")
+    }
+
+    func testFreshScreensHaveAccessibleNamesAndTraits() throws {
+        launch(appearance: .light)
+        guard foundAirline() else { return }
+        for tab in ["Home", "Airline", "Finance", "World"] {
+            openTab(tab)
+            checkpoint("AX-semantics-\(tab)")
+            try app.performAccessibilityAudit(for: [.sufficientElementDescription, .trait])
+        }
+    }
+
+    private func verifyAccessibleShell(category: String) throws {
         launch(appearance: .light, arguments: [
             "-UIPreferredContentSizeCategoryName",
-            "UICTContentSizeCategoryAccessibilityL",
+            category,
         ])
         let start = app.buttons["ae-menu-new-airline"]
         guard revealMenuControl(start, "Start your airline at accessibility size"), tapWhenReady(start) else { return }
         checkpoint("MENU-accessibility-founding")
         guard foundAirline() else { return }
         checkpoint("95-dynamictype-home")
+
+        openTab("Finance")
+        checkpoint("AX-finance-fresh")
+        let borrow = app.buttons["Borrow"]
+        guard require(borrow, "Borrow at accessibility size"), tapWhenReady(borrow) else { return }
+        checkpoint("AX-borrowing")
+        let cancel = app.buttons["Cancel"].firstMatch
+        guard require(cancel, "Cancel borrowing"), tapWhenReady(cancel) else { return }
+        openTab("World")
+        checkpoint("AX-world-fresh")
+        openTab("Home")
 
         // Navigation failure is the worst outcome: every tab must survive.
         for tab in ["Airline", "Finance", "World", "Home"] {

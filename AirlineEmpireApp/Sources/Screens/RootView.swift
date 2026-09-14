@@ -301,6 +301,7 @@ struct GameShell: View {
 
 struct GameOverView: View {
     @Environment(GameController.self) private var controller
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ScrollView {
@@ -308,7 +309,7 @@ struct GameOverView: View {
                 Image(systemName: "airplane.arrival")
                     .font(.system(size: 56))
                     .foregroundStyle(AETheme.mutedText)
-                    .symbolEffect(.pulse)
+                    .symbolEffect(.pulse, isActive: !reduceMotion)
                     .accessibilityHidden(true)
                 Text("The airline has collapsed")
                     .font(.title2.weight(.semibold))

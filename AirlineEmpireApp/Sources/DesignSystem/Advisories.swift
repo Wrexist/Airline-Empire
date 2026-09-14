@@ -231,14 +231,22 @@ struct ConfirmableButton<Label: View>: View {
 /// what the player is doing.
 struct CelebrationOverlay: View {
     @Environment(GameController.self) private var controller
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
     let celebration: GameController.Celebration
 
     var body: some View {
         HStack(spacing: AETheme.spacingM) {
-            Image(systemName: celebration.icon)
+            Group {
+                if reduceMotion {
+                    Image(systemName: celebration.icon)
+                } else {
+                    Image(systemName: celebration.icon)
+                        .symbolEffect(.bounce, value: celebration.id)
+                }
+            }
                 .font(.title2)
                 .foregroundStyle(AETheme.ember)
-                .symbolEffect(.bounce, value: celebration.id)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 1) {
                 Text(celebration.title).font(.headline)
@@ -253,7 +261,7 @@ struct CelebrationOverlay: View {
         .aeGlass(in: AETheme.cardShape,
                  tint: AETheme.ember.opacity(0.2))
         .padding(.horizontal, AETheme.spacingM)
-        .transition(.move(edge: .top).combined(with: .opacity))
+        .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isStaticText)
         .allowsHitTesting(false)
@@ -265,7 +273,7 @@ struct CelebrationOverlay: View {
         // "haptics triggering repeatedly" failure in MASTER PROMPT 3 §29.
         .task(id: celebration.id) {
             // Long enough to read, short enough never to be in the way.
-            do { try await Task.sleep(for: .seconds(4)) }
+            do { try await Task.sleep(for: .seconds(voiceOver ? 10 : 4)) }
             catch { return }
             guard controller.celebration?.id == celebration.id else { return }
             controller.dismissCelebration()

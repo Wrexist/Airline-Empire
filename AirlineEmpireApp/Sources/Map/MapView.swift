@@ -307,7 +307,7 @@ struct MapScreen: View {
             .modifier(MapFrameAccessibility(summary: accessibilitySummary(model),
                                             probesEnabled: probesEnabled,
                                             stats: drawStats, cache: renderCache))
-            .accessibilityHint("Double tap an airport, route or aircraft to select it")
+            .accessibilityHint("Use the zoom controls to explore. Browse airports in World and routes in Airline. Use Follow a flight to select an airborne aircraft.")
             // A followed flight lands, and Core removes it from the world
             // after its turnaround. The camera must not keep chasing an id
             // that no longer resolves, and it must not fall back to the
