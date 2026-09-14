@@ -6,6 +6,12 @@ on:
       - 'AirlineEmpireApp/UITests/StoreScreenshotUITests.swift'
       - 'scripts/export-store-captures.py'
   workflow_dispatch:
+    inputs:
+      appearance:
+        description: Native screenshot appearance (simulator only; no distribution)
+        type: choice
+        options: [light, dark]
+        default: light
 permissions:
   contents: read
 concurrency:
@@ -60,7 +66,7 @@ jobs:
           set -o pipefail
           xcodebuild test -project AirlineEmpire.xcodeproj -scheme AirlineEmpire \
             -destination 'platform=iOS Simulator,id=${{ steps.sim.outputs.id }}' \
-            -parallel-testing-enabled NO -only-testing:AirlineEmpireUITests/StoreScreenshotUITests \
+            -parallel-testing-enabled NO -only-testing:AirlineEmpireUITests/${{ inputs.appearance == 'dark' && 'DarkInterfaceReviewUITests' || 'StoreScreenshotUITests' }} \
             CODE_SIGNING_ALLOWED=NO -resultBundlePath StoreCaptures.xcresult 2>&1 | tee ../store-capture-log.txt
       - name: Export full-resolution captures
         run: python3 scripts/export-store-captures.py AirlineEmpireApp/StoreCaptures.xcresult captures/${{ matrix.device }}

@@ -27,6 +27,7 @@ struct FinanceView: View {
 /// The screen itself, without a navigation stack of its own, so the Dashboard
 /// can push it as the explanation behind "Last month".
 struct FinanceContent: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(GameController.self) private var controller
     @State private var showingLoanSheet = false
 
@@ -51,8 +52,13 @@ struct FinanceContent: View {
                     // and nothing about whether operations are making money
                     // this month, which is the question §15 puts first.
                     operatingStrip()
-                    runwayCard(model, solvency: solvency)
                     trendCard(model)
+                    DisclosureGroup("Cash runway & credit limits") {
+                        runwayCard(model, solvency: solvency).padding(.top, 8)
+                    }
+                    .font(.subheadline)
+                    .tint(AETheme.mutedText)
+                    .padding(.horizontal, 4)
                     routeExtremes()
                     statementCard(snapshot: snapshot, player: player.id)
                     loansCard(model, snapshot: snapshot, player: player.id)
@@ -76,29 +82,33 @@ struct FinanceContent: View {
 
     private func topLine(_ model: FinanceModel) -> some View {
         AECard {
-            VStack(alignment: .leading, spacing: 20) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Cash available").font(.subheadline).foregroundStyle(AETheme.mutedText)
-                        MoneyText(money: model.cash)
-                            .font(.system(.largeTitle, design: .rounded, weight: .bold))
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    Spacer(minLength: 8)
-                    AEClayIcon(systemName: "building.columns.fill", size: 52)
-                }
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Cash available").font(.subheadline).foregroundStyle(AETheme.mutedText)
+                Text(Format.money(model.cash))
+                    .font(.system(.largeTitle, weight: .semibold)).monospacedDigit()
+                    .foregroundStyle(model.cash.isNegative ? AETheme.negative : .primary)
+                    .fixedSize(horizontal: false, vertical: true)
                 Divider()
-                AEStatGrid {
-                    AEInstrument(label: "Net worth", value: Format.money(model.netWorth),
-                                 icon: "chart.pie", tint: AETheme.leased)
-                    AEInstrument(label: "Debt", value: Format.money(model.totalDebt),
-                                 icon: "creditcard", tint: AETheme.owned)
+                let metricsLayout = typeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+                    : AnyLayout(HStackLayout(alignment: .top, spacing: 20))
+                metricsLayout {
+                    balanceMetric("Net worth", Format.money(model.netWorth))
+                    balanceMetric("Debt", Format.money(model.totalDebt))
+                    balanceMetric("Leverage", Format.percent(model.debtRatio))
                 }
-                LabeledContent("Leverage", value: Format.percent(model.debtRatio))
-                    .font(.subheadline)
-                    .foregroundStyle(model.debtRatio > 0.6 ? AETheme.negative : AETheme.mutedText)
             }
         }
+    }
+
+    private func balanceMetric(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label).font(.caption).foregroundStyle(AETheme.mutedText)
+            Text(value).font(.subheadline.weight(.semibold)).monospacedDigit()
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 
     /// Whether the airline is making money flying aeroplanes, before
@@ -114,7 +124,7 @@ struct FinanceContent: View {
     private func operatingStrip() -> some View {
         if let network = controller.networkSummary, network.routeCount > 0 {
             AEMetricStrip([
-                AEMetric("revenue, month to date",
+                AEMetric("revenue this month",
                          Format.money(network.monthToDateRevenue)),
                 AEMetric("direct costs",
                          Format.money(network.monthToDateCosts)),

@@ -54,11 +54,11 @@ private struct AEClaySurface<S: Shape>: ViewModifier {
                 shape.fill(LinearGradient(
                     colors: [AETheme.surfaceHighlight, AETheme.cardBackground],
                     startPoint: .topLeading, endPoint: .bottomTrailing))
-                if let tint { shape.fill(tint.opacity(scheme == .dark ? 0.12 : 0.06)) }
+                if let tint { shape.fill(tint.opacity(scheme == .dark ? 0.04 : 0.04)) }
             }
             .overlay {
-                shape.stroke(contrast == .increased ? AETheme.mutedText : AETheme.surfaceRim,
-                             lineWidth: contrast == .increased ? 1.5 : 1)
+                shape.stroke(AETheme.surfaceRim.opacity(contrast == .increased ? 1 : 0.45),
+                             lineWidth: contrast == .increased ? 1 : 0.5)
                     .allowsHitTesting(false)
             }
             .shadow(color: AETheme.surfaceShadow.opacity(scheme == .dark ? 0.20 : 0.08),

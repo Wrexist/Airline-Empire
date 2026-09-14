@@ -879,7 +879,7 @@ struct AEPanel<Content: View>: View {
             .padding(AETheme.spacingM)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(AETheme.cardBackground, in: AETheme.cardShape)
-            .overlay(AETheme.cardShape.stroke(AETheme.surfaceRim, lineWidth: 1))
+            .overlay(AETheme.cardShape.stroke(AETheme.surfaceRim.opacity(0.45), lineWidth: 0.5))
     }
 }
 

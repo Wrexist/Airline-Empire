@@ -257,11 +257,11 @@ struct RouteDetailView: View {
                     // asking "is this route working" read an expense table
                     // before they reached the load factor.
                     FirstFlightProgress()
+                    headline(card, snapshot: snapshot, catalog: catalog)
                     RouteFlightStatus(routeID: routeID) {
                         controller.showRouteOnMap(routeID)
                         dismiss()
                     }
-                    headline(card, snapshot: snapshot, catalog: catalog)
                     if card.assignedAircraftCount == 0 {
                         aircraftSection(card, player: player.id, catalog: catalog)
                     }
@@ -319,7 +319,7 @@ struct RouteDetailView: View {
                     : AnyLayout(HStackLayout(alignment: .center, spacing: 16))
                 endpoints {
                     Text(card.origin.raw)
-                        .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                        .font(.system(.title, weight: .semibold))
                     VStack(spacing: 6) {
                         Image(systemName: "airplane").font(.title3)
                         Capsule().fill(AETheme.accent.opacity(0.18)).frame(height: 2)
@@ -327,11 +327,11 @@ struct RouteDetailView: View {
                     .foregroundStyle(AETheme.accent)
                     .accessibilityHidden(true)
                     Text(card.destination.raw)
-                        .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                        .font(.system(.title, weight: .semibold))
                 }
-                Text(cityPair(catalog)).font(AEType.body).foregroundStyle(AETheme.mutedText)
+                Text(cityPair(catalog)).font(.subheadline).foregroundStyle(AETheme.mutedText)
                     .fixedSize(horizontal: false, vertical: true)
-                Divider().padding(.vertical, 8)
+                Divider().padding(.vertical, 4)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("This month so far").font(AEType.caption).foregroundStyle(AETheme.mutedText)
                     MoneyText(money: card.thisMonthProfit)
@@ -345,7 +345,7 @@ struct RouteDetailView: View {
                 // reads.
                 if let verdict = Vocab.routeVerdict(card.verdict) {
                     Text(verdict)
-                        .font(AEType.body)
+                        .font(.subheadline)
                         .foregroundStyle(verdictTint(card.verdict))
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -356,16 +356,21 @@ struct RouteDetailView: View {
                         Spacer()
                         MoneyText(money: card.lastMonthProfit).font(.caption)
                     }
-                } else {
-                    Text("This route has not lived through a month-end yet, so there is no closed month to compare against.")
-                        .font(.caption)
-                        .foregroundStyle(AETheme.mutedText)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text("Ticket revenue pays the flight's costs first. Aircraft leases, payroll and airline overhead also affect company profit; check Finance after the month closes.")
-                        .font(.caption)
-                        .foregroundStyle(AETheme.mutedText)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
+                DisclosureGroup("About route profit") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if !card.hasClosedMonth {
+                            Text("The first monthly comparison appears after month-end.")
+                        }
+                        Text("Ticket revenue pays the flight's costs first. Aircraft leases, payroll and airline overhead also affect company profit; check Finance after the month closes.")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(AETheme.mutedText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 8)
+                }
+                .font(.caption)
+                .tint(AETheme.mutedText)
             }
         }
     }

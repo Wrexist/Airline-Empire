@@ -17,7 +17,7 @@ enum AETheme {
     /// Nine call sites wrote `AETheme.cornerRadius + 4`, which meant the token
     /// said 14 and the app drew 18 — a token that is not the source of truth
     /// is worse than no token (UIUX_FORENSIC_AUDIT UI-028).
-    static let cornerRadius: CGFloat = 24
+    static let cornerRadius: CGFloat = 20
     /// The tighter radius, for capsule-adjacent controls and small chips.
     static let cornerRadiusSmall: CGFloat = 12
 
@@ -48,11 +48,11 @@ enum AETheme {
     static let owned = Color(red: 0.31, green: 0.35, blue: 0.76)
     /// Assets the airline rents.
     static let leased = Color(red: 0.17, green: 0.56, blue: 0.60)
-    static let cardBackground = adaptive(0xEDF2F8, 0x202D40)
-    static let surfaceHighlight = adaptive(0xFFFFFF, 0x2B3B51)
-    static let surfaceRim = adaptive(0xFFFFFF, 0x43546B)
-    static let canvas = adaptive(0xF3F6FA, 0x101A29)
-    static let sky = adaptive(0xDDEDFB, 0x1B314B)
+    static let cardBackground = adaptive(0xEDF2F8, 0x171D25)
+    static let surfaceHighlight = adaptive(0xFFFFFF, 0x1C242E)
+    static let surfaceRim = adaptive(0xFFFFFF, 0x434D5B)
+    static let canvas = adaptive(0xF3F6FA, 0x0C1118)
+    static let sky = adaptive(0xDDEDFB, 0x101C29)
     static let surfaceShadow = Color(red: 0.15, green: 0.26, blue: 0.40)
     /// White labels always sit on this deeper blue, including in dark mode.
     static let actionBlue = Color(red: 0.07, green: 0.36, blue: 0.67)

@@ -44,10 +44,15 @@ struct RouteFlightStatus: View {
            !route.assignedAircraft.isEmpty {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 Label(title(state: state, route: route), systemImage: "airplane.departure")
-                    .font(.headline)
-                Text(detail(state: state, route: route))
-                    .font(.subheadline).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .font(.subheadline.weight(.semibold))
+                DisclosureGroup("Schedule details") {
+                    Text(detail(state: state, route: route))
+                        .font(.caption).foregroundStyle(AETheme.mutedText)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 4)
+                }
+                .font(.caption)
+                .tint(AETheme.mutedText)
                 if controller.speed == .paused {
                     Button("Resume flights", systemImage: "play.fill") { controller.setSpeed(.x1) }
                         .buttonStyle(.aePrimary)
@@ -59,7 +64,7 @@ struct RouteFlightStatus: View {
             }
             .padding(AETheme.spacingM)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .aeGlass(in: AETheme.cardShape)
+            .aeClay(in: AETheme.cardShape)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("ae-route-flight-status")
         }

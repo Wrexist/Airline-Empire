@@ -3,7 +3,8 @@ import XCTest
 /// A capture journey, deliberately separate from regression and performance suites.
 /// The workflow generates the save with ae-rival-probe using ordinary game commands.
 /// No balances, fleets, milestones or route figures are manufactured for the artwork.
-final class StoreScreenshotUITests: AEUITestCase {
+class StoreScreenshotUITests: AEUITestCase {
+    var captureAppearance: XCUIDevice.Appearance { .light }
     override var wantsSunriseWeek: Bool { false }
     private var capturedShots = 0
 
@@ -15,7 +16,11 @@ final class StoreScreenshotUITests: AEUITestCase {
         let bundle = Bundle(for: StoreScreenshotUITests.self)
         let url = try XCTUnwrap(bundle.url(forResource: "store-campaign", withExtension: "json"),
                                 "Generate the intended store campaign before capturing marketing images")
-        launch(appearance: .light, arguments: ["-AEUITestLoadSave", url.path])
+        // Dark review explicitly pins rendering using the existing test flag.
+        // This verifies dark layouts, not the simulator's Settings transition.
+        let appearanceArguments = captureAppearance == .dark ? ["-AEUITestDarkAppearance"] : []
+        launch(appearance: captureAppearance,
+               arguments: ["-AEUITestLoadSave", url.path] + appearanceArguments)
         XCTAssertNotNil(waitForTab("Home", timeout: 30))
         openTab("Home")
         // The workflow advances the real engine to noon before saving. Keeping
@@ -64,4 +69,9 @@ final class StoreScreenshotUITests: AEUITestCase {
         capture("STORE-" + name)
         capturedShots += 1
     }
+}
+
+/// Review the same real campaign in dark appearance without distributing a build.
+final class DarkInterfaceReviewUITests: StoreScreenshotUITests {
+    override var captureAppearance: XCUIDevice.Appearance { .dark }
 }
