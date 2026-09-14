@@ -1022,6 +1022,7 @@ struct OpenRouteSheet: View {
             .aeFeedback(.uiSelect, on: origin)
             .aeFeedback(.uiConfirm, on: destination)
         }
+        .aeConfirmationHost()
     }
 
     private func prime() {

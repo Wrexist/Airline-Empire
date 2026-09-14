@@ -855,6 +855,7 @@ struct AssignRouteSheet: View {
 /// era-locked types explain themselves instead of showing nothing.
 struct AircraftShopSheet: View {
     @Environment(GameController.self) private var controller
+    @Environment(\.aeConfirmationPresenter) private var confirmationPresenter
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var usedAge = 8
@@ -1107,9 +1108,17 @@ struct AircraftShopSheet: View {
                                     onRequest: { facts, deal in
                                         let request = Acquisition(facts: facts, deal: deal,
                                                                   routeID: selectedRouteID)
-                                        if controller.preferences.confirmDestructive {
-                                            requestedAcquisition = request
-                                            confirmingAcquisition = true
+                                            if controller.preferences.confirmDestructive {
+                                                if let confirmationPresenter {
+                                                    confirmationPresenter.request = .init(
+                                                        title: "\(facts.confirmWord(for: deal))?",
+                                                        message: facts.dialogMessage(for: deal),
+                                                        confirmTitle: facts.confirmWord(for: deal), role: nil,
+                                                        action: { commit(request) })
+                                                } else {
+                                                    requestedAcquisition = request
+                                                    confirmingAcquisition = true
+                                                }
                                         } else {
                                             commit(request)
                                         }
