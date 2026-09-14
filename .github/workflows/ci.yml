@@ -767,6 +767,8 @@ jobs:
               if name in seen:
                   continue
               seen.add(name)
+              os.makedirs("ReviewScreenshots", exist_ok=True)
+              shutil.copyfile(path, os.path.join("ReviewScreenshots", os.path.basename(name) + ".png"))
               if name.startswith("KEY-MENU-"):
                   os.makedirs("MenuScreenshots", exist_ok=True)
                   shutil.copyfile(path, os.path.join("MenuScreenshots", os.path.basename(name) + ".png"))
@@ -788,7 +790,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: menu-screenshots-shard${{ matrix.shard }}
-          path: AirlineEmpireApp/MenuScreenshots
+          path: |
+            AirlineEmpireApp/MenuScreenshots
+            AirlineEmpireApp/ReviewScreenshots
           retention-days: 14
           if-no-files-found: ignore
 
@@ -947,6 +951,8 @@ jobs:
               if name in seen:
                   continue
               seen.add(name)
+              os.makedirs("ReviewScreenshots", exist_ok=True)
+              shutil.copyfile(path, os.path.join("ReviewScreenshots", os.path.basename(name) + ".png"))
               if name.startswith("KEY-MENU-"):
                   os.makedirs("MenuScreenshots", exist_ok=True)
                   shutil.copyfile(path, os.path.join("MenuScreenshots", os.path.basename(name) + ".png"))
@@ -968,7 +974,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: menu-screenshots-ipad
-          path: AirlineEmpireApp/MenuScreenshots
+          path: |
+            AirlineEmpireApp/MenuScreenshots
+            AirlineEmpireApp/ReviewScreenshots
           retention-days: 14
           if-no-files-found: ignore
 

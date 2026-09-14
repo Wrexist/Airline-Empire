@@ -302,6 +302,7 @@ struct GameShell: View {
 struct GameOverView: View {
     @Environment(GameController.self) private var controller
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AccessibilityFocusState(for: .voiceOver) private var headingFocused: Bool
 
     var body: some View {
         ScrollView {
@@ -314,8 +315,10 @@ struct GameOverView: View {
                 Text("The airline has collapsed")
                     .font(.title2.weight(.semibold))
                     .multilineTextAlignment(.center)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityFocused($headingFocused)
                 if let dashboard = controller.snapshot?.dashboardModel() {
-                    Text("\(dashboard.airlineName) flew its last flight in the \(Vocab.era(dashboard.era)) era.")
+                    Text("\(dashboard.airlineName) ceased operations in the \(Vocab.era(dashboard.era)) era.")
                         .foregroundStyle(AETheme.mutedText)
                         .multilineTextAlignment(.center)
                 }
@@ -340,6 +343,7 @@ struct GameOverView: View {
             .padding(.vertical, AETheme.spacingL)
         }
         .background(AEGameBackdrop())
+        .task { headingFocused = true }
     }
 }
 
