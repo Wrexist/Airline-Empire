@@ -955,30 +955,33 @@ struct AircraftShopSheet: View {
                                             .fixedSize(horizontal: false, vertical: true)
                                     }
                                     DisclosureGroup("Route matching", isExpanded: $showingNetworkDetails) {
-                                        VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                                            PlanningFilters(options: RouteFocus.allCases.map {
-                                                PlanningFilterOption(value: $0, title: $0.title,
-                                                    symbol: $0 == .unassigned ? "airplane" : "point.topleft.down.to.point.bottomright.curvepath")
-                                            }, selection: $routeFocus)
-                                            if let route = selectedRouteID.flatMap({ snapshot.routes[$0] }) {
-                                                Text("Ranked by range, runway fit and demand, then lease cost. New routes use estimated demand.")
-                                                    .font(.caption).foregroundStyle(AETheme.mutedText)
-                                                if let need = snapshot.fleetNeeds(catalog: catalog).first(where: { $0.routeID == route.id }) {
-                                                    Text(needDescription(need))
-                                                        .font(.caption).foregroundStyle(AETheme.caution)
+                                        // Do not build demand analysis while its disclosure is closed.
+                                        if showingNetworkDetails {
+                                            VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                                                PlanningFilters(options: RouteFocus.allCases.map {
+                                                    PlanningFilterOption(value: $0, title: $0.title,
+                                                        symbol: $0 == .unassigned ? "airplane" : "point.topleft.down.to.point.bottomright.curvepath")
+                                                }, selection: $routeFocus)
+                                                if let route = selectedRouteID.flatMap({ snapshot.routes[$0] }) {
+                                                    Text("Ranked by range, runway fit and demand, then lease cost. New routes use estimated demand.")
+                                                        .font(.caption).foregroundStyle(AETheme.mutedText)
+                                                    if let need = snapshot.fleetNeeds(catalog: catalog).first(where: { $0.routeID == route.id }) {
+                                                        Text(needDescription(need))
+                                                            .font(.caption).foregroundStyle(AETheme.caution)
+                                                    }
+                                                } else if let need = snapshot.fleetNeeds(catalog: catalog).first,
+                                                          let route = snapshot.routes[need.routeID] {
+                                                    Button {
+                                                        selectedRouteID = route.id
+                                                    } label: {
+                                                        Label("Match aircraft to \(route.origin.raw)\u{2013}\(route.destination.raw)", systemImage: "sparkles")
+                                                    }
+                                                    .buttonStyle(.borderless)
+                                                    .frame(minHeight: 44)
                                                 }
-                                            } else if let need = snapshot.fleetNeeds(catalog: catalog).first,
-                                                      let route = snapshot.routes[need.routeID] {
-                                                Button {
-                                                    selectedRouteID = route.id
-                                                } label: {
-                                                    Label("Match aircraft to \(route.origin.raw)\u{2013}\(route.destination.raw)", systemImage: "sparkles")
-                                                }
-                                                .buttonStyle(.borderless)
-                                                .frame(minHeight: 44)
                                             }
+                                            .padding(.top, AETheme.spacingS)
                                         }
-                                        .padding(.top, AETheme.spacingS)
                                     }
                                     .font(.subheadline)
                                     .frame(minHeight: 44)
@@ -1412,7 +1415,10 @@ struct AircraftShopSheet: View {
             Image(systemName: icon)
                 .font(.caption2)
                 .foregroundStyle(AETheme.mutedText)
-                .frame(width: 16)
+                // The symbol scales with Dynamic Type. A fixed 16pt column
+                // lets its larger glyph paint over the adjacent label.
+                .fixedSize()
+                .frame(minWidth: 16)
                 .accessibilityHidden(true)
             Text(label)
                 .font(AEType.caption)

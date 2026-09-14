@@ -160,9 +160,15 @@ final class EconomyJourneyUITests: AEUITestCase {
         guard assignFirstAircraft() else { return }
 
         // ── A month passes ─────────────────────────────────────────────────
-        guard advanceMornings(until: "2030-01-31", cap: 31) else { return }
+        guard advanceMornings(until: "2030-01-31", cap: 31) else {
+            XCTFail("The free campaign did not reach the last day of its first month")
+            return
+        }
         checkpoint("10-before-month-end")
-        guard advanceMornings(until: "2030-02-01", cap: 1) else { return }
+        guard advanceMornings(until: "2030-02-01", cap: 1) else {
+            XCTFail("The free campaign did not cross the month boundary")
+            return
+        }
         // The overlay for "First profitable month" is transient; caught if
         // present, never required — profitability is the balance's contract.
         if app.staticTexts["First profitable month"].exists {
