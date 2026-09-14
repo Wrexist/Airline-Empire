@@ -163,7 +163,6 @@ struct BriefingView: View {
             // presentation to reveal the saved-session recap.
             if !hasGame { dismiss() }
         }
-        .aeConfirmationHost()
     }
 
     @ViewBuilder

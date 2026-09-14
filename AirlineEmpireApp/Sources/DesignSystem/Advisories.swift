@@ -1,6 +1,4 @@
 import SwiftUI
-import Observation
-import OSLog
 import AirlineEmpireCore
 
 /// The warning cascade (docs/PLAYER_JOURNEY.md §6, UIUX_FORENSIC_AUDIT
@@ -185,69 +183,6 @@ struct AEProgressRow: View {
     }
 }
 
-/// Keep confirmations at the outer sheet root. Presenting them from a pushed
-/// destination can recreate that sheet on iOS 26 (Apple FB24621651).
-@MainActor @Observable
-final class AEConfirmationPresenter {
-    struct Request {
-        let title: String
-        let message: String
-        let confirmTitle: String
-        let role: ButtonRole?
-        let action: () -> Void
-    }
-
-    var request: Request?
-}
-
-private struct AEConfirmationPresenterKey: EnvironmentKey {
-    static let defaultValue: AEConfirmationPresenter? = nil
-}
-
-extension EnvironmentValues {
-    var aeConfirmationPresenter: AEConfirmationPresenter? {
-        get { self[AEConfirmationPresenterKey.self] }
-        set { self[AEConfirmationPresenterKey.self] = newValue }
-    }
-}
-
-@MainActor
-private struct AEConfirmationHost: ViewModifier {
-    @Environment(\.aeConfirmationPresenter) private var inherited
-    @State private var presenter = AEConfirmationPresenter()
-
-    @ViewBuilder func body(content: Content) -> some View {
-        if inherited != nil {
-            content
-        } else {
-            content
-                .environment(\.aeConfirmationPresenter, presenter)
-                .alert(presenter.request?.title ?? "Confirm", isPresented: Binding(
-                    get: { presenter.request != nil },
-                    set: { if !$0 { presenter.request = nil } }), presenting: presenter.request) { request in
-                    Button(request.confirmTitle, role: request.role) {
-                        presenter.request = nil
-                        request.action()
-                    }
-                    .accessibilityIdentifier("ae-confirm-action")
-                    Button("Cancel", role: .cancel) { presenter.request = nil }
-                } message: { request in
-                    Text(request.message)
-                }
-                .onChange(of: presenter.request != nil) { _, presented in
-                    #if DEBUG
-                    Logger(subsystem: "com.airlineempire.presentation", category: "sheet-confirmation")
-                        .notice("Sheet root confirmation presented: \(presented)")
-                    #endif
-                }
-        }
-    }
-}
-
-extension View {
-    @MainActor func aeConfirmationHost() -> some View { modifier(AEConfirmationHost()) }
-}
-
 /// A destructive action that asks first, because selling an aircraft or
 /// closing a route cannot be undone and the app used to do both on one
 /// unguarded tap (UIUX_FORENSIC_AUDIT UI-006).
@@ -256,7 +191,6 @@ extension View {
 /// has said they know what these buttons do.
 struct ConfirmableButton<Label: View>: View {
     @Environment(GameController.self) private var controller
-    @Environment(\.aeConfirmationPresenter) private var presenter
     let title: String
     let message: String
     let confirmTitle: String
@@ -269,12 +203,7 @@ struct ConfirmableButton<Label: View>: View {
     var body: some View {
         Button(role: role) {
             if controller.preferences.confirmDestructive {
-                if let presenter {
-                    presenter.request = .init(title: title, message: message,
-                        confirmTitle: confirmTitle, role: role, action: action)
-                } else {
-                    asking = true
-                }
+                asking = true
             } else {
                 action()
             }

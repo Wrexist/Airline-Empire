@@ -528,7 +528,7 @@ class AEUITestCase: XCTestCase {
                 }
                 checkpoint("LEASE-CONFIRMATION")
                 if !cancellationChecked {
-                    let cancel = app.alerts.firstMatch.buttons["Cancel"]
+                    let cancel = app.buttons["ae-confirm-cancel"]
                     guard require(cancel, "Cancel in the lease confirmation") else { return false }
                     cancel.tap()
                     guard leaseDialogTitle.waitForNonExistence(timeout: 8),

@@ -855,7 +855,6 @@ struct AssignRouteSheet: View {
 /// era-locked types explain themselves instead of showing nothing.
 struct AircraftShopSheet: View {
     @Environment(GameController.self) private var controller
-    @Environment(\.aeConfirmationPresenter) private var confirmationPresenter
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var usedAge = 8
@@ -871,8 +870,8 @@ struct AircraftShopSheet: View {
     @State private var assignmentPending: AircraftID?
     @State private var assignmentRoute: RouteID?
     @State private var acquiring = false
-    // The sheet owns the transaction. List rows may be recycled while a
-    // system confirmation is presented; neither confirmation nor its receipt
+    // The market owns the transaction. List rows may be recycled while the
+    // acquisition is reviewed; neither confirmation nor its receipt
     // should depend on a row staying mounted.
     private struct Acquisition {
         let facts: ShopDealFacts
@@ -884,6 +883,9 @@ struct AircraftShopSheet: View {
     @State private var pendingAcquisition: Acquisition?
     @State private var previousAircraft: Set<AircraftID> = []
     @State private var acquisitionFailure: String?
+    @AccessibilityFocusState private var reviewHeadingFocused: Bool
+    @AccessibilityFocusState private var acquisitionErrorFocused: Bool
+    @AccessibilityFocusState private var focusedPurchase: AircraftTypeCode?
     private let isNavigationDestination: Bool
 
     init(routeID: RouteID? = nil, isNavigationDestination: Bool = false) {
@@ -933,19 +935,6 @@ struct AircraftShopSheet: View {
                 NavigationStack { marketContent }
             }
         }
-        .alert(requestedAcquisition.map { "\($0.facts.confirmWord(for: $0.deal))?" } ?? "Confirm acquisition",
-               isPresented: $confirmingAcquisition, presenting: requestedAcquisition) { request in
-            Button(request.facts.confirmWord(for: request.deal)) { commit(request) }
-                .accessibilityIdentifier("ae-confirm-action")
-            Button("Cancel", role: .cancel) { requestedAcquisition = nil }
-        } message: { request in
-            Text(request.facts.dialogMessage(for: request.deal))
-        }
-        .alert("Could not acquire aircraft", isPresented: Binding(
-            get: { acquisitionFailure != nil },
-            set: { if !$0 { acquisitionFailure = nil } })) {
-            Button("OK", role: .cancel) { acquisitionFailure = nil }
-        } message: { Text(acquisitionFailure ?? "") }
         .onChange(of: confirmingAcquisition) { _, value in
             #if DEBUG
             Logger(subsystem: "com.airlineempire.presentation", category: "market")
@@ -969,7 +958,11 @@ struct AircraftShopSheet: View {
         }
     }
 
-    private var marketContent: some View {
+    private var showsAcquisitionPanel: Bool {
+        (confirmingAcquisition && requestedAcquisition != nil) || acquisitionReceipt != nil
+    }
+
+    private var marketList: some View {
         Group {
             if let catalog = controller.catalog,
                let snapshot = controller.snapshot,
@@ -1105,20 +1098,14 @@ struct AircraftShopSheet: View {
                                                  snapshot: snapshot,
                                                  player: player.id),
                                     deal: deals[spec.code] ?? .lease,
+                                    focus: $focusedPurchase,
                                     onRequest: { facts, deal in
                                         let request = Acquisition(facts: facts, deal: deal,
                                                                   routeID: selectedRouteID)
-                                            if controller.preferences.confirmDestructive {
-                                                if let confirmationPresenter {
-                                                    confirmationPresenter.request = .init(
-                                                        title: "\(facts.confirmWord(for: deal))?",
-                                                        message: facts.dialogMessage(for: deal),
-                                                        confirmTitle: facts.confirmWord(for: deal), role: nil,
-                                                        action: { commit(request) })
-                                                } else {
-                                                    requestedAcquisition = request
-                                                    confirmingAcquisition = true
-                                                }
+                                        if controller.preferences.confirmDestructive {
+                                            acquisitionFailure = nil
+                                            requestedAcquisition = request
+                                            confirmingAcquisition = true
                                         } else {
                                             commit(request)
                                         }
@@ -1135,6 +1122,24 @@ struct AircraftShopSheet: View {
                 LoadingState(message: "Loading the market")
             }
         }
+    }
+
+    private var marketContent: some View {
+        ZStack {
+            // Keep the list mounted so Cancel restores its exact scroll position.
+            marketList
+                .opacity(showsAcquisitionPanel ? 0 : 1)
+                .allowsHitTesting(!showsAcquisitionPanel)
+                .accessibilityHidden(showsAcquisitionPanel)
+            if confirmingAcquisition, let request = requestedAcquisition {
+                acquisitionReview(request)
+                    .transition(.opacity)
+            } else if let receipt = acquisitionReceipt {
+                acquisitionReceiptPanel(receipt)
+                    .transition(.opacity)
+            }
+        }
+        .aeAnimation(.easeOut(duration: 0.16), value: showsAcquisitionPanel)
         .listStyle(.insetGrouped)
         .listSectionSpacing(AETheme.spacingM)
         .aeScreenBackground()
@@ -1174,9 +1179,11 @@ struct AircraftShopSheet: View {
             }
         }
         .onChange(of: controller.lastRejection) {
-            if pendingAcquisition != nil, let failure = controller.lastRejection {
+            if let request = pendingAcquisition, let failure = controller.lastRejection {
                 pendingAcquisition = nil
                 acquiring = false
+                requestedAcquisition = request
+                confirmingAcquisition = true
                 acquisitionFailure = failure.message
                 controller.clearRejection()
                 return
@@ -1187,7 +1194,7 @@ struct AircraftShopSheet: View {
             controller.clearRejection()
         }
         .disabled(acquiring || assignmentPending != nil)
-        .interactiveDismissDisabled(acquiring || assignmentPending != nil)
+        .interactiveDismissDisabled(acquiring || assignmentPending != nil || showsAcquisitionPanel)
         .overlay {
             if acquiring || assignmentPending != nil {
                 ProgressView(assignmentPending != nil ? "Assigning aircraft…" : "Completing acquisition…")
@@ -1203,17 +1210,91 @@ struct AircraftShopSheet: View {
                 selectedRouteID = routes.first?.id
             }
         }
-        .alert("Aircraft acquired", isPresented: Binding(
-            get: { acquisitionReceipt != nil },
-            set: { if !$0 { acquisitionReceipt = nil } })) {
-            Button("Done") { dismiss() }
-        } message: { Text(acquisitionReceipt ?? "") }
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Done") { dismiss() }
-                    .disabled(acquiring || assignmentPending != nil)
+            if !showsAcquisitionPanel {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                        .disabled(acquiring || assignmentPending != nil)
+                }
             }
         }
+    }
+
+    private func acquisitionReview(_ request: Acquisition) -> some View {
+        let blocked = controller.precheck(request.facts.command(for: request.deal))
+        return ScrollView {
+            VStack(alignment: .leading, spacing: AETheme.spacingL) {
+                Image(systemName: "airplane.circle.fill")
+                    .font(.system(size: 48)).foregroundStyle(AETheme.accent)
+                    .accessibilityHidden(true)
+                Text("\(request.facts.confirmWord(for: request.deal))?")
+                    .font(.largeTitle.bold())
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityFocused($reviewHeadingFocused)
+                AECard {
+                    VStack(alignment: .leading, spacing: AETheme.spacingM) {
+                        Text("\(request.facts.spec.manufacturer) \(request.facts.spec.model)")
+                            .font(.title2.weight(.semibold))
+                        if let route = request.routeID.flatMap({ controller.snapshot?.routes[$0] }) {
+                            Label("\(route.origin.raw) to \(route.destination.raw)", systemImage: "point.topleft.down.to.point.bottomright.curvepath")
+                                .font(.subheadline).foregroundStyle(AETheme.mutedText)
+                        }
+                        Divider()
+                        Text(request.facts.dialogMessage(for: request.deal))
+                            .font(.body).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                if let failure = acquisitionFailure ?? blocked?.message {
+                    Text(failure)
+                        .foregroundStyle(AETheme.caution)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityFocused($acquisitionErrorFocused)
+                        .onAppear { acquisitionErrorFocused = true }
+                }
+            }
+            .aePageInsets()
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: AETheme.spacingS) {
+                Button(request.facts.confirmWord(for: request.deal)) { commit(request) }
+                    .buttonStyle(.aePrimary)
+                    .accessibilityIdentifier("ae-confirm-action")
+                    .disabled(blocked != nil)
+                Button("Cancel") {
+                    requestedAcquisition = nil
+                    confirmingAcquisition = false
+                    acquisitionFailure = nil
+                    focusedPurchase = request.facts.spec.code
+                }
+                .buttonStyle(.aeSecondary)
+                .accessibilityIdentifier("ae-confirm-cancel")
+            }
+            .padding(AETheme.spacingM)
+            .background(AETheme.canvas)
+        }
+        .aeScreenBackground()
+        .onAppear { reviewHeadingFocused = true }
+    }
+
+    private func acquisitionReceiptPanel(_ receipt: String) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: AETheme.spacingL) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 48)).foregroundStyle(AETheme.positive)
+                    .accessibilityHidden(true)
+                Text("Aircraft acquired").font(.largeTitle.bold())
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityFocused($reviewHeadingFocused)
+                AECard { Text(receipt).fixedSize(horizontal: false, vertical: true) }
+            }
+            .aePageInsets()
+        }
+        .safeAreaInset(edge: .bottom) {
+            Button("Done") { dismiss() }.buttonStyle(.aePrimary)
+                .padding(AETheme.spacingM).background(AETheme.canvas)
+        }
+        .aeScreenBackground()
+        .onAppear { reviewHeadingFocused = true }
     }
 
     private func commit(_ request: Acquisition) {
@@ -1222,12 +1303,15 @@ struct AircraftShopSheet: View {
         Logger(subsystem: "com.airlineempire.presentation", category: "market")
             .notice("Market acquisition accepted")
         #endif
-        requestedAcquisition = nil
         previousAircraft = Set(controller.snapshot?.fleet(of: request.facts.player).map(\.id) ?? [])
         if let rejection = controller.submit(request.facts.command(for: request.deal)) {
+            requestedAcquisition = request
+            confirmingAcquisition = true
             acquisitionFailure = rejection.message
             controller.clearRejection()
         } else {
+            requestedAcquisition = nil
+            confirmingAcquisition = false
             pendingAcquisition = request
             acquiring = true
             acquisitionFailure = nil
@@ -1843,6 +1927,7 @@ struct ShopCommitButton: View {
 
     let facts: ShopDealFacts
     let deal: ShopDeal
+    let focus: AccessibilityFocusState<AircraftTypeCode?>.Binding
     let onRequest: (ShopDealFacts, ShopDeal) -> Void
 
     var body: some View {
@@ -1862,6 +1947,7 @@ struct ShopCommitButton: View {
             // picked — which it is by default.
             .accessibilityIdentifier("ae-market-\(facts.name(for: deal))")
             .accessibilityLabel("\(facts.ctaTitle(for: deal)), \(facts.spec.manufacturer) \(facts.spec.model)")
+            .accessibilityFocused(focus, equals: facts.spec.code)
             .disabled(blocked != nil)
             if let blocked {
                 Text(blocked.message)
