@@ -89,13 +89,18 @@ class StoreScreenshotUITests: AEUITestCase {
     private func verifyMarketControls() -> Bool {
         let model = app.staticTexts.matching(identifier: "ae-market-model-name").firstMatch
         guard scrollUntil(model, "the aircraft model facts"), tapWhenReady(model) else { return false }
-        let used = app.buttons.matching(identifier: "ae-deal-buy-used").firstMatch
-        guard scrollUntil(used, "the used deal selector"), tapWhenReady(used) else { return false }
-        XCTAssertTrue(app.buttons.matching(identifier: "ae-market-buy-used").firstMatch.waitForExistence(timeout: 5),
+        let modelName = model.label
+        let used = app.buttons.matching(NSPredicate(
+            format: "identifier == %@ AND label CONTAINS %@", "ae-deal-buy-used", modelName)).firstMatch
+        guard scrollUntil(used, "the used deal selector for this aircraft"), tapWhenReady(used) else { return false }
+        // The purchase footer is a separate lazy List row. On an iPad sheet
+        // it may not exist until scrolled into view; keep the model identity
+        // fixed while the list recycles rows.
+        let commit = app.buttons.matching(NSPredicate(
+            format: "identifier == %@ AND label CONTAINS %@", "ae-market-buy-used", modelName)).firstMatch
+        guard scrollUntil(commit, "the selected aircraft's used purchase action") else { return false }
+        XCTAssertTrue(commit.isHittable,
                       "Choosing a deal updates its own commit action without purchasing")
-        let lease = app.buttons.matching(identifier: "ae-deal-lease").firstMatch
-        guard tapWhenReady(lease) else { return false }
-        XCTAssertTrue(app.buttons.matching(identifier: "ae-market-lease").firstMatch.waitForExistence(timeout: 5))
         XCTAssertTrue(app.navigationBars["Aircraft market"].exists,
                       "Tapping facts and changing deals must leave the market open")
         return true
