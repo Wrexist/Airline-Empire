@@ -329,7 +329,9 @@ struct MapOverlayHint: View {
             let grounded = mine.filter { $0.health == .grounded }.count
             guard grounded > 0 else { return nil }
             return Hint(icon: "pause.circle.fill",
-                        text: "\(grounded) of your routes have no aircraft and are still paying fees.",
+                        text: grounded == 1
+                            ? "1 route has no aircraft and is still paying fees."
+                            : "\(grounded) routes have no aircraft and are still paying fees.",
                         tint: AETheme.caution)
         case .opportunity:
             guard let best = model.opportunities.first else { return nil }
