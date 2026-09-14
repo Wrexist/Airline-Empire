@@ -1,5 +1,4 @@
 import SwiftUI
-import OSLog
 import AirlineEmpireCore
 
 /// The warning cascade (docs/PLAYER_JOURNEY.md §6, UIUX_FORENSIC_AUDIT
@@ -191,38 +190,18 @@ struct AEProgressRow: View {
 /// Honours the player's own setting: someone who has turned confirmations off
 /// has said they know what these buttons do.
 struct ConfirmableButton<Label: View>: View {
-    enum Presentation { case dialog, alert }
-
     @Environment(GameController.self) private var controller
     let title: String
     let message: String
     let confirmTitle: String
     let role: ButtonRole?
-    var presentation: Presentation = .dialog
     let action: () -> Void
     @ViewBuilder var label: Label
 
     @State private var asking = false
 
     var body: some View {
-        switch presentation {
-        case .dialog:
-            trigger.confirmationDialog(title, isPresented: $asking, titleVisibility: .visible) {
-                confirmationActions
-            } message: { Text(message) }
-        case .alert:
-            trigger.alert(title, isPresented: $asking) {
-                confirmationActions
-            } message: { Text(message) }
-        }
-    }
-
-    private var trigger: some View {
         Button(role: role) {
-            #if DEBUG
-            Logger(subsystem: "com.airlineempire.presentation", category: "confirmation")
-                .notice("Confirmation control tapped")
-            #endif
             if controller.preferences.confirmDestructive {
                 asking = true
             } else {
@@ -231,32 +210,13 @@ struct ConfirmableButton<Label: View>: View {
         } label: {
             label
         }
-        .onChange(of: asking) { _, isAsking in
-            #if DEBUG
-            Logger(subsystem: "com.airlineempire.presentation", category: "confirmation")
-                .notice("Confirmation requested state: \(isAsking)")
-            #endif
+        .confirmationDialog(title, isPresented: $asking, titleVisibility: .visible) {
+            Button(confirmTitle, role: role, action: action)
+                .accessibilityIdentifier("ae-confirm-action")
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(message)
         }
-        .onDisappear {
-            #if DEBUG
-            if asking {
-                Logger(subsystem: "com.airlineempire.presentation", category: "confirmation")
-                    .notice("Confirmation presenter disappeared while asking")
-            }
-            #endif
-        }
-    }
-
-    @ViewBuilder private var confirmationActions: some View {
-        Button(confirmTitle, role: role) {
-            #if DEBUG
-            Logger(subsystem: "com.airlineempire.presentation", category: "confirmation")
-                .notice("Confirmation accepted")
-            #endif
-            action()
-        }
-            .accessibilityIdentifier("ae-confirm-action")
-        Button("Cancel", role: .cancel) {}
     }
 }
 

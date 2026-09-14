@@ -1,4 +1,5 @@
 import SwiftUI
+import OSLog
 import AirlineEmpireCore
 
 /// The route board.
@@ -951,7 +952,19 @@ struct OpenRouteSheet: View {
                         .disabled(opening)
                 }
             }
-            .onAppear(perform: prime)
+            .onAppear {
+                #if DEBUG
+                Logger(subsystem: "com.airlineempire.presentation", category: "route-setup")
+                    .notice("Route setup appeared; primed: \(primed), has destination: \(destination != nil), has created route: \(createdRoute != nil)")
+                #endif
+                prime()
+            }
+            .onChange(of: createdRoute) { _, value in
+                #if DEBUG
+                Logger(subsystem: "com.airlineempire.presentation", category: "route-setup")
+                    .notice("Route setup destination changed; has route: \(value != nil)")
+                #endif
+            }
             .onChange(of: origin) { refreshMarkets() }
             .onChange(of: filter) {
                 guard let destination, let snapshot = controller.snapshot,

@@ -1,4 +1,5 @@
 import SwiftUI
+import OSLog
 import AirlineEmpireCore
 
 /// The fleet.
@@ -869,6 +870,19 @@ struct AircraftShopSheet: View {
     @State private var assignmentPending: AircraftID?
     @State private var assignmentRoute: RouteID?
     @State private var acquiring = false
+    // The sheet owns the transaction. List rows may be recycled while a
+    // system confirmation is presented; neither confirmation nor its receipt
+    // should depend on a row staying mounted.
+    private struct Acquisition {
+        let facts: ShopDealFacts
+        let deal: ShopDeal
+        let routeID: RouteID?
+    }
+    @State private var requestedAcquisition: Acquisition?
+    @State private var confirmingAcquisition = false
+    @State private var pendingAcquisition: Acquisition?
+    @State private var previousAircraft: Set<AircraftID> = []
+    @State private var acquisitionFailure: String?
     init(routeID: RouteID? = nil) {
         _selectedRouteID = State(initialValue: routeID)
     }
@@ -1044,9 +1058,15 @@ struct AircraftShopSheet: View {
                                                      snapshot: snapshot,
                                                      player: player.id),
                                         deal: deals[spec.code] ?? .lease,
-                                        onPendingChange: { acquiring = $0 },
-                                        onCommitted: { [routeID = selectedRouteID] aircraftID in
-                                            completeAcquisition(aircraftID: aircraftID, routeID: routeID)
+                                        onRequest: { facts, deal in
+                                            let request = Acquisition(facts: facts, deal: deal,
+                                                                      routeID: selectedRouteID)
+                                            if controller.preferences.confirmDestructive {
+                                                requestedAcquisition = request
+                                                confirmingAcquisition = true
+                                            } else {
+                                                commit(request)
+                                            }
                                         })
                                     .listRowBackground(marketCardSurface)
                                     .listRowSeparator(.hidden)
@@ -1098,6 +1118,13 @@ struct AircraftShopSheet: View {
                 }
             }
             .onChange(of: controller.lastRejection) {
+                if pendingAcquisition != nil, let failure = controller.lastRejection {
+                    pendingAcquisition = nil
+                    acquiring = false
+                    acquisitionFailure = failure.message
+                    controller.clearRejection()
+                    return
+                }
                 guard assignmentPending != nil, let failure = controller.lastRejection else { return }
                 assignmentPending = nil
                 acquisitionReceipt = "Aircraft acquired. Assignment could not finish: \(failure.message)"
@@ -1131,6 +1158,58 @@ struct AircraftShopSheet: View {
                         .disabled(acquiring || assignmentPending != nil)
                 }
             }
+        }
+        .alert(requestedAcquisition.map { "\($0.facts.confirmWord(for: $0.deal))?" } ?? "Confirm acquisition",
+               isPresented: $confirmingAcquisition, presenting: requestedAcquisition) { request in
+            Button(request.facts.confirmWord(for: request.deal)) { commit(request) }
+                .accessibilityIdentifier("ae-confirm-action")
+            Button("Cancel", role: .cancel) { requestedAcquisition = nil }
+        } message: { request in
+            Text(request.facts.dialogMessage(for: request.deal))
+        }
+        .alert("Could not acquire aircraft", isPresented: Binding(
+            get: { acquisitionFailure != nil },
+            set: { if !$0 { acquisitionFailure = nil } })) {
+            Button("OK", role: .cancel) { acquisitionFailure = nil }
+        } message: { Text(acquisitionFailure ?? "") }
+        .onChange(of: confirmingAcquisition) { _, value in
+            #if DEBUG
+            Logger(subsystem: "com.airlineempire.presentation", category: "market")
+                .notice("Market confirmation requested: \(value)")
+            #endif
+        }
+        .onDisappear {
+            #if DEBUG
+            Logger(subsystem: "com.airlineempire.presentation", category: "market")
+                .notice("Market disappeared; confirming: \(confirmingAcquisition), acquiring: \(acquiring)")
+            #endif
+        }
+        .onChange(of: controller.snapshot?.orderedAircraftIDs) {
+            guard let request = pendingAcquisition,
+                  let aircraft = controller.snapshot?.fleet(of: request.facts.player).first(where: {
+                      !previousAircraft.contains($0.id) && $0.typeCode == request.facts.spec.code
+                  }) else { return }
+            pendingAcquisition = nil
+            acquiring = false
+            completeAcquisition(aircraftID: aircraft.id, routeID: request.routeID)
+        }
+    }
+
+    private func commit(_ request: Acquisition) {
+        guard !acquiring, assignmentPending == nil else { return }
+        #if DEBUG
+        Logger(subsystem: "com.airlineempire.presentation", category: "market")
+            .notice("Market acquisition accepted")
+        #endif
+        requestedAcquisition = nil
+        previousAircraft = Set(controller.snapshot?.fleet(of: request.facts.player).map(\.id) ?? [])
+        if let rejection = controller.submit(request.facts.command(for: request.deal)) {
+            acquisitionFailure = rejection.message
+            controller.clearRejection()
+        } else {
+            pendingAcquisition = request
+            acquiring = true
+            acquisitionFailure = nil
         }
     }
 
@@ -1740,42 +1819,16 @@ struct ShopDealPicker: View {
 /// or by the test runner.
 struct ShopCommitButton: View {
     @Environment(GameController.self) private var controller
-    @State private var pending = false
-    @State private var previousAircraft: Set<AircraftID> = []
-    @State private var failure: String?
 
     let facts: ShopDealFacts
     let deal: ShopDeal
-    let onPendingChange: (Bool) -> Void
-    /// The sheet owns dismissal; a child inside its NavigationStack must
-    /// not resolve a different dismiss action and leave the market open.
-    let onCommitted: (AircraftID) -> Void
+    let onRequest: (ShopDealFacts, ShopDeal) -> Void
 
     var body: some View {
         let command = facts.command(for: deal)
         let blocked = controller.precheck(command)
         VStack(alignment: .leading, spacing: 2) {
-            ConfirmableButton(
-                title: "\(facts.confirmWord(for: deal))?",
-                message: facts.dialogMessage(for: deal),
-                confirmTitle: facts.confirmWord(for: deal), role: nil,
-                // A route-setup sheet can present this market. Give its
-                // price confirmation an explicit native alert and Cancel.
-                presentation: .alert,
-                // Dismiss on success, like every other sheet in the app —
-                // the payoff is the aircraft in the fleet, not this sheet.
-                action: {
-                    previousAircraft = Set(controller.snapshot?.fleet(of: facts.player).map(\.id) ?? [])
-                    if let rejection = controller.submit(command) {
-                        failure = rejection.message
-                        controller.clearRejection()
-                    } else {
-                        pending = true
-                        onPendingChange(true)
-                        failure = nil
-                    }
-                }
-            ) {
+            Button { onRequest(facts, deal) } label: {
                 Label(facts.ctaTitle(for: deal), systemImage: "signature")
                     .font(.headline)
                     .foregroundStyle(.white)
@@ -1788,31 +1841,13 @@ struct ShopCommitButton: View {
             // picked — which it is by default.
             .accessibilityIdentifier("ae-market-\(facts.name(for: deal))")
             .accessibilityLabel("\(facts.ctaTitle(for: deal)), \(facts.spec.manufacturer) \(facts.spec.model)")
-            .disabled(blocked != nil || pending)
-            if pending { ProgressView("Completing acquisition…") }
-            if let failure { Text(failure).font(.caption).foregroundStyle(AETheme.caution) }
+            .disabled(blocked != nil)
             if let blocked {
                 Text(blocked.message)
                     .font(.caption2)
                     .foregroundStyle(AETheme.caution)
                     .fixedSize(horizontal: false, vertical: true)
             }
-        }
-        .onChange(of: controller.snapshot?.orderedAircraftIDs) {
-            guard pending,
-                  let aircraft = controller.snapshot?.fleet(of: facts.player).first(where: {
-                      !previousAircraft.contains($0.id) && $0.typeCode == facts.spec.code
-                  }) else { return }
-            pending = false
-            onPendingChange(false)
-            onCommitted(aircraft.id)
-        }
-        .onChange(of: controller.lastRejection) {
-            guard pending, let rejection = controller.lastRejection else { return }
-            pending = false
-            onPendingChange(false)
-            failure = rejection.message
-            controller.clearRejection()
         }
     }
 }
