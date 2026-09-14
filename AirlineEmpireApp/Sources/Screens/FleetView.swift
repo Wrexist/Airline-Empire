@@ -916,6 +916,7 @@ struct AircraftShopSheet: View {
                     let fleetTypes = catalog.orderedAircraftTypeCodes.compactMap { catalog.aircraftTypes[$0] }
                     let limits = (seats: fleetTypes.map(\.seats).max() ?? 1,
                                   range: fleetTypes.map(\.rangeKm).max() ?? 1)
+                    let availableTypes = types(catalog: catalog, snapshot: snapshot)
                     List {
                         Section {
                             FirstFlightProgress()
@@ -1018,14 +1019,13 @@ struct AircraftShopSheet: View {
                                     .frame(minHeight: 44)
                             }
                         }
-                        if types(catalog: catalog, snapshot: snapshot).isEmpty {
+                        if availableTypes.isEmpty {
                             Section {
                                 Text("No available aircraft fit this route's range and runways.")
                                 Button("Browse all aircraft") { selectedRouteID = nil }
                             }
                         }
-                        ForEach(types(catalog: catalog, snapshot: snapshot),
-                                id: \.code) { spec in
+                        ForEach(availableTypes, id: \.code) { spec in
                             Section {
                                 shopRow(spec, catalog: catalog, snapshot: snapshot,
                                         player: player.id, limits: limits)
@@ -1179,14 +1179,18 @@ struct AircraftShopSheet: View {
 
     private func focusedRoutes(snapshot: GameState, catalog: ContentCatalog,
                                player: AirlineID) -> [Route] {
+        let routes = snapshot.routes(of: player).sorted { $0.id < $1.id }
+        // Browsing all routes needs no capacity/demand model. This is the
+        // default market state and is also evaluated while its list scrolls.
+        guard routeFocus != .all else { return routes }
         let needs = snapshot.fleetNeeds(catalog: catalog)
-        return snapshot.routes(of: player).filter { route in
+        return routes.filter { route in
             switch routeFocus {
             case .all: true
             case .unassigned: needs.contains { $0.routeID == route.id && $0.reason == .unassigned }
             case .capacity: needs.contains { $0.routeID == route.id && $0.reason != .unassigned }
             }
-        }.sorted { $0.id < $1.id }
+        }
     }
 
     private func routePicker(snapshot: GameState, catalog: ContentCatalog,
