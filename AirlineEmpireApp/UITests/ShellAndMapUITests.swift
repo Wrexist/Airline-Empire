@@ -365,8 +365,8 @@ final class ShellAndMapUITests: AEUITestCase {
         browse.tap()
         let seats = app.descendants(matching: .any)
             .matching(identifier: "ae-market-spec-Seats").firstMatch
-        let marketList = app.collectionViews.firstMatch.exists
-            ? app.collectionViews.firstMatch : app.scrollViews.firstMatch
+        let marketList = app.descendants(matching: .any)
+            .matching(identifier: "ae-market-list").firstMatch
         guard scrollUntil(seats, "aircraft specifications at accessibility size",
                           in: marketList) else { return }
         if seats.frame.midY > marketList.frame.intersection(window).midY {
@@ -377,7 +377,10 @@ final class ShellAndMapUITests: AEUITestCase {
         XCTAssertTrue(waitUntilStill(seats), "Specification rows did not settle after scrolling")
         checkpoint("AX-market-specifications")
         let lease = app.buttons.matching(identifier: "ae-market-lease").firstMatch
-        scrollUntil(lease, "a Lease action in the market at accessibility size")
+        guard scrollUntil(lease, "a Lease action in the market at accessibility size",
+                          in: marketList) else { return }
+        XCTAssertTrue(lease.isHittable && lease.isEnabled,
+                      "The visible lease action must be available at accessibility size")
         checkpoint("97-dynamictype-market")
     }
 

@@ -464,91 +464,57 @@ class AEUITestCase: XCTestCase {
         let leaseQuery = app.buttons.matching(identifier: "ae-market-lease")
         let lease = model.map { leaseQuery.matching(NSPredicate(
             format: "label CONTAINS %@", $0)).firstMatch } ?? leaseQuery.firstMatch
-        guard scrollUntil(lease, "a Lease action in the market") else { return false }
-
-        // The dialog must be the LEASE dialog before anything is confirmed,
-        // and a wrong dialog must be dismissed and the tap retried.
-        //
-        // Both halves are earned. Run 59 photographed a tap aimed at the
-        // lease row opening a "Buy used (8y)?" dialog — a synthetic-tap miss
-        // that run 61 reproduced twice even after a scroll settle, while the
-        // very same helper succeeded later in the same run, so retrying is
-        // sound. And on this runner's iOS 26 the dialog is an anchored
-        // popover with NO Cancel button, so the only way out of a wrong one
-        // is a tap outside it. The dialog is also why confirmations stay ON
-        // in tests: a mis-tap with confirmations off would silently buy the
-        // wrong aircraft and pass.
         let market = app.staticTexts["Aircraft market"]
+        let list = app.descendants(matching: .any)
+            .matching(identifier: "ae-market-list").firstMatch
+        guard require(list, "the aircraft market list") else { return false }
         let leaseDialogTitle = app.staticTexts["Lease?"]
         let fleetRow = app.descendants(matching: .any)
             .matching(identifier: "ae-fleet-row").firstMatch
-        // Runs 85 and 86 photographed the misses on a perfectly still list:
-        // sometimes the tap aimed at the lease row's reported centre opens
-        // "Buy used (8y)?" (one row pitch above), sometimes it lands on
-        // nothing at all (the inert caption between rows) — and run 86's
-        // frames showed the same wrong outcome four times in a row, because
-        // when the row is already in the middle band NOTHING changed between
-        // attempts, so a stale accessibility snapshot answered every retry
-        // identically. Two consequences below: the wrong dialog, when it
-        // appears, measures a one-shot aim correction (the *difference*
-        // between two rows of the same stale snapshot is right even when
-        // both absolutes are wrong); and every failed attempt jiggles the
-        // list before the next one, so a retry is a new question rather than
-        // the same question re-asked.
-        let buyUsed = app.buttons.matching(identifier: "ae-market-buy-used")
-            .firstMatch
-        // The dialog's title ends in "?"; the market row it sits over is
-        // labelled "Buy used (8y)" without one, so the question mark is what
-        // separates them.
-        let buyUsedDialog = app.staticTexts.matching(NSPredicate(
-            format: "label BEGINSWITH 'Buy used' AND label ENDSWITH '?'"))
-            .firstMatch
-        var aimCorrection: CGFloat = 0
-        for attempt in 1...4 {
-            // Bring the row into the middle band before touching it. Every
-            // mis-hit this runner has produced — the Buy-used dialog of runs
-            // 59 and 61, the untappable row of run 63 — happened with the
-            // row hugging the sheet's bottom edge. Small drags rather than
-            // swipeUp: a full swipe is what overshot in the first place.
-            var hops = 0
-            while lease.exists, lease.frame.midY > window.height * 0.66,
-                  hops < 4 {
-                app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
-                    .press(forDuration: 0.05,
-                           thenDragTo: app.coordinate(
-                               withNormalizedOffset: CGVector(dx: 0.5, dy: 0.42)))
-                hops += 1
+
+        // A fast application swipe can overshoot a virtualised row in a
+        // nested sheet. Scroll within this market and require the entire
+        // action to sit below its toolbar before resolving a tap position.
+        func positionLease() -> Bool {
+            for _ in 0..<12 {
+                guard market.exists, list.exists else { return false }
+                let bounds = list.frame.intersection(window)
+                let top = max(bounds.minY, market.frame.maxY + 12)
+                let viewport = CGRect(x: bounds.minX, y: top,
+                    width: bounds.width, height: max(0, bounds.maxY - top - 20))
+                guard viewport.height > 100 else { return false }
+                if lease.exists {
+                    let frame = lease.frame
+                    if viewport.contains(frame), lease.isHittable,
+                       frame.midY > viewport.minY + viewport.height * 0.2,
+                       frame.midY < viewport.minY + viewport.height * 0.8,
+                       waitUntilStill(lease) { return true }
+                }
+                let moveDown = lease.exists && lease.frame.midY < viewport.midY
+                let startY = viewport.minY + viewport.height * (moveDown ? 0.4 : 0.7)
+                let endY = viewport.minY + viewport.height * (moveDown ? 0.6 : 0.5)
+                let origin = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
+                origin.withOffset(CGVector(dx: viewport.midX, dy: startY))
+                    .press(forDuration: 0.05, thenDragTo:
+                        origin.withOffset(CGVector(dx: viewport.midX, dy: endY)))
                 Thread.sleep(forTimeInterval: 0.6)
             }
-            guard lease.exists else { break }
-            // Let the list stop before reading the row's position. The drag
-            // above leaves momentum, and a coordinate tap fires at the frame
-            // as it was when resolved — which is how run 78's first attempt
-            // hit "Buy used (8y)", the row directly above this one.
-            waitUntilStill(lease)
-            guard lease.exists else { break }
-            // Prefer the element's own tap when the system agrees it is
-            // hittable — the hit point is resolved at event time, which is
-            // exactly what a stale snapshot's centre coordinate is not. The
-            // coordinate fallback covers run 63's untappable-row case, and
-            // carries the one-shot correction when the previous attempt's
-            // wrong dialog measured one.
-            if aimCorrection == 0, lease.isHittable {
-                lease.tap()
-            } else {
-                let height = max(lease.frame.height, 1)
-                lease.coordinate(withNormalizedOffset: CGVector(
-                    dx: 0.5, dy: 0.5 + aimCorrection / height)).tap()
-            }
-            // The correction was measured against the snapshot of the moment
-            // it was taken; whatever happens next (a dismissal, a jiggle)
-            // invalidates it, so it never survives its one use.
-            aimCorrection = 0
+            return false
+        }
 
-            if leaseDialogTitle.waitForExistence(timeout: 3) {
-                // iOS 26 exposes the confirmation as two nested Button
-                // nodes with the same identifier. Resolve the outer control
-                // explicitly; an unqualified query fails as ambiguous.
+        for attempt in 1...4 {
+            guard positionLease() else {
+                checkpoint("LEASE-NOT-VISIBLE")
+                XCTFail("The lease action could not be positioned inside the market viewport")
+                return false
+            }
+            if attempt == 1 { checkpoint("LEASE-BEFORE-TAP") }
+            let frame = lease.frame
+            print("LEASE-TAP frame=\(frame), list=\(list.frame), title=\(market.frame)")
+            app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
+                .withOffset(CGVector(dx: frame.midX, dy: frame.midY)).tap()
+
+            if leaseDialogTitle.waitForExistence(timeout: 5) || leaseDialogTitle.exists {
                 let confirm = app.buttons.matching(identifier: "ae-confirm-action").firstMatch
                 guard require(confirm, "the lease confirmation") else { return false }
                 let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
@@ -560,75 +526,28 @@ class AEUITestCase: XCTestCase {
                     XCTFail("The lease confirmation did not settle into a hittable control")
                     return false
                 }
-                if attempt == 1 {
-                    capture(Self.logPrefix + "LEASE-CONFIRMATION")
-                    // Preserve the dialog before the tap, not just the screen
-                    // after it disappeared. Nested native buttons vary by OS.
-                    print("LEASE-CONFIRMATION-HIERARCHY:\n\(app.debugDescription)")
-                }
+                checkpoint("LEASE-CONFIRMATION")
                 confirm.tap()
-                // The sheet dismisses itself on success — there is no Done
-                // fallback any more. Blind-tapping Done has never rescued a
-                // stuck sheet; in runs 62 and 63 it closed a healthy market
-                // over a lease that had not happened, three times each.
-                // A slow accessibility query can finish after the waiter's
-                // deadline even though the sheet has already disappeared.
-                // Reconcile its current state, then require the aircraft
-                // proof before returning or considering another lease tap.
                 let closed = market.waitForNonExistence(timeout: 8)
-                if (closed || !market.exists),
-                   leaseLanded(proof, fleetRow: fleetRow) {
+                if (closed || !market.exists), leaseLanded(proof, fleetRow: fleetRow) {
                     return true
                 }
+                // Never resubmit a purchase after confirmation. A slow or
+                // failed acquisition must fail with evidence, not buy twice.
+                checkpoint("LEASE-CONFIRMED-WITHOUT-PROOF")
+                XCTFail("The confirmed lease did not close the market and prove acquisition")
+                return false
             }
-
-            // Wrong dialog, no dialog, or a confirm that did not land.
-            // Photograph the state, dismiss any popover by tapping the
-            // sheet title's own coordinates (the scrim when one is up,
-            // inert otherwise), and reopen the market if something closed it.
-            capture(Self.logPrefix + "LEASE-ATTEMPT-\(attempt)")
-            let sawWrongDialog = buyUsedDialog.exists
-            if sawWrongDialog, buyUsed.exists, lease.exists {
-                // The miss identified itself: aiming at the reported lease
-                // centre landed on the buy-used row, so the true lease
-                // position is one reported row pitch further down — for the
-                // very next tap only.
-                aimCorrection = max(0, lease.frame.midY - buyUsed.frame.midY)
+            checkpoint("LEASE-ATTEMPT-\(attempt)")
+            guard market.exists else {
+                XCTFail("The market closed before a lease confirmation; no purchase was proven")
+                return false
             }
-            if market.exists {
-                market.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-                Thread.sleep(forTimeInterval: 1)
-            }
-            if market.exists, !sawWrongDialog {
-                // The tap landed on nothing, and nothing on screen changed —
-                // run 86 proved four such attempts return four identical
-                // answers. A small down-and-back drag forces a fresh layout
-                // pass and a fresh accessibility snapshot, so the next
-                // attempt aims with new information. (When the wrong dialog
-                // appeared, the measured correction is the new information,
-                // and moving the list would invalidate it.)
-                app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
-                    .press(forDuration: 0.05,
-                           thenDragTo: app.coordinate(
-                               withNormalizedOffset: CGVector(dx: 0.5, dy: 0.52)))
-                Thread.sleep(forTimeInterval: 0.8)
-            }
-            if !market.exists {
-                let browse = app.buttons["Browse the market"]
-                guard browse.waitForExistence(timeout: 5) else { break }
-                browse.tap()
-                _ = market.waitForExistence(timeout: 5)
-                guard scrollUntil(lease, "the Lease action, reopened market")
-                else { return false }
-            }
+            // Only opening the confirmation is retried. Dismiss a wrong
+            // popover without confirming any transaction.
+            market.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         }
-
-        capture(Self.logPrefix + "MARKET-DID-NOT-CLOSE")
-        XCTFail("""
-            No lease completed after four attempts. The attempt screenshots \
-            show what each tap actually produced. Nothing after this point \
-            would be testing what it claims to.
-            """)
+        XCTFail("The lease confirmation did not open after four visible, stationary taps")
         return false
     }
 

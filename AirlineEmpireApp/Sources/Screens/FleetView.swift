@@ -1064,6 +1064,7 @@ struct AircraftShopSheet: View {
             .listSectionSpacing(AETheme.spacingM)
             .aeScreenBackground()
             .navigationTitle("Aircraft market")
+            .accessibilityIdentifier("ae-market-list")
             // EXP-06: at accessibility type sizes the run-84/85 frames showed
             // scrolled card text bleeding through the header band above
             // "Done / Aircraft market" with nothing separating the layers.
@@ -1411,37 +1412,49 @@ struct AircraftShopSheet: View {
     /// One spec line: name, a bar against the catalogue's best, the number.
     private func specBar(_ label: String, value: String, icon: String,
                          fraction: Double, tint: Color) -> some View {
-        HStack(spacing: AETheme.spacingS) {
-            Image(systemName: icon)
-                .font(.caption2)
-                .foregroundStyle(AETheme.mutedText)
-                // The symbol scales with Dynamic Type. A fixed 16pt column
-                // lets its larger glyph paint over the adjacent label.
-                .fixedSize()
-                .frame(minWidth: 16)
-                .accessibilityHidden(true)
-            Text(label)
-                .font(AEType.caption)
-                .foregroundStyle(AETheme.mutedText)
-                // min, not fixed: a fixed 62pt column wrapped "Range" to
-                // "Rang / e" at accessibility sizes (run 94, KEY-97). The
-                // bar flexes; the words do not break.
-                .frame(minWidth: 62, alignment: .leading)
-                .fixedSize()
-            Capsule()
-                .fill(AETheme.cardBackground)
-                .frame(height: 5)
-                .overlay(alignment: .leading) {
-                    GeometryReader { geo in
-                        Capsule()
-                            .fill(tint.gradient)
-                            .frame(width: geo.size.width
-                                   * min(max(fraction, 0.04), 1))
-                    }
+        let symbol = Image(systemName: icon)
+            .font(.caption2)
+            .foregroundStyle(AETheme.mutedText)
+            .fixedSize()
+            .frame(minWidth: 16)
+            .accessibilityHidden(true)
+        let title = Text(label)
+            .font(AEType.caption)
+            .foregroundStyle(AETheme.mutedText)
+        let amount = Text(value)
+            .font(AEType.caption.weight(.medium)).monospacedDigit()
+        let bar = Capsule()
+            .fill(AETheme.cardBackground)
+            .frame(height: 5)
+            .overlay(alignment: .leading) {
+                GeometryReader { geo in
+                    Capsule()
+                        .fill(tint.gradient)
+                        .frame(width: geo.size.width
+                               * min(max(fraction, 0.04), 1))
                 }
-            Text(value)
-                .font(AEType.caption.weight(.medium)).monospacedDigit()
-                .frame(minWidth: 56, alignment: .trailing)
+            }
+        return Group {
+            if typeSize.isAccessibilitySize {
+                // Long qualitative values need the card's width, not the
+                // last column beside a scaled label and comparison bar.
+                VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                    HStack(spacing: AETheme.spacingS) {
+                        symbol
+                        title
+                    }
+                    amount.fixedSize(horizontal: false, vertical: true)
+                    bar
+                }
+                .padding(.vertical, 4)
+            } else {
+                HStack(spacing: AETheme.spacingS) {
+                    symbol
+                    title.frame(minWidth: 62, alignment: .leading).fixedSize()
+                    bar
+                    amount.frame(minWidth: 56, alignment: .trailing)
+                }
+            }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(label), \(value)")
