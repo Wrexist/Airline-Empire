@@ -600,7 +600,7 @@ class AEUITestCase: XCTestCase {
     /// already.
     @discardableResult
     func openARoute() -> Bool {
-        app.buttons["Routes"].tap()
+        guard openAirlineSection("Routes") else { return false }
         let openRoute = app.buttons["Open a route"]
         guard require(openRoute, "the route entry point on an empty board")
         else { return false }
@@ -657,7 +657,7 @@ class AEUITestCase: XCTestCase {
     /// route that exists, and `assignFirstAircraft` next door is one
     /// implementation for exactly the reason two copies of this would drift.
     func openRouteBySearch(city: String, code: String) -> Bool {
-        app.buttons["Routes"].tap()
+        guard openAirlineSection("Routes") else { return false }
         let openRoute = app.buttons["Open a route"]
         guard require(openRoute, "the route entry point on an empty board") else { return false }
         openRoute.tap()
