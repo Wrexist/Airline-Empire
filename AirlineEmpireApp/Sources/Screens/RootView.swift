@@ -351,6 +351,7 @@ struct GameOverView: View {
 /// whole life, the best month and the best route, what it achieved, and the
 /// seed — so the world that beat them can be played again.
 struct RunSummaryCard: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     let snapshot: GameState
     let player: Airline
 
@@ -365,9 +366,13 @@ struct RunSummaryCard: View {
                         }
                         if let best = bestMonth(finance) {
                             summaryRow("Best month") {
-                                HStack(spacing: AETheme.spacingXS) {
+                                let layout = typeSize.isAccessibilitySize
+                                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: AETheme.spacingXS))
+                                    : AnyLayout(HStackLayout(spacing: AETheme.spacingXS))
+                                layout {
                                     Text(String(format: "%04d-%02d", best.year, best.month))
                                         .font(.caption).foregroundStyle(AETheme.mutedText)
+                                        .fixedSize()
                                     MoneyText(money: best.netProfit)
                                 }
                             }
@@ -426,10 +431,16 @@ struct RunSummaryCard: View {
 
     private func summaryRow<Value: View>(_ label: String,
                                          @ViewBuilder value: () -> Value) -> some View {
-        HStack {
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: AETheme.spacingXS))
+            : AnyLayout(HStackLayout(spacing: AETheme.spacingS))
+        return layout {
             Text(label).font(.subheadline)
-            Spacer()
+            if !typeSize.isAccessibilitySize { Spacer() }
             value().font(.subheadline)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }
