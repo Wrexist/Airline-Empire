@@ -64,7 +64,9 @@ final class ShellAndMapUITests: AEUITestCase {
         advanced.tap()
         guard foundAirline() else { return }
         XCTAssertTrue(app.descendants(matching: .any)["ae-first-flight-progress"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Airline overview"].exists)
+        XCTAssertTrue(app.buttons["ae-home-briefing"].isHittable)
+        guard openBriefing() else { return }
+        closeBriefing()
         checkpoint("GUIDE-first-flight-home")
     }
 

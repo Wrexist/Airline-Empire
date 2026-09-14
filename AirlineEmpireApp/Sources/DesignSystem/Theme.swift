@@ -331,6 +331,11 @@ enum Format {
         }
     }
 
+    /// Speak the amount without compact suffixes or a currency glyph alone.
+    static func moneyAccessibility(_ money: Money) -> String {
+        "\(decimal(Double(money.cents) / 100, places: 2)) dollars"
+    }
+
     /// A fraction as a whole-number percentage, in the reader's locale.
     static func percent(_ value: Double) -> String {
         value.formatted(.percent.precision(.fractionLength(0)))

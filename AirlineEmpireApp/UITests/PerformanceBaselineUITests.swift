@@ -212,14 +212,16 @@ final class PerformanceBaselineUITests: AEUITestCase {
     ///
     /// `ae-map-bench` measures model computation on Linux; nothing measured
     /// the app. This is deliberately the cheapest honest metric: XCTest
-    /// launches the app five times and reports the median in the job log.
+    /// records repeated process launches in the job log. This does not clear
+    /// filesystem caches or measure a device's first boot.
     /// It is a baseline, not a budget — no assertion, because a number that
     /// fails a build before anyone has agreed what is acceptable just gets
     /// deleted. Map rendering, zoom latency and scroll hitching remain
     /// unmeasured; those need Instruments and a person (docs/PERFORMANCE.md).
     func testColdLaunchBaseline() throws {
         measure(metrics: [XCTApplicationLaunchMetric()]) {
-            XCUIApplication().launch()
+            // Preserve the test's isolated save directory on every launch.
+            app.launch()
         }
     }
 }

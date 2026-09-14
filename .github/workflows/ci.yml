@@ -556,7 +556,7 @@ jobs:
         if: matrix.run
         run: |
           set -euo pipefail
-          NAME=$(xcrun simctl list devices available --json \
+          DEVICE=$(xcrun simctl list devices available --json \
             | python3 -c "
           import json, sys
           data = json.load(sys.stdin)['devices']
@@ -574,16 +574,19 @@ jobs:
                       # cramped row, and this project has never seen one.
                       score = (0 if 'Pro' in name or 'Max' in name else 1, name)
                       if best is None or score > best[0]:
-                          best = (score, name)
+                          best = (score, device['udid'])
           print(best[1] if best else '')
           ")
-          if [ -z "$NAME" ]; then
+          if [ -z "$DEVICE" ]; then
             echo 'No available iOS simulator on this runner.' >&2
             xcrun simctl list devices available >&2
             exit 1
           fi
-          echo "Using simulator: $NAME"
-          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "Using simulator: $DEVICE"
+          echo "id=$DEVICE" >> "$GITHUB_OUTPUT"
+          # Finish the first simulator boot before XCTest measures an app launch.
+          # A device ID also avoids ambiguous names across installed runtimes.
+          xcrun simctl bootstatus "$DEVICE" -b
 
       # Two passes, on purpose.
       #
@@ -608,7 +611,7 @@ jobs:
             -project AirlineEmpire.xcodeproj \
             -scheme AirlineEmpire \
             -configuration Debug \
-            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.id }}" \
             -only-testing:AirlineEmpireUITests/PerformanceBaselineUITests \
             -parallel-testing-enabled NO \
             -resultBundlePath UITestResults-baseline.xcresult \
@@ -642,7 +645,7 @@ jobs:
             -project AirlineEmpire.xcodeproj \
             -scheme AirlineEmpire \
             -configuration Debug \
-            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.id }}" \
             ${{ matrix.tests }} \
             -parallel-testing-enabled NO \
             -resultBundlePath UITestResults.xcresult \

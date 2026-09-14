@@ -85,6 +85,7 @@ struct FinanceContent: View {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Cash available").font(.subheadline).foregroundStyle(AETheme.mutedText)
                 Text(Format.money(model.cash))
+                    .accessibilityLabel("Cash available, \(Format.moneyAccessibility(model.cash))")
                     .font(.system(.largeTitle, weight: .semibold)).monospacedDigit()
                     .foregroundStyle(model.cash.isNegative ? AETheme.negative : .primary)
                     .fixedSize(horizontal: false, vertical: true)

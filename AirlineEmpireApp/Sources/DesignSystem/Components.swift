@@ -171,6 +171,7 @@ struct MoneyText: View {
 
     var body: some View {
         Text(Format.money(money))
+            .accessibilityLabel(Format.moneyAccessibility(money))
             .monospacedDigit()
             .contentTransition(.numericText())
             .aeAnimation(AEMotion.content, value: money.cents)
