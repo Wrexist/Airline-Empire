@@ -29,12 +29,15 @@ class StoreScreenshotUITests: AEUITestCase {
 
         guard openAirlineSection("Fleet") else { return }
         shot("02-fleet")
+        guard verifyFleetControls() else { return }
         guard openAircraftMarket() else { return }
         shot("02b-market")
+        guard verifyMarketControls() else { return }
         app.navigationBars.buttons.firstMatch.tap()
 
         guard openAirlineSection("Routes") else { return }
         shot("03b-routes")
+        guard verifyNetworkStatistics() else { return }
         let row = app.descendants(matching: .any).matching(NSPredicate(
             format: "identifier == %@ AND label CONTAINS %@ AND label CONTAINS %@",
             "ae-route-row", "ARN", "IST")).firstMatch
@@ -59,6 +62,46 @@ class StoreScreenshotUITests: AEUITestCase {
         guard openBriefing() else { return }
         shot("06b-briefing")
         closeBriefing()
+    }
+
+    // Exercise the controls changed by the compact management layout using
+    // the same earned campaign in both appearances and on both device sizes.
+    private func verifyFleetControls() -> Bool {
+        let statistics = app.buttons.matching(identifier: "ae-fleet-statistics").firstMatch
+        guard require(statistics, "expandable fleet statistics"), tapWhenReady(statistics) else { return false }
+        XCTAssertTrue(app.staticTexts["Average age"].waitForExistence(timeout: 5))
+        guard tapWhenReady(statistics) else { return false }
+        let filter = app.buttons["ae-fleet-status-filter"]
+        guard require(filter, "the compact fleet status filter"), tapWhenReady(filter) else { return false }
+        let idle = app.buttons["ae-fleet-status-idle"]
+        guard require(idle, "the idle filter option"), tapWhenReady(idle) else { return false }
+        XCTAssertEqual(filter.value as? String, "Idle")
+        let reset = app.buttons["ae-fleet-reset-filters"]
+        guard require(reset, "reset fleet filters"), tapWhenReady(reset) else { return false }
+        XCTAssertEqual(filter.value as? String, "All")
+        return true
+    }
+
+    private func verifyMarketControls() -> Bool {
+        let model = app.staticTexts.matching(identifier: "ae-market-model-name").firstMatch
+        guard scrollUntil(model, "the aircraft model facts"), tapWhenReady(model) else { return false }
+        let used = app.buttons.matching(identifier: "ae-deal-buy-used").firstMatch
+        guard scrollUntil(used, "the used deal selector"), tapWhenReady(used) else { return false }
+        XCTAssertTrue(app.buttons.matching(identifier: "ae-market-buy-used").firstMatch.waitForExistence(timeout: 5),
+                      "Choosing a deal updates its own commit action without purchasing")
+        let lease = app.buttons.matching(identifier: "ae-deal-lease").firstMatch
+        guard tapWhenReady(lease) else { return false }
+        XCTAssertTrue(app.buttons.matching(identifier: "ae-market-lease").firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Aircraft market"].exists,
+                      "Tapping facts and changing deals must leave the market open")
+        return true
+    }
+
+    private func verifyNetworkStatistics() -> Bool {
+        let statistics = app.buttons.matching(identifier: "ae-network-statistics").firstMatch
+        guard require(statistics, "expandable network statistics"), tapWhenReady(statistics) else { return false }
+        XCTAssertTrue(app.staticTexts["Losing routes"].waitForExistence(timeout: 5))
+        return tapWhenReady(statistics)
     }
 
     private func shot(_ name: String) {

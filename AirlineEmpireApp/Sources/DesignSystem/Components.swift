@@ -907,6 +907,60 @@ struct AEMetric: Identifiable, Equatable {
     }
 }
 
+/// A short operational overview. Its parent supplies the single card surface.
+/// Supporting figures stay available without pushing the list off the screen.
+struct AEManagementSummary: View {
+    let title: String
+    let metrics: [AEMetric]
+    let details: [AEMetric]
+    let identifier: String
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @State private var expanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AETheme.spacingS) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), alignment: .topLeading),
+                                     count: typeSize.isAccessibilitySize ? 1 : 3),
+                      alignment: .leading, spacing: AETheme.spacingS) {
+                ForEach(metrics) { metric in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(metric.value)
+                            .font(.system(.title3, design: .rounded, weight: .semibold))
+                            .foregroundStyle(metric.tint ?? .primary)
+                            .monospacedDigit()
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(metric.label)
+                            .font(.caption).foregroundStyle(AETheme.mutedText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(metric.label): \(metric.value)")
+                }
+            }
+            DisclosureGroup(isExpanded: $expanded) {
+                VStack(spacing: AETheme.spacingS) {
+                    ForEach(details) { metric in
+                        LabeledContent(metric.label) {
+                            Text(metric.value).monospacedDigit()
+                                .foregroundStyle(metric.tint ?? .primary)
+                        }
+                    }
+                }
+                .font(.subheadline)
+                .padding(.top, AETheme.spacingS)
+            } label: {
+                Text(title).font(.caption.weight(.medium))
+                    .foregroundStyle(AETheme.mutedText)
+                    .frame(minHeight: 44, alignment: .leading)
+            }
+            .accessibilityIdentifier(identifier)
+        }
+        .aeAnimation(AEMotion.content, value: expanded)
+        .accessibilityElement(children: .contain)
+    }
+}
+
 struct AECompactMetric: View {
     let metric: AEMetric
 

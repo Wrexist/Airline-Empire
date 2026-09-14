@@ -47,15 +47,18 @@ struct FleetList: View {
                         // the same fact with somewhere to press.
                         if let idle = firstIdle(all) {
                             NavigationLink(value: idle.id) {
-                                AENextStepLabel(
-                                    icon: "pause.circle.fill",
-                                    title: idleCount(all) == 1
-                                        ? "Put the \(idle.typeName) to work"
-                                        : "Put \(idleCount(all)) idle aircraft to work",
-                                    detail: "Parked at \(idle.location.raw), earning nothing. Give it a route.",
-                                    tint: AETheme.caution,
-                                    attention: true,
-                                    showsChevron: false)
+                                Label {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("\(idleCount(all)) idle \(idleCount(all) == 1 ? "aircraft needs" : "aircraft need") a route")
+                                            .font(.subheadline.weight(.semibold))
+                                        Text("Assign \(idle.typeName) at \(idle.location.raw)")
+                                            .font(.caption).foregroundStyle(AETheme.mutedText)
+                                    }
+                                } icon: {
+                                    Image(systemName: "pause.circle.fill")
+                                        .foregroundStyle(AETheme.caution)
+                                }
+                                .frame(minHeight: 44)
                             }
                             .aeListRow()
                             .accessibilityIdentifier("ae-fleet-next-step")
@@ -63,7 +66,7 @@ struct FleetList: View {
                         // The bar only appears once there are enough aircraft
                         // for scanning to be work. At four aeroplanes a filter
                         // is a control that costs a row and saves nothing.
-                        if all.count >= 8 {
+                        if all.count >= 8 || filter != FleetFilter() {
                             FleetFilterBar(filter: $filter,
                                            categories: all.presentCategories)
                                 .aeListRow()
@@ -185,62 +188,78 @@ struct FleetFilterBar: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AETheme.spacingS) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: AETheme.spacingXS) {
-                    ForEach(FleetFilter.Status.allCases, id: \.self) { status in
-                        let hits = count(status: status)
-                        Button {
-                            filter.status = status
-                        } label: {
+        AEChipRow {
+            Menu {
+                ForEach(FleetFilter.Status.allCases, id: \.self) { status in
+                    let hits = count(status: status)
+                    Button {
+                        filter.status = status
+                    } label: {
+                        if filter.status == status {
+                            Label("\(Vocab.fleetStatus(status)) \(hits)", systemImage: "checkmark")
+                        } else {
                             Text("\(Vocab.fleetStatus(status)) \(hits)")
-                                .font(AEType.badge)
                         }
-                        .buttonStyle(.aeTertiary)
-                        .disabled(hits == 0 && status != .all)
-                        .opacity(hits == 0 && status != .all ? 0.4 : 1)
-                        .overlay(alignment: .bottom) {
-                            // Selection is carried by a rule as well as by
-                            // the button's own tint, so it does not depend on
-                            // colour alone.
-                            if filter.status == status {
-                                Capsule().fill(AETheme.accent).frame(height: 2)
-                            }
-                        }
-                        .accessibilityLabel("\(Vocab.fleetStatus(status)), \(hits) aircraft")
-                        .accessibilityAddTraits(filter.status == status
-                                                ? .isSelected : [])
                     }
+                    .disabled(hits == 0 && status != .all)
+                    .accessibilityIdentifier("ae-fleet-status-\(status)")
                 }
-                .padding(.horizontal, 2)
+            } label: {
+                filterLabel("\(Vocab.fleetStatus(filter.status)) \(count(status: filter.status))",
+                            icon: "line.3.horizontal.decrease")
             }
-            HStack(spacing: AETheme.spacingS) {
+            .accessibilityLabel("Aircraft status")
+            .accessibilityValue(Vocab.fleetStatus(filter.status))
+            .accessibilityIdentifier("ae-fleet-status-filter")
+
+            Menu {
                 Picker("Ownership", selection: $filter.ownership) {
                     ForEach(FleetFilter.Ownership.allCases, id: \.self) { option in
                         Text(Vocab.fleetOwnership(option)).tag(option)
                     }
                 }
-                .pickerStyle(.segmented)
-                if categories.count > 1 {
-                    Menu {
-                        Button("All types") { filter.category = nil }
+            } label: {
+                filterLabel(filter.ownership == .all ? "Ownership" : Vocab.fleetOwnership(filter.ownership),
+                            icon: "building.columns")
+            }
+            .accessibilityLabel("Aircraft ownership")
+            .accessibilityValue(Vocab.fleetOwnership(filter.ownership))
+            .accessibilityIdentifier("ae-fleet-ownership-filter")
+
+            if categories.count > 1 {
+                Menu {
+                    Picker("Aircraft type", selection: $filter.category) {
+                        Text("All types").tag(Optional<AircraftCategory>.none)
                         ForEach(categories, id: \.self) { category in
-                            Button(Vocab.category(category)) {
-                                filter.category = category
-                            }
+                            Text(Vocab.category(category)).tag(Optional(category))
                         }
-                    } label: {
-                        Label(filter.category.map(Vocab.category) ?? "All types",
-                              systemImage: "line.3.horizontal.decrease")
-                            .font(AEType.caption)
-                            .frame(minHeight: 44)
                     }
-                    .accessibilityLabel("Filter by aircraft type")
+                } label: {
+                    filterLabel(filter.category.map(Vocab.category) ?? "Type", icon: "airplane")
                 }
+                .accessibilityLabel("Filter by aircraft type")
+                .accessibilityValue(filter.category.map(Vocab.category) ?? "All types")
+            }
+            if filter != FleetFilter() {
+                Button("Reset", systemImage: "xmark.circle") { filter = FleetFilter() }
+                    .font(.caption.weight(.medium))
+                    .frame(minHeight: 44)
+                    .accessibilityIdentifier("ae-fleet-reset-filters")
             }
         }
+        .buttonStyle(.borderless)
+        .aeAnimation(AEMotion.selection, value: filter)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Fleet filters")
+    }
+
+    private func filterLabel(_ title: String, icon: String) -> some View {
+        Label(title, systemImage: icon)
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 12)
+            .frame(minHeight: 44)
+            .background(AETheme.accent.opacity(0.08), in: Capsule())
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -258,48 +277,26 @@ struct FleetFilterBar: View {
 struct FleetSummaryRow: View {
     let summary: FleetSummary
 
-    /// Averages over three aircraft are the rows themselves, restated — the
-    /// AE-033 audit photographed a seven-metric strip over a one-aircraft
-    /// fleet (EXP-02). The aggregates join once the fleet is big enough for
-    /// scanning the rows to be work.
-    private var compact: Bool { summary.total <= 3 }
-
-    private var metrics: [AEMetric] {
-        var list: [AEMetric] = [
-            AEMetric("aircraft", "\(summary.total)"),
-            AEMetric("flying", "\(summary.assigned)",
-                     tint: summary.assigned > 0 ? AETheme.positive : nil),
-            // Idle aircraft are the number a player can act on: they cost the
-            // same as flying ones and earn nothing.
-            AEMetric("idle", "\(summary.idle)",
-                     tint: summary.idle > 0 ? AETheme.caution : nil),
+    private var details: [AEMetric] {
+        var list = [
+            AEMetric("In use", summary.utilization.map(Format.percent) ?? "\u{2014}"),
+            AEMetric("Average age", summary.averageAgeYears.map { "\(Format.decimal($0, places: 0)) y" } ?? "\u{2014}"),
+            AEMetric("Condition", summary.averageCondition.map(Format.percent) ?? "\u{2014}"),
+            AEMetric("In maintenance", "\(summary.inMaintenance)"),
+            AEMetric("On order", "\(summary.onOrder)")
         ]
-        if !compact {
-            list.append(AEMetric("in use", summary.utilization.map(Format.percent) ?? "—"))
-            list.append(AEMetric("avg age", summary.averageAgeYears
-                        .map { "\(Format.decimal($0, places: 0)) y" } ?? "—"))
-            list.append(AEMetric("condition",
-                     summary.averageCondition.map(Format.percent) ?? "—",
-                     tint: (summary.averageCondition ?? 1) < 0.6
-                         ? AETheme.caution : nil))
-        }
-        if summary.inMaintenance > 0 {
-            list.append(AEMetric("in check", "\(summary.inMaintenance)",
-                                 tint: AETheme.caution))
-        }
-        if summary.onOrder > 0 {
-            list.append(AEMetric("on order", "\(summary.onOrder)"))
-        }
         if summary.leasedCount > 0 {
-            list.append(AEMetric("leases/mo",
-                                 Format.money(summary.monthlyLeaseCost)))
+            list.append(AEMetric("Monthly leases", Format.money(summary.monthlyLeaseCost)))
         }
         return list
     }
 
     var body: some View {
-        AEMetricStrip(metrics)
-        .accessibilityElement(children: .contain)
+        AEManagementSummary(title: "Fleet statistics", metrics: [
+            AEMetric("aircraft", "\(summary.total)"),
+            AEMetric("flying", "\(summary.assigned)", tint: AETheme.positive),
+            AEMetric("idle", "\(summary.idle)", tint: summary.idle > 0 ? AETheme.caution : nil)
+        ], details: details, identifier: "ae-fleet-statistics")
         .accessibilityLabel("Fleet summary")
     }
 }
@@ -857,6 +854,7 @@ struct AircraftShopSheet: View {
     @State private var sort: Sort = .recommended
     @State private var hidesLocked = true
     @State private var showingOptions = false
+    @State private var showingNetworkDetails = false
     @State private var starterOpportunity: MarketOpportunity?
     @State private var selectedRouteID: RouteID?
     @State private var routeFocus: RouteFocus = .all
@@ -914,52 +912,71 @@ struct AircraftShopSheet: View {
                     List {
                         Section {
                             FirstFlightProgress()
-                            wallet(snapshot: snapshot, player: player.id)
-                            Button { showingOptions.toggle() } label: {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "slider.horizontal.3")
-                                    VStack(alignment: .leading, spacing: 3) {
-                                        Text("Filters and purchase terms").font(.subheadline.weight(.semibold))
-                                        Text("\(sort.title) \u{00B7} used \(usedAge)y \u{00B7} lease \(leaseTermMonths) months")
-                                            .font(.caption).foregroundStyle(AETheme.mutedText)
+                            VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                                wallet(snapshot: snapshot, player: player.id)
+                                Divider()
+                                Button { showingOptions.toggle() } label: {
+                                    HStack(spacing: 12) {
+                                        Image(systemName: "slider.horizontal.3")
+                                        VStack(alignment: .leading, spacing: 3) {
+                                            Text("Filters and purchase terms").font(.subheadline.weight(.semibold))
+                                            Text("\(sort.title) \u{00B7} used \(usedAge)y \u{00B7} lease \(leaseTermMonths) months")
+                                                .font(.caption).foregroundStyle(AETheme.mutedText)
+                                        }
+                                        Spacer(minLength: 8)
+                                        Image(systemName: showingOptions ? "chevron.up" : "chevron.down")
+                                            .font(.caption.weight(.semibold))
                                     }
-                                    Spacer(minLength: 8)
-                                    Image(systemName: showingOptions ? "chevron.up" : "chevron.down")
-                                        .font(.caption.weight(.semibold))
+                                    .frame(minHeight: 44)
+                                    .contentShape(Rectangle())
                                 }
-                                .frame(minHeight: 44)
-                                .contentShape(Rectangle())
+                                .buttonStyle(.aePress)
+                                .accessibilityIdentifier("ae-market-options")
+                                .accessibilityValue(showingOptions ? "Expanded" : "Collapsed")
                             }
-                            .buttonStyle(.aePress)
-                            .accessibilityIdentifier("ae-market-options")
-                            .accessibilityValue(showingOptions ? "Expanded" : "Collapsed")
+                            .listRowBackground(marketCardSurface)
 
                         }
                         if !snapshot.routes(of: player.id).isEmpty {
-                            Section("Match your network") {
-                                PlanningFilters(options: RouteFocus.allCases.map {
-                                    PlanningFilterOption(value: $0, title: $0.title,
-                                                         symbol: $0 == .unassigned ? "airplane" : "point.topleft.down.to.point.bottomright.curvepath")
-                                }, selection: $routeFocus)
-                                .listRowBackground(Color.clear)
-                                routePicker(snapshot: snapshot, catalog: catalog, player: player.id)
-                                if let route = selectedRouteID.flatMap({ snapshot.routes[$0] }) {
-                                    Text("Aircraft that fit \(route.origin.raw)–\(route.destination.raw)'s range and runways, ranked by demand and capacity, then lease cost. New routes use estimated demand.")
-                                        .font(.caption).foregroundStyle(.secondary)
-                                    Text("Leased and used aircraft are assigned here automatically. New aircraft must arrive before assignment.")
-                                        .font(.caption).foregroundStyle(.secondary)
-                                    if let need = snapshot.fleetNeeds(catalog: catalog).first(where: { $0.routeID == route.id }) {
-                                        Text(needDescription(need))
-                                            .font(.subheadline).foregroundStyle(AETheme.caution)
+                            Section {
+                                VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                                    routePicker(snapshot: snapshot, catalog: catalog, player: player.id)
+                                    if let route = selectedRouteID.flatMap({ snapshot.routes[$0] }) {
+                                        Text("Leased and used aircraft are assigned to \(route.origin.raw)\u{2013}\(route.destination.raw). New aircraft need delivery first.")
+                                            .font(.caption).foregroundStyle(AETheme.mutedText)
+                                            .fixedSize(horizontal: false, vertical: true)
                                     }
-                                } else if let need = snapshot.fleetNeeds(catalog: catalog).first,
-                                          let route = snapshot.routes[need.routeID] {
-                                    Button {
-                                        selectedRouteID = route.id
-                                    } label: {
-                                        Label("Match aircraft to \(route.origin.raw)–\(route.destination.raw)", systemImage: "sparkles")
+                                    DisclosureGroup("Route matching", isExpanded: $showingNetworkDetails) {
+                                        VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                                            PlanningFilters(options: RouteFocus.allCases.map {
+                                                PlanningFilterOption(value: $0, title: $0.title,
+                                                    symbol: $0 == .unassigned ? "airplane" : "point.topleft.down.to.point.bottomright.curvepath")
+                                            }, selection: $routeFocus)
+                                            if let route = selectedRouteID.flatMap({ snapshot.routes[$0] }) {
+                                                Text("Ranked by range, runway fit and demand, then lease cost. New routes use estimated demand.")
+                                                    .font(.caption).foregroundStyle(AETheme.mutedText)
+                                                if let need = snapshot.fleetNeeds(catalog: catalog).first(where: { $0.routeID == route.id }) {
+                                                    Text(needDescription(need))
+                                                        .font(.caption).foregroundStyle(AETheme.caution)
+                                                }
+                                            } else if let need = snapshot.fleetNeeds(catalog: catalog).first,
+                                                      let route = snapshot.routes[need.routeID] {
+                                                Button {
+                                                    selectedRouteID = route.id
+                                                } label: {
+                                                    Label("Match aircraft to \(route.origin.raw)\u{2013}\(route.destination.raw)", systemImage: "sparkles")
+                                                }
+                                                .buttonStyle(.borderless)
+                                                .frame(minHeight: 44)
+                                            }
+                                        }
+                                        .padding(.top, AETheme.spacingS)
                                     }
+                                    .font(.subheadline)
+                                    .frame(minHeight: 44)
+                                    .accessibilityIdentifier("ae-market-network-details")
                                 }
+                                .listRowBackground(marketCardSurface)
                             }
                         }
                         if let market = starterOpportunity,
@@ -1005,7 +1022,8 @@ struct AircraftShopSheet: View {
                             Section {
                                 shopRow(spec, catalog: catalog, snapshot: snapshot,
                                         player: player.id, limits: limits)
-                                    .listRowBackground(AETheme.cardBackground)
+                                    .listRowBackground(marketCardSurface)
+                                    .listRowSeparator(.hidden)
                                 // The commit is its own row on purpose: a row
                                 // whose only button is default-styled makes
                                 // the whole row the tap target (the pattern
@@ -1020,6 +1038,10 @@ struct AircraftShopSheet: View {
                                         onCommitted: { [routeID = selectedRouteID] aircraftID in
                                             completeAcquisition(aircraftID: aircraftID, routeID: routeID)
                                         })
+                                    .listRowBackground(marketCardSurface)
+                                    .listRowSeparator(.hidden)
+                                    .listRowInsets(EdgeInsets(top: 0, leading: 20,
+                                                              bottom: 16, trailing: 20))
                                 }
                             }
                         }
@@ -1228,6 +1250,11 @@ struct AircraftShopSheet: View {
         .accessibilityElement(children: .combine)
     }
 
+    private var marketCardSurface: some View {
+        LinearGradient(colors: [AETheme.surfaceHighlight, AETheme.cardBackground],
+                       startPoint: .leading, endPoint: .trailing)
+    }
+
     /// The silhouette, the name, and the lock — laid out by how much room
     /// the type size leaves.
     ///
@@ -1253,6 +1280,7 @@ struct AircraftShopSheet: View {
             Text("\(spec.manufacturer) \(spec.model)")
                 .font(AEType.body.weight(.semibold))
                 .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("ae-market-model-name")
             // The role, not the category. "Regional jet" is a taxonomy a
             // player has to already know; "Regional connector" is what the
             // aeroplane is bought to do (MASTER PROMPT 5 §10).
@@ -1334,6 +1362,7 @@ struct AircraftShopSheet: View {
                     .foregroundStyle(AETheme.mutedText)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
+                Divider().padding(.vertical, AETheme.spacingXS)
                 ShopDealPicker(
                     facts: facts(spec, catalog: catalog, snapshot: snapshot,
                                  player: player),
@@ -1342,6 +1371,7 @@ struct AircraftShopSheet: View {
             }
         }
         .padding(.vertical, 10)
+
     }
 
     private func locked(_ spec: AircraftTypeSpec,

@@ -2,12 +2,12 @@
 
 ## Current pre-TestFlight work - 14 September 2026
 
-Source under review: `cc18dd0`. Distributed build: **1.0.22 (11)**. **No new TestFlight build or upload until the user explicitly approves.**
+Current app source: `9b4625b` (step 1 implemented). Distributed build: **1.0.22 (11)**. **No new TestFlight build or upload until the user explicitly approves.**
 The [six-part current audit](../docs/PRE_TESTFLIGHT_AUDIT_2026-09-14.md) is the source of priorities and acceptance criteria. Historical phases below are not an accurate open-feature queue.
 
-- [ ] AUD-08: Fix informative badge contrast in light/dark appearances.
-- [ ] AUD-05: Keep a concise next-departure/readiness line visible on route details.
-- [ ] AUD-10: Show actual version/build in Settings.
+- [x] AUD-08: Fix informative badge contrast in light/dark appearances.
+- [x] AUD-05: Keep a concise next-departure/readiness line visible on route details.
+- [x] AUD-10: Show actual version/build in Settings.
 - [ ] AUD-02: Compact Fleet/Routes summaries and filters; show useful rows sooner.
 - [ ] AUD-03: Unify aircraft-market model and purchase-row surfaces.
 - [ ] AUD-01: Improve portrait map framing; verify fit, pan, zoom and follow behavior.

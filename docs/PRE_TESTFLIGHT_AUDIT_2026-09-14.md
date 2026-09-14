@@ -135,3 +135,33 @@ After the chosen fixes, freeze app source, run full iPhone journeys and iPad plu
 P3 later: richer aircraft identity, contextual event/rival actions, polished milestone moments and fewer repetitive explanations. Defer new 3D engines, terminals, cargo, alliances or save-system rewrites from this polish build; they need separate design and regression scope.
 
 The audit created documentation and the current todo only. It did not implement the findings, create a new app binary, upload TestFlight or change App Store Connect.
+
+
+## Step 1 implementation - 14 September 2026
+
+Implemented the user-approved first pass in `9b4625ba6e2b0dc5a690a4fae82c8ed228e97e05`:
+
+- AUD-08: informative badges use adaptive readable text independently of their category tint. Fare, owned and leased tints also adapt to appearance. Source-colour calculations across 60 tint/surface combinations yield a minimum estimated 7.61:1 text contrast; this is not calibrated device-pixel measurement.
+- AUD-05: route details keep the next planned departure or readiness message visible outside Schedule details. The summary uses delay-adjusted game time and covers paused, pending, airborne and unscheduled states. Four focused native unit tests cover these branches.
+- AUD-10: Settings reads the installed bundle's version and build and allows text selection. Simulator defaults remain 1.0.0 (1); no release version was bumped. A richer device/iOS support summary remains optional future work.
+
+Validation: iOS simulator compilation passed. All 40 light/dark iPhone/iPad capture tests passed; capture hashes verified. Visually reviewed Fleet and Routes badges in both iPhone appearances, plus route-detail timing in both appearances on iPhone/iPad and dark iPad Fleet. No new truncation or overlap was found in the changed content. Settings is not included in those capture frames; its bundle-backed field was reviewed in source.
+
+- [Light captures](https://github.com/Wrexist/Airline-Empire/actions/runs/34803486331)
+- [Dark captures](https://github.com/Wrexist/Airline-Empire/actions/runs/34803496492)
+- [Native compile and CI](https://github.com/Wrexist/Airline-Empire/actions/runs/34803486318)
+- [Launch safety](https://github.com/Wrexist/Airline-Empire/actions/runs/34803486562): passed: 527 simulation tests, 12 hosted app tests (including all four new RouteScheduleSummaryTests), five selected UI tests and Release entitlement isolation. Zero test failures were reported.
+- [Portability checks](https://github.com/Wrexist/Airline-Empire/actions/runs/34803486326) passed.
+
+Local evidence: `build/ui-polish/step-1/` contains the capture sets, contrast calculation and verified capture manifests. This is targeted step-1 verification; AUD-07/09/12/14 and physical-device acceptance remain open. The broader CI run's Debug Core job was still running when this step closed; no full-CI or full-release pass is claimed.
+
+**No TestFlight build/upload or App Store Connect change was made.** PR #36 remains a draft. Next is step 2: compact Fleet/Routes summaries and filters (AUD-02), then unify aircraft-market model and purchase-row surfaces (AUD-03). Map framing remains a separate task.
+
+
+## Step 2 implementation - 14 September 2026
+
+The user approved continuing with AUD-02 and AUD-03. Fleet and Routes now show three primary metrics in one surface, with all supporting statistics available through a disclosure. Fleet has compact status/ownership/type menus, a reset action for active filters and a shorter actionable idle-aircraft prompt. Large accessibility text stacks the summary metrics and filter controls instead of shrinking them.
+
+Aircraft-market model and commit rows share the same horizontal clay colour field and native section boundary; the commit remains a separate row with its confirmation, precheck and pending-acquisition lock. Wallet/terms controls are consolidated, and network matching explanations/filters expand inside a single compact context card. Selected-route automatic-assignment behavior remains visible. Deal prices, lease term and total commitment are retained.
+
+Native verification is pending. The capture journey now exercises summary disclosures, Fleet filter/reset and Market deal switching using the earned campaign on both devices and appearances. No TestFlight build/upload or App Store Connect changes are authorized or included.
