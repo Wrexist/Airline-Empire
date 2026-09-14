@@ -132,4 +132,22 @@ final class MapCameraTests: XCTestCase {
         XCTAssertTrue(camera.isNetworkFramed)
         XCTAssertFalse(camera.isMoving)
     }
+
+    func testReturnFromFollowStartsAtTheLastVisiblePosition() {
+        let camera = MapCamera()
+        camera.viewport = phone
+        camera.zoom = 6
+        camera.beginFollow(FlightID(raw: 1))
+        let flight = CGPoint(x: 0.72, y: 0.4)
+        let visible = camera.liveCenter(size: phone.size, at: Date(), focus: flight)
+        // The Frame control must hand back the drawn point before starting
+        // travel; otherwise the move starts at the pre-follow network centre.
+        camera.stopFollowing(landingAt: flight)
+        camera.frame(points: regional)
+        let start = camera.liveCenter(size: phone.size, at: .distantPast)
+        XCTAssertEqual(start.x, visible.x, accuracy: 0.00001)
+        XCTAssertEqual(start.y, visible.y, accuracy: 0.00001)
+        XCTAssertNil(camera.followed)
+        XCTAssertTrue(camera.isMoving)
+    }
 }

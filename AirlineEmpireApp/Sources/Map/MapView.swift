@@ -304,7 +304,9 @@ struct MapScreen: View {
             .accessibilityElement()
             .accessibilityIdentifier("ae-map-canvas")
             .accessibilityLabel("World map")
-            .accessibilityValue(accessibilitySummary(model))
+            .modifier(MapFrameAccessibility(summary: accessibilitySummary(model),
+                                            probesEnabled: probesEnabled,
+                                            stats: drawStats, cache: renderCache))
             .accessibilityHint("Double tap an airport, route or aircraft to select it")
             // A followed flight lands, and Core removes it from the world
             // after its turnaround. The camera must not keep chasing an id
@@ -365,7 +367,11 @@ struct MapScreen: View {
                     MapZoomControls(
                         zoomIn: { camera.zoomBy(1.7) },
                         zoomOut: { camera.zoomBy(1 / 1.7) },
-                        frame: { camera.frameNetwork(model) })
+                        frame: {
+                            camera.stopFollowing(landingAt: followMemory.lastPoint)
+                            followMemory.clear()
+                            camera.frameNetwork(model)
+                        })
                 }
                 .padding(.horizontal, AETheme.spacingM)
                 .padding(.top, AETheme.spacingS)
@@ -553,9 +559,6 @@ struct MapScreen: View {
                                 camera.center.x, camera.center.y,
                                 camera.viewport.usable.minX, camera.viewport.usable.minY,
                                 camera.viewport.usable.width, camera.viewport.usable.height))
-            parts.append(drawStats.summary)
-            parts.append(drawStats.framing)
-            parts.append(renderCache.counterSummary)
         }
         return parts.joined(separator: ". ")
     }
@@ -1051,5 +1054,32 @@ final class MapHitGeometry {
                                 routes: cacheRoutes,
                                 routeLocation: location.applying(inverse),
                                 routeTolerance: 26 / scale)
+    }
+}
+
+
+/// Read diagnostic snapshots outside the draw. A paused TimelineView does not
+/// refresh an eager accessibility String after its first Canvas render. This
+/// modifier updates only test accessibility; it never changes camera/game state
+/// or writes observable state from a draw callback. Normal gameplay has no timer.
+private struct MapFrameAccessibility: ViewModifier {
+    let summary: String
+    let probesEnabled: Bool
+    let stats: MapDrawStats
+    let cache: MapRenderCache
+    @State private var rendered = ""
+
+    func body(content: Content) -> some View {
+        content
+            .accessibilityValue(summary + (probesEnabled ? ". " + rendered : ""))
+            .task(id: probesEnabled) {
+                guard probesEnabled else { return }
+                while !Task.isCancelled {
+                    rendered = [stats.summary, stats.framing, cache.counterSummary]
+                        .joined(separator: ". ")
+                    do { try await Task.sleep(for: .milliseconds(250)) }
+                    catch { return }
+                }
+            }
     }
 }

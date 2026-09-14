@@ -296,7 +296,8 @@ camera caching a position is a camera one frame behind the thing it follows.
 So each frame resolves the followed flight through `MapFollow.point` — the
 same interpolation `MapFrame` draws with, one flight's worth, run before the
 projector exists because the projector is built around it — and passes it to
-`liveCenter(size:at:focus:)`, where it replaces the committed centre. It is
+`liveCenter(size:at:focus:)`, which solves for the centre that places the flight
+in the measured clear region between the top controls and bottom panel. It is
 not eased toward: the aircraft is already moving smoothly, and easing the
 camera as well produces a camera that trails its target forever.
 
@@ -537,3 +538,12 @@ label legibility, colour on a real display.
   in §7, not a bug.
 - **No route-opening drag.** You select an airport and tap; there is no
   drag-from-A-to-B gesture yet.
+
+
+### Viewport-aware network fit (AUD-01, September 2026)
+
+`MapViewport` receives the actual canvas size (including its bottom safe-area bleed), plus measured top and bottom chrome. Airport rings and labels receive an inset inside that clear rectangle. Fit solves each axis using the projector's 2:1 world scale: world width is canvas width times zoom, and world height is half that width. A one-airport network retains regional context; the 0.75x lower zoom limit also accommodates globally separated airports with horizontal margins.
+
+Initial layout and subsequent chrome/size changes refit only an automatically framed network. Pan, pinch, double tap, zoom buttons and follow leave that mode, so rotation does not override a manual camera. Frame network releases follow at its last drawn point before travelling to the fit. Pinch and double-tap anchors remain in full-canvas coordinates.
+
+The fit deliberately uses the ordinary west/east extent, including for dateline-spanning networks: airport markers currently project one world copy, so silently fitting a shorter wrapped arc would hide some markers. This change does not introduce a new projection or renderer.

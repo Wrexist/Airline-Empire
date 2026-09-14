@@ -37,8 +37,11 @@ final class MapCameraUITests: AEUITestCase {
         XCUIDevice.shared.orientation = .portrait
         let bundle = Bundle(for: MapCameraUITests.self)
         let url = try XCTUnwrap(bundle.url(forResource: "store-campaign", withExtension: "json"))
-        launch(appearance: .dark, arguments: ["-AEUITestLoadSave", url.path,
-                                             "-AEUITestProbes", "-AEUITestDarkAppearance"])
+        // The map always renders dark. Pin the app's test appearance instead
+        // of opening simulator Settings while Xcode is launching the app.
+        app.launchArguments.append(contentsOf: ["-AEUITestLoadSave", url.path,
+                                                "-AEUITestProbes", "-AEUITestDarkAppearance"])
+        app.launch()
         app.activate()
         XCTAssertNotNil(waitForTab("Home", timeout: 30))
         openTab("Home")
