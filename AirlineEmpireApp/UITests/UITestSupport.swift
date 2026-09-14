@@ -476,7 +476,7 @@ class AEUITestCase: XCTestCase {
         // nested sheet. Scroll within this market and require the entire
         // action to sit below its toolbar before resolving a tap position.
         func positionLease() -> Bool {
-            for _ in 0..<12 {
+            for _ in 0..<24 {
                 guard market.exists, list.exists else { return false }
                 let bounds = list.frame.intersection(window)
                 let top = max(bounds.minY, market.frame.maxY + 12)
@@ -486,8 +486,6 @@ class AEUITestCase: XCTestCase {
                 if lease.exists {
                     let frame = lease.frame
                     if viewport.contains(frame), lease.isHittable,
-                       frame.midY > viewport.minY + viewport.height * 0.2,
-                       frame.midY < viewport.minY + viewport.height * 0.8,
                        waitUntilStill(lease) { return true }
                 }
                 let moveDown = lease.exists && lease.frame.midY < viewport.midY

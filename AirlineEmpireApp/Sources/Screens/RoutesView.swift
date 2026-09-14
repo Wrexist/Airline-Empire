@@ -879,7 +879,10 @@ struct OpenRouteSheet: View {
     @State private var search = ""
     @State private var rejection: CommandRejection?
     @State private var filter: RouteDiscoveryFilter = .all
-    @State private var createdRoute: RouteID?
+    // Keep the created route in the stack's owned path while its market
+    // presents a purchase confirmation. An optional view destination can be
+    // popped when that nested presentation changes on older iOS runtimes.
+    @State private var navigationPath = NavigationPath()
     @State private var primed = false
     @State private var opening = false
     @State private var markets: [MarketOpportunity] = []
@@ -928,7 +931,7 @@ struct OpenRouteSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             Group {
                 if let snapshot = controller.snapshot,
                    let player = snapshot.playerAirline,
@@ -973,7 +976,7 @@ struct OpenRouteSheet: View {
                           $0.sameMarket(origin: from, destination: to)
                       }) else { return }
                 opening = false
-                createdRoute = route.id
+                navigationPath.append(route.id)
             }
             .onChange(of: controller.lastRejection) {
                 guard opening, let failure = controller.lastRejection else { return }
@@ -981,7 +984,7 @@ struct OpenRouteSheet: View {
                 rejection = failure
                 controller.clearRejection()
             }
-            .navigationDestination(item: $createdRoute) { routeID in
+            .navigationDestination(for: RouteID.self) { routeID in
                 RouteDetailView(routeID: routeID)
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
