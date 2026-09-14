@@ -178,6 +178,7 @@ struct FleetFilterBar: View {
     @Binding var filter: FleetFilter
     let categories: [AircraftCategory]
     @Environment(GameController.self) private var controller
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var cards: [FleetCardModel] { controller.fleetCards }
 
@@ -188,57 +189,60 @@ struct FleetFilterBar: View {
     }
 
     var body: some View {
-        AEChipRow {
-            Menu {
-                ForEach(FleetFilter.Status.allCases, id: \.self) { status in
-                    let hits = count(status: status)
-                    Button {
-                        filter.status = status
-                    } label: {
-                        if filter.status == status {
-                            Label("\(Vocab.fleetStatus(status)) \(hits)", systemImage: "checkmark")
-                        } else {
-                            Text("\(Vocab.fleetStatus(status)) \(hits)")
-                        }
-                    }
-                    .disabled(hits == 0 && status != .all)
-                    .accessibilityIdentifier("ae-fleet-status-\(status)")
-                }
-            } label: {
-                filterLabel("\(Vocab.fleetStatus(filter.status)) \(count(status: filter.status))",
-                            icon: "line.3.horizontal.decrease")
-            }
-            .accessibilityLabel("Aircraft status")
-            .accessibilityValue(Vocab.fleetStatus(filter.status))
-            .accessibilityIdentifier("ae-fleet-status-filter")
-
-            Menu {
-                Picker("Ownership", selection: $filter.ownership) {
-                    ForEach(FleetFilter.Ownership.allCases, id: \.self) { option in
-                        Text(Vocab.fleetOwnership(option)).tag(option)
-                    }
-                }
-            } label: {
-                filterLabel(filter.ownership == .all ? "Ownership" : Vocab.fleetOwnership(filter.ownership),
-                            icon: "building.columns")
-            }
-            .accessibilityLabel("Aircraft ownership")
-            .accessibilityValue(Vocab.fleetOwnership(filter.ownership))
-            .accessibilityIdentifier("ae-fleet-ownership-filter")
-
-            if categories.count > 1 {
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: AETheme.spacingS))
+            : AnyLayout(HStackLayout(spacing: AETheme.spacingS))
+        return VStack(alignment: .leading, spacing: AETheme.spacingXS) {
+            layout {
                 Menu {
-                    Picker("Aircraft type", selection: $filter.category) {
-                        Text("All types").tag(Optional<AircraftCategory>.none)
-                        ForEach(categories, id: \.self) { category in
-                            Text(Vocab.category(category)).tag(Optional(category))
+                    ForEach(FleetFilter.Status.allCases, id: \.self) { status in
+                        let hits = count(status: status)
+                        Button {
+                            filter.status = status
+                        } label: {
+                            if filter.status == status {
+                                Label("\(Vocab.fleetStatus(status)) \(hits)", systemImage: "checkmark")
+                            } else {
+                                Text("\(Vocab.fleetStatus(status)) \(hits)")
+                            }
+                        }
+                        .disabled(hits == 0 && status != .all)
+                        .accessibilityIdentifier("ae-fleet-status-\(status)")
+                    }
+                } label: {
+                    filterLabel("\(Vocab.fleetStatus(filter.status)) \(count(status: filter.status))")
+                }
+                .accessibilityLabel("Aircraft status")
+                .accessibilityValue(Vocab.fleetStatus(filter.status))
+                .accessibilityIdentifier("ae-fleet-status-filter")
+
+                Menu {
+                    Picker("Ownership", selection: $filter.ownership) {
+                        ForEach(FleetFilter.Ownership.allCases, id: \.self) { option in
+                            Text(Vocab.fleetOwnership(option)).tag(option)
                         }
                     }
                 } label: {
-                    filterLabel(filter.category.map(Vocab.category) ?? "Type", icon: "airplane")
+                    filterLabel(filter.ownership == .all ? "Ownership" : Vocab.fleetOwnership(filter.ownership))
                 }
-                .accessibilityLabel("Filter by aircraft type")
-                .accessibilityValue(filter.category.map(Vocab.category) ?? "All types")
+                .accessibilityLabel("Aircraft ownership")
+                .accessibilityValue(Vocab.fleetOwnership(filter.ownership))
+                .accessibilityIdentifier("ae-fleet-ownership-filter")
+
+                if categories.count > 1 {
+                    Menu {
+                        Picker("Aircraft type", selection: $filter.category) {
+                            Text("All types").tag(Optional<AircraftCategory>.none)
+                            ForEach(categories, id: \.self) { category in
+                                Text(Vocab.category(category)).tag(Optional(category))
+                            }
+                        }
+                    } label: {
+                        filterLabel(filter.category.map(Vocab.category) ?? "Type")
+                    }
+                    .accessibilityLabel("Filter by aircraft type")
+                    .accessibilityValue(filter.category.map(Vocab.category) ?? "All types")
+                }
             }
             if filter.isNarrowed {
                 Button("Reset", systemImage: "xmark.circle") { filter = FleetFilter() }
@@ -253,13 +257,16 @@ struct FleetFilterBar: View {
         .accessibilityLabel("Fleet filters")
     }
 
-    private func filterLabel(_ title: String, icon: String) -> some View {
-        Label(title, systemImage: icon)
-            .font(.caption.weight(.semibold))
-            .padding(.horizontal, 12)
-            .frame(minHeight: 44)
-            .background(AETheme.accent.opacity(0.08), in: Capsule())
-            .fixedSize(horizontal: false, vertical: true)
+    private func filterLabel(_ title: String) -> some View {
+        HStack(spacing: 6) {
+            Text(title).fixedSize(horizontal: false, vertical: true)
+            Image(systemName: "chevron.down").font(.caption2)
+                .accessibilityHidden(true)
+        }
+        .font(.caption.weight(.semibold))
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity, minHeight: 44)
+        .background(AETheme.accent.opacity(0.08), in: Capsule())
     }
 }
 

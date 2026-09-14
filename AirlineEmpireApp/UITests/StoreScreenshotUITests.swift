@@ -72,7 +72,11 @@ class StoreScreenshotUITests: AEUITestCase {
         XCTAssertTrue(app.staticTexts["Average age"].waitForExistence(timeout: 5))
         guard tapWhenReady(statistics) else { return false }
         let filter = app.buttons["ae-fleet-status-filter"]
-        guard require(filter, "the compact fleet status filter"), tapWhenReady(filter) else { return false }
+        guard require(filter, "the compact fleet status filter") else { return false }
+        XCTAssertLessThanOrEqual(filter.frame.height, 60,
+                                 "A default-size filter must remain a compact labelled control")
+        XCTAssertLessThanOrEqual(app.buttons["ae-fleet-ownership-filter"].frame.height, 60)
+        guard tapWhenReady(filter) else { return false }
         let idle = app.buttons["ae-fleet-status-idle"]
         guard require(idle, "the idle filter option"), tapWhenReady(idle) else { return false }
         XCTAssertEqual(filter.value as? String, "Idle")
