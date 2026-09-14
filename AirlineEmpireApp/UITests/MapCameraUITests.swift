@@ -137,11 +137,19 @@ final class MapCameraUITests: AEUITestCase {
         XCUIDevice.shared.orientation = .landscapeLeft
         Thread.sleep(forTimeInterval: 2)
         assertFitted()
-        checkpoint("MAP-06-ipad-landscape")
+        // App screenshots can apply the pre-rotation window crop. Capture
+        // the actual display when validating an orientation transition.
+        let landscape = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        landscape.name = "KEY-MAP-06-ipad-landscape"
+        landscape.lifetime = .keepAlways
+        add(landscape)
         XCUIDevice.shared.orientation = .portrait
         Thread.sleep(forTimeInterval: 2)
         assertFitted()
-        checkpoint("MAP-07-ipad-portrait")
+        let portrait = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        portrait.name = "KEY-MAP-07-ipad-portrait"
+        portrait.lifetime = .keepAlways
+        add(portrait)
         let origin = map.coordinate(withNormalizedOffset: .zero)
         let clear = numbers(#"usable ([0-9]+(?:\.[0-9]+)?) ([0-9]+(?:\.[0-9]+)?) ([0-9]+(?:\.[0-9]+)?) ([0-9]+(?:\.[0-9]+)?)"#)
         XCTAssertEqual(clear.count, 4)
