@@ -949,6 +949,12 @@ struct SettingsView: View {
     @State private var exportInProgress = false
     @State private var exportFailure: String?
 
+    private var appVersion: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "Unknown"
+        return "\(version) (\(build))"
+    }
+
     var body: some View {
         @Bindable var preferences = controller.preferences
         return List {
@@ -1075,7 +1081,9 @@ struct SettingsView: View {
             }
 
             Section("About") {
-                LabeledContent("Airline Empire", value: "1.0")
+                LabeledContent("Version", value: appVersion)
+                    .textSelection(.enabled)
+                    .accessibilityIdentifier("ae-app-version")
                 if let seed = controller.snapshot?.meta.worldSeed {
                     LabeledContent("World seed", value: String(seed))
                 }

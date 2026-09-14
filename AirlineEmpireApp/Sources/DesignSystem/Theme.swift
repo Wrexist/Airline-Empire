@@ -43,11 +43,14 @@ enum AETheme {
     // `.indigo` and `.teal`, which is exactly the drift a token set exists to
     // prevent (UIUX_FORENSIC_AUDIT UI-029).
     /// Fares and pricing.
-    static let fare = Color(red: 0.55, green: 0.36, blue: 0.86)
+    static let fare = adaptive(0x613994, 0xCDB8FF)
     /// Assets the airline owns outright.
-    static let owned = Color(red: 0.31, green: 0.35, blue: 0.76)
+    static let owned = adaptive(0x3D4690, 0xB5BEFF)
     /// Assets the airline rents.
-    static let leased = Color(red: 0.17, green: 0.56, blue: 0.60)
+    static let leased = adaptive(0x17656B, 0x84D9D4)
+    /// Informative small badge text uses its own ink, not its decorative tint.
+    /// A 16% colored fill preserves category identity in both appearances.
+    static let badgeForeground = adaptive(0x17212B, 0xF1F5FA)
     static let cardBackground = adaptive(0xEDF2F8, 0x171D25)
     static let surfaceHighlight = adaptive(0xFFFFFF, 0x1C242E)
     static let surfaceRim = adaptive(0xFFFFFF, 0x434D5B)

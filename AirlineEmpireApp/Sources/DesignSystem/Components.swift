@@ -160,7 +160,7 @@ struct AEBadge: View {
         .padding(.horizontal, AETheme.spacingS)
         .padding(.vertical, 3)
         .background(color.opacity(0.16))
-        .foregroundStyle(color)
+        .foregroundStyle(AETheme.badgeForeground)
         .clipShape(Capsule())
     }
 }
