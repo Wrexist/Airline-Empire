@@ -308,7 +308,7 @@ struct FinanceContent: View {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "Loans", systemImage: "banknote")
                 if model.loans.isEmpty {
-                    Text("Debt-free.").font(.subheadline)
+                    Text("No outstanding loans").font(.subheadline)
                         .foregroundStyle(AETheme.mutedText)
                 } else {
                     ForEach(Array(model.loans.enumerated()), id: \.offset) { _, loan in

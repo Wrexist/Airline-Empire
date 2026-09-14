@@ -301,10 +301,24 @@ final class ShellAndMapUITests: AEUITestCase {
     func testFreshScreensHaveAccessibleNamesAndTraits() throws {
         launch(appearance: .light)
         guard foundAirline() else { return }
+        continueAfterFailure = true
+        defer { continueAfterFailure = false }
         for tab in ["Home", "Airline", "Finance", "World"] {
             openTab(tab)
+            guard tabButton(tab)?.isSelected == true else {
+                XCTFail("Cannot audit \(tab): navigation did not select the requested tab")
+                continue
+            }
             checkpoint("AX-semantics-\(tab)")
-            try app.performAccessibilityAudit(for: [.sufficientElementDescription, .trait])
+            do {
+                try app.performAccessibilityAudit(for: [.sufficientElementDescription, .trait]) { issue in
+                    print("AX-AUDIT \(tab): \(issue.detailedDescription)")
+                    if let element = issue.element { print(element.debugDescription) }
+                    return false // Report every issue; none is suppressed.
+                }
+            } catch {
+                XCTFail("Accessibility audit failed on \(tab): \(error)")
+            }
         }
     }
 
@@ -355,6 +369,11 @@ final class ShellAndMapUITests: AEUITestCase {
             ? app.collectionViews.firstMatch : app.scrollViews.firstMatch
         guard scrollUntil(seats, "aircraft specifications at accessibility size",
                           in: marketList) else { return }
+        if seats.frame.midY > marketList.frame.intersection(window).midY {
+            marketList.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
+                .press(forDuration: 0.05, thenDragTo:
+                    marketList.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4)))
+        }
         XCTAssertTrue(waitUntilStill(seats), "Specification rows did not settle after scrolling")
         checkpoint("AX-market-specifications")
         let lease = app.buttons.matching(identifier: "ae-market-lease").firstMatch

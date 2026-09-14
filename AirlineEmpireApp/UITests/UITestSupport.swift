@@ -551,6 +551,15 @@ class AEUITestCase: XCTestCase {
                 // explicitly; an unqualified query fails as ambiguous.
                 let confirm = app.buttons.matching(identifier: "ae-confirm-action").firstMatch
                 guard require(confirm, "the lease confirmation") else { return false }
+                let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                    confirm.exists && confirm.isHittable
+                }, object: nil)
+                _ = XCTWaiter.wait(for: [ready], timeout: 8)
+                guard confirm.exists, confirm.isHittable, waitUntilStill(confirm) else {
+                    checkpoint("LEASE-CONFIRMATION-NOT-READY")
+                    XCTFail("The lease confirmation did not settle into a hittable control")
+                    return false
+                }
                 if attempt == 1 {
                     capture(Self.logPrefix + "LEASE-CONFIRMATION")
                     // Preserve the dialog before the tap, not just the screen

@@ -150,8 +150,8 @@ final class MapHomeUITests: AEUITestCase {
         // state-checked retry, retain its screenshot, and still fail if the
         // requested speed is not selected. Purchases and day advances do
         // not use this retry because repeating them changes the game twice.
-        func selectSpeed(_ label: String) -> Bool {
-            for attempt in 1...2 {
+        func selectSpeed(_ label: String, attempts: Int = 2) -> Bool {
+            for attempt in 1...attempts {
                 let control = app.buttons.matching(identifier: label).firstMatch
                 guard require(control, "the \(label) control", timeout: 8),
                       control.isHittable, waitUntilStill(control) else {
@@ -165,10 +165,11 @@ final class MapHomeUITests: AEUITestCase {
                     let current = self.app.buttons.matching(identifier: label).firstMatch
                     return current.exists && current.isSelected
                 }, object: nil)
-                if XCTWaiter.wait(for: [selected], timeout: 8) == .completed { return true }
+                if XCTWaiter.wait(for: [selected], timeout: 8) == .completed
+                    || control.isSelected { return true }
                 checkpoint("AE048-SPEED-\(label)-ATTEMPT-\(attempt)")
             }
-            XCTFail("\(label) did not become selected after two idempotent attempts.")
+            XCTFail("\(label) did not become selected after \(attempts) idempotent attempts.")
             return false
         }
         // Observe real departures at normal speed so a short flight remains
@@ -178,7 +179,10 @@ final class MapHomeUITests: AEUITestCase {
         // on the 26.2 hosted simulator (the failed run took over 30 seconds).
         let pauseControl = app.buttons.matching(identifier: "Pause").firstMatch
         guard require(pauseControl, "Pause before starting the flight"),
-              pauseControl.isHittable, waitUntilStill(pauseControl) else { return }
+              pauseControl.isHittable, waitUntilStill(pauseControl) else {
+            XCTFail("Pause was not ready before starting the flight")
+            return
+        }
         let pauseFrame = pauseControl.frame
         let pausePoint = app.coordinate(withNormalizedOffset: .zero)
             .withOffset(CGVector(dx: pauseFrame.midX, dy: pauseFrame.midY))
@@ -208,12 +212,14 @@ final class MapHomeUITests: AEUITestCase {
         // A hosted accessibility lookup can itself exceed the wait budget.
         // Run 34726944483's failure frame showed Pause selected at 06:30,
         // with a live flight, after `exists` spent 11 seconds retrying.
-        // Read the settled control once before declaring the action failed;
-        // this still requires the real selected state and sends no extra tap.
-        guard observedPause || pauseControl.isSelected else {
+        // Read the settled control before deciding whether one resolved
+        // retry is needed. Every path requires the real selected state.
+        if !observedPause && !pauseControl.isSelected {
             checkpoint("AE048-F-PAUSE-NOT-SELECTED")
-            XCTFail("Pause did not stop the clock after flight discovery.")
-            return
+            // The immediate coordinate tap can miss even when its frame is
+            // correct (run 34843065306). Allow one resolved, state-checked
+            // Pause retry, as for the other idempotent speed selections.
+            guard selectSpeed("Pause", attempts: 1) else { return }
         }
         checkpoint("AE048-F0-map-with-the-network-running")
 
