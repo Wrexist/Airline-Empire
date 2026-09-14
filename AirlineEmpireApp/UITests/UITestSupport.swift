@@ -420,9 +420,8 @@ class AEUITestCase: XCTestCase {
     /// reported that the routes board was missing — from behind the market,
     /// which was still covering it.
     ///
-    /// The confirmation is a `confirmationDialog`, which is an action sheet on
-    /// a phone, so it is queried through `app.sheets` rather than by label
-    /// against the whole app — the market row is also called "Lease".
+    /// The market reviews acquisition in place. Query its explicit confirmation
+    /// identifier because the underlying purchase row also describes a lease.
     /// How a completed lease is proved, which depends on where the market was
     /// opened from.
     ///
@@ -527,9 +526,12 @@ class AEUITestCase: XCTestCase {
                     return false
                 }
                 checkpoint("LEASE-CONFIRMATION")
+                XCTAssertGreaterThanOrEqual(confirm.frame.height, 44)
+                XCTAssertFalse(lease.isHittable, "The covered market must not accept another acquisition")
                 if !cancellationChecked {
                     let cancel = app.buttons["ae-confirm-cancel"]
                     guard require(cancel, "Cancel in the lease confirmation") else { return false }
+                    XCTAssertGreaterThanOrEqual(cancel.frame.height, 44)
                     cancel.tap()
                     guard leaseDialogTitle.waitForNonExistence(timeout: 8),
                           market.exists, lease.exists, lease.isEnabled else {

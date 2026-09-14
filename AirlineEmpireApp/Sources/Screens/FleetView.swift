@@ -1118,6 +1118,10 @@ struct AircraftShopSheet: View {
                         }
                     }
                 }
+                .accessibilityIdentifier("ae-market-list")
+                .opacity(showsAcquisitionPanel ? 0 : 1)
+                .allowsHitTesting(!showsAcquisitionPanel)
+                .accessibilityHidden(showsAcquisitionPanel)
             } else {
                 LoadingState(message: "Loading the market")
             }
@@ -1128,9 +1132,6 @@ struct AircraftShopSheet: View {
         ZStack {
             // Keep the list mounted so Cancel restores its exact scroll position.
             marketList
-                .opacity(showsAcquisitionPanel ? 0 : 1)
-                .allowsHitTesting(!showsAcquisitionPanel)
-                .accessibilityHidden(showsAcquisitionPanel)
             if confirmingAcquisition, let request = requestedAcquisition {
                 acquisitionReview(request)
                     .transition(.opacity)
@@ -1145,7 +1146,6 @@ struct AircraftShopSheet: View {
         .aeScreenBackground()
         .navigationTitle("Aircraft market")
         .navigationBarBackButtonHidden(isNavigationDestination)
-        .accessibilityIdentifier("ae-market-list")
         // EXP-06: at accessibility type sizes the run-84/85 frames showed
         // scrolled card text bleeding through the header band above
         // "Done / Aircraft market" with nothing separating the layers.
@@ -1256,15 +1256,23 @@ struct AircraftShopSheet: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: AETheme.spacingS) {
-                Button(request.facts.confirmWord(for: request.deal)) { commit(request) }
+                Button { commit(request) } label: {
+                    Text(request.facts.confirmWord(for: request.deal))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
                     .buttonStyle(.aePrimary)
                     .accessibilityIdentifier("ae-confirm-action")
                     .disabled(blocked != nil)
-                Button("Cancel") {
+                Button {
                     requestedAcquisition = nil
                     confirmingAcquisition = false
                     acquisitionFailure = nil
                     focusedPurchase = request.facts.spec.code
+                } label: {
+                    Text("Cancel")
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.aeSecondary)
                 .accessibilityIdentifier("ae-confirm-cancel")
@@ -1290,7 +1298,10 @@ struct AircraftShopSheet: View {
             .aePageInsets()
         }
         .safeAreaInset(edge: .bottom) {
-            Button("Done") { dismiss() }.buttonStyle(.aePrimary)
+            Button { dismiss() } label: {
+                Text("Done").frame(maxWidth: .infinity, minHeight: 44)
+                    .contentShape(Rectangle())
+            }.buttonStyle(.aePrimary)
                 .padding(AETheme.spacingM).background(AETheme.canvas)
         }
         .aeScreenBackground()
