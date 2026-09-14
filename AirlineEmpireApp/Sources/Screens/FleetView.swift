@@ -66,7 +66,7 @@ struct FleetList: View {
                         // The bar only appears once there are enough aircraft
                         // for scanning to be work. At four aeroplanes a filter
                         // is a control that costs a row and saves nothing.
-                        if all.count >= 8 || filter != FleetFilter() {
+                        if all.count >= 8 || filter.isNarrowed {
                             FleetFilterBar(filter: $filter,
                                            categories: all.presentCategories)
                                 .aeListRow()
@@ -240,7 +240,7 @@ struct FleetFilterBar: View {
                 .accessibilityLabel("Filter by aircraft type")
                 .accessibilityValue(filter.category.map(Vocab.category) ?? "All types")
             }
-            if filter != FleetFilter() {
+            if filter.isNarrowed {
                 Button("Reset", systemImage: "xmark.circle") { filter = FleetFilter() }
                     .font(.caption.weight(.medium))
                     .frame(minHeight: 44)
@@ -248,7 +248,7 @@ struct FleetFilterBar: View {
             }
         }
         .buttonStyle(.borderless)
-        .aeAnimation(AEMotion.selection, value: filter)
+        .aeAnimation(AEMotion.selection, value: filter.isNarrowed)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Fleet filters")
     }
