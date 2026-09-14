@@ -448,7 +448,8 @@ class AEUITestCase: XCTestCase {
     }
 
     @discardableResult
-    func leaseAnAircraft(proof: LeaseProof = .fleetBoard, model: String? = nil) -> Bool {
+    func leaseAnAircraft(proof: LeaseProof = .fleetBoard, model: String? = nil,
+                         verifyCancellation: Bool = false) -> Bool {
         // Hide what the era cannot buy, so the first lease action on screen
         // belongs to an aircraft this airline is allowed to take.
         let eraFilter = app.switches["Hide what this era cannot buy"]
@@ -500,7 +501,8 @@ class AEUITestCase: XCTestCase {
             return false
         }
 
-        for attempt in 1...4 {
+        var cancellationChecked = !verifyCancellation
+        for attempt in 1...(verifyCancellation ? 5 : 4) {
             guard positionLease() else {
                 checkpoint("LEASE-NOT-VISIBLE")
                 XCTFail("The lease action could not be positioned inside the market viewport")
@@ -525,6 +527,20 @@ class AEUITestCase: XCTestCase {
                     return false
                 }
                 checkpoint("LEASE-CONFIRMATION")
+                if !cancellationChecked {
+                    let cancel = app.alerts.firstMatch.buttons["Cancel"]
+                    guard require(cancel, "Cancel in the lease confirmation") else { return false }
+                    cancel.tap()
+                    guard leaseDialogTitle.waitForNonExistence(timeout: 8),
+                          market.exists, lease.exists, lease.isEnabled else {
+                        checkpoint("LEASE-CANCEL-FAILED")
+                        XCTFail("Cancelling must return to the open market with its lease action enabled")
+                        return false
+                    }
+                    checkpoint("LEASE-CANCELLED")
+                    cancellationChecked = true
+                    continue
+                }
                 confirm.tap()
                 let closed = market.waitForNonExistence(timeout: 8)
                 if (closed || !market.exists), leaseLanded(proof, fleetRow: fleetRow) {

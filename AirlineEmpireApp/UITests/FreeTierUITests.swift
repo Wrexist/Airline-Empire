@@ -24,8 +24,11 @@ final class FreeTierUITests: AEUITestCase {
         let store = try SKTestSession(configurationFileNamed: "AirlineEmpire")
         store.resetToDefaultState()
         store.clearTransactions()
-        store.storefront = "USA"
-        store.locale = Locale(identifier: "en_US")
+        // These are already set by the configuration. Reapplying storefront
+        // immediately after reset caused SKInternalErrorDomain 10 on the
+        // simulator and left the first paywall without test prices.
+        XCTAssertEqual(store.storefront, "USA")
+        XCTAssertEqual(store.locale.identifier, "en_US")
         defer { store.clearTransactions(); store.resetToDefaultState() }
         launch(appearance: .light, arguments: ["-AEUITestFree"] + arguments)
         guard foundAirline(), openBriefing() else { return }

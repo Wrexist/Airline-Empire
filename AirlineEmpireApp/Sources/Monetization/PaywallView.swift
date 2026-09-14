@@ -44,6 +44,13 @@ struct PaywallView: View {
         .onAppear {
             catalog = controller.catalog ?? (try? ContentCatalog.loadBundled())
         }
+        .task {
+            // Opening the store must not depend on the launch-time ownership
+            // refresh having finished. The owner coalesces overlapping loads.
+            if entitlements.products.isEmpty {
+                await entitlements.loadProducts()
+            }
+        }
         .toolbar { closeButton }
         .toolbarBackground(.hidden, for: .navigationBar)
         // The dusk backdrop is a dark surface whatever the system is set to,

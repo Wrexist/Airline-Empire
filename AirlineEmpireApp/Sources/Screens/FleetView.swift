@@ -883,8 +883,11 @@ struct AircraftShopSheet: View {
     @State private var pendingAcquisition: Acquisition?
     @State private var previousAircraft: Set<AircraftID> = []
     @State private var acquisitionFailure: String?
-    init(routeID: RouteID? = nil) {
+    private let isNavigationDestination: Bool
+
+    init(routeID: RouteID? = nil, isNavigationDestination: Bool = false) {
         _selectedRouteID = State(initialValue: routeID)
+        self.isNavigationDestination = isNavigationDestination
     }
 
     private enum RouteFocus: String, CaseIterable {
@@ -922,241 +925,11 @@ struct AircraftShopSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if let catalog = controller.catalog,
-                   let snapshot = controller.snapshot,
-                   let player = snapshot.playerAirline {
-                    let fleetTypes = catalog.orderedAircraftTypeCodes.compactMap { catalog.aircraftTypes[$0] }
-                    let limits = (seats: fleetTypes.map(\.seats).max() ?? 1,
-                                  range: fleetTypes.map(\.rangeKm).max() ?? 1)
-                    let availableTypes = types(catalog: catalog, snapshot: snapshot)
-                    List {
-                        Section {
-                            FirstFlightProgress()
-                            VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                                wallet(snapshot: snapshot, player: player.id)
-                                Divider()
-                                Button { showingOptions.toggle() } label: {
-                                    HStack(spacing: 12) {
-                                        Image(systemName: "slider.horizontal.3")
-                                        VStack(alignment: .leading, spacing: 3) {
-                                            Text("Filters and purchase terms").font(.subheadline.weight(.semibold))
-                                            Text("\(sort.title) \u{00B7} used \(usedAge)y \u{00B7} lease \(leaseTermMonths) months")
-                                                .font(.caption).foregroundStyle(AETheme.mutedText)
-                                        }
-                                        Spacer(minLength: 8)
-                                        Image(systemName: showingOptions ? "chevron.up" : "chevron.down")
-                                            .font(.caption.weight(.semibold))
-                                    }
-                                    .frame(minHeight: 44)
-                                    .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.aePress)
-                                .accessibilityIdentifier("ae-market-options")
-                                .accessibilityValue(showingOptions ? "Expanded" : "Collapsed")
-                            }
-                            .listRowBackground(marketCardSurface)
-
-                        }
-                        if !snapshot.routes(of: player.id).isEmpty {
-                            Section {
-                                VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                                    routePicker(snapshot: snapshot, catalog: catalog, player: player.id)
-                                    if let route = selectedRouteID.flatMap({ snapshot.routes[$0] }) {
-                                        Text("Leased and used aircraft are assigned to \(route.origin.raw)\u{2013}\(route.destination.raw). New aircraft need delivery first.")
-                                            .font(.caption).foregroundStyle(AETheme.mutedText)
-                                            .fixedSize(horizontal: false, vertical: true)
-                                    }
-                                    DisclosureGroup("Route matching", isExpanded: $showingNetworkDetails) {
-                                        // Do not build demand analysis while its disclosure is closed.
-                                        if showingNetworkDetails {
-                                            VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                                                PlanningFilters(options: RouteFocus.allCases.map {
-                                                    PlanningFilterOption(value: $0, title: $0.title,
-                                                        symbol: $0 == .unassigned ? "airplane" : "point.topleft.down.to.point.bottomright.curvepath")
-                                                }, selection: $routeFocus)
-                                                if let route = selectedRouteID.flatMap({ snapshot.routes[$0] }) {
-                                                    Text("Ranked by range, runway fit and demand, then lease cost. New routes use estimated demand.")
-                                                        .font(.caption).foregroundStyle(AETheme.mutedText)
-                                                    if let need = snapshot.fleetNeeds(catalog: catalog).first(where: { $0.routeID == route.id }) {
-                                                        Text(needDescription(need))
-                                                            .font(.caption).foregroundStyle(AETheme.caution)
-                                                    }
-                                                } else if let need = snapshot.fleetNeeds(catalog: catalog).first,
-                                                          let route = snapshot.routes[need.routeID] {
-                                                    Button {
-                                                        selectedRouteID = route.id
-                                                    } label: {
-                                                        Label("Match aircraft to \(route.origin.raw)\u{2013}\(route.destination.raw)", systemImage: "sparkles")
-                                                    }
-                                                    .buttonStyle(.borderless)
-                                                    .frame(minHeight: 44)
-                                                }
-                                            }
-                                            .padding(.top, AETheme.spacingS)
-                                        }
-                                    }
-                                    .font(.subheadline)
-                                    .frame(minHeight: 44)
-                                    .accessibilityIdentifier("ae-market-network-details")
-                                }
-                                .listRowBackground(marketCardSurface)
-                            }
-                        }
-                        if let market = starterOpportunity,
-                           let code = market.bestAirframe,
-                           let spec = catalog.aircraftTypes[code] {
-                            Section("A first route to build around") {
-                                Text("\(spec.model) for \(market.origin.raw) to \(market.destination.raw)")
-                                    .font(.headline)
-                                Text("Estimated \(market.monthlyAfterAirframe.compact)/month after lease and route payroll, before airline overhead. Start with two daily round trips and review the actual results before expanding.")
-                                    .font(.caption)
-                                    .foregroundStyle(AETheme.mutedText)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                        if showingOptions {
-                            Section("Show") {
-                                Picker("Sort", selection: $sort) {
-                                    ForEach(Sort.allCases, id: \.self) { option in
-                                        Text(option.title).tag(option)
-                                    }
-                                }
-                                .pickerStyle(.menu)
-                                Toggle("Hide what this era cannot buy", isOn: $hidesLocked)
-                            }
-                            Section("Terms") {
-                                Stepper("Used aircraft age: \(usedAge) \(usedAge == 1 ? "year" : "years")",
-                                        value: $usedAge,
-                                        in: 1...catalog.tuning.fleet.maxUsedPurchaseAgeYears)
-                                    .frame(minHeight: 44)
-                                Stepper("Lease term: \(leaseTermMonths) months",
-                                        value: $leaseTermMonths, in: 12...120, step: 12)
-                                    .frame(minHeight: 44)
-                            }
-                        }
-                        if availableTypes.isEmpty {
-                            Section {
-                                Text("No available aircraft fit this route's range and runways.")
-                                Button("Browse all aircraft") { selectedRouteID = nil }
-                            }
-                        }
-                        ForEach(availableTypes, id: \.code) { spec in
-                            Section {
-                                shopRow(spec, catalog: catalog, snapshot: snapshot,
-                                        player: player.id, limits: limits)
-                                    .listRowBackground(marketCardSurface)
-                                    .listRowSeparator(.hidden)
-                                // The commit is its own row on purpose: a row
-                                // whose only button is default-styled makes
-                                // the whole row the tap target (the pattern
-                                // every working control in this sheet uses).
-                                if !locked(spec, snapshot: snapshot) {
-                                    ShopCommitButton(
-                                        facts: facts(spec, catalog: catalog,
-                                                     snapshot: snapshot,
-                                                     player: player.id),
-                                        deal: deals[spec.code] ?? .lease,
-                                        onRequest: { facts, deal in
-                                            let request = Acquisition(facts: facts, deal: deal,
-                                                                      routeID: selectedRouteID)
-                                            if controller.preferences.confirmDestructive {
-                                                requestedAcquisition = request
-                                                confirmingAcquisition = true
-                                            } else {
-                                                commit(request)
-                                            }
-                                        })
-                                    .listRowBackground(marketCardSurface)
-                                    .listRowSeparator(.hidden)
-                                    .listRowInsets(EdgeInsets(top: 0, leading: 20,
-                                                              bottom: 16, trailing: 20))
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    LoadingState(message: "Loading the market")
-                }
-            }
-            .listStyle(.insetGrouped)
-            .listSectionSpacing(AETheme.spacingM)
-            .aeScreenBackground()
-            .navigationTitle("Aircraft market")
-            .accessibilityIdentifier("ae-market-list")
-            // EXP-06: at accessibility type sizes the run-84/85 frames showed
-            // scrolled card text bleeding through the header band above
-            // "Done / Aircraft market" with nothing separating the layers.
-            // An always-on bar background is the smallest honest fix: the
-            // header is a boundary, so it gets a surface — not a decorative
-            // gradient.
-            // Thick, because run 95's XXL frame showed card text still
-            // legible through the default material. Visible alone was not a
-            // boundary.
-            .toolbarBackground(.thickMaterial, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            // Buying an aircraft is the most expensive thing a player does.
-            // The sheet says so on the way in and out; the purchase itself is
-            // voiced by `aircraftOrdered`/`aircraftDelivered` from Core.
-            .aeSheetFeedback()
-            .onAppear {
-                guard let state = controller.snapshot, let player = state.playerAirline,
-                      state.fleet(of: player.id).isEmpty, state.routes(of: player.id).isEmpty,
-                      let catalog = controller.catalog else { return }
-                let access = ContentAccess(isPro: controller.eraCeiling == .empire)
-                let airports = access.servableAirports(home: player.homeAirport, catalog: catalog)
-                starterOpportunity = state.marketOpportunities(catalog: catalog, limit: catalog.orderedAirportCodes.count)
-                    .first { $0.origin == player.homeAirport && $0.paysForItsAirframe
-                        && airports.contains($0.destination) }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .onChange(of: assignedRoute) {
-                if assignmentPending != nil, assignedRoute == assignmentRoute {
-                    assignmentPending = nil
-                    dismiss()
-                }
-            }
-            .onChange(of: controller.lastRejection) {
-                if pendingAcquisition != nil, let failure = controller.lastRejection {
-                    pendingAcquisition = nil
-                    acquiring = false
-                    acquisitionFailure = failure.message
-                    controller.clearRejection()
-                    return
-                }
-                guard assignmentPending != nil, let failure = controller.lastRejection else { return }
-                assignmentPending = nil
-                acquisitionReceipt = "Aircraft acquired. Assignment could not finish: \(failure.message)"
-                controller.clearRejection()
-            }
-            .disabled(acquiring || assignmentPending != nil)
-            .interactiveDismissDisabled(acquiring || assignmentPending != nil)
-            .overlay {
-                if acquiring || assignmentPending != nil {
-                    ProgressView(assignmentPending != nil ? "Assigning aircraft…" : "Completing acquisition…")
-                        .padding(24)
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
-                }
-            }
-            .onChange(of: routeFocus) {
-                guard let state = controller.snapshot, let catalog = controller.catalog,
-                      let player = state.playerAirline else { return }
-                let routes = focusedRoutes(snapshot: state, catalog: catalog, player: player.id)
-                if !routes.contains(where: { $0.id == selectedRouteID }) {
-                    selectedRouteID = routes.first?.id
-                }
-            }
-            .alert("Aircraft acquired", isPresented: Binding(
-                get: { acquisitionReceipt != nil },
-                set: { if !$0 { acquisitionReceipt = nil } })) {
-                Button("Done") { dismiss() }
-            } message: { Text(acquisitionReceipt ?? "") }
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
-                        .disabled(acquiring || assignmentPending != nil)
-                }
+        Group {
+            if isNavigationDestination {
+                marketContent
+            } else {
+                NavigationStack { marketContent }
             }
         }
         .alert(requestedAcquisition.map { "\($0.facts.confirmWord(for: $0.deal))?" } ?? "Confirm acquisition",
@@ -1192,6 +965,245 @@ struct AircraftShopSheet: View {
             pendingAcquisition = nil
             acquiring = false
             completeAcquisition(aircraftID: aircraft.id, routeID: request.routeID)
+        }
+    }
+
+    private var marketContent: some View {
+        Group {
+            if let catalog = controller.catalog,
+               let snapshot = controller.snapshot,
+               let player = snapshot.playerAirline {
+                let fleetTypes = catalog.orderedAircraftTypeCodes.compactMap { catalog.aircraftTypes[$0] }
+                let limits = (seats: fleetTypes.map(\.seats).max() ?? 1,
+                              range: fleetTypes.map(\.rangeKm).max() ?? 1)
+                let availableTypes = types(catalog: catalog, snapshot: snapshot)
+                List {
+                    Section {
+                        FirstFlightProgress()
+                        VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                            wallet(snapshot: snapshot, player: player.id)
+                            Divider()
+                            Button { showingOptions.toggle() } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "slider.horizontal.3")
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text("Filters and purchase terms").font(.subheadline.weight(.semibold))
+                                        Text("\(sort.title) \u{00B7} used \(usedAge)y \u{00B7} lease \(leaseTermMonths) months")
+                                            .font(.caption).foregroundStyle(AETheme.mutedText)
+                                    }
+                                    Spacer(minLength: 8)
+                                    Image(systemName: showingOptions ? "chevron.up" : "chevron.down")
+                                        .font(.caption.weight(.semibold))
+                                }
+                                .frame(minHeight: 44)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.aePress)
+                            .accessibilityIdentifier("ae-market-options")
+                            .accessibilityValue(showingOptions ? "Expanded" : "Collapsed")
+                        }
+                        .listRowBackground(marketCardSurface)
+
+                    }
+                    if !snapshot.routes(of: player.id).isEmpty {
+                        Section {
+                            VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                                routePicker(snapshot: snapshot, catalog: catalog, player: player.id)
+                                if let route = selectedRouteID.flatMap({ snapshot.routes[$0] }) {
+                                    Text("Leased and used aircraft are assigned to \(route.origin.raw)\u{2013}\(route.destination.raw). New aircraft need delivery first.")
+                                        .font(.caption).foregroundStyle(AETheme.mutedText)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                DisclosureGroup("Route matching", isExpanded: $showingNetworkDetails) {
+                                    // Do not build demand analysis while its disclosure is closed.
+                                    if showingNetworkDetails {
+                                        VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                                            PlanningFilters(options: RouteFocus.allCases.map {
+                                                PlanningFilterOption(value: $0, title: $0.title,
+                                                    symbol: $0 == .unassigned ? "airplane" : "point.topleft.down.to.point.bottomright.curvepath")
+                                            }, selection: $routeFocus)
+                                            if let route = selectedRouteID.flatMap({ snapshot.routes[$0] }) {
+                                                Text("Ranked by range, runway fit and demand, then lease cost. New routes use estimated demand.")
+                                                    .font(.caption).foregroundStyle(AETheme.mutedText)
+                                                if let need = snapshot.fleetNeeds(catalog: catalog).first(where: { $0.routeID == route.id }) {
+                                                    Text(needDescription(need))
+                                                        .font(.caption).foregroundStyle(AETheme.caution)
+                                                }
+                                            } else if let need = snapshot.fleetNeeds(catalog: catalog).first,
+                                                      let route = snapshot.routes[need.routeID] {
+                                                Button {
+                                                    selectedRouteID = route.id
+                                                } label: {
+                                                    Label("Match aircraft to \(route.origin.raw)\u{2013}\(route.destination.raw)", systemImage: "sparkles")
+                                                }
+                                                .buttonStyle(.borderless)
+                                                .frame(minHeight: 44)
+                                            }
+                                        }
+                                        .padding(.top, AETheme.spacingS)
+                                    }
+                                }
+                                .font(.subheadline)
+                                .frame(minHeight: 44)
+                                .accessibilityIdentifier("ae-market-network-details")
+                            }
+                            .listRowBackground(marketCardSurface)
+                        }
+                    }
+                    if let market = starterOpportunity,
+                       let code = market.bestAirframe,
+                       let spec = catalog.aircraftTypes[code] {
+                        Section("A first route to build around") {
+                            Text("\(spec.model) for \(market.origin.raw) to \(market.destination.raw)")
+                                .font(.headline)
+                            Text("Estimated \(market.monthlyAfterAirframe.compact)/month after lease and route payroll, before airline overhead. Start with two daily round trips and review the actual results before expanding.")
+                                .font(.caption)
+                                .foregroundStyle(AETheme.mutedText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    if showingOptions {
+                        Section("Show") {
+                            Picker("Sort", selection: $sort) {
+                                ForEach(Sort.allCases, id: \.self) { option in
+                                    Text(option.title).tag(option)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            Toggle("Hide what this era cannot buy", isOn: $hidesLocked)
+                        }
+                        Section("Terms") {
+                            Stepper("Used aircraft age: \(usedAge) \(usedAge == 1 ? "year" : "years")",
+                                    value: $usedAge,
+                                    in: 1...catalog.tuning.fleet.maxUsedPurchaseAgeYears)
+                                .frame(minHeight: 44)
+                            Stepper("Lease term: \(leaseTermMonths) months",
+                                    value: $leaseTermMonths, in: 12...120, step: 12)
+                                .frame(minHeight: 44)
+                        }
+                    }
+                    if availableTypes.isEmpty {
+                        Section {
+                            Text("No available aircraft fit this route's range and runways.")
+                            Button("Browse all aircraft") { selectedRouteID = nil }
+                        }
+                    }
+                    ForEach(availableTypes, id: \.code) { spec in
+                        Section {
+                            shopRow(spec, catalog: catalog, snapshot: snapshot,
+                                    player: player.id, limits: limits)
+                                .listRowBackground(marketCardSurface)
+                                .listRowSeparator(.hidden)
+                            // The commit is its own row on purpose: a row
+                            // whose only button is default-styled makes
+                            // the whole row the tap target (the pattern
+                            // every working control in this sheet uses).
+                            if !locked(spec, snapshot: snapshot) {
+                                ShopCommitButton(
+                                    facts: facts(spec, catalog: catalog,
+                                                 snapshot: snapshot,
+                                                 player: player.id),
+                                    deal: deals[spec.code] ?? .lease,
+                                    onRequest: { facts, deal in
+                                        let request = Acquisition(facts: facts, deal: deal,
+                                                                  routeID: selectedRouteID)
+                                        if controller.preferences.confirmDestructive {
+                                            requestedAcquisition = request
+                                            confirmingAcquisition = true
+                                        } else {
+                                            commit(request)
+                                        }
+                                    })
+                                .listRowBackground(marketCardSurface)
+                                .listRowSeparator(.hidden)
+                                .listRowInsets(EdgeInsets(top: 0, leading: 20,
+                                                          bottom: 16, trailing: 20))
+                            }
+                        }
+                    }
+                }
+            } else {
+                LoadingState(message: "Loading the market")
+            }
+        }
+        .listStyle(.insetGrouped)
+        .listSectionSpacing(AETheme.spacingM)
+        .aeScreenBackground()
+        .navigationTitle("Aircraft market")
+        .navigationBarBackButtonHidden(isNavigationDestination)
+        .accessibilityIdentifier("ae-market-list")
+        // EXP-06: at accessibility type sizes the run-84/85 frames showed
+        // scrolled card text bleeding through the header band above
+        // "Done / Aircraft market" with nothing separating the layers.
+        // An always-on bar background is the smallest honest fix: the
+        // header is a boundary, so it gets a surface — not a decorative
+        // gradient.
+        // Thick, because run 95's XXL frame showed card text still
+        // legible through the default material. Visible alone was not a
+        // boundary.
+        .toolbarBackground(.thickMaterial, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        // Buying an aircraft is the most expensive thing a player does.
+        // The sheet says so on the way in and out; the purchase itself is
+        // voiced by `aircraftOrdered`/`aircraftDelivered` from Core.
+        .aeSheetFeedback()
+        .onAppear {
+            guard let state = controller.snapshot, let player = state.playerAirline,
+                  state.fleet(of: player.id).isEmpty, state.routes(of: player.id).isEmpty,
+                  let catalog = controller.catalog else { return }
+            let access = ContentAccess(isPro: controller.eraCeiling == .empire)
+            let airports = access.servableAirports(home: player.homeAirport, catalog: catalog)
+            starterOpportunity = state.marketOpportunities(catalog: catalog, limit: catalog.orderedAirportCodes.count)
+                .first { $0.origin == player.homeAirport && $0.paysForItsAirframe
+                    && airports.contains($0.destination) }
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: assignedRoute) {
+            if assignmentPending != nil, assignedRoute == assignmentRoute {
+                assignmentPending = nil
+                dismiss()
+            }
+        }
+        .onChange(of: controller.lastRejection) {
+            if pendingAcquisition != nil, let failure = controller.lastRejection {
+                pendingAcquisition = nil
+                acquiring = false
+                acquisitionFailure = failure.message
+                controller.clearRejection()
+                return
+            }
+            guard assignmentPending != nil, let failure = controller.lastRejection else { return }
+            assignmentPending = nil
+            acquisitionReceipt = "Aircraft acquired. Assignment could not finish: \(failure.message)"
+            controller.clearRejection()
+        }
+        .disabled(acquiring || assignmentPending != nil)
+        .interactiveDismissDisabled(acquiring || assignmentPending != nil)
+        .overlay {
+            if acquiring || assignmentPending != nil {
+                ProgressView(assignmentPending != nil ? "Assigning aircraft…" : "Completing acquisition…")
+                    .padding(24)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+            }
+        }
+        .onChange(of: routeFocus) {
+            guard let state = controller.snapshot, let catalog = controller.catalog,
+                  let player = state.playerAirline else { return }
+            let routes = focusedRoutes(snapshot: state, catalog: catalog, player: player.id)
+            if !routes.contains(where: { $0.id == selectedRouteID }) {
+                selectedRouteID = routes.first?.id
+            }
+        }
+        .alert("Aircraft acquired", isPresented: Binding(
+            get: { acquisitionReceipt != nil },
+            set: { if !$0 { acquisitionReceipt = nil } })) {
+            Button("Done") { dismiss() }
+        } message: { Text(acquisitionReceipt ?? "") }
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Done") { dismiss() }
+                    .disabled(acquiring || assignmentPending != nil)
+            }
         }
     }
 

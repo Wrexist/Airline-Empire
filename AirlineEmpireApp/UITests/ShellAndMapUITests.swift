@@ -110,7 +110,7 @@ final class ShellAndMapUITests: AEUITestCase {
         market.tap()
         XCTAssertTrue(app.buttons["ae-market-route"].waitForExistence(timeout: 10))
         checkpoint("SMART-route-matched-market")
-        guard leaseAnAircraft(proof: .routeAssignment) else { return }
+        guard leaseAnAircraft(proof: .routeAssignment, verifyCancellation: true) else { return }
         XCTAssertTrue(app.buttons["Unassign"].exists, "The acquired aircraft must be assigned to the selected route.")
         checkpoint("SMART-leased-and-assigned")
         let viewMap = app.buttons["ae-route-view-map"]

@@ -264,8 +264,11 @@ struct RouteDetailView: View {
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .aeTimeToolbar()
-        .sheet(isPresented: $showingAircraftMarket) {
-            AircraftShopSheet(routeID: routeID)
+        // Route setup may already be a sheet. Continue in its existing stack
+        // so purchase alerts do not sit above a second nested sheet (iOS 26
+        // presentation-host regression, Apple feedback FB24621651).
+        .navigationDestination(isPresented: $showingAircraftMarket) {
+            AircraftShopSheet(routeID: routeID, isNavigationDestination: true)
         }
     }
 
