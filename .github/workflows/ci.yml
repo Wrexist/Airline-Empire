@@ -55,7 +55,7 @@ on:
           four runners. Full is what you want before a release or after
           touching the map, the shell or the campaign.
         type: choice
-        options: [compile, smoke, onboarding, full]
+        options: [compile, smoke, acquisition, onboarding, full]
         default: full
       ipad:
         description: >-
@@ -65,7 +65,7 @@ on:
         type: boolean
         default: false
       runtime:
-        description: 'iOS simulator version: latest, or an installed version such as 26.4.1 for compatibility checks.'
+        description: 'iOS simulator runtime identifier: latest, or an installed version such as 26.4 for compatibility checks.'
         type: string
         default: latest
 
@@ -426,6 +426,11 @@ jobs:
           done
 
           case "$SUITE" in
+            acquisition)
+              MATRIX=$(jq -cn '{include: [
+                {shard: 0, name: "acquisition", job: 25, ui: 10, run: true, measure: false,
+                 tests: "-only-testing:AirlineEmpireUITests/ShellAndMapUITests/testAirportRouteFiltersAndContextualAircraftAcquisition"}
+              ]}') ;;
             onboarding)
               MATRIX=$(jq -cn '{include: [
                 {shard: 0, name: "onboarding", job: 25, ui: 18, run: true, measure: false,
@@ -664,6 +669,15 @@ jobs:
             -resultBundlePath UITestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO \
             test-without-building 2>&1 | tee -a ui-test-output.txt
+
+      - name: Confirmation diagnostics after failure
+        if: failure() && matrix.run && steps.sim.outputs.id != ''
+        continue-on-error: true
+        timeout-minutes: 2
+        run: |
+          xcrun simctl spawn '${{ steps.sim.outputs.id }}' log show \
+            --style compact --last 20m \
+            --predicate 'subsystem == "com.airlineempire.presentation"'
 
       # The failure messages. xcodebuild's log names the test that failed
       # and how long it took, and nothing else; the assertion text — which

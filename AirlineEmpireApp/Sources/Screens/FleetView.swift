@@ -1759,6 +1759,9 @@ struct ShopCommitButton: View {
                 title: "\(facts.confirmWord(for: deal))?",
                 message: facts.dialogMessage(for: deal),
                 confirmTitle: facts.confirmWord(for: deal), role: nil,
+                // A route-setup sheet can present this market. Give its
+                // price confirmation an explicit native alert and Cancel.
+                presentation: .alert,
                 // Dismiss on success, like every other sheet in the app —
                 // the payoff is the aircraft in the fleet, not this sheet.
                 action: {
