@@ -16,6 +16,7 @@ import SwiftUI
 /// written from inside the draw, and observing it would let a frame's own
 /// output invalidate the view that produced it.
 final class MapDrawStats {
+    var framing = ""
     private(set) var frames = 0
     private(set) var totalMs: Double = 0
     private(set) var worstMs: Double = 0

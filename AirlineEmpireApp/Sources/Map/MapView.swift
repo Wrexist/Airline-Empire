@@ -55,6 +55,8 @@ struct MapScreen: View {
     /// The same sheet the Airline tab presents — not a second market.
     @State private var showingAircraftMarket = false
     @State private var hasFramedHome = false
+    @State private var topChromeHeight: CGFloat = 0
+    @State private var bottomChromeHeight: CGFloat = 0
     /// Frozen geometry from the last draw, so a tap resolves against exactly
     /// what the player saw rather than against a recomputed layout.
     @State private var hitGeometry = MapHitGeometry()
@@ -119,12 +121,28 @@ struct MapScreen: View {
                     // appearance, which is right — they are ordinary surfaces.
                     .environment(\.colorScheme, .dark)
                     .onAppear {
-                        frameHomeOnce(model)
                         reportFocus()
                     }
                     // The camera cannot read the environment itself, so the
                     // screen tells it. `initial: true` because the setting is
                     // usually already on when the screen appears — the same
+                    // trap BUG-040 was.
+                    .onChange(of: MapViewport(
+                        size: CGSize(width: geometry.size.width,
+                                     height: geometry.size.height + geometry.safeAreaInsets.bottom),
+                        top: topChromeHeight,
+                        bottom: bottomChromeHeight + geometry.safeAreaInsets.bottom),
+                              initial: true) { _, viewport in
+                        guard topChromeHeight > 0, bottomChromeHeight > 0 else { return }
+                        camera.viewport = viewport
+                        if !hasFramedHome || camera.isNetworkFramed {
+                            hasFramedHome = true
+                            camera.frameNetwork(model, animated: false)
+                        }
+                    }
+                    // The camera cannot read the environment itself, so the
+                    // screen tells it. `initial: true` because the setting is
+                    // usually already on when the screen appears ? the same
                     // trap BUG-040 was.
                     .onChange(of: reduceMotion, initial: true) { _, value in
                         camera.prefersReducedMotion = value
@@ -245,6 +263,18 @@ struct MapScreen: View {
                 let drawStart = probesEnabled ? DispatchTime.now() : nil
                 frame.draw(into: &context, size: canvasSize)
                 if let drawStart {
+                    let mine = model.airports.filter { $0.servedByPlayer || $0.isPlayerHome }
+                    let visible = mine.filter {
+                        camera.viewport.usable.insetBy(dx: -1, dy: -1)
+                            .contains(projector.project($0.position))
+                    }.count
+                    drawStats.framing = "framed \(visible)/\(mine.count)"
+                    if let focus {
+                        let point = projector.project(MapPoint(x: Double(focus.x), y: Double(focus.y)))
+                        drawStats.framing += String(format: " focus %.5f %.5f focusError %.2f", focus.x, focus.y,
+                            hypot(point.x - camera.viewport.usable.midX,
+                                  point.y - camera.viewport.usable.midY))
+                    }
                     let ms = Double(DispatchTime.now().uptimeNanoseconds
                                     - drawStart.uptimeNanoseconds) / 1e6
                     drawStats.record(drawMs: ms, labels: frame.placedLabels)
@@ -266,6 +296,8 @@ struct MapScreen: View {
             // double-tap window lapses. Declared the other way round the
             // double tap is unreachable.
             .onTapGesture(count: 2) { location in
+                camera.stopFollowing(landingAt: followMemory.lastPoint)
+                followMemory.clear()
                 camera.zoomIn(about: location, size: gestureSize)
             }
             .onTapGesture { location in handleTap(at: location, model: model) }
@@ -302,42 +334,48 @@ struct MapScreen: View {
     @ViewBuilder
     private func chrome(model: MapModel, snapshot: GameState) -> some View {
         VStack(spacing: 0) {
-            MapTopBar(model: model, snapshot: snapshot)
+            VStack(spacing: 0) {
+                MapTopBar(model: model, snapshot: snapshot)
+                    .padding(.horizontal, AETheme.spacingM)
+                    .padding(.top, AETheme.spacingS)
+
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                        MapOverlayPicker(selection: $overlay)
+                        let flights = model.flights.filter { $0.isPlayer && $0.airborne }
+                        if !flights.isEmpty {
+                            Menu {
+                                ForEach(flights, id: \.id) { flight in
+                                    Button("\(flight.origin.raw) to \(flight.destination.raw)") {
+                                        follow(flight.id)
+                                    }
+                                    .accessibilityIdentifier("ae-follow-flight-\(flight.id.raw)")
+                                }
+                            } label: {
+                                Label("Follow a flight", systemImage: "airplane")
+                                    .font(.callout.weight(.semibold))
+                                    .padding(.horizontal, 12)
+                                    .frame(minHeight: 44)
+                                    .background(.regularMaterial, in: Capsule())
+                            }
+                            .accessibilityIdentifier("ae-follow-flight-menu")
+                        }
+                    }
+                    Spacer()
+                    MapZoomControls(
+                        zoomIn: { camera.zoomBy(1.7) },
+                        zoomOut: { camera.zoomBy(1 / 1.7) },
+                        frame: { camera.frameNetwork(model) })
+                }
                 .padding(.horizontal, AETheme.spacingM)
                 .padding(.top, AETheme.spacingS)
 
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                    MapOverlayPicker(selection: $overlay)
-                    let flights = model.flights.filter { $0.isPlayer && $0.airborne }
-                    if !flights.isEmpty {
-                        Menu {
-                            ForEach(flights, id: \.id) { flight in
-                                Button("\(flight.origin.raw) to \(flight.destination.raw)") {
-                                    follow(flight.id)
-                                }
-                                .accessibilityIdentifier("ae-follow-flight-\(flight.id.raw)")
-                            }
-                        } label: {
-                            Label("Follow a flight", systemImage: "airplane")
-                                .font(.callout.weight(.semibold))
-                                .padding(.horizontal, 12)
-                                .frame(minHeight: 44)
-                                .background(.regularMaterial, in: Capsule())
-                        }
-                        .accessibilityIdentifier("ae-follow-flight-menu")
-                    }
-                }
-                Spacer()
-                MapZoomControls(
-                    zoomIn: { camera.zoomBy(1.7) },
-                    zoomOut: { camera.zoomBy(1 / 1.7) },
-                    frame: { camera.frameNetwork(model) })
             }
-            .padding(.horizontal, AETheme.spacingM)
-            .padding(.top, AETheme.spacingS)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                topChromeHeight = height
+            }
 
-            Spacer()
+            Spacer(minLength: 0)
 
             // One bottom region, two occupants, never both (the roadmap's
             // requirement: the briefing and the selection panel must share
@@ -377,6 +415,9 @@ struct MapScreen: View {
             .padding(.horizontal, AETheme.spacingM)
             .padding(.bottom, AETheme.spacingS)
             .aeAnimation(AEMotion.content, value: hasLiveSelection(model))
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                bottomChromeHeight = height
+            }
         }
     }
 
@@ -411,6 +452,7 @@ struct MapScreen: View {
                 camera.stopFollowing(landingAt: followMemory.lastPoint)
                 followMemory.clear()
                 camera.interruptMove()
+                camera.isNetworkFramed = false
                 camera.panOffset = value.translation
             }
             .onEnded { value in
@@ -477,12 +519,6 @@ struct MapScreen: View {
         feedback.setMapFocus(focus, hasSelection: selection != nil)
     }
 
-    private func frameHomeOnce(_ model: MapModel) {
-        guard !hasFramedHome else { return }
-        hasFramedHome = true
-        camera.frameNetwork(model, animated: false)
-    }
-
     private func accessibilitySummary(_ model: MapModel) -> String {
         let mine = model.routes.filter(\.isPlayer).count
         let airborne = model.flights.filter { $0.isPlayer && $0.airborne }.count
@@ -513,7 +549,12 @@ struct MapScreen: View {
         // under the flag: the value a VoiceOver user hears never carries
         // engineering numbers.
         if probesEnabled {
+            parts.append(String(format: "camera %.5f %.5f usable %.1f %.1f %.1f %.1f",
+                                camera.center.x, camera.center.y,
+                                camera.viewport.usable.minX, camera.viewport.usable.minY,
+                                camera.viewport.usable.width, camera.viewport.usable.height))
             parts.append(drawStats.summary)
+            parts.append(drawStats.framing)
             parts.append(renderCache.counterSummary)
         }
         return parts.joined(separator: ". ")
@@ -564,6 +605,8 @@ final class MapCamera {
     var center = CGPoint(x: 0.5, y: 0.42)
     var panOffset: CGSize = .zero
     var pinch: CGFloat = 1
+    var viewport = MapViewport(size: CGSize(width: 390, height: 844), top: 0, bottom: 0)
+    var isNetworkFramed = false
     /// Bumped whenever a camera *intent* completes — a drag or pinch
     /// commits, a zoom button or double tap fires, the network is framed.
     /// The label memory re-decides on this signal rather than per frame
@@ -585,7 +628,7 @@ final class MapCamera {
     /// which is the one thing a follow camera must not do.
     private(set) var followed: FlightID?
 
-    static let minZoom: CGFloat = 1
+    static let minZoom: CGFloat = 0.75
     static let maxZoom: CGFloat = 16
 
     // MARK: The move in flight
@@ -716,7 +759,8 @@ final class MapCamera {
     /// its target and never catches up.
     func liveCenter(size: CGSize, at date: Date, focus: CGPoint? = nil) -> CGPoint {
         centre(at: liveZoom(at: date),
-               base: focus ?? movedCenter(at: date),
+               base: focus.map { viewport.center(placing: $0, zoom: liveZoom(at: date)) }
+                    ?? movedCenter(at: date),
                size: size, pan: panOffset)
     }
 
@@ -771,6 +815,7 @@ final class MapCamera {
     /// magnification starts changing the projection under them.
     func beginPinch(at anchor: CGPoint, size: CGSize) {
         guard pinchAnchor == nil else { return }
+        isNetworkFramed = false
         interruptMove()
         let projector = MapProjector(zoom: liveZoom,
                                      center: liveCenter(size: size), size: size)
@@ -787,6 +832,7 @@ final class MapCamera {
     /// part of the gesture, and a follow that also yanked the zoom out would
     /// undo the player's own framing.
     func beginFollow(_ flight: FlightID) {
+        isNetworkFramed = false
         settleGeneration += 1
         followed = flight
         guard zoom < Self.followZoom else { return }
@@ -809,7 +855,7 @@ final class MapCamera {
         settleGeneration += 1
         if let point {
             interruptMove()
-            center = clamp(point)
+            center = clamp(viewport.center(placing: point, zoom: zoom))
             panOffset = .zero
         }
     }
@@ -839,6 +885,7 @@ final class MapCamera {
     /// worse than one that does not coast at all.
     func commitPan(size: CGSize, translation: CGSize? = nil,
                    predicted: CGSize? = nil, glide: Bool = true) {
+        isNetworkFramed = false
         settleGeneration += 1
         // The gesture's own final translation, where it was given: the last
         // `onChanged` is not guaranteed to have carried it.
@@ -896,6 +943,7 @@ final class MapCamera {
     }
 
     func zoomBy(_ factor: CGFloat) {
+        isNetworkFramed = false
         settleGeneration += 1
         interruptMove()
         let from = zoom
@@ -909,6 +957,7 @@ final class MapCamera {
     /// zooming agree. Anchored for the same reason the pinch is — a double tap
     /// on Tokyo should end up looking at Tokyo.
     func zoomIn(about point: CGPoint, size: CGSize) {
+        isNetworkFramed = false
         settleGeneration += 1
         interruptMove()
         let fromZoom = zoom, fromCenter = center
@@ -926,32 +975,28 @@ final class MapCamera {
                   duration: MoveDuration.step)
     }
 
-    /// Fits the player's own airports — the view a player actually wants and
-    /// previously had no way to ask for. Falls back to the whole world for an
-    /// airline that has not flown anywhere yet.
-    ///
-    /// `animated: false` is for the one framing nobody asked for: the map's
-    /// own first appearance, which should simply *be* the right view rather
-    /// than fly to it from a default the player never saw.
+    /// Fit the player's airports into the measured space between the controls
+    /// and bottom panel. Keep the ordinary longitude extent: airport markers
+    /// use one world copy, so fitting a shorter dateline arc would hide them.
     func frameNetwork(_ model: MapModel, animated: Bool = true) {
+        let points = model.airports.filter { $0.servedByPlayer || $0.isPlayerHome }
+            .map { CGPoint(x: $0.position.x, y: $0.position.y) }
+        frame(points: points, animated: animated)
+    }
+
+    func frame(points: [CGPoint], animated: Bool = true) {
         settleGeneration += 1
         interruptMove()
         let fromZoom = zoom, fromCenter = center
-        let mine = model.airports.filter { $0.servedByPlayer || $0.isPlayerHome }
-        if mine.isEmpty {
-            zoom = 1.4
-            center = CGPoint(x: 0.5, y: 0.42)
-        } else {
-            let xs = mine.map(\.position.x), ys = mine.map(\.position.y)
-            let minX = xs.min() ?? 0, maxX = xs.max() ?? 1
-            let minY = ys.min() ?? 0, maxY = ys.max() ?? 1
-            // The 2:1 world means a degree of latitude covers twice the
-            // normalised span of a degree of longitude, so the y extent
-            // counts double.
-            let span = max(maxX - minX, (maxY - minY) * 2, 0.03)
-            center = clamp(CGPoint(x: (minX + maxX) / 2, y: (minY + maxY) / 2))
-            zoom = min(Self.maxZoom, max(Self.minZoom, 0.8 / span))
-        }
+        followed = nil
+        panOffset = .zero
+        pinch = 1
+        pinchAnchor = nil
+        pinchWorld = nil
+        isNetworkFramed = true
+        let fit = viewport.fit(points: points)
+        zoom = fit.zoom
+        center = clamp(fit.center)
         guard animated else { return }
         beginMove(fromZoom: fromZoom, fromCenter: fromCenter,
                   duration: MoveDuration.travel)
