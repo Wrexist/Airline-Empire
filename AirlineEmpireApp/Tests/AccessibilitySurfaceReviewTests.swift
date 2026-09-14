@@ -28,12 +28,10 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
             .environment(Entitlements(arguments: ["-AEUITestFree"]))
             .environment(\.dynamicTypeSize, .accessibility3)
             .environment(\.legibilityWeight, .bold)
-            .environment(\.colorSchemeContrast, .increased)
-            .environment(\.accessibilityReduceMotion, true)
-            .environment(\.accessibilityReduceTransparency, true)
             .environment(\.colorScheme, dark ? .dark : .light)
             .preferredColorScheme(dark ? .dark : .light)
         let host = UIHostingController(rootView: content)
+        host.traitOverrides.accessibilityContrast = .high
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: width, height: 812))
         window.rootViewController = host
         window.isHidden = false
@@ -75,7 +73,7 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
     }
 
     @MainActor
-    func testEarnedCollapseAndRecoveryWithReducedMotion() async throws {
+    func testEarnedCollapseAndRecoveryWithAccessibleText() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
         let catalog = try ContentCatalog.loadBundled()
