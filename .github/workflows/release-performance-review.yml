@@ -1,5 +1,9 @@
 name: Release performance comparison
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/release-performance-review.yml'
+      - 'AirlineEmpireApp/UITests/ReleasePerformanceUITests.swift'
   workflow_dispatch:
 permissions:
   contents: read
