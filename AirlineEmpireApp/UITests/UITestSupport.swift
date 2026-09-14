@@ -1449,7 +1449,11 @@ class AEUITestCase: XCTestCase {
         for attempt in 1...2 {
             if briefingIsOpen { return true }
             let current = app.buttons["ae-home-briefing"]
-            guard current.exists, current.isHittable, waitUntilStill(current) else { break }
+            guard current.exists, current.isHittable, waitUntilStill(current) else {
+                capture(Self.logPrefix + "BRIEFING-MOVED-BEFORE-TAP")
+                XCTFail("The briefing handle moved or became unavailable before tap \(attempt); no tap was sent.")
+                return false
+            }
             let frame = current.frame
             app.coordinate(withNormalizedOffset: .zero)
                 .withOffset(CGVector(dx: frame.midX, dy: frame.midY)).tap()

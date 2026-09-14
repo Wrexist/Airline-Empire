@@ -57,15 +57,18 @@ struct MapHomeBriefing: View {
         let facts = self.facts
         let move = currentMove
         return VStack(alignment: .leading, spacing: AETheme.spacingS) {
-            stateRow(facts)
             FirstFlightProgress(compact: true)
             if let move {
-                Divider().overlay(Color.white.opacity(0.14))
                 moveRow(move)
                 if !move.suggestions.isEmpty {
                     suggestionRows(move.suggestions)
                 }
             }
+            // Keep the entry to the briefing anchored above the tab bar.
+            // Live advice/progress can change height at departure or arrival;
+            // placing it below this button moved the hit target during a tap.
+            Divider().overlay(Color.white.opacity(0.14))
+            stateRow(facts)
         }
         .padding(.horizontal, AETheme.spacingM)
         .padding(.vertical, AETheme.spacingS)
