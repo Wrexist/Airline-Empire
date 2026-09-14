@@ -64,9 +64,13 @@ on:
           layout it photographs changes far less often than the code does.
         type: boolean
         default: false
+      runtime:
+        description: 'iOS simulator version: latest, or an installed version such as 26.4.1 for compatibility checks.'
+        type: string
+        default: latest
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ inputs.runtime || 'latest' }}
   cancel-in-progress: true
 
 permissions:
@@ -554,17 +558,23 @@ jobs:
       - name: Pick a simulator
         id: sim
         if: matrix.run
+        env:
+          REQUESTED_RUNTIME: ${{ inputs.runtime || 'latest' }}
         run: |
           set -euo pipefail
           DEVICE=$(xcrun simctl list devices available --json \
             | python3 -c "
-          import json, re, sys
+          import json, os, re, sys
           data = json.load(sys.stdin)['devices']
+          requested = os.environ.get('REQUESTED_RUNTIME', 'latest')
+          wanted = None if requested == 'latest' else tuple(int(part) for part in requested.split('.'))
           best = None
           for runtime, devices in data.items():
               if 'iOS' not in runtime:
                   continue
               version = tuple(int(part) for part in re.findall(r'[0-9]+', runtime))
+              if wanted is not None and version != wanted:
+                  continue
               for device in devices:
                   if not device.get('isAvailable'):
                       continue

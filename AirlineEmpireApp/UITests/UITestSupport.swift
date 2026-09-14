@@ -551,6 +551,12 @@ class AEUITestCase: XCTestCase {
                 // explicitly; an unqualified query fails as ambiguous.
                 let confirm = app.buttons.matching(identifier: "ae-confirm-action").firstMatch
                 guard require(confirm, "the lease confirmation") else { return false }
+                if attempt == 1 {
+                    capture(Self.logPrefix + "LEASE-CONFIRMATION")
+                    // Preserve the dialog before the tap, not just the screen
+                    // after it disappeared. Nested native buttons vary by OS.
+                    print("LEASE-CONFIRMATION-HIERARCHY:\n\(app.debugDescription)")
+                }
                 confirm.tap()
                 // The sheet dismisses itself on success — there is no Done
                 // fallback any more. Blind-tapping Done has never rescued a
