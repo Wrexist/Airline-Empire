@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UIKit
 import AirlineEmpireCore
 
 /// Design tokens (docs/UI_ARCHITECTURE.md §2): the single source of visual
@@ -16,7 +17,7 @@ enum AETheme {
     /// Nine call sites wrote `AETheme.cornerRadius + 4`, which meant the token
     /// said 14 and the app drew 18 — a token that is not the source of truth
     /// is worse than no token (UIUX_FORENSIC_AUDIT UI-028).
-    static let cornerRadius: CGFloat = 18
+    static let cornerRadius: CGFloat = 20
     /// The tighter radius, for capsule-adjacent controls and small chips.
     static let cornerRadiusSmall: CGFloat = 12
 
@@ -32,22 +33,41 @@ enum AETheme {
     // (UIUX_FORENSIC_AUDIT §9). This is that palette's blue: deep enough to
     // sit under white text, bright enough to read on the dusk backdrop, and
     // distinct from the cyan the map already spends on the player's routes.
-    static let accent = Color(red: 0.24, green: 0.51, blue: 0.92)
-    static let positive = Color.green
-    static let negative = Color.red
-    static let caution = Color.orange
-    static let mutedText = Color.secondary
+    static let accent = adaptive(0x1268BE, 0x80B9FF)
+    static let positive = adaptive(0x187B56, 0x6BD6A5)
+    static let negative = adaptive(0xC63543, 0xFF8791)
+    static let caution = adaptive(0x996014, 0xF4BF72)
+    static let mutedText = adaptive(0x596B7D, 0xACBDD1)
 
     // Badge hues. Five call sites reached past the tokens for `.purple`,
     // `.indigo` and `.teal`, which is exactly the drift a token set exists to
     // prevent (UIUX_FORENSIC_AUDIT UI-029).
     /// Fares and pricing.
-    static let fare = Color(red: 0.55, green: 0.36, blue: 0.86)
+    static let fare = adaptive(0x613994, 0xCDB8FF)
     /// Assets the airline owns outright.
-    static let owned = Color(red: 0.31, green: 0.35, blue: 0.76)
+    static let owned = adaptive(0x3D4690, 0xB5BEFF)
     /// Assets the airline rents.
-    static let leased = Color(red: 0.17, green: 0.56, blue: 0.60)
-    static let cardBackground = Color(.secondarySystemBackground)
+    static let leased = adaptive(0x17656B, 0x84D9D4)
+    /// Informative small badge text uses its own ink, not its decorative tint.
+    /// A 16% colored fill preserves category identity in both appearances.
+    static let badgeForeground = adaptive(0x17212B, 0xF1F5FA)
+    static let cardBackground = adaptive(0xEDF2F8, 0x171D25)
+    static let surfaceHighlight = adaptive(0xFFFFFF, 0x1C242E)
+    static let surfaceRim = adaptive(0xFFFFFF, 0x434D5B)
+    static let canvas = adaptive(0xF3F6FA, 0x0C1118)
+    static let sky = adaptive(0xDDEDFB, 0x101C29)
+    static let surfaceShadow = Color(red: 0.15, green: 0.26, blue: 0.40)
+    /// White labels always sit on this deeper blue, including in dark mode.
+    static let actionBlue = Color(red: 0.07, green: 0.36, blue: 0.67)
+
+    private static func adaptive(_ light: UInt32, _ dark: UInt32) -> Color {
+        Color(uiColor: UIColor { traits in
+            let hex = traits.userInterfaceStyle == .dark ? dark : light
+            return UIColor(red: CGFloat((hex >> 16) & 255) / 255,
+                           green: CGFloat((hex >> 8) & 255) / 255,
+                           blue: CGFloat(hex & 255) / 255, alpha: 1)
+        })
+    }
     // The map's own palette (docs/MAP_ARCHITECTURE.md §2). Near-black ocean,
     // land a few points above it, coast a few points above that — the whole
     // geography sits inside a narrow value range so it can never compete with
@@ -309,6 +329,11 @@ enum Format {
             // (UIUX_FORENSIC_AUDIT UI-031).
             return "\(sign)$\(grouped(Int64(magnitude.rounded())))"
         }
+    }
+
+    /// Speak the amount without compact suffixes or a currency glyph alone.
+    static func moneyAccessibility(_ money: Money) -> String {
+        "\(decimal(Double(money.cents) / 100, places: 2)) dollars"
     }
 
     /// A fraction as a whole-number percentage, in the reader's locale.

@@ -45,7 +45,7 @@ private struct MapCardShell<Content: View>: View {
             content
         }
         .padding(AETheme.spacingM)
-        .aeGlass(in: AETheme.cardShape)
+        .aeClay(in: AETheme.cardShape, tint: accent)
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 }

@@ -92,4 +92,10 @@ jobs:
           retention-days: 45
       - name: UI checkpoints in the log
         if: always()
-        run: python3 scripts/export-ci-checkpoints.py AirlineEmpireApp/LaunchSafety.xcresult
+        run: python3 scripts/export-ci-checkpoints.py AirlineEmpireApp/LaunchSafety.xcresult accessibility-review
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: accessibility-review-screenshots
+          path: accessibility-review/
+          retention-days: 45

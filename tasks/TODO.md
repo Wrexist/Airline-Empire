@@ -1,5 +1,25 @@
 # Airline Empire — TODO
 
+## Current pre-TestFlight work - 14 September 2026
+
+Current app source: `eeb0bc7` (steps 1/2 and portrait map framing implemented; production app code identical to `df7a45c`). Distributed build: **1.0.22 (11)**. **No new TestFlight build or upload until the user explicitly approves.**
+The [six-part current audit](../docs/PRE_TESTFLIGHT_AUDIT_2026-09-14.md) is the source of priorities and acceptance criteria. Historical phases below are not an accurate open-feature queue.
+
+- [x] AUD-08: Fix informative badge contrast in light/dark appearances.
+- [x] AUD-05: Keep a concise next-departure/readiness line visible on route details.
+- [x] AUD-10: Show actual version/build in Settings.
+- [x] AUD-02: Compact Fleet/Routes summaries and filters; show useful rows sooner.
+- [x] AUD-03: Unify aircraft-market model and purchase-row surfaces.
+- [x] AUD-01: Improve portrait map framing; verify fit, pan, zoom, follow and iPad rotation behavior.
+- [ ] AUD-07/09: Review fresh-game and secondary screens, large text, VoiceOver, motion/transparency/contrast settings and older supported iOS fallback.
+- [ ] AUD-12/14: Compare affected-screen performance; run full exact-source iPhone/iPad journeys and safety/tooling checks after fixes.
+- [ ] Present final previews and obtain explicit TestFlight build/upload approval.
+- [ ] After approved upload: verify processing, existing Tester group and build notes, then perform physical upgrade/save/purchase/performance acceptance before App Store changes.
+
+Next polish, if included: AUD-04 shorter briefing/rival explanations; AUD-06 faster access to route management. AUD-13 audit/navigation cleanup is completed; historical Apple/account statements still require a fresh account check before future actions.
+
+---
+
 Active task list. Format follows the Master Task Rule (see
 `/tasks/MASTER_PLAN.md`). Completed tasks move to `/tasks/COMPLETED.md`.
 

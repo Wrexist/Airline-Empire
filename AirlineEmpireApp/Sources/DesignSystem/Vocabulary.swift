@@ -626,7 +626,7 @@ extension Vocab {
     static func fleetStatus(_ status: FleetFilter.Status) -> String {
         switch status {
         case .all: "All"
-        case .assigned: "Flying"
+        case .assigned: "Assigned"
         case .idle: "Idle"
         case .inMaintenance: "In check"
         case .onOrder: "On order"

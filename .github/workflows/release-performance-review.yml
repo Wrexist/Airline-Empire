@@ -1,0 +1,75 @@
+name: Release performance comparison
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/release-performance-review.yml'
+      - 'AirlineEmpireApp/UITests/ReleasePerformanceUITests.swift'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: macos-26
+    timeout-minutes: 55
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Prepare identical harness and campaign
+        run: |
+          brew install xcodegen
+          mkdir -p comparison/baseline comparison/candidate
+          git archive 9b4625ba6e2b0dc5a690a4fae82c8ed228e97e05 | tar -x -C comparison/baseline
+          git archive HEAD | tar -x -C comparison/candidate
+          cp AirlineEmpireApp/UITests/ReleasePerformanceUITests.swift comparison/baseline/AirlineEmpireApp/UITests/
+          cp AirlineEmpireApp/UITests/UITestSupport.swift comparison/baseline/AirlineEmpireApp/UITests/
+          shasum -a 256 comparison/*/AirlineEmpireApp/UITests/Fixtures/rival-pressure-late-game.json
+          git rev-parse HEAD > comparison/candidate-sha.txt
+          xcrun simctl create 'Release comparison' com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro-Max com.apple.CoreSimulator.SimRuntime.iOS-26-2 > comparison/simulator-id.txt
+          xcrun simctl boot "$(cat comparison/simulator-id.txt)"
+          xcrun simctl bootstatus "$(cat comparison/simulator-id.txt)" -b
+      - name: Measure baseline then candidate on the same simulator
+        run: |
+          set -o pipefail
+          ROOT="$PWD"
+          SIM=$(cat comparison/simulator-id.txt)
+          failed=0
+          for variant in baseline candidate; do
+            cd "$ROOT/comparison/$variant/AirlineEmpireApp"
+            xcodegen generate
+            xcrun simctl uninstall "$SIM" com.airlineempire.game || true
+            xcodebuild test -project AirlineEmpire.xcodeproj -scheme AirlineEmpire \
+              -destination "platform=iOS Simulator,id=$SIM" -parallel-testing-enabled NO \
+              -only-testing:AirlineEmpireUITests/ReleasePerformanceUITests \
+              -derivedDataPath "$ROOT/comparison/derived-$variant" \
+              -resultBundlePath "$ROOT/comparison/$variant.xcresult" \
+              CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$ROOT/comparison/$variant.log" || failed=1
+          done
+          exit "$failed"
+      - name: Export native evidence
+        if: always()
+        run: |
+          for variant in baseline candidate; do
+            xcrun xcresulttool get test-results metrics --path "comparison/$variant.xcresult" > "comparison/$variant-metrics.json"
+            xcrun xcresulttool export attachments --path "comparison/$variant.xcresult" --output-path "comparison/$variant-captures"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-performance-comparison
+          path: |
+            comparison/*.log
+            comparison/*-metrics.json
+            comparison/*-sha.txt
+            comparison/simulator-id.txt
+            comparison/*-captures/
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: release-performance-results
+          path: comparison/*.xcresult
+          retention-days: 14

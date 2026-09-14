@@ -15,7 +15,9 @@ struct OperationsView: View {
             // A hub, not a table of contents. Each destination says what is
             // inside it *and* what is currently going on in there.
             ScrollView {
-                VStack(spacing: AETheme.spacingS) {
+                VStack(spacing: AETheme.spacingM) {
+                    AEPageIntro(title: "A world of opportunity", subtitle: "Read the conditions. Know your rivals. Find your next opening.",
+                                icon: "globe.europe.africa.fill")
                     hubLink(title: "World events", icon: "bolt.horizontal.fill",
                             subtitle: "Storms, fuel shocks and what they are doing to your network",
                             badge: eventBadge, live: eventLive) {
@@ -146,10 +148,7 @@ private extension OperationsView {
             destination()
         } label: {
             HStack(spacing: AETheme.spacingM) {
-                Image(systemName: icon)
-                    .font(.title3)
-                    .foregroundStyle(AETheme.accent)
-                    .frame(width: 32)
+                AEClayIcon(systemName: icon, tint: badge?.1 ?? AETheme.accent, size: 48)
                 VStack(alignment: .leading, spacing: 2) {
                     AEChipRow {
                         Text(title)
@@ -181,8 +180,7 @@ private extension OperationsView {
             .padding(AETheme.spacingM)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(AETheme.cardShape)
-            .aeGlass(in: AETheme.cardShape,
-                     interactive: true)
+            .aeClay(in: AETheme.cardShape)
         }
         .buttonStyle(.aePress)
         .accessibilityElement(children: .combine)
@@ -427,10 +425,7 @@ struct CompetitorsView: View {
                       : rival.sharedMarkets > 0 ? AETheme.accent.opacity(0.12) : nil) {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 HStack {
-                    Circle()
-                        .fill(Vocab.liveryColor(rival.livery))
-                        .frame(width: 12, height: 12)
-                        .accessibilityHidden(true)
+                    AEClayIcon(systemName: "airplane", tint: Vocab.liveryColor(rival.livery), size: 44)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(rival.name).font(.headline)
                         if let archetype = rival.archetype {
@@ -564,8 +559,15 @@ struct ProgressionView: View {
     private func eraCard(_ model: ProgressionModel) -> some View {
         AECard {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                AESectionHeader(text: "Era", systemImage: "flag")
-                Text(Vocab.era(model.era)).font(.title3.weight(.semibold))
+                HStack(spacing: 16) {
+                    AEClayIcon(systemName: "flag.checkered", tint: AETheme.owned, size: 56)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Your airline's next chapter").font(.caption).foregroundStyle(AETheme.mutedText)
+                        Text(Vocab.era(model.era))
+                            .accessibilityIdentifier("ae-progression-era")
+                            .font(.system(.title2, design: .rounded, weight: .bold))
+                    }
+                }
                 Text(Vocab.eraDetail(model.era))
                     .font(.subheadline)
                     .foregroundStyle(AETheme.mutedText)
@@ -947,6 +949,12 @@ struct SettingsView: View {
     @State private var exportInProgress = false
     @State private var exportFailure: String?
 
+    private var appVersion: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "Unknown"
+        return "\(version) (\(build))"
+    }
+
     var body: some View {
         @Bindable var preferences = controller.preferences
         return List {
@@ -1073,7 +1081,9 @@ struct SettingsView: View {
             }
 
             Section("About") {
-                LabeledContent("Airline Empire", value: "1.0")
+                LabeledContent("Version", value: appVersion)
+                    .textSelection(.enabled)
+                    .accessibilityIdentifier("ae-app-version")
                 if let seed = controller.snapshot?.meta.worldSeed {
                     LabeledContent("World seed", value: String(seed))
                 }

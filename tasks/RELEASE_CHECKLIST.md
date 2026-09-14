@@ -1,5 +1,7 @@
 # Release checklist — 11 September 2026
 
+> **Historical release record.** The build/account instructions below describe an earlier candidate. For the current source, TestFlight 1.0.22 (11), audit findings and the explicit no-upload-without-approval hold, use the [14 September audit](../docs/PRE_TESTFLIGHT_AUDIT_2026-09-14.md) and [current todo](TODO.md). Do not act on old build numbers or submission instructions below.
+
 **Build 1.0.16 (6) is ready; physical acceptance and publication are pending.**
 PRs #22 through #26 are merged; no PRs remain open. Candidate `18253b3` passed full
 CI, Launch safety and portability, then Apple processing. The app and four

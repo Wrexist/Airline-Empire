@@ -153,7 +153,7 @@ final class Entitlements {
     // MARK: - Products
 
     func loadProducts() async {
-        guard readsStoreKit else { return }
+        guard readsStoreKit, !isLoadingProducts else { return }
         isLoadingProducts = true
         defer { isLoadingProducts = false }
         do {

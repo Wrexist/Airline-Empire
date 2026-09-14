@@ -45,6 +45,8 @@ const dimensions = { APP_IPHONE_67: [1320,2868], APP_IPHONE_65: [1242,2688], APP
         assert.equal(sha(buffer),record.sha256);
         const native = fs.readFileSync(path.join(root,'store/artwork/captures',record.nativeSource));
         assert.equal(sha(native),record.nativeSha256);
+        assert.equal(sha(fs.readFileSync(path.join(root,record.artwork))),record.artworkSha256);
+        assert.equal(record.artworkRole,'Decorative illustration, outside gameplay panel');
         for (const [x,y,w,h] of [record.sourceCrop,record.detailCrop].filter(Boolean)) {
           assert(x>=0 && y>=0 && x+w<=record.nativeWidth && y+h<=record.nativeHeight);
         }

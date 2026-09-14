@@ -59,17 +59,6 @@ struct MapHomeBriefing: View {
         return VStack(alignment: .leading, spacing: AETheme.spacingS) {
             stateRow(facts)
             FirstFlightProgress(compact: true)
-            if snapshot.progression.hasMilestone("firstFlight"),
-               let model = controller.progressionModel, let next = model.nextEra {
-                Button(action: openBriefing) {
-                    Text("\(Vocab.era(next)): \(Format.percent(model.nextEraProgress)) of requirements met")
-                        .font(.caption).foregroundStyle(.white.opacity(0.8))
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                }
-                .buttonStyle(.aePress)
-                .accessibilityIdentifier("ae-home-era-progress")
-            }
             if let move {
                 Divider().overlay(Color.white.opacity(0.14))
                 moveRow(move)
@@ -93,9 +82,6 @@ struct MapHomeBriefing: View {
     private func stateRow(_ facts: [Fact]) -> some View {
         Button(action: openBriefing) {
             VStack(alignment: .leading, spacing: AETheme.spacingXS) {
-                Text("Airline overview")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.8))
                 HStack(alignment: .center, spacing: AETheme.spacingM) {
                     if typeSize.isAccessibilitySize {
                         VStack(alignment: .leading, spacing: AETheme.spacingXS) {
@@ -246,10 +232,12 @@ struct MapHomeBriefing: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.white)
                     .fixedSize(horizontal: false, vertical: true)
-                Text(move.detail)
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.62))
-                    .fixedSize(horizontal: false, vertical: true)
+                if !snapshot.progression.hasMilestone("firstFlight") {
+                    Text(move.detail)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.72))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             Spacer(minLength: 0)
             Image(systemName: "chevron.right")

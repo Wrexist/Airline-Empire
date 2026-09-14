@@ -1,78 +1,46 @@
-# Airline Empire — premium aviation screenshot collection
+# Airline Empire — cinematic store collection
 
-## Creative direction
+Six coordinated App Store images pair original cinematic aviation artwork with genuine native gameplay. Midnight navy, pearl silver and warm gold connect the sequence: ambition, fleet, routes, finance, rivals and progression.
 
-Player ambition first; genuine gameplay as the evidence. Deep navy, electric
-blue, warm amber, alternating light canvases, large editorial headlines and
-subtle route lines create a cohesive six-frame story. The iPad compositions
-use native iPad content crops rather than enlarged phone screenshots.
+The artwork was generated with the built-in image_gen tool. It is decorative marketing illustration, not 3D gameplay or an asset added to the game. Every final image clearly identifies the actual gameplay panel and Pro content. Captures are embedded as original pixels with only cropping and uniform scaling; no numbers, aircraft, achievements or UI are invented or retouched.
 
-An image-generation study was used to explore art direction. It is not a
-shipping screenshot. Every shipping gameplay image embeds original simulator
-PNG pixels, with only cropping and uniform scaling. The first phone design
-uses two clearly separated excerpts from the same screen: the route map and
-the campaign statistics. No UI, cash, routes,
-aircraft, achievements or competitor results are invented or retouched.
+## Editable sources
 
-## Provenance
+- scripts/store-art/build.cjs: vector composition, native-pixel placement and export.
+- scripts/store-art/storyboard.json: six headlines, copy and source crops.
+- cinematic/: six original 3D-style artwork PNGs and the generation prompt set.
+- captures/: native iPhone/iPad screenshots, manifests and earned campaign save.
+- Each locale export manifest records output, native capture and artwork SHA-256 hashes.
 
-- Production baseline: merged PR #22, `8b95b1928a14151782f2f37210725e1a06618ea4`.
-- Capture source commit: `cd302216728ee6d43632d6252835de0c446d5619`.
-- [Passing native capture run](https://github.com/Wrexist/Airline-Empire/actions/runs/34281676647): iPhone 17 Pro Max and iPad Pro 13-inch, iOS 26.2, Xcode 26.2.
-- Both device journeys produced all ten required source images.
-- Both used byte-identical campaign saves, paused at 2035-01-01 12:00.
-- Seed 2039; Campaign Air, Stockholm hub; five years advanced through ordinary
-  simulation commands. The probe acquires and assigns real aircraft and routes.
-- The DEBUG-only UI fixture enables Pro for the session; the release app and
-  real purchase entitlement are not changed.
-- `captures/` retains ten original captures per device, SHA-256 manifests,
-  the generated save and the simulation ledger.
-- Each locale's `export-manifest.json` records native source hashes, exact crop
-  rectangles, exported dimensions, file sizes and SHA-256 checksums.
-
-Facts in marketing copy are checked against `airports.json` (94 airports),
-`aircraft.json` (14 aircraft types), `AIArchetype` (five personalities) and
-`Era` (five progression eras). The geometric background uses the same
-public-domain Natural Earth outlines as the game's `WorldGeometryData.swift`.
-
-## Reproduce
-
-Run the **Store screenshots** workflow to create new native sources. Download
-both `store-captures-*` artifacts; place their device folders in `captures/`.
-The campaign is generated with:
+## Export
 
 ```sh
-swift run --package-path AirlineEmpireCore -c release ae-rival-probe 2039 1825 ARN LHR-CDG:0.88 --snapshot-hour 12 --save store/artwork/captures/store-campaign.json
+npm ci --prefix scripts/store-art --ignore-scripts
+node scripts/store-art/build.cjs store/artwork/captures store/screenshots/en-US
 ```
 
-The editable composition and copy live in `scripts/store-art/build.cjs` and
-`scripts/store-art/storyboard.json`. Rendering requires Node.js, `sharp` and
-the Nimbus Sans fonts from the URW Base 35 font family. No network, Apple
-credentials or image-generation call is used during artwork rendering.
+Copy the three output display directories and export manifest to en-GB, then run:
 
 ```sh
-npm install --prefix scripts/store-art
-node scripts/store-art/build.cjs store/artwork/captures store/screenshots/en-US
 node scripts/store-art/verify.cjs
-node scripts/asc/selftest.mjs
+node scripts/store-art/overview.cjs
 node scripts/asc/validate-metadata.mjs --allow-placeholders
 ```
 
-English wording is shared by en-US and en-GB. Copy the generated display-type
-directories and manifest to en-GB after any render. Open each full-size image
-and the gallery overview before upload. Hashes and dimensions alone cannot
-prove that a chosen crop is visually appropriate.
+The composition uses Arial with Helvetica/sans-serif fallback. Reproduction requires Node and the pinned sharp dependency; no image generation or Apple credential is needed to render the saved artwork.
 
-The font must be installed when reproducing; the SVG embeds PNGs, not fonts.
-Apple accepts the final raster PNGs, so no font installation is needed to
-upload them. Simulator/system overlays are excluded by intentional crops.
+Exports: six ordered RGB PNGs for each of 1320×2868, 1242×2688 and 2064×2752. English wording is shared by en-US and en-GB, giving 18 unique images and 36 upload files. The overview JPEGs are review material, not upload assets.
 
-## Submission
+Apple [screenshot sizes](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications) and [accurate metadata guidance](https://developer.apple.com/app-store/review/guidelines/#accurate-metadata) were checked on 13 September 2026. Native capture provenance and final visual review are recorded in capture-review.json.
 
-Upload only the six ordered PNGs per device slot from `store/screenshots/`.
-Native sources and overview sheets are supporting material, not upload assets.
-PR #23 was merged on 10 September. Screenshot uploads and contact completion
-are recorded in `docs/APP_STORE_HANDOFF_STATUS.md`; App Review, fresh build
-and physical-device acceptance remain separate release requirements.
-Apple's [screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/)
-were checked on 2026-09-08.
+## App Store Connect upload
+
+Uploaded to Airline Empire: Flight Tycoon (6806410538), iOS listing version 1.0,
+on 13 September 2026. [The upload run](https://github.com/Wrexist/Airline-Empire/actions/runs/34784324536)
+changed screenshots only. All 36 source checksums, six ordered sets and Apple's
+COMPLETE processing states were verified; see [verification report](upload-verification.json).
+
+The version was removed from its unsubmitted review draft to unlock screenshot
+editing. The open page subsequently showed build 1.0.21 (10) selected and
+concurrent unsaved listing edits. Those edits were left intact, with the version
+in Prepare for Submission. No review submission or publication was performed.

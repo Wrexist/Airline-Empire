@@ -1,5 +1,7 @@
 # The remaining owner steps
 
+> **Historical release record.** The build/account instructions below describe an earlier candidate. For the current source, TestFlight 1.0.22 (11), audit findings and the explicit no-upload-without-approval hold, use the [14 September audit](PRE_TESTFLIGHT_AUDIT_2026-09-14.md) and [current todo](../tasks/TODO.md). Do not act on old build numbers or submission instructions below.
+
 Updated 11 September 2026. The agent has configured the Apple record and
 all three purchases for **173 regions**, excluding China mainland and Vietnam.
 The app remains a first release, version 1.0, with a **16 October 2026**

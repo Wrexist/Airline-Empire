@@ -28,11 +28,12 @@ struct NetworkView: View {
         NavigationStack {
             Group {
                 switch section {
-                case .routes: RoutesList { showingOpenRoute = true }
-                case .fleet: FleetList { showingShop = true }
+                case .routes: RoutesList { showingOpenRoute = true }.transition(.opacity)
+                case .fleet: FleetList { showingShop = true }.transition(.opacity)
                 }
             }
             .background(AEGameBackdrop())
+            .aeAnimation(AEMotion.content, value: section)
             .navigationTitle(section.title)
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .top) { picker }

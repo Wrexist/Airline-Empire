@@ -6,7 +6,7 @@ import argparse
 import json
 import plistlib
 import urllib.request
-import urllib.parse
+from release_pages import has_page_heading, local_asset_path
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = json.loads((ROOT / "store/config.json").read_text())["websiteUrl"]
@@ -25,9 +25,9 @@ if "CA92.1" not in reasons.get("NSPrivacyAccessedAPICategoryUserDefaults", []):
 class Links(HTMLParser):
     def handle_starttag(self, tag, attrs):
         for key, value in attrs:
-            if key in ("href", "src") and value and not urllib.parse.urlparse(value).scheme:
-                target = (ROOT / "site" / value.split("#")[0]).resolve()
-                if not target.exists():
+            if key in ("href", "src") and value:
+                target = local_asset_path(ROOT / "site", value)
+                if target is not None and not target.exists():
                     errors.append(f"Broken local site link: {value}")
 
 for name in ("index", "privacy", "support", "terms", "press"):
@@ -53,7 +53,7 @@ if args.live:
             })
             with urllib.request.urlopen(request, timeout=15) as response:
                 text = response.read().decode()
-                if response.status != 200 or "Airline Empire" not in text or "<h1>" not in text:
+                if response.status != 200 or "Airline Empire" not in text or not has_page_heading(text):
                     errors.append(f"Invalid public page: {BASE + page}")
                 else:
                     print(f"Public page verified: {response.status} {response.url}")

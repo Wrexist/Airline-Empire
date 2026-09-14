@@ -91,10 +91,10 @@ Airline Empire: Flight Tycoon
 Offline Fleet & Route Manager
 ```
 
-**Privacy Policy URL** — 67/255 characters
+**Privacy Policy URL** — 53/255 characters
 
 ```text
-https://airline-empire-official.isacmolin.chatgpt.site/privacy.html
+https://wrexist.github.io/Airline-Empire/privacy.html
 ```
 
 #### English (U.K.)
@@ -113,10 +113,10 @@ Airline Empire: Flight Tycoon
 Offline Fleet & Route Manager
 ```
 
-**Privacy Policy URL** — 67/255 characters
+**Privacy Policy URL** — 53/255 characters
 
 ```text
-https://airline-empire-official.isacmolin.chatgpt.site/privacy.html
+https://wrexist.github.io/Airline-Empire/privacy.html
 ```
 
 ### General Information
@@ -260,10 +260,10 @@ reporter or game account. Gameplay is local; purchases and restores use Apple
 services, and legal/support links open external web pages. Confirm the privacy
 declaration against the submitted build, its privacy manifest and public policy.
 
-**Privacy Policy URL (asked again here)** — 67/255 characters
+**Privacy Policy URL (asked again here)** — 53/255 characters
 
 ```text
-https://airline-empire-official.isacmolin.chatgpt.site/privacy.html
+https://wrexist.github.io/Airline-Empire/privacy.html
 ```
 
 ---
@@ -285,7 +285,7 @@ Build a regional airline into a global network. Master routes, grow your fleet a
 > The only field that can be changed **without submitting a new version**.
 > Keep anything time-bound here and nothing permanent.
 
-**Description** — 2921/4000 characters
+**Description** — 2907/4000 characters
 
 ```text
 Your first aircraft. Your first profitable route. Your airline, growing into an empire.
@@ -322,7 +322,7 @@ Purchases and restoring Pro require Apple’s App Store services. Subscriptions 
 Real geography. Fictional airlines, aircraft and manufacturers. An empire shaped by your decisions.
 
 Terms of Use (Apple Standard EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
-Privacy Policy: https://airline-empire-official.isacmolin.chatgpt.site/privacy.html
+Privacy Policy: https://wrexist.github.io/Airline-Empire/privacy.html
 ```
 
 **Keywords** — 97/100 characters
@@ -334,16 +334,16 @@ airport,aircraft,aviation,planes,business,economy,management,simulator,network,t
 > Comma-separated, **no spaces after the commas** — a space is a character
 > spent on nothing. Hidden from users; this is pure search surface.
 
-**Support URL** — 67/255 characters
+**Support URL** — 53/255 characters
 
 ```text
-https://airline-empire-official.isacmolin.chatgpt.site/support.html
+https://wrexist.github.io/Airline-Empire/support.html
 ```
 
-**Marketing URL** — 55/255 characters
+**Marketing URL** — 41/255 characters
 
 ```text
-https://airline-empire-official.isacmolin.chatgpt.site/
+https://wrexist.github.io/Airline-Empire/
 ```
 
 ### English (U.K.)
@@ -357,7 +357,7 @@ Build a regional airline into a global network. Master routes, grow your fleet a
 > The only field that can be changed **without submitting a new version**.
 > Keep anything time-bound here and nothing permanent.
 
-**Description** — 2925/4000 characters
+**Description** — 2911/4000 characters
 
 ```text
 Your first aircraft. Your first profitable route. Your airline, growing into an empire.
@@ -394,7 +394,7 @@ Purchases and restoring Pro require Apple’s App Store services. Subscriptions 
 Real geography. Fictional airlines, aircraft and manufacturers. An empire shaped by your decisions.
 
 Terms of Use (Apple Standard EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
-Privacy Policy: https://airline-empire-official.isacmolin.chatgpt.site/privacy.html
+Privacy Policy: https://wrexist.github.io/Airline-Empire/privacy.html
 ```
 
 **Keywords** — 95/100 characters
@@ -406,16 +406,16 @@ airport,aircraft,aviation,aeroplane,business,economy,management,simulator,networ
 > Comma-separated, **no spaces after the commas** — a space is a character
 > spent on nothing. Hidden from users; this is pure search surface.
 
-**Support URL** — 67/255 characters
+**Support URL** — 53/255 characters
 
 ```text
-https://airline-empire-official.isacmolin.chatgpt.site/support.html
+https://wrexist.github.io/Airline-Empire/support.html
 ```
 
-**Marketing URL** — 55/255 characters
+**Marketing URL** — 41/255 characters
 
 ```text
-https://airline-empire-official.isacmolin.chatgpt.site/
+https://wrexist.github.io/Airline-Empire/
 ```
 
 ### Screenshots
@@ -536,8 +536,8 @@ Report crashes, unreadable layouts, controls that do not respond, slow or hot de
 ```
 
 - **Feedback Email** — `isacmolin@gmail.com`
-- **Marketing URL** — `https://airline-empire-official.isacmolin.chatgpt.site/`
-- **Privacy Policy URL** — `https://airline-empire-official.isacmolin.chatgpt.site/privacy.html`
+- **Marketing URL** — `https://wrexist.github.io/Airline-Empire/`
+- **Privacy Policy URL** — `https://wrexist.github.io/Airline-Empire/privacy.html`
 - **Beta App Review Information** — the same contact and notes as §5.
 
 ---

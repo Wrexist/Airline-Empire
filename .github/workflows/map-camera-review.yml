@@ -1,0 +1,90 @@
+name: Map camera review
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/map-camera-review.yml'
+      - 'AirlineEmpireApp/Sources/Map/**'
+      - 'AirlineEmpireApp/Tests/MapCameraTests.swift'
+      - 'AirlineEmpireApp/UITests/MapCameraUITests.swift'
+  workflow_dispatch:
+    inputs:
+      rotation_only:
+        description: Recapture iPad orientation checks only (unsigned simulator)
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: map-camera-review-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  capture:
+    strategy:
+      fail-fast: false
+      matrix:
+        device: ${{ inputs.rotation_only && fromJSON('["ipad"]') || fromJSON('["iphone", "ipad"]') }}
+    runs-on: macos-26
+    timeout-minutes: 35
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Generate an earned campaign from the current simulation
+        working-directory: AirlineEmpireCore
+        run: |
+          swift run -c release ae-rival-probe 2039 1825 ARN LHR-CDG:0.88 --snapshot-hour 12 --save ../AirlineEmpireApp/UITests/Fixtures/store-campaign.json > ../store-campaign-ledger.txt
+          grep -E '^saved |^final:|^   player routes:' ../store-campaign-ledger.txt
+      - name: Generate Xcode project
+        working-directory: AirlineEmpireApp
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Select the correct native display
+        id: sim
+        env:
+          CAPTURE_DEVICE: ${{ matrix.device }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+          devices = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devices', 'available', '--json']))['devices']
+          matches = [d for runtime, ds in devices.items() if runtime.endswith('iOS-26-2') for d in ds
+                     if d.get('isAvailable') and ((os.environ['CAPTURE_DEVICE'] == 'iphone' and d['name'] == 'iPhone 17 Pro Max')
+                     or (os.environ['CAPTURE_DEVICE'] == 'ipad' and 'iPad Pro' in d['name'] and '13-inch' in d['name']))]
+          if not matches: raise SystemExit('Required native display is not installed')
+          d = matches[0]
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f: f.write('id=' + d['udid'] + '\n')
+          print(d['name'], d['udid'])
+          subprocess.run(['xcrun', 'simctl', 'boot', d['udid']], check=True)
+          subprocess.run(['xcrun', 'simctl', 'bootstatus', d['udid'], '-b'], check=True)
+          subprocess.run(['xcrun', 'simctl', 'status_bar', d['udid'], 'override', '--time', '9:41', '--dataNetwork', 'wifi', '--wifiMode', 'active', '--wifiBars', '3', '--batteryState', 'charged', '--batteryLevel', '100'], check=True)
+          PY
+      - name: Verify native camera geometry and gestures
+        working-directory: AirlineEmpireApp
+        run: |
+          set -o pipefail
+          xcodebuild test -project AirlineEmpire.xcodeproj -scheme AirlineEmpire \
+            -destination 'platform=iOS Simulator,id=${{ steps.sim.outputs.id }}' \
+            -parallel-testing-enabled NO -only-testing:AirlineEmpireTests/MapCameraTests -only-testing:AirlineEmpireUITests/MapCameraUITests${{ inputs.rotation_only && '/testIPadRotationRefitsNetworkWithoutResettingManualPan' || '' }} \
+            CODE_SIGNING_ALLOWED=NO -resultBundlePath MapReview.xcresult 2>&1 | tee ../map-review-log.txt
+      - name: Export unaltered camera checkpoints
+        if: always()
+        run: |
+          mkdir -p captures
+          xcrun xcresulttool export attachments --path AirlineEmpireApp/MapReview.xcresult --output-path captures
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: map-review-${{ matrix.device }}
+          path: |
+            captures/
+            map-review-log.txt
+            store-campaign-ledger.txt
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: map-review-failure-${{ matrix.device }}
+          path: AirlineEmpireApp/MapReview.xcresult
+          retention-days: 14

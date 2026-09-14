@@ -301,6 +301,8 @@ struct GameShell: View {
 
 struct GameOverView: View {
     @Environment(GameController.self) private var controller
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AccessibilityFocusState(for: .voiceOver) private var headingFocused: Bool
 
     var body: some View {
         ScrollView {
@@ -308,13 +310,15 @@ struct GameOverView: View {
                 Image(systemName: "airplane.arrival")
                     .font(.system(size: 56))
                     .foregroundStyle(AETheme.mutedText)
-                    .symbolEffect(.pulse)
+                    .symbolEffect(.pulse, isActive: !reduceMotion)
                     .accessibilityHidden(true)
                 Text("The airline has collapsed")
                     .font(.title2.weight(.semibold))
                     .multilineTextAlignment(.center)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityFocused($headingFocused)
                 if let dashboard = controller.snapshot?.dashboardModel() {
-                    Text("\(dashboard.airlineName) flew its last flight in the \(Vocab.era(dashboard.era)) era.")
+                    Text("\(dashboard.airlineName) ceased operations in the \(Vocab.era(dashboard.era)) era.")
                         .foregroundStyle(AETheme.mutedText)
                         .multilineTextAlignment(.center)
                 }
@@ -339,6 +343,7 @@ struct GameOverView: View {
             .padding(.vertical, AETheme.spacingL)
         }
         .background(AEGameBackdrop())
+        .task { headingFocused = true }
     }
 }
 
@@ -346,6 +351,7 @@ struct GameOverView: View {
 /// whole life, the best month and the best route, what it achieved, and the
 /// seed — so the world that beat them can be played again.
 struct RunSummaryCard: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     let snapshot: GameState
     let player: Airline
 
@@ -360,9 +366,13 @@ struct RunSummaryCard: View {
                         }
                         if let best = bestMonth(finance) {
                             summaryRow("Best month") {
-                                HStack(spacing: AETheme.spacingXS) {
+                                let layout = typeSize.isAccessibilitySize
+                                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: AETheme.spacingXS))
+                                    : AnyLayout(HStackLayout(spacing: AETheme.spacingXS))
+                                layout {
                                     Text(String(format: "%04d-%02d", best.year, best.month))
                                         .font(.caption).foregroundStyle(AETheme.mutedText)
+                                        .fixedSize()
                                     MoneyText(money: best.netProfit)
                                 }
                             }
@@ -421,10 +431,16 @@ struct RunSummaryCard: View {
 
     private func summaryRow<Value: View>(_ label: String,
                                          @ViewBuilder value: () -> Value) -> some View {
-        HStack {
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: AETheme.spacingXS))
+            : AnyLayout(HStackLayout(spacing: AETheme.spacingS))
+        return layout {
             Text(label).font(.subheadline)
-            Spacer()
+            if !typeSize.isAccessibilitySize { Spacer() }
             value().font(.subheadline)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }

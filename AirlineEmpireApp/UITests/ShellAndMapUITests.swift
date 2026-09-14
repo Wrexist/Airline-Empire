@@ -64,7 +64,9 @@ final class ShellAndMapUITests: AEUITestCase {
         advanced.tap()
         guard foundAirline() else { return }
         XCTAssertTrue(app.descendants(matching: .any)["ae-first-flight-progress"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Airline overview"].exists)
+        XCTAssertTrue(app.buttons["ae-home-briefing"].isHittable)
+        guard openBriefing() else { return }
+        closeBriefing()
         checkpoint("GUIDE-first-flight-home")
     }
 
@@ -92,7 +94,13 @@ final class ShellAndMapUITests: AEUITestCase {
         XCTAssertTrue((origin.label + (origin.value as? String ?? "")).contains("ARN"))
         let idle = app.buttons["Fits idle aircraft"]
         guard require(idle, "the idle-aircraft route filter") else { return }
-        idle.tap()
+        XCTAssertGreaterThanOrEqual(idle.frame.height, 44,
+                                    "Unselected filters must expose their full touch target")
+        guard tapWhenReady(idle) else { return }
+        let selectedIdle = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            idle.exists && idle.isSelected
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [selectedIdle], timeout: 5), .completed)
         XCTAssertTrue(app.staticTexts["No destinations match your search and filter."].waitForExistence(timeout: 5))
         checkpoint("SMART-empty-idle-filter")
         app.buttons["Reset filters"].tap()
@@ -108,7 +116,7 @@ final class ShellAndMapUITests: AEUITestCase {
         market.tap()
         XCTAssertTrue(app.buttons["ae-market-route"].waitForExistence(timeout: 10))
         checkpoint("SMART-route-matched-market")
-        guard leaseAnAircraft(proof: .routeAssignment) else { return }
+        guard leaseAnAircraft(proof: .routeAssignment, verifyCancellation: true) else { return }
         XCTAssertTrue(app.buttons["Unassign"].exists, "The acquired aircraft must be assigned to the selected route.")
         checkpoint("SMART-leased-and-assigned")
         let viewMap = app.buttons["ae-route-view-map"]
@@ -289,15 +297,58 @@ final class ShellAndMapUITests: AEUITestCase {
     /// action must still be reachable. Whether it *looks* right is what the
     /// checkpoints are for.
     func testAccessibilityTextSizeKeepsTheShellUsable() throws {
+        try verifyAccessibleShell(category: "UICTContentSizeCategoryAccessibilityL")
+    }
+
+    func testLargestAccessibilityTextKeepsActionsReachable() throws {
+        try verifyAccessibleShell(category: "UICTContentSizeCategoryAccessibilityXXXL")
+    }
+
+    func testFreshScreensHaveAccessibleNamesAndTraits() throws {
+        launch(appearance: .light)
+        guard foundAirline() else { return }
+        continueAfterFailure = true
+        defer { continueAfterFailure = false }
+        for tab in ["Home", "Airline", "Finance", "World"] {
+            openTab(tab)
+            guard tabButton(tab)?.isSelected == true else {
+                XCTFail("Cannot audit \(tab): navigation did not select the requested tab")
+                continue
+            }
+            checkpoint("AX-semantics-\(tab)")
+            do {
+                try app.performAccessibilityAudit(for: [.sufficientElementDescription, .trait]) { issue in
+                    print("AX-AUDIT \(tab): \(issue.detailedDescription)")
+                    if let element = issue.element { print(element.debugDescription) }
+                    return false // Report every issue; none is suppressed.
+                }
+            } catch {
+                XCTFail("Accessibility audit failed on \(tab): \(error)")
+            }
+        }
+    }
+
+    private func verifyAccessibleShell(category: String) throws {
         launch(appearance: .light, arguments: [
             "-UIPreferredContentSizeCategoryName",
-            "UICTContentSizeCategoryAccessibilityL",
+            category,
         ])
         let start = app.buttons["ae-menu-new-airline"]
         guard revealMenuControl(start, "Start your airline at accessibility size"), tapWhenReady(start) else { return }
         checkpoint("MENU-accessibility-founding")
         guard foundAirline() else { return }
         checkpoint("95-dynamictype-home")
+
+        openTab("Finance")
+        checkpoint("AX-finance-fresh")
+        let borrow = app.buttons["Borrow"]
+        guard require(borrow, "Borrow at accessibility size"), tapWhenReady(borrow) else { return }
+        checkpoint("AX-borrowing")
+        let cancel = app.buttons["Cancel"].firstMatch
+        guard require(cancel, "Cancel borrowing"), tapWhenReady(cancel) else { return }
+        openTab("World")
+        checkpoint("AX-world-fresh")
+        openTab("Home")
 
         // Navigation failure is the worst outcome: every tab must survive.
         for tab in ["Airline", "Finance", "World", "Home"] {
@@ -318,8 +369,24 @@ final class ShellAndMapUITests: AEUITestCase {
         let browse = app.buttons["Browse the market"]
         require(browse, "the market entry point at accessibility size")
         browse.tap()
+        let seats = app.descendants(matching: .any)
+            .matching(identifier: "ae-market-spec-Seats").firstMatch
+        let marketList = app.descendants(matching: .any)
+            .matching(identifier: "ae-market-list").firstMatch
+        guard scrollUntil(seats, "aircraft specifications at accessibility size",
+                          in: marketList) else { return }
+        if seats.frame.midY > marketList.frame.intersection(window).midY {
+            marketList.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
+                .press(forDuration: 0.05, thenDragTo:
+                    marketList.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4)))
+        }
+        XCTAssertTrue(waitUntilStill(seats), "Specification rows did not settle after scrolling")
+        checkpoint("AX-market-specifications")
         let lease = app.buttons.matching(identifier: "ae-market-lease").firstMatch
-        scrollUntil(lease, "a Lease action in the market at accessibility size")
+        guard scrollUntil(lease, "a Lease action in the market at accessibility size",
+                          in: marketList) else { return }
+        XCTAssertTrue(lease.isHittable && lease.isEnabled,
+                      "The visible lease action must be available at accessibility size")
         checkpoint("97-dynamictype-market")
     }
 

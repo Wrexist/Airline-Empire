@@ -1,92 +1,104 @@
 {
-  "direction": "Premium aviation: real gameplay, precise typography, restrained blue and amber, one player benefit per frame.",
+  "direction": "Cinematic midnight aviation: six original 3D-style key-art scenes, warm gold editorial headlines, reflective gameplay frames and genuine current iPhone/iPad captures.",
   "exports": [
     {
       "file": "APP_IPHONE_67/01-network.png",
       "width": 1320,
       "height": 2868,
-      "bytes": 577385,
-      "sha256": "36908a057d28c2a2c23f181130f437b161ea0da0264f18e30c6c7cec23be5ffe",
+      "bytes": 2189898,
+      "sha256": "16592d2f01107f57529cd295344dad6d00edf06d16d9c8cb26f0fce935037766",
       "nativeSource": "iphone/01-network.png",
-      "nativeSha256": "087428b60cc846dca6bf5abc5386561f7c731861c01d5d8844982bfd810c9675",
+      "nativeSha256": "a167a695b564c7a9915e26a75aabe6f77ae4520d95ccb3fb811490fb67d0bd1f",
       "nativeWidth": 1320,
       "nativeHeight": 2868,
       "sourceCrop": [
         0,
         1180,
         900,
-        770
+        748
       ],
       "detailCrop": [
         48,
-        2090,
-        1200,
-        155
+        2060,
+        1224,
+        200
       ],
-      "headline": "The world. Your network."
+      "headline": "One airline. Endless ambition.",
+      "artwork": "store/artwork/cinematic/01-network.png",
+      "artworkSha256": "46589a61bd62a3e47ca4d435d8307c8b3552653e518e483ab10a21d65eb83cc5",
+      "artworkRole": "Decorative illustration, outside gameplay panel"
     },
     {
       "file": "APP_IPHONE_67/02-fleet.png",
       "width": 1320,
       "height": 2868,
-      "bytes": 365445,
-      "sha256": "db93852f833624940b91e19d39f753c1a43db72d6c4cce55e00d6b8afc087f54",
+      "bytes": 2189801,
+      "sha256": "7e363d240da92b391a399077b2c97b5686ec1eaf7c18ab5190ddfd05d51423d7",
       "nativeSource": "iphone/02-fleet.png",
-      "nativeSha256": "fd07e14138b9a176065384dccc0d07590bd41522f205d420ad29a4fc1cadbc55",
+      "nativeSha256": "b655444ee2654537c175b819da309d219d2506204196bb9c026fbc63f5f88927",
       "nativeWidth": 1320,
       "nativeHeight": 2868,
       "sourceCrop": [
         48,
-        508,
+        500,
         1224,
-        1735
+        1760
       ],
-      "headline": "From one plane to a fleet."
+      "headline": "Your fleet. Your future.",
+      "artwork": "store/artwork/cinematic/02-fleet.png",
+      "artworkSha256": "49da0c59e40a84b205eb21307779b13af34f8142e731bf12e496fd1ad3d1bca4",
+      "artworkRole": "Decorative illustration, outside gameplay panel"
     },
     {
       "file": "APP_IPHONE_67/03-routes.png",
       "width": 1320,
       "height": 2868,
-      "bytes": 408953,
-      "sha256": "4f48f39dfc485fd44ba7190bd6949ffc9806086669d5c4a30973f08c3d0327b0",
+      "bytes": 2019822,
+      "sha256": "9193c60e91fbf7e61b84087b3a9db9cf254f5703723f610044a506154774790e",
       "nativeSource": "iphone/03-route.png",
-      "nativeSha256": "83a74c1a3ae65adfa37936b507d87f84f916de00bd3d4d6f6b96739424ace1fc",
+      "nativeSha256": "3c66bd15110ed61a18dafaa6505739a97e7636118947b0b32ba1dcbfbc324e4a",
       "nativeWidth": 1320,
       "nativeHeight": 2868,
       "sourceCrop": [
         48,
-        348,
+        1024,
         1224,
-        1515
+        1510
       ],
-      "headline": "Make every route count."
+      "headline": "Make every route matter.",
+      "artwork": "store/artwork/cinematic/03-routes.png",
+      "artworkSha256": "70b2a49511e4ba3ef800367a43bca9f873e9a5a588524cc63a2e1b676135f4f3",
+      "artworkRole": "Decorative illustration, outside gameplay panel"
     },
     {
       "file": "APP_IPHONE_67/04-finance.png",
       "width": 1320,
       "height": 2868,
-      "bytes": 320477,
-      "sha256": "f300f350a8373d46f684d0f07a1edb32c66c1513f48346920ce7e66d1f43739a",
+      "bytes": 1764779,
+      "sha256": "c45f78613d80c8fca14a3a881d99c8c564f03f3c17330f8fe2ba02a3e1cfbccb",
       "nativeSource": "iphone/04-finance.png",
-      "nativeSha256": "cb166d32cc435a60e7841e67eb4865021f8794a6379ad2542fe0bbe9a9a53d1e",
+      "nativeSha256": "db0e2306e198742a68c498e7fce26fd2fc9d0894471fb7fc4ca5d69bead2eee4",
       "nativeWidth": 1320,
       "nativeHeight": 2868,
       "sourceCrop": [
         48,
-        348,
+        372,
         1224,
         1845
       ],
-      "headline": "Turn smart moves into profit."
+      "headline": "Build more than a network.",
+      "artwork": "store/artwork/cinematic/04-finance.png",
+      "artworkSha256": "049e33d76482f8419edaf8450ed1bc36a4cdcbed67fd6a9920107926aa93cb12",
+      "artworkRole": "Decorative illustration, outside gameplay panel"
     },
     {
       "file": "APP_IPHONE_67/05-rivals.png",
       "width": 1320,
       "height": 2868,
-      "bytes": 360150,
-      "sha256": "02d9302d0dfb9a929b336d7d209f76584961f7534ef96e31e8a5e0eac937f11f",
+      "bytes": 2040064,
+      "sha256": "869f4406061a5bd6c04b57c7e3341c8932dd50a1cdcdbc3abe8c9d003958a5f6",
       "nativeSource": "iphone/05-rivals.png",
-      "nativeSha256": "b1268f277a49304faeff8fe9e44b5eb773cde14c3deadbd4cefb91f2203efbf6",
+      "nativeSha256": "96e4e8916c9f70effb10bc36e14193cd373e35d092a969ff68efb6c192e8ff73",
       "nativeWidth": 1320,
       "nativeHeight": 2868,
       "sourceCrop": [
@@ -95,14 +107,17 @@
         1224,
         1420
       ],
-      "headline": "Build an airline rivals notice."
+      "headline": "Give rivals competition.",
+      "artwork": "store/artwork/cinematic/05-rivals.png",
+      "artworkSha256": "204b71a71144617828b818339e3f8cf542ae5b41ccf43dff4b007e899f17eb43",
+      "artworkRole": "Decorative illustration, outside gameplay panel"
     },
     {
       "file": "APP_IPHONE_67/06-progression.png",
       "width": 1320,
       "height": 2868,
-      "bytes": 347342,
-      "sha256": "60bd8544b3f0dad13e0a089dddbaf837e2a6ee8523328c0dc5591f591629dd48",
+      "bytes": 2060993,
+      "sha256": "88a063f8c1ce07f9723789a37afb7806b16153d24acaa882a24c3dd1862c2ddd",
       "nativeSource": "iphone/06-progression.png",
       "nativeSha256": "1ea1a3338eff416537ae6210b732183f552bffa9ab0e95153138b305f360b638",
       "nativeWidth": 1320,
@@ -113,94 +128,109 @@
         1224,
         1740
       ],
-      "headline": "Your next milestone awaits."
+      "headline": "From startup. To global player.",
+      "artwork": "store/artwork/cinematic/06-progression.png",
+      "artworkSha256": "dc76345d4da169cf9b5f8ed3d33c4b565b66e35fee8a008e68fe8fe5c347599b",
+      "artworkRole": "Decorative illustration, outside gameplay panel"
     },
     {
       "file": "APP_IPHONE_65/01-network.png",
       "width": 1242,
       "height": 2688,
-      "bytes": 546603,
-      "sha256": "7eddd7a23b98989b48fc69778e17beca95d7b49e8bb198a291d2fb6a031a55d4",
+      "bytes": 1964634,
+      "sha256": "ef121a15f3e7a9795c27577fa001452eac55a9cd882a602509fd3904794297dd",
       "nativeSource": "iphone/01-network.png",
-      "nativeSha256": "087428b60cc846dca6bf5abc5386561f7c731861c01d5d8844982bfd810c9675",
+      "nativeSha256": "a167a695b564c7a9915e26a75aabe6f77ae4520d95ccb3fb811490fb67d0bd1f",
       "nativeWidth": 1320,
       "nativeHeight": 2868,
       "sourceCrop": [
         0,
         1180,
         900,
-        770
+        748
       ],
       "detailCrop": [
         48,
-        2090,
-        1200,
-        155
+        2060,
+        1224,
+        200
       ],
-      "headline": "The world. Your network."
+      "headline": "One airline. Endless ambition.",
+      "artwork": "store/artwork/cinematic/01-network.png",
+      "artworkSha256": "46589a61bd62a3e47ca4d435d8307c8b3552653e518e483ab10a21d65eb83cc5",
+      "artworkRole": "Decorative illustration, outside gameplay panel"
     },
     {
       "file": "APP_IPHONE_65/02-fleet.png",
       "width": 1242,
       "height": 2688,
-      "bytes": 333795,
-      "sha256": "51aedf7bb8c15c26fd4261056ae91bf4a09eace1cc093bfa5da99d618b797f28",
+      "bytes": 1961450,
+      "sha256": "1b0b7388072fa452eeaecab71fb0c98f96d086952f4f77489ada83369d9dd6e0",
       "nativeSource": "iphone/02-fleet.png",
-      "nativeSha256": "fd07e14138b9a176065384dccc0d07590bd41522f205d420ad29a4fc1cadbc55",
+      "nativeSha256": "b655444ee2654537c175b819da309d219d2506204196bb9c026fbc63f5f88927",
       "nativeWidth": 1320,
       "nativeHeight": 2868,
       "sourceCrop": [
         48,
-        508,
+        500,
         1224,
-        1735
+        1760
       ],
-      "headline": "From one plane to a fleet."
+      "headline": "Your fleet. Your future.",
+      "artwork": "store/artwork/cinematic/02-fleet.png",
+      "artworkSha256": "49da0c59e40a84b205eb21307779b13af34f8142e731bf12e496fd1ad3d1bca4",
+      "artworkRole": "Decorative illustration, outside gameplay panel"
     },
     {
       "file": "APP_IPHONE_65/03-routes.png",
       "width": 1242,
       "height": 2688,
-      "bytes": 374958,
-      "sha256": "1881bd643b7c77adb9d3b56c53f1e56ac818f5afd42d9d6d4027dce663d83a2e",
+      "bytes": 1821685,
+      "sha256": "0548e7037be5a00ef3244435626988f4bb3824dacbeb88b17f680ecddb6cb658",
       "nativeSource": "iphone/03-route.png",
-      "nativeSha256": "83a74c1a3ae65adfa37936b507d87f84f916de00bd3d4d6f6b96739424ace1fc",
+      "nativeSha256": "3c66bd15110ed61a18dafaa6505739a97e7636118947b0b32ba1dcbfbc324e4a",
       "nativeWidth": 1320,
       "nativeHeight": 2868,
       "sourceCrop": [
         48,
-        348,
+        1024,
         1224,
-        1515
+        1510
       ],
-      "headline": "Make every route count."
+      "headline": "Make every route matter.",
+      "artwork": "store/artwork/cinematic/03-routes.png",
+      "artworkSha256": "70b2a49511e4ba3ef800367a43bca9f873e9a5a588524cc63a2e1b676135f4f3",
+      "artworkRole": "Decorative illustration, outside gameplay panel"
     },
     {
       "file": "APP_IPHONE_65/04-finance.png",
       "width": 1242,
       "height": 2688,
-      "bytes": 307622,
-      "sha256": "259fdc6d67b19354794ec6fff2b3325f9c71f65b31ce4f38a99bf896e576d655",
+      "bytes": 1616632,
+      "sha256": "24e53ea8a681413265ea91cfbef9e477a8d966ba20b874b14545f879ecdf3042",
       "nativeSource": "iphone/04-finance.png",
-      "nativeSha256": "cb166d32cc435a60e7841e67eb4865021f8794a6379ad2542fe0bbe9a9a53d1e",
+      "nativeSha256": "db0e2306e198742a68c498e7fce26fd2fc9d0894471fb7fc4ca5d69bead2eee4",
       "nativeWidth": 1320,
       "nativeHeight": 2868,
       "sourceCrop": [
         48,
-        348,
+        372,
         1224,
         1845
       ],
-      "headline": "Turn smart moves into profit."
+      "headline": "Build more than a network.",
+      "artwork": "store/artwork/cinematic/04-finance.png",
+      "artworkSha256": "049e33d76482f8419edaf8450ed1bc36a4cdcbed67fd6a9920107926aa93cb12",
+      "artworkRole": "Decorative illustration, outside gameplay panel"
     },
     {
       "file": "APP_IPHONE_65/05-rivals.png",
       "width": 1242,
       "height": 2688,
-      "bytes": 330593,
-      "sha256": "071908d146de4aa1b702885b08b1e8fdca4b039bedb034e4e4fd444f754a65eb",
+      "bytes": 1835350,
+      "sha256": "06397f0d3769b9e019b313dadb5d20a1639f34bee10580c07457392cf34cb6a1",
       "nativeSource": "iphone/05-rivals.png",
-      "nativeSha256": "b1268f277a49304faeff8fe9e44b5eb773cde14c3deadbd4cefb91f2203efbf6",
+      "nativeSha256": "96e4e8916c9f70effb10bc36e14193cd373e35d092a969ff68efb6c192e8ff73",
       "nativeWidth": 1320,
       "nativeHeight": 2868,
       "sourceCrop": [
@@ -209,14 +239,17 @@
         1224,
         1420
       ],
-      "headline": "Build an airline rivals notice."
+      "headline": "Give rivals competition.",
+      "artwork": "store/artwork/cinematic/05-rivals.png",
+      "artworkSha256": "204b71a71144617828b818339e3f8cf542ae5b41ccf43dff4b007e899f17eb43",
+      "artworkRole": "Decorative illustration, outside gameplay panel"
     },
     {
       "file": "APP_IPHONE_65/06-progression.png",
       "width": 1242,
       "height": 2688,
-      "bytes": 320290,
-      "sha256": "1421a44a50adb0153ad24b55f935d10f38717f01938f1ef7d9bc3486715e1158",
+      "bytes": 1853879,
+      "sha256": "ccad9e3b5d67b9d1fe2c4b452a8676091f1255cda38953f7aa6f03308af52319",
       "nativeSource": "iphone/06-progression.png",
       "nativeSha256": "1ea1a3338eff416537ae6210b732183f552bffa9ab0e95153138b305f360b638",
       "nativeWidth": 1320,
@@ -227,34 +260,46 @@
         1224,
         1740
       ],
-      "headline": "Your next milestone awaits."
+      "headline": "From startup. To global player.",
+      "artwork": "store/artwork/cinematic/06-progression.png",
+      "artworkSha256": "dc76345d4da169cf9b5f8ed3d33c4b565b66e35fee8a008e68fe8fe5c347599b",
+      "artworkRole": "Decorative illustration, outside gameplay panel"
     },
     {
       "file": "APP_IPAD_PRO_3GEN_129/01-network.png",
       "width": 2064,
       "height": 2752,
-      "bytes": 762798,
-      "sha256": "a1877f811b9ec4b213bfd941c344b0e270922f248ca145d7db379e2c02abb5ab",
+      "bytes": 3380502,
+      "sha256": "89eab4cd9c2db92912b8a6413bb32be4aa802068390b8d50ac8c500cc66c5a13",
       "nativeSource": "ipad/01-network.png",
-      "nativeSha256": "25a8c9166acb44a42fc6c66ab10dc4b41117a145de26b85fa617c2afba6e0021",
+      "nativeSha256": "3cb19eb5512e45dd9e2244ca052b2635adc889b4842421fc0e23c48ad6fc9e7c",
       "nativeWidth": 2064,
       "nativeHeight": 2752,
       "sourceCrop": [
-        680,
-        1090,
-        1384,
-        1200
+        790,
+        1160,
+        1200,
+        780
       ],
-      "headline": "The world. Your network."
+      "detailCrop": [
+        688,
+        2340,
+        1352,
+        160
+      ],
+      "headline": "One airline. Endless ambition.",
+      "artwork": "store/artwork/cinematic/01-network.png",
+      "artworkSha256": "46589a61bd62a3e47ca4d435d8307c8b3552653e518e483ab10a21d65eb83cc5",
+      "artworkRole": "Decorative illustration, outside gameplay panel"
     },
     {
       "file": "APP_IPAD_PRO_3GEN_129/02-fleet.png",
       "width": 2064,
       "height": 2752,
-      "bytes": 485391,
-      "sha256": "2462ce3350cc508e6696db0c7d25efe5d52383e4bda377694417305758509fdc",
+      "bytes": 3581614,
+      "sha256": "a79287a6cce4060511cd261a1bfed5194c712bbce26f679256ab666b291e5bc3",
       "nativeSource": "ipad/02-fleet.png",
-      "nativeSha256": "76d36cd832a3cfe7ee905ebc6720407f9f14f10b2a4d9b4847c6a8654fe79850",
+      "nativeSha256": "3f3f3132427da6ec07b86cc39119f135a6cb4500463ac25fb5dc0f30407c6e75",
       "nativeWidth": 2064,
       "nativeHeight": 2752,
       "sourceCrop": [
@@ -263,34 +308,40 @@
         1352,
         1280
       ],
-      "headline": "From one plane to a fleet."
+      "headline": "Your fleet. Your future.",
+      "artwork": "store/artwork/cinematic/02-fleet.png",
+      "artworkSha256": "49da0c59e40a84b205eb21307779b13af34f8142e731bf12e496fd1ad3d1bca4",
+      "artworkRole": "Decorative illustration, outside gameplay panel"
     },
     {
       "file": "APP_IPAD_PRO_3GEN_129/03-routes.png",
       "width": 2064,
       "height": 2752,
-      "bytes": 504019,
-      "sha256": "930e1d86fc96c4fa1f429d71dab9d40864edf5cfd9ff3b3d28791a86db17dff9",
+      "bytes": 3214788,
+      "sha256": "6b8242c9258f035643ac99ef9d157648ea01f6db5b631559c2b4360dd2454664",
       "nativeSource": "ipad/03-route.png",
-      "nativeSha256": "eb26525f91049ced7f8b6a9ae2d73deea40f1ec5656de05a2c4c73e61b12e79c",
+      "nativeSha256": "7d34e3f0368a27440d5cf6c4f5c1d8685deaf01790067acd1aa83dcc37142af3",
       "nativeWidth": 2064,
       "nativeHeight": 2752,
       "sourceCrop": [
         688,
-        172,
+        584,
         1352,
-        1200
+        1152
       ],
-      "headline": "Make every route count."
+      "headline": "Make every route matter.",
+      "artwork": "store/artwork/cinematic/03-routes.png",
+      "artworkSha256": "70b2a49511e4ba3ef800367a43bca9f873e9a5a588524cc63a2e1b676135f4f3",
+      "artworkRole": "Decorative illustration, outside gameplay panel"
     },
     {
       "file": "APP_IPAD_PRO_3GEN_129/04-finance.png",
       "width": 2064,
       "height": 2752,
-      "bytes": 438971,
-      "sha256": "89dae63feb6d2276bcc48aa26d332484d3d27f3e4a6cfd51effd85b225a2850a",
+      "bytes": 2737965,
+      "sha256": "dc4038e292c92d5a05a7d233b695ed836626ffaa287ca3fb0574cc83e215474e",
       "nativeSource": "ipad/04-finance.png",
-      "nativeSha256": "26ad316a94b12beb1cf3791e3ddeadd3e795e51124e7c1f4acd9fea5bd37f632",
+      "nativeSha256": "9ad0ef03ffec6038b9799f95bed6b9e5da279e6c0ee106e304d40429ef3cf575",
       "nativeWidth": 2064,
       "nativeHeight": 2752,
       "sourceCrop": [
@@ -299,16 +350,19 @@
         1352,
         1195
       ],
-      "headline": "Turn smart moves into profit."
+      "headline": "Build more than a network.",
+      "artwork": "store/artwork/cinematic/04-finance.png",
+      "artworkSha256": "049e33d76482f8419edaf8450ed1bc36a4cdcbed67fd6a9920107926aa93cb12",
+      "artworkRole": "Decorative illustration, outside gameplay panel"
     },
     {
       "file": "APP_IPAD_PRO_3GEN_129/05-rivals.png",
       "width": 2064,
       "height": 2752,
-      "bytes": 476343,
-      "sha256": "98de8d168b71b0f6f61d29fa13da088246f9a3db80e00966592fe6679b3f7b78",
+      "bytes": 3344775,
+      "sha256": "1e9afdae8ee9c47284a2c604fa3c1dd6cbe369d48229476d5164829c65b5dc8a",
       "nativeSource": "ipad/05-rivals.png",
-      "nativeSha256": "00bdb99447ae9e82bf43df681db46532bbce3f9fd5cfa1b1e0d07ac1a3570732",
+      "nativeSha256": "dd394839cbe8878380be92f2d3ac02da0cb3799c1bb524b007a02b4b1e067b26",
       "nativeWidth": 2064,
       "nativeHeight": 2752,
       "sourceCrop": [
@@ -317,16 +371,19 @@
         1352,
         1370
       ],
-      "headline": "Build an airline rivals notice."
+      "headline": "Give rivals competition.",
+      "artwork": "store/artwork/cinematic/05-rivals.png",
+      "artworkSha256": "204b71a71144617828b818339e3f8cf542ae5b41ccf43dff4b007e899f17eb43",
+      "artworkRole": "Decorative illustration, outside gameplay panel"
     },
     {
       "file": "APP_IPAD_PRO_3GEN_129/06-progression.png",
       "width": 2064,
       "height": 2752,
-      "bytes": 467265,
-      "sha256": "5a68eb1b998086977a8e026562aef2043f2d76b2ccd9750434a9b51c9a0087f3",
+      "bytes": 3260590,
+      "sha256": "8106d7e202ad652347ff79b593426f60361b469a65965bb275b243658eee73e9",
       "nativeSource": "ipad/06-progression.png",
-      "nativeSha256": "330542b4470ca7c4f0787c41bb8348c09da2ee97fb8e4b06e5147e11ab42466e",
+      "nativeSha256": "6d389cebfdbfac3f85f9c22f4581b798f94cb95930d0f979de725842766a2bfc",
       "nativeWidth": 2064,
       "nativeHeight": 2752,
       "sourceCrop": [
@@ -335,7 +392,10 @@
         1352,
         1110
       ],
-      "headline": "Your next milestone awaits."
+      "headline": "From startup. To global player.",
+      "artwork": "store/artwork/cinematic/06-progression.png",
+      "artworkSha256": "dc76345d4da169cf9b5f8ed3d33c4b565b66e35fee8a008e68fe8fe5c347599b",
+      "artworkRole": "Decorative illustration, outside gameplay panel"
     }
   ]
 }

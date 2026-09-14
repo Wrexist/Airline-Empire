@@ -1,5 +1,7 @@
 # Release continuation — 11 September 2026
 
+> **Historical release record.** The build/account instructions below describe an earlier candidate. For the current source, TestFlight 1.0.22 (11), audit findings and the explicit no-upload-without-approval hold, use the [14 September audit](PRE_TESTFLIGHT_AUDIT_2026-09-14.md) and [current todo](../tasks/TODO.md). Do not act on old build numbers or submission instructions below.
+
 **Current build: 1.0.16 (6), superseding 1.0.0 (5).** The owner requested
 an increase above 1.0.15. [Version correction and receipts](TESTFLIGHT_VERSION_1_0_16.md)
 record successful run `34579597613`: exact source `18253b3`, all 523

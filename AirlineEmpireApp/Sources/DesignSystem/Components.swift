@@ -5,14 +5,7 @@ import AirlineEmpireCore
 /// Reusable component library (Phase 14). Touch-first: every interactive
 /// element ≥ 44pt; color never carries meaning alone.
 
-/// The surface every screen is built from.
-///
-/// Glass rather than a flat fill (iOS 26 `glassEffect`, `.ultraThinMaterial`
-/// below — see `aeGlass`): a simulation is a lot of stacked panels, and glass
-/// is what keeps a stack of them reading as depth instead of as a wall of
-/// grey rectangles. `tint` is for cards that carry a state — a warning, a
-/// selection — and is deliberately weak, because a tinted card should be
-/// noticed without being read as an alert.
+/// A raised clay content surface. Interactive controls use the separate glass layer.
 struct AECard<Content: View>: View {
     var tint: Color? = nil
     @ViewBuilder var content: Content
@@ -25,7 +18,7 @@ struct AECard<Content: View>: View {
         content
             .padding(AETheme.spacingM)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .aeGlass(in: shape, tint: tint)
+            .aeClay(in: shape, tint: tint)
     }
 }
 
@@ -38,7 +31,7 @@ struct AECard<Content: View>: View {
 struct AEGameBackdrop: View {
     var body: some View {
         LinearGradient(
-            colors: [Color(.systemBackground), Color(.secondarySystemBackground)],
+            colors: [AETheme.sky, AETheme.canvas, AETheme.canvas],
             startPoint: .top,
             endPoint: .bottom)
         .ignoresSafeArea()
@@ -75,12 +68,13 @@ extension View {
     func aeListRow() -> some View {
         self
             .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 5, leading: AETheme.spacingM,
-                                      bottom: 5, trailing: AETheme.spacingM))
+            .listRowInsets(EdgeInsets(top: 14, leading: AETheme.spacingL,
+                                      bottom: 14, trailing: AETheme.spacingL))
             .listRowBackground(
                 Color.clear
-                    .aeGlass(in: AETheme.cardShape)
-                    .padding(.vertical, 4)
+                    .aeClay(in: AETheme.cardShape)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
             )
     }
 }
@@ -94,11 +88,10 @@ struct AESectionHeader: View {
     var body: some View {
         HStack(spacing: AETheme.spacingXS) {
             if let systemImage {
-                Image(systemName: systemImage).font(.caption2)
+                Image(systemName: systemImage).font(.subheadline).foregroundStyle(AETheme.accent)
             }
-            Text(text.uppercased())
-                .font(AEType.eyebrow)
-                .tracking(1.2)
+            Text(text)
+                .font(AEType.sectionTitle)
         }
         .foregroundStyle(AETheme.mutedText)
         .accessibilityAddTraits(.isHeader)
@@ -140,7 +133,7 @@ struct StatTile: View {
         }
         .padding(AETheme.spacingM)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .aeGlass(in: AETheme.cardShape)
+        .aeClay(in: AETheme.cardShape)
         // The simulation changes these while you watch. Rolling the digits
         // instead of swapping them is the difference between a dashboard that
         // is alive and one that flickers — and at 16× speed it is the only
@@ -167,7 +160,7 @@ struct AEBadge: View {
         .padding(.horizontal, AETheme.spacingS)
         .padding(.vertical, 3)
         .background(color.opacity(0.16))
-        .foregroundStyle(color)
+        .foregroundStyle(AETheme.badgeForeground)
         .clipShape(Capsule())
     }
 }
@@ -178,6 +171,7 @@ struct MoneyText: View {
 
     var body: some View {
         Text(Format.money(money))
+            .accessibilityLabel(Format.moneyAccessibility(money))
             .monospacedDigit()
             .contentTransition(.numericText())
             .aeAnimation(AEMotion.content, value: money.cents)
@@ -312,10 +306,8 @@ struct EmptyStateView: View {
 
     var body: some View {
         VStack(spacing: AETheme.spacingS) {
-            Image(systemName: icon)
-                .font(.system(size: 34))
-                .foregroundStyle(AETheme.accent.opacity(0.85))
-                .padding(.bottom, AETheme.spacingXS)
+            AEClayIcon(systemName: icon, size: 64)
+                .padding(.bottom, AETheme.spacingS)
             Text(title).font(.headline)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
@@ -341,7 +333,7 @@ struct EmptyStateView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, AETheme.spacingL)
         .padding(.horizontal, AETheme.spacingM)
-        .aeGlass(in: AETheme.cardShape)
+        .aeClay(in: AETheme.cardShape)
         // Combined only when there is nothing to press; a button inside a
         // combined element is unreachable to VoiceOver.
         .accessibilityElement(children: action == nil ? .combine : .contain)
@@ -386,7 +378,7 @@ struct SpeedControl: View {
                         .background {
                             if isSelected {
                                 Capsule(style: .continuous)
-                                    .fill(AETheme.accent)
+                                    .fill(AETheme.actionBlue)
                                     .matchedGeometryEffect(id: "speed", in: indicator)
                             }
                         }
@@ -561,21 +553,7 @@ extension View {
     func aeGlass<S: Shape>(in shape: S,
                            tint: Color? = nil,
                            interactive: Bool = false) -> some View {
-        if #available(iOS 26.0, *) {
-            switch (tint, interactive) {
-            case (.some(let color), true):
-                self.glassEffect(.regular.tint(color).interactive(), in: shape)
-            case (.some(let color), false):
-                self.glassEffect(.regular.tint(color), in: shape)
-            case (.none, true):
-                self.glassEffect(.regular.interactive(), in: shape)
-            case (.none, false):
-                self.glassEffect(.regular, in: shape)
-            }
-        } else {
-            self.background(.ultraThinMaterial, in: shape)
-                .overlay(shape.stroke(AETheme.glassEdge, lineWidth: 0.5))
-        }
+        modifier(AEGlassSurface(shape: shape, tint: tint, interactive: interactive))
     }
 }
 
@@ -901,8 +879,8 @@ struct AEPanel<Content: View>: View {
         content
             .padding(AETheme.spacingM)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(AETheme.cardBackground.opacity(0.5),
-                        in: AETheme.cardShape)
+            .background(AETheme.cardBackground, in: AETheme.cardShape)
+            .overlay(AETheme.cardShape.stroke(AETheme.surfaceRim.opacity(0.45), lineWidth: 0.5))
     }
 }
 
@@ -930,13 +908,67 @@ struct AEMetric: Identifiable, Equatable {
     }
 }
 
+/// A short operational overview. Its parent supplies the single card surface.
+/// Supporting figures stay available without pushing the list off the screen.
+struct AEManagementSummary: View {
+    let title: String
+    let metrics: [AEMetric]
+    let details: [AEMetric]
+    let identifier: String
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @State private var expanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AETheme.spacingS) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), alignment: .topLeading),
+                                     count: typeSize.isAccessibilitySize ? 1 : 3),
+                      alignment: .leading, spacing: AETheme.spacingS) {
+                ForEach(metrics) { metric in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(metric.value)
+                            .font(.system(.title3, design: .rounded, weight: .semibold))
+                            .foregroundStyle(metric.tint ?? .primary)
+                            .monospacedDigit()
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(metric.label)
+                            .font(.caption).foregroundStyle(AETheme.mutedText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(metric.label): \(metric.value)")
+                }
+            }
+            DisclosureGroup(isExpanded: $expanded) {
+                VStack(spacing: AETheme.spacingS) {
+                    ForEach(details) { metric in
+                        LabeledContent(metric.label) {
+                            Text(metric.value).monospacedDigit()
+                                .foregroundStyle(metric.tint ?? .primary)
+                        }
+                    }
+                }
+                .font(.subheadline)
+                .padding(.top, AETheme.spacingS)
+            } label: {
+                Text(title).font(.caption.weight(.medium))
+                    .foregroundStyle(AETheme.mutedText)
+                    .frame(minHeight: 44, alignment: .leading)
+            }
+            .accessibilityIdentifier(identifier)
+        }
+        .aeAnimation(AEMotion.content, value: expanded)
+        .accessibilityElement(children: .contain)
+    }
+}
+
 struct AECompactMetric: View {
     let metric: AEMetric
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 5) {
             Text(metric.value)
-                .font(AEType.metricCompact)
+                .font(.system(.title3, design: .rounded))
                 .fontWeight(metric.emphasised ? .bold : .semibold)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
@@ -1067,20 +1099,11 @@ struct AEButtonStyle: ButtonStyle {
                 .padding(.horizontal, AETheme.spacingM)
                 .padding(.vertical, AETheme.spacingS + 2)
                 .frame(minHeight: 44)
-                .background(background, in: Capsule())
-                .overlay {
-                    if role == .secondary || role == .destructive {
-                        Capsule().strokeBorder(accent.opacity(0.45), lineWidth: 1)
-                    }
-                }
+                .modifier(AEActionSurface(role: role))
                 .opacity(isEnabled ? (configuration.isPressed ? 0.82 : 1) : 0.45)
                 .scaleEffect(reduceMotion || !configuration.isPressed ? 1 : 0.972)
                 .animation(reduceMotion ? .easeOut(duration: 0.12) : AEMotion.selection,
                            value: configuration.isPressed)
-        }
-
-        private var accent: Color {
-            role == .destructive ? AETheme.negative : AETheme.accent
         }
 
         private var foreground: Color {
@@ -1092,17 +1115,7 @@ struct AEButtonStyle: ButtonStyle {
             }
         }
 
-        /// `AnyShapeStyle`, not `some View`: `background(_:in:)` takes a
-        /// `ShapeStyle`, and a `@ViewBuilder` returning `Color` satisfies
-        /// `View` without satisfying that. `swiftc -parse` cannot tell the
-        /// difference — it resolves no names and checks no conformances — so
-        /// this only failed on the macOS compile.
-        private var background: AnyShapeStyle {
-            switch role {
-            case .primary: AnyShapeStyle(AETheme.accent)
-            case .secondary, .destructive, .tertiary: AnyShapeStyle(Color.clear)
-            }
-        }
+
     }
 }
 

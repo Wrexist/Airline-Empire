@@ -55,7 +55,7 @@ on:
           four runners. Full is what you want before a release or after
           touching the map, the shell or the campaign.
         type: choice
-        options: [compile, smoke, onboarding, full]
+        options: [compile, smoke, acquisition, onboarding, full]
         default: full
       ipad:
         description: >-
@@ -64,9 +64,13 @@ on:
           layout it photographs changes far less often than the code does.
         type: boolean
         default: false
+      runtime:
+        description: 'iOS simulator runtime identifier: latest, or an installed version such as 26.4 for compatibility checks.'
+        type: string
+        default: latest
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ inputs.runtime || 'latest' }}
   cancel-in-progress: true
 
 permissions:
@@ -422,10 +426,15 @@ jobs:
           done
 
           case "$SUITE" in
+            acquisition)
+              MATRIX=$(jq -cn '{include: [
+                {shard: 0, name: "acquisition", job: 25, ui: 10, run: true, measure: false,
+                 tests: "-only-testing:AirlineEmpireUITests/ShellAndMapUITests/testAirportRouteFiltersAndContextualAircraftAcquisition"}
+              ]}') ;;
             onboarding)
               MATRIX=$(jq -cn '{include: [
                 {shard: 0, name: "onboarding", job: 25, ui: 18, run: true, measure: false,
-                 tests: "-only-testing:AirlineEmpireUITests/ShellAndMapUITests/testMenuSeedAndHomeSelection -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testOptionalSetupAndFirstFlightProgress -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testAirportRouteFiltersAndContextualAircraftAcquisition -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testAccessibilityTextSizeKeepsTheShellUsable -only-testing:AirlineEmpireUITests/CampaignUITests/testFoundingAnAirlineReachesEveryTab"}
+                 tests: "-only-testing:AirlineEmpireUITests/ShellAndMapUITests/testMenuSeedAndHomeSelection -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testOptionalSetupAndFirstFlightProgress -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testAirportRouteFiltersAndContextualAircraftAcquisition -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testAccessibilityTextSizeKeepsTheShellUsable -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testFreshScreensHaveAccessibleNamesAndTraits -only-testing:AirlineEmpireUITests/CampaignUITests/testFoundingAnAirlineReachesEveryTab"}
               ]}') ;;
             full)
               MATRIX=$(jq -cn '{include: [
@@ -554,36 +563,48 @@ jobs:
       - name: Pick a simulator
         id: sim
         if: matrix.run
+        env:
+          REQUESTED_RUNTIME: ${{ inputs.runtime || 'latest' }}
         run: |
           set -euo pipefail
-          NAME=$(xcrun simctl list devices available --json \
+          DEVICE=$(xcrun simctl list devices available --json \
             | python3 -c "
-          import json, sys
+          import json, os, re, sys
           data = json.load(sys.stdin)['devices']
+          requested = os.environ.get('REQUESTED_RUNTIME', 'latest')
+          wanted = None if requested == 'latest' else tuple(int(part) for part in requested.split('.'))
           best = None
           for runtime, devices in data.items():
               if 'iOS' not in runtime:
+                  continue
+              version = tuple(int(part) for part in re.findall(r'[0-9]+', runtime))
+              if wanted is not None and version != wanted:
                   continue
               for device in devices:
                   if not device.get('isAvailable'):
                       continue
                   name = device['name']
                   if name.startswith('iPhone'):
-                      # Prefer a plain iPhone over Pro/Max/mini: the smallest
-                      # common phone is the layout most likely to reveal a
-                      # cramped row, and this project has never seen one.
-                      score = (0 if 'Pro' in name or 'Max' in name else 1, name)
+                      # Preserve xcodebuild's newest-runtime selection while
+                      # using an unambiguous UDID. JSON enumeration order is
+                      # not a runtime preference. Keep the existing phone order.
+                      score = (version, 0 if 'Pro' in name or 'Max' in name else 1, name)
                       if best is None or score > best[0]:
-                          best = (score, name)
+                          best = (score, device['udid'], runtime, name)
+          if best:
+              print(f'Selected {best[3]} on {best[2]}', file=sys.stderr)
           print(best[1] if best else '')
           ")
-          if [ -z "$NAME" ]; then
+          if [ -z "$DEVICE" ]; then
             echo 'No available iOS simulator on this runner.' >&2
             xcrun simctl list devices available >&2
             exit 1
           fi
-          echo "Using simulator: $NAME"
-          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "Using simulator: $DEVICE"
+          echo "id=$DEVICE" >> "$GITHUB_OUTPUT"
+          # Finish the first simulator boot before XCTest measures an app launch.
+          # A device ID also avoids ambiguous names across installed runtimes.
+          xcrun simctl bootstatus "$DEVICE" -b
 
       # Two passes, on purpose.
       #
@@ -608,7 +629,7 @@ jobs:
             -project AirlineEmpire.xcodeproj \
             -scheme AirlineEmpire \
             -configuration Debug \
-            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.id }}" \
             -only-testing:AirlineEmpireUITests/PerformanceBaselineUITests \
             -parallel-testing-enabled NO \
             -resultBundlePath UITestResults-baseline.xcresult \
@@ -642,12 +663,21 @@ jobs:
             -project AirlineEmpire.xcodeproj \
             -scheme AirlineEmpire \
             -configuration Debug \
-            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.id }}" \
             ${{ matrix.tests }} \
             -parallel-testing-enabled NO \
             -resultBundlePath UITestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO \
             test-without-building 2>&1 | tee -a ui-test-output.txt
+
+      - name: Confirmation diagnostics after failure
+        if: failure() && matrix.run && steps.sim.outputs.id != ''
+        continue-on-error: true
+        timeout-minutes: 2
+        run: |
+          xcrun simctl spawn '${{ steps.sim.outputs.id }}' log show \
+            --style compact --last 20m \
+            --predicate 'subsystem == "com.airlineempire.presentation"'
 
       # The failure messages. xcodebuild's log names the test that failed
       # and how long it took, and nothing else; the assertion text — which
@@ -767,6 +797,8 @@ jobs:
               if name in seen:
                   continue
               seen.add(name)
+              os.makedirs("ReviewScreenshots", exist_ok=True)
+              shutil.copyfile(path, os.path.join("ReviewScreenshots", os.path.basename(name) + ".png"))
               if name.startswith("KEY-MENU-"):
                   os.makedirs("MenuScreenshots", exist_ok=True)
                   shutil.copyfile(path, os.path.join("MenuScreenshots", os.path.basename(name) + ".png"))
@@ -788,7 +820,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: menu-screenshots-shard${{ matrix.shard }}
-          path: AirlineEmpireApp/MenuScreenshots
+          path: |
+            AirlineEmpireApp/MenuScreenshots
+            AirlineEmpireApp/ReviewScreenshots
           retention-days: 14
           if-no-files-found: ignore
 
@@ -896,6 +930,7 @@ jobs:
             -resultBundlePath UITestResults.xcresult \
             -only-testing:AirlineEmpireUITests/CampaignUITests/testFoundingAnAirlineReachesEveryTab \
             -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testDetailScreensAndSettingsRender \
+            -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testLargestAccessibilityTextKeepsActionsReachable \
             CODE_SIGNING_ALLOWED=NO \
             test 2>&1 | tee ui-test-output.txt
 
@@ -946,6 +981,8 @@ jobs:
               if name in seen:
                   continue
               seen.add(name)
+              os.makedirs("ReviewScreenshots", exist_ok=True)
+              shutil.copyfile(path, os.path.join("ReviewScreenshots", os.path.basename(name) + ".png"))
               if name.startswith("KEY-MENU-"):
                   os.makedirs("MenuScreenshots", exist_ok=True)
                   shutil.copyfile(path, os.path.join("MenuScreenshots", os.path.basename(name) + ".png"))
@@ -967,7 +1004,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: menu-screenshots-ipad
-          path: AirlineEmpireApp/MenuScreenshots
+          path: |
+            AirlineEmpireApp/MenuScreenshots
+            AirlineEmpireApp/ReviewScreenshots
           retention-days: 14
           if-no-files-found: ignore
 

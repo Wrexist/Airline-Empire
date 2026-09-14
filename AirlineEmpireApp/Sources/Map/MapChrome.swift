@@ -15,44 +15,25 @@ import AirlineEmpireCore
 struct MapTopBar: View {
     @Environment(GameController.self) private var controller
     @Environment(\.dynamicTypeSize) private var typeSize
-    @Environment(\.horizontalSizeClass) private var sizeClass
     let model: MapModel
     let snapshot: GameState
 
     var body: some View {
         VStack(spacing: AETheme.spacingS) {
-            // Compact screens use two rows. Instantiate only the visible
-            // controls: measuring two interactive ViewThatFits candidates
-            // can expose duplicate accessibility actions for the same tap.
-            Group {
-                if sizeClass == .regular && !typeSize.isAccessibilitySize {
-                    HStack(spacing: AETheme.spacingS) {
-                        clock.fixedSize(horizontal: true, vertical: false)
-                        Spacer(minLength: AETheme.spacingS)
-                        SpeedControl().fixedSize(horizontal: true, vertical: false)
-                    }
-                } else {
-                    VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                        HStack {
-                            Text(Format.date(snapshot.currentDate))
-                                .font(.subheadline.weight(.semibold).monospacedDigit())
-                            Spacer(minLength: AETheme.spacingS)
-                            VStack(alignment: .trailing, spacing: 1) {
-                                Text(Format.clock(snapshot.currentDate))
-                                    .font(.caption.monospacedDigit())
-                                Text(controller.speed == .paused ? "Paused" : "Time running")
-                                    .font(.caption2)
-                            }
-                            .foregroundStyle(.white.opacity(0.7))
-                        }
-                        SpeedControl()
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
+            // Keep the map visible. The clock and transport are independent
+            // floating controls; only larger text needs a second line.
+            let layout = typeSize >= .xxLarge
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                : AnyLayout(HStackLayout(alignment: .center, spacing: 8))
+            layout {
+                clock
+                    .padding(.horizontal, 12)
+                    .frame(minHeight: 50)
+                    .aeGlass(in: RoundedRectangle(cornerRadius: 18))
+                if typeSize < .xxLarge { Spacer(minLength: 0) }
+                SpeedControl().fixedSize(horizontal: true, vertical: false)
             }
-            .padding(.horizontal, AETheme.spacingM)
-            .padding(.vertical, AETheme.spacingS)
-            .aeGlass(in: AETheme.cardShape)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             if let banner = worldBanner {
                 HStack(spacing: AETheme.spacingXS) {
@@ -81,7 +62,7 @@ struct MapTopBar: View {
     private var clock: some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(Format.date(snapshot.currentDate))
-                .font(.subheadline.weight(.semibold))
+                .font(.caption2.weight(.semibold))
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)

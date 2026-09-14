@@ -44,10 +44,25 @@ struct RouteFlightStatus: View {
            !route.assignedAircraft.isEmpty {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 Label(title(state: state, route: route), systemImage: "airplane.departure")
-                    .font(.headline)
-                Text(detail(state: state, route: route))
-                    .font(.subheadline).foregroundStyle(.secondary)
+                    .font(.subheadline.weight(.semibold))
+                Text(RouteScheduleSummary.text(
+                    flights: state.flights.values.filter { $0.route == routeID },
+                    now: state.clock.now,
+                    paused: controller.speed == .paused,
+                    hasOperationalAircraft: route.assignedAircraft.contains {
+                        state.aircraft[$0]?.isOperational == true
+                    }))
+                    .font(.caption).foregroundStyle(AETheme.mutedText)
                     .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("ae-route-schedule-summary")
+                DisclosureGroup("Schedule details") {
+                    Text(detail(state: state, route: route))
+                        .font(.caption).foregroundStyle(AETheme.mutedText)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 4)
+                }
+                .font(.caption)
+                .tint(AETheme.mutedText)
                 if controller.speed == .paused {
                     Button("Resume flights", systemImage: "play.fill") { controller.setSpeed(.x1) }
                         .buttonStyle(.aePrimary)
@@ -59,7 +74,7 @@ struct RouteFlightStatus: View {
             }
             .padding(AETheme.spacingM)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .aeGlass(in: AETheme.cardShape)
+            .aeClay(in: AETheme.cardShape)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("ae-route-flight-status")
         }
@@ -98,5 +113,40 @@ struct RouteFlightStatus: View {
             return "Your aircraft is assigned. Check its delivery or maintenance status below before it can fly."
         }
         return "The schedule updates at midnight. Keep time running to dispatch available aircraft; ticket revenue is recorded when flights land."
+    }
+}
+
+/// A concise, always-visible explanation of what the route is waiting for.
+/// Uses game time and planned departures; it never promises a takeoff.
+enum RouteScheduleSummary {
+    static func text(flights: [Flight], now: SimTime, paused: Bool,
+                     hasOperationalAircraft: Bool) -> String {
+        let next = flights.filter {
+            switch $0.phase {
+            case .scheduled, .boarding: return true
+            default: return false
+            }
+        }.min { $0.departureTime < $1.departureTime }
+        if let next {
+            let minutes = next.departureTime.rawMinutes - now.rawMinutes
+            if minutes <= 0 {
+                return paused ? "Departure pending. Resume time to continue."
+                    : "Departure pending. Check schedule details for delays."
+            }
+            let timing = "Next planned departure in \(minutes) game minutes."
+            return paused ? timing + " Time is paused." : timing
+        }
+        if flights.contains(where: {
+            if case .enRoute = $0.phase { return true }
+            return false
+        }) {
+            return paused ? "Flight paused in the air. Resume time to continue."
+                : "Aircraft in flight. Revenue is recorded after landing."
+        }
+        if !hasOperationalAircraft {
+            return "Check delivery or maintenance before this route can fly."
+        }
+        return paused ? "Resume time; schedules update at midnight."
+            : "Schedules update at midnight. Keep time running."
     }
 }

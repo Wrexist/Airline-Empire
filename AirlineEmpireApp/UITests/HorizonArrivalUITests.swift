@@ -185,7 +185,7 @@ final class HorizonArrivalUITests: AEUITestCase {
             XCTFail("The \(code) row did not accept a tap.")
             return false
         }
-        let header = app.staticTexts["WHO ELSE FLIES THIS"]
+        let header = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "WHO ELSE FLIES THIS")).firstMatch
         if header.waitForExistence(timeout: 8) { return true }
         return scrollUntil(header, "the competition section on the route screen")
     }
