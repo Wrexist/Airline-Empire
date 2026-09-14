@@ -1445,6 +1445,7 @@ struct AircraftShopSheet: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(label), \(value)")
+        .accessibilityIdentifier("ae-market-spec-\(label)")
     }
 
     /// The band as a bar. Ordinal, not measured — the band already threw the

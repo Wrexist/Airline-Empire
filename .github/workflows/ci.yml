@@ -558,23 +558,26 @@ jobs:
           set -euo pipefail
           DEVICE=$(xcrun simctl list devices available --json \
             | python3 -c "
-          import json, sys
+          import json, re, sys
           data = json.load(sys.stdin)['devices']
           best = None
           for runtime, devices in data.items():
               if 'iOS' not in runtime:
                   continue
+              version = tuple(int(part) for part in re.findall(r'[0-9]+', runtime))
               for device in devices:
                   if not device.get('isAvailable'):
                       continue
                   name = device['name']
                   if name.startswith('iPhone'):
-                      # Prefer a plain iPhone over Pro/Max/mini: the smallest
-                      # common phone is the layout most likely to reveal a
-                      # cramped row, and this project has never seen one.
-                      score = (0 if 'Pro' in name or 'Max' in name else 1, name)
+                      # Preserve xcodebuild's newest-runtime selection while
+                      # using an unambiguous UDID. JSON enumeration order is
+                      # not a runtime preference. Keep the existing phone order.
+                      score = (version, 0 if 'Pro' in name or 'Max' in name else 1, name)
                       if best is None or score > best[0]:
-                          best = (score, device['udid'])
+                          best = (score, device['udid'], runtime, name)
+          if best:
+              print(f'Selected {best[3]} on {best[2]}', file=sys.stderr)
           print(best[1] if best else '')
           ")
           if [ -z "$DEVICE" ]; then

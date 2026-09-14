@@ -50,6 +50,11 @@ class AEUITestCase: XCTestCase {
             shot.name = Self.logPrefix + "FAIL-" + name
             shot.lifetime = .keepAlways
             add(shot)
+            if app.state == .runningForeground {
+                // Keep frames and labels alongside the image: a visible
+                // control and XCTest's snapshot can disagree after scrolling.
+                print("AX hierarchy after failure in \(name):\n\(app.debugDescription)")
+            }
         }
         app = nil
         super.tearDown()
@@ -1475,8 +1480,11 @@ class AEUITestCase: XCTestCase {
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             handle.exists && handle.isHittable
         }, object: nil)
-        guard XCTWaiter.wait(for: [ready], timeout: 10) == .completed,
-              waitUntilStill(handle),
+        _ = XCTWaiter.wait(for: [ready], timeout: 10)
+        // A hosted AX query can finish after the waiter's deadline. Judge
+        // the current control as well, rather than treating a slow query as
+        // proof that this unobstructed button cannot be tapped.
+        guard handle.exists, handle.isHittable, waitUntilStill(handle),
               app.buttons["ae-home-briefing"].isHittable else {
             capture(Self.logPrefix + "BRIEFING-HANDLE-NOT-READY")
             XCTFail("The briefing handle did not settle into a hittable control.")

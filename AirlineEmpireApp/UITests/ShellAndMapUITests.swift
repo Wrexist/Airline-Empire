@@ -349,6 +349,14 @@ final class ShellAndMapUITests: AEUITestCase {
         let browse = app.buttons["Browse the market"]
         require(browse, "the market entry point at accessibility size")
         browse.tap()
+        let seats = app.descendants(matching: .any)
+            .matching(identifier: "ae-market-spec-Seats").firstMatch
+        let marketList = app.collectionViews.firstMatch.exists
+            ? app.collectionViews.firstMatch : app.scrollViews.firstMatch
+        guard scrollUntil(seats, "aircraft specifications at accessibility size",
+                          in: marketList) else { return }
+        XCTAssertTrue(waitUntilStill(seats), "Specification rows did not settle after scrolling")
+        checkpoint("AX-market-specifications")
         let lease = app.buttons.matching(identifier: "ae-market-lease").firstMatch
         scrollUntil(lease, "a Lease action in the market at accessibility size")
         checkpoint("97-dynamictype-market")
