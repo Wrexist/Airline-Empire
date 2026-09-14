@@ -79,6 +79,10 @@ struct MapScreen: View {
         ProcessInfo.processInfo.arguments.contains("-AEUITestProbes")
     }
 
+    private var presentsSheet: Bool {
+        showingBriefing || showingAircraftMarket || routeDraft != nil || airportDraft != nil
+    }
+
     var body: some View {
         NavigationStack(path: $path) {
             GeometryReader { geometry in
@@ -99,11 +103,11 @@ struct MapScreen: View {
                             .ignoresSafeArea(edges: .bottom)
                         chrome(model: model, snapshot: snapshot)
                     }
-                    // Only the presented sheet is interactive. Keep covered
-                    // map controls out of VoiceOver/XCTest's navigation tree;
-                    // the sheet modifiers live outside this content subtree.
-                    .accessibilityHidden(showingBriefing || showingAircraftMarket
-                                         || routeDraft != nil || airportDraft != nil)
+                    // Only the presented sheet is interactive. Exclude covered
+                    // map content from assistive navigation and input; the
+                    // sheet modifiers live outside this content subtree.
+                    .accessibilityHidden(presentsSheet)
+                    .allowsHitTesting(!presentsSheet)
                     // Every edge, deliberately. A bare `Color` background
                     // bleeds into the safe areas on its own; the moment it is
                     // wrapped in a modifier it stops, and run 75 photographed

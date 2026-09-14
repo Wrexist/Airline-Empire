@@ -1480,9 +1480,11 @@ class AEUITestCase: XCTestCase {
         let frame = close.frame
         app.coordinate(withNormalizedOffset: .zero)
             .withOffset(CGVector(dx: frame.midX, dy: frame.midY)).tap()
-        guard close.waitForNonExistence(timeout: 12),
-              app.buttons["ae-home-briefing"].waitForExistence(timeout: 12),
-              app.buttons["ae-home-briefing"].isHittable else {
+        let handle = app.buttons["ae-home-briefing"]
+        let returned = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            !close.exists && handle.exists && handle.isHittable
+        }, object: nil)
+        guard XCTWaiter.wait(for: [returned], timeout: 12) == .completed else {
             capture(Self.logPrefix + "BRIEFING-DID-NOT-CLOSE")
             XCTFail("Closing the briefing did not reveal usable map controls; no background action was tapped.")
             return false

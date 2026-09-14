@@ -55,7 +55,7 @@ on:
           four runners. Full is what you want before a release or after
           touching the map, the shell or the campaign.
         type: choice
-        options: [compile, smoke, acquisition, onboarding, full]
+        options: [compile, smoke, acquisition, onboarding, briefing, full]
         default: full
       ipad:
         description: >-
@@ -161,7 +161,7 @@ jobs:
           set -o pipefail
           # Focused UI follow-ups still verify the onboarding state model.
           # Full, smoke, PR and push runs retain the complete Core suite.
-          if [ "$VALIDATION_SUITE" = "onboarding" ]; then
+          if [ "$VALIDATION_SUITE" = "onboarding" ] || [ "$VALIDATION_SUITE" = "briefing" ]; then
             swift test --filter OnboardingTests 2>&1 | tee onboarding-test.log
             grep -Eq 'Test run with [1-9][0-9]* tests? passed' onboarding-test.log
             exit 0
@@ -426,6 +426,13 @@ jobs:
           done
 
           case "$SUITE" in
+            briefing)
+              # Fast diagnosis of live-map and modal transitions. This single
+              # focused job cannot satisfy the five-journey release checker.
+              MATRIX=$(jq -cn '{include: [
+                {shard: 0, name: "briefing", job: 35, ui: 25, run: true, measure: false,
+                 tests: "-only-testing:AirlineEmpireUITests/MapHomeUITests/testTheMapIsTheHomeScreen -only-testing:AirlineEmpireUITests/EconomyJourneyUITests/testAnAircraftFliesItsRouteOnTheMap"}
+              ]}') ;;
             acquisition)
               MATRIX=$(jq -cn '{include: [
                 {shard: 0, name: "acquisition", job: 25, ui: 10, run: true, measure: false,

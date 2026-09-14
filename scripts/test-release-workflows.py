@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Keep TestFlight's validation and immutable checkout contract intact."""
 from pathlib import Path
+import importlib.util
 import unittest
 
 import yaml
@@ -15,6 +16,15 @@ def workflow(name):
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
+    def test_focused_briefing_success_cannot_authorize_upload(self):
+        spec = importlib.util.spec_from_file_location("release_evidence", ROOT / "scripts/check-release-evidence.py")
+        evidence = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(evidence)
+        focused = [{"name": "iOS app (xcodebuild) · briefing", "conclusion": "success",
+                    "steps": [{"name": "Run the UI tests", "conclusion": "success"}]},
+                   {"name": "iPad shell (regular width)", "conclusion": "success"}]
+        self.assertFalse(evidence.has_full_device_evidence(focused))
+
     def test_archive_cannot_run_before_all_gates_succeed(self):
         jobs = workflow("ios-testflight")["jobs"]
         self.assertEqual(set(jobs["archive"]["needs"]),
