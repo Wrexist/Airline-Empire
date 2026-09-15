@@ -1,4 +1,4 @@
-# AE-049 — Aircraft configuration and upgrades
+# AE-049 â€” Aircraft configuration and upgrades
 
 ## Player experience
 
@@ -87,12 +87,32 @@ and game-day changes, and never consume RNG or mutate the live world.
 refit billing and idempotence, no demand refill, persistence, availability/funds,
 forecast purity and consistency, multi-aircraft demand, and actual flight seats
 and revenue. `AircraftConfigurationUITests` exercise cabin editing, confirmation,
-saved state, upgrades, and a light appearance with accessibility text.
+saved state, upgrades, and light appearance. A hosted accessibility review
+separately captures configured Pacifica cabin and upgrade panels in both
+appearances at accessibility size 5; these captures are component checks, not
+full-device journey proof.
 
 A dedicated branch/manual macOS workflow runs focused Core regressions, builds
-the app/test targets, and runs the aircraft screen journeys. Native results and
-remaining limitations are recorded below after execution.
+the app/test targets, and runs the aircraft screen journeys.
 
 The existing assignment eligibility test also extracts its lazy optional fixture
 before invoking `#require`; this preserves the test while avoiding a Swift Testing
 macro expansion error on the Apple toolchain.
+
+### Verified result (2026-09-15)
+
+Commit `b2d300d`, [validation run 34957313219](https://github.com/Wrexist/Airline-Empire/actions/runs/34957313219):
+
+- 94 focused Core tests passed; release build passed with warnings as errors.
+- iOS app and test targets built successfully on Xcode 26.6.
+- iPhone dark cabin editing, confirmed save and upgrade navigation passed.
+- iPhone light aircraft detail journey passed.
+- Hosted light/dark aircraft overview and accessibility size 5 cabin/upgrade
+  captures passed, including the seat-icon availability assertion.
+- iPad dark cabin editing, confirmed save and upgrade navigation passed.
+- Local app symbol resolution and UTF-8 source checks passed.
+
+The workflow disables the integrated Swift driver so compiler diagnostics remain
+visible; this exposed three invalid source-encoding bytes, now corrected. Earlier
+runs failed before this correction. No physical-device or TestFlight deployment
+is claimed. Captures and result bundles are attached to the linked validation run.
