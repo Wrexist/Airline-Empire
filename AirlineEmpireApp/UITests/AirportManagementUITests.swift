@@ -58,7 +58,8 @@ final class AirportManagementUITests: AEUITestCase {
         for _ in 0..<10 {
             let frame = element.exists ? element.frame : .zero
             // Hittability alone includes controls partially behind the floating tab bar.
-            let top = app.frame.minY + 120, bottom = app.frame.maxY - 160
+            let top = app.frame.minY + 120
+            let bottom = app.frame.maxY - (app.tabBars.firstMatch.exists ? 160 : 40)
             if !frame.isEmpty, frame.minY >= top, frame.maxY <= bottom, element.isHittable {
                 XCTAssertTrue(waitUntilStill(element))
                 return
