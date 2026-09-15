@@ -47,9 +47,14 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
                 return nil
             }
             let scroll = try XCTUnwrap(verticalScroll(in: host.view))
-            scroll.setContentOffset(CGPoint(x: 0, y: max(0, scroll.contentSize.height - scroll.bounds.height + scroll.adjustedContentInset.bottom)), animated: false)
-            host.view.layoutIfNeeded()
-            try await Task.sleep(for: .milliseconds(200))
+            // Lazy grids resolve additional row heights as they enter the viewport.
+            // Re-evaluate the bottom after layout instead of trusting the first estimate.
+            for _ in 0..<6 {
+                scroll.setContentOffset(CGPoint(x: 0, y: max(0, scroll.contentSize.height - scroll.bounds.height + scroll.adjustedContentInset.bottom)), animated: false)
+                host.view.layoutIfNeeded()
+                try await Task.sleep(for: .milliseconds(150))
+            }
+            XCTAssertLessThanOrEqual(scroll.contentSize.height - scroll.bounds.height + scroll.adjustedContentInset.bottom - scroll.contentOffset.y, 2)
         }
         let renderer = UIGraphicsImageRenderer(bounds: host.view.bounds)
         var drawn = false

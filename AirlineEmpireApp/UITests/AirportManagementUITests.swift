@@ -102,11 +102,12 @@ final class AirportManagementUITests: AEUITestCase {
         revealControl(lounge)
         XCTAssertTrue(lounge.isSelected)
         // Persist through the player's save flow, terminate, and reopen the saved slot.
-        guard openBriefing() else { return }
+        XCTAssertTrue(openBriefing())
         let settings = app.buttons["Settings"]
         XCTAssertTrue(settings.waitForExistence(timeout: 10)); settings.tap()
         let saveAndQuit = app.buttons["Save and quit to menu"]
-        guard scrollUntil(saveAndQuit, "Save airport services"), tapWhenReady(saveAndQuit) else { return }
+        XCTAssertTrue(scrollUntil(saveAndQuit, "Save airport services"))
+        saveAndQuit.tap()
         XCTAssertTrue(app.descendants(matching: .any)["ae-session-report"].waitForExistence(timeout: 15))
         app.terminate()
         if let index = app.launchArguments.firstIndex(of: "-AEUITestLoadSave") {
@@ -114,7 +115,8 @@ final class AirportManagementUITests: AEUITestCase {
         }
         app.launch()
         let resume = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "ae-menu-continue-")).firstMatch
-        guard revealMenuControl(resume, "Restore airport investment"), tapWhenReady(resume) else { return }
+        XCTAssertTrue(revealMenuControl(resume, "Restore airport investment"))
+        resume.tap()
         openTab("World")
         let airportList = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Airports")).firstMatch
         for _ in 0..<5 where !airportList.isHittable { app.swipeUp() }
