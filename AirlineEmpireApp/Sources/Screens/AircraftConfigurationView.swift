@@ -136,6 +136,7 @@ private struct AircraftPreviewRequest: Equatable {
 
 struct AircraftConfigurationEditor: View {
     @Environment(GameController.self) private var controller
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.dynamicTypeSize) private var typeSize
     let aircraft: Aircraft
     let spec: AircraftTypeSpec
@@ -148,13 +149,17 @@ struct AircraftConfigurationEditor: View {
     @State private var pending: AircraftConfiguration?
     @State private var preview: AircraftConfigurationPreview?
     @State private var baseline: AircraftConfigurationPreview?
+    private var columns: [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: 10),
+              count: typeSize.isAccessibilitySize ? 1 : sizeClass == .regular ? 4 : 2)
+    }
     private var current: AircraftConfiguration { draft ?? aircraft.cabin(for: spec) }
     private var original: AircraftConfiguration { aircraft.cabin(for: spec) }
     private var changed: Bool { current != original }
     private var command: ConfigureAircraftCommand {
         .init(airline: aircraft.owner, aircraftID: aircraft.id, configuration: current)
     }
-    private var price: Money { current.installationCost(from: original, capacity: spec.seats) }
+    private var price: Money { current.installationCost(from: original, capacity: spec.seats, tuning: catalog.tuning.cabin) }
 
     var body: some View {
         VStack(spacing: 14) {
@@ -175,12 +180,12 @@ struct AircraftConfigurationEditor: View {
             if rejection != nil { pending = nil }
         }
         .confirmationDialog("Apply aircraft refit?", isPresented: $confirming, titleVisibility: .visible) {
-            Button("Apply for \(Format.money(price))") {
+            Button("Apply for \(exactMoney(price))") {
                 if controller.submit(command) == nil { pending = current }
             }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("\(current.totalSeats) seats. Installation: \(Format.money(price)). Onboard upgrades add \(Format.money(current.serviceCostPerPassenger)) per passenger. Demand updates on the next game day.")
+            Text("\(current.totalSeats) seats. Installation: \(exactMoney(price)). Onboard upgrades add \(exactMoney(current.serviceCostPerPassenger(tuning: catalog.tuning.cabin))) per passenger. Demand updates on the next game day.")
         }
     }
 
@@ -195,7 +200,7 @@ struct AircraftConfigurationEditor: View {
                 }.buttonStyle(.bordered).buttonBorderShape(.capsule).frame(minHeight: 44)
                     .accessibilityIdentifier("ae-cabin-reset")
                 AircraftSeatMap(configuration: current)
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 260 : 145), spacing: 10)], spacing: 10) {
+                LazyVGrid(columns: columns, spacing: 10) {
                     ForEach(CabinClass.allCases, id: \.self) { cabin in
                         CabinClassControl(cabin: cabin, configuration: current, capacity: spec.seats) { count in
                             var next = current
@@ -230,12 +235,12 @@ struct AircraftConfigurationEditor: View {
                             ForEach(0..<3, id: \.self) { level in Text(upgrade.levels[level]).tag(level) }
                         }.pickerStyle(.menu).frame(minHeight: 44)
                             .accessibilityIdentifier("ae-upgrade-\(upgrade.rawValue)")
-                        Text("Each level: +2.5 comfort points ? +\(Format.money(upgrade.serviceCostPerLevel)) per passenger. Higher comfort competes for business and leisure demand.")
+                        Text("Each level: +\(Format.decimal(catalog.tuning.cabin.comfortPerUpgradeLevel * 100, places: 1)) comfort points · +\(exactMoney(upgrade.serviceCostPerLevel(tuning: catalog.tuning.cabin))) per passenger. Higher comfort competes for business and leisure demand.")
                             .font(.caption2).foregroundStyle(AETheme.mutedText)
                         Divider()
                     }
                 }
-                Text("Upgrade service cost: \(Format.money(current.serviceCostPerPassenger)) per passenger")
+                Text("Upgrade service cost: \(exactMoney(current.serviceCostPerPassenger(tuning: catalog.tuning.cabin))) per passenger")
                     .font(.subheadline.weight(.medium))
             }
         }
@@ -245,7 +250,7 @@ struct AircraftConfigurationEditor: View {
         AircraftPanel {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Review your changes").font(.headline)
-                Text("One-time refit Â· \(Format.money(price))").font(.subheadline).monospacedDigit()
+                Text("One-time refit Â· \(exactMoney(price))").font(.subheadline).monospacedDigit()
                 Text("Demand responds next game day. Refits require an available aircraft on the ground.")
                     .font(.caption).foregroundStyle(AETheme.mutedText)
                 Button { confirming = true } label: {
@@ -265,7 +270,7 @@ struct AircraftConfigurationEditor: View {
             VStack(alignment: .leading, spacing: 14) {
                 heading("Expected Route Performance", forecastSubtitle, "chart.bar.fill")
                 if let preview {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 240 : 130))], alignment: .leading, spacing: 16) {
+                    LazyVGrid(columns: columns, alignment: .leading, spacing: 16) {
                         metric("Monthly Revenue", Format.money(preview.monthlyRevenue), change: delta(preview.monthlyRevenue, baseline?.monthlyRevenue))
                         metric("Monthly Costs", Format.money(preview.monthlyCosts), change: delta(preview.monthlyCosts, baseline?.monthlyCosts))
                         metric("Monthly Profit", Format.money(preview.monthlyProfit), change: delta(preview.monthlyProfit, baseline?.monthlyProfit))
@@ -339,7 +344,7 @@ struct AircraftConfigurationEditor: View {
                 }.accessibilityElement(children: .combine)
                 Text("Estimated from cabin comfort, service, reliability and punctuality.")
                     .font(.caption2).foregroundStyle(AETheme.mutedText)
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 240 : 135))], alignment: .leading, spacing: 12) {
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
                     ForEach(AircraftUpgrade.allCases, id: \.self) { upgrade in
                         HStack(spacing: 10) {
                             Image(systemName: icon(upgrade)).font(.title3).foregroundStyle(AETheme.accent)
@@ -373,6 +378,9 @@ struct AircraftConfigurationEditor: View {
                 Text(subtitle).font(.caption).foregroundStyle(AETheme.mutedText)
             }
         }
+    }
+    private func exactMoney(_ amount: Money) -> String {
+        "$\(Format.decimal(amount.asDouble, places: 2))"
     }
     private func icon(_ upgrade: AircraftUpgrade) -> String {
         switch upgrade { case .wifi: "wifi"; case .dining: "cup.and.saucer.fill"; case .seats: "seat.recline.normal.fill"; case .entertainment: "play.rectangle" }
@@ -475,18 +483,18 @@ struct AircraftHistoryCard: View {
     let aircraft: Aircraft
     let snapshot: GameState
     private var maintenanceEntries: [String] {
-        snapshot.eventLog.recent.reversed().compactMap { event in
+        snapshot.eventLog.recent.reversed().compactMap { event -> String? in
             let description: String
             switch event.kind {
             case .maintenanceStarted(let id, _, let cost) where id == aircraft.id:
-                description = "Maintenance started ? \(Format.money(cost))"
+                description = "Maintenance started · \(Format.money(cost))"
             case .maintenanceCompleted(let id) where id == aircraft.id:
                 description = "Maintenance completed"
             case .aircraftDelivered(let id) where id == aircraft.id:
                 description = "Aircraft delivered"
             default: return nil
             }
-            return "\(Format.date(GameCalendar.date(at: event.at, startYear: snapshot.meta.startYear))) ? \(description)"
+            return "\(Format.date(GameCalendar.date(at: event.at, startYear: snapshot.meta.startYear))) · \(description)"
         }.prefix(8).map { $0 }
     }
     var body: some View {

@@ -11,7 +11,7 @@ public struct AircraftPassengerExperience: Equatable, Sendable {
 
     public init(aircraft: Aircraft, configuration: AircraftConfiguration,
                 spec: AircraftTypeSpec, state: GameState, catalog: ContentCatalog) {
-        comfort = min(1, spec.comfortBaseline + configuration.comfortBonus)
+        comfort = min(1, spec.comfortBaseline + configuration.comfortBonus(tuning: catalog.tuning.cabin))
         reliability = aircraft.currentReliability(type: spec, tuning: catalog.tuning.fleet)
         let airline = state.airlines[aircraft.owner]
         if let id = aircraft.assignedRoute, let route = state.routes[id], route.stats.flightsCompleted > 0 {

@@ -47,7 +47,7 @@ public struct ReputationSystem: SimulationSystem {
                     guard let spec = context.catalog.aircraftType(aircraft.typeCode)
                     else { continue }
                     seatSum += Double(aircraft.cabin(for: spec).totalSeats)
-                    weighted += Double(aircraft.cabin(for: spec).totalSeats) * aircraft.passengerComfort(for: spec)
+                    weighted += Double(aircraft.cabin(for: spec).totalSeats) * aircraft.passengerComfort(for: spec, tuning: context.catalog.tuning.cabin)
                 }
                 if seatSum > 0 {
                     Reputation.drift(&airline.reputation.comfort,

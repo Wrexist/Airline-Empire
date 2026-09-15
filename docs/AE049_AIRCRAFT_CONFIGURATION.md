@@ -1,4 +1,4 @@
-﻿# AE-049 — Aircraft configuration and upgrades
+# AE-049 � Aircraft configuration and upgrades
 
 ## Player experience
 
@@ -38,7 +38,8 @@ Economy fills the remaining space automatically. Every accepted layout uses
 exactly the type's space budget. Sliders clamp before committing and Core
 rejects malformed, negative, over-capacity or invalid upgrade values.
 
-These are initial game balance constants, centralized in Core. The premium
+These are initial game balance values in `tuning.json`, decoded by
+`AircraftConfigurationTuning` and shared by Core and the UI. The premium
 classes increase average fare and comfort but reduce physical capacity. Both
 business and leisure demand use the existing price-sensitivity model, so a
 higher average fare can lose price-sensitive passengers.

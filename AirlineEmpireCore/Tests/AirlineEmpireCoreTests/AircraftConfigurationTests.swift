@@ -121,7 +121,7 @@ struct AircraftConfigurationTests {
         #expect(route.stats.seatsFlown == route.stats.flightsCompleted * Int64(cabin.totalSeats))
         #expect(route.stats.passengersCarried <= route.stats.seatsFlown)
         let expectedRevenue = Money(rounding: Double(route.economicsThisMonth.passengers)
-            * route.ticketPrice.asDouble * cabin.yieldMultiplier)
+            * route.ticketPrice.asDouble * cabin.yieldMultiplier(tuning: catalog.tuning.cabin))
         // Revenue is rounded once per departure, so allow one cent per flight.
         #expect(abs(route.economicsThisMonth.revenueCents - expectedRevenue.cents)
             <= route.stats.totalFlights + 4)
@@ -142,6 +142,21 @@ struct AircraftConfigurationTests {
         #expect(engine.applyNow(ConfigureAircraftCommand(airline: airline, aircraftID: second.id, configuration: cabin)) == .applied)
         let changed = try #require(DemandSystem.offerQualityTerms(route: route, state: engine.state, catalog: catalog))
         #expect(changed.comfort > old.comfort)
+    }
+
+    @Test func contentTuningControlsRefitAndServicePrices() throws {
+        let catalog = try ContentCatalog.loadBundled()
+        #expect(catalog.tuning.cabin == .standard)
+        let tuning = AircraftConfigurationTuning(seatChangeCost: .dollars(10),
+            equipmentPerSeatPerLevel: .dollars(5), wifiPerPassengerPerLevel: .dollars(3))
+        let old = AircraftConfiguration(capacity: 100)
+        var cabin = old
+        cabin.wifi = 2
+        cabin.setSeats(1, in: .business, capacity: 100)
+        #expect(cabin.serviceCostPerPassenger(tuning: tuning) == .dollars(6))
+        #expect(cabin.installationCost(from: old, capacity: 100, tuning: tuning) == .dollars(1030))
+        #expect(!AircraftConfigurationTuning(firstYield: .infinity).isValid)
+        #expect(!AircraftConfigurationTuning(seatChangeCost: Money(cents: -1)).isValid)
     }
 
 }

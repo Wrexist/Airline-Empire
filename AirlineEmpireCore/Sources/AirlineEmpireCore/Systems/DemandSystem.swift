@@ -165,8 +165,8 @@ public struct DemandSystem: SimulationSystem {
             let cabin = aircraft.cabin(for: spec)
             let count = Double(cabin.totalSeats)
             seats += count
-            yield += count * cabin.yieldMultiplier
-            bonus += count * (aircraft.passengerComfort(for: spec) - spec.comfortBaseline)
+            yield += count * cabin.yieldMultiplier(tuning: catalog.tuning.cabin)
+            bonus += count * (aircraft.passengerComfort(for: spec, tuning: catalog.tuning.cabin) - spec.comfortBaseline)
         }
         return seats > 0 ? (yield / seats, bonus / seats) : (1, 0)
     }

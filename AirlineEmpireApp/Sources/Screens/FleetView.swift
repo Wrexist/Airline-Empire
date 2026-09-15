@@ -397,6 +397,7 @@ struct AircraftDetailView: View {
                         }
                     }
                 }
+                .frame(maxWidth: 920)
                 .aePageInsets()
             } else {
                 EmptyStateView(icon: "airplane.slash", title: "Aircraft gone",

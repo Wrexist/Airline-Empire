@@ -15,9 +15,7 @@ public enum CabinClass: String, Codable, CaseIterable, Sendable {
     public var space: Int {
         switch self { case .first: 4; case .business: 2; case .premiumEconomy: 2; case .economy: 1 }
     }
-    public var yield: Double {
-        switch self { case .first: 3.2; case .business: 1.85; case .premiumEconomy: 1.35; case .economy: 1 }
-    }
+
 }
 
 public enum AircraftUpgrade: String, Codable, CaseIterable, Sendable {
@@ -33,11 +31,12 @@ public enum AircraftUpgrade: String, Codable, CaseIterable, Sendable {
         case .entertainment: ["None", "Screens", "Streaming"]
         }
     }
-    public var serviceCostPerLevel: Money {
+    public func serviceCostPerLevel(tuning: AircraftConfigurationTuning = .standard) -> Money {
         switch self {
-        case .wifi, .entertainment: Money(cents: 75)
-        case .dining: Money.dollars(2)
-        case .seats: Money(cents: 50)
+        case .wifi: tuning.wifiPerPassengerPerLevel
+        case .dining: tuning.diningPerPassengerPerLevel
+        case .seats: tuning.seatsPerPassengerPerLevel
+        case .entertainment: tuning.entertainmentPerPassengerPerLevel
         }
     }
     public var explanation: String {
@@ -87,22 +86,22 @@ public struct AircraftConfiguration: Equatable, Codable, Sendable {
         self[cabin] = min(max(0, count), available / cabin.space)
         economy = available - self[cabin] * cabin.space
     }
-    public var yieldMultiplier: Double {
+    public func yieldMultiplier(tuning: AircraftConfigurationTuning = .standard) -> Double {
         guard totalSeats > 0 else { return 1 }
-        return CabinClass.allCases.reduce(0.0) { $0 + Double(self[$1]) * $1.yield } / Double(totalSeats)
+        return CabinClass.allCases.reduce(0.0) { $0 + Double(self[$1]) * tuning.yield(for: $1) } / Double(totalSeats)
     }
-    public var comfortBonus: Double {
+    public func comfortBonus(tuning: AircraftConfigurationTuning = .standard) -> Double {
         let premium = Double(first + business + premiumEconomy) / Double(max(1, totalSeats))
-        return premium * 0.22 + Double(wifi + dining + seats + entertainment) * 0.025
+        return premium * tuning.premiumComfortWeight + Double(wifi + dining + seats + entertainment) * tuning.comfortPerUpgradeLevel
     }
     /// Recurring upgrades are billed per boarded passenger, alongside service tier.
-    public var serviceCostPerPassenger: Money {
-        AircraftUpgrade.allCases.reduce(.zero) { $0 + $1.serviceCostPerLevel * Int64(self[$1]) }
+    public func serviceCostPerPassenger(tuning: AircraftConfigurationTuning = .standard) -> Money {
+        AircraftUpgrade.allCases.reduce(.zero) { $0 + $1.serviceCostPerLevel(tuning: tuning) * Int64(self[$1]) }
     }
-    public func installationCost(from old: Self, capacity: Int) -> Money {
+    public func installationCost(from old: Self, capacity: Int, tuning: AircraftConfigurationTuning = .standard) -> Money {
         let changedSeats = CabinClass.allCases.reduce(0) { $0 + abs(self[$1] - old[$1]) }
         let equipment = AircraftUpgrade.allCases.reduce(0) { $0 + max(0, self[$1] - old[$1]) }
-        return Money.dollars(Int64(changedSeats * 250 + equipment * capacity * 120))
+        return tuning.seatChangeCost * Int64(changedSeats) + tuning.equipmentPerSeatPerLevel * Int64(equipment * capacity)
     }
 }
 
@@ -120,8 +119,8 @@ extension Aircraft {
         }
         return configuration
     }
-    public func passengerComfort(for spec: AircraftTypeSpec) -> Double {
-        min(1, spec.comfortBaseline + cabin(for: spec).comfortBonus)
+    public func passengerComfort(for spec: AircraftTypeSpec, tuning: AircraftConfigurationTuning = .standard) -> Double {
+        min(1, spec.comfortBaseline + cabin(for: spec).comfortBonus(tuning: tuning))
     }
 }
 
@@ -144,7 +143,7 @@ public struct ConfigureAircraftCommand: Command, Equatable {
         guard configuration.isValid(capacity: spec.seats) else {
             return .init(code: "aircraft.invalidCabin", message: "The cabin must use exactly the aircraft's available space.")
         }
-        let cost = configuration.installationCost(from: aircraft.cabin(for: spec), capacity: spec.seats)
+        let cost = configuration.installationCost(from: aircraft.cabin(for: spec), capacity: spec.seats, tuning: catalog.tuning.cabin)
         guard state.ledger.balance(of: airline) >= cost else {
             return .init(code: "aircraft.refitFunds", message: "There is not enough cash for this refit.")
         }
@@ -154,7 +153,7 @@ public struct ConfigureAircraftCommand: Command, Equatable {
         guard var aircraft = state.aircraft[aircraftID], let spec = context.catalog.aircraftType(aircraft.typeCode) else { return }
         let old = aircraft.cabin(for: spec)
         guard old != configuration else { return }
-        let cost = configuration.installationCost(from: old, capacity: spec.seats)
+        let cost = configuration.installationCost(from: old, capacity: spec.seats, tuning: context.catalog.tuning.cabin)
         aircraft.configuration = configuration
         var history = aircraft.configurationHistory ?? []
         history.append(.init(id: (history.last?.id ?? 0) + 1, at: context.current, configuration: configuration, cost: cost))

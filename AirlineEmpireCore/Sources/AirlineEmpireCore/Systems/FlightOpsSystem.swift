@@ -96,7 +96,7 @@ public struct FlightOpsSystem: SimulationSystem {
                            var route = state.routes[flight.route] {
                             let spec = context.catalog.aircraftType(aircraft.typeCode)!
                             let revenue = Money(rounding: route.ticketPrice.asDouble * Double(flight.passengers)
-                                * aircraft.cabin(for: spec).yieldMultiplier)
+                                * aircraft.cabin(for: spec).yieldMultiplier(tuning: context.catalog.tuning.cabin))
                             state.ledger.post(
                                 airline: aircraft.owner, category: .ticketRevenue,
                                 amount: revenue, at: now,
@@ -216,7 +216,7 @@ public struct FlightOpsSystem: SimulationSystem {
         if flight.kind == .revenue, flight.passengers > 0,
            let airline = state.airlines[owner] {
             let perPax = catalog.tuning.reputation.serviceCostPerPax(airline.serviceTier)
-                + aircraft.cabin(for: spec).serviceCostPerPassenger
+                + aircraft.cabin(for: spec).serviceCostPerPassenger(tuning: catalog.tuning.cabin)
             let serviceCost = perPax * Int64(flight.passengers)
             state.ledger.post(airline: owner, category: .passengerService,
                               amount: -serviceCost, at: context.current,

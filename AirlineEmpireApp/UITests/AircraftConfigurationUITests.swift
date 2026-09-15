@@ -1,9 +1,9 @@
-﻿import XCTest
+import XCTest
 
 final class AircraftConfigurationUITests: AEUITestCase {
     func testCabinEditingAndUpgradeNavigationDark() throws {
         launch(appearance: .dark)
-        guard foundAirline(seed: "2030"), openAircraftMarket(), leaseAnAircraft() else { return }
+        guard foundAirline(seed: "2030"), openAircraftMarket(), leaseAnAircraft(model: "PA-184") else { return }
         guard openAirlineSection("Fleet") else { return }
         let row = app.descendants(matching: .any).matching(identifier: "ae-fleet-row").firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 10))
@@ -32,7 +32,7 @@ final class AircraftConfigurationUITests: AEUITestCase {
 
     func testCabinLightAccessibilityLayout() throws {
         launch(appearance: .light, arguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
-        guard foundAirline(seed: "2030"), openAircraftMarket(), leaseAnAircraft() else { return }
+        guard foundAirline(seed: "2030"), openAircraftMarket(), leaseAnAircraft(model: "PA-184") else { return }
         guard openAirlineSection("Fleet") else { return }
         let row = app.descendants(matching: .any).matching(identifier: "ae-fleet-row").firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 10))

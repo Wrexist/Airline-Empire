@@ -3,6 +3,10 @@ on:
   workflow_dispatch:
   push:
     branches: [codex/ae049-aircraft-configuration]
+    paths:
+      - AirlineEmpireApp/**
+      - AirlineEmpireCore/**
+      - .github/workflows/aircraft-configuration.yml
 permissions:
   contents: read
 concurrency:
@@ -36,7 +40,7 @@ jobs:
           xcodegen generate
       - name: Build iOS app and tests
         working-directory: AirlineEmpireApp
-        run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'generic/platform=iOS Simulator' -derivedDataPath ../build/ae049 CODE_SIGNING_ALLOWED=NO build-for-testing > ../build/ae049-build.log 2>&1
+        run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'generic/platform=iOS Simulator' -derivedDataPath ../build/ae049 ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO build-for-testing > ../build/ae049-build.log 2>&1
       - name: Select simulator
         id: simulator
         run: |

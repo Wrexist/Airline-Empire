@@ -34,7 +34,7 @@ public struct AircraftConfigurationPreview: Equatable, Sendable {
         }
         let share = Double(configuration.totalSeats) / max(1, routeCapacity)
         let passengers = min(capacity, Double(forecast.demandOutboundToday + forecast.demandInboundToday) * share)
-        let ratio = route.ticketPrice.asDouble * configuration.yieldMultiplier
+        let ratio = route.ticketPrice.asDouble * configuration.yieldMultiplier(tuning: catalog.tuning.cabin)
             / DemandSystem.referenceFare(distanceKm: route.distanceKm, tuning: catalog.tuning.demand)
         func value(_ basis: CompetitorAISystem.RankingBasis) -> Double {
             CompetitorAISystem.airframeDayValue(distanceKm: route.distanceKm,
@@ -52,7 +52,7 @@ public struct AircraftConfigurationPreview: Equatable, Sendable {
             blockHoursPerDay: flightHours, fleet: catalog.tuning.fleet, ops: catalog.tuning.ops)
         let lease: Double
         switch aircraft.ownership { case .leased(let rate, _): lease = rate.asDouble; case .owned: lease = 0 }
-        let costs = (revenue - value(.profit) + passengers * configuration.serviceCostPerPassenger.asDouble + ageReserve) * 30 + lease
+        let costs = (revenue - value(.profit) + passengers * configuration.serviceCostPerPassenger(tuning: catalog.tuning.cabin).asDouble + ageReserve) * 30 + lease
         return Self(monthlyRevenue: Money(rounding: revenue * 30), monthlyCosts: Money(rounding: costs),
                     loadFactor: capacity > 0 ? passengers / capacity : 0, rotationsPerDay: rotations)
     }
