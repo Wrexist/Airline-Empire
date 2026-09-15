@@ -18,9 +18,9 @@ import AirlineEmpireCore
 struct BriefingView: View {
     @Environment(GameController.self) private var controller
     @Environment(\.dynamicTypeSize) private var typeSize
-    /// Present as a sheet, so it can close itself. The map is underneath and
-    /// the player must always be able to get back to it.
-    @Environment(\.dismiss) private var dismiss
+    /// The map owns this presentation. Close that exact sheet, including
+    /// when a destination has been pushed inside the briefing's stack.
+    let onClose: () -> Void
     /// The suggestion whose route sheet is up. Item-driven, not a Bool
     /// beside an optional: run 116 photographed the guided sheet opening
     /// *empty* — From Stockholm, nothing picked, the whole ranked list —
@@ -130,7 +130,7 @@ struct BriefingView: View {
                 // here would be the third thing competing for 375 points, and
                 // a compressed speed control is a control a player misses.
                 ToolbarItem(placement: .topBarLeading) {
-                    Button { dismiss() } label: {
+                    Button(action: onClose) {
                         Image(systemName: "chevron.down")
                     }
                     .accessibilityIdentifier("ae-briefing-close")
@@ -161,7 +161,7 @@ struct BriefingView: View {
             // Settings is pushed inside this sheet. Saving and quitting
             // replaces the world underneath it, so explicitly dismiss the
             // presentation to reveal the saved-session recap.
-            if !hasGame { dismiss() }
+            if !hasGame { onClose() }
         }
     }
 

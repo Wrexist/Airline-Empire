@@ -866,12 +866,10 @@ class AEUITestCase: XCTestCase {
         while Date() < deadline, !element.isHittable {
             Thread.sleep(forTimeInterval: 0.5)
         }
-        if element.isHittable {
-            element.tap()
-        } else {
-            element.coordinate(withNormalizedOffset:
-                CGVector(dx: 0.5, dy: 0.5)).tap()
-        }
+        // An element can exist underneath a sheet. Never send a coordinate
+        // tap through it: that can activate an unrelated foreground action.
+        guard element.isHittable else { return false }
+        element.tap()
         return true
     }
 
@@ -1373,7 +1371,7 @@ class AEUITestCase: XCTestCase {
     /// then asks for the World hub would tap into the sheet's own scroll view
     /// and fail on a screen that is perfectly healthy.
     func openTab(_ title: String) {
-        closeBriefing()
+        guard closeBriefing() else { return }
         guard waitForTab(title, timeout: 15) != nil else {
             capture(Self.logPrefix + "MISSING-the \(title) tab")
             XCTFail("The \(title) tab never appeared in any shape. Screenshot attached.")
@@ -1449,7 +1447,11 @@ class AEUITestCase: XCTestCase {
         for attempt in 1...2 {
             if briefingIsOpen { return true }
             let current = app.buttons["ae-home-briefing"]
-            guard current.exists, current.isHittable, waitUntilStill(current) else { break }
+            guard current.exists, current.isHittable, waitUntilStill(current) else {
+                capture(Self.logPrefix + "BRIEFING-MOVED-BEFORE-TAP")
+                XCTFail("The briefing handle moved or became unavailable before tap \(attempt); no tap was sent.")
+                return false
+            }
             let frame = current.frame
             app.coordinate(withNormalizedOffset: .zero)
                 .withOffset(CGVector(dx: frame.midX, dy: frame.midY)).tap()
@@ -1466,11 +1468,27 @@ class AEUITestCase: XCTestCase {
 
     /// Put the briefing away and return to the world. A no-op when it is not
     /// up, so it is safe to call defensively.
-    func closeBriefing() {
+    @discardableResult
+    func closeBriefing() -> Bool {
         let close = app.buttons["ae-briefing-close"]
-        guard close.exists, close.isHittable else { return }
-        close.tap()
-        // The sheet's dismissal is animated; the next query must not race it.
-        _ = close.waitForNonExistence(timeout: 5)
+        guard close.exists else { return true }
+        guard close.isHittable, waitUntilStill(close) else {
+            capture(Self.logPrefix + "BRIEFING-CLOSE-NOT-READY")
+            XCTFail("The briefing close control was not stationary and hittable.")
+            return false
+        }
+        let frame = close.frame
+        app.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: frame.midX, dy: frame.midY)).tap()
+        let handle = app.buttons["ae-home-briefing"]
+        let returned = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            !close.exists && handle.exists && handle.isHittable
+        }, object: nil)
+        guard XCTWaiter.wait(for: [returned], timeout: 12) == .completed else {
+            capture(Self.logPrefix + "BRIEFING-DID-NOT-CLOSE")
+            XCTFail("Closing the briefing did not reveal usable map controls; no background action was tapped.")
+            return false
+        }
+        return true
     }
 }

@@ -331,6 +331,14 @@ final class EconomyJourneyUITests: AEUITestCase {
         guard require(fast, "the 16x speed control") else { return }
         fast.tap()
 
+        // The advice/progress above this control changes as real flights
+        // depart and land. Its tap target must stay anchored throughout,
+        // rather than requiring the player (or test) to pause the world.
+        let briefingHandle = app.buttons["ae-home-briefing"]
+        guard require(briefingHandle, "the briefing handle at 16x") else { return }
+        let briefingY = briefingHandle.frame.midY
+        XCTAssertGreaterThanOrEqual(briefingHandle.frame.height, 44)
+
         // At 16x the world runs 64 game-minutes a real second, so a game day
         // costs about 22 seconds. Two minutes is roughly five game days —
         // long enough that a schedule with no departure in it is a finding
@@ -339,6 +347,10 @@ final class EconomyJourneyUITests: AEUITestCase {
         var airborne = false
         let deadline = Date().addingTimeInterval(120)
         while Date() < deadline {
+            XCTAssertTrue(briefingHandle.isHittable,
+                          "Live flight progression must not cover the briefing handle.")
+            XCTAssertEqual(briefingHandle.frame.midY, briefingY, accuracy: 1,
+                           "Changing flight advice moved the briefing tap target.")
             if let value = map.value as? String,
                value.contains("aircraft in the air"),
                !value.contains("0 aircraft in the air") {
@@ -355,6 +367,8 @@ final class EconomyJourneyUITests: AEUITestCase {
         app.buttons["Zoom in"].tap()
         app.buttons["Zoom in"].tap()
         checkpoint("82-flight-close-up")
+        XCTAssertEqual(briefingHandle.frame.midY, briefingY, accuracy: 1,
+                       "The briefing handle moved after departure or map zoom.")
 
         XCTAssertTrue(airborne, """
             No aircraft reached the air in roughly five game days, on a route \

@@ -177,6 +177,11 @@ schemes:
       storeKitConfiguration: Resources/AirlineEmpire.storekit
     test:
       config: Debug
+      # Unattended tests need XCTest assertions and crash reports, not LLDB.
+      # Simulator launches in run 34891887252 timed out in Xcode's debugger
+      # service. Use XcodeGen's PosixSpawn test launcher; interactive Run
+      # retains its normal debugger and Release/archive settings are unchanged.
+      debugEnabled: false
       # Screenshots are attached on every step, not only on failure — the
       # question this target was added to answer is "what does it look like",
       # and a failure-only attachment never answers it.

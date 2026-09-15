@@ -6,7 +6,7 @@ import AirlineEmpireCore
 /// The map is the home screen. This is the strip that makes it a *home*
 /// rather than a diagram: who the player is (Layer 2 — the airline's state)
 /// and what is worth doing (Layer 3 — one move, from real state), with
-/// everything the dashboard used to hold one tap away behind the first row.
+/// everything the dashboard used to hold one tap away behind the fixed footer.
 ///
 /// ## Nothing here is a second simulation
 ///
@@ -57,15 +57,18 @@ struct MapHomeBriefing: View {
         let facts = self.facts
         let move = currentMove
         return VStack(alignment: .leading, spacing: AETheme.spacingS) {
-            stateRow(facts)
             FirstFlightProgress(compact: true)
             if let move {
-                Divider().overlay(Color.white.opacity(0.14))
                 moveRow(move)
                 if !move.suggestions.isEmpty {
                     suggestionRows(move.suggestions)
                 }
             }
+            // Keep the entry to the briefing anchored above the tab bar.
+            // Live advice/progress can change height at departure or arrival;
+            // placing it below this button moved the hit target during a tap.
+            Divider().overlay(Color.white.opacity(0.14))
+            stateRow(facts)
         }
         .padding(.horizontal, AETheme.spacingM)
         .padding(.vertical, AETheme.spacingS)
