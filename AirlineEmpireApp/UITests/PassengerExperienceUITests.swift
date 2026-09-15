@@ -53,6 +53,11 @@ final class PassengerExperienceUITests: AEUITestCase {
         scrollFullyIntoView(reset, "Reset Changes")
         XCTAssertTrue(reset.isHittable && reset.isEnabled)
         reset.tap()
+        // Reset does not move the scroll position, and Reset sits near the
+        // bottom, so the tier panel is above the fold. Return to the top
+        // before reading it back — an unrealised element above the viewport
+        // cannot be scrolled to by swiping up.
+        for _ in 0..<12 { app.swipeDown() }
         scrollFullyIntoView(premium, "the premium tier after reset")
         XCTAssertFalse(premium.isSelected)
         XCTAssertTrue(standard.isSelected)
