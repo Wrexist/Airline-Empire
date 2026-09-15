@@ -391,7 +391,7 @@ struct AircraftDetailView: View {
                         case .condition:
                             condition(card, spec: spec)
                         case .history:
-                            AircraftHistoryCard(aircraft: aircraft)
+                            AircraftHistoryCard(aircraft: aircraft, snapshot: snapshot)
                             condition(card, spec: spec)
                         }
                     }
@@ -434,55 +434,6 @@ struct AircraftDetailView: View {
                         Button("Done") { changingAircraft = false }
                     }
                 }
-            }
-        }
-    }
-
-    /// The airline's livery, falling back to the accent before an airline
-    /// exists — this view is reachable only inside a game, but a colour that
-    /// resolves through an optional should say what it does when it cannot.
-    private var livery: Color {
-        // `Airline.livery` is non-optional, so `?.livery.map(_:)` would bind
-        // `map` inside the optional chain and not compile. Bind, then convert.
-        guard let livery = controller.snapshot?.playerAirline?.livery else {
-            return AETheme.accent
-        }
-        return Vocab.liveryColor(livery)
-    }
-
-    private func identity(_ card: FleetCardModel, spec: AircraftTypeSpec) -> some View {
-        AECard {
-            VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                HStack(spacing: AETheme.spacingS) {
-                    // §10 asks for an aircraft visual here. The silhouette is
-                    // the airline's own livery colour, so a player's fleet
-                    // reads as theirs rather than as generic stock.
-                    AEAircraftMedallion(category: card.category, tint: livery, size: 76)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("\(spec.manufacturer) \(spec.model)").font(.headline)
-                        Text(Vocab.role(spec.role))
-                            .font(AEType.secondary)
-                            .foregroundStyle(AETheme.mutedText)
-                    }
-                    Spacer()
-                }
-                AEChipRow {
-                    AEChip(icon: "person.2.fill", text: "\(spec.seats) seats")
-                    AEChip(icon: "arrow.left.and.right", text: "\(spec.rangeKm) km")
-                    // Was `fuelBurnKgPerKm` whole — which says a widebody is
-                    // thirsty, which is true and useless, because it is also
-                    // carrying three times the passengers. The band compares
-                    // per seat, against the best in the catalogue, which is
-                    // the comparison a fleet decision actually turns on.
-                    if let band = controller.catalog?.seatEfficiency(of: spec) {
-                        AEChip(icon: "fuelpump.fill",
-                               text: Vocab.seatEfficiency(band))
-                    }
-                }
-                Text("Needs a \(Vocab.runway(spec.runwayRequirement).lowercased()) · cruises at \(spec.cruiseSpeedKmh) km/h · \(spec.turnaroundMinutes) min turnaround")
-                    .font(.caption)
-                    .foregroundStyle(AETheme.mutedText)
-                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }

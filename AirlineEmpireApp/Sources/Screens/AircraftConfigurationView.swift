@@ -129,6 +129,13 @@ extension CabinClass {
     }
 }
 
+private struct AircraftPreviewRequest: Equatable {
+    let configuration: AircraftConfiguration
+    let installed: AircraftConfiguration
+    let day: Int64
+    let route: RouteID?
+}
+
 struct AircraftConfigurationEditor: View {
     @Environment(GameController.self) private var controller
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -153,13 +160,14 @@ struct AircraftConfigurationEditor: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            if section == .cabin { cabinPanel } else { upgradesPanel }
+            if section == .cabin { cabinPanel.disabled(pending != nil) } else { upgradesPanel.disabled(pending != nil) }
             if changed { commitPanel }
             if saved { Label("Aircraft configuration saved", systemImage: "checkmark.circle.fill").font(.subheadline).foregroundStyle(AETheme.positive) }
             performancePanel
             experiencePanel
         }
-        .task(id: current) { await refreshPreview() }
+        .task(id: AircraftPreviewRequest(configuration: current, installed: original,
+            day: snapshot.clock.now.dayIndex, route: aircraft.assignedRoute)) { await refreshPreview() }
         .onChange(of: aircraft.configuration) { _, _ in
             if let pending, pending == aircraft.cabin(for: spec) {
                 draft = nil; self.pending = nil; saved = true
@@ -314,18 +322,25 @@ struct AircraftConfigurationEditor: View {
         preview = results.0; baseline = results.1
     }
     private var experiencePanel: some View {
-        let comfort = min(1, spec.comfortBaseline + current.comfortBonus)
+        let experience = AircraftPassengerExperience(aircraft: aircraft, configuration: current,
+            spec: spec, state: snapshot, catalog: catalog)
         return AircraftPanel {
             VStack(alignment: .leading, spacing: 14) {
                 heading("Passenger Experience", "Better journeys build your airline's reputation", "person.2.fill")
                 HStack {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Cabin comfort").font(.subheadline)
-                        ProgressView(value: comfort).tint(AETheme.positive)
+                        Text("Expected happiness").font(.subheadline)
+                        GeometryReader { geometry in
+                            Capsule().fill(LinearGradient(colors: [AETheme.negative, AETheme.caution, AETheme.positive], startPoint: .leading, endPoint: .trailing))
+                            Capsule().fill(.white).frame(width: 3, height: 18)
+                                .offset(x: max(0, geometry.size.width - 3) * experience.happiness, y: -3)
+                        }.frame(height: 12).accessibilityHidden(true)
                     }
-                    Text(comfort.formatted(.percent.precision(.fractionLength(0))))
+                    Text(experience.happiness.formatted(.percent.precision(.fractionLength(0))))
                         .font(.title2.bold()).foregroundStyle(AETheme.positive).monospacedDigit()
                 }.accessibilityElement(children: .combine)
+                Text("Estimated from cabin comfort, service, reliability and punctuality.")
+                    .font(.caption2).foregroundStyle(AETheme.mutedText)
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 240 : 135))], alignment: .leading, spacing: 12) {
                     ForEach(AircraftUpgrade.allCases, id: \.self) { upgrade in
                         HStack(spacing: 10) {
@@ -426,7 +441,7 @@ struct AircraftSeatMap: View {
             let inside = CGRect(x: w * 0.12, y: h * 0.28, width: w * 0.75, height: h * 0.44)
             context.fill(Path(roundedRect: inside, cornerRadius: 12), with: .color(AETheme.canvas))
             let rows = 4
-            let totalColumns = CabinClass.allCases.reduce(0) { $0 + (configuration[$1] + rows - 1) / rows }
+            let totalColumns = CabinClass.allCases.reduce(0) { $0 + ((configuration[$1] + rows - 1) / rows) * $1.space }
             let gap: CGFloat = 3
             let columnWidth = (inside.width - 12 - gap * 3) / CGFloat(max(1, totalColumns))
             let seatHeight = (inside.height - 20) / 4
@@ -434,16 +449,20 @@ struct AircraftSeatMap: View {
             for cabin in CabinClass.allCases {
                 let count = configuration[cabin]
                 if count == 0 { continue }
+                let classWidth = columnWidth * CGFloat(cabin.space)
+                let sectionWidth = CGFloat((count + rows - 1) / rows) * classWidth
+                context.draw(Text(cabin.abbreviation).font(.system(size: 9, weight: .bold)).foregroundStyle(cabin.tint),
+                             at: CGPoint(x: x + sectionWidth / 2, y: h * 0.19))
                 for seat in 0..<count {
                     let column = seat / rows, row = seat % rows
                     let y = inside.minY + 5 + CGFloat(row) * (seatHeight + 2) + (row >= 2 ? 6 : 0)
-                    let rect = CGRect(x: x + CGFloat(column) * columnWidth, y: y,
-                                      width: max(1, columnWidth - 1.5), height: seatHeight)
+                    let rect = CGRect(x: x + CGFloat(column) * classWidth, y: y,
+                                      width: max(1, classWidth - 1.5), height: seatHeight)
                     let shape = Path(roundedRect: rect, cornerRadius: min(2, columnWidth / 4))
                     context.fill(shape, with: .color(cabin.tint))
                     context.stroke(shape, with: .color(.white.opacity(0.35)), lineWidth: 0.5)
                 }
-                x += CGFloat((count + rows - 1) / rows) * columnWidth + gap
+                x += sectionWidth + gap
             }
             context.draw(Text("☕").font(.caption), at: CGPoint(x: w * 0.07, y: h * 0.5))
             context.draw(Text("WC").font(.system(size: 9, weight: .bold)).foregroundStyle(AETheme.mutedText), at: CGPoint(x: w * 0.92, y: h * 0.5))
@@ -456,6 +475,22 @@ struct AircraftSeatMap: View {
 
 struct AircraftHistoryCard: View {
     let aircraft: Aircraft
+    let snapshot: GameState
+    private var maintenanceEntries: [String] {
+        snapshot.eventLog.recent.reversed().compactMap { event in
+            let description: String
+            switch event.kind {
+            case .maintenanceStarted(let id, _, let cost) where id == aircraft.id:
+                description = "Maintenance started ? \(Format.money(cost))"
+            case .maintenanceCompleted(let id) where id == aircraft.id:
+                description = "Maintenance completed"
+            case .aircraftDelivered(let id) where id == aircraft.id:
+                description = "Aircraft delivered"
+            default: return nil
+            }
+            return "\(Format.date(GameCalendar.date(at: event.at, startYear: snapshot.meta.startYear))) ? \(description)"
+        }.prefix(8).map { $0 }
+    }
     var body: some View {
         AircraftPanel {
             VStack(alignment: .leading, spacing: 14) {
@@ -471,6 +506,10 @@ struct AircraftHistoryCard: View {
                     Text("No cabin changes recorded yet.").font(.subheadline).foregroundStyle(AETheme.mutedText)
                 }
                 Text("The latest 50 refits are kept with this aircraft.").font(.caption2).foregroundStyle(AETheme.mutedText)
+                Divider()
+                Label("Recent Maintenance & Delivery", systemImage: "wrench.and.screwdriver").font(.headline)
+                Text(maintenanceEntries.isEmpty ? "No maintenance or delivery events in the recent activity log." : maintenanceEntries.joined(separator: "\n\n"))
+                    .font(.subheadline).foregroundStyle(AETheme.mutedText)
             }
         }
     }
