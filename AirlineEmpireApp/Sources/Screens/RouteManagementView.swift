@@ -251,7 +251,7 @@ struct RouteForecastCard: View {
                         .font(.subheadline).foregroundStyle(AETheme.mutedText)
                 }
                 DisclosureGroup("What the estimate includes") {
-                    Text("Uses current demand, competition, installed cabins and equipment. Includes fuel, airport fees, crew, onboard service, maintenance reserve and aircraft leases. Excludes company overhead and future disruptions. Scheduling and boarding can differ from this steady-state estimate. Historical route profit uses direct booked costs and is a different measure.")
+                    Text("Uses current demand, competition, installed cabins and equipment. Includes fuel, airport fees, crew, onboard service, maintenance reserve and aircraft leases. Excludes company overhead and fixed airport services and future disruptions. Scheduling and boarding can differ from this steady-state estimate. Historical route profit uses direct booked costs and is a different measure.")
                         .font(.caption).foregroundStyle(AETheme.mutedText)
                 }.font(.caption)
             }

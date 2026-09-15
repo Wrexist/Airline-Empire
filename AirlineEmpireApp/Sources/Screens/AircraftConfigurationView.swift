@@ -313,7 +313,7 @@ struct AircraftConfigurationEditor: View {
                             .font(.caption).foregroundStyle(AETheme.caution)
                     }
                     DisclosureGroup("What this estimate includes") {
-                        Text("30-day estimate at today's demand and prices. Includes fuel, fees, crew, service, maintenance reserve and lease. Excludes company overhead, future disruptions and refit cost. Fleet scheduling can change the result.")
+                        Text("30-day estimate at today's demand and prices. Includes fuel, fees, crew, service, maintenance reserve and lease. Excludes company overhead and fixed airport services, future disruptions and refit cost. Fleet scheduling can change the result.")
                             .font(.caption2).foregroundStyle(AETheme.mutedText)
                     }.font(.caption).tint(AETheme.mutedText)
                 } else {

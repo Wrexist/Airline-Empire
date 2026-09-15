@@ -39,7 +39,7 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
         host.view.frame = window.bounds
         host.view.setNeedsLayout()
         host.view.layoutIfNeeded()
-        try await Task.sleep(for: .milliseconds(300))
+        try await Task.sleep(for: .milliseconds(1000))
         let renderer = UIGraphicsImageRenderer(bounds: host.view.bounds)
         var drawn = false
         let image = renderer.image { _ in
@@ -172,6 +172,52 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
                 AircraftConfigurationEditor(aircraft: installed, spec: spec, snapshot: state,
                     catalog: catalog, section: .upgrades, draft: .constant(nil))
             }, name: "aircraft-upgrades-AX5", controller: controller, width: 375, dark: dark, typeSize: .accessibility5)
+        }
+    }
+
+    @MainActor
+    func testAirportManagementAtAccessibleSizes() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let catalog = try ContentCatalog.loadBundled()
+        let engine = SimulationEngine(state: ScenarioBootstrap.newGame(
+            scenario: "founder", worldSeed: 42, startYear: 2030), systems: GamePipeline.standard(), catalog: catalog)
+        XCTAssertEqual(engine.applyNow(FoundAirlineCommand(airlineName: "Pacifica",
+            kind: .player, homeAirport: "ARN", startingCash: .dollars(10_000_000))), .applied)
+        let id = try XCTUnwrap(engine.state.playerAirline?.id)
+        XCTAssertEqual(engine.applyNow(LeaseAircraftCommand(lessee: id, type: "PA184", termMonths: 60)), .applied)
+        let aircraft = try XCTUnwrap(engine.state.fleet(of: id).first)
+        XCTAssertEqual(engine.applyNow(OpenRouteCommand(airline: id, origin: "ARN", destination: "CDG",
+            dailyRoundTrips: 3, ticketPrice: .dollars(180))), .applied)
+        let route = try XCTUnwrap(engine.state.routes(of: id).first)
+        XCTAssertEqual(engine.applyNow(AssignAircraftToRouteCommand(airline: id, route: route.id, aircraftID: aircraft.id)), .applied)
+        XCTAssertEqual(engine.applyNow(ConfigureAirportFacilitiesCommand(airline: id, airport: "ARN", facilities: .init(lounge: 1))), .applied)
+        let manager = SaveManager(store: FileSaveStore(rootDirectory: root))
+        try manager.save(engine.state, slot: "airport-review")
+        let controller = GameController(savesDirectory: root)
+        controller.loadGame(slot: "airport-review")
+        try await waitForGame(controller)
+        defer { controller.setPumping(false) }
+        let state = try XCTUnwrap(controller.snapshot), player = try XCTUnwrap(state.playerAirline)
+        for dark in [false, true] {
+            for section in AirportManagementSection.allCases {
+                try await capture(NavigationStack { AirportDetailView(code: "ARN", initialSection: section) },
+                    name: "airport-\(section.rawValue)", controller: controller, width: 393, dark: dark,
+                    typeSize: .large, height: 1600)
+            }
+            try await capture(ScrollView {
+                AirportFacilityEditor(airport: "ARN", player: player, snapshot: state, catalog: catalog,
+                    draft: .constant(AirportFacilities(lounge: 2, groundServices: 1))).padding(12)
+            }, name: "airport-full-investment", controller: controller, width: 393, dark: dark,
+                typeSize: .large, height: 2400)
+            try await capture(NavigationStack { AirportDetailView(code: "ARN") },
+                name: "airport-overview-AX5", controller: controller, width: 375, dark: dark,
+                typeSize: .accessibility5, height: 1600)
+            try await capture(ScrollView {
+                AirportFacilityEditor(airport: "ARN", player: player, snapshot: state, catalog: catalog,
+                    draft: .constant(nil)).padding(12)
+            }, name: "airport-services-AX5", controller: controller, width: 375, dark: dark,
+                typeSize: .accessibility5, height: 2400)
         }
     }
 

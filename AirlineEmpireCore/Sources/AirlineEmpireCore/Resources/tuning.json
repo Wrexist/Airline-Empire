@@ -220,5 +220,13 @@
   "entertainmentPerPassengerPerLevel": {
    "cents": 75
   }
+ },
+ "airportFacilities": {
+  "loungeInstallation": {"cents": 15000000},
+  "groundInstallation": {"cents": 10000000},
+  "loungeMonthly": {"cents": 1500000},
+  "groundMonthly": {"cents": 1000000},
+  "loungeComfortPerLevel": 0.04,
+  "groundRiskReductionPerLevel": 0.1
  }
 }

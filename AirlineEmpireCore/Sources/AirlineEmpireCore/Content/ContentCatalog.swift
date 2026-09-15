@@ -33,6 +33,7 @@ public final class ContentCatalog: Sendable {
         var scenarioMap: [ScenarioCode: ScenarioSpec] = [:]
         var problems: [String] = []
         if !tuning.cabin.isValid { problems.append("Invalid aircraft configuration tuning") }
+        if !tuning.airportServices.isValid { problems.append("Invalid airport facility tuning") }
 
         for scenario in scenarios {
             if scenarioMap[scenario.code] != nil {
@@ -216,6 +217,8 @@ public struct Tuning: Equatable, Codable, Sendable {
     public let fleet: FleetTuning
     public let aircraftConfiguration: AircraftConfigurationTuning?
     public var cabin: AircraftConfigurationTuning { aircraftConfiguration ?? .standard }
+    public let airportFacilities: AirportFacilityTuning?
+    public var airportServices: AirportFacilityTuning { airportFacilities ?? .standard }
     public let ops: OpsTuning
     public let demand: DemandTuning
     public let finance: FinanceTuning
@@ -231,10 +234,12 @@ public struct Tuning: Equatable, Codable, Sendable {
                 reputation: ReputationTuning = .standard, ai: AITuning = .standard,
                 events: EventTuning = .standard,
                 progression: ProgressionTuning = .standard,
-                aircraftConfiguration: AircraftConfigurationTuning = .standard) {
+                aircraftConfiguration: AircraftConfigurationTuning = .standard,
+                airportFacilities: AirportFacilityTuning = .standard) {
         self.minRouteDistanceKm = minRouteDistanceKm
         self.fleet = fleet
         self.aircraftConfiguration = aircraftConfiguration
+        self.airportFacilities = airportFacilities
         self.ops = ops
         self.demand = demand
         self.finance = finance

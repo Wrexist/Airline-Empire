@@ -85,6 +85,7 @@ struct AirportBrowserView: View {
                     ForEach(rows, id: \.code) { row in
                         NavigationLink(value: row.code) { airportRow(row) }
                             .aeListRow()
+                            .accessibilityIdentifier("ae-airport-row-\(row.code.raw)")
                     }
                 }
                 .listStyle(.plain)
@@ -134,7 +135,7 @@ struct AirportBrowserView: View {
                           catalog: ContentCatalog) -> [Row] {
         let mine = Set(snapshot.routes(of: player.id).flatMap {
             [$0.origin, $0.destination]
-        })
+        }).union([player.homeAirport]).union((player.airportFacilities ?? [:]).keys)
         // Distinct types, not aircraft: a player with ten of one type used to
         // run the eligibility check ten times for the same answer.
         var seenTypes = Set<AircraftTypeCode>()
@@ -193,7 +194,7 @@ struct AirportBrowserView: View {
                 if row.closed {
                     AEBadge(text: "closed", color: AETheme.negative, icon: "xmark.octagon")
                 } else if row.served {
-                    AEBadge(text: "you fly here", color: AETheme.positive, icon: "checkmark")
+                    AEBadge(text: "your network", color: AETheme.positive, icon: "checkmark")
                 } else if !row.reachable {
                     AEBadge(text: "out of reach", color: .secondary, icon: "lock")
                 }
@@ -205,191 +206,4 @@ struct AirportBrowserView: View {
         }
     }
 
-}
-
-/// One market, in the terms that decide whether to fly there.
-struct AirportDetailView: View {
-    @Environment(GameController.self) private var controller
-    @State private var routeSheet: RouteDraft?
-    let code: AirportCode
-
-    var body: some View {
-        ScrollView {
-            if let snapshot = controller.snapshot,
-               let player = snapshot.playerAirline,
-               let catalog = controller.catalog,
-               let spec = catalog.airport(code) {
-                VStack(spacing: AETheme.spacingM) {
-                    identity(spec, snapshot: snapshot)
-                    market(spec)
-                    capacity(spec, snapshot: snapshot)
-                    presence(spec, snapshot: snapshot, player: player, catalog: catalog)
-                }
-                .aePageInsets()
-            } else {
-                LoadingState(message: "Loading the airport")
-                    .frame(minHeight: 240)
-            }
-        }
-        .aeScreenBackground()
-        .navigationTitle(code.raw)
-        .navigationBarTitleDisplayMode(.inline)
-        .aeTimeToolbar()
-        .sheet(item: $routeSheet) { draft in
-            OpenRouteSheet(suggestion: draft.suggestion)
-        }
-        .navigationDestination(for: RouteID.self) { RouteDetailView(routeID: $0) }
-        // See BUG-030: Route Detail links onward to its aircraft.
-        .navigationDestination(for: AircraftID.self) {
-            AircraftDetailView(aircraftID: $0)
-        }
-    }
-
-    private func identity(_ spec: AirportSpec, snapshot: GameState) -> some View {
-        AECard {
-            VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                Text(spec.name).font(.headline)
-                Text("\(spec.city), \(spec.country)")
-                    .font(.subheadline)
-                    .foregroundStyle(AETheme.mutedText)
-                AEChipRow {
-                    AEChip(icon: "globe", text: Vocab.region(spec.region))
-                    AEChip(icon: "road.lanes", text: Vocab.runwayDetail(spec.runwayClass))
-                    AEChip(icon: "cloud.rain.fill", text: Vocab.weatherRisk(spec.weatherRisk))
-                }
-                if snapshot.world.isAirportClosed(code, at: snapshot.clock.now) {
-                    Label("Closed right now — nothing operates here.",
-                          systemImage: "xmark.octagon.fill")
-                        .font(.subheadline)
-                        .foregroundStyle(AETheme.negative)
-                }
-            }
-        }
-    }
-
-    private func market(_ spec: AirportSpec) -> some View {
-        AECard {
-            VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                AESectionHeader(text: "The market", systemImage: "person.3")
-                labelled("Catchment",
-                         "\(Format.count(Int64(spec.demographics.populationThousands))) thousand people")
-                labelled("Business demand",
-                         Format.decimal(spec.demographics.businessIndex, places: 2))
-                labelled("Leisure demand",
-                         Format.decimal(spec.demographics.leisureIndex, places: 2))
-                labelled("Tourism draw",
-                         Format.decimal(spec.demographics.tourismIndex, places: 2))
-                Text(spec.demographics.businessIndex >= spec.demographics.leisureIndex
-                     ? "Business-led: demand is steadier across the year and less sensitive to fare."
-                     : "Leisure-led: demand swings with the season and reacts hard to price.")
-                    .font(.caption)
-                    .foregroundStyle(AETheme.mutedText)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-
-    private func capacity(_ spec: AirportSpec, snapshot: GameState) -> some View {
-        let used = snapshot.world.slotsUsed(at: code)
-        let fraction = spec.slotCapacityPerDay > 0
-            ? Double(used) / Double(spec.slotCapacityPerDay) : 0
-        return AECard {
-            VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                AESectionHeader(text: "Slots and fees", systemImage: "clock")
-                HStack {
-                    Text("Daily slots used").font(.subheadline)
-                    Spacer()
-                    Text("\(used) / \(spec.slotCapacityPerDay)")
-                        .font(.subheadline).monospacedDigit()
-                }
-                ProgressView(value: fraction)
-                    .tint(fraction > 0.85 ? AETheme.caution : AETheme.accent)
-                if fraction > 0.85 {
-                    Text("Nearly full. A new route here may be refused for want of slots.")
-                        .font(.caption)
-                        .foregroundStyle(AETheme.caution)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                labelled("Movement fee", Format.money(spec.movementFee))
-                labelled("Passenger fee", Format.money(spec.passengerFee))
-            }
-        }
-    }
-
-    private func presence(_ spec: AirportSpec, snapshot: GameState,
-                          player: Airline, catalog: ContentCatalog) -> some View {
-        let mine = snapshot.routes(of: player.id).filter {
-            $0.origin == code || $0.destination == code
-        }
-        let rivals = snapshot.orderedRouteIDs.compactMap { id -> (Airline, Route)? in
-            guard let route = snapshot.routes[id], route.airline != player.id,
-                  route.origin == code || route.destination == code,
-                  let airline = snapshot.airlines[route.airline] else { return nil }
-            return (airline, route)
-        }
-        return AECard {
-            VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                AESectionHeader(text: "Who flies here", systemImage: "airplane")
-                if mine.isEmpty {
-                    Text("You do not serve this airport.")
-                        .font(.subheadline)
-                        .foregroundStyle(AETheme.mutedText)
-                } else {
-                    ForEach(mine, id: \.id) { route in
-                        NavigationLink(value: route.id) {
-                            HStack {
-                                Text("\(route.origin.raw) – \(route.destination.raw)")
-                                    .font(.subheadline)
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.caption).foregroundStyle(AETheme.mutedText)
-                            }
-                            .frame(minHeight: 44)
-                        }
-                    }
-                }
-                if !rivals.isEmpty {
-                    Divider()
-                    Text("\(rivals.count) rival \(rivals.count == 1 ? "service" : "services")")
-                        .font(.caption)
-                        .foregroundStyle(AETheme.mutedText)
-                    ForEach(Array(rivals.prefix(6)), id: \.1.id) { airline, route in
-                        HStack {
-                            Text(airline.name).font(.caption)
-                            Spacer()
-                            Text("\(route.origin.raw)–\(route.destination.raw) · \(Format.money(route.ticketPrice))")
-                                .font(.caption).monospacedDigit()
-                                .foregroundStyle(AETheme.mutedText)
-                        }
-                    }
-                }
-                if code != player.homeAirport,
-                   let distance = catalog.distanceKm(player.homeAirport, code) {
-                    Button {
-                        routeSheet = RouteDraft(suggestion: FirstRouteSuggestion(
-                            origin: player.homeAirport, destination: code,
-                            destinationCity: spec.city, distanceKm: distance,
-                            expectedDailyPassengers: 0,
-                            referenceFare: Money(rounding: DemandSystem.referenceFare(
-                                distanceKm: distance, tuning: catalog.tuning.demand))))
-                    } label: {
-                        Label("Open a route from \(player.homeAirport.raw)",
-                              systemImage: "plus.circle")
-                            .font(.subheadline.weight(.medium))
-                            .frame(minHeight: 44)
-                    }
-                    .buttonStyle(.bordered)
-                }
-            }
-        }
-    }
-
-    private func labelled(_ label: String, _ value: String) -> some View {
-        HStack {
-            Text(label)
-            Spacer()
-            Text(value).monospacedDigit()
-        }
-        .font(.subheadline)
-    }
 }

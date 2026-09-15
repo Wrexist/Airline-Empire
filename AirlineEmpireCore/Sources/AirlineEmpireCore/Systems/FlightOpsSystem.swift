@@ -59,6 +59,8 @@ public struct FlightOpsSystem: SimulationSystem {
                     let reliability = aircraft.currentReliability(
                         type: spec, tuning: context.catalog.tuning.fleet)
                     var disruptionProbability = 1 - reliability
+                    disruptionProbability *= state.airlines[aircraft.owner]?.facilities(at: flight.from)
+                        .technicalDisruptionMultiplier(tuning: context.catalog.tuning.airportServices) ?? 1
                     if state.isPlayer(aircraft.owner),
                        state.playerHasCapability(.networkOpsCenter) {
                         disruptionProbability *= 0.8

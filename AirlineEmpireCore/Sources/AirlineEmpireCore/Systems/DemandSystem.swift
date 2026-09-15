@@ -202,11 +202,15 @@ public struct DemandSystem: SimulationSystem {
             let spec = catalog.aircraftType(firstAircraft.typeCode) else { return nil }
         let reputation = state.airlines[route.airline]?.reputation
             .demandMultiplier(tuning: catalog.tuning.reputation) ?? 1.0
+        let owner = state.airlines[route.airline]
+        let loungeLevels = (owner?.facilities(at: route.origin).lounge ?? 0)
+            + (owner?.facilities(at: route.destination).lounge ?? 0)
+        let airportComfort = Double(loungeLevels) / 2 * catalog.tuning.airportServices.loungeComfortPerLevel
         return offerQualityTerms(
             spec: spec, roundTripsPerDay: route.dailyRoundTrips,
             operationsScore: route.stats.completionRate * 0.5 + route.stats.punctuality * 0.5,
             reputationMultiplier: reputation, tuning: catalog.tuning.demand,
-            comfortOverride: min(1, spec.comfortBaseline + cabinTerms(route: route, state: state, catalog: catalog).bonus))
+            comfortOverride: min(1, spec.comfortBaseline + cabinTerms(route: route, state: state, catalog: catalog).bonus + airportComfort))
     }
 
     /// The same four terms for a service that has not been flown yet: an
