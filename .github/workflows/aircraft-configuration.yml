@@ -101,6 +101,16 @@ jobs:
               xcrun xcresulttool export attachments --path "build/ae049-$device.xcresult" --output-path "build/ae049-$device-screens"
             fi
           done
+      - name: Upload review images and logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: airport-review
+          path: |
+            build/ae049-build.log
+            build/ae049-ui.log
+            build/ae049-ipad.log
+            build/ae049-*-screens
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -27,6 +27,7 @@ struct AirportBrowserView: View {
     @MainActor private final class RowCache {
         private struct Key: Equatable {
             let tick: Int64
+            let facilityRevision: Int64
             let scope: Scope
             let search: String
         }
@@ -34,9 +35,9 @@ struct AirportBrowserView: View {
         private var key: Key?
         private var rows: [Row] = []
 
-        func rows(tick: Int64, scope: Scope, search: String,
+        func rows(tick: Int64, facilityRevision: Int64, scope: Scope, search: String,
                   build: () -> [Row]) -> [Row] {
-            let wanted = Key(tick: tick, scope: scope, search: search)
+            let wanted = Key(tick: tick, facilityRevision: facilityRevision, scope: scope, search: search)
             if key == wanted { return rows }
             rows = build()
             key = wanted
@@ -62,6 +63,7 @@ struct AirportBrowserView: View {
                let player = snapshot.playerAirline,
                let catalog = controller.catalog {
                 let rows = cache.rows(tick: snapshot.clock.tickCount,
+                                      facilityRevision: player.airportFacilityHistory?.first?.id ?? 0,
                                       scope: scope, search: search) {
                     airports(snapshot: snapshot, player: player, catalog: catalog)
                 }
