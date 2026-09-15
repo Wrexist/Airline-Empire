@@ -1,5 +1,9 @@
 # AE-051: Airport & hub management
 
+The subsequent [Airport Services review](AIRPORT_SERVICES_REVIEW.md) records the
+compact Services redesign, expanded validation and measured investment trade-offs.
+The implementation below is the original airport-management baseline.
+
 ## Player experience
 
 Airport detail now follows the aircraft and route screens: navy outlined panels,
