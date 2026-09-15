@@ -235,6 +235,7 @@ private struct AirportQuoteRequest: Equatable {
 
 struct AirportFacilityEditor: View {
     @Environment(GameController.self) private var controller
+    @Environment(\.dynamicTypeSize) private var typeSize
     let airport: AirportCode
     let player: Airline
     let snapshot: GameState
@@ -329,11 +330,16 @@ struct AirportFacilityEditor: View {
     }
     private func facility(title: String, icon: String, color: Color, keyPath: WritableKeyPath<AirportFacilities, Int>,
                           description: String, benefit: String, monthly: Money, setup: Money) -> some View {
-        AircraftPanel {
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 8)) : AnyLayout(HStackLayout(spacing: 8))
+        return AircraftPanel {
             VStack(alignment: .leading, spacing: 12) {
-                Label(title, systemImage: icon).font(.headline).foregroundStyle(color)
+                if typeSize.isAccessibilitySize {
+                    Text(title).font(.headline).foregroundStyle(color)
+                } else {
+                    Label(title, systemImage: icon).font(.headline).foregroundStyle(color)
+                }
                 Text(description).font(.caption).foregroundStyle(AETheme.mutedText)
-                HStack(spacing: 8) {
+                layout {
                     ForEach(0...2, id: \.self) { level in
                         Button {
                             var next = proposed; next[keyPath: keyPath] = level; draft = next; saved = false

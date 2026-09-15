@@ -209,7 +209,7 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
                 AirportFacilityEditor(airport: "ARN", player: player, snapshot: state, catalog: catalog,
                     draft: .constant(AirportFacilities(lounge: 2, groundServices: 1))).padding(12)
             }, name: "airport-full-investment", controller: controller, width: 393, dark: dark,
-                typeSize: .large, height: 2400)
+                typeSize: .large, height: 1500)
             try await capture(NavigationStack { AirportDetailView(code: "ARN") },
                 name: "airport-overview-AX5", controller: controller, width: 375, dark: dark,
                 typeSize: .accessibility5, height: 1600)

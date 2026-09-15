@@ -13,6 +13,7 @@ struct AirportBrowserView: View {
     @State private var search = ""
     @State private var scope: Scope = .all
     @State private var cache = RowCache()
+    @State private var selectedAirport: AirportCode?
 
     /// Per-tick memo for the row list (UIUX_FORENSIC_AUDIT UI-016, the same
     /// problem `GameController` solved for the map).
@@ -83,7 +84,13 @@ struct AirportBrowserView: View {
                             .listRowBackground(Color.clear)
                     }
                     ForEach(rows, id: \.code) { row in
-                        NavigationLink(value: row.code) { airportRow(row) }
+                        Button { selectedAirport = row.code } label: {
+                            HStack(spacing: 12) {
+                                airportRow(row)
+                                Spacer(minLength: 0)
+                                Image(systemName: "chevron.right").font(.caption).foregroundStyle(AETheme.mutedText)
+                            }
+                        }.buttonStyle(.plain)
                             .aeListRow()
                             .accessibilityIdentifier("ae-airport-row-\(row.code.raw)")
                     }
@@ -93,9 +100,6 @@ struct AirportBrowserView: View {
                             placement: .navigationBarDrawer(displayMode: .always),
                             prompt: "Airport code, city or country")
                 .aeScreenBackground()
-                .navigationDestination(for: AirportCode.self) {
-                    AirportDetailView(code: $0)
-                }
             } else {
                 LoadingState(message: "Loading the world")
             }
@@ -104,6 +108,7 @@ struct AirportBrowserView: View {
         .navigationTitle("Airports")
         .navigationBarTitleDisplayMode(.inline)
         .aeTimeToolbar()
+        .navigationDestination(item: $selectedAirport) { AirportDetailView(code: $0) }
     }
 
     struct Row {
