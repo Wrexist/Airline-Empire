@@ -40,7 +40,18 @@ jobs:
           xcodegen generate
       - name: Build iOS app and tests
         working-directory: AirlineEmpireApp
-        run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'generic/platform=iOS Simulator' -derivedDataPath ../build/ae049 CODE_SIGNING_ALLOWED=NO build-for-testing > ../build/ae049-build.log 2>&1
+        run: |
+          if xcodebuild -jobs 2 -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'generic/platform=iOS Simulator' -derivedDataPath ../build/ae049 CODE_SIGNING_ALLOWED=NO build-for-testing > ../build/ae049-build.log 2>&1; then
+            exit 0
+          fi
+          if grep -q 'The Xcode build system has crashed' ../build/ae049-build.log; then
+            mkdir -p ../build/ae049-crashes
+            find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 1 -type f -name '*.ips' -exec cp {} ../build/ae049-crashes/ \;
+            xcodebuild -jobs 2 -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'generic/platform=iOS Simulator' -derivedDataPath ../build/ae049 CODE_SIGNING_ALLOWED=NO build-for-testing >> ../build/ae049-build.log 2>&1
+          else
+            tail -80 ../build/ae049-build.log
+            exit 1
+          fi
       - name: Select simulator
         id: simulator
         run: |
@@ -72,6 +83,7 @@ jobs:
           name: aircraft-validation
           path: |
             build/ae049-build.log
+            build/ae049-crashes
             build/ae049-ui.log
             build/ae049-ui.xcresult
             build/ae049-ipad.log
