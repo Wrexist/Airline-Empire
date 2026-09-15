@@ -235,7 +235,7 @@ struct AircraftConfigurationEditor: View {
                             ForEach(0..<3, id: \.self) { level in Text(upgrade.levels[level]).tag(level) }
                         }.pickerStyle(.menu).frame(minHeight: 44)
                             .accessibilityIdentifier("ae-upgrade-\(upgrade.rawValue)")
-                        Text("Each level: +\(Format.decimal(catalog.tuning.cabin.comfortPerUpgradeLevel * 100, places: 1)) comfort points · +\(exactMoney(upgrade.serviceCostPerLevel(tuning: catalog.tuning.cabin))) per passenger. Higher comfort competes for business and leisure demand.")
+                        Text("Each level: +\(Format.decimal(catalog.tuning.cabin.comfortPerUpgradeLevel * 100, places: 1)) comfort points Â· +\(exactMoney(upgrade.serviceCostPerLevel(tuning: catalog.tuning.cabin))) per passenger. Higher comfort competes for business and leisure demand.")
                             .font(.caption2).foregroundStyle(AETheme.mutedText)
                         Divider()
                     }
@@ -487,14 +487,14 @@ struct AircraftHistoryCard: View {
             let description: String
             switch event.kind {
             case .maintenanceStarted(let id, _, let cost) where id == aircraft.id:
-                description = "Maintenance started · \(Format.money(cost))"
+                description = "Maintenance started Â· \(Format.money(cost))"
             case .maintenanceCompleted(let id) where id == aircraft.id:
                 description = "Maintenance completed"
             case .aircraftDelivered(let id) where id == aircraft.id:
                 description = "Aircraft delivered"
             default: return nil
             }
-            return "\(Format.date(GameCalendar.date(at: event.at, startYear: snapshot.meta.startYear))) · \(description)"
+            return "\(Format.date(GameCalendar.date(at: event.at, startYear: snapshot.meta.startYear))) Â· \(description)"
         }.prefix(8).map { $0 }
     }
     var body: some View {
