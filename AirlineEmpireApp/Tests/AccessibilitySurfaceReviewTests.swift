@@ -23,7 +23,7 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
     @MainActor
     private func capture<V: View>(_ view: V, name: String, controller: GameController,
                                   width: CGFloat, dark: Bool, typeSize: DynamicTypeSize = .accessibility3,
-                                  height: CGFloat = 812, scrollToBottom: Bool = false) async throws {
+                                  height: CGFloat = 812) async throws {
         let content = view
             .environment(controller)
             .environment(Entitlements(arguments: ["-AEUITestFree"]))
@@ -40,22 +40,6 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
         host.view.setNeedsLayout()
         host.view.layoutIfNeeded()
         try await Task.sleep(for: .milliseconds(1000))
-        if scrollToBottom {
-            func verticalScroll(in view: UIView) -> UIScrollView? {
-                if let scroll = view as? UIScrollView, scroll.contentSize.height > scroll.bounds.height { return scroll }
-                for child in view.subviews { if let found = verticalScroll(in: child) { return found } }
-                return nil
-            }
-            let scroll = try XCTUnwrap(verticalScroll(in: host.view))
-            // Lazy grids resolve additional row heights as they enter the viewport.
-            // Re-evaluate the bottom after layout instead of trusting the first estimate.
-            for _ in 0..<6 {
-                scroll.setContentOffset(CGPoint(x: 0, y: max(0, scroll.contentSize.height - scroll.bounds.height + scroll.adjustedContentInset.bottom)), animated: false)
-                host.view.layoutIfNeeded()
-                try await Task.sleep(for: .milliseconds(150))
-            }
-            XCTAssertLessThanOrEqual(scroll.contentSize.height - scroll.bounds.height + scroll.adjustedContentInset.bottom - scroll.contentOffset.y, 2)
-        }
         let renderer = UIGraphicsImageRenderer(bounds: host.view.bounds)
         var drawn = false
         let image = renderer.image { _ in
@@ -243,11 +227,22 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
                     draft: .constant(nil)).padding(12)
             }, name: "SERVICES-07-AX5", controller: controller, width: 375, dark: dark,
                 typeSize: .accessibility5, height: 2200)
-            try await capture(ScrollView {
-                AirportFacilityEditor(airport: "ARN", player: player, snapshot: state, catalog: catalog,
-                    draft: .constant(AirportFacilities(lounge: 2, groundServices: 1))).padding(12)
+            try await capture(ScrollViewReader { proxy in
+                ScrollView {
+                    VStack {
+                        AirportFacilityEditor(airport: "ARN", player: player, snapshot: state, catalog: catalog,
+                            draft: .constant(AirportFacilities(lounge: 2, groundServices: 1))).padding(12)
+                        Color.clear.frame(height: 1).id("airport-review-end")
+                    }
+                }.task {
+                    // Use the layout's actual end anchor, not UIScrollView's lazy estimate.
+                    for _ in 0..<4 {
+                        try? await Task.sleep(for: .milliseconds(200))
+                        proxy.scrollTo("airport-review-end", anchor: .bottom)
+                    }
+                }
             }, name: "SERVICES-07-AX5-actions", controller: controller, width: 375, dark: dark,
-                typeSize: .accessibility5, height: 1600, scrollToBottom: true)
+                typeSize: .accessibility5, height: 1600)
         }
     }
 

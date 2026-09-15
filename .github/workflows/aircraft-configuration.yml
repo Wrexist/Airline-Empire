@@ -2,6 +2,10 @@ name: Aircraft, route and airport management validation
 on:
   workflow_dispatch:
     inputs:
+      captures_only:
+        description: Run only hosted airport layout captures
+        type: boolean
+        default: false
       tablet_only:
         description: Run only native iPad validation after an iPhone pass
         type: boolean
@@ -18,7 +22,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   core:
-    if: inputs.tablet_only != true
+    if: inputs.tablet_only != true && inputs.captures_only != true
     runs-on: ubuntu-latest
     container: swift:6.0.3-jammy
     timeout-minutes: 25
@@ -67,10 +71,15 @@ jobs:
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f: f.write('id=' + phone['udid'] + '\nipad=' + tablet['udid'] + '\n')
           PY
       - name: Airport screen journeys
-        if: inputs.tablet_only != true
+        if: inputs.tablet_only != true && inputs.captures_only != true
         working-directory: AirlineEmpireApp
         run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ui.xcresult -only-testing:AirlineEmpireUITests/AirportManagementUITests -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testAirportManagementAtAccessibleSizes -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ui.log 2>&1
+      - name: Hosted airport captures
+        if: inputs.captures_only == true
+        working-directory: AirlineEmpireApp
+        run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ui.xcresult -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testAirportManagementAtAccessibleSizes -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ui.log 2>&1
       - name: Prepare isolated iPad simulator
+        if: inputs.captures_only != true
         run: |
           python3 - <<'PY'
           import json, subprocess
@@ -86,6 +95,7 @@ jobs:
           subprocess.run(['xcrun', 'simctl', 'bootstatus', tablet, '-b'], check=True)
           PY
       - name: iPad airport journey
+        if: inputs.captures_only != true
         working-directory: AirlineEmpireApp
         run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.ipad }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ipad.xcresult -only-testing:AirlineEmpireUITests/AirportManagementUITests/testAirportInvestmentJourney -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testAirportManagementAtAccessibleSizes -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ipad.log 2>&1
       - name: Collect simulator diagnostics
