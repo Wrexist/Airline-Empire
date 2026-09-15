@@ -210,10 +210,17 @@ struct RouteRow: View {
 struct RouteDetailView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var showingAircraftMarket = false
+    @State private var section: RouteManagementSection = .overview
+    @State private var planDraft: RoutePlan?
     @Environment(GameController.self) private var controller
     @Environment(\.feedback) private var feedback
     @Environment(\.dismiss) private var dismiss
     let routeID: RouteID
+
+    init(routeID: RouteID, initialSection: RouteManagementSection = .overview) {
+        self.routeID = routeID
+        _section = State(initialValue: initialSection)
+    }
 
     private var context: (GameState, Airline, ContentCatalog, RouteCardModel)? {
         guard let snapshot = controller.snapshot,
@@ -228,31 +235,39 @@ struct RouteDetailView: View {
         ScrollView {
             if let (snapshot, player, catalog, card) = context {
                 VStack(spacing: AETheme.spacingM) {
-                    // §13's decision hierarchy: what is happening, then what
-                    // is driving it commercially, then the money, then the
-                    // aircraft, then the controls. The old order put the cost
-                    // breakdown second and operations fifth — so a player
-                    // asking "is this route working" read an expense table
-                    // before they reached the load factor.
                     FirstFlightProgress()
-                    headline(card, snapshot: snapshot, catalog: catalog)
-                    RouteFlightStatus(routeID: routeID) {
-                        controller.showRouteOnMap(routeID)
-                        dismiss()
+                    if let route = snapshot.routes[routeID] {
+                        RouteOverviewHero(route: route, catalog: catalog) {
+                            controller.showRouteOnMap(routeID); dismiss()
+                        }
+                        RouteManagementTabs(selection: $section)
+                        switch section {
+                        case .overview:
+                            headline(card, snapshot: snapshot, catalog: catalog)
+                            RouteFlightStatus(routeID: routeID) {
+                                controller.showRouteOnMap(routeID); dismiss()
+                            }
+                            aircraftSection(card, player: player.id, catalog: catalog)
+                            operations(card)
+                            demandSection(card, snapshot: snapshot)
+                            Button("Plan fare & schedule") { section = .planning }
+                                .buttonStyle(.aePrimary).frame(minHeight: 44)
+                        case .planning:
+                            RoutePlanEditor(route: route, snapshot: snapshot, catalog: catalog, draft: $planDraft)
+                        case .aircraft:
+                            aircraftSection(card, player: player.id, catalog: catalog)
+                            RouteAircraftComparison(route: route, snapshot: snapshot, catalog: catalog)
+                        case .competition:
+                            demandSection(card, snapshot: snapshot)
+                            competitorSection(card, snapshot: snapshot, player: player.id)
+                        case .history:
+                            RoutePlanHistoryCard(route: route)
+                            breakdown(card, catalog: catalog)
+                            dangerZone(player: player.id)
+                        }
                     }
-                    if card.assignedAircraftCount == 0 {
-                        aircraftSection(card, player: player.id, catalog: catalog)
-                    }
-                    operations(card)
-                    demandSection(card, snapshot: snapshot)
-                    competitorSection(card, snapshot: snapshot, player: player.id)
-                    breakdown(card, catalog: catalog)
-                    if card.assignedAircraftCount > 0 {
-                        aircraftSection(card, player: player.id, catalog: catalog)
-                    }
-                    fareControls(card, player: player.id)
-                    dangerZone(player: player.id)
                 }
+                .frame(maxWidth: 920)
                 .aePageInsets()
             } else {
                 EmptyStateView(icon: "xmark.circle", title: "Route closed",
@@ -293,65 +308,19 @@ struct RouteDetailView: View {
     /// question a player opens a route to answer.
     private func headline(_ card: RouteCardModel, snapshot: GameState,
                           catalog: ContentCatalog) -> some View {
-        AECard {
-            VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                let endpoints = typeSize.isAccessibilitySize
-                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
-                    : AnyLayout(HStackLayout(alignment: .center, spacing: 16))
-                endpoints {
-                    Text(card.origin.raw)
-                        .font(.system(.title, weight: .semibold))
-                    VStack(spacing: 6) {
-                        Image(systemName: "airplane").font(.title3)
-                        Capsule().fill(AETheme.accent.opacity(0.18)).frame(height: 2)
-                    }
-                    .foregroundStyle(AETheme.accent)
-                    .accessibilityHidden(true)
-                    Text(card.destination.raw)
-                        .font(.system(.title, weight: .semibold))
-                }
-                Text(cityPair(catalog)).font(.subheadline).foregroundStyle(AETheme.mutedText)
-                    .fixedSize(horizontal: false, vertical: true)
-                Divider().padding(.vertical, 4)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("This month so far").font(AEType.caption).foregroundStyle(AETheme.mutedText)
-                    MoneyText(money: card.thisMonthProfit)
-                        .font(.system(.largeTitle, design: .rounded, weight: .semibold))
-                }
-                // Why, not just how much. The screen listed every term that
-                // goes into the profit and left the player to work out which
-                // one was responsible; Core knows which term dominates, so it
-                // says so (MASTER PROMPT 4 §13). Nil when no single cause
-                // stands out — a reason shown every time is a reason nobody
-                // reads.
+        AircraftPanel {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Route performance").font(.headline)
+                Text("Direct profit this month").font(.caption).foregroundStyle(AETheme.mutedText)
+                MoneyText(money: card.thisMonthProfit).font(.largeTitle.bold())
                 if let verdict = Vocab.routeVerdict(card.verdict) {
-                    Text(verdict)
-                        .font(.subheadline)
-                        .foregroundStyle(verdictTint(card.verdict))
-                        .fixedSize(horizontal: false, vertical: true)
+                    Text(verdict).font(.subheadline).foregroundStyle(verdictTint(card.verdict))
                 }
                 if card.hasClosedMonth {
-                    HStack {
-                        Text("Last full month").font(.caption)
-                            .foregroundStyle(AETheme.mutedText)
-                        Spacer()
-                        MoneyText(money: card.lastMonthProfit).font(.caption)
-                    }
+                    Text("Last full month: \(Format.money(card.lastMonthProfit))").font(.caption).foregroundStyle(AETheme.mutedText)
                 }
-                DisclosureGroup("About route profit") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        if !card.hasClosedMonth {
-                            Text("The first monthly comparison appears after month-end.")
-                        }
-                        Text("Ticket revenue pays the flight's costs first. Aircraft leases, payroll and airline overhead also affect company profit; check Finance after the month closes.")
-                    }
-                    .font(.caption)
-                    .foregroundStyle(AETheme.mutedText)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 8)
-                }
-                .font(.caption)
-                .tint(AETheme.mutedText)
+                Text("Booked route results. Aircraft leases and company overhead are recorded in Finance.")
+                    .font(.caption).foregroundStyle(AETheme.mutedText)
             }
         }
     }
@@ -477,75 +446,6 @@ struct RouteDetailView: View {
     private var instrumentColumns: [GridItem] {
         Array(repeating: GridItem(.flexible(), spacing: 10, alignment: .top),
               count: typeSize.isAccessibilitySize ? 1 : 2)
-    }
-
-    private func fareControls(_ card: RouteCardModel, player: AirlineID) -> some View {
-        AECard {
-            VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                AESectionHeader(text: "Fare and frequency", systemImage: "tag")
-                HStack {
-                    Text(Format.money(card.ticketPrice))
-                        .font(.title3.weight(.semibold))
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                        .aeAnimation(AEMotion.content, value: card.ticketPrice.cents)
-                    Spacer()
-                    AEBadge(text: farePositionLabel(card),
-                            color: farePositionColor(card))
-                }
-                Text(fareAdvice(card))
-                    .font(.caption)
-                    .foregroundStyle(AETheme.mutedText)
-                    .fixedSize(horizontal: false, vertical: true)
-                HStack(spacing: AETheme.spacingS) {
-                    ForEach([-10, -5, 5, 10], id: \.self) { percent in
-                        Button("\(percent > 0 ? "+" : "")\(percent)%") {
-                            let newFare = Money(rounding: card.ticketPrice.asDouble
-                                * (1 + Double(percent) / 100))
-                            // Price and frequency are the two tuning verbs
-                            // of the whole game and neither emits a
-                            // `SimEvent`, so `submit`'s usual "the domain
-                            // event will voice it" does not apply — without
-                            // this they are the only actions in the game with
-                            // no feedback at all.
-                            feedback.play(.uiConfirm)
-                            controller.submit(SetRoutePriceCommand(
-                                airline: player, route: routeID,
-                                ticketPrice: newFare))
-                        }
-                        .buttonStyle(.aeSecondary)
-                        .frame(minHeight: 44)
-                    }
-                }
-                Stepper("Frequency: \(card.dailyRoundTrips)×/day",
-                        onIncrement: { changeFrequency(card, by: 1, player: player) },
-                        onDecrement: { changeFrequency(card, by: -1, player: player) })
-                    .frame(minHeight: 44)
-            }
-        }
-    }
-
-    private func farePositionLabel(_ card: RouteCardModel) -> String {
-        "\(Format.percent(card.farePosition)) of market"
-    }
-
-    private func farePositionColor(_ card: RouteCardModel) -> Color {
-        switch card.farePosition {
-        case ..<0.85: AETheme.accent
-        case 0.85...1.25: AETheme.positive
-        default: AETheme.caution
-        }
-    }
-
-    private func fareAdvice(_ card: RouteCardModel) -> String {
-        switch card.farePosition {
-        case ..<0.85:
-            "You are undercutting the market. Expect full aircraft and thin margins."
-        case 0.85...1.25:
-            "Priced near the market reference for this distance."
-        default:
-            "Well above the market. Fewer passengers, more per seat — watch the load factor."
-        }
     }
 
     /// Who flies this route — and the way to put an idle aircraft on it
@@ -812,14 +712,6 @@ struct RouteDetailView: View {
                 .tint(AETheme.negative)
             }
         }
-    }
-
-    private func changeFrequency(_ card: RouteCardModel, by delta: Int,
-                                 player: AirlineID) {
-        feedback.play(.uiConfirm)
-        controller.submit(SetRouteFrequencyCommand(
-            airline: player, route: routeID,
-            dailyRoundTrips: card.dailyRoundTrips + delta))
     }
 
     private func comparisonRow(_ label: String, _ thisMonth: Money, _ lastMonth: Money,

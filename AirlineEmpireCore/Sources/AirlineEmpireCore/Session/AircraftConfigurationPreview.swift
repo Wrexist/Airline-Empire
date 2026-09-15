@@ -12,17 +12,26 @@ public struct AircraftConfigurationPreview: Equatable, Sendable {
         guard var aircraft = state.aircraft[aircraftID], aircraft.isOperational,
               let spec = catalog.aircraftType(aircraft.typeCode),
               configuration.isValid(capacity: spec.seats),
-              let routeID = aircraft.assignedRoute, let route = state.routes[routeID],
-              let airline = state.airlines[aircraft.owner],
-              let origin = catalog.airport(route.origin), let destination = catalog.airport(route.destination) else { return nil }
+              aircraft.assignedRoute != nil else { return nil }
         var copy = state
         aircraft.configuration = configuration
         copy.aircraft[aircraftID] = aircraft
         let context = SimContext(previous: state.clock.now, current: state.clock.now,
             tick: .minutes(0), catalog: catalog, events: EventCollector(), progressionCeiling: .empire)
         DemandSystem().update(state: &copy, context: context)
-        guard let forecast = copy.routes[routeID] else { return nil }
-        let active = route.assignedAircraft.sorted().compactMap { copy.aircraft[$0] }.filter(\.isOperational)
+        return makeAllocated(aircraftID: aircraftID, state: copy, catalog: catalog)
+    }
+
+    /// Internal shared estimator after the caller has allocated demand once.
+    static func makeAllocated(aircraftID: AircraftID, state: GameState, catalog: ContentCatalog) -> Self? {
+        guard let aircraft = state.aircraft[aircraftID], aircraft.isOperational,
+              let spec = catalog.aircraftType(aircraft.typeCode),
+              let routeID = aircraft.assignedRoute, let route = state.routes[routeID],
+              let airline = state.airlines[aircraft.owner],
+              let origin = catalog.airport(route.origin), let destination = catalog.airport(route.destination) else { return nil }
+        let configuration = aircraft.cabin(for: spec)
+        let forecast = route
+        let active = route.assignedAircraft.sorted().compactMap { state.aircraft[$0] }.filter(\.isOperational)
         guard let index = active.firstIndex(where: { $0.id == aircraftID }) else { return nil }
         let maximum = FlightSchedulingSystem.roundTripsPerAircraftPerDay(
             distanceKm: route.distanceKm, spec: spec, ops: catalog.tuning.ops)

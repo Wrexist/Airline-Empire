@@ -138,6 +138,15 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
         let installed = try XCTUnwrap(controller.snapshot?.aircraft[aircraft.id])
         let state = try XCTUnwrap(controller.snapshot)
         for dark in [false, true] {
+            for section in RouteManagementSection.allCases {
+                try await capture(NavigationStack { RouteDetailView(routeID: route.id, initialSection: section) },
+                    name: "route-\(section.rawValue)", controller: controller, width: 393, dark: dark,
+                    typeSize: .large, height: 1400)
+            }
+            try await capture(ScrollView {
+                RoutePlanEditor(route: route, snapshot: state, catalog: catalog,
+                    draft: .constant(RoutePlan(fare: .dollars(200), frequency: 4)))
+            }, name: "route-planner-AX5", controller: controller, width: 375, dark: dark, typeSize: .accessibility5)
             try await capture(ScrollView {
                 AircraftConfigurationEditor(aircraft: installed, spec: spec, snapshot: state,
                     catalog: catalog, section: .cabin, draft: .constant(nil))
