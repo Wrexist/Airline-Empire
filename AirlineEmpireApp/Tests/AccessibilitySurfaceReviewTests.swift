@@ -23,7 +23,7 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
     @MainActor
     private func capture<V: View>(_ view: V, name: String, controller: GameController,
                                   width: CGFloat, dark: Bool, typeSize: DynamicTypeSize = .accessibility3,
-                                  height: CGFloat = 812) async throws {
+                                  height: CGFloat = 812, settleMilliseconds: Int = 1000) async throws {
         let content = view
             .environment(controller)
             .environment(Entitlements(arguments: ["-AEUITestFree"]))
@@ -39,7 +39,7 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
         host.view.frame = window.bounds
         host.view.setNeedsLayout()
         host.view.layoutIfNeeded()
-        try await Task.sleep(for: .milliseconds(1000))
+        try await Task.sleep(for: .milliseconds(settleMilliseconds))
         let renderer = UIGraphicsImageRenderer(bounds: host.view.bounds)
         var drawn = false
         let image = renderer.image { _ in
@@ -203,13 +203,13 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
             for section in AirportManagementSection.allCases {
                 try await capture(NavigationStack { AirportDetailView(code: "ARN", initialSection: section) },
                     name: "airport-\(section.rawValue)", controller: controller, width: 393, dark: dark,
-                    typeSize: .large, height: 1600)
+                    typeSize: .large, height: 1600, settleMilliseconds: 3000)
             }
             try await capture(ScrollView {
                 AirportFacilityEditor(airport: "ARN", player: player, snapshot: state, catalog: catalog,
                     draft: .constant(AirportFacilities(lounge: 2, groundServices: 1))).padding(12)
             }, name: "SERVICES-03-full-investment", controller: controller, width: 393, dark: dark,
-                typeSize: .large, height: 1500)
+                typeSize: .large, height: 1500, settleMilliseconds: 3000)
             let widths: [CGFloat] = [320, 430, 834]
             for width in widths {
                 try await capture(ScrollView {
@@ -217,32 +217,32 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
                         draft: .constant(AirportFacilities(lounge: 1, groundServices: 2)))
                         .environment(\.horizontalSizeClass, width >= 800 ? .regular : .compact).padding(12)
                 }, name: "SERVICES-04-negative-\(width >= 800 ? "08-iPad" : "phone")-\(dark ? "10-dark" : "09-light")",
-                    controller: controller, width: width, dark: dark, typeSize: .large, height: 1700)
+                    controller: controller, width: width, dark: dark, typeSize: .large, height: 1700, settleMilliseconds: 3000)
             }
             try await capture(NavigationStack { AirportDetailView(code: "ARN") },
                 name: "airport-overview-AX5", controller: controller, width: 375, dark: dark,
-                typeSize: .accessibility5, height: 1600)
+                typeSize: .accessibility5, height: 1600, settleMilliseconds: 3000)
             try await capture(ScrollView {
                 AirportFacilityEditor(airport: "ARN", player: player, snapshot: state, catalog: catalog,
                     draft: .constant(nil)).padding(12)
             }, name: "SERVICES-07-AX5", controller: controller, width: 375, dark: dark,
-                typeSize: .accessibility5, height: 2200)
+                typeSize: .accessibility5, height: 2200, settleMilliseconds: 3000)
             try await capture(ScrollViewReader { proxy in
                 ScrollView {
                     VStack {
                         AirportFacilityEditor(airport: "ARN", player: player, snapshot: state, catalog: catalog,
                             draft: .constant(AirportFacilities(lounge: 2, groundServices: 1))).padding(12)
-                        Color.clear.frame(height: 1).id("airport-review-end")
+                        Color.clear.frame(height: 160).id("airport-review-end")
                     }
                 }.task {
                     // Use the layout's actual end anchor, not UIScrollView's lazy estimate.
-                    for _ in 0..<4 {
+                    for _ in 0..<12 {
                         try? await Task.sleep(for: .milliseconds(200))
                         proxy.scrollTo("airport-review-end", anchor: .bottom)
                     }
                 }
             }, name: "SERVICES-07-AX5-actions", controller: controller, width: 375, dark: dark,
-                typeSize: .accessibility5, height: 1600)
+                typeSize: .accessibility5, height: 1600, settleMilliseconds: 3000)
         }
     }
 
