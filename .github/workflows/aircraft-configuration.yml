@@ -1,12 +1,16 @@
 name: Aircraft and route management validation
 on:
   workflow_dispatch:
+    inputs:
+      tablet_only:
+        description: Run only native iPad validation after an iPhone pass
+        type: boolean
+        default: false
   push:
     branches: [codex/ae049-aircraft-configuration]
     paths:
       - AirlineEmpireApp/**
       - AirlineEmpireCore/**
-      - .github/workflows/aircraft-configuration.yml
 permissions:
   contents: read
 concurrency:
@@ -14,6 +18,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   core:
+    if: inputs.tablet_only != true
     runs-on: ubuntu-latest
     container: swift:6.0.3-jammy
     timeout-minutes: 25
@@ -62,13 +67,24 @@ jobs:
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f: f.write('id=' + phone['udid'] + '\nipad=' + tablet['udid'] + '\n')
           PY
       - name: Route screen journeys
+        if: inputs.tablet_only != true
         working-directory: AirlineEmpireApp
         run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ui.xcresult -only-testing:AirlineEmpireUITests/RouteManagementUITests/testRoutePlannerAndSections -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testAircraftConfigurationAtAccessibleSizes -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ui.log 2>&1
       - name: Prepare isolated iPad simulator
         run: |
-          xcrun simctl shutdown '${{ steps.simulator.outputs.id }}'
-          xcrun simctl boot '${{ steps.simulator.outputs.ipad }}'
-          xcrun simctl bootstatus '${{ steps.simulator.outputs.ipad }}' -b
+          python3 - <<'PY'
+          import json, subprocess
+          tablet = '${{ steps.simulator.outputs.ipad }}'
+          devices = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devices', '-j']))['devices']
+          all_devices = [d for group in devices.values() for d in group]
+          for device in all_devices:
+              if device['state'] == 'Booted' and device['udid'] != tablet:
+                  subprocess.run(['xcrun', 'simctl', 'shutdown', device['udid']], check=True)
+          target = next(d for d in all_devices if d['udid'] == tablet)
+          if target['state'] != 'Booted':
+              subprocess.run(['xcrun', 'simctl', 'boot', tablet], check=True)
+          subprocess.run(['xcrun', 'simctl', 'bootstatus', tablet, '-b'], check=True)
+          PY
       - name: iPad route journey
         working-directory: AirlineEmpireApp
         run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.ipad }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ipad.xcresult -only-testing:AirlineEmpireUITests/RouteManagementUITests/testRoutePlannerFromSavedCampaign -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ipad.log 2>&1
