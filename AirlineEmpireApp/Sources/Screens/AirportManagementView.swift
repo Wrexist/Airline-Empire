@@ -280,7 +280,7 @@ struct AirportFacilityEditor: View {
                 description: "A quieter place to wait, with refreshments and space to work.",
                 benefit: "Up to +\(Int((Double(proposed.lounge) * tuning.loungeComfortPerLevel * 100).rounded())) comfort points here. Route comfort averages its two airports and is capped at 100.",
                 monthly: tuning.loungeMonthly, setup: tuning.loungeInstallation)
-            facility(title: "Ground services", icon: "person.2.gearshape.fill", color: AETheme.accent, keyPath: \.groundServices,
+            facility(title: "Ground services", icon: "wrench.fill", color: AETheme.accent, keyPath: \.groundServices,
                 description: "Dedicated support helps your aircraft depart reliably.",
                 benefit: "\(Int((Double(proposed.groundServices) * tuning.groundRiskReductionPerLevel * 100).rounded()))% lower technical disruption risk on departures here. Weather risk is unchanged.",
                 monthly: tuning.groundMonthly, setup: tuning.groundInstallation)

@@ -63,8 +63,14 @@ final class AirportManagementUITests: AEUITestCase {
                 XCTAssertTrue(waitUntilStill(element))
                 return
             }
-            if !frame.isEmpty && frame.minY < top { app.swipeDown() }
-            else { app.swipeUp() }
+            let upward = frame.isEmpty || frame.minY >= top
+            let x = frame.isEmpty ? app.frame.midX : min(app.frame.maxX - 40, max(app.frame.minX + 40, frame.midX))
+            let startY = upward ? bottom - 30 : top + 30
+            let endY = startY + (upward ? -240.0 : 240.0)
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            origin.withOffset(CGVector(dx: x, dy: startY))
+                .press(forDuration: 0.1, thenDragTo: origin.withOffset(CGVector(dx: x, dy: endY)),
+                       withVelocity: .slow, thenHoldForDuration: 0.2)
         }
         XCTFail("Airport control did not become fully visible: \(element.identifier)")
     }
