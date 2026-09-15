@@ -366,6 +366,7 @@ struct AircraftDetailView: View {
     @State private var assigning = false
     @State private var section: AircraftDetailSection = .cabin
     @State private var changingAircraft = false
+    @State private var configurationDraft: AircraftConfiguration?
 
     var body: some View {
         ScrollView {
@@ -383,7 +384,7 @@ struct AircraftDetailView: View {
                         switch section {
                         case .cabin, .upgrades:
                             AircraftConfigurationEditor(aircraft: aircraft, spec: spec,
-                                snapshot: snapshot, catalog: catalog, section: section)
+                                snapshot: snapshot, catalog: catalog, section: section, draft: $configurationDraft)
                                 .id(aircraftID)
                         case .operations:
                             assignment(card, snapshot: snapshot, player: player.id, catalog: catalog)
@@ -428,6 +429,7 @@ struct AircraftDetailView: View {
                         Label(card.typeName, systemImage: "airplane")
                     }
                 }
+                .navigationDestination(for: RouteID.self) { RouteDetailView(routeID: $0) }
                 .navigationTitle("Change Aircraft")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {

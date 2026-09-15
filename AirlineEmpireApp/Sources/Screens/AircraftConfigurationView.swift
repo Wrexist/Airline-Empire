@@ -82,9 +82,7 @@ struct AircraftOverviewCard: View {
                         specItem("Range", "\(spec.rangeKm.formatted()) km", "arrow.left.and.right")
                         specItem("Cruise speed", "\(spec.cruiseSpeedKmh) km/h", "stopwatch")
                         specItem("Runway", Vocab.runway(spec.runwayRequirement), "road.lanes")
-                        if let band = controller.catalog?.seatEfficiency(of: spec) {
-                            specItem("Fuel per seat", Vocab.seatEfficiency(band), "fuelpump")
-                        }
+                        specItem("Fuel / seat / km", "\(Format.decimal(spec.fuelBurnKgPerKm * 1000 / Double(max(1, aircraft?.cabin(for: spec).totalSeats ?? spec.seats)), places: 1)) g", "fuelpump")
                     }
                 }
             }
@@ -144,7 +142,7 @@ struct AircraftConfigurationEditor: View {
     let snapshot: GameState
     let catalog: ContentCatalog
     let section: AircraftDetailSection
-    @State private var draft: AircraftConfiguration?
+    @Binding var draft: AircraftConfiguration?
     @State private var confirming = false
     @State private var saved = false
     @State private var pending: AircraftConfiguration?

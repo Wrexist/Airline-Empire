@@ -151,9 +151,24 @@ public struct DemandSystem: SimulationSystem {
     /// Quality multiplier for an offer; nil when the route cannot carry
     /// anyone (no assigned aircraft).
     static func cabinYield(route: Route, state: GameState, catalog: ContentCatalog) -> Double {
-        guard let aircraft = route.assignedAircraft.sorted().compactMap({ state.aircraft[$0] }).first,
-              let spec = catalog.aircraftType(aircraft.typeCode) else { return 1 }
-        return aircraft.cabin(for: spec).yieldMultiplier
+        cabinTerms(route: route, state: state, catalog: catalog).yield
+    }
+
+    /// Cabin changes on every assigned airframe contribute to the offer.
+    /// Preserve the existing representative type's baseline, then weight
+    /// refit improvements and fares by the seats actually offered.
+    private static func cabinTerms(route: Route, state: GameState,
+                                   catalog: ContentCatalog) -> (yield: Double, bonus: Double) {
+        var seats = 0.0, yield = 0.0, bonus = 0.0
+        for id in route.assignedAircraft.sorted() {
+            guard let aircraft = state.aircraft[id], let spec = catalog.aircraftType(aircraft.typeCode) else { continue }
+            let cabin = aircraft.cabin(for: spec)
+            let count = Double(cabin.totalSeats)
+            seats += count
+            yield += count * cabin.yieldMultiplier
+            bonus += count * (aircraft.passengerComfort(for: spec) - spec.comfortBaseline)
+        }
+        return seats > 0 ? (yield / seats, bonus / seats) : (1, 0)
     }
 
     private func offerQuality(route: Route, state: GameState,
@@ -191,7 +206,7 @@ public struct DemandSystem: SimulationSystem {
             spec: spec, roundTripsPerDay: route.dailyRoundTrips,
             operationsScore: route.stats.completionRate * 0.5 + route.stats.punctuality * 0.5,
             reputationMultiplier: reputation, tuning: catalog.tuning.demand,
-            comfortOverride: firstAircraft.passengerComfort(for: spec))
+            comfortOverride: min(1, spec.comfortBaseline + cabinTerms(route: route, state: state, catalog: catalog).bonus))
     }
 
     /// The same four terms for a service that has not been flown yet: an

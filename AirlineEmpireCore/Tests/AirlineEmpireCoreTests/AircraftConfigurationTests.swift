@@ -123,4 +123,20 @@ struct AircraftConfigurationTests {
         #expect(engine.state.ledger.recent.contains { $0.category == .passengerService && $0.amount < .zero })
         #expect(engine.state.airlines[airline]?.reputation.comfort != 0)
     }
+    @Test func changingSecondAircraftChangesTheRouteOffer() throws {
+        let (catalog, engine, airline, firstID) = try RouteFixtures.withAircraft()
+        let routeID = RouteFixtures.openStvLnw(engine, airline)
+        #expect(engine.applyNow(AssignAircraftToRouteCommand(airline: airline, route: routeID, aircraftID: firstID)) == .applied)
+        #expect(engine.applyNow(BuyUsedAircraftCommand(buyer: airline, type: "MR180", ageYears: 3)) == .applied)
+        let second = try #require(engine.state.aircraft.values.first { $0.id != firstID })
+        #expect(engine.applyNow(AssignAircraftToRouteCommand(airline: airline, route: routeID, aircraftID: second.id)) == .applied)
+        let route = try #require(engine.state.routes[routeID])
+        let old = try #require(DemandSystem.offerQualityTerms(route: route, state: engine.state, catalog: catalog))
+        let spec = try #require(catalog.aircraftType(second.typeCode))
+        var cabin = second.cabin(for: spec); cabin.seats = 2
+        #expect(engine.applyNow(ConfigureAircraftCommand(airline: airline, aircraftID: second.id, configuration: cabin)) == .applied)
+        let changed = try #require(DemandSystem.offerQualityTerms(route: route, state: engine.state, catalog: catalog))
+        #expect(changed.comfort > old.comfort)
+    }
+
 }

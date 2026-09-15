@@ -232,7 +232,7 @@ struct AssignmentEligibilityTests {
         // hardcoded to it would fail for a reason that says nothing about
         // the code. Both ends must also take the aircraft, so that a runway
         // blocker cannot pre-empt the note being asserted.
-        let candidate = catalog.orderedAircraftTypeCodes
+        let tightRangeFixture = catalog.orderedAircraftTypeCodes
             .compactMap { catalog.aircraftType($0) }
             .lazy
             .compactMap { spec -> (AircraftTypeSpec, MarketOpportunity)? in
@@ -249,7 +249,7 @@ struct AssignmentEligibilityTests {
                 return match.map { (spec, $0) }
             }
             .first
-        let found = try #require(candidate, "no type in the catalog has a route in its tight-range band")
+        let found = try #require(tightRangeFixture, "no type in the catalog has a route in its tight-range band")
         let (spec, stretch) = found
 
         _ = await session.submit(BuyUsedAircraftCommand(
