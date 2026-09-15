@@ -39,13 +39,13 @@ jobs:
       - name: Build iOS app and tests
         working-directory: AirlineEmpireApp
         run: |
-          if xcodebuild -jobs 2 -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'generic/platform=iOS Simulator' -derivedDataPath ../build/ae049 CODE_SIGNING_ALLOWED=NO build-for-testing > ../build/ae049-build.log 2>&1; then
+          if xcodebuild -jobs 2 -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'generic/platform=iOS Simulator' -derivedDataPath ../build/ae049 CODE_SIGNING_ALLOWED=NO SWIFT_USE_INTEGRATED_DRIVER=NO build-for-testing > ../build/ae049-build.log 2>&1; then
             exit 0
           fi
           if grep -q 'The Xcode build system has crashed' ../build/ae049-build.log; then
             mkdir -p ../build/ae049-crashes
             find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 1 -type f -name '*.ips' -exec cp {} ../build/ae049-crashes/ \;
-            xcodebuild -jobs 2 -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'generic/platform=iOS Simulator' -derivedDataPath ../build/ae049 CODE_SIGNING_ALLOWED=NO build-for-testing >> ../build/ae049-build.log 2>&1
+            xcodebuild -jobs 2 -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'generic/platform=iOS Simulator' -derivedDataPath ../build/ae049 CODE_SIGNING_ALLOWED=NO SWIFT_USE_INTEGRATED_DRIVER=NO build-for-testing >> ../build/ae049-build.log 2>&1
           else
             tail -80 ../build/ae049-build.log
             exit 1
