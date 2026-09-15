@@ -1513,20 +1513,16 @@ class AEUITestCase: XCTestCase {
                 XCTAssertTrue(waitUntilStill(element))
                 return
             }
-            let upward = frame.isEmpty || frame.minY >= top
-            let x = frame.isEmpty
-                ? app.frame.midX
-                : min(app.frame.maxX - 40, max(app.frame.minX + 40, frame.midX))
-            // A fraction of the real viewport rather than a fixed 240pt: an
-            // accessibility-size form is several thousand points long, and a
-            // short drag left the action still below the fold.
-            let span = max(240, (bottom - top) * 0.45)
-            let startY = upward ? bottom - 20 : top + 20
-            let endY = startY + (upward ? -span : span)
-            let origin = app.coordinate(withNormalizedOffset: .zero)
-            origin.withOffset(CGVector(dx: x, dy: startY))
-                .press(forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: x, dy: endY)),
-                       withVelocity: .slow, thenHoldForDuration: 0.1)
+            // A full-screen swipe, not a hand-built coordinate drag: the
+            // drag started too near the floating tab bar on some layouts and
+            // simply did not move the scroll view. `app.swipeUp()` is the
+            // gesture the other journeys already scroll with.
+            if frame.isEmpty || frame.minY >= top {
+                app.swipeUp()
+            } else {
+                app.swipeDown()
+            }
+            Thread.sleep(forTimeInterval: 0.4)
         }
         // Never touch the element in the message: `identifier` on an element
         // below the fold resolves a snapshot that does not exist and throws,
