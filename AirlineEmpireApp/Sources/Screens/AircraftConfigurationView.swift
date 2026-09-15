@@ -230,7 +230,7 @@ struct AircraftConfigurationEditor: View {
                             ForEach(0..<3, id: \.self) { level in Text(upgrade.levels[level]).tag(level) }
                         }.pickerStyle(.menu).frame(minHeight: 44)
                             .accessibilityIdentifier("ae-upgrade-\(upgrade.rawValue)")
-                        Text("Each level adds 2.5 points to cabin comfort. Higher comfort competes for business and leisure demand.")
+                        Text("Each level: +2.5 comfort points ? +\(Format.money(upgrade.serviceCostPerLevel)) per passenger. Higher comfort competes for business and leisure demand.")
                             .font(.caption2).foregroundStyle(AETheme.mutedText)
                         Divider()
                     }

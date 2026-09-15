@@ -33,6 +33,13 @@ public enum AircraftUpgrade: String, Codable, CaseIterable, Sendable {
         case .entertainment: ["None", "Screens", "Streaming"]
         }
     }
+    public var serviceCostPerLevel: Money {
+        switch self {
+        case .wifi, .entertainment: Money(cents: 75)
+        case .dining: Money.dollars(2)
+        case .seats: Money(cents: 50)
+        }
+    }
     public var explanation: String {
         switch self {
         case .wifi: "Help passengers stay connected in the air."
@@ -90,7 +97,7 @@ public struct AircraftConfiguration: Equatable, Codable, Sendable {
     }
     /// Recurring upgrades are billed per boarded passenger, alongside service tier.
     public var serviceCostPerPassenger: Money {
-        Money(rounding: Double(wifi) * 0.75 + Double(dining) * 2 + Double(seats) * 0.5 + Double(entertainment) * 0.75)
+        AircraftUpgrade.allCases.reduce(.zero) { $0 + $1.serviceCostPerLevel * Int64(self[$1]) }
     }
     public func installationCost(from old: Self, capacity: Int) -> Money {
         let changedSeats = CabinClass.allCases.reduce(0) { $0 + abs(self[$1] - old[$1]) }

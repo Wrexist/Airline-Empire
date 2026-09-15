@@ -120,6 +120,11 @@ struct AircraftConfigurationTests {
         #expect(route.stats.flightsCompleted > 0)
         #expect(route.stats.seatsFlown == route.stats.flightsCompleted * Int64(cabin.totalSeats))
         #expect(route.stats.passengersCarried <= route.stats.seatsFlown)
+        let expectedRevenue = Money(rounding: Double(route.economicsThisMonth.passengers)
+            * route.ticketPrice.asDouble * cabin.yieldMultiplier)
+        // Revenue is rounded once per departure, so allow one cent per flight.
+        #expect(abs(route.economicsThisMonth.revenueCents - expectedRevenue.cents)
+            <= route.stats.totalFlights + 4)
         #expect(engine.state.ledger.recent.contains { $0.category == .passengerService && $0.amount < .zero })
         #expect(engine.state.airlines[airline]?.reputation.comfort != 0)
     }

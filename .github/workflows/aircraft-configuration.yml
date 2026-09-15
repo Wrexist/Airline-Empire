@@ -9,6 +9,18 @@ concurrency:
   group: aircraft-validation-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  core:
+    runs-on: ubuntu-latest
+    container: swift:6.0.3-jammy
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Core regression tests
+        working-directory: AirlineEmpireCore
+        run: swift test --filter 'AircraftConfigurationTests|ServiceDemandTests|DemandTests|ReputationTests|FleetTests|RouteManagementTests|FlightOpsTests|PersistenceTests|SaveStoreTests'
+      - name: Release build
+        working-directory: AirlineEmpireCore
+        run: swift build -c release -Xswiftc -warnings-as-errors
   native:
     runs-on: macos-26
     env:
@@ -16,9 +28,6 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
-      - name: Core regression tests
-        working-directory: AirlineEmpireCore
-        run: swift test --filter 'AircraftConfigurationTests|ServiceDemandTests|DemandTests|ReputationTests|FleetTests|RouteManagementTests|FlightOpsTests|PersistenceTests|SaveStoreTests'
       - name: Generate project
         run: |
           mkdir -p build
@@ -34,12 +43,25 @@ jobs:
           python3 - <<'PY'
           import json, os, subprocess
           devices = json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','-j']))['devices']
-          phone = next(d for ds in devices.values() for d in ds if d['name'].startswith('iPhone'))
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as f: f.write('id=' + phone['udid'] + '\n')
+          supported = [ds for runtime, ds in devices.items() if 'iOS-26-2' in runtime] or list(devices.values())
+          phone = next(d for ds in supported for d in ds if d['name'].startswith('iPhone'))
+          tablet = next(d for ds in supported for d in ds if d['name'].startswith('iPad'))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f: f.write('id=' + phone['udid'] + '\nipad=' + tablet['udid'] + '\n')
           PY
       - name: Aircraft screen journeys
         working-directory: AirlineEmpireApp
         run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ui.xcresult -only-testing:AirlineEmpireUITests/AircraftConfigurationUITests -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ui.log 2>&1
+      - name: iPad aircraft journey
+        working-directory: AirlineEmpireApp
+        run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.ipad }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ipad.xcresult -only-testing:AirlineEmpireUITests/AircraftConfigurationUITests/testCabinEditingAndUpgradeNavigationDark -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ipad.log 2>&1
+      - name: Export screenshots
+        if: always()
+        run: |
+          for device in ui ipad; do
+            if [ -d "build/ae049-$device.xcresult" ]; then
+              xcrun xcresulttool export attachments --path "build/ae049-$device.xcresult" --output-path "build/ae049-$device-screens"
+            fi
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -48,3 +70,6 @@ jobs:
             build/ae049-build.log
             build/ae049-ui.log
             build/ae049-ui.xcresult
+            build/ae049-ipad.log
+            build/ae049-ipad.xcresult
+            build/ae049-*-screens
