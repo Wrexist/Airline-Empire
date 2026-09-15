@@ -69,7 +69,7 @@ jobs:
       - name: Airport screen journeys
         if: inputs.tablet_only != true
         working-directory: AirlineEmpireApp
-        run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ui.xcresult -only-testing:AirlineEmpireUITests/AirportManagementUITests/testAirportInvestmentJourney -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testAirportManagementAtAccessibleSizes -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ui.log 2>&1
+        run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ui.xcresult -only-testing:AirlineEmpireUITests/AirportManagementUITests -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testAirportManagementAtAccessibleSizes -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ui.log 2>&1
       - name: Prepare isolated iPad simulator
         run: |
           python3 - <<'PY'

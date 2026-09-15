@@ -23,7 +23,7 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
     @MainActor
     private func capture<V: View>(_ view: V, name: String, controller: GameController,
                                   width: CGFloat, dark: Bool, typeSize: DynamicTypeSize = .accessibility3,
-                                  height: CGFloat = 812) async throws {
+                                  height: CGFloat = 812, scrollToBottom: Bool = false) async throws {
         let content = view
             .environment(controller)
             .environment(Entitlements(arguments: ["-AEUITestFree"]))
@@ -40,6 +40,17 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
         host.view.setNeedsLayout()
         host.view.layoutIfNeeded()
         try await Task.sleep(for: .milliseconds(1000))
+        if scrollToBottom {
+            func verticalScroll(in view: UIView) -> UIScrollView? {
+                if let scroll = view as? UIScrollView, scroll.contentSize.height > scroll.bounds.height { return scroll }
+                for child in view.subviews { if let found = verticalScroll(in: child) { return found } }
+                return nil
+            }
+            let scroll = try XCTUnwrap(verticalScroll(in: host.view))
+            scroll.setContentOffset(CGPoint(x: 0, y: max(0, scroll.contentSize.height - scroll.bounds.height + scroll.adjustedContentInset.bottom)), animated: false)
+            host.view.layoutIfNeeded()
+            try await Task.sleep(for: .milliseconds(200))
+        }
         let renderer = UIGraphicsImageRenderer(bounds: host.view.bounds)
         var drawn = false
         let image = renderer.image { _ in
@@ -226,7 +237,12 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
                 AirportFacilityEditor(airport: "ARN", player: player, snapshot: state, catalog: catalog,
                     draft: .constant(nil)).padding(12)
             }, name: "SERVICES-07-AX5", controller: controller, width: 375, dark: dark,
-                typeSize: .accessibility5, height: 3400)
+                typeSize: .accessibility5, height: 2200)
+            try await capture(ScrollView {
+                AirportFacilityEditor(airport: "ARN", player: player, snapshot: state, catalog: catalog,
+                    draft: .constant(AirportFacilities(lounge: 2, groundServices: 1))).padding(12)
+            }, name: "SERVICES-07-AX5-actions", controller: controller, width: 375, dark: dark,
+                typeSize: .accessibility5, height: 1600, scrollToBottom: true)
         }
     }
 

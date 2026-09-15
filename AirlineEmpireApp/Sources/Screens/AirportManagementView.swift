@@ -254,4 +254,3 @@ struct AirportFact: View {
         }.font(.subheadline).accessibilityElement(children: .combine)
     }
 }
-

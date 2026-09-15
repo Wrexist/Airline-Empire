@@ -936,7 +936,11 @@ final class GameController {
         publishedAt = Date()
         publishedTickFraction = fraction
         invalidateCaches()
-        if state != snapshot { airportInvestmentRevision &+= 1 }
+        // Every mutation is a tick or an applied command (which emits an event).
+        // O(1) invalidation avoids comparing the whole world at publish cadence.
+        if state.clock.tickCount != snapshot?.clock.tickCount || state.eventLog.totalCount != snapshot?.eventLog.totalCount {
+            airportInvestmentRevision &+= 1
+        }
         snapshot = state
         speed = sessionSpeed
         checkEraCeiling(state)

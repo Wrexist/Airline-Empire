@@ -1,6 +1,44 @@
 import XCTest
+import AirlineEmpireCore
 
 final class AirportManagementUITests: AEUITestCase {
+    func testAirportInsufficientCash() throws {
+        let url = try XCTUnwrap(Bundle(for: AirportManagementUITests.self)
+            .url(forResource: "rival-pressure-retreat", withExtension: "json"))
+        let codec = JSONSaveCodec()
+        var state = try codec.decode(Data(contentsOf: url))
+        let player = try XCTUnwrap(state.playerAirline)
+        // Stress fixture only: leave one dollar, retaining the real network and save format.
+        state.ledger.post(airline: player.id, category: .overhead,
+            amount: .dollars(1) - state.ledger.balance(of: player.id), at: state.clock.now,
+            memo: "Airport affordability test setup")
+        let fixture = FileManager.default.temporaryDirectory.appendingPathComponent("airport-low-cash.aesave")
+        try codec.encode(state).write(to: fixture)
+        defer { try? FileManager.default.removeItem(at: fixture) }
+        launch(appearance: .dark, arguments: ["-AEUITestDarkAppearance", "-AEUITestLoadSave", fixture.path])
+        XCTAssertNotNil(waitForTab("Home", timeout: 30))
+        openTab("World")
+        let airports = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Airports")).firstMatch
+        for _ in 0..<5 where !airports.isHittable { app.swipeUp() }
+        XCTAssertTrue(airports.waitForExistence(timeout: 10)); airports.tap()
+        let row = app.descendants(matching: .any).matching(identifier: "ae-airport-row-ARN").firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10)); row.tap()
+        let services = app.buttons["ae-airport-tab-Services"]
+        XCTAssertTrue(services.waitForExistence(timeout: 10)); services.tap()
+        let lounge = app.buttons["ae-airport-lounge-1"]
+        revealControl(lounge); lounge.tap()
+        XCTAssertTrue(lounge.isSelected)
+        let apply = app.buttons["ae-airport-investment-apply"]
+        revealControl(apply)
+        XCTAssertFalse(apply.isEnabled)
+        XCTAssertTrue(app.staticTexts["There is not enough cash for this airport investment."].exists)
+        checkpoint("SERVICES-insufficient-cash")
+        let reset = app.buttons["ae-airport-investment-reset"]
+        revealControl(reset); reset.tap()
+        revealControl(app.buttons["ae-airport-lounge-0"])
+        XCTAssertTrue(app.buttons["ae-airport-lounge-0"].isSelected)
+    }
+
     func testAirportInvestmentJourney() throws {
         let save = try XCTUnwrap(Bundle(for: AirportManagementUITests.self)
             .url(forResource: "rival-pressure-retreat", withExtension: "json"))
@@ -63,6 +101,33 @@ final class AirportManagementUITests: AEUITestCase {
         facilities.tap()
         revealControl(lounge)
         XCTAssertTrue(lounge.isSelected)
+        // Persist through the player's save flow, terminate, and reopen the saved slot.
+        guard openBriefing() else { return }
+        let settings = app.buttons["Settings"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 10)); settings.tap()
+        let saveAndQuit = app.buttons["Save and quit to menu"]
+        guard scrollUntil(saveAndQuit, "Save airport services"), tapWhenReady(saveAndQuit) else { return }
+        XCTAssertTrue(app.descendants(matching: .any)["ae-session-report"].waitForExistence(timeout: 15))
+        app.terminate()
+        if let index = app.launchArguments.firstIndex(of: "-AEUITestLoadSave") {
+            app.launchArguments.removeSubrange(index...index + 1)
+        }
+        app.launch()
+        let resume = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "ae-menu-continue-")).firstMatch
+        guard revealMenuControl(resume, "Restore airport investment"), tapWhenReady(resume) else { return }
+        openTab("World")
+        let airportList = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Airports")).firstMatch
+        for _ in 0..<5 where !airportList.isHittable { app.swipeUp() }
+        XCTAssertTrue(airportList.waitForExistence(timeout: 10)); airportList.tap()
+        let restoredRow = app.descendants(matching: .any).matching(identifier: "ae-airport-row-ARN").firstMatch
+        XCTAssertTrue(restoredRow.waitForExistence(timeout: 10)); restoredRow.tap()
+        XCTAssertTrue(app.buttons["ae-airport-tab-Services"].waitForExistence(timeout: 10))
+        app.buttons["ae-airport-tab-Services"].tap()
+        revealControl(lounge)
+        XCTAssertTrue(lounge.isSelected)
+        revealControl(ground)
+        XCTAssertTrue(ground.isSelected)
+        checkpoint("SERVICES-restored-after-restart")
     }
 
     private func revealControl(_ element: XCUIElement) {
@@ -70,7 +135,7 @@ final class AirportManagementUITests: AEUITestCase {
             let frame = element.exists ? element.frame : .zero
             // Hittability alone includes controls partially behind the floating tab bar.
             let top = app.frame.minY + 120
-            let bottom = app.frame.maxY - (app.tabBars.firstMatch.exists ? 160 : 40)
+            let bottom = app.tabBars.firstMatch.exists ? app.tabBars.firstMatch.frame.minY - 24 : app.frame.maxY - 40
             if !frame.isEmpty, frame.minY >= top, frame.maxY <= bottom, element.isHittable {
                 XCTAssertTrue(waitUntilStill(element))
                 return

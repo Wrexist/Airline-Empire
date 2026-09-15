@@ -98,7 +98,7 @@ struct AirportFacilitiesTests {
     @Test func economyScaleBaseline() throws {
         // Fixed airport/fare/airframe, varying network breadth. No tuning mutations.
         for count in [1, 4, 8] {
-            let (catalog, engine, airline) = try FleetFixtures.catalogAndEngine()
+            let (catalog, engine, airline) = try FleetFixtures.catalogAndEngine(cash: .dollars(2_000_000_000))
             let destinations: [AirportCode] = ["LHR", "CDG", "AMS", "FRA", "MUC", "FCO", "MAD", "IST"]
             for destination in destinations.prefix(count) {
                 #expect(engine.applyNow(BuyUsedAircraftCommand(buyer: airline, type: "MR180", ageYears: 3)) == .applied)

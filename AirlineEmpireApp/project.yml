@@ -146,6 +146,7 @@ targets:
         buildPhase: resources
     dependencies:
       - target: AirlineEmpire
+      - package: AirlineEmpireCore
     settings:
       base:
         TEST_TARGET_NAME: AirlineEmpire
