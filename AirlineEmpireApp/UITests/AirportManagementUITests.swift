@@ -16,14 +16,16 @@ final class AirportManagementUITests: AEUITestCase {
         checkpoint("AIRPORT-overview")
         app.buttons["ae-airport-tab-Facilities"].tap()
         let lounge = app.buttons["ae-airport-lounge-1"]
-        for _ in 0..<5 where !lounge.isHittable { app.swipeUp() }
-        XCTAssertTrue(lounge.isHittable); lounge.tap()
+        revealControl(lounge)
+        lounge.tap()
+        XCTAssertTrue(lounge.isSelected)
         let ground = app.buttons["ae-airport-ground-1"]
-        for _ in 0..<5 where !ground.isHittable { app.swipeUp() }
-        XCTAssertTrue(ground.isHittable); ground.tap()
+        revealControl(ground)
+        ground.tap()
+        XCTAssertTrue(ground.isSelected)
         checkpoint("AIRPORT-facilities-draft")
         let apply = app.buttons["ae-airport-investment-apply"]
-        for _ in 0..<8 where !apply.isHittable { app.swipeUp() }
+        revealControl(apply)
         XCTAssertTrue(apply.isHittable); XCTAssertTrue(apply.isEnabled)
         checkpoint("AIRPORT-investment-preview")
         apply.tap()
@@ -48,7 +50,22 @@ final class AirportManagementUITests: AEUITestCase {
         let facilities = app.buttons["ae-airport-tab-Facilities"]
         if !facilities.isHittable { network.swipeRight() }
         facilities.tap()
-        for _ in 0..<5 where !lounge.isHittable { app.swipeUp() }
+        revealControl(lounge)
         XCTAssertTrue(lounge.isSelected)
+    }
+
+    private func revealControl(_ element: XCUIElement) {
+        for _ in 0..<10 {
+            let frame = element.exists ? element.frame : .zero
+            // Hittability alone includes controls partially behind the floating tab bar.
+            let top = app.frame.minY + 120, bottom = app.frame.maxY - 160
+            if !frame.isEmpty, frame.minY >= top, frame.maxY <= bottom, element.isHittable {
+                XCTAssertTrue(waitUntilStill(element))
+                return
+            }
+            if !frame.isEmpty && frame.minY < top { app.swipeDown() }
+            else { app.swipeUp() }
+        }
+        XCTFail("Airport control did not become fully visible: \(element.identifier)")
     }
 }

@@ -8,6 +8,7 @@ enum AirportManagementSection: String, CaseIterable {
 
 struct AirportDetailView: View {
     @Environment(GameController.self) private var controller
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var section: AirportManagementSection
     @State private var draft: AirportFacilities?
     @State private var routeSheet: RouteDraft?
@@ -30,7 +31,7 @@ struct AirportDetailView: View {
                         capacity(spec, state: state, player: player)
                         AircraftPanel {
                             VStack(alignment: .leading, spacing: 10) {
-                                Label("Build your airport presence", systemImage: "building.2.crop.circle").font(.headline)
+                                AirportHeading(title: "Build your airport presence", icon: "building.2.crop.circle")
                                 Text("Connect cities, compare local rivals and invest in the experience your passengers receive on the ground.")
                                     .font(.subheadline).foregroundStyle(AETheme.mutedText)
                                 Button("Manage airport services") { section = .facilities }
@@ -78,15 +79,17 @@ struct AirportDetailView: View {
                         Text(spec.name).font(.caption).foregroundStyle(AETheme.mutedText)
                     }
                     Spacer()
-                    Image(systemName: "airplane.departure").font(.system(size: 42)).foregroundStyle(AETheme.accent)
-                        .padding(14).background(AETheme.accent.opacity(0.1), in: .rect(cornerRadius: 20)).accessibilityHidden(true)
+                    if !typeSize.isAccessibilitySize {
+                        Image(systemName: "airplane.departure").font(.system(size: 42)).foregroundStyle(AETheme.accent)
+                            .padding(14).background(AETheme.accent.opacity(0.1), in: .rect(cornerRadius: 20)).accessibilityHidden(true)
+                    }
                 }
                 AEChipRow {
                     AEBadge(text: closed ? "Temporarily closed" : "Open", color: closed ? AETheme.caution : AETheme.positive, icon: closed ? "xmark.octagon" : "checkmark.circle")
                     AEBadge(text: code == player.homeAirport ? "Home airport" : routes.isEmpty ? "Potential destination" : "Network airport", color: AETheme.accent)
                     AEBadge(text: spec.country, color: .secondary)
                 }
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 120))], alignment: .leading, spacing: 12) {
+                LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.adaptive(minimum: 120))], alignment: .leading, spacing: 12) {
                     AirportMetric(title: "Your routes", value: "\(routes.count)", icon: "point.topleft.down.to.point.bottomright.curvepath")
                     AirportMetric(title: "Daily round trips", value: "\(routes.reduce(0) { $0 + $1.dailyRoundTrips })", icon: "arrow.triangle.2.circlepath")
                     AirportMetric(title: "Your daily slots", value: "\(state.world.slotsHeld(by: player.id, at: code))", icon: "clock")
@@ -99,7 +102,7 @@ struct AirportDetailView: View {
     private func market(_ spec: AirportSpec) -> some View {
         AircraftPanel {
             VStack(alignment: .leading, spacing: 14) {
-                Label("Local demand", systemImage: "person.3.fill").font(.headline)
+                AirportHeading(title: "Local demand", icon: "person.3.fill")
                 Text("\(Format.count(Int64(spec.demographics.populationThousands))) thousand people in the catchment")
                     .font(.subheadline).foregroundStyle(AETheme.mutedText)
                 demandBar("Business", value: spec.demographics.businessIndex, color: AETheme.accent)
@@ -120,7 +123,7 @@ struct AirportDetailView: View {
         let used = state.world.slotsUsed(at: code), held = state.world.slotsHeld(by: player.id, at: code)
         return AircraftPanel {
             VStack(alignment: .leading, spacing: 12) {
-                Label("Slots & airport fees", systemImage: "clock.fill").font(.headline)
+                AirportHeading(title: "Slots & airport fees", icon: "clock.fill")
                 AirportFact(title: "Available daily slots", value: "\(max(0, spec.slotCapacityPerDay - used)) / \(spec.slotCapacityPerDay)")
                 ProgressView(value: min(1, Double(used) / Double(max(1, spec.slotCapacityPerDay))))
                     .tint(used > spec.slotCapacityPerDay * 85 / 100 ? AETheme.caution : AETheme.accent)
@@ -139,7 +142,7 @@ struct AirportDetailView: View {
     private func network(_ spec: AirportSpec, routes: [Route], player: Airline, catalog: ContentCatalog) -> some View {
         AircraftPanel {
             VStack(alignment: .leading, spacing: 14) {
-                Label("Your network at \(code.raw)", systemImage: "point.3.connected.trianglepath.dotted").font(.headline)
+                AirportHeading(title: "Your network at \(code.raw)", icon: "point.3.connected.trianglepath.dotted")
                 if routes.isEmpty { Text("You do not serve this airport yet.").foregroundStyle(AETheme.mutedText) }
                 ForEach(routes, id: \.id) { route in
                     NavigationLink(value: route.id) {
@@ -168,7 +171,7 @@ struct AirportDetailView: View {
             .sorted { state.world.slotsHeld(by: $0.id, at: code) > state.world.slotsHeld(by: $1.id, at: code) }
         return AircraftPanel {
             VStack(alignment: .leading, spacing: 14) {
-                Label("Airport competition", systemImage: "chart.bar.xaxis").font(.headline)
+                AirportHeading(title: "Airport competition", icon: "chart.bar.xaxis")
                 Text("Presence is measured by reserved daily movements, not passenger market share.")
                     .font(.caption).foregroundStyle(AETheme.mutedText)
                 if rivals.isEmpty { Text("No rival airlines currently reserve slots here.").font(.subheadline) }
@@ -192,7 +195,7 @@ struct AirportDetailView: View {
         let changes = (player.airportFacilityHistory ?? []).filter { $0.airport == code }
         return AircraftPanel {
             VStack(alignment: .leading, spacing: 14) {
-                Label("Airport investment history", systemImage: "clock.arrow.circlepath").font(.headline)
+                AirportHeading(title: "Airport investment history", icon: "clock.arrow.circlepath")
                 if changes.isEmpty { Text("Confirmed facility changes will appear here.").foregroundStyle(AETheme.mutedText) }
                 ForEach(changes, id: \.id) { item in
                     VStack(alignment: .leading, spacing: 5) {
@@ -206,6 +209,18 @@ struct AirportDetailView: View {
                     .font(.caption).foregroundStyle(AETheme.mutedText)
             }
         }
+    }
+}
+
+private struct AirportHeading: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
+    let title: String
+    let icon: String
+    var body: some View {
+        Group {
+            if typeSize.isAccessibilitySize { Text(title) }
+            else { Label(title, systemImage: icon) }
+        }.font(.headline).accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -255,7 +270,7 @@ struct AirportFacilityEditor: View {
         VStack(spacing: 14) {
             AircraftPanel {
                 VStack(alignment: .leading, spacing: 12) {
-                    Label("Airport services", systemImage: "building.2.fill").font(.headline)
+                    AirportHeading(title: "Airport services", icon: "building.2.fill")
                     Text("Create a better experience at \(airport.raw). Services belong to your airline and benefit your routes here.")
                         .font(.subheadline).foregroundStyle(AETheme.mutedText)
                     AirportFact(title: "Installed monthly cost", value: Format.money(installed.monthlyCost(tuning: tuning)))
@@ -271,7 +286,7 @@ struct AirportFacilityEditor: View {
                 monthly: tuning.groundMonthly, setup: tuning.groundInstallation)
             AircraftPanel {
                 VStack(alignment: .leading, spacing: 12) {
-                    Label("Investment preview", systemImage: "chart.line.uptrend.xyaxis").font(.headline)
+                    AirportHeading(title: "Investment preview", icon: "chart.line.uptrend.xyaxis")
                     AirportFact(title: "Installation now", value: Format.money(cost))
                     AirportFact(title: "Proposed monthly services", value: Format.money(proposed.monthlyCost(tuning: tuning)))
                     if let preview {

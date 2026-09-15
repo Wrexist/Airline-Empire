@@ -110,7 +110,9 @@ jobs:
             build/ae049-build.log
             build/ae049-ui.log
             build/ae049-ipad.log
-            build/ae049-*-screens
+            build/ae049-*-screens/*.png
+            build/ae049-*-screens/*.txt
+            build/ae049-*-screens/manifest.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
