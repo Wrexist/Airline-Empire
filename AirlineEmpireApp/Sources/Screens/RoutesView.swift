@@ -448,6 +448,11 @@ struct RouteDetailView: View {
               count: typeSize.isAccessibilitySize ? 1 : 2)
     }
 
+    private func installedSeats(_ card: FleetCardModel, catalog: ContentCatalog) -> Int {
+        guard let spec = catalog.aircraftType(card.typeCode) else { return 0 }
+        return controller.snapshot?.aircraft[card.id]?.cabin(for: spec).totalSeats ?? spec.seats
+    }
+
     /// Who flies this route — and the way to put an idle aircraft on it
     /// (without this, nothing ever takes off).
     private func aircraftSection(_ card: RouteCardModel, player: AirlineID,
@@ -485,7 +490,7 @@ struct RouteDetailView: View {
                         NavigationLink(value: aircraft.id) {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(aircraft.typeName).font(.subheadline)
-                                Text("\(aircraft.seats(in: catalog)) seats · condition \(Format.percent(aircraft.condition))")
+                                Text("\(installedSeats(aircraft, catalog: catalog)) seats · condition \(Format.percent(aircraft.condition))")
                                     .font(.caption)
                                     .foregroundStyle(AETheme.mutedText)
                             }

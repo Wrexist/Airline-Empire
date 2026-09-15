@@ -464,6 +464,10 @@ final class CampaignUITests: AEUITestCase {
             XCTFail("The \(code) row did not accept a tap.")
             return false
         }
+        let competition = app.buttons["ae-route-tab-Competition"]
+        guard competition.waitForExistence(timeout: 8) else { XCTFail("Missing Competition tab"); return false }
+        if !competition.isHittable { app.buttons["ae-route-tab-Aircraft"].swipeLeft() }
+        competition.tap()
         let header = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "WHO ELSE FLIES THIS")).firstMatch
         if header.waitForExistence(timeout: 8) { return true }
         return scrollUntil(header, "the competition section on the route screen")
@@ -495,6 +499,10 @@ final class CampaignUITests: AEUITestCase {
             XCTFail("The LHR–\(farEnd) row did not accept a tap.")
             return false
         }
+        let competition = app.buttons["ae-route-tab-Competition"]
+        guard competition.waitForExistence(timeout: 8) else { XCTFail("Missing Competition tab"); return false }
+        if !competition.isHittable { app.buttons["ae-route-tab-Aircraft"].swipeLeft() }
+        competition.tap()
         let header = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "WHO ELSE FLIES THIS")).firstMatch
         if header.waitForExistence(timeout: 8) { return true }
         // The section may be below the fold on a small phone.

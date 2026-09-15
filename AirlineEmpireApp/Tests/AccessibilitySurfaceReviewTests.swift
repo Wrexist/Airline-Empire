@@ -129,6 +129,8 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
             dailyRoundTrips: 3, ticketPrice: .dollars(180))), .applied)
         let route = try XCTUnwrap(engine.state.routes(of: player).first)
         XCTAssertEqual(engine.applyNow(AssignAircraftToRouteCommand(airline: player, route: route.id, aircraftID: aircraft.id)), .applied)
+        XCTAssertEqual(engine.applyNow(ApplyRoutePlanCommand(airline: player, route: route.id,
+            plan: RoutePlan(fare: .dollars(200), frequency: 4))), .applied)
         let manager = SaveManager(store: FileSaveStore(rootDirectory: root))
         try manager.save(engine.state, slot: "aircraft-review")
         let controller = GameController(savesDirectory: root)
@@ -137,6 +139,7 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
         defer { controller.setPumping(false) }
         let installed = try XCTUnwrap(controller.snapshot?.aircraft[aircraft.id])
         let state = try XCTUnwrap(controller.snapshot)
+        let reviewedRoute = try XCTUnwrap(state.routes[route.id])
         for dark in [false, true] {
             for section in RouteManagementSection.allCases {
                 try await capture(NavigationStack { RouteDetailView(routeID: route.id, initialSection: section) },
@@ -144,7 +147,7 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
                     typeSize: .large, height: 1400)
             }
             try await capture(ScrollView {
-                RoutePlanEditor(route: route, snapshot: state, catalog: catalog,
+                RoutePlanEditor(route: reviewedRoute, snapshot: state, catalog: catalog,
                     draft: .constant(RoutePlan(fare: .dollars(200), frequency: 4)))
             }, name: "route-planner-AX5", controller: controller, width: 375, dark: dark, typeSize: .accessibility5)
             try await capture(ScrollView {

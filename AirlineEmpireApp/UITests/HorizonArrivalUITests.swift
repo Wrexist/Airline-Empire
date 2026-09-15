@@ -141,16 +141,20 @@ final class HorizonArrivalUITests: AEUITestCase {
         // The twin measured the choice: a tenth off the fare buys share and
         // costs money; another rotation on the aircraft already there earns
         // more. The journey takes the rotation.
+        for _ in 0..<8 { app.swipeDown() }
+        let planning = app.buttons["ae-route-tab-Pricing & Schedule"]
+        if !planning.isHittable { app.buttons["ae-route-tab-Competition"].swipeRight() }
+        planning.tap()
         let increment = app.buttons["Increment"].firstMatch
         if scrollUntil(increment, "the frequency stepper") {
             increment.tap()
-            Thread.sleep(forTimeInterval: 1)
-            // The count lives on the Stepper's own label ("Frequency:
-            // 3×/day"), not on a static text: run 121 photographed the
-            // route at 3×/day and still failed a staticTexts query for it.
-            let three = app.descendants(matching: .any).matching(NSPredicate(
-                format: "label CONTAINS %@", "3×/day")).firstMatch
-            XCTAssertTrue(three.waitForExistence(timeout: 6), "Tapping the frequency stepper did not take Munich–Istanbul to 3×/day.")
+            let apply = app.buttons["ae-route-plan-apply"]
+            guard scrollUntil(apply, "the route plan commit") else { return }
+            apply.tap()
+            let confirm = app.buttons["Confirm Route Plan"]
+            XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+            confirm.tap()
+            XCTAssertTrue(app.staticTexts["Route plan saved"].waitForExistence(timeout: 10))
             checkpoint("HZ5-after-response")
         }
         app.navigationBars.buttons.firstMatch.tap()
@@ -185,6 +189,10 @@ final class HorizonArrivalUITests: AEUITestCase {
             XCTFail("The \(code) row did not accept a tap.")
             return false
         }
+        let competition = app.buttons["ae-route-tab-Competition"]
+        guard competition.waitForExistence(timeout: 8) else { XCTFail("Missing Competition tab"); return false }
+        if !competition.isHittable { app.buttons["ae-route-tab-Aircraft"].swipeLeft() }
+        competition.tap()
         let header = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "WHO ELSE FLIES THIS")).firstMatch
         if header.waitForExistence(timeout: 8) { return true }
         return scrollUntil(header, "the competition section on the route screen")

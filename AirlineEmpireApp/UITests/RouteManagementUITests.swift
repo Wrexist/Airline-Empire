@@ -29,7 +29,12 @@ final class RouteManagementUITests: AEUITestCase {
         app.buttons["ae-route-tab-Aircraft"].tap()
         let comparison = app.descendants(matching: .any).matching(identifier: "ae-route-aircraft-comparison").firstMatch
         for _ in 0..<6 where !comparison.isHittable { app.swipeUp() }
-        XCTAssertTrue(comparison.exists)
+        XCTAssertTrue(comparison.isHittable)
+        comparison.tap()
+        let aircraftChoice = app.buttons.matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "PA-184", "seats")).firstMatch
+        XCTAssertTrue(aircraftChoice.waitForExistence(timeout: 5))
+        aircraftChoice.tap()
+        XCTAssertTrue(app.buttons["Open cabin & upgrades"].waitForExistence(timeout: 5))
         checkpoint("ROUTE-aircraft-comparison")
         for _ in 0..<8 { app.swipeDown() }
         let competition = app.buttons["ae-route-tab-Competition"]
