@@ -22,7 +22,8 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
 
     @MainActor
     private func capture<V: View>(_ view: V, name: String, controller: GameController,
-                                  width: CGFloat, dark: Bool, typeSize: DynamicTypeSize = .accessibility3) async throws {
+                                  width: CGFloat, dark: Bool, typeSize: DynamicTypeSize = .accessibility3,
+                                  height: CGFloat = 812) async throws {
         let content = view
             .environment(controller)
             .environment(Entitlements(arguments: ["-AEUITestFree"]))
@@ -32,7 +33,7 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
             .preferredColorScheme(dark ? .dark : .light)
         let host = UIHostingController(rootView: content)
         host.traitOverrides.accessibilityContrast = .high
-        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: width, height: 812))
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: width, height: height))
         window.rootViewController = host
         window.isHidden = false
         host.view.frame = window.bounds
@@ -137,6 +138,18 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
         let installed = try XCTUnwrap(controller.snapshot?.aircraft[aircraft.id])
         let state = try XCTUnwrap(controller.snapshot)
         for dark in [false, true] {
+            try await capture(ScrollView {
+                AircraftConfigurationEditor(aircraft: installed, spec: spec, snapshot: state,
+                    catalog: catalog, section: .cabin, draft: .constant(nil))
+                    .padding(12)
+            }, name: "aircraft-full-cabin-iphone-width", controller: controller,
+                width: 393, dark: dark, typeSize: .large, height: 2200)
+            try await capture(ScrollView {
+                AircraftConfigurationEditor(aircraft: installed, spec: spec, snapshot: state,
+                    catalog: catalog, section: .upgrades, draft: .constant(nil))
+                    .padding(12)
+            }, name: "aircraft-full-upgrades-iphone-width", controller: controller,
+                width: 393, dark: dark, typeSize: .large, height: 2200)
             try await capture(NavigationStack { AircraftDetailView(aircraftID: aircraft.id) },
                 name: "aircraft-overview", controller: controller, width: 393, dark: dark, typeSize: .large)
             try await capture(ScrollView {

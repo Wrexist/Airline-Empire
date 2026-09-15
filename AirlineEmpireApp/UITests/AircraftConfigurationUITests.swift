@@ -14,6 +14,7 @@ final class AircraftConfigurationUITests: AEUITestCase {
         let plus = app.buttons["ae-cabin-plus-business"]
         for _ in 0..<5 where !plus.isHittable { app.swipeUp() }
         XCTAssertTrue(plus.isHittable)
+        checkpoint("AE049-cabin-controls-dark")
         plus.tap()
         let apply = app.buttons["ae-cabin-apply"]
         for _ in 0..<5 where !apply.isHittable { app.swipeUp() }
@@ -28,6 +29,8 @@ final class AircraftConfigurationUITests: AEUITestCase {
         app.buttons["ae-aircraft-tab-Upgrades"].tap()
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "ae-upgrade-wifi").firstMatch.waitForExistence(timeout: 5))
         checkpoint("AE049-upgrades-dark")
+        app.swipeUp()
+        checkpoint("AE049-upgrades-options-dark")
     }
 
     func testCabinLightLayout() throws {

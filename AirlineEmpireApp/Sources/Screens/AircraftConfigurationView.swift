@@ -7,6 +7,7 @@ enum AircraftDetailSection: String, CaseIterable {
 }
 
 struct AircraftDetailTabs: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     @Binding var selection: AircraftDetailSection
     var body: some View {
         ScrollView(.horizontal) {
@@ -14,8 +15,8 @@ struct AircraftDetailTabs: View {
                 ForEach(AircraftDetailSection.allCases, id: \.self) { section in
                     Button { selection = section } label: {
                         Text(section.rawValue)
-                            .font(.subheadline.weight(selection == section ? .semibold : .regular))
-                            .padding(.horizontal, 16).frame(minHeight: 44)
+                            .font(.caption.weight(selection == section ? .semibold : .regular))
+                            .padding(.horizontal, typeSize.isAccessibilitySize ? 16 : 8).frame(minHeight: 44)
                             .background(selection == section ? AETheme.accent.opacity(0.2) : .clear,
                                         in: .rect(cornerRadius: 12))
                             .overlay {
@@ -44,10 +45,14 @@ struct AircraftOverviewCard: View {
     let change: () -> Void
     private var aircraft: Aircraft? { controller.snapshot?.aircraft[card.id] }
     var body: some View {
-        VStack(spacing: 14) {
-            ViewThatFits(in: .horizontal) {
-                HStack { title; Spacer(minLength: 10); changeButton }
+        VStack(alignment: .leading, spacing: 12) {
+            if typeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 10) { title; changeButton }
+            } else {
+                HStack(alignment: .center, spacing: 12) {
+                    title.frame(maxWidth: .infinity, alignment: .leading)
+                    changeButton
+                }
             }
             AircraftPanel {
                 VStack(spacing: 12) {
@@ -77,11 +82,11 @@ struct AircraftOverviewCard: View {
                         AEAircraftMedallion(category: card.category, tint: AETheme.accent, size: 130)
                             .frame(maxWidth: .infinity).accessibilityHidden(true)
                     }
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 160 : 92))], spacing: 14) {
+                    LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.adaptive(minimum: 160))] : Array(repeating: GridItem(.flexible(), spacing: 6), count: 5), spacing: 12) {
                         specItem("Seats", "\(aircraft?.cabin(for: spec).totalSeats ?? spec.seats)", "chair.lounge.fill")
                         specItem("Range", "\(spec.rangeKm.formatted()) km", "arrow.left.and.right")
                         specItem("Cruise speed", "\(spec.cruiseSpeedKmh) km/h", "stopwatch")
-                        specItem("Runway", Vocab.runway(spec.runwayRequirement), "road.lanes")
+                        specItem("runway", Vocab.runway(spec.runwayRequirement).replacingOccurrences(of: " runway", with: ""), "road.lanes")
                         specItem("Fuel / seat / km", "\(Format.decimal(spec.fuelBurnKgPerKm * 1000 / Double(max(1, aircraft?.cabin(for: spec).totalSeats ?? spec.seats)), places: 1)) g", "fuelpump")
                     }
                 }
@@ -90,22 +95,29 @@ struct AircraftOverviewCard: View {
     }
     private var title: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text("\(spec.manufacturer) \(spec.model)").font(.title2.bold())
-            Text(Vocab.role(spec.role)).font(.subheadline).foregroundStyle(AETheme.mutedText)
+            Text("\(spec.manufacturer) \(spec.model)").font(.title3.bold()).fixedSize(horizontal: false, vertical: true)
+            Text(Vocab.role(spec.role)).font(.caption).foregroundStyle(AETheme.mutedText)
         }
     }
     private var changeButton: some View {
-        Button(action: change) { Label("Change Aircraft", systemImage: "chevron.right").font(.caption.weight(.medium)).frame(minHeight: 44) }
-            .buttonStyle(.bordered).buttonBorderShape(.capsule)
+        Button(action: change) {
+            HStack(spacing: 6) {
+                Text("Change Aircraft").fixedSize(horizontal: false, vertical: true)
+                Image(systemName: "chevron.right").accessibilityHidden(true)
+            }
+            .font(.caption.weight(.medium))
+            .padding(.horizontal, 12).frame(minHeight: 44)
+            .background(AETheme.accent.opacity(0.1), in: .capsule)
+            .overlay { Capsule().strokeBorder(AETheme.surfaceRim) }
+        }.buttonStyle(.plain).foregroundStyle(AETheme.accent)
     }
     private func specItem(_ label: String, _ value: String, _ icon: String) -> some View {
-        HStack(spacing: 7) {
-            Image(systemName: icon).foregroundStyle(AETheme.accent).accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(value).font(.caption.weight(.semibold))
-                Text(label).font(.caption2).foregroundStyle(AETheme.mutedText)
-            }
-        }.frame(maxWidth: .infinity, alignment: .leading).accessibilityElement(children: .combine)
+        VStack(alignment: .leading, spacing: 4) {
+            Image(systemName: icon).font(.subheadline).foregroundStyle(AETheme.accent).accessibilityHidden(true)
+            Text(value).font(.caption.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+            Text(label).font(.caption2).foregroundStyle(AETheme.mutedText).fixedSize(horizontal: false, vertical: true)
+        }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .accessibilityElement(children: .combine)
     }
 }
 
@@ -192,13 +204,17 @@ struct AircraftConfigurationEditor: View {
     private var cabinPanel: some View {
         AircraftPanel {
             VStack(alignment: .leading, spacing: 16) {
-                heading("Cabin Layout", "Configure your cabin to match your strategy", "chair.lounge.fill")
-                Button("Reset to Default") {
-                    var next = current
-                    for cabin in CabinClass.allCases { next[cabin] = cabin == .economy ? spec.seats : 0 }
-                    draft = next; saved = false
-                }.buttonStyle(.bordered).buttonBorderShape(.capsule).frame(minHeight: 44)
-                    .accessibilityIdentifier("ae-cabin-reset")
+                ViewThatFits(in: .horizontal) {
+                    HStack {
+                        heading("Cabin Layout", "Configure your cabin", "chair.lounge.fill")
+                        Spacer(minLength: 8)
+                        resetButton
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        heading("Cabin Layout", "Configure your cabin to match your strategy", "chair.lounge.fill")
+                        resetButton
+                    }
+                }
                 AircraftSeatMap(configuration: current)
                 LazyVGrid(columns: columns, spacing: 10) {
                     ForEach(CabinClass.allCases, id: \.self) { cabin in
@@ -217,6 +233,18 @@ struct AircraftConfigurationEditor: View {
                     .font(.caption).foregroundStyle(AETheme.mutedText)
             }
         }
+    }
+    private var resetButton: some View {
+        Button("Reset to Default") {
+            var next = current
+            for cabin in CabinClass.allCases { next[cabin] = cabin == .economy ? spec.seats : 0 }
+            draft = next; saved = false
+        }
+        .font(.caption).padding(.horizontal, 12).frame(minHeight: 44)
+        .background(AETheme.accent.opacity(0.1), in: .capsule)
+        .overlay { Capsule().strokeBorder(AETheme.surfaceRim) }
+        .buttonStyle(.plain).foregroundStyle(AETheme.accent)
+        .accessibilityIdentifier("ae-cabin-reset")
     }
     private var totalSeats: some View { Text("Total seats: \(current.totalSeats)").font(.subheadline.weight(.medium)).monospacedDigit() }
     private var validLabel: some View { Label("Valid configuration", systemImage: "checkmark.circle").font(.caption).foregroundStyle(AETheme.positive) }
@@ -284,8 +312,10 @@ struct AircraftConfigurationEditor: View {
                         Label("This configuration is forecast to lose money on the assigned route.", systemImage: "exclamationmark.triangle")
                             .font(.caption).foregroundStyle(AETheme.caution)
                     }
-                    Text("30-day estimate at today's demand and prices. Includes fuel, fees, crew, service, maintenance reserve and lease. Excludes company overhead, future disruptions and refit cost. Fleet scheduling can change the result.")
-                        .font(.caption2).foregroundStyle(AETheme.mutedText)
+                    DisclosureGroup("What this estimate includes") {
+                        Text("30-day estimate at today's demand and prices. Includes fuel, fees, crew, service, maintenance reserve and lease. Excludes company overhead, future disruptions and refit cost. Fleet scheduling can change the result.")
+                            .font(.caption2).foregroundStyle(AETheme.mutedText)
+                    }.font(.caption).tint(AETheme.mutedText)
                 } else {
                     Text(aircraft.assignedRoute == nil ? "Assign a route in Operations to see a forecast for this aircraft." : "A forecast is available when this aircraft is operational.")
                         .font(.subheadline).foregroundStyle(AETheme.mutedText)
@@ -351,6 +381,10 @@ struct AircraftConfigurationEditor: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(upgrade.title).font(.caption).foregroundStyle(AETheme.mutedText)
                                 Text(upgrade.levels[current[upgrade]]).font(.caption.weight(.semibold))
+                                ProgressView(value: Double(current[upgrade]), total: 2)
+                                    .tint(upgrade == .dining ? AETheme.caution : AETheme.positive)
+                                    .accessibilityLabel("Equipment level")
+                                    .accessibilityValue("\(current[upgrade]) of 2")
                             }
                         }.frame(maxWidth: .infinity, alignment: .leading)
                             .padding(10).background(AETheme.cardBackground.opacity(0.55), in: .rect(cornerRadius: 12))
@@ -398,6 +432,7 @@ struct CabinClassControl: View {
         VStack(alignment: .leading, spacing: 9) {
             Label(cabin.title, systemImage: "chair.lounge.fill")
                 .font(.caption.weight(.semibold)).foregroundStyle(cabin.tint)
+                .frame(minHeight: 32, alignment: .topLeading)
             Text("\(count) seats").font(.subheadline).monospacedDigit()
             Text((Double(count) / Double(max(1, configuration.totalSeats))).formatted(.percent.precision(.fractionLength(0))))
                 .font(.caption.weight(.semibold)).monospacedDigit()
@@ -416,11 +451,22 @@ struct CabinClassControl: View {
                     Button { set(count + 1) } label: { Image(systemName: "plus").frame(minWidth: 44, minHeight: 44) }
                         .disabled(count >= maximum).accessibilityLabel("Add one \(cabin.title) seat")
                         .accessibilityIdentifier("ae-cabin-plus-\(cabin.rawValue)")
-                }.buttonStyle(.bordered).buttonBorderShape(.circle)
+                }.buttonStyle(AircraftSeatStepStyle(tint: cabin.tint))
             }
-        }.padding(12).frame(maxWidth: .infinity, alignment: .leading)
+        }.padding(12).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(AETheme.cardBackground.opacity(0.45), in: .rect(cornerRadius: 14))
             .overlay { RoundedRectangle(cornerRadius: 14).strokeBorder(cabin.tint.opacity(0.25)) }
+    }
+}
+
+private struct AircraftSeatStepStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    let tint: Color
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(isEnabled ? tint : AETheme.mutedText.opacity(0.4))
+            .background(tint.opacity(configuration.isPressed ? 0.24 : 0.1), in: .circle)
+            .overlay { Circle().strokeBorder(tint.opacity(0.25)) }
     }
 }
 
@@ -467,13 +513,17 @@ struct AircraftSeatMap: View {
                     let shape = Path(roundedRect: rect, cornerRadius: min(2, columnWidth / 4))
                     context.fill(shape, with: .color(cabin.tint))
                     context.stroke(shape, with: .color(.white.opacity(0.35)), lineWidth: 0.5)
+                    if rect.width > 4 {
+                        let back = CGRect(x: rect.minX + 1, y: rect.maxY - 3, width: max(1, rect.width - 2), height: 2)
+                        context.fill(Path(roundedRect: back, cornerRadius: 1), with: .color(.black.opacity(0.3)))
+                    }
                 }
                 x += sectionWidth + gap
             }
-            context.draw(Text("☕").font(.caption), at: CGPoint(x: w * 0.07, y: h * 0.5))
+            context.draw(Image(systemName: "cup.and.saucer.fill"), in: CGRect(x: w * 0.035, y: h * 0.44, width: w * 0.055, height: h * 0.12))
             context.draw(Text("WC").font(.system(size: 9, weight: .bold)).foregroundStyle(AETheme.mutedText), at: CGPoint(x: w * 0.92, y: h * 0.5))
         }
-        .frame(height: 155)
+        .frame(height: 130)
         .accessibilityLabel("Cabin seat map. Front galley, rear lavatories. " + CabinClass.allCases.map { "\(configuration[$0]) \($0.title) seats" }.joined(separator: ", "))
         .accessibilityIdentifier("ae-aircraft-seat-map")
     }
