@@ -61,6 +61,19 @@ struct FinanceContent: View {
                     .padding(.horizontal, 4)
                     routeExtremes()
                     statementCard(snapshot: snapshot, player: player.id)
+                    let commitments = player.airportServiceCommitments(tuning: catalog.tuning.airportServices)
+                    if !commitments.isEmpty {
+                        AECard {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("Airport service commitments").font(.headline)
+                                ForEach(commitments, id: \.airport) { item in
+                                    AirportFact(title: item.airport.raw, value: "\(Format.money(item.monthly))/month")
+                                }
+                                Text("Included in overhead when charged at the next month boundary. Installation is also recorded in overhead. Manage tiers in Airport Services.")
+                                    .font(.caption).foregroundStyle(AETheme.mutedText)
+                            }
+                        }
+                    }
                     loansCard(model, snapshot: snapshot, player: player.id)
                 }
                 .aePageInsets()

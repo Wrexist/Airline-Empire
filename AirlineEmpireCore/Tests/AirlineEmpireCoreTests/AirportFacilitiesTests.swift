@@ -4,6 +4,123 @@ import Testing
 
 @Suite("Airport facilities")
 struct AirportFacilitiesTests {
+    @Test func realMonthBoundariesAndRestoreDoNotDoubleCharge() throws {
+        let (catalog, source, airline) = try FleetFixtures.catalogAndEngine(systems: [EconomySystem()])
+        let levels = AirportFacilities(lounge: 1, groundServices: 2)
+        #expect(source.applyNow(ConfigureAirportFacilitiesCommand(airline: airline, airport: "ARN", facilities: levels)) == .applied)
+        // Advance to the first real billing boundary, then save on that boundary.
+        for _ in 0..<3_100 {
+            if source.state.ledger.recent.contains(where: { $0.memo == "ARN airport services" }) { break }
+            source.advance(ticks: 1)
+        }
+        func bills(_ state: GameState) -> Int {
+            state.ledger.recent.filter { $0.memo == "ARN airport services" }.count
+        }
+        #expect(bills(source.state) == 1)
+        #expect(source.state.ledger.recent.first(where: { $0.memo == "ARN airport services" })?.amount == -levels.monthlyCost(tuning: catalog.tuning.airportServices))
+        let restored = SimulationEngine(state: try JSONSaveCodec().decode(JSONSaveCodec().encode(source.state)),
+            systems: [EconomySystem()], catalog: catalog)
+        source.advance(ticks: 1); restored.advance(ticks: 1)
+        #expect(bills(restored.state) == 1)
+        #expect(restored.state == source.state)
+        #expect(restored.applyNow(ConfigureAirportFacilitiesCommand(airline: airline, airport: "ARN", facilities: .init())) == .applied)
+        restored.advance(ticks: 3_100)
+        #expect(bills(restored.state) == 1)
+        #expect(restored.state.airlines[airline]?.airportServiceCommitments(tuning: catalog.tuning.airportServices).isEmpty == true)
+    }
+
+    @Test func downgradesNeverRefundAndReinstallChargesAgain() throws {
+        let (catalog, engine, airline) = try FleetFixtures.catalogAndEngine()
+        func apply(_ lounge: Int, _ ground: Int) {
+            #expect(engine.applyNow(ConfigureAirportFacilitiesCommand(airline: airline, airport: "ARN",
+                facilities: .init(lounge: lounge, groundServices: ground))) == .applied)
+        }
+        apply(2, 2)
+        let cash = engine.state.ledger.balance(of: airline)
+        apply(1, 0)
+        #expect(engine.state.ledger.balance(of: airline) == cash)
+        apply(2, 1)
+        #expect(engine.state.ledger.balance(of: airline) == cash - catalog.tuning.airportServices.loungeInstallation - catalog.tuning.airportServices.groundInstallation)
+        #expect(engine.state.airlines[airline]?.airportFacilityHistory?.count == 3)
+    }
+
+    @Test func investmentDoesNotGrantCompetitorServicesOrInstantReputation() throws {
+        let (catalog, engine, airline, _, routeID) = try FlightOpsTests.operating()
+        #expect(engine.applyNow(FoundAirlineCommand(airlineName: "Rival", kind: .ai, homeAirport: "ARN", startingCash: .dollars(10_000_000))) == .applied)
+        let rival = try #require(engine.state.airlines.values.first { $0.kind == .ai })
+        let old = engine.state
+        #expect(engine.applyNow(ConfigureAirportFacilitiesCommand(airline: airline, airport: "ARN", facilities: .init(lounge: 2, groundServices: 2))) == .applied)
+        #expect(engine.state.airlines[rival.id] == rival)
+        #expect(engine.state.airlines[airline]?.reputation == old.airlines[airline]?.reputation)
+        let route = try #require(old.routes[routeID])
+        // Give the rival the same offer: its quality must not inherit the player's station.
+        let rivalRoute = Route(id: route.id, airline: rival.id, origin: route.origin, destination: route.destination,
+            distanceKm: route.distanceKm, dailyRoundTrips: route.dailyRoundTrips, ticketPrice: route.ticketPrice,
+            assignedAircraft: route.assignedAircraft)
+        #expect(DemandSystem.offerQualityTerms(route: rivalRoute, state: old, catalog: catalog)
+            == DemandSystem.offerQualityTerms(route: rivalRoute, state: engine.state, catalog: catalog))
+        #expect(engine.state.world == old.world)
+    }
+
+    @Test func previewIsDeterministicAndExcludesUnstaffedRoutes() throws {
+        let (catalog, engine, airline, aircraft, _) = try FlightOpsTests.operating()
+        let before = engine.state
+        let proposed = AirportFacilities(lounge: 2, groundServices: 1)
+        let first = AirportInvestmentPreview.make(airline: airline, airport: "ARN", proposed: proposed, state: before, catalog: catalog)
+        #expect(first == AirportInvestmentPreview.make(airline: airline, airport: "ARN", proposed: proposed, state: before, catalog: catalog))
+        #expect(engine.state == before)
+        #expect(first?.monthlyDemandChange ?? 0 > 0)
+        var idle = before
+        idle.aircraft[aircraft]?.status = .active
+        idle.routes = idle.routes.mapValues { route in var r = route; r.assignedAircraft = []; return r }
+        let empty = try #require(AirportInvestmentPreview.make(airline: airline, airport: "ARN", proposed: proposed, state: idle, catalog: catalog))
+        #expect(empty.servedRoutes == 0)
+        #expect(empty.monthlyRevenueChange == .zero)
+        #expect(empty.monthlyDemandChange == 0)
+        #expect(empty.monthlyNetChange == -proposed.monthlyCost(tuning: catalog.tuning.airportServices))
+    }
+
+    @Test func cardQuotesShowIncrementalInstallationAndFullMonthlyCost() {
+        let quote = AirportServiceReadModel(service: .lounge, installed: .init(lounge: 1),
+            proposed: .init(lounge: 2, groundServices: 2), tuning: .standard)
+        #expect(quote.installation == .dollars(150_000))
+        #expect(quote.monthly == .dollars(30_000))
+        #expect(quote.current == 1 && quote.proposed == 2)
+        let downgrade = AirportServiceReadModel(service: .ground, installed: .init(groundServices: 2),
+            proposed: .init(), tuning: .standard)
+        #expect(downgrade.installation == .zero && downgrade.monthly == .zero)
+        for level in [-1, 3, Int.max] {
+            #expect(!AirportFacilities(lounge: level).isValid)
+            #expect(!AirportFacilities(groundServices: level).isValid)
+        }
+    }
+
+    @Test func economyScaleBaseline() throws {
+        // Fixed airport/fare/airframe, varying network breadth. No tuning mutations.
+        for count in [1, 4, 8] {
+            let (catalog, engine, airline) = try FleetFixtures.catalogAndEngine()
+            let destinations: [AirportCode] = ["LHR", "CDG", "AMS", "FRA", "MUC", "FCO", "MAD", "IST"]
+            for destination in destinations.prefix(count) {
+                #expect(engine.applyNow(BuyUsedAircraftCommand(buyer: airline, type: "MR180", ageYears: 3)) == .applied)
+                let aircraft = try #require(engine.state.fleet(of: airline).first { $0.assignedRoute == nil })
+                #expect(engine.applyNow(OpenRouteCommand(airline: airline, origin: "ARN", destination: destination,
+                    dailyRoundTrips: 3, ticketPrice: .dollars(180))) == .applied)
+                let route = try #require(engine.state.routes(of: airline).first { $0.destination == destination })
+                #expect(engine.applyNow(AssignAircraftToRouteCommand(airline: airline, route: route.id, aircraftID: aircraft.id)) == .applied)
+            }
+            for level in 0...2 {
+                let services = AirportFacilities(lounge: level, groundServices: level)
+                let quote = try #require(AirportInvestmentPreview.make(airline: airline, airport: "ARN", proposed: services, state: engine.state, catalog: catalog))
+                #expect(quote.servedRoutes == count)
+                print("AIRPORT_BASELINE routes=\(count) tier=\(level) install=\(quote.installationCost.cents) monthly=\(quote.monthlyServiceCost.cents) demandBefore=\(quote.monthlyDemandBefore) demandAfter=\(quote.monthlyDemandAfter) revenueDelta=\(quote.monthlyRevenueChange.cents) operatingProfitDelta=\(quote.monthlyOperatingProfitChange.cents) netDelta=\(quote.monthlyNetChange.cents) technicalMultiplier=\(services.technicalDisruptionMultiplier(tuning: catalog.tuning.airportServices))")
+                if level == 0 { #expect(quote.monthlyNetChange == .zero) }
+                // Buying more reliability is never a fabricated direct cash return.
+                let ground = try #require(AirportInvestmentPreview.make(airline: airline, airport: "ARN", proposed: .init(groundServices: level), state: engine.state, catalog: catalog))
+                #expect(ground.monthlyRevenueChange == .zero)
+                #expect(ground.monthlyNetChange == -ground.monthlyServiceCost)
+            }
+        }
+    }
     private func context(_ state: GameState, _ catalog: ContentCatalog) -> SimContext {
         .init(previous: state.clock.now, current: state.clock.now, tick: .minutes(0),
               catalog: catalog, events: EventCollector(), progressionCeiling: .empire)

@@ -2,7 +2,7 @@ import SwiftUI
 import AirlineEmpireCore
 
 enum AirportManagementSection: String, CaseIterable {
-    case overview = "Overview", network = "Your Network", facilities = "Facilities"
+    case overview = "Overview", network = "Your Network", facilities = "Services"
     case competition = "Competition", history = "History"
 }
 
@@ -23,7 +23,9 @@ struct AirportDetailView: View {
                let catalog = controller.catalog, let spec = catalog.airport(code) {
                 let routes = state.routes(of: player.id).filter { $0.origin == code || $0.destination == code }
                 VStack(spacing: 14) {
-                    hero(spec, state: state, player: player, routes: routes)
+                    if section == .facilities {
+                        serviceHeader(spec, player: player)
+                    } else { hero(spec, state: state, player: player, routes: routes) }
                     tabs
                     switch section {
                     case .overview:
@@ -51,6 +53,15 @@ struct AirportDetailView: View {
         .sheet(item: $routeSheet) { OpenRouteSheet(suggestion: $0.suggestion) }
         .navigationDestination(for: RouteID.self) { RouteDetailView(routeID: $0) }
         .navigationDestination(for: AircraftID.self) { AircraftDetailView(aircraftID: $0) }
+    }
+    private func serviceHeader(_ spec: AirportSpec, player: Airline) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("\(spec.name) (\(code.raw))").font(.title3.bold())
+                .fixedSize(horizontal: false, vertical: true)
+            Label(code == player.homeAirport ? "Your home airport" : "Your airport services",
+                  systemImage: code == player.homeAirport ? "house.fill" : "building.2.fill")
+                .font(.subheadline).foregroundStyle(AETheme.leased)
+        }.frame(maxWidth: .infinity, alignment: .leading)
     }
     private var tabs: some View {
         ScrollView(.horizontal) {
@@ -212,7 +223,7 @@ struct AirportDetailView: View {
     }
 }
 
-private struct AirportHeading: View {
+struct AirportHeading: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     let title: String
     let icon: String
@@ -244,137 +255,3 @@ struct AirportFact: View {
     }
 }
 
-private struct AirportQuoteRequest: Equatable {
-    let proposed: AirportFacilities; let installed: AirportFacilities; let day: Int64
-}
-
-struct AirportFacilityEditor: View {
-    @Environment(GameController.self) private var controller
-    @Environment(\.dynamicTypeSize) private var typeSize
-    let airport: AirportCode
-    let player: Airline
-    let snapshot: GameState
-    let catalog: ContentCatalog
-    @Binding var draft: AirportFacilities?
-    @State private var preview: AirportInvestmentPreview?
-    @State private var pending: AirportFacilities?
-    @State private var confirming = false
-    @State private var saved = false
-    private var installed: AirportFacilities { player.facilities(at: airport) }
-    private var proposed: AirportFacilities { draft ?? installed }
-    private var tuning: AirportFacilityTuning { catalog.tuning.airportServices }
-    private var cost: Money { proposed.installationCost(from: installed, tuning: tuning) }
-    private var command: ConfigureAirportFacilitiesCommand { .init(airline: player.id, airport: airport, facilities: proposed) }
-
-    var body: some View {
-        VStack(spacing: 14) {
-            AircraftPanel {
-                VStack(alignment: .leading, spacing: 12) {
-                    AirportHeading(title: "Airport services", icon: "building.2.fill")
-                    Text("Create a better experience at \(airport.raw). Services belong to your airline and benefit your routes here.")
-                        .font(.subheadline).foregroundStyle(AETheme.mutedText)
-                    AirportFact(title: "Installed monthly cost", value: Format.money(installed.monthlyCost(tuning: tuning)))
-                }
-            }
-            facility(title: "Passenger lounge", icon: "cup.and.saucer.fill", color: .purple, keyPath: \.lounge,
-                description: "A quieter place to wait, with refreshments and space to work.",
-                benefit: "Up to +\(Int((Double(proposed.lounge) * tuning.loungeComfortPerLevel * 100).rounded())) comfort points here. Route comfort averages its two airports and is capped at 100.",
-                monthly: tuning.loungeMonthly, setup: tuning.loungeInstallation)
-            facility(title: "Ground services", icon: "wrench.fill", color: AETheme.accent, keyPath: \.groundServices,
-                description: "Dedicated support helps your aircraft depart reliably.",
-                benefit: "\(Int((Double(proposed.groundServices) * tuning.groundRiskReductionPerLevel * 100).rounded()))% lower technical disruption risk on departures here. Weather risk is unchanged.",
-                monthly: tuning.groundMonthly, setup: tuning.groundInstallation)
-            AircraftPanel {
-                VStack(alignment: .leading, spacing: 12) {
-                    AirportHeading(title: "Investment preview", icon: "chart.line.uptrend.xyaxis")
-                    AirportFact(title: "Installation now", value: Format.money(cost))
-                    AirportFact(title: "Proposed monthly services", value: Format.money(proposed.monthlyCost(tuning: tuning)))
-                    if let preview {
-                        Divider()
-                        AirportFact(title: "Monthly route revenue change", value: Format.money(preview.monthlyRevenueChange))
-                        AirportFact(title: "Monthly net change", value: Format.money(preview.monthlyNetChange))
-                            .foregroundStyle(preview.monthlyNetChange >= .zero ? AETheme.positive : AETheme.caution)
-                        Text("Across \(preview.servedRoutes) routes at current fares, cabins and demand. Includes the change in route costs and this airport's monthly services; excludes installation and future disruption savings.")
-                            .font(.caption).foregroundStyle(AETheme.mutedText)
-                        if proposed != installed && preview.monthlyNetChange < .zero {
-                            Label("Current demand gains do not cover the added monthly cost.", systemImage: "info.circle")
-                                .font(.caption).foregroundStyle(AETheme.caution)
-                        }
-                    } else { ProgressView("Calculating route effects…").font(.caption) }
-                    Text("Ground service benefits appear in actual operations over time. The forecast does not assume guaranteed savings or passenger growth.")
-                        .font(.caption).foregroundStyle(AETheme.mutedText)
-                }
-            }
-            if proposed != installed {
-                AircraftPanel {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Review investment").font(.headline)
-                        Text("Lounge: \(installed.lounge) → \(proposed.lounge)\nGround services: \(installed.groundServices) → \(proposed.groundServices)").font(.subheadline)
-                        Text("Installation is non-refundable. Monthly charges begin at the next month boundary and continue even if routes close. Set both levels to 0 to stop future service charges; reopening requires installation again.")
-                            .font(.caption).foregroundStyle(AETheme.mutedText)
-                        Button { confirming = true } label: { Text("Apply Airport Investment").frame(maxWidth: .infinity, minHeight: 44) }
-                            .buttonStyle(.aePrimary).disabled(pending != nil || controller.precheck(command) != nil)
-                            .accessibilityIdentifier("ae-airport-investment-apply")
-                        if let rejection = controller.precheck(command) { Text(rejection.message).font(.caption).foregroundStyle(AETheme.caution) }
-                        Button("Discard Changes") { draft = nil; saved = false }.frame(minHeight: 44).disabled(pending != nil)
-                    }
-                }
-            }
-            if saved { Label("Airport investment saved", systemImage: "checkmark.circle.fill").foregroundStyle(AETheme.positive) }
-        }
-        .task(id: AirportQuoteRequest(proposed: proposed, installed: installed, day: snapshot.clock.now.dayIndex)) {
-            let next = proposed, state = snapshot, content = catalog, id = player.id, code = airport
-            preview = nil
-            do { try await Task.sleep(for: .milliseconds(180)) } catch { return }
-            let result = await Task.detached(priority: .userInitiated) {
-                AirportInvestmentPreview.make(airline: id, airport: code, proposed: next, state: state, catalog: content)
-            }.value
-            guard !Task.isCancelled else { return }
-            preview = result
-        }
-        .onChange(of: installed) { _, value in
-            if pending == value { pending = nil; draft = nil; saved = true }
-        }
-        .onChange(of: controller.lastRejection) { _, value in if value != nil { pending = nil } }
-        .confirmationDialog("Apply airport investment?", isPresented: $confirming, titleVisibility: .visible) {
-            Button("Confirm Airport Investment") { if controller.submit(command) == nil { pending = proposed } }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("Pay \(Format.money(cost)) now. Services cost \(Format.money(proposed.monthlyCost(tuning: tuning))) each month. Lounge demand changes apply at the next daily update; ground services apply to future departures.")
-        }
-    }
-    private func facility(title: String, icon: String, color: Color, keyPath: WritableKeyPath<AirportFacilities, Int>,
-                          description: String, benefit: String, monthly: Money, setup: Money) -> some View {
-        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 8)) : AnyLayout(HStackLayout(spacing: 8))
-        return AircraftPanel {
-            VStack(alignment: .leading, spacing: 12) {
-                if typeSize.isAccessibilitySize {
-                    Text(title).font(.headline).foregroundStyle(color)
-                } else {
-                    Label(title, systemImage: icon).font(.headline).foregroundStyle(color)
-                }
-                Text(description).font(.caption).foregroundStyle(AETheme.mutedText)
-                layout {
-                    ForEach(0...2, id: \.self) { level in
-                        Button {
-                            var next = proposed; next[keyPath: keyPath] = level; draft = next; saved = false
-                        } label: {
-                            VStack(spacing: 5) {
-                                Text(level == 0 ? "None" : level == 1 ? "Standard" : "Premium").font(.caption.weight(.semibold))
-                                Text("Level \(level)").font(.caption2)
-                            }.frame(maxWidth: .infinity, minHeight: 52)
-                                .background(proposed[keyPath: keyPath] == level ? color.opacity(0.18) : .clear, in: .rect(cornerRadius: 12))
-                                .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(proposed[keyPath: keyPath] == level ? color : AETheme.surfaceRim) }
-                        }.buttonStyle(.plain).disabled(pending != nil)
-                            .accessibilityLabel("\(title), level \(level)")
-                            .accessibilityAddTraits(proposed[keyPath: keyPath] == level ? .isSelected : [])
-                            .accessibilityIdentifier("ae-airport-\(keyPath == \.lounge ? "lounge" : "ground")-\(level)")
-                    }
-                }
-                Text(benefit).font(.subheadline)
-                Text("Per level: \(Format.money(setup)) installation · \(Format.money(monthly))/month")
-                    .font(.caption).foregroundStyle(AETheme.mutedText)
-            }
-        }
-    }
-}

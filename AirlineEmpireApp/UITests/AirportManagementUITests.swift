@@ -14,25 +14,36 @@ final class AirportManagementUITests: AEUITestCase {
         XCTAssertTrue(row.waitForExistence(timeout: 10)); row.tap()
         XCTAssertTrue(app.buttons["ae-airport-tab-Overview"].waitForExistence(timeout: 10))
         checkpoint("AIRPORT-overview")
-        app.buttons["ae-airport-tab-Facilities"].tap()
+        app.buttons["ae-airport-tab-Services"].tap()
+        checkpoint("SERVICES-01-initial")
         let lounge = app.buttons["ae-airport-lounge-1"]
         revealControl(lounge)
+        lounge.tap()
+        XCTAssertTrue(lounge.isSelected)
+        checkpoint("SERVICES-02-one-proposed")
+        let reset = app.buttons["ae-airport-investment-reset"]
+        revealControl(reset); reset.tap()
+        revealControl(lounge)
+        XCTAssertFalse(lounge.isSelected)
         lounge.tap()
         XCTAssertTrue(lounge.isSelected)
         let ground = app.buttons["ae-airport-ground-1"]
         revealControl(ground)
         ground.tap()
         XCTAssertTrue(ground.isSelected)
-        checkpoint("AIRPORT-facilities-draft")
+        checkpoint("SERVICES-03-multiple-proposed")
         let apply = app.buttons["ae-airport-investment-apply"]
         revealControl(apply)
         XCTAssertTrue(apply.isHittable); XCTAssertTrue(apply.isEnabled)
         checkpoint("AIRPORT-investment-preview")
+        checkpoint("SERVICES-04-preview")
         apply.tap()
-        let confirm = app.buttons["Confirm Airport Investment"]
-        XCTAssertTrue(confirm.waitForExistence(timeout: 5)); confirm.tap()
+        let confirm = app.buttons["Confirm Airport Upgrades"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        checkpoint("SERVICES-05-confirmation")
+        confirm.tap()
         XCTAssertTrue(app.staticTexts["Airport investment saved"].waitForExistence(timeout: 10))
-        checkpoint("AIRPORT-investment-saved")
+        checkpoint("SERVICES-06-applied")
         for _ in 0..<8 { app.swipeDown() }
         let network = app.buttons["ae-airport-tab-Your Network"]
         network.tap(); checkpoint("AIRPORT-network")
@@ -47,7 +58,7 @@ final class AirportManagementUITests: AEUITestCase {
         checkpoint("AIRPORT-history")
         // Return to the installed controls: leaving a section must not lose a saved plan.
         history.swipeRight()
-        let facilities = app.buttons["ae-airport-tab-Facilities"]
+        let facilities = app.buttons["ae-airport-tab-Services"]
         if !facilities.isHittable { network.swipeRight() }
         facilities.tap()
         revealControl(lounge)
@@ -55,7 +66,7 @@ final class AirportManagementUITests: AEUITestCase {
     }
 
     private func revealControl(_ element: XCUIElement) {
-        for _ in 0..<10 {
+        for _ in 0..<18 {
             let frame = element.exists ? element.frame : .zero
             // Hittability alone includes controls partially behind the floating tab bar.
             let top = app.frame.minY + 120

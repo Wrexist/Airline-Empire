@@ -208,16 +208,25 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
             try await capture(ScrollView {
                 AirportFacilityEditor(airport: "ARN", player: player, snapshot: state, catalog: catalog,
                     draft: .constant(AirportFacilities(lounge: 2, groundServices: 1))).padding(12)
-            }, name: "airport-full-investment", controller: controller, width: 393, dark: dark,
+            }, name: "SERVICES-03-full-investment", controller: controller, width: 393, dark: dark,
                 typeSize: .large, height: 1500)
+            let widths: [CGFloat] = [320, 430, 834]
+            for width in widths {
+                try await capture(ScrollView {
+                    AirportFacilityEditor(airport: "ARN", player: player, snapshot: state, catalog: catalog,
+                        draft: .constant(AirportFacilities(lounge: 1, groundServices: 2)))
+                        .environment(\.horizontalSizeClass, width >= 800 ? .regular : .compact).padding(12)
+                }, name: "SERVICES-04-negative-\(width >= 800 ? "08-iPad" : "phone")-\(dark ? "10-dark" : "09-light")",
+                    controller: controller, width: width, dark: dark, typeSize: .large, height: 1700)
+            }
             try await capture(NavigationStack { AirportDetailView(code: "ARN") },
                 name: "airport-overview-AX5", controller: controller, width: 375, dark: dark,
                 typeSize: .accessibility5, height: 1600)
             try await capture(ScrollView {
                 AirportFacilityEditor(airport: "ARN", player: player, snapshot: state, catalog: catalog,
                     draft: .constant(nil)).padding(12)
-            }, name: "airport-services-AX5", controller: controller, width: 375, dark: dark,
-                typeSize: .accessibility5, height: 2400)
+            }, name: "SERVICES-07-AX5", controller: controller, width: 375, dark: dark,
+                typeSize: .accessibility5, height: 3400)
         }
     }
 

@@ -11,6 +11,9 @@ import AirlineEmpireCore
 @Observable
 final class GameController {
     private(set) var snapshot: GameState?
+    /// Changes only on a new simulation value, including commands while paused.
+    /// Airport quotes debounce this revision; body evaluation never runs a forecast.
+    private(set) var airportInvestmentRevision: UInt64 = 0
     private(set) var catalog: ContentCatalog?
     private(set) var recentEvents: [SimEvent] = []
     private(set) var speed: SimSpeed = .paused
@@ -933,6 +936,7 @@ final class GameController {
         publishedAt = Date()
         publishedTickFraction = fraction
         invalidateCaches()
+        if state != snapshot { airportInvestmentRevision &+= 1 }
         snapshot = state
         speed = sessionSpeed
         checkEraCeiling(state)
