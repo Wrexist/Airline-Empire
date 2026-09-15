@@ -1498,7 +1498,8 @@ class AEUITestCase: XCTestCase {
     /// Hittability alone includes controls partly under the tab bar, which is
     /// how a confirmed tap can land on the wrong thing. Shared by the
     /// management journeys, which all end on a long form's action.
-    func scrollFullyIntoView(_ element: XCUIElement, swipes: Int = 18) {
+    func scrollFullyIntoView(_ element: XCUIElement, _ what: String,
+                             swipes: Int = 30) {
         for _ in 0..<swipes {
             let frame = element.exists ? element.frame : .zero
             let top = app.frame.minY + 120
@@ -1512,13 +1513,20 @@ class AEUITestCase: XCTestCase {
             let x = frame.isEmpty
                 ? app.frame.midX
                 : min(app.frame.maxX - 40, max(app.frame.minX + 40, frame.midX))
-            let startY = upward ? bottom - 30 : top + 30
-            let endY = startY + (upward ? -240.0 : 240.0)
+            // A fraction of the real viewport rather than a fixed 240pt: an
+            // accessibility-size form is several thousand points long, and a
+            // short drag left the action still below the fold.
+            let span = max(240, (bottom - top) * 0.45)
+            let startY = upward ? bottom - 20 : top + 20
+            let endY = startY + (upward ? -span : span)
             let origin = app.coordinate(withNormalizedOffset: .zero)
             origin.withOffset(CGVector(dx: x, dy: startY))
-                .press(forDuration: 0.1, thenDragTo: origin.withOffset(CGVector(dx: x, dy: endY)),
-                       withVelocity: .slow, thenHoldForDuration: 0.2)
+                .press(forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: x, dy: endY)),
+                       withVelocity: .slow, thenHoldForDuration: 0.1)
         }
-        XCTFail("Control did not become fully visible: \(element.identifier)")
+        // Never touch the element in the message: `identifier` on an element
+        // below the fold resolves a snapshot that does not exist and throws,
+        // turning a clean failure into an XCUITest error.
+        XCTFail("\(what) did not become fully visible after scrolling")
     }
 }

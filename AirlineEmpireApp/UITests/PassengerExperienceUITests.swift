@@ -1,5 +1,4 @@
 import XCTest
-import AirlineEmpireCore
 
 /// The passenger-experience journey: the tier selection is a draft, reset
 /// restores the installed tier, the apply is confirmed, and the choice
@@ -29,13 +28,15 @@ final class PassengerExperienceUITests: AEUITestCase {
         checkpoint("PAX-01-initial")
 
         // Choosing a tier must preview, not submit: the installed tier stays
-        // current while the chosen one is marked proposed.
+        // current while the chosen one is only proposed.
         let premium = app.buttons["ae-service-tier-premium"]
         let standard = app.buttons["ae-service-tier-standard"]
-        scrollFullyIntoView(premium)
+        scrollFullyIntoView(premium, "the premium tier")
         premium.tap()
         XCTAssertTrue(premium.isSelected)
-        XCTAssertTrue(standard.exists && !standard.isSelected)
+        XCTAssertFalse(standard.isSelected,
+                       "Choosing a tier must leave the installed tier unselected")
+        XCTAssertEqual(standard.value as? String, "Currently installed")
         checkpoint("PAX-02-proposed")
 
         let forecast = app.descendants(matching: .any)
@@ -49,10 +50,10 @@ final class PassengerExperienceUITests: AEUITestCase {
 
         // Reset restores the installed tier and clears the proposal.
         let reset = app.buttons["ae-service-reset"]
-        scrollFullyIntoView(reset)
+        scrollFullyIntoView(reset, "Reset Changes")
         XCTAssertTrue(reset.isHittable && reset.isEnabled)
         reset.tap()
-        scrollFullyIntoView(premium)
+        scrollFullyIntoView(premium, "the premium tier after reset")
         XCTAssertFalse(premium.isSelected)
         XCTAssertTrue(standard.isSelected)
         checkpoint("PAX-04-reset")
@@ -61,7 +62,7 @@ final class PassengerExperienceUITests: AEUITestCase {
         premium.tap()
         XCTAssertTrue(premium.isSelected)
         let apply = app.buttons["ae-service-apply"]
-        scrollFullyIntoView(apply)
+        scrollFullyIntoView(apply, "Apply Service Tier")
         XCTAssertTrue(apply.isHittable && apply.isEnabled)
         apply.tap()
         let confirm = app.buttons["Apply Service Tier"]
@@ -94,8 +95,9 @@ final class PassengerExperienceUITests: AEUITestCase {
         resume.tap()
         openPassengerExperience()
         let restored = app.buttons["ae-service-tier-premium"]
-        scrollFullyIntoView(restored)
+        scrollFullyIntoView(restored, "the restored premium tier")
         XCTAssertTrue(restored.isSelected, "The applied tier must survive a relaunch")
+        XCTAssertEqual(restored.value as? String, "Currently installed")
         checkpoint("PAX-07-restored")
     }
 
@@ -109,18 +111,18 @@ final class PassengerExperienceUITests: AEUITestCase {
         XCTAssertNotNil(waitForTab("Home", timeout: 30))
         openPassengerExperience()
         let premium = app.buttons["ae-service-tier-premium"]
-        scrollFullyIntoView(premium)
+        scrollFullyIntoView(premium, "the premium tier at accessibility size")
         premium.tap()
         XCTAssertTrue(premium.isSelected)
         checkpoint("PAX-AX-proposed")
 
         let apply = app.buttons["ae-service-apply"]
-        scrollFullyIntoView(apply)
+        scrollFullyIntoView(apply, "Apply Service Tier at accessibility size")
         XCTAssertTrue(apply.isHittable && apply.isEnabled,
                       "The Apply action must be reachable at an accessibility text size")
         checkpoint("PAX-AX-apply")
         let reset = app.buttons["ae-service-reset"]
-        scrollFullyIntoView(reset)
+        scrollFullyIntoView(reset, "Reset Changes at accessibility size")
         XCTAssertTrue(reset.isHittable,
                       "Reset must be reachable at an accessibility text size")
         checkpoint("PAX-AX-reset")

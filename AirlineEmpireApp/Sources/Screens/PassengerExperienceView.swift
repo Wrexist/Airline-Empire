@@ -132,16 +132,20 @@ struct PassengerExperienceView: View {
         return AECard {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "Overall reputation", systemImage: "star.circle")
-                HStack(alignment: .firstTextBaseline, spacing: AETheme.spacingS) {
-                    Text(Format.percent(player.reputation.score))
-                        .font(AEType.hero)
-                        .accessibilityIdentifier("ae-reputation-score")
-                    Spacer(minLength: AETheme.spacingS)
-                    VStack(alignment: .trailing, spacing: 1) {
-                        Text("demand ×\(Format.decimal(multiplier, places: 2))")
-                            .font(AEType.metricCompact)
-                            .foregroundStyle(multiplier >= 1 ? AETheme.positive : AETheme.caution)
-                        Text("today").font(AEType.caption).foregroundStyle(AETheme.mutedText)
+                Group {
+                    // The multiplier goes under the score at accessibility sizes:
+                    // side by side it broke "demand" across lines.
+                    if typeSize.isAccessibilitySize {
+                        VStack(alignment: .leading, spacing: AETheme.spacingXS) {
+                            scoreText(player)
+                            demandText(multiplier, alignment: .leading)
+                        }
+                    } else {
+                        HStack(alignment: .firstTextBaseline, spacing: AETheme.spacingS) {
+                            scoreText(player)
+                            Spacer(minLength: AETheme.spacingS)
+                            demandText(multiplier, alignment: .trailing)
+                        }
                     }
                 }
                 Text("Reputation multiplies how attractive your fares look to passengers. It blends five parts — punctuality 25%, reliability 25%, service 20%, comfort 15% and value 15% — and moves slowly in both directions, over weeks rather than days. A good history buys grace, never immunity: no decision raises it today.")
@@ -156,6 +160,22 @@ struct PassengerExperienceView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+        }
+    }
+
+    private func scoreText(_ player: Airline) -> some View {
+        Text(Format.percent(player.reputation.score))
+            .font(AEType.hero)
+            .accessibilityIdentifier("ae-reputation-score")
+    }
+
+    private func demandText(_ multiplier: Double, alignment: HorizontalAlignment) -> some View {
+        VStack(alignment: alignment, spacing: 1) {
+            Text("demand ×\(Format.decimal(multiplier, places: 2))")
+                .font(AEType.metricCompact)
+                .foregroundStyle(multiplier >= 1 ? AETheme.positive : AETheme.caution)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("today").font(AEType.caption).foregroundStyle(AETheme.mutedText)
         }
     }
 
@@ -218,6 +238,9 @@ struct PassengerExperienceView: View {
         let clamped = min(1, max(0, value))
         let tint = clamped >= 0.75 ? AETheme.positive : clamped >= 0.45 ? AETheme.caution : AETheme.negative
         return VStack(alignment: .leading, spacing: AETheme.spacingS) {
+            // The value sits with the bar rather than beside the title: at a
+            // two-column width the title only had room to break mid-word
+            // ("Punc-tuality").
             HStack(spacing: AETheme.spacingS) {
                 if !typeSize.isAccessibilitySize {
                     Image(systemName: icon)
@@ -227,13 +250,20 @@ struct PassengerExperienceView: View {
                         .background(tint.opacity(0.12), in: .rect(cornerRadius: AETheme.cornerRadiusSmall))
                         .accessibilityHidden(true)
                 }
-                Text(title).font(.subheadline.weight(.semibold))
-                Spacer(minLength: AETheme.spacingXS)
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                Spacer(minLength: 0)
+            }
+            HStack(spacing: AETheme.spacingS) {
+                ProgressView(value: clamped).tint(tint)
+                    .frame(maxWidth: .infinity)
                 Text(Format.percent(clamped))
                     .font(AEType.metricCompact)
                     .foregroundStyle(tint)
+                    .fixedSize()
             }
-            ProgressView(value: clamped).tint(tint)
             Text(detail)
                 .font(AEType.caption)
                 .foregroundStyle(AETheme.mutedText)
@@ -341,7 +371,7 @@ struct PassengerExperienceView: View {
         .accessibilityLabel("\(Vocab.serviceTier(tier)) service, \(exactMoney(perPax)) per passenger, service target \(Format.percent(target))")
         .accessibilityValue(tier == installed ? "Currently installed" : selected ? "Proposed" : "")
         .accessibilityHint("Preview this tier before applying")
-        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+        .modifier(SelectedTraitModifier(selected: selected))
     }
 
     // MARK: Forecast
@@ -350,6 +380,7 @@ struct PassengerExperienceView: View {
         AircraftPanel {
             VStack(alignment: .leading, spacing: AETheme.spacingM) {
                 AirportHeading(title: "Forecast", icon: "chart.bar.fill")
+                    .accessibilityIdentifier("ae-service-forecast")
                 Text(isChange
                      ? "Simulated change from your installed \(Vocab.serviceTier(installed)) tier."
                      : "Your installed tier. Choose a different tier to compare.")
@@ -372,7 +403,6 @@ struct PassengerExperienceView: View {
                                "×\(Format.decimal(preview.multiplierIfServiceSettlesProposed, places: 2))",
                                change: multiplierChange(preview, preview.isChange))
                     }
-                    .accessibilityIdentifier("ae-service-forecast")
                     Text(preview.referenceMonthlyPassengers == 0 || preview.servedRoutes == 0
                          ? "No routes with operational aircraft are flying yet, so the recurring cost is quoted at zero passengers."
                          : "Based on \(Format.count(Int64(preview.referenceMonthlyPassengers))) passengers over a 30-day reference month across \(preview.servedRoutes) \(preview.servedRoutes == 1 ? "route" : "routes") at today's demand, fares and aircraft assignment.")
@@ -580,5 +610,23 @@ struct PassengerExperienceView: View {
 
     private func exactMoney(_ amount: Money) -> String {
         "$\(Format.decimal(amount.asDouble, places: 2))"
+    }
+}
+
+/// Adds the selected trait only when the element is selected.
+///
+/// A conditional `accessibilityAddTraits` on a stable element identity did not
+/// remove the trait when it stopped applying — a pass through the tiers left
+/// both the installed and the proposed tier marked *Selected*. Changing the
+/// view's structure (rather than only the trait set) drops it correctly.
+private struct SelectedTraitModifier: ViewModifier {
+    let selected: Bool
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if selected {
+            content.accessibilityAddTraits(.isSelected)
+        } else {
+            content
+        }
     }
 }
