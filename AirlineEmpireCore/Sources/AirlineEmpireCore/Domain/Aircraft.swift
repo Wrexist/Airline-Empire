@@ -22,6 +22,9 @@ public struct Aircraft: Equatable, Codable, Sendable {
     public var condition: Double
     /// Lifetime flying, drives maintenance economics (accrues from Phase 6).
     public var totalFlightHours: Double
+    /// Optional so saves written before cabin configuration decode unchanged.
+    public var configuration: AircraftConfiguration?
+    public var configurationHistory: [AircraftConfigurationChange]?
 
     public init(id: AircraftID, typeCode: AircraftTypeCode, owner: AirlineID,
                 ownership: AircraftOwnership, status: AircraftStatus,

@@ -72,7 +72,7 @@ public struct DemandSystem: SimulationSystem {
                 leisure.append(0)
                 continue
             }
-            let ratio = route.ticketPrice.asDouble / refFare
+            let ratio = route.ticketPrice.asDouble / refFare * Self.cabinYield(route: route, state: state, catalog: catalog)
             business.append(Self.utility(fareRatio: ratio, quality: quality,
                                          sensitivity: tuning.priceSensitivityBusiness))
             leisure.append(Self.utility(fareRatio: ratio, quality: quality,
@@ -139,7 +139,7 @@ public struct DemandSystem: SimulationSystem {
         for route in incumbents {
             guard let quality = offerQualityTerms(route: route, state: state,
                                                   catalog: catalog)?.product else { continue }
-            let ratio = route.ticketPrice.asDouble / refFare
+            let ratio = route.ticketPrice.asDouble / refFare * Self.cabinYield(route: route, state: state, catalog: catalog)
             business += utility(fareRatio: ratio, quality: quality,
                                 sensitivity: tuning.priceSensitivityBusiness)
             leisure += utility(fareRatio: ratio, quality: quality,
@@ -150,6 +150,12 @@ public struct DemandSystem: SimulationSystem {
 
     /// Quality multiplier for an offer; nil when the route cannot carry
     /// anyone (no assigned aircraft).
+    static func cabinYield(route: Route, state: GameState, catalog: ContentCatalog) -> Double {
+        guard let aircraft = route.assignedAircraft.sorted().compactMap({ state.aircraft[$0] }).first,
+              let spec = catalog.aircraftType(aircraft.typeCode) else { return 1 }
+        return aircraft.cabin(for: spec).yieldMultiplier
+    }
+
     private func offerQuality(route: Route, state: GameState,
                               catalog: ContentCatalog) -> Double? {
         Self.offerQualityTerms(route: route, state: state, catalog: catalog)?.product
@@ -184,7 +190,8 @@ public struct DemandSystem: SimulationSystem {
         return offerQualityTerms(
             spec: spec, roundTripsPerDay: route.dailyRoundTrips,
             operationsScore: route.stats.completionRate * 0.5 + route.stats.punctuality * 0.5,
-            reputationMultiplier: reputation, tuning: catalog.tuning.demand)
+            reputationMultiplier: reputation, tuning: catalog.tuning.demand,
+            comfortOverride: firstAircraft.passengerComfort(for: spec))
     }
 
     /// The same four terms for a service that has not been flown yet: an
@@ -197,11 +204,11 @@ public struct DemandSystem: SimulationSystem {
     public static func offerQualityTerms(spec: AircraftTypeSpec, roundTripsPerDay: Int,
                                          operationsScore: Double,
                                          reputationMultiplier: Double,
-                                         tuning: DemandTuning) -> OfferQualityTerms {
+                                         tuning: DemandTuning, comfortOverride: Double? = nil) -> OfferQualityTerms {
         let trips = Double(min(roundTripsPerDay, tuning.scheduleQualityTripCap))
         let schedule = pow(trips / tuning.scheduleQualityReferenceTrips,
                            tuning.scheduleQualityExponent)
-        let comfort = tuning.comfortBase + tuning.comfortWeight * spec.comfortBaseline
+        let comfort = tuning.comfortBase + tuning.comfortWeight * (comfortOverride ?? spec.comfortBaseline)
         let operations = tuning.operationsBase + tuning.operationsWeight * operationsScore
         return OfferQualityTerms(schedule: schedule, comfort: comfort,
                                  operations: operations, reputation: reputationMultiplier)

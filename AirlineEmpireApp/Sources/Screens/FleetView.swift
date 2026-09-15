@@ -364,6 +364,8 @@ struct AircraftDetailView: View {
     /// `Menu`, because the menu was the wrong container for the decision —
     /// see `AssignRouteSheet`.
     @State private var assigning = false
+    @State private var section: AircraftDetailSection = .cabin
+    @State private var changingAircraft = false
 
     var body: some View {
         ScrollView {
@@ -373,10 +375,26 @@ struct AircraftDetailView: View {
                let card = controller.fleetCard(aircraftID),
                let spec = catalog.aircraftType(card.typeCode) {
                 VStack(spacing: AETheme.spacingM) {
-                    identity(card, spec: spec)
-                    assignment(card, snapshot: snapshot, player: player.id, catalog: catalog)
-                    condition(card, spec: spec)
-                    ownership(card, spec: spec, player: player.id)
+                    AircraftOverviewCard(card: card, spec: spec) {
+                        changingAircraft = true
+                    }
+                    AircraftDetailTabs(selection: $section)
+                    if let aircraft = snapshot.aircraft[aircraftID] {
+                        switch section {
+                        case .cabin, .upgrades:
+                            AircraftConfigurationEditor(aircraft: aircraft, spec: spec,
+                                snapshot: snapshot, catalog: catalog, section: section)
+                                .id(aircraftID)
+                        case .operations:
+                            assignment(card, snapshot: snapshot, player: player.id, catalog: catalog)
+                            ownership(card, spec: spec, player: player.id)
+                        case .condition:
+                            condition(card, spec: spec)
+                        case .history:
+                            AircraftHistoryCard(aircraft: aircraft)
+                            condition(card, spec: spec)
+                        }
+                    }
                 }
                 .aePageInsets()
             } else {
@@ -400,6 +418,23 @@ struct AircraftDetailView: View {
         .aeTimeToolbar()
         .sheet(isPresented: $assigning) {
             AssignRouteSheet(aircraftID: aircraftID)
+        }
+        .sheet(isPresented: $changingAircraft) {
+            NavigationStack {
+                List(controller.fleetCards, id: \.id) { card in
+                    NavigationLink {
+                        AircraftDetailView(aircraftID: card.id)
+                    } label: {
+                        Label(card.typeName, systemImage: "airplane")
+                    }
+                }
+                .navigationTitle("Change Aircraft")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Done") { changingAircraft = false }
+                    }
+                }
+            }
         }
     }
 

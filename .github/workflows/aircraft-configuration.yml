@@ -1,0 +1,47 @@
+name: Aircraft configuration validation
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/ae049-aircraft-configuration]
+permissions:
+  contents: read
+concurrency:
+  group: aircraft-validation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native:
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Core regression tests
+        working-directory: AirlineEmpireCore
+        run: swift test --filter 'AircraftConfigurationTests|ServiceDemandTests|DemandTests|ReputationTests|FleetTests|RouteManagementTests|FlightOpsTests|PersistenceTests|SaveStoreTests'
+      - name: Generate project
+        run: |
+          brew install xcodegen
+          cd AirlineEmpireApp
+          xcodegen generate
+      - name: Build iOS app and tests
+        working-directory: AirlineEmpireApp
+        run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'generic/platform=iOS Simulator' -derivedDataPath ../build/ae049 CODE_SIGNING_ALLOWED=NO build-for-testing > ../build/ae049-build.log 2>&1
+      - name: Select simulator
+        id: simulator
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+          devices = json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','-j']))['devices']
+          phone = next(d for ds in devices.values() for d in ds if d['name'].startswith('iPhone'))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f: f.write('id=' + phone['udid'] + '\n')
+          PY
+      - name: Aircraft screen journeys
+        working-directory: AirlineEmpireApp
+        run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ui.xcresult -only-testing:AirlineEmpireUITests/AircraftConfigurationUITests -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ui.log 2>&1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aircraft-validation
+          path: |
+            build/ae049-build.log
+            build/ae049-ui.log
+            build/ae049-ui.xcresult
