@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Core regression tests
         working-directory: AirlineEmpireCore
-        run: swift test --filter 'AirportFacilitiesTests|EconomyTests|RoutePlanningTests|AircraftConfigurationTests|ServiceDemandTests|DemandTests|ReputationTests|FleetTests|RouteManagementTests|FlightOpsTests|PersistenceTests|SaveStoreTests'
+        run: swift test --filter 'AirportFacilitiesTests|EconomyTests|RoutePlanningTests|AircraftConfigurationTests|ServiceDemandTests|DemandTests|ReputationTests|PassengerExperienceTests|FleetTests|RouteManagementTests|FlightOpsTests|PersistenceTests|SaveStoreTests'
       - name: Release build
         working-directory: AirlineEmpireCore
         run: swift build -c release -Xswiftc -warnings-as-errors
@@ -70,14 +70,14 @@ jobs:
           tablet = next(d for ds in supported for d in ds if d['name'].startswith('iPad'))
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f: f.write('id=' + phone['udid'] + '\nipad=' + tablet['udid'] + '\n')
           PY
-      - name: Airport screen journeys
+      - name: Airport and passenger screen journeys
         if: inputs.tablet_only != true && inputs.captures_only != true
         working-directory: AirlineEmpireApp
-        run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ui.xcresult -only-testing:AirlineEmpireUITests/AirportManagementUITests -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testAirportManagementAtAccessibleSizes -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ui.log 2>&1
-      - name: Hosted airport captures
+        run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ui.xcresult -only-testing:AirlineEmpireUITests/AirportManagementUITests -only-testing:AirlineEmpireUITests/PassengerExperienceUITests -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testAirportManagementAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testPassengerExperienceAtAccessibleSizes -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ui.log 2>&1
+      - name: Hosted airport and passenger captures
         if: inputs.captures_only == true
         working-directory: AirlineEmpireApp
-        run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ui.xcresult -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testAirportManagementAtAccessibleSizes -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ui.log 2>&1
+        run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ui.xcresult -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testAirportManagementAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testPassengerExperienceAtAccessibleSizes -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ui.log 2>&1
       - name: Prepare isolated iPad simulator
         if: inputs.captures_only != true
         run: |
@@ -94,10 +94,10 @@ jobs:
               subprocess.run(['xcrun', 'simctl', 'boot', tablet], check=True)
           subprocess.run(['xcrun', 'simctl', 'bootstatus', tablet, '-b'], check=True)
           PY
-      - name: iPad airport journey
+      - name: iPad airport and passenger journeys
         if: inputs.captures_only != true
         working-directory: AirlineEmpireApp
-        run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.ipad }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ipad.xcresult -only-testing:AirlineEmpireUITests/AirportManagementUITests/testAirportInvestmentJourney -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testAirportManagementAtAccessibleSizes -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ipad.log 2>&1
+        run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.ipad }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ipad.xcresult -only-testing:AirlineEmpireUITests/AirportManagementUITests/testAirportInvestmentJourney -only-testing:AirlineEmpireUITests/PassengerExperienceUITests/testPassengerExperienceJourney -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testAirportManagementAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testPassengerExperienceAtAccessibleSizes -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ipad.log 2>&1
       - name: Collect simulator diagnostics
         if: always()
         run: |

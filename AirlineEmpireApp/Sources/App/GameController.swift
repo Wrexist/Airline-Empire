@@ -14,6 +14,9 @@ final class GameController {
     /// Changes only on a new simulation value, including commands while paused.
     /// Airport quotes debounce this revision; body evaluation never runs a forecast.
     private(set) var airportInvestmentRevision: UInt64 = 0
+    /// The same O(1) revision for the passenger-experience service quote, so a
+    /// paused route, fare or fleet change re-quotes it too.
+    private(set) var passengerExperienceRevision: UInt64 = 0
     private(set) var catalog: ContentCatalog?
     private(set) var recentEvents: [SimEvent] = []
     private(set) var speed: SimSpeed = .paused
@@ -940,6 +943,7 @@ final class GameController {
         // O(1) invalidation avoids comparing the whole world at publish cadence.
         if state.clock.tickCount != snapshot?.clock.tickCount || state.eventLog.totalCount != snapshot?.eventLog.totalCount {
             airportInvestmentRevision &+= 1
+            passengerExperienceRevision &+= 1
         }
         snapshot = state
         speed = sessionSpeed

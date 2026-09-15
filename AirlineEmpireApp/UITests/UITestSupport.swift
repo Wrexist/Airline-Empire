@@ -1491,4 +1491,34 @@ class AEUITestCase: XCTestCase {
         }
         return true
     }
+
+    /// Drag a control fully into the safe viewport — clear of the navigation
+    /// bar and the floating tab bar — and prove it settled before anyone taps.
+    ///
+    /// Hittability alone includes controls partly under the tab bar, which is
+    /// how a confirmed tap can land on the wrong thing. Shared by the
+    /// management journeys, which all end on a long form's action.
+    func scrollFullyIntoView(_ element: XCUIElement, swipes: Int = 18) {
+        for _ in 0..<swipes {
+            let frame = element.exists ? element.frame : .zero
+            let top = app.frame.minY + 120
+            let bottom = app.tabBars.firstMatch.exists
+                ? app.tabBars.firstMatch.frame.minY - 24 : app.frame.maxY - 40
+            if !frame.isEmpty, frame.minY >= top, frame.maxY <= bottom, element.isHittable {
+                XCTAssertTrue(waitUntilStill(element))
+                return
+            }
+            let upward = frame.isEmpty || frame.minY >= top
+            let x = frame.isEmpty
+                ? app.frame.midX
+                : min(app.frame.maxX - 40, max(app.frame.minX + 40, frame.midX))
+            let startY = upward ? bottom - 30 : top + 30
+            let endY = startY + (upward ? -240.0 : 240.0)
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            origin.withOffset(CGVector(dx: x, dy: startY))
+                .press(forDuration: 0.1, thenDragTo: origin.withOffset(CGVector(dx: x, dy: endY)),
+                       withVelocity: .slow, thenHoldForDuration: 0.2)
+        }
+        XCTFail("Control did not become fully visible: \(element.identifier)")
+    }
 }

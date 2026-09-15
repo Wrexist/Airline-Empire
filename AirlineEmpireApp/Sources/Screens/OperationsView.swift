@@ -748,119 +748,6 @@ struct ProgressionView: View {
     }
 }
 
-/// Reputation, with what moves each component — the screen behind the
-/// dashboard's "Reputation 61%", which used to be an inert label.
-struct ReputationDetailView: View {
-    @Environment(GameController.self) private var controller
-    @Environment(\.feedback) private var feedback
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: AETheme.spacingM) {
-                if let snapshot = controller.snapshot,
-                   let player = snapshot.playerAirline {
-                    AECard {
-                        VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                            AESectionHeader(text: "Overall", systemImage: "star.circle")
-                            Text(Format.percent(player.reputation.score))
-                                .font(.largeTitle.weight(.semibold))
-                                .monospacedDigit()
-                            Text("Reputation multiplies how attractive your fares look. It moves slowly in both directions — a good history buys grace, never immunity.")
-                                .font(.subheadline)
-                                .foregroundStyle(AETheme.mutedText)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                    AEPanel {
-                        VStack(alignment: .leading, spacing: AETheme.spacingM) {
-                            AESectionHeader(text: "What it is made of",
-                                            systemImage: "chart.bar.doc.horizontal")
-                            component("Punctuality", player.reputation.punctuality,
-                                      "Flights that leave and arrive on time. Tight schedules and old aircraft hurt it.")
-                            component("Reliability", player.reputation.reliability,
-                                      "Flights you complete rather than cancel. Storms and groundings hurt it.")
-                            component("Service", player.reputation.service,
-                                      "Your onboard product. Set by the service tier you pay for.")
-                            component("Comfort", player.reputation.comfort,
-                                      "The aircraft themselves. Newer and larger cabins score better.")
-                            component("Value", player.reputation.valuePerception,
-                                      "Whether the fare feels worth it. Charging above the market without the product to match costs you here.")
-                        }
-                    }
-                    AEPanel {
-                        VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                            AESectionHeader(text: "Service tier", systemImage: "cup.and.saucer")
-                            ForEach(ServiceTier.allCases, id: \.self) { tier in
-                                serviceTierRow(tier, player: player)
-                            }
-                        }
-                    }
-                } else {
-                    LoadingState(message: "Reading your reputation")
-                        .frame(minHeight: 240)
-                }
-            }
-            .aePageInsets()
-        }
-        .aeScreenBackground()
-        .navigationTitle("Reputation")
-        .navigationBarTitleDisplayMode(.inline)
-        .aeTimeToolbar()
-    }
-
-    private func component(_ label: String, _ value: Double,
-                           _ detail: String) -> some View {
-        VStack(alignment: .leading, spacing: AETheme.spacingXS) {
-            HStack {
-                Text(label).font(.subheadline.weight(.medium))
-                Spacer()
-                Text(Format.percent(value))
-                    .font(.subheadline).monospacedDigit()
-                    .foregroundStyle(value >= 0.6 ? AETheme.positive : AETheme.caution)
-            }
-            ProgressView(value: value)
-                .tint(value >= 0.6 ? AETheme.positive : AETheme.caution)
-            Text(detail)
-                .font(.caption)
-                .foregroundStyle(AETheme.mutedText)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(label), \(Format.percent(value)). \(detail)")
-    }
-
-    private func serviceTierRow(_ tier: ServiceTier, player: Airline) -> some View {
-        let isSelected = player.serviceTier == tier
-        return Button {
-            // Service tier is an airline-wide recurring cost change that
-            // emits no `SimEvent`; the only other evidence it worked is a
-            // radio circle moving on the next refresh.
-            feedback.play(.uiConfirm)
-            controller.submit(SetServiceTierCommand(airline: player.id, tier: tier))
-        } label: {
-            HStack(alignment: .top, spacing: AETheme.spacingS) {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(isSelected ? AETheme.accent : Color.secondary.opacity(0.5))
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(Vocab.serviceTier(tier))
-                        .font(.subheadline.weight(isSelected ? .semibold : .regular))
-                    Text(Vocab.serviceTierDetail(tier))
-                        .font(.caption)
-                        .foregroundStyle(AETheme.mutedText)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 0)
-            }
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.aePress)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
-    }
-}
-
 /// What "Economy 1.03" means — the drill-down behind an unlabelled index.
 struct EconomyDetailView: View {
     @Environment(GameController.self) private var controller
@@ -1037,7 +924,7 @@ struct SettingsView: View {
             .onChange(of: preferences.ambienceVolume) { _, _ in controller.audioSettingsChanged() }
 
             Section("Your airline") {
-                NavigationLink("Reputation and service") { ReputationDetailView() }
+                NavigationLink("Passenger experience and reputation") { PassengerExperienceView() }
             }
 
             Section("Save") {

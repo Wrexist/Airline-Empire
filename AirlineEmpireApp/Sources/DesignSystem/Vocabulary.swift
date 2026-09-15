@@ -99,15 +99,17 @@ enum Vocab {
         }
     }
 
-    /// What choosing a tier actually does, so the choice is informed.
+    /// What choosing a tier actually does, so the choice is informed. The
+    /// numbers (per-passenger cost, target) come from Core on the screen —
+    /// this copy stays qualitative so tuning has one owner.
     static func serviceTierDetail(_ tier: ServiceTier) -> String {
         switch tier {
         case .basic:
-            "Cheapest per passenger. Service reputation drifts down; fine for a value carrier that is honest about it."
+            "Cheapest per passenger. The service reputation target sits below the market, so this is for a carrier that is honest about a no-frills product."
         case .standard:
             "The middle. Costs and expectations both sit at the market's level."
         case .premium:
-            "Most expensive per passenger, and the only tier that lifts service reputation far. Premium fares need it."
+            "Most expensive per passenger, and the only tier whose service reputation target sits above the market. Premium fares need it."
         }
     }
 

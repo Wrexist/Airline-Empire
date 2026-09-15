@@ -106,7 +106,7 @@ struct BriefingView: View {
                 case .routes:
                     RoutesList().navigationTitle("Routes").aeTimeToolbar()
                 case .reputation:
-                    ReputationDetailView()
+                    PassengerExperienceView()
                 case .finance:
                     FinanceContent().navigationTitle("Finance").aeTimeToolbar()
                 case .economy:
@@ -285,6 +285,7 @@ struct BriefingView: View {
                 StatTile(label: "Reputation",
                          value: Format.percent(dashboard.reputationScore))
             }
+            .accessibilityIdentifier("ae-stat-reputation")
             NavigationLink(value: DashboardRoute.finance) {
                 // No trend until a month has actually closed. The first
                 // version fell through to `.up` for nil, so for the whole of

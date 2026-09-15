@@ -19,10 +19,10 @@ public struct AircraftPassengerExperience: Equatable, Sendable {
         } else {
             punctuality = airline?.reputation.punctuality ?? 0.6
         }
-        var serviceTarget = catalog.tuning.reputation.serviceTarget(airline?.serviceTier ?? .basic)
-        if state.isPlayer(aircraft.owner), state.playerHasCapability(.groundExperience) {
-            serviceTarget = min(1, serviceTarget + 0.08)
-        }
-        service = serviceTarget
+        service = ReputationSystem.serviceTarget(
+            for: airline?.serviceTier ?? .basic,
+            isPlayer: state.isPlayer(aircraft.owner),
+            hasGroundExperience: state.playerHasCapability(.groundExperience),
+            tuning: catalog.tuning.reputation)
     }
 }

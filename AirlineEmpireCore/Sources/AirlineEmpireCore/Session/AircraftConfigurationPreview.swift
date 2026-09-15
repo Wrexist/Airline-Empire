@@ -4,6 +4,10 @@ public struct AircraftConfigurationPreview: Equatable, Sendable {
     public let monthlyRevenue: Money
     public let monthlyCosts: Money
     public let loadFactor: Double
+    /// Passengers boarded over the same 30-day quote, after the seat limit.
+    /// Shared with the service-policy preview so a recurring per-passenger
+    /// cost is quoted on the same volume the airframe forecast carries.
+    public let monthlyPassengers: Int
     public let rotationsPerDay: Int
     public var monthlyProfit: Money { monthlyRevenue - monthlyCosts }
 
@@ -63,6 +67,8 @@ public struct AircraftConfigurationPreview: Equatable, Sendable {
         switch aircraft.ownership { case .leased(let rate, _): lease = rate.asDouble; case .owned: lease = 0 }
         let costs = (revenue - value(.profit) + passengers * configuration.serviceCostPerPassenger(tuning: catalog.tuning.cabin).asDouble + ageReserve) * 30 + lease
         return Self(monthlyRevenue: Money(rounding: revenue * 30), monthlyCosts: Money(rounding: costs),
-                    loadFactor: capacity > 0 ? passengers / capacity : 0, rotationsPerDay: rotations)
+                    loadFactor: capacity > 0 ? passengers / capacity : 0,
+                    monthlyPassengers: Int((passengers * 30).rounded()),
+                    rotationsPerDay: rotations)
     }
 }

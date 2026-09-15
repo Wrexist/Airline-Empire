@@ -68,7 +68,7 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
                 try await capture(LoanSheet(), name: "borrow", controller: controller, width: width, dark: dark)
                 try await capture(NavigationStack { SettingsView() }, name: "settings", controller: controller, width: width, dark: dark)
                 try await capture(NavigationStack { WorldEventsView() }, name: "world-events", controller: controller, width: width, dark: dark)
-                try await capture(NavigationStack { ReputationDetailView() }, name: "reputation", controller: controller, width: width, dark: dark)
+                try await capture(NavigationStack { PassengerExperienceView() }, name: "reputation", controller: controller, width: width, dark: dark)
             }
         }
     }
@@ -243,6 +243,71 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
                 }
             }, name: "SERVICES-07-AX5-actions", controller: controller, width: 375, dark: dark,
                 typeSize: .accessibility5, height: 1600, settleMilliseconds: 3000)
+        }
+    }
+
+    /// The passenger-experience screen with a proposal selected, so the review
+    /// state (current vs proposed, forecast, apply/reset) is what is captured
+    /// rather than the installed state.
+    @MainActor
+    func testPassengerExperienceAtAccessibleSizes() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let catalog = try ContentCatalog.loadBundled()
+        let engine = SimulationEngine(state: ScenarioBootstrap.newGame(
+            scenario: "founder", worldSeed: 42, startYear: 2030),
+            systems: GamePipeline.standard(), catalog: catalog)
+        XCTAssertEqual(engine.applyNow(FoundAirlineCommand(airlineName: "Pacifica review",
+            kind: .player, homeAirport: "ARN", startingCash: .dollars(25_000_000))), .applied)
+        let player = try XCTUnwrap(engine.state.playerAirline?.id)
+        XCTAssertEqual(engine.applyNow(LeaseAircraftCommand(lessee: player, type: "PA184", termMonths: 60)), .applied)
+        let aircraft = try XCTUnwrap(engine.state.fleet(of: player).first)
+        let spec = try XCTUnwrap(catalog.aircraftType(aircraft.typeCode))
+        var cabin = aircraft.cabin(for: spec)
+        cabin.setSeats(12, in: .first, capacity: spec.seats)
+        cabin.setSeats(24, in: .business, capacity: spec.seats)
+        cabin.setSeats(16, in: .premiumEconomy, capacity: spec.seats)
+        cabin.wifi = 1; cabin.dining = 1; cabin.seats = 1
+        XCTAssertEqual(engine.applyNow(ConfigureAircraftCommand(
+            airline: player, aircraftID: aircraft.id, configuration: cabin)), .applied)
+        XCTAssertEqual(engine.applyNow(OpenRouteCommand(airline: player, origin: "ARN",
+            destination: "CDG", dailyRoundTrips: 3, ticketPrice: .dollars(180))), .applied)
+        let route = try XCTUnwrap(engine.state.routes(of: player).first)
+        XCTAssertEqual(engine.applyNow(AssignAircraftToRouteCommand(
+            airline: player, route: route.id, aircraftID: aircraft.id)), .applied)
+        XCTAssertEqual(engine.applyNow(ApplyRoutePlanCommand(airline: player, route: route.id,
+            plan: RoutePlan(fare: .dollars(200), frequency: 4))), .applied)
+        XCTAssertEqual(engine.applyNow(ConfigureAirportFacilitiesCommand(
+            airline: player, airport: "ARN", facilities: .init(lounge: 1))), .applied)
+        let ticksPerDay = Int(GameCalendar.minutesPerDay / engine.state.meta.tickMinutes)
+        engine.advance(ticks: ticksPerDay * 45)
+        let manager = SaveManager(store: FileSaveStore(rootDirectory: root))
+        try manager.save(engine.state, slot: "pax-review")
+        let controller = GameController(savesDirectory: root)
+        controller.loadGame(slot: "pax-review")
+        try await waitForGame(controller)
+        defer { controller.setPumping(false) }
+        let state = try XCTUnwrap(controller.snapshot)
+        let reputation = try XCTUnwrap(state.playerAirline?.reputation)
+        XCTAssertTrue(reputation.punctuality > 0 && reputation.comfort > 0)
+
+        for dark in [false, true] {
+            // Full screen at a phone width, tall enough to hold the whole
+            // review state. The screen scrolls itself; the capture window is
+            // the viewport, so nothing is nested.
+            try await capture(PassengerExperienceView(initialDraft: .premium),
+                name: "PAX-03-full-\(dark ? "dark" : "light")", controller: controller,
+                width: 393, dark: dark, typeSize: .large, height: 2600, settleMilliseconds: 3000)
+            // Large Dynamic Type: the drivers reflow to one column, so the
+            // window is taller and the forecast/action area is captured from
+            // the same top-of-screen frame the device journey also inspects.
+            try await capture(PassengerExperienceView(initialDraft: .premium),
+                name: "PAX-07-AX5-\(dark ? "dark" : "light")", controller: controller,
+                width: 375, dark: dark, typeSize: .accessibility5, height: 2600, settleMilliseconds: 3000)
+            // Regular width.
+            try await capture(PassengerExperienceView(initialDraft: .premium),
+                name: "PAX-08-iPad-\(dark ? "dark" : "light")", controller: controller,
+                width: 834, dark: dark, typeSize: .large, height: 2200, settleMilliseconds: 3000)
         }
     }
 
