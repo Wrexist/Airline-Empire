@@ -62,20 +62,29 @@ Campaign and Horizon test navigation now follows the new tabs and confirmation.
 
 ## Verified result (2026-09-15)
 
-Commit `713fb49`, [run 34979181451](https://github.com/Wrexist/Airline-Empire/actions/runs/34979181451):
+Application revision `3e2eb6d`; subsequent code changes affect validation only.
 
-- 100 focused Core tests passed, including all six new route-planning tests.
-- Release build passed with warnings treated as errors.
-- Native iOS app and test targets built successfully.
-- The iPhone route journey passed: creation, assignment, fare editing,
-  confirmation, saved feedback, aircraft comparison, Competition and History.
-- The iPad attempt failed in the pre-existing aircraft market acquisition
-  setup: the app terminated during repeated scrolling, before route management
-  opened. No iPad route pass is claimed for this run. A focused saved-campaign
-  iPad journey and isolated simulator run follow.
-- Hosted light/dark captures of all five sections and the AX5 planner passed.
-- Existing aircraft hosted captures remained in the native review suite.
+- [Core/iPhone run 34983032210](https://github.com/Wrexist/Airline-Empire/actions/runs/34983032210):
+  100 focused Core tests, release build with warnings as errors, native build,
+  fresh-airline iPhone route journey, and hosted light/dark/AX5 captures passed.
+  The run's later simulator-preparation step failed because it attempted to
+  shut down an already-shut-down device; the state check is now fixed.
+- [Focused iPad run 34984654729](https://github.com/Wrexist/Airline-Empire/actions/runs/34984654729):
+  native build and saved-campaign route journey passed, one test, zero failures.
+  The test loads the existing simulation-generated rival-pressure-retreat save,
+  changes and confirms the plan, selects an aircraft comparison, and opens
+  Competition and History. Core/iPhone checks were intentionally not repeated.
 - Local symbol resolution, UTF-8 source checks and diff checks passed.
+- Visual review confirmed readable iPhone/iPad planner controls, market-reference
+  fare, forecast figures, capacity warnings, aircraft cabin comparison, saved
+  history and the iPad loss warning. One early hosted capture caught the normal
+  forecast-loading state; the actual device journey captures show completed values.
+
+An earlier fresh-airline iPad attempt (34979181451) terminated in the existing
+market while scrolling for a lease, before route management opened. That market
+setup failure is not claimed fixed by this feature; iPad route functionality is
+verified from a saved campaign. Simulator preparation now checks actual device
+states and shuts down other booted simulators before running iPad tests.
 
 The long Campaign and Horizon journeys were updated and compiled; these longer
 campaigns were not rerun in this focused validation. No physical-device or
