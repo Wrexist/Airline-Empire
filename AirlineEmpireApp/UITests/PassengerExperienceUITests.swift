@@ -55,9 +55,16 @@ final class PassengerExperienceUITests: AEUITestCase {
         reset.tap()
         // Reset does not move the scroll position, and Reset sits near the
         // bottom, so the tier panel is above the fold. Return to the top
-        // before reading it back — an unrealised element above the viewport
-        // cannot be scrolled to by swiping up.
-        for _ in 0..<12 { app.swipeDown() }
+        // first: the score is the topmost element, so its hittability is an
+        // honest "we are at the top" signal and it stops the swipe before one
+        // too many could pull the sheet down.
+        let score = app.descendants(matching: .any)
+            .matching(identifier: "ae-reputation-score").firstMatch
+        for _ in 0..<14 {
+            if score.exists && score.isHittable { break }
+            app.swipeDown()
+            Thread.sleep(forTimeInterval: 0.3)
+        }
         scrollFullyIntoView(premium, "the premium tier after reset")
         XCTAssertFalse(premium.isSelected)
         XCTAssertTrue(standard.isSelected)

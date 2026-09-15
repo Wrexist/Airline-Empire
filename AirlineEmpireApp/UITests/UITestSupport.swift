@@ -1500,6 +1500,8 @@ class AEUITestCase: XCTestCase {
     /// management journeys, which all end on a long form's action.
     func scrollFullyIntoView(_ element: XCUIElement, _ what: String,
                              swipes: Int = 30) {
+        var up = true
+        var unknownRun = 0
         for _ in 0..<swipes {
             let frame = element.exists ? element.frame : .zero
             let top = app.frame.minY + 120
@@ -1513,15 +1515,23 @@ class AEUITestCase: XCTestCase {
                 XCTAssertTrue(waitUntilStill(element))
                 return
             }
-            // A full-screen swipe, not a hand-built coordinate drag: the
-            // drag started too near the floating tab bar on some layouts and
-            // simply did not move the scroll view. `app.swipeUp()` is the
-            // gesture the other journeys already scroll with.
-            if frame.isEmpty || frame.minY >= top {
-                app.swipeUp()
+            if frame.isEmpty {
+                // An unrealised element could be above or below. Sweep one
+                // way, then the other, so "the tier panel after a reset" —
+                // which is above the button that was just tapped — is found
+                // too.
+                if unknownRun >= 5 {
+                    up.toggle()
+                    unknownRun = 0
+                }
+                unknownRun += 1
             } else {
-                app.swipeDown()
+                up = frame.minY >= top
             }
+            // A full-screen swipe, not a hand-built coordinate drag: the drag
+            // started too near the floating tab bar on some layouts and
+            // simply did not move the scroll view.
+            if up { app.swipeUp() } else { app.swipeDown() }
             Thread.sleep(forTimeInterval: 0.4)
         }
         // Never touch the element in the message: `identifier` on an element
