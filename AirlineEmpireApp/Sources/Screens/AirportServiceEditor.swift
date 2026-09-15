@@ -219,17 +219,21 @@ struct AirportFacilityEditor: View {
             }
             Button { confirming = true } label: {
                 VStack(spacing: 4) {
-                    Text("Apply Airport Upgrades").font(.headline)
-                    Text("\(Format.money(cost)) now · \(Format.money(proposed.monthlyCost(tuning: tuning)))/month").font(.caption)
+                    Text("Apply Airport Upgrades").font(.headline).fixedSize(horizontal: false, vertical: true)
+                    Text("\(Format.money(cost)) now · \(Format.money(proposed.monthlyCost(tuning: tuning)))/month")
+                        .font(.caption).fixedSize(horizontal: false, vertical: true)
                 }.frame(maxWidth: .infinity, minHeight: 52)
-            }.buttonStyle(.aePrimary)
+                    .multilineTextAlignment(.center)
+            }.buttonStyle(AEButtonStyle(role: .primary, expandedLabel: typeSize.isAccessibilitySize))
                 .disabled(proposed == installed || pending != nil || preview == nil || controller.precheck(command) != nil)
                 .accessibilityIdentifier("ae-airport-investment-apply")
             if proposed != installed, let rejection = controller.precheck(command) {
                 Text(rejection.message).font(.caption).foregroundStyle(AETheme.caution)
             }
-            Button("Reset Changes") { draft = nil; saved = false }
-                .frame(minHeight: 44).disabled(proposed == installed || pending != nil)
+            Button { draft = nil; saved = false } label: {
+                Text("Reset Changes").fixedSize(horizontal: false, vertical: true)
+                    .multilineTextAlignment(.center).frame(maxWidth: .infinity, minHeight: 44)
+            }.disabled(proposed == installed || pending != nil)
                 .accessibilityIdentifier("ae-airport-investment-reset")
         }
     }

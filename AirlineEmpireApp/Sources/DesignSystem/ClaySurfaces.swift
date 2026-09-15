@@ -146,18 +146,17 @@ struct AEGlassSurface<S: Shape>: ViewModifier {
 
 struct AEActionSurface: ViewModifier {
     let role: AEButtonRole
+    var expandedLabel = false
 
     @ViewBuilder
     func body(content: Content) -> some View {
         switch role {
         case .primary:
-            content
-                .background(LinearGradient(colors: [Color(red: 0.15, green: 0.48, blue: 0.79),
-                                                    AETheme.actionBlue],
-                                           startPoint: .topLeading, endPoint: .bottomTrailing),
-                            in: Capsule())
-                .overlay(Capsule().strokeBorder(.white.opacity(0.35), lineWidth: 1))
-                .shadow(color: AETheme.actionBlue.opacity(0.2), radius: 8, y: 4)
+            if expandedLabel {
+                primary(content, in: RoundedRectangle(cornerRadius: AETheme.cornerRadius))
+            } else {
+                primary(content, in: Capsule())
+            }
         case .secondary:
             content.aeGlass(in: Capsule(), tint: AETheme.accent.opacity(0.10), interactive: true)
         case .destructive:
@@ -166,5 +165,14 @@ struct AEActionSurface: ViewModifier {
         case .tertiary:
             content
         }
+    }
+
+    private func primary<S: InsettableShape>(_ content: Content, in shape: S) -> some View {
+        content
+            .background(LinearGradient(colors: [Color(red: 0.15, green: 0.48, blue: 0.79),
+                                                AETheme.actionBlue],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing), in: shape)
+            .overlay(shape.strokeBorder(.white.opacity(0.35), lineWidth: 1))
+            .shadow(color: AETheme.actionBlue.opacity(0.2), radius: 8, y: 4)
     }
 }
