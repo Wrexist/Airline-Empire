@@ -59,7 +59,27 @@ Native tests exercise route creation, assignment, pricing confirmation, saved
 feedback, aircraft selection, Competition and History on iPhone and iPad.
 Hosted captures cover all five sections in light/dark and the planner at AX5.
 Campaign and Horizon test navigation now follows the new tabs and confirmation.
-Results and reviewed screenshots are recorded after the CI run completes.
+
+## Verified result (2026-09-15)
+
+Commit `713fb49`, [run 34979181451](https://github.com/Wrexist/Airline-Empire/actions/runs/34979181451):
+
+- 100 focused Core tests passed, including all six new route-planning tests.
+- Release build passed with warnings treated as errors.
+- Native iOS app and test targets built successfully.
+- The iPhone route journey passed: creation, assignment, fare editing,
+  confirmation, saved feedback, aircraft comparison, Competition and History.
+- The iPad attempt failed in the pre-existing aircraft market acquisition
+  setup: the app terminated during repeated scrolling, before route management
+  opened. No iPad route pass is claimed for this run. A focused saved-campaign
+  iPad journey and isolated simulator run follow.
+- Hosted light/dark captures of all five sections and the AX5 planner passed.
+- Existing aircraft hosted captures remained in the native review suite.
+- Local symbol resolution, UTF-8 source checks and diff checks passed.
+
+The long Campaign and Horizon journeys were updated and compiled; these longer
+campaigns were not rerun in this focused validation. No physical-device or
+TestFlight deployment is claimed.
 
 ## Recommended next feature
 

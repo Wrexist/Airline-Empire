@@ -63,10 +63,20 @@ jobs:
           PY
       - name: Route screen journeys
         working-directory: AirlineEmpireApp
-        run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ui.xcresult -only-testing:AirlineEmpireUITests/RouteManagementUITests -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testAircraftConfigurationAtAccessibleSizes -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ui.log 2>&1
+        run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ui.xcresult -only-testing:AirlineEmpireUITests/RouteManagementUITests/testRoutePlannerAndSections -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testAircraftConfigurationAtAccessibleSizes -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ui.log 2>&1
+      - name: Prepare isolated iPad simulator
+        run: |
+          xcrun simctl shutdown '${{ steps.simulator.outputs.id }}'
+          xcrun simctl boot '${{ steps.simulator.outputs.ipad }}'
+          xcrun simctl bootstatus '${{ steps.simulator.outputs.ipad }}' -b
       - name: iPad route journey
         working-directory: AirlineEmpireApp
-        run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.ipad }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ipad.xcresult -only-testing:AirlineEmpireUITests/RouteManagementUITests/testRoutePlannerAndSections -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ipad.log 2>&1
+        run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.ipad }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ipad.xcresult -only-testing:AirlineEmpireUITests/RouteManagementUITests/testRoutePlannerFromSavedCampaign -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ipad.log 2>&1
+      - name: Collect simulator diagnostics
+        if: always()
+        run: |
+          mkdir -p build/ae049-crashes
+          find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 1 -type f -name '*.ips' -exec cp {} build/ae049-crashes/ \;
       - name: Export screenshots
         if: always()
         run: |

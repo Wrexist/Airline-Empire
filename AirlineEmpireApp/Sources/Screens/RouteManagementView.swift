@@ -106,7 +106,7 @@ private struct RouteAirportDiagram: View {
             context.stroke(line, with: .color(AETheme.accent), style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
             for (airport, p) in [(a, start), (b, end)] {
                 context.fill(Path(ellipseIn: CGRect(x: p.x - 5, y: p.y - 5, width: 10, height: 10)), with: .color(AETheme.positive))
-                context.draw(Text(airport.code.raw).font(.caption.bold()).foregroundStyle(AETheme.mutedText), at: CGPoint(x: p.x, y: p.y + 17))
+                context.draw(Text(airport.code.raw).font(.caption.bold()).foregroundStyle(AETheme.mutedText), at: CGPoint(x: min(size.width - 20, max(20, p.x)), y: min(size.height - 10, max(10, p.y + 17))))
             }
         }.frame(height: 140).clipped()
             .background(AETheme.canvas.opacity(0.6), in: .rect(cornerRadius: 12))
@@ -144,6 +144,8 @@ struct RoutePlanEditor: View {
                     Text("Explore a plan before changing your route.").font(.caption).foregroundStyle(AETheme.mutedText)
                     Text("Base one-way fare").font(.subheadline)
                     Text(Format.money(current.fare)).font(.largeTitle.bold()).monospacedDigit()
+                    Text("\((current.fare.asDouble / DemandSystem.referenceFare(distanceKm: route.distanceKm, tuning: catalog.tuning.demand)).formatted(.percent.precision(.fractionLength(0)))) of market reference")
+                        .font(.caption.weight(.medium)).foregroundStyle(AETheme.accent)
                     Text("Premium cabin yields are applied on top of this base fare.").font(.caption).foregroundStyle(AETheme.mutedText)
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 65))]) {
                         ForEach([-10, -5, 5, 10], id: \.self) { percent in
@@ -168,7 +170,9 @@ struct RoutePlanEditor: View {
                 AircraftPanel {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Review changes").font(.headline)
-                        Text("\(Format.money(original.fare)) → \(Format.money(current.fare)) → \(original.frequency) → \(current.frequency) round trips/day")
+                        Text("Fare: \(Format.money(original.fare)) to \(Format.money(current.fare))")
+                            .font(.subheadline)
+                        Text("Frequency: \(original.frequency) to \(current.frequency) round trips/day")
                             .font(.subheadline)
                         Button { confirming = true } label: {
                             Text("Apply Route Plan").frame(maxWidth: .infinity, minHeight: 44)

@@ -5,6 +5,23 @@ final class RouteManagementUITests: AEUITestCase {
         launch(appearance: .dark, arguments: ["-AEUITestDarkAppearance"])
         guard foundAirline(seed: "2030"), openAircraftMarket(), leaseAnAircraft(model: "PA-184"),
               openRouteBySearch(city: "Paris", code: "CDG"), assignFirstAircraft() else { return }
+        try exercisePlanner()
+    }
+
+    func testRoutePlannerFromSavedCampaign() throws {
+        let save = try XCTUnwrap(Bundle(for: RouteManagementUITests.self)
+            .url(forResource: "rival-pressure-retreat", withExtension: "json"))
+        launch(appearance: .dark, arguments: ["-AEUITestDarkAppearance", "-AEUITestLoadSave", save.path])
+        XCTAssertNotNil(waitForTab("Home", timeout: 30))
+        guard openAirlineSection("Routes") else { return }
+        let row = app.descendants(matching: .any).matching(identifier: "ae-route-row").firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
+        XCTAssertTrue(app.buttons["ae-route-tab-Overview"].waitForExistence(timeout: 10))
+        try exercisePlanner()
+    }
+
+    private func exercisePlanner() throws {
         for _ in 0..<8 { app.swipeDown() }
         checkpoint("ROUTE-overview-dark")
         let planning = app.buttons["ae-route-tab-Pricing & Schedule"]
@@ -31,7 +48,7 @@ final class RouteManagementUITests: AEUITestCase {
         for _ in 0..<6 where !comparison.isHittable { app.swipeUp() }
         XCTAssertTrue(comparison.isHittable)
         comparison.tap()
-        let aircraftChoice = app.buttons.matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "PA-184", "seats")).firstMatch
+        let aircraftChoice = app.buttons.matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "#", "seats")).firstMatch
         XCTAssertTrue(aircraftChoice.waitForExistence(timeout: 5))
         aircraftChoice.tap()
         XCTAssertTrue(app.buttons["Open cabin & upgrades"].waitForExistence(timeout: 5))
