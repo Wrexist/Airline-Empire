@@ -1503,12 +1503,12 @@ class AEUITestCase: XCTestCase {
         for _ in 0..<swipes {
             let frame = element.exists ? element.frame : .zero
             let top = app.frame.minY + 120
-            let bottom = app.tabBars.firstMatch.exists
-                ? app.tabBars.firstMatch.frame.minY - 24 : app.frame.maxY - 40
-            // The centre must be above the tab bar, not the whole frame: the
-            // last control on a long form can never sit fully clear of the
-            // floating bar, and a centre-outside test is what makes a tap
-            // land on the tab bar.
+            // The app frame, not the tab bar's: this screen is reached inside
+            // the briefing sheet, which covers the tab bar — a hidden tab bar
+            // still reports a frame, and reserving space for it left the last
+            // control permanently short of the bound. `isHittable` below is
+            // what proves the control is not occluded.
+            let bottom = app.frame.maxY - 40
             if !frame.isEmpty, frame.minY >= top, frame.midY <= bottom, element.isHittable {
                 XCTAssertTrue(waitUntilStill(element))
                 return
