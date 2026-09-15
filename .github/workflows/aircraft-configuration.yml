@@ -10,7 +10,9 @@ concurrency:
   cancel-in-progress: true
 jobs:
   native:
-    runs-on: macos-15
+    runs-on: macos-26
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
@@ -19,6 +21,7 @@ jobs:
         run: swift test --filter 'AircraftConfigurationTests|ServiceDemandTests|DemandTests|ReputationTests|FleetTests|RouteManagementTests|FlightOpsTests|PersistenceTests|SaveStoreTests'
       - name: Generate project
         run: |
+          mkdir -p build
           brew install xcodegen
           cd AirlineEmpireApp
           xcodegen generate
