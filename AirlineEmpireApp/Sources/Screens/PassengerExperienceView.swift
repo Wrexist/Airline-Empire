@@ -613,20 +613,18 @@ struct PassengerExperienceView: View {
     }
 }
 
-/// Adds the selected trait only when the element is selected.
+/// Adds or removes the selected trait to match the state.
 ///
-/// A conditional `accessibilityAddTraits` on a stable element identity did not
-/// remove the trait when it stopped applying — a pass through the tiers left
-/// both the installed and the proposed tier marked *Selected*. Changing the
-/// view's structure (rather than only the trait set) drops it correctly.
+/// `accessibilityAddTraits` alone did not clear a trait that stopped applying:
+/// a pass through the tiers left both the installed and the proposed tier
+/// marked *Selected*, because the trait is additive on a stable element
+/// identity. Removing it explicitly is what the API is for.
 private struct SelectedTraitModifier: ViewModifier {
     let selected: Bool
 
-    @ViewBuilder func body(content: Content) -> some View {
-        if selected {
-            content.accessibilityAddTraits(.isSelected)
-        } else {
-            content
-        }
+    func body(content: Content) -> some View {
+        content
+            .accessibilityAddTraits(selected ? .isSelected : [])
+            .accessibilityRemoveTraits(selected ? [] : .isSelected)
     }
 }

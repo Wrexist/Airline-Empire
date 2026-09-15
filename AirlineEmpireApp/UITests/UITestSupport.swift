@@ -1505,7 +1505,11 @@ class AEUITestCase: XCTestCase {
             let top = app.frame.minY + 120
             let bottom = app.tabBars.firstMatch.exists
                 ? app.tabBars.firstMatch.frame.minY - 24 : app.frame.maxY - 40
-            if !frame.isEmpty, frame.minY >= top, frame.maxY <= bottom, element.isHittable {
+            // The centre must be above the tab bar, not the whole frame: the
+            // last control on a long form can never sit fully clear of the
+            // floating bar, and a centre-outside test is what makes a tap
+            // land on the tab bar.
+            if !frame.isEmpty, frame.minY >= top, frame.midY <= bottom, element.isHittable {
                 XCTAssertTrue(waitUntilStill(element))
                 return
             }
