@@ -78,7 +78,7 @@ struct AircraftOverviewCard: View {
                             .frame(maxWidth: .infinity).accessibilityHidden(true)
                     }
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 160 : 92))], spacing: 14) {
-                        specItem("Seats", "\(aircraft?.cabin(for: spec).totalSeats ?? spec.seats)", "seat.recline.normal.fill")
+                        specItem("Seats", "\(aircraft?.cabin(for: spec).totalSeats ?? spec.seats)", "chair.lounge.fill")
                         specItem("Range", "\(spec.rangeKm.formatted()) km", "arrow.left.and.right")
                         specItem("Cruise speed", "\(spec.cruiseSpeedKmh) km/h", "stopwatch")
                         specItem("Runway", Vocab.runway(spec.runwayRequirement), "road.lanes")
@@ -192,7 +192,7 @@ struct AircraftConfigurationEditor: View {
     private var cabinPanel: some View {
         AircraftPanel {
             VStack(alignment: .leading, spacing: 16) {
-                heading("Cabin Layout", "Configure your cabin to match your strategy", "seat.recline.normal.fill")
+                heading("Cabin Layout", "Configure your cabin to match your strategy", "chair.lounge.fill")
                 Button("Reset to Default") {
                     var next = current
                     for cabin in CabinClass.allCases { next[cabin] = cabin == .economy ? spec.seats : 0 }
@@ -383,7 +383,7 @@ struct AircraftConfigurationEditor: View {
         "$\(Format.decimal(amount.asDouble, places: 2))"
     }
     private func icon(_ upgrade: AircraftUpgrade) -> String {
-        switch upgrade { case .wifi: "wifi"; case .dining: "cup.and.saucer.fill"; case .seats: "seat.recline.normal.fill"; case .entertainment: "play.rectangle" }
+        switch upgrade { case .wifi: "wifi"; case .dining: "cup.and.saucer.fill"; case .seats: "chair.lounge.fill"; case .entertainment: "play.rectangle" }
     }
 }
 
@@ -396,7 +396,7 @@ struct CabinClassControl: View {
     private var maximum: Int { (configuration.economy + count * cabin.space) / cabin.space }
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
-            Label(cabin.title, systemImage: "seat.recline.normal.fill")
+            Label(cabin.title, systemImage: "chair.lounge.fill")
                 .font(.caption.weight(.semibold)).foregroundStyle(cabin.tint)
             Text("\(count) seats").font(.subheadline).monospacedDigit()
             Text((Double(count) / Double(max(1, configuration.totalSeats))).formatted(.percent.precision(.fractionLength(0))))

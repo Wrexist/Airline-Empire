@@ -22,11 +22,11 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
 
     @MainActor
     private func capture<V: View>(_ view: V, name: String, controller: GameController,
-                                  width: CGFloat, dark: Bool) async throws {
+                                  width: CGFloat, dark: Bool, typeSize: DynamicTypeSize = .accessibility3) async throws {
         let content = view
             .environment(controller)
             .environment(Entitlements(arguments: ["-AEUITestFree"]))
-            .environment(\.dynamicTypeSize, .accessibility3)
+            .environment(\.dynamicTypeSize, typeSize)
             .environment(\.legibilityWeight, .bold)
             .environment(\.colorScheme, dark ? .dark : .light)
             .preferredColorScheme(dark ? .dark : .light)
@@ -103,4 +103,51 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
         XCTAssertEqual(controller.availableSlots().count, 1, "Returning to the menu must retain the old campaign")
         try await capture(NewGameView(), name: "recovery-menu", controller: controller, width: 375, dark: true)
     }
+    @MainActor
+    func testAircraftConfigurationAtAccessibleSizes() async throws {
+        XCTAssertNotNil(UIImage(systemName: "chair.lounge.fill"))
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let catalog = try ContentCatalog.loadBundled()
+        let engine = SimulationEngine(state: ScenarioBootstrap.newGame(
+            scenario: "founder", worldSeed: 42, startYear: 2030),
+            systems: GamePipeline.standard(), catalog: catalog)
+        XCTAssertEqual(engine.applyNow(FoundAirlineCommand(airlineName: "Pacifica review",
+            kind: .player, homeAirport: "ARN", startingCash: .dollars(10_000_000))), .applied)
+        let player = try XCTUnwrap(engine.state.playerAirline?.id)
+        XCTAssertEqual(engine.applyNow(LeaseAircraftCommand(lessee: player, type: "PA184", termMonths: 60)), .applied)
+        let aircraft = try XCTUnwrap(engine.state.fleet(of: player).first)
+        let spec = try XCTUnwrap(catalog.aircraftType(aircraft.typeCode))
+        var cabin = aircraft.cabin(for: spec)
+        cabin.setSeats(12, in: .first, capacity: spec.seats)
+        cabin.setSeats(24, in: .business, capacity: spec.seats)
+        cabin.setSeats(16, in: .premiumEconomy, capacity: spec.seats)
+        cabin.wifi = 1; cabin.dining = 1; cabin.seats = 1
+        XCTAssertEqual(engine.applyNow(ConfigureAircraftCommand(airline: player, aircraftID: aircraft.id, configuration: cabin)), .applied)
+        XCTAssertEqual(engine.applyNow(OpenRouteCommand(airline: player, origin: "ARN", destination: "CDG",
+            dailyRoundTrips: 3, ticketPrice: .dollars(180))), .applied)
+        let route = try XCTUnwrap(engine.state.routes(of: player).first)
+        XCTAssertEqual(engine.applyNow(AssignAircraftToRouteCommand(airline: player, route: route.id, aircraftID: aircraft.id)), .applied)
+        let manager = SaveManager(store: FileSaveStore(rootDirectory: root))
+        try manager.save(engine.state, slot: "aircraft-review")
+        let controller = GameController(savesDirectory: root)
+        controller.loadGame(slot: "aircraft-review")
+        try await waitForGame(controller)
+        defer { controller.setPumping(false) }
+        let installed = try XCTUnwrap(controller.snapshot?.aircraft[aircraft.id])
+        let state = try XCTUnwrap(controller.snapshot)
+        for dark in [false, true] {
+            try await capture(NavigationStack { AircraftDetailView(aircraftID: aircraft.id) },
+                name: "aircraft-overview", controller: controller, width: 393, dark: dark, typeSize: .large)
+            try await capture(ScrollView {
+                AircraftConfigurationEditor(aircraft: installed, spec: spec, snapshot: state,
+                    catalog: catalog, section: .cabin, draft: .constant(nil))
+            }, name: "aircraft-cabin-AX5", controller: controller, width: 375, dark: dark, typeSize: .accessibility5)
+            try await capture(ScrollView {
+                AircraftConfigurationEditor(aircraft: installed, spec: spec, snapshot: state,
+                    catalog: catalog, section: .upgrades, draft: .constant(nil))
+            }, name: "aircraft-upgrades-AX5", controller: controller, width: 375, dark: dark, typeSize: .accessibility5)
+        }
+    }
+
 }

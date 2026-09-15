@@ -2,7 +2,7 @@ import XCTest
 
 final class AircraftConfigurationUITests: AEUITestCase {
     func testCabinEditingAndUpgradeNavigationDark() throws {
-        launch(appearance: .dark)
+        launch(appearance: .dark, arguments: ["-AEUITestDarkAppearance"])
         guard foundAirline(seed: "2030"), openAircraftMarket(), leaseAnAircraft(model: "PA-184") else { return }
         guard openAirlineSection("Fleet") else { return }
         let row = app.descendants(matching: .any).matching(identifier: "ae-fleet-row").firstMatch
@@ -30,14 +30,14 @@ final class AircraftConfigurationUITests: AEUITestCase {
         checkpoint("AE049-upgrades-dark")
     }
 
-    func testCabinLightAccessibilityLayout() throws {
-        launch(appearance: .light, arguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+    func testCabinLightLayout() throws {
+        launch(appearance: .light)
         guard foundAirline(seed: "2030"), openAircraftMarket(), leaseAnAircraft(model: "PA-184") else { return }
         guard openAirlineSection("Fleet") else { return }
         let row = app.descendants(matching: .any).matching(identifier: "ae-fleet-row").firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 10))
         row.tap()
         XCTAssertTrue(app.buttons["ae-aircraft-tab-Cabin Layout"].waitForExistence(timeout: 10))
-        checkpoint("AE049-cabin-light-accessibility")
+        checkpoint("AE049-cabin-light")
     }
 }
