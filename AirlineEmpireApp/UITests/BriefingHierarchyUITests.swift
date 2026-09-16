@@ -14,7 +14,7 @@ final class BriefingHierarchyUITests: AEUITestCase {
         XCTAssertEqual(engine.applyNow(FoundAirlineCommand(airlineName: "Pacifica briefing",
             kind: .player, homeAirport: "ARN", startingCash: .dollars(40_000_000))), .applied)
         let player = try XCTUnwrap(engine.state.playerAirline?.id)
-        for _ in 0..<2 {
+        for _ in 0..<3 {
             XCTAssertEqual(engine.applyNow(LeaseAircraftCommand(
                 lessee: player, type: "PA184", termMonths: 60)), .applied)
         }
@@ -30,8 +30,13 @@ final class BriefingHierarchyUITests: AEUITestCase {
         engine.advance(ticks: ticksPerDay * 40)
 
         var state = engine.state
-        state.routes[route.id]?.economicsThisMonth.fuelCents = 900_000
-        state.aircraft[ids[1]]?.status =
+        // Force the flown route into a loss this month, keep one aircraft
+        // idle, and put a third on order: one of every rank.
+        if var economics = state.routes[route.id]?.economicsThisMonth {
+            economics.fuelCents = economics.revenueCents + 1_000_000
+            state.routes[route.id]?.economicsThisMonth = economics
+        }
+        state.aircraft[ids[2]]?.status =
             .ordered(deliveryAt: state.clock.now + .days(20))
 
         let url = FileManager.default.temporaryDirectory
