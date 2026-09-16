@@ -558,4 +558,83 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
         }
     }
 
+    /// World events and competition with content in every new group: a storm
+    /// on now, a boom forecast, a contested pair with a real share split, and
+    /// rival moves on the player's market and at one of their airports.
+    @MainActor
+    func testWorldEventsAndCompetitionAtAccessibleSizes() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let catalog = try ContentCatalog.loadBundled()
+        let engine = SimulationEngine(state: ScenarioBootstrap.newGame(
+            scenario: "founder", worldSeed: 42, startYear: 2030),
+            systems: GamePipeline.standard(), catalog: catalog)
+        XCTAssertEqual(engine.applyNow(FoundAirlineCommand(airlineName: "Pacifica",
+            kind: .player, homeAirport: "ARN", startingCash: .dollars(60_000_000))), .applied)
+        let player = try XCTUnwrap(engine.state.playerAirline?.id)
+        for (name, home) in [("Aurora Atlantic", "CDG"), ("SwiftJet", "LHR")] {
+            XCTAssertEqual(engine.applyNow(FoundAirlineCommand(airlineName: name, kind: .ai,
+                homeAirport: home, startingCash: .dollars(200_000_000))), .applied)
+        }
+        let aurora = try XCTUnwrap(engine.state.airlines.values
+            .first { $0.name == "Aurora Atlantic" }?.id)
+        let swift = try XCTUnwrap(engine.state.airlines.values
+            .first { $0.name == "SwiftJet" }?.id)
+        for airline in [player, aurora, swift] {
+            XCTAssertEqual(engine.applyNow(LeaseAircraftCommand(
+                lessee: airline, type: "PA184", termMonths: 60)), .applied)
+            XCTAssertEqual(engine.applyNow(OpenRouteCommand(airline: airline,
+                origin: "CDG", destination: "ARN", dailyRoundTrips: 2,
+                ticketPrice: .dollars(170))), .applied)
+            let route = try XCTUnwrap(engine.state.routes(of: airline).first)
+            let aircraft = try XCTUnwrap(engine.state.fleet(of: airline).first)
+            XCTAssertEqual(engine.applyNow(AssignAircraftToRouteCommand(
+                airline: airline, route: route.id, aircraftID: aircraft.id)), .applied)
+        }
+        let ticksPerDay = Int(GameCalendar.minutesPerDay / engine.state.meta.tickMinutes)
+        engine.advance(ticks: ticksPerDay * 3)
+
+        var state = engine.state
+        let now = state.clock.now
+        var storm = WorldEvent(id: 9001, kind: .storm(region: .europe),
+            beginsAt: now + .days(-1), endsAt: now + .days(5), severity: 0.6)
+        storm.hasStarted = true
+        state.world.activeEvents.append(storm)
+        state.world.activeEvents.append(WorldEvent(id: 9002,
+            kind: .tourismBoom(region: .europe), beginsAt: now + .days(4),
+            endsAt: now + .days(20), severity: 0.4))
+        state.world.recordMarketMove(MarketMove(at: now + .days(-6), airline: aurora,
+            origin: "ARN", destination: "CDG", kind: .entered))
+        state.world.recordMarketMove(MarketMove(at: now + .days(-18), airline: swift,
+            origin: "ARN", destination: "LHR", kind: .entered))
+
+        let manager = SaveManager(store: FileSaveStore(rootDirectory: root))
+        try manager.save(state, slot: "world-review")
+        let controller = GameController(savesDirectory: root)
+        controller.loadGame(slot: "world-review")
+        try await waitForGame(controller)
+        defer { controller.setPumping(false) }
+        let loaded = try XCTUnwrap(controller.snapshot)
+        let summary = try XCTUnwrap(loaded.competitionSummary(catalog: catalog))
+        XCTAssertFalse(summary.contested.isEmpty)
+        XCTAssertFalse(summary.recentMoves.isEmpty)
+
+        for dark in [false, true] {
+            for width in [CGFloat(393), CGFloat(834)] {
+                try await capture(NavigationStack { WorldEventsView() },
+                    name: "WORLD-01-events-\(Int(width))-\(dark ? "dark" : "light")",
+                    controller: controller, width: width, dark: dark, typeSize: .large,
+                    height: 2000, settleMilliseconds: 2500)
+                try await capture(NavigationStack { CompetitorsView() },
+                    name: "WORLD-02-competition-\(Int(width))-\(dark ? "dark" : "light")",
+                    controller: controller, width: width, dark: dark, typeSize: .large,
+                    height: 2000, settleMilliseconds: 2500)
+            }
+            try await capture(NavigationStack { CompetitorsView() },
+                name: "WORLD-07-AX5-\(dark ? "dark" : "light")", controller: controller,
+                width: 375, dark: dark, typeSize: .accessibility5, height: 2400,
+                settleMilliseconds: 2500)
+        }
+    }
+
 }

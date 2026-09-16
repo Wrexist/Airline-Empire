@@ -407,6 +407,17 @@ extension GameState {
             spareRotationsToday: spare)
     }
 
+    /// A move on the player's own pair outranks a move at an airport they
+    /// serve, which outranks a pair the player later joined. Lower sorts
+    /// first.
+    private static func movePriority(_ relevance: RivalMove.Relevance) -> Int {
+        switch relevance {
+        case .onPlayerMarket: 0
+        case .atPlayerAirport: 1
+        case .beforePlayerJoined: 2
+        }
+    }
+
     /// The competitive picture of the whole network. Nil without a player.
     public func competitionSummary(catalog: ContentCatalog) -> CompetitionSummary? {
         guard let player = playerAirline else { return nil }
@@ -489,7 +500,20 @@ extension GameState {
                 daysAgo: Int((now.rawMinutes - move.at.rawMinutes) / GameCalendar.minutesPerDay),
                 relevance: relevance, airlineCollapsed: airline.status == .collapsed))
         }
-        recent.reverse()   // most recent first
+        // Prioritised for a screen rather than strictly by date: a move on the
+        // player's own pair first, then a move at an airport they serve, then
+        // a pair the player later joined (context, not news). Within a rank,
+        // newest first; ties break deterministically.
+        recent.sort { lhs, rhs in
+            let l = Self.movePriority(lhs.relevance), r = Self.movePriority(rhs.relevance)
+            if l != r { return l < r }
+            if lhs.at.rawMinutes != rhs.at.rawMinutes {
+                return lhs.at.rawMinutes > rhs.at.rawMinutes
+            }
+            if lhs.airline != rhs.airline { return lhs.airline < rhs.airline }
+            if lhs.origin != rhs.origin { return lhs.origin < rhs.origin }
+            return lhs.destination < rhs.destination
+        }
 
         // Every rival, measured against the player's network.
         var standings: [RivalStanding] = []

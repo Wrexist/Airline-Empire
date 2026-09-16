@@ -199,12 +199,29 @@ struct WorldEventsView: View {
             VStack(spacing: AETheme.spacingM) {
                 if let snapshot = controller.snapshot, let catalog = controller.catalog {
                     let active = snapshot.world.activeEvents
+                    let onNow = active.filter(\.hasStarted)
+                    let forecast = active.filter { !$0.hasStarted }
                     if active.isEmpty {
                         EmptyStateView(icon: "sun.max", title: "Calm skies",
                                        message: "No storms, no shocks, no closures. A good time to expand.")
                     } else {
-                        ForEach(active, id: \.id) { event in
-                            eventCard(event, snapshot: snapshot, catalog: catalog)
+                        // What it means for *this* airline first, then the
+                        // disruption split into what is here and what is
+                        // coming — the two are acted on differently.
+                        exposureCard(onNow: onNow, forecast: forecast,
+                                     snapshot: snapshot, catalog: catalog)
+                        if !onNow.isEmpty {
+                            sectionHeader("Happening now", "exclamationmark.triangle",
+                                          id: "ae-events-now")
+                            ForEach(onNow, id: \.id) { event in
+                                eventCard(event, snapshot: snapshot, catalog: catalog)
+                            }
+                        }
+                        if !forecast.isEmpty {
+                            sectionHeader("Forecast", "clock", id: "ae-events-forecast")
+                            ForEach(forecast, id: \.id) { event in
+                                eventCard(event, snapshot: snapshot, catalog: catalog)
+                            }
                         }
                     }
                 } else {
@@ -225,6 +242,69 @@ struct WorldEventsView: View {
         .navigationDestination(for: AircraftID.self) {
             AircraftDetailView(aircraftID: $0)
         }
+    }
+
+    private func sectionHeader(_ title: String, _ icon: String, id: String) -> some View {
+        AESectionHeader(text: title, systemImage: icon)
+            .accessibilityIdentifier(id)
+    }
+
+    /// The player's real exposure across every live event: which of their
+    /// routes are in a path and how much flying that is. Counts, not
+    /// estimates — no disruption and no saving is claimed (the event's own
+    /// effect line says what the simulation does with it).
+    private func exposureCard(onNow: [WorldEvent], forecast: [WorldEvent],
+                              snapshot: GameState, catalog: ContentCatalog) -> some View {
+        let routes = affectedRoutes(onNow + forecast, snapshot: snapshot, catalog: catalog)
+        let roundTrips = routes.reduce(0) { $0 + $1.dailyRoundTrips }
+        return AEPanel {
+            VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                AESectionHeader(text: "Your exposure",
+                                systemImage: "exclamationmark.circle")
+                if routes.isEmpty {
+                    Label("None of your routes are in a path.", systemImage: "checkmark.circle")
+                        .font(.subheadline)
+                        .foregroundStyle(AETheme.positive)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text("\(routes.count) of your routes \(routes.count == 1 ? "is" : "are") in a path — \(roundTrips) round \(roundTrips == 1 ? "trip" : "trips") a day.")
+                        .font(.subheadline)
+                        .fixedSize(horizontal: false, vertical: true)
+                    ForEach(routes, id: \.id) { route in
+                        NavigationLink(value: route.id) {
+                            HStack {
+                                Text(Vocab.pair(route.origin, route.destination))
+                                    .font(.subheadline)
+                                Spacer()
+                                Text("\(route.dailyRoundTrips)×/day")
+                                    .font(.caption).monospacedDigit()
+                                    .foregroundStyle(AETheme.mutedText)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption).foregroundStyle(AETheme.mutedText)
+                            }
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.aePress)
+                        .accessibilityIdentifier("ae-event-exposed-route")
+                    }
+                }
+            }
+        }
+        .accessibilityIdentifier("ae-events-exposure")
+    }
+
+    /// The player's routes across several events, each counted once — a route
+    /// in two storms is one route with one schedule.
+    private func affectedRoutes(_ events: [WorldEvent], snapshot: GameState,
+                                catalog: ContentCatalog) -> [Route] {
+        var byID: [RouteID: Route] = [:]
+        for event in events {
+            for route in affectedRoutes(event, snapshot: snapshot, catalog: catalog) {
+                byID[route.id] = route
+            }
+        }
+        return byID.values.sorted { $0.id < $1.id }
     }
 
     private func eventCard(_ event: WorldEvent, snapshot: GameState,
@@ -266,7 +346,8 @@ struct WorldEventsView: View {
                         .font(.subheadline)
                         .foregroundStyle(AETheme.positive)
                 } else {
-                    Text("\(affected.count) of your routes \(affected.count == 1 ? "is" : "are") in its path:")
+                    let roundTrips = affected.reduce(0) { $0 + $1.dailyRoundTrips }
+                    Text("\(affected.count) of your routes \(affected.count == 1 ? "is" : "are") in its path — \(roundTrips) round \(roundTrips == 1 ? "trip" : "trips") a day:")
                         .font(.subheadline.weight(.medium))
                     ForEach(affected, id: \.id) { route in
                         NavigationLink(value: route.id) {
@@ -334,9 +415,13 @@ struct CompetitorsView: View {
                         EmptyStateView(icon: "person.2.slash", title: "No rivals",
                                        message: "This world has no competing airlines.")
                     } else {
+                        // The player's own fights and the news near them lead;
+                        // the cast of rivals follows, as characters.
                         overview(summary)
+                        whereYouAreFighting(summary)
+                        rivalMoves(summary, snapshot: snapshot)
                         ForEach(summary.rivals, id: \.airline) { rival in
-                            rivalCard(rival, summary: summary, snapshot: snapshot)
+                            rivalCard(rival)
                         }
                     }
                 } else {
@@ -354,9 +439,7 @@ struct CompetitorsView: View {
         .navigationDestination(for: AircraftID.self) { AircraftDetailView(aircraftID: $0) }
     }
 
-    /// The network's competitive position in one strip, and every contested
-    /// route as a link to where the fight is.
-    @ViewBuilder
+    /// The network's competitive position in one strip.
     private func overview(_ summary: CompetitionSummary) -> some View {
         AEMetricStrip([
             AEMetric("contested routes", "\(summary.contestedRoutes)",
@@ -370,32 +453,182 @@ struct CompetitorsView: View {
         ])
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Competitive position")
+    }
+
+    /// Every contested pair as a comparison rather than a sentence: the
+    /// standing, a bar of today's passengers by carrier, the strongest rival
+    /// beside the player, what separates them, and — when the player is
+    /// behind — the response the simulation's own arithmetic supports.
+    ///
+    /// All of it is `MarketCompetition`: the demand engine's split from this
+    /// morning, its own attractiveness terms for the edge, and the
+    /// scheduler's spare rotations for the response. Nothing estimates what a
+    /// rival will do next.
+    @ViewBuilder
+    private func whereYouAreFighting(_ summary: CompetitionSummary) -> some View {
         if !summary.contested.isEmpty {
             AEPanel {
-                VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                    AESectionHeader(text: "Where you are fighting", systemImage: "arrow.left.arrow.right")
+                VStack(alignment: .leading, spacing: AETheme.spacingM) {
+                    AESectionHeader(text: "Where you are fighting",
+                                    systemImage: "arrow.left.arrow.right")
+                    Text("Share of today's passengers, after the demand engine's own split.")
+                        .font(.caption).foregroundStyle(AETheme.mutedText)
+                        .fixedSize(horizontal: false, vertical: true)
                     ForEach(summary.contested, id: \.routeID) { market in
-                        NavigationLink(value: market.routeID) {
-                            HStack {
-                                Text(Vocab.pair(market.origin, market.destination))
-                                    .font(.subheadline.weight(.medium))
-                                Spacer()
-                                Text(standingWord(market))
-                                    .font(.caption)
-                                    .foregroundStyle(standingTint(market.standing))
-                                Image(systemName: "chevron.right")
-                                    .font(.caption)
-                                    .foregroundStyle(AETheme.mutedText)
-                            }
-                            .frame(minHeight: 44)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.aePress)
-                        .accessibilityIdentifier("ae-contested-route")
+                        contestedRow(market)
+                    }
+                }
+            }
+            .accessibilityIdentifier("ae-contested-markets")
+        }
+    }
+
+    private func contestedRow(_ market: MarketCompetition) -> some View {
+        NavigationLink(value: market.routeID) {
+            VStack(alignment: .leading, spacing: AETheme.spacingXS) {
+                HStack(spacing: AETheme.spacingS) {
+                    Text(Vocab.pair(market.origin, market.destination))
+                        .font(.subheadline.weight(.medium))
+                    Spacer(minLength: AETheme.spacingS)
+                    Text(standingWord(market))
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(standingTint(market.standing))
+                    Image(systemName: "chevron.right")
+                        .font(.caption).foregroundStyle(AETheme.mutedText)
+                }
+                shareBar(market)
+                shareLabels(market)
+                    .font(.caption2).monospacedDigit()
+                if let edge = Vocab.edge(market) {
+                    Text(edge)
+                        .font(.caption2).foregroundStyle(AETheme.mutedText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let response = Vocab.competitiveResponse(market) {
+                    Text(response)
+                        .font(.caption2).foregroundStyle(AETheme.caution)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.aePress)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityStanding(market))
+        .accessibilityIdentifier("ae-contested-route")
+    }
+
+    /// Today's passengers by carrier: the player in the app's accent, each
+    /// rival in its own livery. One glance at who is winning.
+    private func shareBar(_ market: MarketCompetition) -> some View {
+        let playerShare = market.playerShareToday ?? 0
+        let rivals = market.rivals.map { ($0.shareToday ?? 0, Vocab.liveryColor($0.livery)) }
+        let total = playerShare + rivals.reduce(0) { $0 + $1.0 }
+        return GeometryReader { geometry in
+            HStack(spacing: 1) {
+                if total <= 0 {
+                    Rectangle().fill(AETheme.surfaceRim.opacity(0.5))
+                } else {
+                    Rectangle().fill(AETheme.accent)
+                        .frame(width: geometry.size.width * playerShare / total)
+                    ForEach(Array(rivals.enumerated()), id: \.offset) { _, segment in
+                        Rectangle().fill(segment.1)
+                            .frame(width: geometry.size.width * segment.0 / total)
                     }
                 }
             }
         }
+        .frame(height: 8)
+        .clipShape(Capsule())
+        .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private func shareLabels(_ market: MarketCompetition) -> some View {
+        if let share = market.playerShareToday {
+            HStack {
+                Text("You \(Format.percent(share))")
+                Spacer(minLength: AETheme.spacingS)
+                if let strongest = market.rivals.first, let theirShare = strongest.shareToday {
+                    Text("\(strongest.name) \(Format.percent(theirShare))")
+                        .foregroundStyle(AETheme.mutedText)
+                }
+            }
+        } else {
+            Text(standingWord(market))
+                .foregroundStyle(AETheme.mutedText)
+        }
+    }
+
+    private func accessibilityStanding(_ market: MarketCompetition) -> String {
+        let base = Vocab.standing(market) ?? Vocab.pair(market.origin, market.destination)
+        guard let response = Vocab.competitiveResponse(market) else { return base }
+        return "\(base) \(response)"
+    }
+
+    /// The last thirty days of rival moves that touch this airline, on the
+    /// player's own pairs first (Core's priority) and newest first within a
+    /// rank. Each move on one of the player's routes opens it.
+    @ViewBuilder
+    private func rivalMoves(_ summary: CompetitionSummary, snapshot: GameState) -> some View {
+        if !summary.recentMoves.isEmpty {
+            AEPanel {
+                VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                    AESectionHeader(text: "What rivals did near you",
+                                    systemImage: "person.2.fill")
+                    Text("The last thirty days, on your markets first.")
+                        .font(.caption).foregroundStyle(AETheme.mutedText)
+                    ForEach(Array(summary.recentMoves.prefix(6).enumerated()),
+                            id: \.offset) { _, move in
+                        moveRow(move, snapshot: snapshot)
+                    }
+                    if summary.recentMoves.count > 6 {
+                        Text("+\(summary.recentMoves.count - 6) more in the last thirty days.")
+                            .font(.caption2).foregroundStyle(AETheme.mutedText)
+                    }
+                }
+            }
+            .accessibilityIdentifier("ae-rival-moves")
+        }
+    }
+
+    @ViewBuilder
+    private func moveRow(_ move: RivalMove, snapshot: GameState) -> some View {
+        let label = HStack(spacing: AETheme.spacingS) {
+            Image(systemName: move.kind == .entered ? "plus.circle" : "minus.circle")
+                .font(.caption).foregroundStyle(moveTint(move))
+                .accessibilityHidden(true)
+            Text(Vocab.move(move))
+                .font(.subheadline)
+                .foregroundStyle(moveTint(move))
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        if let route = playerRoute(for: move, snapshot: snapshot) {
+            NavigationLink(value: route) {
+                label.frame(minHeight: 44).contentShape(Rectangle())
+            }
+            .buttonStyle(.aePress)
+            .accessibilityIdentifier("ae-rival-move")
+        } else {
+            label.frame(minHeight: 44, alignment: .leading)
+        }
+    }
+
+    private func moveTint(_ move: RivalMove) -> Color {
+        guard move.relevance == .onPlayerMarket else { return AETheme.mutedText }
+        return move.kind == .entered ? AETheme.caution : AETheme.positive
+    }
+
+    /// The player's own route on the pair a move is about, when the move is on
+    /// one of their markets. An airport-level move has no route of ours.
+    private func playerRoute(for move: RivalMove, snapshot: GameState) -> RouteID? {
+        guard move.relevance != .atPlayerAirport,
+              let player = snapshot.playerAirline?.id else { return nil }
+        return snapshot.routes(of: player).first {
+            $0.origin == move.origin && $0.destination == move.destination
+        }?.id
     }
 
     private func standingWord(_ market: MarketCompetition) -> String {
@@ -417,10 +650,8 @@ struct CompetitorsView: View {
         }
     }
 
-    private func rivalCard(_ rival: RivalStanding, summary: CompetitionSummary,
-                           snapshot: GameState) -> some View {
-        let moves = summary.recentMoves.filter { $0.airline == rival.airline }
-        return AECard(tint: rival.marketsWherePlayerTrails > 0
+    private func rivalCard(_ rival: RivalStanding) -> some View {
+        AECard(tint: rival.marketsWherePlayerTrails > 0
                       ? AETheme.caution.opacity(0.12)
                       : rival.sharedMarkets > 0 ? AETheme.accent.opacity(0.12) : nil) {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
@@ -483,17 +714,9 @@ struct CompetitorsView: View {
                         .font(.subheadline)
                         .foregroundStyle(AETheme.mutedText)
                 }
-                // What they did near you this month — from the world's own
-                // record, so it survives a save and a fortnight of flying.
-                ForEach(Array(moves.prefix(3).enumerated()), id: \.offset) { _, move in
-                    Label(Vocab.move(move), systemImage: move.kind == .entered
-                          ? "plus.circle" : "minus.circle")
-                        .font(.caption)
-                        .foregroundStyle(move.relevance == .onPlayerMarket
-                                         ? (move.kind == .entered ? AETheme.caution : AETheme.positive)
-                                         : AETheme.mutedText)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                // What they did near you lives above, in one prioritised list:
+                // per-card copies of the same moves made the news hard to scan
+                // and repeated it once per rival.
             }
         }
         .accessibilityIdentifier("ae-rival-card")

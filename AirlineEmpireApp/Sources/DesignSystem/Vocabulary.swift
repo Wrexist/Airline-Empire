@@ -796,9 +796,17 @@ extension Vocab {
         }
     }
 
+    /// The single attractiveness term that separates the player from the
+    /// strongest rival, for a compact comparison row. Nil when nothing
+    /// dominates — a screen is never handed a reason that is not one.
+    static func edge(_ model: MarketCompetition) -> String? {
+        guard let edge = model.edge else { return nil }
+        return edgeClause(edge)
+    }
+
     /// The term that separates the player from the strongest rival, read
     /// after the standing.
-    private static func edgeClause(_ edge: MarketCompetition.Edge) -> String {
+    static func edgeClause(_ edge: MarketCompetition.Edge) -> String {
         switch edge {
         case .fare(let ahead):
             return ahead ? "mostly because your fare is lower"
