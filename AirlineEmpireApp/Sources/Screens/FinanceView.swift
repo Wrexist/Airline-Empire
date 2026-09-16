@@ -248,7 +248,7 @@ struct FinanceContent: View {
                 commitmentRow("Company overhead", recurring.overhead, link: nil)
                 Divider()
                 figureTotal("Total each month", recurring.monthlyTotal)
-                Text("Payroll is charged from the fleet and routes held at the month boundary, and station services bill there too. Loan payments include principal, which reduces debt rather than counting as a cost.")
+                Text("Payroll is charged from the fleet and routes held at the month boundary; leases, station services and loan service bill there too, so they land in the following month's statement. Loan payments include principal, which reduces debt rather than counting as a cost.")
                     .font(.caption2).foregroundStyle(AETheme.mutedText)
                     .fixedSize(horizontal: false, vertical: true)
             }
