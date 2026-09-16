@@ -458,7 +458,7 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
         state.progression.missions = [Mission(
             id: 99, sourceEventID: -1,
             kind: .boomRush(region: .europe, targetPassengers: 5_000),
-            deadline: now + .days(20), reward: .dollars(500_000), baseline: 0)]
+            deadline: now + .days(20), reward: .dollars(500_000), baseline: 78_000)]
         state.progression.milestones = ["firstFlight", "firstOwnedAircraft"]
         state.progression.achievements = ["debtFree"]
         state.progression.record = [
