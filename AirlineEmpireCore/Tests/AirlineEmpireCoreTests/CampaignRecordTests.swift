@@ -44,7 +44,7 @@ struct CampaignRecordTests {
     }
 
     @Test func theSystemRecordsAFirstFlight() throws {
-        let (engine, airline, catalog) = try market()
+        let (engine, _, catalog) = try market()
         #expect(engine.state.progression.record.isEmpty)
         engine.advance(ticks: Fixtures.ticksPerDay * 2)
         let record = engine.state.progression.record
@@ -59,9 +59,8 @@ struct CampaignRecordTests {
     }
 
     @Test func theModelNamesWhatTheNextEraUnlocks() throws {
-        let catalog = try DemandFixtures.anchorCatalog()
-        let state = Fixtures.newState()
-        let model = try #require(state.progressionModel(catalog: catalog))
+        let (engine, _, catalog) = try market()
+        let model = try #require(engine.state.progressionModel(catalog: catalog))
         #expect(model.era == .startup)
         #expect(model.nextEra == .regional)
         #expect(model.nextEraUnlocks == [.largeNarrowbody])
@@ -93,7 +92,7 @@ struct CampaignRecordTests {
     }
 
     @Test func theRecordSurvivesSaveLoad() throws {
-        let (engine, airline, _) = try market()
+        let (engine, _, _) = try market()
         engine.advance(ticks: Fixtures.ticksPerDay * 2)
         let before = engine.state.progression.record
         #expect(!before.isEmpty)
@@ -102,6 +101,5 @@ struct CampaignRecordTests {
         let restored = try JSONSaveCodec().decode(data)
         #expect(restored.progression.record == before)
         #expect(restored.progression.eraSince == engine.state.progression.eraSince)
-        _ = airline
     }
 }

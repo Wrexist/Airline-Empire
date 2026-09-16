@@ -261,7 +261,8 @@ enum Vocab {
 
     static func momentTitle(_ kind: ProgressionMoment.Kind) -> String {
         switch kind {
-        case .eraAdvanced(let era): "Reached the \(era(era)) era"
+        // `Self.` because the bound value shadows the `era(_:)` helper.
+        case .eraAdvanced(let era): "Reached the \(Self.era(era)) era"
         case .milestone(let code): milestone(code)
         case .achievement(let code): achievement(code)
         case .capability(let code): capability(code)
