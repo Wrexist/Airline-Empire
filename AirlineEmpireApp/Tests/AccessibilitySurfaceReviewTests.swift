@@ -574,7 +574,7 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
         let player = try XCTUnwrap(engine.state.playerAirline?.id)
         for (name, home) in [("Aurora Atlantic", "CDG"), ("SwiftJet", "LHR")] {
             XCTAssertEqual(engine.applyNow(FoundAirlineCommand(airlineName: name, kind: .ai,
-                homeAirport: home, startingCash: .dollars(200_000_000))), .applied)
+                homeAirport: AirportCode(home), startingCash: .dollars(200_000_000))), .applied)
         }
         let aurora = try XCTUnwrap(engine.state.airlines.values
             .first { $0.name == "Aurora Atlantic" }?.id)
