@@ -80,4 +80,29 @@ struct CompetitionPriorityTests {
         let olderIndex = try #require(summary.recentMoves.firstIndex(of: olderMove))
         #expect(newerIndex < olderIndex)
     }
+
+    /// A rival that enters and leaves in the same instant (two commands in one
+    /// tick) must read as the exit: the head of the list is the move recorded
+    /// last. Sorting only by time left this to the array's order, and an entry
+    /// followed by an exit came out as "they arrived" (run 35136273799).
+    @Test func movesInTheSameInstantListTheLaterRecordedFirst() throws {
+        let (engine, _, swift, catalog) = try world()
+        var state = engine.state
+        let now = state.clock.now
+        state.world.recordMarketMove(MarketMove(at: now, airline: swift,
+                                                origin: "ARN", destination: "CDG",
+                                                kind: .entered))
+        state.world.recordMarketMove(MarketMove(at: now, airline: swift,
+                                                origin: "ARN", destination: "CDG",
+                                                kind: .left))
+        let summary = try #require(state.competitionSummary(catalog: catalog))
+        let sameInstant = summary.recentMoves.filter { $0.at == now && $0.airline == swift }
+        #expect(sameInstant.count == 2)
+        #expect(sameInstant.first?.kind == .left,
+                "The move recorded last heads a same-instant pair")
+        guard case .rivalLeftYourMarket = summary.headline else {
+            Issue.record("expected an exit headline, got \(String(describing: summary.headline))")
+            return
+        }
+    }
 }

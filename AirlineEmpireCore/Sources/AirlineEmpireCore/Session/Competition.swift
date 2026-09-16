@@ -445,7 +445,7 @@ extension GameState {
         // Recent moves, filtered to what touches the player.
         let now = clock.now
         let window = CompetitionSummary.recentWindowDays * GameCalendar.minutesPerDay
-        var recent: [RivalMove] = []
+        var recent: [(move: RivalMove, seq: Int)] = []
         var enteredBy: [AirlineID: Int] = [:]
         var leftBy: [AirlineID: Int] = [:]
         // The player's own record on each pair, so a rival's move can be
@@ -468,7 +468,7 @@ extension GameState {
             // was on the pair before it.
             return moves.first?.kind == .left
         }
-        for move in world.marketMoves where move.airline != player.id
+        for (seq, move) in world.marketMoves.enumerated() where move.airline != player.id
             && now.rawMinutes - move.at.rawMinutes <= window {
             switch move.kind {
             case .entered: enteredBy[move.airline, default: 0] += 1
@@ -494,26 +494,30 @@ extension GameState {
                 origin = ownRoute.origin
                 destination = ownRoute.destination
             }
-            recent.append(RivalMove(
+            recent.append((RivalMove(
                 airline: move.airline, name: airline.name, origin: origin,
                 destination: destination, kind: move.kind, at: move.at,
                 daysAgo: Int((now.rawMinutes - move.at.rawMinutes) / GameCalendar.minutesPerDay),
-                relevance: relevance, airlineCollapsed: airline.status == .collapsed))
+                relevance: relevance, airlineCollapsed: airline.status == .collapsed), seq))
         }
         // Prioritised for a screen rather than strictly by date: a move on the
         // player's own pair first, then a move at an airport they serve, then
         // a pair the player later joined (context, not news). Within a rank,
-        // newest first; ties break deterministically.
+        // newest first; two moves recorded in the same instant are ordered by
+        // their position in the record (later recorded first), and the rest
+        // break deterministically.
         recent.sort { lhs, rhs in
-            let l = Self.movePriority(lhs.relevance), r = Self.movePriority(rhs.relevance)
+            let l = Self.movePriority(lhs.move.relevance), r = Self.movePriority(rhs.move.relevance)
             if l != r { return l < r }
-            if lhs.at.rawMinutes != rhs.at.rawMinutes {
-                return lhs.at.rawMinutes > rhs.at.rawMinutes
+            if lhs.move.at.rawMinutes != rhs.move.at.rawMinutes {
+                return lhs.move.at.rawMinutes > rhs.move.at.rawMinutes
             }
-            if lhs.airline != rhs.airline { return lhs.airline < rhs.airline }
-            if lhs.origin != rhs.origin { return lhs.origin < rhs.origin }
-            return lhs.destination < rhs.destination
+            if lhs.seq != rhs.seq { return lhs.seq > rhs.seq }
+            if lhs.move.airline != rhs.move.airline { return lhs.move.airline < rhs.move.airline }
+            if lhs.move.origin != rhs.move.origin { return lhs.move.origin < rhs.move.origin }
+            return lhs.move.destination < rhs.move.destination
         }
+        let recentMoves = recent.map(\.move)
 
         // Every rival, measured against the player's network.
         var standings: [RivalStanding] = []
@@ -558,7 +562,7 @@ extension GameState {
         // entry still read "entered your market 30 days ago" while the live
         // fact was an even fight in progress (BUG-048).
         let headline: CompetitionSummary.Headline?
-        if let move = recent.first(where: {
+        if let move = recentMoves.first(where: {
             $0.relevance == .onPlayerMarket
                 && $0.daysAgo <= CompetitionSummary.headlineMoveWindowDays
         }) {
@@ -572,7 +576,7 @@ extension GameState {
             // "SwiftJet added 2 routes this month" instead.
             headline = .fighting(contested: contested.count)
         } else if let biggest, biggest.marketsEnteredRecently >= 2,
-                  recent.contains(where: { $0.airline == biggest.airline && $0.kind == .entered }) {
+                  recentMoves.contains(where: { $0.airline == biggest.airline && $0.kind == .entered }) {
             headline = .rivalExpanding(biggest)
         } else if !contested.isEmpty {
             headline = .leading(contested: contested.count)
@@ -583,7 +587,7 @@ extension GameState {
         return CompetitionSummary(
             contested: contested, contestedRoutes: contested.count,
             trailingRoutes: trailing, leadingRoutes: leading,
-            biggestRival: biggest, rivals: standings, recentMoves: recent,
+            biggestRival: biggest, rivals: standings, recentMoves: recentMoves,
             headline: headline)
     }
 }

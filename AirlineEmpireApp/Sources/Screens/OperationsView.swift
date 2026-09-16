@@ -291,6 +291,10 @@ struct WorldEventsView: View {
                 }
             }
         }
+        // `.contain` keeps each exposed route's own identifier queryable;
+        // without it the panel's identifier overwrites every child's and the
+        // route links become unaddressable (run 35136273799).
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("ae-events-exposure")
     }
 
@@ -479,6 +483,7 @@ struct CompetitorsView: View {
                     }
                 }
             }
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("ae-contested-markets")
         }
     }
@@ -589,6 +594,7 @@ struct CompetitorsView: View {
                     }
                 }
             }
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("ae-rival-moves")
         }
     }
