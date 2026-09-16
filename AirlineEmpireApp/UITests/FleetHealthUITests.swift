@@ -73,8 +73,11 @@ final class FleetHealthUITests: AEUITestCase {
                       "A board row must open that aircraft's own screen")
         checkpoint("FLEET-02-aircraft")
 
-        // The board did not displace the filter it sits beside.
-        app.navigationBars.buttons.firstMatch.tap()
+        // The board did not displace the filter it sits beside. The back
+        // control by name: `firstMatch` on this bar is the time button.
+        let back = app.navigationBars.buttons["BackButton"]
+        XCTAssertTrue(back.waitForExistence(timeout: 5))
+        back.tap()
         let filter = app.buttons["ae-fleet-status-filter"]
         XCTAssertTrue(filter.waitForExistence(timeout: 10))
         XCTAssertLessThanOrEqual(filter.frame.height, 60)
