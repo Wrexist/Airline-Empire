@@ -423,4 +423,76 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
         }
     }
 
+    /// Progression with a lived-in campaign: a closed month behind it, a
+    /// capability programme running, a mission in progress and a log with
+    /// dated moments.
+    @MainActor
+    func testCampaignProgressAtAccessibleSizes() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let catalog = try ContentCatalog.loadBundled()
+        let engine = SimulationEngine(state: ScenarioBootstrap.newGame(
+            scenario: "founder", worldSeed: 42, startYear: 2030),
+            systems: GamePipeline.standard(), catalog: catalog)
+        XCTAssertEqual(engine.applyNow(FoundAirlineCommand(airlineName: "Pacifica campaign",
+            kind: .player, homeAirport: "ARN", startingCash: .dollars(60_000_000))), .applied)
+        let player = try XCTUnwrap(engine.state.playerAirline?.id)
+        XCTAssertEqual(engine.applyNow(LeaseAircraftCommand(
+            lessee: player, type: "PA184", termMonths: 60)), .applied)
+        XCTAssertEqual(engine.applyNow(OpenRouteCommand(airline: player, origin: "ARN",
+            destination: "CDG", dailyRoundTrips: 3, ticketPrice: .dollars(180))), .applied)
+        let route = try XCTUnwrap(engine.state.routes(of: player).first)
+        let aircraft = try XCTUnwrap(engine.state.fleet(of: player).first)
+        XCTAssertEqual(engine.applyNow(AssignAircraftToRouteCommand(
+            airline: player, route: route.id, aircraftID: aircraft.id)), .applied)
+        let ticksPerDay = Int(GameCalendar.minutesPerDay / engine.state.meta.tickMinutes)
+        engine.advance(ticks: ticksPerDay * 100)
+
+        // Test-only surgery to stage a campaign mid-arc.
+        var state = engine.state
+        let now = state.clock.now
+        state.progression.era = .national
+        state.progression.activePrograms = [CapabilityProgram(
+            code: .fuelHedging, startedAt: now - .days(30),
+            completesAt: now + .days(60), cost: catalog.tuning.progression.capabilityCost)]
+        state.progression.missions = [Mission(
+            id: 99, sourceEventID: -1,
+            kind: .boomRush(region: .europe, targetPassengers: 5_000),
+            deadline: now + .days(20), reward: .dollars(500_000), baseline: 0)]
+        state.progression.milestones = ["firstFlight", "firstOwnedAircraft"]
+        state.progression.achievements = ["debtFree"]
+        state.progression.record = [
+            ProgressionMoment(at: now - .days(100), kind: .milestone("firstFlight")),
+            ProgressionMoment(at: now - .days(60), kind: .milestone("firstOwnedAircraft")),
+            ProgressionMoment(at: now - .days(41), kind: .eraAdvanced(.regional)),
+            ProgressionMoment(at: now - .days(40), kind: .eraAdvanced(.national)),
+            ProgressionMoment(at: now - .days(30), kind: .achievement("debtFree")),
+            ProgressionMoment(at: now - .days(10),
+                              kind: .mission(.flightContract(targetFlights: 20),
+                                             reward: .dollars(30_000))),
+        ]
+        let manager = SaveManager(store: FileSaveStore(rootDirectory: root))
+        try manager.save(state, slot: "campaign-review")
+        let controller = GameController(savesDirectory: root)
+        controller.loadGame(slot: "campaign-review")
+        try await waitForGame(controller)
+        defer { controller.setPumping(false) }
+        let loaded = try XCTUnwrap(controller.snapshot)
+        let model = try XCTUnwrap(loaded.progressionModel(catalog: catalog))
+        XCTAssertEqual(model.era, .national)
+        XCTAssertEqual(model.record.count, 6)
+
+        for dark in [false, true] {
+            try await capture(NavigationStack { ProgressionView() },
+                name: "CAMPAIGN-01-\(dark ? "dark" : "light")", controller: controller,
+                width: 393, dark: dark, typeSize: .large, height: 2200, settleMilliseconds: 2500)
+            try await capture(NavigationStack { ProgressionView() },
+                name: "CAMPAIGN-08-iPad-\(dark ? "dark" : "light")", controller: controller,
+                width: 834, dark: dark, typeSize: .large, height: 2200, settleMilliseconds: 2500)
+            try await capture(NavigationStack { ProgressionView() },
+                name: "CAMPAIGN-07-AX5-\(dark ? "dark" : "light")", controller: controller,
+                width: 375, dark: dark, typeSize: .accessibility5, height: 2200, settleMilliseconds: 2500)
+        }
+    }
+
 }

@@ -22,7 +22,10 @@ public enum SaveFormat {
     /// v12 added `world.marketMoves` (AE-037: who entered and left which
     /// city pair, the record competition needs and the event log cannot keep).
     /// v13 adds the persistent rescue decision and optional contract kinds.
-    public static let currentVersion = 13
+    /// v14 adds `progression.record`: the bounded, dated log of completed
+    /// work (milestones, achievements, capability programs, missions, era
+    /// advances) an older save never kept.
+    public static let currentVersion = 14
 }
 
 public struct SaveEnvelope: Codable, Sendable {

@@ -189,6 +189,31 @@ enum Vocab {
         }
     }
 
+    /// A glyph per era, so the campaign header reads as a chapter rather than
+    /// as a label.
+    static func eraIcon(_ era: Era) -> String {
+        switch era {
+        case .startup: "leaf.fill"
+        case .regional: "map.fill"
+        case .national: "building.columns.fill"
+        case .international: "globe.europe.africa.fill"
+        case .empire: "crown.fill"
+        }
+    }
+
+    /// A mission, named the way both the commitments card and the campaign
+    /// log need it, so the same mission never has two names.
+    static func missionTitle(_ kind: MissionKind) -> String {
+        switch kind {
+        case .boomRush(let region, let target):
+            "Carry \(Format.count(target)) passengers in \(Vocab.region(region))"
+        case .flightContract(let target):
+            "Complete \(Format.count(target)) flights"
+        case .passengerContract(let target):
+            "Carry \(Format.count(target)) passengers across your network"
+        }
+    }
+
     static func capability(_ code: CapabilityCode) -> String {
         switch code {
         case .efficientTurnarounds: "Efficient turnarounds"
@@ -219,6 +244,38 @@ enum Vocab {
         case .fuelHedging: "fuelpump"
         case .networkOpsCenter: "antenna.radiowaves.left.and.right"
         case .groundExperience: "sparkles"
+        }
+    }
+
+    /// A logged campaign moment, named and explained. One entry in the record
+    /// reads the same wherever it appears.
+    static func momentIcon(_ kind: ProgressionMoment.Kind) -> String {
+        switch kind {
+        case .eraAdvanced: "flag.checkered"
+        case .milestone: "star.fill"
+        case .achievement: "rosette"
+        case .capability(let code): capabilityIcon(code)
+        case .mission: "target"
+        }
+    }
+
+    static func momentTitle(_ kind: ProgressionMoment.Kind) -> String {
+        switch kind {
+        case .eraAdvanced(let era): "Reached the \(era(era)) era"
+        case .milestone(let code): milestone(code)
+        case .achievement(let code): achievement(code)
+        case .capability(let code): capability(code)
+        case .mission(let mission, _): missionTitle(mission)
+        }
+    }
+
+    static func momentDetail(_ kind: ProgressionMoment.Kind) -> String {
+        switch kind {
+        case .eraAdvanced(let era): eraDetail(era)
+        case .milestone(let code): milestoneDetail(code)
+        case .achievement(let code): achievementDetail(code)
+        case .capability(let code): "Programme complete. \(capabilityDetail(code))"
+        case .mission(_, let reward): "Completed and paid \(Format.money(reward))."
         }
     }
 
