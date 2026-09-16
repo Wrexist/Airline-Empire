@@ -381,40 +381,60 @@ struct FleetHealthBoard: View {
 struct FleetHealthRow: View {
     let row: FleetBoard.Row
     let startYear: Int
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        HStack(alignment: .top, spacing: AETheme.spacingS) {
-            AEClayIcon(systemName: Vocab.categoryIcon(row.card.category), size: 34)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(row.card.typeName)
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
-                Text(whereLine)
-                    .font(.caption).foregroundStyle(AETheme.mutedText)
-                    .fixedSize(horizontal: false, vertical: true)
-                if !row.issues.isEmpty || showsCheckChip {
-                    AEChipRow {
-                        ForEach(row.issues, id: \.self) { issue in
-                            AEBadge(text: "\(Vocab.fleetIssue(issue)) · \(Vocab.fleetIssueDetail(issue, row: row))",
-                                    color: AETheme.caution,
-                                    icon: Vocab.fleetIssueIcon(issue))
-                        }
-                        if showsCheckChip, let days = row.checkDueInDays {
-                            AEBadge(text: "Check in \(days)d · \(Format.money(row.checkCost))",
-                                    color: AETheme.caution, icon: "wrench")
-                        }
+        Group {
+            // The badges need the row's full width at accessibility sizes; an
+            // HStack beside the icon squeezed them into one syllable a line.
+            // No chevron of its own: the List draws one for the link.
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: AETheme.spacingXS) {
+                    Text(row.card.typeName).font(.subheadline.weight(.semibold))
+                    whereText
+                    chips
+                }
+            } else {
+                HStack(alignment: .top, spacing: AETheme.spacingS) {
+                    AEClayIcon(systemName: Vocab.categoryIcon(row.card.category), size: 34)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(row.card.typeName)
+                            .font(.subheadline.weight(.semibold))
+                            .lineLimit(1)
+                        whereText
+                        chips
                     }
+                    Spacer(minLength: 0)
                 }
             }
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right")
-                .font(.caption).foregroundStyle(AETheme.mutedText)
-                .accessibilityHidden(true)
         }
-        .frame(minHeight: 44)
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityText)
+    }
+
+    private var whereText: some View {
+        Text(whereLine)
+            .font(.caption).foregroundStyle(AETheme.mutedText)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder
+    private var chips: some View {
+        if !row.issues.isEmpty || showsCheckChip {
+            AEChipRow {
+                ForEach(row.issues, id: \.self) { issue in
+                    AEBadge(text: "\(Vocab.fleetIssue(issue)) · \(Vocab.fleetIssueDetail(issue, row: row))",
+                            color: AETheme.caution,
+                            icon: Vocab.fleetIssueIcon(issue))
+                }
+                if showsCheckChip, let days = row.checkDueInDays {
+                    AEBadge(text: "Check in \(days)d · \(Format.money(row.checkCost))",
+                            color: AETheme.caution, icon: "wrench")
+                }
+            }
+        }
     }
 
     private var showsCheckChip: Bool {
