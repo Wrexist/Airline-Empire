@@ -62,22 +62,9 @@ final class FleetHealthUITests: AEUITestCase {
         XCTAssertTrue(app.staticTexts["UNAVAILABLE"].exists,
                       "The board must keep what cannot fly separate")
 
-        // Every board row is a real destination: the idle aircraft's screen.
-        let row = app.descendants(matching: .any)
-            .matching(identifier: "ae-fleet-health-row").firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 5))
-        let frame = row.frame
-        app.coordinate(withNormalizedOffset: .zero)
-            .withOffset(CGVector(dx: frame.midX, dy: frame.midY)).tap()
-        XCTAssertTrue(app.buttons["Change Aircraft"].waitForExistence(timeout: 10),
-                      "A board row must open that aircraft's own screen")
-        checkpoint("FLEET-02-aircraft")
-
-        // The board did not displace the filter it sits beside. The back
-        // control by name: `firstMatch` on this bar is the time button.
-        let back = app.navigationBars.buttons["BackButton"]
-        XCTAssertTrue(back.waitForExistence(timeout: 5))
-        back.tap()
+        // The board did not displace the filter it sits beside: the filter is
+        // exercised first, so the journey never has to navigate back out of a
+        // pushed screen to reach it.
         let filter = app.buttons["ae-fleet-status-filter"]
         XCTAssertTrue(filter.waitForExistence(timeout: 10))
         XCTAssertLessThanOrEqual(filter.frame.height, 60)
@@ -89,6 +76,17 @@ final class FleetHealthUITests: AEUITestCase {
         checkpoint("FLEET-03-filter-idle")
         let reset = app.buttons["ae-fleet-reset-filters"]
         if reset.waitForExistence(timeout: 5) { reset.tap() }
+
+        // Every board row is a real destination: the idle aircraft's screen.
+        let row = app.descendants(matching: .any)
+            .matching(identifier: "ae-fleet-health-row").firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        let frame = row.frame
+        app.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: frame.midX, dy: frame.midY)).tap()
+        XCTAssertTrue(app.buttons["Change Aircraft"].waitForExistence(timeout: 10),
+                      "A board row must open that aircraft's own screen")
+        checkpoint("FLEET-02-aircraft")
     }
 
     /// The board and the filter must both survive the largest text sizes.
