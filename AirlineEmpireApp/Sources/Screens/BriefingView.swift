@@ -232,7 +232,7 @@ struct BriefingView: View {
         }
         // The banner already carries the insolvency alert; the rows below are
         // the things it does not say.
-        let rows = briefing.alerts.filter { !$0.isInsolvency }
+        let rows = briefing.alerts.filter { !$0.kind.isInsolvency }
         let hasRival = controller.competitionSummary?.headline != nil
         if !rows.isEmpty || hasRival {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {

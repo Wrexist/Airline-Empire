@@ -78,13 +78,15 @@ struct BriefingModelTests {
     }
 
     @Test func healthyAssignedFleetHasNothingToNagAbout() throws {
-        let (engine, _, catalog) = try DemandFixtures.market(fare: Money.dollars(129))
+        let (engine, _, _) = try DemandFixtures.market(fare: Money.dollars(129))
+        let catalog = try DemandFixtures.anchorCatalog()
         let model = try #require(engine.state.briefingModel(catalog: catalog))
         #expect(model.alerts.isEmpty)
     }
 
     @Test func performanceMatchesTheSummariesItComposes() throws {
-        let (engine, airline, catalog) = try DemandFixtures.market(fare: Money.dollars(129))
+        let (engine, airline, _) = try DemandFixtures.market(fare: Money.dollars(129))
+        let catalog = try DemandFixtures.anchorCatalog()
         let state = engine.state
         let model = try #require(state.briefingModel(catalog: catalog))
         #expect(model.performance.dashboard.cash == state.ledger.balance(of: airline))
@@ -95,7 +97,8 @@ struct BriefingModelTests {
     }
 
     @Test func briefingIsDeterministicAndDoesNotMutate() throws {
-        let (engine, _, catalog) = try DemandFixtures.market(fare: Money.dollars(129))
+        let (engine, _, _) = try DemandFixtures.market(fare: Money.dollars(129))
+        let catalog = try DemandFixtures.anchorCatalog()
         let before = try engine.state.stateHash()
         let first = engine.state.briefingModel(catalog: catalog)
         let second = engine.state.briefingModel(catalog: catalog)
