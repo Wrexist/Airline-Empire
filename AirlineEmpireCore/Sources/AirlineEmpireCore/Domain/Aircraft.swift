@@ -157,6 +157,24 @@ public enum FleetEconomics {
             * tuning.maintenanceCheckHoursEquivalent * ageMultiplier)
     }
 
+    /// Condition an airframe loses in a day at `blockHoursPerDay` of flying:
+    /// the daily decay every aircraft carries, plus wear per flight hour.
+    /// The same terms `FleetSystem` and `FlightOpsSystem` apply, in one place.
+    public static func conditionPerDay(blockHoursPerDay: Double, fleet: FleetTuning,
+                                       ops: OpsTuning) -> Double {
+        fleet.dailyConditionDecay + ops.wearPerFlightHour * max(0, blockHoursPerDay)
+    }
+
+    /// Estimated whole days until condition falls through the check
+    /// threshold at today's rate. Zero means the check is due now; nil means
+    /// there is no positive rate to estimate from.
+    public static func daysUntilCheck(condition: Double, conditionPerDay: Double,
+                                      threshold: Double) -> Int? {
+        guard conditionPerDay > 0 else { return nil }
+        guard condition > threshold else { return 0 }
+        return Int(((condition - threshold) / conditionPerDay).rounded(.down))
+    }
+
     /// What the fleet system's checks cost per day, ahead of time, for an
     /// airframe flying `blockHoursPerDay`: condition falls by the daily
     /// decay plus the wear per flight hour, a check is due each time it
@@ -168,8 +186,9 @@ public enum FleetEconomics {
     public static func expectedMaintenancePerDay(type: AircraftTypeSpec, ageYears: Double,
                                                  blockHoursPerDay: Double,
                                                  fleet: FleetTuning, ops: OpsTuning) -> Double {
-        let conditionPerDay = fleet.dailyConditionDecay + ops.wearPerFlightHour * blockHoursPerDay
-        let checksPerDay = conditionPerDay / (1 - fleet.maintenanceConditionThreshold)
+        let decayPerDay = conditionPerDay(blockHoursPerDay: blockHoursPerDay,
+                                          fleet: fleet, ops: ops)
+        let checksPerDay = decayPerDay / (1 - fleet.maintenanceConditionThreshold)
         return maintenanceCheckCost(type: type, ageYears: ageYears, tuning: fleet).asDouble * checksPerDay
     }
 }

@@ -311,4 +311,63 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
         }
     }
 
+    /// A fleet with one of everything the board distinguishes: idle, closing
+    /// on a check, a lease ending, in a check, and on order.
+    @MainActor
+    func testFleetBoardAtAccessibleSizes() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let catalog = try ContentCatalog.loadBundled()
+        let engine = SimulationEngine(state: ScenarioBootstrap.newGame(
+            scenario: "founder", worldSeed: 42, startYear: 2030),
+            systems: GamePipeline.standard(), catalog: catalog)
+        XCTAssertEqual(engine.applyNow(FoundAirlineCommand(airlineName: "Pacifica fleet review",
+            kind: .player, homeAirport: "ARN", startingCash: .dollars(40_000_000))), .applied)
+        let player = try XCTUnwrap(engine.state.playerAirline?.id)
+        for _ in 0..<8 {
+            XCTAssertEqual(engine.applyNow(LeaseAircraftCommand(
+                lessee: player, type: "PA184", termMonths: 60)), .applied)
+        }
+        XCTAssertEqual(engine.applyNow(OpenRouteCommand(airline: player, origin: "ARN",
+            destination: "CDG", dailyRoundTrips: 3, ticketPrice: .dollars(180))), .applied)
+        let route = try XCTUnwrap(engine.state.routes(of: player).first)
+        let ids = engine.state.fleet(of: player).map(\.id).sorted()
+        for id in ids.prefix(4) {
+            XCTAssertEqual(engine.applyNow(AssignAircraftToRouteCommand(
+                airline: player, route: route.id, aircraftID: id)), .applied)
+        }
+        let ticksPerDay = Int(GameCalendar.minutesPerDay / engine.state.meta.tickMinutes)
+        engine.advance(ticks: ticksPerDay * 20)
+
+        // Test-only surgery to stage each board state, on a value copy.
+        var state = engine.state
+        state.aircraft[ids[4]]?.ownership = .leased(
+            monthlyRate: .dollars(500_000), termMonthsRemaining: 2)
+        state.aircraft[ids[5]]?.status = .inMaintenance(until: state.clock.now + .days(4))
+        state.aircraft[ids[6]]?.condition = 0.77
+        state.aircraft[ids[7]]?.status = .ordered(deliveryAt: state.clock.now + .days(30))
+        let manager = SaveManager(store: FileSaveStore(rootDirectory: root))
+        try manager.save(state, slot: "fleet-review")
+        let controller = GameController(savesDirectory: root)
+        controller.loadGame(slot: "fleet-review")
+        try await waitForGame(controller)
+        defer { controller.setPumping(false) }
+        let loaded = try XCTUnwrap(controller.snapshot)
+        let board = loaded.fleetBoard(for: try XCTUnwrap(loaded.playerAirline?.id), catalog: catalog)
+        XCTAssertFalse(board.needsDecision.isEmpty)
+        XCTAssertFalse(board.unavailable.isEmpty)
+
+        for dark in [false, true] {
+            try await capture(NavigationStack { FleetList() },
+                name: "FLEET-03-board-\(dark ? "dark" : "light")", controller: controller,
+                width: 393, dark: dark, typeSize: .large, height: 1700, settleMilliseconds: 2500)
+            try await capture(NavigationStack { FleetList() },
+                name: "FLEET-08-iPad-\(dark ? "dark" : "light")", controller: controller,
+                width: 834, dark: dark, typeSize: .large, height: 1700, settleMilliseconds: 2500)
+            try await capture(NavigationStack { FleetList() },
+                name: "FLEET-07-AX5-\(dark ? "dark" : "light")", controller: controller,
+                width: 375, dark: dark, typeSize: .accessibility5, height: 2200, settleMilliseconds: 2500)
+        }
+    }
+
 }

@@ -36,40 +36,32 @@ struct FleetList: View {
                         .aeEmptyStatePlacement()
                 } else {
                     List {
-                        if let summary = controller.fleetSummary {
-                            FleetSummaryRow(summary: summary)
+                        if let summary = controller.fleetSummary,
+                           let board = controller.fleetBoard {
+                            FleetSummaryRow(summary: summary, board: board)
                                 .aeListRow()
-                        }
-                        // The fleet board's own next move. An idle airframe
-                        // is the one thing on this screen that costs money
-                        // per hour for nothing, the summary strip already
-                        // counts them in orange — and counting was as far as
-                        // the screen went (tasks/BUGS.md BUG-059). This is
-                        // the same fact with somewhere to press.
-                        if let idle = firstIdle(all) {
-                            NavigationLink(value: idle.id) {
-                                Label {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("\(idleCount(all)) idle \(idleCount(all) == 1 ? "aircraft needs" : "aircraft need") a route")
-                                            .font(.subheadline.weight(.semibold))
-                                        Text("Assign \(idle.typeName) at \(idle.location.raw)")
-                                            .font(.caption).foregroundStyle(AETheme.mutedText)
-                                    }
-                                } icon: {
-                                    Image(systemName: "pause.circle.fill")
-                                        .foregroundStyle(AETheme.caution)
-                                }
-                                .frame(minHeight: 44)
-                            }
-                            .aeListRow()
-                            .accessibilityIdentifier("ae-fleet-next-step")
                         }
                         // The bar only appears once there are enough aircraft
                         // for scanning to be work. At four aeroplanes a filter
                         // is a control that costs a row and saves nothing.
+                        //
+                        // It stays directly under the summary, where it has
+                        // always been: the health board below it is the longer
+                        // element, and moving the filter under the board would
+                        // push a control players already reach for down the
+                        // screen.
                         if all.count >= 8 || filter.isNarrowed {
                             FleetFilterBar(filter: $filter,
                                            categories: all.presentCategories)
+                                .aeListRow()
+                        }
+                        // The fleet's own to-do list: idle airframes, the ones
+                        // closing on a check, a lease coming up, and what
+                        // cannot fly at all. BUG-059's finding was that the
+                        // board counted idle aeroplanes and went no further;
+                        // this names each one and links to its actions.
+                        if let board = controller.fleetBoard, !board.rows.isEmpty {
+                            FleetHealthBoard(board: board)
                                 .aeListRow()
                         }
                         if cards.isEmpty {
@@ -106,7 +98,8 @@ struct FleetList: View {
                     // leaves as aircraft are given work, and it should do
                     // that as a movement rather than as a flicker.
                     .aeAnimation(AEMotion.content, value: cards.count)
-                    .aeAnimation(AEMotion.content, value: idleCount(all))
+                    .aeAnimation(AEMotion.content,
+                                 value: controller.fleetBoard?.needsDecision.count ?? 0)
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) { sortMenu }
                     }
@@ -143,17 +136,6 @@ struct FleetList: View {
         case .condition:
             return cards.sorted { $0.condition < $1.condition }
         }
-    }
-
-    /// Aircraft that could fly and are not. `sorted(_:)` already puts them
-    /// first under the default order, but the prompt has to be right whatever
-    /// the player has sorted by, so it is found rather than assumed.
-    private func firstIdle(_ cards: [FleetCardModel]) -> FleetCardModel? {
-        cards.first { $0.assignedRoute == nil && $0.status.isActive }
-    }
-
-    private func idleCount(_ cards: [FleetCardModel]) -> Int {
-        cards.filter { $0.assignedRoute == nil && $0.status.isActive }.count
     }
 
     private func statusRank(_ card: FleetCardModel) -> Int {
@@ -284,15 +266,23 @@ struct FleetFilterBar: View {
 /// condition and is tested against the cards it summarises.
 struct FleetSummaryRow: View {
     let summary: FleetSummary
+    let board: FleetBoard
 
     private var details: [AEMetric] {
         var list = [
             AEMetric("In use", summary.utilization.map(Format.percent) ?? "\u{2014}"),
             AEMetric("Average age", summary.averageAgeYears.map { "\(Format.decimal($0, places: 0)) y" } ?? "\u{2014}"),
             AEMetric("Condition", summary.averageCondition.map(Format.percent) ?? "\u{2014}"),
-            AEMetric("In maintenance", "\(summary.inMaintenance)"),
+            AEMetric("Needs a decision", "\(board.needsDecision.count)"),
+            AEMetric("In check", "\(summary.inMaintenance)"),
             AEMetric("On order", "\(summary.onOrder)")
         ]
+        if board.lowConditionCount > 0 {
+            list.append(AEMetric("Condition low", "\(board.lowConditionCount)"))
+        }
+        if board.leaseEndingCount > 0 {
+            list.append(AEMetric("Leases ending", "\(board.leaseEndingCount)"))
+        }
         if summary.leasedCount > 0 {
             list.append(AEMetric("Monthly leases", Format.money(summary.monthlyLeaseCost)))
         }
@@ -306,6 +296,155 @@ struct FleetSummaryRow: View {
             AEMetric("idle", "\(summary.idle)", tint: summary.idle > 0 ? AETheme.caution : nil)
         ], details: details, identifier: "ae-fleet-statistics")
         .accessibilityLabel("Fleet summary")
+    }
+}
+
+/// The fleet's to-do list, ranked and grouped.
+///
+/// The summary strip counts idle aircraft and the list below holds every
+/// aeroplane; neither answers "which one wants me now". This does: the flyable
+/// aircraft with something to act on, then the ones that simply cannot fly
+/// today, each row a link to that aircraft's own screen and actions.
+///
+/// It is deliberately short — four rows a group, with the rest left to the
+/// list — so the board stays a priority list rather than a second copy of the
+/// fleet.
+struct FleetHealthBoard: View {
+    @Environment(GameController.self) private var controller
+    let board: FleetBoard
+
+    private var isClear: Bool {
+        board.needsDecision.isEmpty && board.unavailable.isEmpty
+    }
+
+    var body: some View {
+        AEPanel {
+            VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                HStack(spacing: AETheme.spacingS) {
+                    AESectionHeader(text: "Fleet health", systemImage: "stethoscope")
+                    Spacer(minLength: AETheme.spacingS)
+                    if isClear {
+                        AEBadge(text: "all clear", color: AETheme.positive,
+                                icon: "checkmark")
+                    } else if !board.dueSoon.isEmpty {
+                        AEBadge(text: "\(board.dueSoon.count) check\(board.dueSoon.count == 1 ? "" : "s") due",
+                                color: AETheme.caution, icon: "wrench")
+                    }
+                }
+                if isClear {
+                    Text("Every available aircraft is flying. Checks, deliveries and lease renewals appear here when they are due.")
+                        .font(.caption).foregroundStyle(AETheme.mutedText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                group("Needs a decision", rows: board.needsDecision)
+                group("Unavailable", rows: board.unavailable)
+                if !board.dueSoon.isEmpty {
+                    Text("Checks estimated within \(FleetAttentionThresholds.checkSoonDays) days are quoted at \(Format.money(board.dueSoonCost)) in total.")
+                        .font(.caption2).foregroundStyle(AETheme.mutedText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Fleet health")
+        .accessibilityIdentifier("ae-fleet-health")
+    }
+
+    @ViewBuilder
+    private func group(_ title: String, rows: [FleetBoard.Row]) -> some View {
+        if !rows.isEmpty {
+            VStack(alignment: .leading, spacing: AETheme.spacingXS) {
+                Text(title.uppercased())
+                    .font(AEType.eyebrow)
+                    .foregroundStyle(AETheme.mutedText)
+                    .accessibilityAddTraits(.isHeader)
+                ForEach(rows.prefix(4), id: \.aircraftID) { row in
+                    NavigationLink(value: row.aircraftID) {
+                        FleetHealthRow(row: row,
+                                       startYear: controller.snapshot?.meta.startYear ?? 2030)
+                    }
+                    .buttonStyle(.aePress)
+                    .accessibilityIdentifier("ae-fleet-health-row")
+                }
+                if rows.count > 4 {
+                    Text("+\(rows.count - 4) more in the list below")
+                        .font(.caption2).foregroundStyle(AETheme.mutedText)
+                }
+            }
+        }
+    }
+}
+
+/// One aircraft on the board, in the same shape as every other so two can be
+/// compared: what it is, where it is, what is wrong with it, and — when the
+/// check is close — what it is quoted to cost.
+struct FleetHealthRow: View {
+    let row: FleetBoard.Row
+    let startYear: Int
+
+    var body: some View {
+        HStack(alignment: .top, spacing: AETheme.spacingS) {
+            AEClayIcon(systemName: Vocab.categoryIcon(row.card.category), size: 34)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(row.card.typeName)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                Text(whereLine)
+                    .font(.caption).foregroundStyle(AETheme.mutedText)
+                    .fixedSize(horizontal: false, vertical: true)
+                if !row.issues.isEmpty || showsCheckChip {
+                    AEChipRow {
+                        ForEach(row.issues, id: \.self) { issue in
+                            AEBadge(text: "\(Vocab.fleetIssue(issue)) · \(Vocab.fleetIssueDetail(issue, row: row))",
+                                    color: AETheme.caution,
+                                    icon: Vocab.fleetIssueIcon(issue))
+                        }
+                        if showsCheckChip, let days = row.checkDueInDays {
+                            AEBadge(text: "Check in \(days)d · \(Format.money(row.checkCost))",
+                                    color: AETheme.caution, icon: "wrench")
+                        }
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.caption).foregroundStyle(AETheme.mutedText)
+                .accessibilityHidden(true)
+        }
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityText)
+    }
+
+    private var showsCheckChip: Bool {
+        row.availability.isAvailable
+            && (row.checkDueInDays ?? .max) <= FleetAttentionThresholds.checkSoonDays
+    }
+
+    private var whereLine: String {
+        switch row.availability {
+        case .inCheck(let until):
+            return "In a check until \(Format.date(GameCalendar.date(at: until, startYear: startYear)))"
+        case .onOrder(let deliveryAt):
+            return "Arrives \(Format.date(GameCalendar.date(at: deliveryAt, startYear: startYear)))"
+        case .available:
+            if let assignment = row.assignment {
+                return "\(assignment.origin.raw) – \(assignment.destination.raw) · \(assignment.dailyRoundTrips)×/day"
+            }
+            return "Idle at \(row.card.location.raw)"
+        }
+    }
+
+    private var accessibilityText: String {
+        var parts = [row.card.typeName, whereLine]
+        for issue in row.issues {
+            parts.append("\(Vocab.fleetIssue(issue)) \(Vocab.fleetIssueDetail(issue, row: row))")
+        }
+        if showsCheckChip, let days = row.checkDueInDays {
+            parts.append("Check in \(days) days, \(Format.money(row.checkCost))")
+        }
+        return parts.joined(separator: ", ")
     }
 }
 

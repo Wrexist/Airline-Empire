@@ -36,10 +36,11 @@ public struct AircraftConfigurationPreview: Equatable, Sendable {
         let configuration = aircraft.cabin(for: spec)
         let forecast = route
         let active = route.assignedAircraft.sorted().compactMap { state.aircraft[$0] }.filter(\.isOperational)
-        guard let index = active.firstIndex(where: { $0.id == aircraftID }) else { return nil }
-        let maximum = FlightSchedulingSystem.roundTripsPerAircraftPerDay(
-            distanceKm: route.distanceKm, spec: spec, ops: catalog.tuning.ops)
-        let rotations = min(maximum, max(0, (route.dailyRoundTrips + active.count - 1 - index) / active.count))
+        // One source for the allotment: the board's check estimate and this
+        // quote must not disagree about how often the airframe flies.
+        guard let rotations = FlightSchedulingSystem.rotationsPerDay(
+            route: route, aircraftID: aircraftID, state: state, spec: spec,
+            ops: catalog.tuning.ops) else { return nil }
         let capacity = Double(rotations * 2 * configuration.totalSeats)
         let routeCapacity = active.reduce(0.0) { sum, item in
             guard let type = catalog.aircraftType(item.typeCode) else { return sum }

@@ -164,6 +164,7 @@ final class GameController {
     @ObservationIgnored private var cachedMap: MapModel?
     @ObservationIgnored private var cachedNetwork: NetworkSummary?
     @ObservationIgnored private var cachedFleetSummary: FleetSummary?
+    @ObservationIgnored private var cachedFleetBoard: FleetBoard?
     @ObservationIgnored private var cachedRouteCards: [RouteCardModel]?
     @ObservationIgnored private var cachedFleetCards: [FleetCardModel]?
     @ObservationIgnored private var cachedCompetition: CompetitionSummary?
@@ -198,6 +199,7 @@ final class GameController {
         cachedFleetCards = nil
         cachedNetwork = nil
         cachedFleetSummary = nil
+        cachedFleetBoard = nil
         cachedCompetition = nil
         cachedDashboard = nil
         cachedProgression = nil
@@ -231,6 +233,17 @@ final class GameController {
         let summary = snapshot.fleetSummary(for: player.id)
         cachedFleetSummary = summary
         return summary
+    }
+
+    /// The fleet health board — the Fleet tab's actionable header. Computed
+    /// once per snapshot like the other read models: it walks the fleet, each
+    /// assigned route and the maintenance arithmetic.
+    var fleetBoard: FleetBoard? {
+        guard let snapshot, let player = snapshot.playerAirline, let catalog else { return nil }
+        if let cachedFleetBoard { return cachedFleetBoard }
+        let board = snapshot.fleetBoard(for: player.id, catalog: catalog)
+        cachedFleetBoard = board
+        return board
     }
 
     /// The airline at a glance — the map's top bar and briefing strip, the

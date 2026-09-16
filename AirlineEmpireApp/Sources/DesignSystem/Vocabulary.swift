@@ -643,6 +643,40 @@ extension Vocab {
         }
     }
 
+    /// The health board's issues, named. These are the *actionable* ones only:
+    /// "in check" and "on order" are availability, and the board says those
+    /// with a date instead of an issue.
+    static func fleetIssue(_ issue: FleetBoard.Issue) -> String {
+        switch issue {
+        case .idle: "Idle"
+        case .lowCondition: "Condition low"
+        case .wornReliability: "Reliability down"
+        case .leaseEnding: "Lease ending"
+        }
+    }
+
+    static func fleetIssueIcon(_ issue: FleetBoard.Issue) -> String {
+        switch issue {
+        case .idle: "pause.circle.fill"
+        case .lowCondition: "wrench.and.screwdriver.fill"
+        case .wornReliability: "bolt.slash.fill"
+        case .leaseEnding: "calendar.badge.exclamationmark"
+        }
+    }
+
+    /// A short, number-carrying chip for one issue, so two rows can be
+    /// compared rather than just read.
+    static func fleetIssueDetail(_ issue: FleetBoard.Issue, row: FleetBoard.Row) -> String {
+        switch issue {
+        case .idle: "unassigned"
+        case .lowCondition: "\(Format.percent(row.card.condition))"
+        case .wornReliability: "\(Format.percent(row.card.reliability))"
+        case .leaseEnding:
+            let months = row.leaseMonthsRemaining ?? 0
+            "\(months) month\(months == 1 ? "" : "s") left"
+        }
+    }
+
     /// An airport, said the way people say airports: "Sjövik (Stockholm)" —
     /// the field's own name first, the city it serves in brackets, the way a
     /// traveller says "Arlanda" and clarifies with "(Stockholm)".
