@@ -370,4 +370,57 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
         }
     }
 
+    /// Finance with a closed month, a loan and a station commitment, so the
+    /// operating, cash and commitment groups are all populated.
+    @MainActor
+    func testFinanceBreakdownAtAccessibleSizes() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let catalog = try ContentCatalog.loadBundled()
+        let engine = SimulationEngine(state: ScenarioBootstrap.newGame(
+            scenario: "founder", worldSeed: 42, startYear: 2030),
+            systems: GamePipeline.standard(), catalog: catalog)
+        XCTAssertEqual(engine.applyNow(FoundAirlineCommand(airlineName: "Pacifica ledger",
+            kind: .player, homeAirport: "ARN", startingCash: .dollars(30_000_000))), .applied)
+        let player = try XCTUnwrap(engine.state.playerAirline?.id)
+        XCTAssertEqual(engine.applyNow(LeaseAircraftCommand(
+            lessee: player, type: "PA184", termMonths: 60)), .applied)
+        XCTAssertEqual(engine.applyNow(OpenRouteCommand(airline: player, origin: "ARN",
+            destination: "CDG", dailyRoundTrips: 3, ticketPrice: .dollars(180))), .applied)
+        let route = try XCTUnwrap(engine.state.routes(of: player).first)
+        let aircraft = try XCTUnwrap(engine.state.fleet(of: player).first)
+        XCTAssertEqual(engine.applyNow(AssignAircraftToRouteCommand(
+            airline: player, route: route.id, aircraftID: aircraft.id)), .applied)
+        let ticksPerDay = Int(GameCalendar.minutesPerDay / engine.state.meta.tickMinutes)
+        engine.advance(ticks: ticksPerDay * 35)
+        XCTAssertNotNil(engine.state.finance.byAirline[player]?.latest)
+        XCTAssertEqual(engine.applyNow(TakeLoanCommand(airline: player,
+            amount: .dollars(5_000_000), termMonths: 48)), .applied)
+        XCTAssertEqual(engine.applyNow(ConfigureAirportFacilitiesCommand(
+            airline: player, airport: "ARN", facilities: .init(lounge: 1))), .applied)
+        let manager = SaveManager(store: FileSaveStore(rootDirectory: root))
+        try manager.save(engine.state, slot: "finance-review")
+        let controller = GameController(savesDirectory: root)
+        controller.loadGame(slot: "finance-review")
+        try await waitForGame(controller)
+        defer { controller.setPumping(false) }
+        let loaded = try XCTUnwrap(controller.snapshot)
+        let breakdown = loaded.financeBreakdown(for: try XCTUnwrap(loaded.playerAirline?.id),
+                                                catalog: catalog)
+        XCTAssertNotNil(breakdown.latestStatement)
+        XCTAssertGreaterThan(breakdown.recurring.monthlyTotal, .zero)
+
+        for dark in [false, true] {
+            try await capture(FinanceView(),
+                name: "FIN-01-breakdown-\(dark ? "dark" : "light")", controller: controller,
+                width: 393, dark: dark, typeSize: .large, height: 2000, settleMilliseconds: 2500)
+            try await capture(FinanceView(),
+                name: "FIN-08-iPad-\(dark ? "dark" : "light")", controller: controller,
+                width: 834, dark: dark, typeSize: .large, height: 2000, settleMilliseconds: 2500)
+            try await capture(FinanceView(),
+                name: "FIN-07-AX5-\(dark ? "dark" : "light")", controller: controller,
+                width: 375, dark: dark, typeSize: .accessibility5, height: 2200, settleMilliseconds: 2500)
+        }
+    }
+
 }
