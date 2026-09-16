@@ -109,3 +109,19 @@ disconnected from the airline's real economy; no daily-login mechanics.
 - Save v10. Tests: era gates and locks, capability gating/effects (hedging
   measurably caps fuel bills), milestones, boom mission full lifecycle,
   player game over, save determinism (177 total).
+
+## The campaign record (2026-09-16)
+
+`ProgressionState.record` is a bounded (200), dated log of completed work —
+`ProgressionMoment` for an era advance, milestone, achievement, completed
+capability programme or completed mission. `ProgressionSystem` notes each one
+at the point it already fires; the constructor of the moment is the only
+writer, so the log cannot disagree with the state. It is the record the
+Progression screen reads back, replacing the fast-moving event feed (bounded
+at 512 and able to drop a completion within a day). `ProgressionModel` exposes
+the record, the campaign counters, what the next era unlocks, and when the
+current era began. Save format **v14**; `MigrationV13AddProgressionRecord`
+starts older saves with an empty log and touches nothing else — nothing is
+reconstructed backwards. The screen itself is
+`AirlineEmpireApp/Sources/Screens/ProgressionView.swift`; see
+docs/PROGRESSION_REVIEW.md for the audit and evidence.
