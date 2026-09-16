@@ -417,7 +417,7 @@ struct BriefingView: View {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "Operations feed", systemImage: "dot.radiowaves.left.and.right")
                 if controller.recentEvents.isEmpty {
-                    Text("Quiet skies. Open a route to get moving.")
+                    Text("Nothing here yet. Events appear as the world runs.")
                         .font(.subheadline)
                         .foregroundStyle(AETheme.mutedText)
                         .transition(.opacity)

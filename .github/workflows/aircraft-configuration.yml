@@ -36,7 +36,12 @@ jobs:
         run: swift build -c release -Xswiftc -warnings-as-errors
   native:
     runs-on: macos-26
-    timeout-minutes: 45
+    # Raised from 45 after this branch's UI suite outgrew it: the iPhone and
+    # iPad journeys are sequential in one job and now include the airport,
+    # passenger, fleet, finance, campaign and briefing classes plus the hosted
+    # capture suites. Measured run 35109891089 finished every step green and
+    # was cancelled by the 45-minute cap at the very end.
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
       - name: Generate project
