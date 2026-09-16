@@ -649,9 +649,9 @@ extension Vocab {
     static func fleetIssue(_ issue: FleetBoard.Issue) -> String {
         switch issue {
         case .idle: "Idle"
-        case .lowCondition: "Condition low"
-        case .wornReliability: "Reliability down"
-        case .leaseEnding: "Lease ending"
+        case .lowCondition: "Condition"
+        case .wornReliability: "Reliability"
+        case .leaseEnding: "Lease"
         }
     }
 
@@ -669,14 +669,13 @@ extension Vocab {
     static func fleetIssueDetail(_ issue: FleetBoard.Issue, row: FleetBoard.Row) -> String {
         switch issue {
         case .idle:
-            return "unassigned"
+            return "no route"
         case .lowCondition:
             return Format.percent(row.card.condition)
         case .wornReliability:
             return Format.percent(row.card.reliability)
         case .leaseEnding:
-            let months = row.leaseMonthsRemaining ?? 0
-            return "\(months) month\(months == 1 ? "" : "s") left"
+            return "\(row.leaseMonthsRemaining ?? 0)mo left"
         }
     }
 
