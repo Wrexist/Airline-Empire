@@ -495,4 +495,62 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
         }
     }
 
+    /// The briefing's decision hierarchy with something in every rank: an
+    /// idle aircraft and a losing route to act on, a grounded route, a
+    /// delivery coming, and history behind it.
+    @MainActor
+    func testBriefingHierarchyAtAccessibleSizes() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let catalog = try ContentCatalog.loadBundled()
+        let engine = SimulationEngine(state: ScenarioBootstrap.newGame(
+            scenario: "founder", worldSeed: 42, startYear: 2030),
+            systems: GamePipeline.standard(), catalog: catalog)
+        XCTAssertEqual(engine.applyNow(FoundAirlineCommand(airlineName: "Pacifica briefing",
+            kind: .player, homeAirport: "ARN", startingCash: .dollars(40_000_000))), .applied)
+        let player = try XCTUnwrap(engine.state.playerAirline?.id)
+        for _ in 0..<2 {
+            XCTAssertEqual(engine.applyNow(LeaseAircraftCommand(
+                lessee: player, type: "PA184", termMonths: 60)), .applied)
+        }
+        XCTAssertEqual(engine.applyNow(OpenRouteCommand(airline: player, origin: "ARN",
+            destination: "CDG", dailyRoundTrips: 3, ticketPrice: .dollars(180))), .applied)
+        let route = try XCTUnwrap(engine.state.routes(of: player).first)
+        let ids = engine.state.fleet(of: player).map(\.id).sorted()
+        XCTAssertEqual(engine.applyNow(AssignAircraftToRouteCommand(
+            airline: player, route: route.id, aircraftID: ids[0])), .applied)
+        // A second route with nothing on it, so the hierarchy has a grounded
+        // route as well as an idle aircraft.
+        XCTAssertEqual(engine.applyNow(OpenRouteCommand(airline: player, origin: "ARN",
+            destination: "LHR", dailyRoundTrips: 2, ticketPrice: .dollars(150))), .applied)
+        let ticksPerDay = Int(GameCalendar.minutesPerDay / engine.state.meta.tickMinutes)
+        engine.advance(ticks: ticksPerDay * 40)
+
+        var state = engine.state
+        state.routes[route.id]?.economicsThisMonth.fuelCents = 900_000
+        state.aircraft[ids[1]]?.status =
+            .ordered(deliveryAt: state.clock.now + .days(20))
+        let manager = SaveManager(store: FileSaveStore(rootDirectory: root))
+        try manager.save(state, slot: "briefing-review")
+        let controller = GameController(savesDirectory: root)
+        controller.loadGame(slot: "briefing-review")
+        try await waitForGame(controller)
+        defer { controller.setPumping(false) }
+        let loaded = try XCTUnwrap(controller.snapshot)
+        let model = try XCTUnwrap(loaded.briefingModel(catalog: catalog))
+        XCTAssertFalse(model.alerts.isEmpty)
+
+        for dark in [false, true] {
+            try await capture(BriefingView(onClose: {}),
+                name: "BRIEF-01-hierarchy-\(dark ? "dark" : "light")", controller: controller,
+                width: 393, dark: dark, typeSize: .large, height: 2400, settleMilliseconds: 2500)
+            try await capture(BriefingView(onClose: {}),
+                name: "BRIEF-08-iPad-\(dark ? "dark" : "light")", controller: controller,
+                width: 834, dark: dark, typeSize: .large, height: 2400, settleMilliseconds: 2500)
+            try await capture(BriefingView(onClose: {}),
+                name: "BRIEF-07-AX5-\(dark ? "dark" : "light")", controller: controller,
+                width: 375, dark: dark, typeSize: .accessibility5, height: 2600, settleMilliseconds: 2500)
+        }
+    }
+
 }

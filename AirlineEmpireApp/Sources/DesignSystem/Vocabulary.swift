@@ -946,4 +946,50 @@ extension Vocab {
         case .earnFirstRevenue: "banknote"
         }
     }
+
+    // MARK: - The briefing's alerts
+
+    static func briefingAlertIcon(_ kind: BriefingModel.Alert.Kind) -> String {
+        switch kind {
+        case .insolvency: "exclamationmark.octagon.fill"
+        case .idleAircraft: "pause.circle.fill"
+        case .groundedRoutes: "airplane"
+        case .losingRoutes: "chart.line.downtrend.xyaxis"
+        }
+    }
+
+    static func briefingAlertTitle(_ kind: BriefingModel.Alert.Kind) -> String {
+        switch kind {
+        case .insolvency(let days, _):
+            guard let days else { return "The airline is overdrawn" }
+            return days == 1 ? "Administration tomorrow"
+                            : "Administration in \(days) days"
+        case .idleAircraft(let count):
+            return count == 1 ? "One aircraft is idle"
+                              : "\(count) aircraft are idle"
+        case .groundedRoutes(let count):
+            return count == 1 ? "One route has no aircraft"
+                              : "\(count) routes have no aircraft"
+        case .losingRoutes(let count):
+            return count == 1 ? "One route is losing money"
+                              : "\(count) routes are losing money"
+        }
+    }
+
+    /// Why it matters — the reason, not the instruction. A recommendation
+    /// that only restates the number teaches the player nothing.
+    static func briefingAlertDetail(_ kind: BriefingModel.Alert.Kind) -> String {
+        switch kind {
+        case .insolvency(_, let fatal):
+            return fatal
+                ? "A second failure ends the campaign. Sell what you can and cut what loses money."
+                : "Restructuring is coming. Selling an idle aircraft or closing a losing route buys time."
+        case .idleAircraft:
+            return "Parked costs the same as flying and earns nothing. Give it a route."
+        case .groundedRoutes:
+            return "An open route with nothing on it earns nothing and holds its slots."
+        case .losingRoutes:
+            return "Fares, frequency or the aircraft — the routes board shows which."
+        }
+    }
 }

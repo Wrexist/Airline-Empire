@@ -165,6 +165,7 @@ final class GameController {
     @ObservationIgnored private var cachedNetwork: NetworkSummary?
     @ObservationIgnored private var cachedFleetSummary: FleetSummary?
     @ObservationIgnored private var cachedFleetBoard: FleetBoard?
+    @ObservationIgnored private var cachedBriefing: BriefingModel?
     @ObservationIgnored private var cachedRouteCards: [RouteCardModel]?
     @ObservationIgnored private var cachedFleetCards: [FleetCardModel]?
     @ObservationIgnored private var cachedCompetition: CompetitionSummary?
@@ -200,6 +201,7 @@ final class GameController {
         cachedNetwork = nil
         cachedFleetSummary = nil
         cachedFleetBoard = nil
+        cachedBriefing = nil
         cachedCompetition = nil
         cachedDashboard = nil
         cachedProgression = nil
@@ -244,6 +246,16 @@ final class GameController {
         let board = snapshot.fleetBoard(for: player.id, catalog: catalog)
         cachedFleetBoard = board
         return board
+    }
+
+    /// The briefing's decision hierarchy — its lead alerts and the summaries
+    /// under them. Computed once per snapshot, like the summaries it composes.
+    var briefingModel: BriefingModel? {
+        guard let snapshot, let catalog else { return nil }
+        if let cachedBriefing { return cachedBriefing }
+        let model = snapshot.briefingModel(catalog: catalog)
+        cachedBriefing = model
+        return model
     }
 
     /// The airline at a glance — the map's top bar and briefing strip, the
