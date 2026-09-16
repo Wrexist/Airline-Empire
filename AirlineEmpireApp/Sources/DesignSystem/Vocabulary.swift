@@ -668,12 +668,15 @@ extension Vocab {
     /// compared rather than just read.
     static func fleetIssueDetail(_ issue: FleetBoard.Issue, row: FleetBoard.Row) -> String {
         switch issue {
-        case .idle: "unassigned"
-        case .lowCondition: "\(Format.percent(row.card.condition))"
-        case .wornReliability: "\(Format.percent(row.card.reliability))"
+        case .idle:
+            return "unassigned"
+        case .lowCondition:
+            return Format.percent(row.card.condition)
+        case .wornReliability:
+            return Format.percent(row.card.reliability)
         case .leaseEnding:
             let months = row.leaseMonthsRemaining ?? 0
-            "\(months) month\(months == 1 ? "" : "s") left"
+            return "\(months) month\(months == 1 ? "" : "s") left"
         }
     }
 
