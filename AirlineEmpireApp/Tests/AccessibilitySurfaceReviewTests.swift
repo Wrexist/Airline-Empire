@@ -453,7 +453,7 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
         let now = state.clock.now
         state.progression.era = .national
         state.progression.activePrograms = [CapabilityProgram(
-            code: .fuelHedging, startedAt: now - .days(30),
+            code: .fuelHedging, startedAt: now + .days(-30),
             completesAt: now + .days(60), cost: catalog.tuning.progression.capabilityCost)]
         state.progression.missions = [Mission(
             id: 99, sourceEventID: -1,
@@ -462,12 +462,12 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
         state.progression.milestones = ["firstFlight", "firstOwnedAircraft"]
         state.progression.achievements = ["debtFree"]
         state.progression.record = [
-            ProgressionMoment(at: now - .days(100), kind: .milestone("firstFlight")),
-            ProgressionMoment(at: now - .days(60), kind: .milestone("firstOwnedAircraft")),
-            ProgressionMoment(at: now - .days(41), kind: .eraAdvanced(.regional)),
-            ProgressionMoment(at: now - .days(40), kind: .eraAdvanced(.national)),
-            ProgressionMoment(at: now - .days(30), kind: .achievement("debtFree")),
-            ProgressionMoment(at: now - .days(10),
+            ProgressionMoment(at: now + .days(-100), kind: .milestone("firstFlight")),
+            ProgressionMoment(at: now + .days(-60), kind: .milestone("firstOwnedAircraft")),
+            ProgressionMoment(at: now + .days(-41), kind: .eraAdvanced(.regional)),
+            ProgressionMoment(at: now + .days(-40), kind: .eraAdvanced(.national)),
+            ProgressionMoment(at: now + .days(-30), kind: .achievement("debtFree")),
+            ProgressionMoment(at: now + .days(-10),
                               kind: .mission(.flightContract(targetFlights: 20),
                                              reward: .dollars(30_000))),
         ]
