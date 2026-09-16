@@ -98,7 +98,11 @@ the 169-test focused Core suite (which now includes `FinanceBreakdownTests`,
 errors, then the iPhone journeys (airport, passenger, fleet and finance), the
 iPad journeys and both hosted capture suites.
 
-<!-- FULL-SUITE: filled in after the ci.yml run -->
+The **full** Core suite then ran on the same revision through `ci.yml`
+([35074093478](https://github.com/Wrexist/Airline-Empire/actions/runs/35074093478)):
+**580 tests passed** (579 in the parallel run plus the isolated campaign test),
+and the release build was clean with warnings as errors, covering the read-only
+ledger accessor and the new read model against the whole simulation.
 
 ## Frames inspected, and what looking found
 
