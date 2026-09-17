@@ -40,6 +40,9 @@ public struct AircraftMarketComparison: Equatable, Sendable {
         /// Aircraft of this type the route's daily frequency needs. One when
         /// a single airframe can fly it; more when the type is too slow.
         public let aircraftNeeded: Int
+        /// Passengers one aircraft of this type could carry a day at its own
+        /// achievable frequency, both directions.
+        public let capacityPerAircraftPerDay: Int
         /// Passengers a day the route's held frequency offers on this type,
         /// both directions.
         public let frequencySeatsPerDay: Int
@@ -169,7 +172,7 @@ extension GameState {
                 candidates: [], shortlistLimit: shortlistLimit)
         }
 
-        var candidates: [Candidate] = []
+        var candidates: [AircraftMarketComparison.Candidate] = []
         var marketPool = 0.0
         for code in catalog.orderedAircraftTypeCodes {
             guard let spec = catalog.aircraftType(code),
@@ -202,7 +205,7 @@ extension GameState {
                 - spec.leaseMonthly.asDouble * Double(aircraftNeeded)
                 - payrollPerAircraft * Double(aircraftNeeded)
                 - payrollPerRoute
-            candidates.append(Candidate(
+            candidates.append(AircraftMarketComparison.Candidate(
                 spec: spec, rotationsPerAircraft: rotationsPerAircraft,
                 aircraftNeeded: aircraftNeeded,
                 capacityPerAircraftPerDay: rotationsPerAircraft * spec.seats * 2,
