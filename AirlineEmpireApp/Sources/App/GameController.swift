@@ -177,6 +177,10 @@ final class GameController {
     /// six would re-run on every gesture frame precisely when it has nothing
     /// to say.
     @ObservationIgnored private var cachedNextMove: HomeNextMove??
+    /// The aircraft market's route comparison, per route. Keyed because the
+    /// market sheet can switch routes without the snapshot changing, and each
+    /// comparison prices every eligible airframe on the pair.
+    @ObservationIgnored private var cachedAircraftMarket: [RouteID: AircraftMarketComparison] = [:]
 
     /// Drops every derived cache. Called on each published snapshot.
     ///
@@ -206,6 +210,7 @@ final class GameController {
         cachedDashboard = nil
         cachedProgression = nil
         cachedNextMove = nil
+        cachedAircraftMarket = [:]
     }
 
     /// The competitive picture — Home's one rival fact, the World hub's live
@@ -256,6 +261,23 @@ final class GameController {
         let model = snapshot.briefingModel(catalog: catalog)
         cachedBriefing = model
         return model
+    }
+
+    /// Every eligible airframe priced on one route, with route, fare and
+    /// frequency held constant. Nil without a route, a player or content, and
+    /// nil for a route that is not this airline's.
+    ///
+    /// Cached per route: the sheet switches routes without a new snapshot,
+    /// and each comparison prices every eligible airframe through the demand
+    /// engine.
+    func aircraftMarketComparison(for routeID: RouteID?) -> AircraftMarketComparison? {
+        guard let routeID, let snapshot, let catalog else { return nil }
+        if let cached = cachedAircraftMarket[routeID] { return cached }
+        let comparison = snapshot.aircraftMarketComparison(
+            routeID: routeID, catalog: catalog,
+            era: min(snapshot.progression.era, eraCeiling))
+        if let comparison { cachedAircraftMarket[routeID] = comparison }
+        return comparison
     }
 
     /// The airline at a glance — the map's top bar and briefing strip, the

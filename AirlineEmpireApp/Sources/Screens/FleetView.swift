@@ -1119,6 +1119,10 @@ struct AircraftShopSheet: View {
                 let limits = (seats: fleetTypes.map(\.seats).max() ?? 1,
                               range: fleetTypes.map(\.rangeKm).max() ?? 1)
                 let availableTypes = types(catalog: catalog, snapshot: snapshot)
+                // The comparison panel scrolls the list to the aircraft it
+                // names, so the shortlist is a way in rather than a second
+                // catalogue beside the first.
+                ScrollViewReader { proxy in
                 List {
                     Section {
                         FirstFlightProgress()
@@ -1192,6 +1196,14 @@ struct AircraftShopSheet: View {
                             .listRowBackground(marketCardSurface)
                         }
                     }
+                    if let route = selectedRouteID.flatMap({ snapshot.routes[$0] }),
+                       let comparison = controller.aircraftMarketComparison(for: route.id),
+                       !comparison.candidates.isEmpty {
+                        Section {
+                            comparisonPanel(comparison, proxy: proxy)
+                                .listRowBackground(marketCardSurface)
+                        }
+                    }
                     if let market = starterOpportunity,
                        let code = market.bestAirframe,
                        let spec = catalog.aircraftTypes[code] {
@@ -1234,9 +1246,10 @@ struct AircraftShopSheet: View {
                         Section {
                             shopRow(spec, catalog: catalog, snapshot: snapshot,
                                     player: player.id, limits: limits)
+                                // The comparison panel scrolls here by type.
+                                .id(spec.code)
                                 .listRowBackground(marketCardSurface)
-                                .listRowSeparator(.hidden)
-                            // The commit is its own row on purpose: a row
+                                .listRowSeparator(.hidden)                            // The commit is its own row on purpose: a row
                             // whose only button is default-styled makes
                             // the whole row the tap target (the pattern
                             // every working control in this sheet uses).
@@ -1270,6 +1283,7 @@ struct AircraftShopSheet: View {
                 .opacity(showsAcquisitionPanel ? 0 : 1)
                 .allowsHitTesting(!showsAcquisitionPanel)
                 .accessibilityHidden(showsAcquisitionPanel)
+                }
             } else {
                 LoadingState(message: "Loading the market")
             }
@@ -1538,6 +1552,125 @@ struct AircraftShopSheet: View {
             case .capacity: needs.contains { $0.routeID == route.id && $0.reason != .unassigned }
             }
         }
+    }
+
+    /// The shortlist, for one route, holding route, fare and frequency still.
+    ///
+    /// Every type's number is the same arithmetic the simulation flies —
+    /// `CompetitorAISystem.airframeDayEstimate` on the demand engine's own
+    /// allocation, with the incumbents actually on the pair in the way — so
+    /// two candidates differ only by the airframe. The panel is deliberately
+    /// not a profit forecast: it is a month of the route's operating result
+    /// after the airframe's lease, its crew and the route payroll, before
+    /// airline overhead, exactly the figure `MarketOpportunity` carries.
+    @ViewBuilder
+    private func comparisonPanel(_ comparison: AircraftMarketComparison,
+                                 proxy: ScrollViewProxy) -> some View {
+        VStack(alignment: .leading, spacing: AETheme.spacingM) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Compare on \(comparison.origin.raw)–\(comparison.destination.raw)")
+                    .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
+                Text("\(Format.count(Int64(comparison.distanceKm))) km \u{00B7} "
+                     + "\(Format.money(comparison.fare)) fare \u{00B7} "
+                     + "\(comparison.dailyRoundTrips)\u{00D7}/day held still")
+                    .font(.caption).foregroundStyle(AETheme.mutedText)
+                Text(comparison.marketDemandToday > 0
+                     ? "\(Format.count(Int64(comparison.marketDemandToday))) passengers a day want this pair; \(Format.count(Int64(comparison.demandToday))) fly with you today."
+                     : "No passengers are allocated to this pair today yet.")
+                    .font(.caption).foregroundStyle(AETheme.mutedText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            ForEach(Array(comparison.shortlist.enumerated()), id: \.element.id) { index, candidate in
+                Button {
+                    focusedPurchase = candidate.spec.code
+                    withAnimation(AEMotion.selection) {
+                        proxy.scrollTo(candidate.spec.code, anchor: .top)
+                    }
+                } label: {
+                    comparisonRow(candidate, isBest: index == 0,
+                                  frequency: comparison.dailyRoundTrips)
+                }
+                .buttonStyle(.borderless)
+                .accessibilityIdentifier("ae-aircraft-comparison-row")
+                .accessibilityLabel(comparisonLabel(candidate,
+                                                    frequency: comparison.dailyRoundTrips))
+                .accessibilityHint("Opens this aircraft's purchase terms")
+            }
+            if comparison.candidates.count > comparison.shortlist.count {
+                Text("\(comparison.shortlist.count) of \(comparison.candidates.count) types this era can buy, best result first.")
+                    .font(.caption2).foregroundStyle(AETheme.mutedText)
+            }
+        }
+        // `.contain`, not `.combine`: the panel's own identifier must not
+        // overwrite the rows' (run 35136273799).
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("ae-aircraft-comparison")
+    }
+
+    private func comparisonRow(_ candidate: AircraftMarketComparison.Candidate,
+                               isBest: Bool, frequency: Int) -> some View {
+        let tint = candidate.monthlyAfterAirframe > .zero
+            ? AETheme.positive
+            : candidate.monthlyAfterAirframe < .zero ? AETheme.negative : AETheme.mutedText
+        return HStack(alignment: .top, spacing: AETheme.spacingS) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: AETheme.spacingXS) {
+                    Text("\(candidate.spec.manufacturer) \(candidate.spec.model)")
+                        .font(.subheadline.weight(.semibold))
+                    if isBest {
+                        AEBadge(text: "best", color: AETheme.positive, icon: "checkmark")
+                    }
+                }
+                Text("\(candidate.spec.seats) seats \u{00B7} "
+                     + "\(candidate.rotationsPerAircraft)\u{00D7}/day per aircraft"
+                     + (candidate.coversFrequencyAlone
+                        ? "" : " \u{00B7} needs \(candidate.aircraftNeeded) aircraft"))
+                    .font(.caption).foregroundStyle(AETheme.mutedText)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(comparisonFit(candidate, frequency: frequency))
+                    .font(.caption2).foregroundStyle(AETheme.mutedText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: AETheme.spacingS)
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(Format.money(candidate.monthlyAfterAirframe))
+                    .font(.subheadline.weight(.bold)).monospacedDigit()
+                    .foregroundStyle(tint)
+                Text("a month")
+                    .font(.caption2).foregroundStyle(AETheme.mutedText)
+                Image(systemName: "chevron.down")
+                    .font(.caption2).foregroundStyle(AETheme.mutedText)
+            }
+        }
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+    }
+
+    /// One sentence per candidate, for VoiceOver: the model, the cabin, the
+    /// fleet the schedule needs and the result — the same four facts the row
+    /// draws.
+    private func comparisonLabel(_ candidate: AircraftMarketComparison.Candidate,
+                                 frequency: Int) -> String {
+        "\(candidate.spec.manufacturer) \(candidate.spec.model), "
+        + "\(candidate.spec.seats) seats, "
+        + (candidate.coversFrequencyAlone
+           ? "one aircraft covers \(frequency) round trips a day, "
+           : "needs \(candidate.aircraftNeeded) aircraft for \(frequency) round trips a day, ")
+        + "\(Format.money(candidate.monthlyAfterAirframe)) a month after lease and payroll"
+    }
+
+    /// The one line that says why a type ranks where it does, in seats: the
+    /// gap between what the route's frequency offers and what the pair wants.
+    /// No profit is claimed here — the money is the number on the right.
+    private func comparisonFit(_ candidate: AircraftMarketComparison.Candidate,
+                               frequency: Int) -> String {
+        if candidate.coversFrequencyAlone {
+            return candidate.carriesTodayDemand
+                ? "One aircraft flies \(frequency)\u{00D7}/day and the cabin covers the demand."
+                : "One aircraft flies \(frequency)\u{00D7}/day; the cabin seats \(Format.count(Int64(candidate.frequencySeatsPerDay))) of \(Format.count(Int64(candidate.demandToday))) a day."
+        }
+        return "\(frequency)\u{00D7}/day takes \(candidate.aircraftNeeded) of this type; a single one flies \(candidate.rotationsPerAircraft)\u{00D7}."
     }
 
     private func routePicker(snapshot: GameState, catalog: ContentCatalog,

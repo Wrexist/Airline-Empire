@@ -637,4 +637,59 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
         }
     }
 
+    /// The aircraft market as a comparison for one route: a shortlist of
+    /// airframes priced on the same fare and frequency, each with the fleet
+    /// the schedule needs, at phone and tablet widths in both appearances and
+    /// at the largest text.
+    @MainActor
+    func testAircraftMarketAtAccessibleSizes() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let catalog = try ContentCatalog.loadBundled()
+        let engine = SimulationEngine(state: ScenarioBootstrap.newGame(
+            scenario: "founder", worldSeed: 42, startYear: 2030),
+            systems: GamePipeline.standard(), catalog: catalog)
+        XCTAssertEqual(engine.applyNow(FoundAirlineCommand(airlineName: "Pacifica market",
+            kind: .player, homeAirport: "ARN", startingCash: .dollars(60_000_000))), .applied)
+        let player = try XCTUnwrap(engine.state.playerAirline?.id)
+        XCTAssertEqual(engine.applyNow(LeaseAircraftCommand(
+            lessee: player, type: "PA184", termMonths: 60)), .applied)
+        XCTAssertEqual(engine.applyNow(OpenRouteCommand(airline: player, origin: "ARN",
+            destination: "LHR", dailyRoundTrips: 2, ticketPrice: .dollars(160))), .applied)
+        let route = try XCTUnwrap(engine.state.routes(of: player).first)
+        let aircraft = try XCTUnwrap(engine.state.fleet(of: player).first)
+        XCTAssertEqual(engine.applyNow(AssignAircraftToRouteCommand(
+            airline: player, route: route.id, aircraftID: aircraft.id)), .applied)
+        let ticksPerDay = Int(GameCalendar.minutesPerDay / engine.state.meta.tickMinutes)
+        engine.advance(ticks: ticksPerDay * 7)
+
+        let manager = SaveManager(store: FileSaveStore(rootDirectory: root))
+        try manager.save(engine.state, slot: "aircraft-market-review")
+        let controller = GameController(savesDirectory: root)
+        controller.loadGame(slot: "aircraft-market-review")
+        try await waitForGame(controller)
+        defer { controller.setPumping(false) }
+        let loaded = try XCTUnwrap(controller.snapshot)
+        let comparison = try XCTUnwrap(loaded.aircraftMarketComparison(
+            routeID: route.id, catalog: catalog,
+            era: min(loaded.progression.era, controller.eraCeiling)))
+        XCTAssertGreaterThanOrEqual(comparison.candidates.count, 2,
+                                    "The evidence needs a real shortlist")
+
+        for dark in [false, true] {
+            for width in [CGFloat(393), CGFloat(834)] {
+                try await capture(NavigationStack {
+                    AircraftShopSheet(routeID: route.id, isNavigationDestination: true)
+                }, name: "MARKET-01-compare-\(Int(width))-\(dark ? "dark" : "light")",
+                    controller: controller, width: width, dark: dark, typeSize: .large,
+                    height: 1800, settleMilliseconds: 2500)
+            }
+            try await capture(NavigationStack {
+                AircraftShopSheet(routeID: route.id, isNavigationDestination: true)
+            }, name: "MARKET-05-AX5-\(dark ? "dark" : "light")", controller: controller,
+                width: 375, dark: dark, typeSize: .accessibility5, height: 2400,
+                settleMilliseconds: 2500)
+        }
+    }
+
 }
