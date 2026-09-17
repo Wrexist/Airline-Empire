@@ -1,52 +1,52 @@
 [
   {
     "file": "06b-briefing.png",
-    "attachment": "STORE-06b-briefing_0_D65D4268-CB3F-42A1-AD0F-FA5DB9FD1CC1.png",
-    "sha256": "37dc409f20dcca3b3e0771f0ec184f9ff67adbf2062f46598dbb153b5e34d981"
+    "attachment": "STORE-06b-briefing_0_C89EA202-FD47-4833-AADE-6D50D878D8D5.png",
+    "sha256": "211d5aecb36e791d5d213991c05239bc19fbc35f377e6fdbae947dfe7774f7e3"
   },
   {
     "file": "06-progression.png",
-    "attachment": "STORE-06-progression_0_7BEDDC02-DF39-4960-B93F-EB2DCC23AB16.png",
-    "sha256": "1ea1a3338eff416537ae6210b732183f552bffa9ab0e95153138b305f360b638"
+    "attachment": "STORE-06-progression_0_606CD4C7-E4E3-4F44-AABD-25B5334F5BF7.png",
+    "sha256": "1b1e6d4d9618d857ffbcca52cb3b7727c0030480e8ae0af04710fd2865198c4e"
   },
   {
     "file": "05-rivals.png",
-    "attachment": "STORE-05-rivals_0_4A6B30C5-CAF8-48AF-9A95-15D0F3282FFF.png",
-    "sha256": "96e4e8916c9f70effb10bc36e14193cd373e35d092a969ff68efb6c192e8ff73"
+    "attachment": "STORE-05-rivals_0_B287CA36-C2F9-4D35-8818-53B7CD40D737.png",
+    "sha256": "99d8a6a8df8e299625784f787e90f6a7fd9d43f113726bd3972d3d4acf22b9b3"
   },
   {
     "file": "05b-world.png",
-    "attachment": "STORE-05b-world_0_5FED44C7-73CF-4483-9869-420DC7041694.png",
-    "sha256": "18acc20ef91a6a7e09e998b8de1df5a1d055130f2960343cd4fc99280bb637a6"
+    "attachment": "STORE-05b-world_0_DB247873-6C8B-4503-95C4-0E63980758D4.png",
+    "sha256": "f6ce81be8dc071bf3f61ec85b4606027aa3e539b165ada855e632c515753d0e8"
   },
   {
     "file": "04-finance.png",
-    "attachment": "STORE-04-finance_0_D1C726D7-382B-4948-AFE5-154811E13511.png",
-    "sha256": "db0e2306e198742a68c498e7fce26fd2fc9d0894471fb7fc4ca5d69bead2eee4"
-  },
-  {
-    "file": "03-route.png",
-    "attachment": "STORE-03-route_0_3C499303-018D-4680-A238-7C0702134282.png",
-    "sha256": "3c66bd15110ed61a18dafaa6505739a97e7636118947b0b32ba1dcbfbc324e4a"
-  },
-  {
-    "file": "03b-routes.png",
-    "attachment": "STORE-03b-routes_0_8E1F13A3-2C03-472D-89B5-D126A20CE08D.png",
-    "sha256": "87031e74f54318b01a7a53f8abd25459e14b413397b66c79f69c4389deae37fc"
+    "attachment": "STORE-04-finance_0_35DDCB61-462C-4140-B979-F5979E87D028.png",
+    "sha256": "6a0dbfeaa0d25f7fc9e13a4c2acec771a9f5771932cfeee2f5d819336dbc6d3c"
   },
   {
     "file": "02b-market.png",
-    "attachment": "STORE-02b-market_0_894C9674-E9E0-4F48-BED4-3994E96A101B.png",
-    "sha256": "dc8f45688bc0322fd1f3cd2a17ad5ce008b5e732fe172393003fcf5b7372e0bb"
+    "attachment": "STORE-02b-market_0_156FD3DA-A29B-4DA2-ACEE-61390BA2BC4F.png",
+    "sha256": "e310b7fc4c593e7b36e6572beae08595ad7dd9b3b6996dba329723f6c7151fc8"
+  },
+  {
+    "file": "03-route.png",
+    "attachment": "STORE-03-route_0_B0516755-26C7-40B6-9279-6816F6E96E10.png",
+    "sha256": "550d062efc23fb74441f683350ab852b83a7654d19047d1efa5d5ca0879cd1c2"
+  },
+  {
+    "file": "03b-routes.png",
+    "attachment": "STORE-03b-routes_0_00700AFB-670D-4A3D-A08F-6FB73B4280FC.png",
+    "sha256": "57bd4fbc9a292fb4d512796c586d03dc242f53ac3bd8381d852a84c8e84a9763"
   },
   {
     "file": "02-fleet.png",
-    "attachment": "STORE-02-fleet_0_1F94721C-20D7-4B3A-81E3-2D085347D067.png",
-    "sha256": "b655444ee2654537c175b819da309d219d2506204196bb9c026fbc63f5f88927"
+    "attachment": "STORE-02-fleet_0_ABDD60AE-F8EC-42B8-9FD5-2093861375C4.png",
+    "sha256": "283331fb8689ce017f0da9b6f7d58292a155e53b6299d84c20d9e583f7af1a35"
   },
   {
     "file": "01-network.png",
-    "attachment": "STORE-01-network_0_FED32340-E6F9-46B0-84BC-AC249A80A912.png",
-    "sha256": "a167a695b564c7a9915e26a75aabe6f77ae4520d95ccb3fb811490fb67d0bd1f"
+    "attachment": "STORE-01-network_0_14E1E463-8A02-482E-B90B-E33D2912EF56.png",
+    "sha256": "fe2c2652bbe09e90a410671dbe57f3d5a3985193413fae8bad60b5ff4dbe9b44"
   }
 ]

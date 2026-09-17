@@ -173,20 +173,42 @@ model name unreadable.
 The GitHub runs retain the `airport-review` artifact with the source PNGs,
 manifests and logs; local exports are under `build/ae-run-35183970159`.
 
+## Store artwork refreshed (same change)
+
+The store storyboard's own capture still photographed the pre-revamp market,
+and the seven revamps had changed every screen the composed App Store images
+use. Both were stale, so the whole artwork path was re-run:
+
+- `StoreScreenshotUITests` now enters the market from the route rather than
+  from the Fleet tab, asserts the comparison panel names the route and ranks
+  more than one airframe, and only then photographs `02b-market`. The route
+  sheet and the market's controls are scrolled into genuine reachability first
+  — three CI runs (35189635088, 35190707150 and 35191948365) each found a
+  control that existed below the fold and never received its tap.
+- Store captures re-run green for both devices
+  ([35191948365](https://github.com/Wrexist/Airline-Empire/actions/runs/35191948365)),
+  the composed artwork rebuilt for en-US and copied to en-GB, and
+  `verify.cjs` re-passed (`18 valid RGB exports; all original source hashes
+  match`, 20 native captures). The overview JPEGs were regenerated and
+  `capture-review.json` records the new run, commit and campaign hash
+  (`619dd310…`, byte-identical across both device jobs).
+- The market frame is review material, not a storyboard source, so the
+  composed images are unchanged in structure; the refreshed frames show the
+  revamped home, fleet, route, finance, rivals and progression screens.
+
+`validate-metadata.mjs --allow-placeholders` and `asc/selftest.mjs` (50 tests)
+still pass, with the same four pre-existing description URL/price warnings.
+Nothing was uploaded to Apple: the listing's screenshots are refreshed on disk
+and wait for the next release run.
+
 ## Next recommendation
 
-All seven slices in `docs/NEXT_SCREEN_REVAMPS_2026-09-15.md` are now done:
-airport management, passenger experience, fleet, finance, progression,
-home briefing, world/competition and the aircraft market.
+All seven slices in `docs/NEXT_SCREEN_REVAMPS_2026-09-15.md` are done, and the
+store artwork now matches them.
 
-Two plausible next steps, in order:
-
-1. **Validate the seven revamps as a release**, not slice by slice. The branch
-   workflow runs the revamp journeys; the release workflow
-   (`ios-testflight.yml`) and the store screenshots have not been re-run since
-   the screens changed, and `StoreScreenshotUITests` still photographs the
-   market's old shape (`02b-market`). Re-capture the store frames against the
-   new comparison panel before the next TestFlight build.
+1. **Ship the refreshed listing on the next release run.** The screenshots are
+   regenerated and verified locally; the release workflow
+   (`ios-testflight.yml`) is what uploads them.
 2. **Food & Beverage / airport Wi-Fi**, which the plan defers until "effect
    ownership is clear" — the passenger-experience phase deliberately left it
    out because the effect is not the airline's to own yet.
