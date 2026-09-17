@@ -118,18 +118,24 @@ class StoreScreenshotUITests: AEUITestCase {
     }
 
     private func verifyMarketControls() -> Bool {
+        // The comparison panel sits above the catalogue, so the first
+        // aircraft's facts start below the fold. Scroll until each control is
+        // genuinely reachable rather than merely present.
         let model = app.staticTexts.matching(identifier: "ae-market-model-name").firstMatch
-        guard scrollUntil(model, "the aircraft model facts"), tapWhenReady(model) else { return false }
+        guard scrollUntil(model, "the aircraft model facts", swipes: 10, in: app),
+              tapWhenReady(model) else { return false }
         let modelName = model.label
         let used = app.buttons.matching(NSPredicate(
             format: "identifier == %@ AND label CONTAINS %@", "ae-deal-buy-used", modelName)).firstMatch
-        guard scrollUntil(used, "the used deal selector for this aircraft"), tapWhenReady(used) else { return false }
+        guard scrollUntil(used, "the used deal selector for this aircraft", swipes: 10, in: app),
+              tapWhenReady(used) else { return false }
         // The purchase footer is a separate lazy List row. On an iPad sheet
         // it may not exist until scrolled into view; keep the model identity
         // fixed while the list recycles rows.
         let commit = app.buttons.matching(NSPredicate(
             format: "identifier == %@ AND label CONTAINS %@", "ae-market-buy-used", modelName)).firstMatch
-        guard scrollUntil(commit, "the selected aircraft's used purchase action") else { return false }
+        guard scrollUntil(commit, "the selected aircraft's used purchase action",
+                          swipes: 10, in: app) else { return false }
         XCTAssertTrue(commit.isHittable,
                       "Choosing a deal updates its own commit action without purchasing")
         XCTAssertTrue(app.navigationBars["Aircraft market"].exists,
