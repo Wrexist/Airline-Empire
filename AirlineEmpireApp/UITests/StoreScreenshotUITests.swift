@@ -43,8 +43,11 @@ class StoreScreenshotUITests: AEUITestCase {
         // The market compares airframes only for a route it was opened on,
         // and a route is where the market is entered with one. Capture it
         // from the route rather than from the Fleet tab's unrouted catalogue.
+        // The route sheet is long: scroll until the action is genuinely
+        // reachable, not merely present below the fold.
         let find = app.buttons["ae-route-find-aircraft"]
-        guard scrollUntil(find, "the route's aircraft market"), tapWhenReady(find) else { return }
+        guard scrollUntil(find, "the route's aircraft market", swipes: 10, in: app),
+              tapWhenReady(find) else { return }
         guard verifyMarketComparison() else { return }
         shot("02b-market")
         guard verifyMarketControls() else { return }
