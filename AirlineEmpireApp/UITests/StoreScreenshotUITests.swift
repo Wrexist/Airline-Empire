@@ -30,10 +30,6 @@ class StoreScreenshotUITests: AEUITestCase {
         guard openAirlineSection("Fleet") else { return }
         shot("02-fleet")
         guard verifyFleetControls() else { return }
-        guard openAircraftMarket() else { return }
-        shot("02b-market")
-        guard verifyMarketControls() else { return }
-        app.navigationBars.buttons.firstMatch.tap()
 
         guard openAirlineSection("Routes") else { return }
         shot("03b-routes")
@@ -43,6 +39,16 @@ class StoreScreenshotUITests: AEUITestCase {
             "ae-route-row", "ARN", "IST")).firstMatch
         guard scrollUntil(row, "the Stockholm to Istanbul route"), tapWhenReady(row) else { return }
         shot("03-route")
+
+        // The market compares airframes only for a route it was opened on,
+        // and a route is where the market is entered with one. Capture it
+        // from the route rather than from the Fleet tab's unrouted catalogue.
+        let find = app.buttons["ae-route-find-aircraft"]
+        guard scrollUntil(find, "the route's aircraft market"), tapWhenReady(find) else { return }
+        guard verifyMarketComparison() else { return }
+        shot("02b-market")
+        guard verifyMarketControls() else { return }
+        guard dismissMarket() else { return }
 
         openTab("Finance")
         shot("04-finance")
@@ -84,6 +90,28 @@ class StoreScreenshotUITests: AEUITestCase {
         guard require(reset, "reset fleet filters"), tapWhenReady(reset) else { return false }
         XCTAssertEqual(filter.value as? String, "All")
         return true
+    }
+
+    /// The market's comparing shape, which is the frame the store keeps: a
+    /// route chosen and the airframes priced on it, same fare and frequency.
+    private func verifyMarketComparison() -> Bool {
+        let panel = app.descendants(matching: .any)
+            .matching(identifier: "ae-aircraft-comparison").firstMatch
+        guard require(panel, "the route comparison") else { return false }
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(
+            format: "label BEGINSWITH %@", "Compare on ")).firstMatch.exists,
+                      "The comparison must name the route it is for")
+        let rows = app.descendants(matching: .any)
+            .matching(identifier: "ae-aircraft-comparison-row")
+        XCTAssertGreaterThanOrEqual(rows.count, 2,
+                                    "A chosen route must compare more than one airframe")
+        return true
+    }
+
+    private func dismissMarket() -> Bool {
+        let done = app.buttons["Done"].firstMatch
+        guard require(done, "the market's Done button"), tapWhenReady(done) else { return false }
+        return app.navigationBars["Aircraft market"].waitForNonExistence(timeout: 10)
     }
 
     private func verifyMarketControls() -> Bool {
