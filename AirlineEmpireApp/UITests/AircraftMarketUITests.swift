@@ -93,8 +93,14 @@ final class AircraftMarketUITests: AEUITestCase {
         let rows = app.descendants(matching: .any)
             .matching(identifier: "ae-aircraft-comparison-row")
         XCTAssertGreaterThanOrEqual(rows.count, 2)
+        // A candidate below the fold still exists; scroll the market itself
+        // until it is reachable, which is the thing under test.
+        let list = app.descendants(matching: .any)
+            .matching(identifier: "ae-market-list").firstMatch
+        XCTAssertTrue(list.waitForExistence(timeout: 10))
         let candidate = rows.element(boundBy: 0)
-        XCTAssertTrue(scrollUntil(candidate, "a candidate at large text", swipes: 12))
+        XCTAssertTrue(scrollUntil(candidate, "a candidate at large text",
+                                  swipes: 12, in: list))
         XCTAssertTrue(candidate.isHittable,
                       "A candidate must stay tappable at large text")
         checkpoint("MARKET-AX")

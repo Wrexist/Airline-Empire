@@ -1613,38 +1613,61 @@ struct AircraftShopSheet: View {
         let tint = candidate.monthlyAfterAirframe > .zero
             ? AETheme.positive
             : candidate.monthlyAfterAirframe < .zero ? AETheme.negative : AETheme.mutedText
-        return HStack(alignment: .top, spacing: AETheme.spacingS) {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: AETheme.spacingXS) {
-                    Text("\(candidate.spec.manufacturer) \(candidate.spec.model)")
-                        .font(.subheadline.weight(.semibold))
-                    if isBest {
-                        AEBadge(text: "best", color: AETheme.positive, icon: "checkmark")
-                    }
+        return Group {
+            if typeSize.isAccessibilitySize {
+                // The money shares the row only while both columns fit; at
+                // accessibility sizes a 50/50 split left the model name a
+                // couple of characters wide.
+                VStack(alignment: .leading, spacing: AETheme.spacingXS) {
+                    comparisonIdentity(candidate, isBest: isBest, frequency: frequency)
+                    comparisonMoney(candidate, tint: tint)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Text("\(candidate.spec.seats) seats \u{00B7} "
-                     + "\(candidate.rotationsPerAircraft)\u{00D7}/day per aircraft"
-                     + (candidate.coversFrequencyAlone
-                        ? "" : " \u{00B7} needs \(candidate.aircraftNeeded) aircraft"))
-                    .font(.caption).foregroundStyle(AETheme.mutedText)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(comparisonFit(candidate, frequency: frequency))
-                    .font(.caption2).foregroundStyle(AETheme.mutedText)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: AETheme.spacingS)
-            VStack(alignment: .trailing, spacing: 1) {
-                Text(Format.money(candidate.monthlyAfterAirframe))
-                    .font(.subheadline.weight(.bold)).monospacedDigit()
-                    .foregroundStyle(tint)
-                Text("a month")
-                    .font(.caption2).foregroundStyle(AETheme.mutedText)
-                Image(systemName: "chevron.down")
-                    .font(.caption2).foregroundStyle(AETheme.mutedText)
+            } else {
+                HStack(alignment: .top, spacing: AETheme.spacingS) {
+                    comparisonIdentity(candidate, isBest: isBest, frequency: frequency)
+                    Spacer(minLength: AETheme.spacingS)
+                    comparisonMoney(candidate, tint: tint)
+                }
             }
         }
         .frame(minHeight: 44)
         .contentShape(Rectangle())
+    }
+
+    private func comparisonIdentity(_ candidate: AircraftMarketComparison.Candidate,
+                                    isBest: Bool, frequency: Int) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: AETheme.spacingXS) {
+                Text("\(candidate.spec.manufacturer) \(candidate.spec.model)")
+                    .font(.subheadline.weight(.semibold))
+                if isBest {
+                    AEBadge(text: "best", color: AETheme.positive, icon: "checkmark")
+                }
+            }
+            Text("\(candidate.spec.seats) seats \u{00B7} "
+                 + "\(candidate.rotationsPerAircraft)\u{00D7}/day per aircraft"
+                 + (candidate.coversFrequencyAlone
+                    ? "" : " \u{00B7} needs \(candidate.aircraftNeeded) aircraft"))
+                .font(.caption).foregroundStyle(AETheme.mutedText)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(comparisonFit(candidate, frequency: frequency))
+                .font(.caption2).foregroundStyle(AETheme.mutedText)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func comparisonMoney(_ candidate: AircraftMarketComparison.Candidate,
+                                 tint: Color) -> some View {
+        VStack(alignment: .trailing, spacing: 1) {
+            Text(Format.money(candidate.monthlyAfterAirframe))
+                .font(.subheadline.weight(.bold)).monospacedDigit()
+                .foregroundStyle(tint)
+            Text("a month")
+                .font(.caption2).foregroundStyle(AETheme.mutedText)
+            Image(systemName: "chevron.down")
+                .font(.caption2).foregroundStyle(AETheme.mutedText)
+        }
     }
 
     /// One sentence per candidate, for VoiceOver: the model, the cabin, the
