@@ -84,17 +84,25 @@ if (versionAttached) {
   report.actions.push(`would attach version ${version.id} (${versionString}, ${versionState})`)
   console.log(`Would attach version ${version.id} (${versionString}, ${versionState}) to submission ${open.id}.`)
 } else {
-  const created = await client.post('/v1/reviewSubmissionItems', {
-    data: {
-      type: 'reviewSubmissionItems',
-      relationships: {
-        reviewSubmission: { data: { type: 'reviewSubmissions', id: open.id } },
-        appStoreVersion: { data: { type: 'appStoreVersions', id: version.id } },
+  try {
+    const created = await client.post('/v1/reviewSubmissionItems', {
+      data: {
+        type: 'reviewSubmissionItems',
+        relationships: {
+          reviewSubmission: { data: { type: 'reviewSubmissions', id: open.id } },
+          appStoreVersion: { data: { type: 'appStoreVersions', id: version.id } },
+        },
       },
-    },
-  })
-  report.actions.push(`attached version item ${created?.data?.id}`)
-  console.log(`Attached version item ${created?.data?.id} to submission ${open.id}.`)
+    })
+    report.actions.push(`attached version item ${created?.data?.id}`)
+    console.log(`Attached version item ${created?.data?.id} to submission ${open.id}.`)
+  } catch (error) {
+    // Apple's associated errors say *why* a resource cannot be reviewed; the
+    // summary line alone does not, and guessing wastes a review cycle.
+    report.error = { status: error.status, errors: error.errors ?? String(error.message ?? error) }
+    console.error(JSON.stringify(report.error, null, 2))
+    throw error
+  }
 }
 
 if (submit) {
