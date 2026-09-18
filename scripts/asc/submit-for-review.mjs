@@ -61,25 +61,57 @@ const decode = (id) => {
 for (const item of items) console.log(`item ${item.id} · ${item.attributes?.state} · ${decode(item.id)}`)
 
 let versionAttached = false
-for (const item of items) {
-  const parts = decode(item.id).split('|')
-  if (parts[2] === version.id) versionAttached = true
-}
-// The version can also be attached without its id being legible in the item id,
-// so ask Apple directly before deciding.
-try {
-  const withVersion = await client.getAll(
-    `/v1/reviewSubmissions/${open.id}/items?limit=50&include=appStoreVersion`)
-  for (const entry of withVersion) {
-    if (entry.relationships?.appStoreVersion?.data?.id === version.id) versionAttached = true
+let elsewhere = null
+for (const submission of submissions) {
+  const submissionItems = submission.id === open.id
+    ? items
+    : await client.getAll(`/v1/reviewSubmissions/${submission.id}/items?limit=50`)
+  for (const item of submissionItems) {
+    const parts = decode(item.id).split('|')
+    if (parts[2] !== version.id) continue
+    if (submission.id === open.id) versionAttached = true
+    else elsewhere = { submissionId: submission.id, state: submission.attributes?.state, itemId: item.id }
   }
-} catch (error) {
-  console.log(`include=appStoreVersion unavailable (${error.status ?? '?'}); relying on the item ids`)
 }
 
 if (versionAttached) {
   report.actions.push('version already attached')
   console.log('The app version is already in the open submission.')
+} else if (elsewhere && !apply) {
+  report.actions.push(`would release the version from submission ${elsewhere.submissionId} (${elsewhere.state}) item ${elsewhere.itemId}`)
+  report.actions.push(`would attach version ${version.id} (${versionString}, ${versionState})`)
+  console.log(`The version is held by submission ${elsewhere.submissionId} (${elsewhere.state}).`)
+  console.log(`Would remove item ${elsewhere.itemId} there, then attach it here.`)
+} else if (elsewhere) {
+  // Apple: STATE_ERROR.ITEM_PART_OF_ANOTHER_SUBMISSION. A rejected submission
+  // keeps its items; the version has to be released before a new submission can
+  // hold it. Removing the item is the narrow act - it touches nothing else in
+  // that already-resolved submission.
+  try {
+    await client.delete(`/v1/reviewSubmissionItems/${elsewhere.itemId}`)
+    report.actions.push(`removed item ${elsewhere.itemId} from submission ${elsewhere.submissionId}`)
+    console.log(`Removed item ${elsewhere.itemId} from submission ${elsewhere.submissionId}.`)
+  } catch (error) {
+    report.releaseError = { status: error.status, errors: error.errors ?? String(error.message ?? error) }
+    console.error(JSON.stringify(report.releaseError, null, 2))
+    // Fall back to closing the resolved submission, which frees its items too.
+    const canceled = await client.patch(`/v1/reviewSubmissions/${elsewhere.submissionId}`, {
+      data: { type: 'reviewSubmissions', id: elsewhere.submissionId, attributes: { canceled: true } },
+    })
+    report.actions.push(`canceled submission ${elsewhere.submissionId} (state ${canceled?.data?.attributes?.state})`)
+    console.log(`Canceled submission ${elsewhere.submissionId}.`)
+  }
+  const created = await client.post('/v1/reviewSubmissionItems', {
+    data: {
+      type: 'reviewSubmissionItems',
+      relationships: {
+        reviewSubmission: { data: { type: 'reviewSubmissions', id: open.id } },
+        appStoreVersion: { data: { type: 'appStoreVersions', id: version.id } },
+      },
+    },
+  })
+  report.actions.push(`attached version item ${created?.data?.id}`)
+  console.log(`Attached version item ${created?.data?.id} to submission ${open.id}.`)
 } else if (!apply) {
   report.actions.push(`would attach version ${version.id} (${versionString}, ${versionState})`)
   console.log(`Would attach version ${version.id} (${versionString}, ${versionState}) to submission ${open.id}.`)
