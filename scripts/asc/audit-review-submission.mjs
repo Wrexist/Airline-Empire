@@ -54,6 +54,20 @@ for (const submission of submissions) {
   } catch (error) {
     entry.itemsError = String(error.message ?? error)
   }
+  // Apple's own id for the version on each item, when it will tell us: the
+  // item id's trailing number is not always the appStoreVersion id, and a 409
+  // named a different one.
+  try {
+    const withVersion = await client.getAll(
+      `/v1/reviewSubmissions/${submission.id}/items?limit=50&include=appStoreVersion`)
+    entry.itemVersions = withVersion.map((item) => ({
+      id: item.id,
+      state: item.attributes?.state,
+      appStoreVersion: item.relationships?.appStoreVersion?.data?.id ?? null,
+    }))
+  } catch (error) {
+    entry.itemVersionsError = String(error.message ?? error)
+  }
   report.submissions.push(entry)
 }
 
@@ -83,7 +97,11 @@ for (const submission of report.submissions) {
   for (const item of submission.items) {
     console.log(`  item ${item.id} · ${item.state} · ${item.relationships.join(',')} · ${JSON.stringify(item.related)}`)
   }
+  for (const item of submission.itemVersions ?? []) {
+    console.log(`  item ${item.id} · ${item.state} · appStoreVersion ${item.appStoreVersion}`)
+  }
   if (submission.itemsError) console.log(`  items error: ${submission.itemsError}`)
+  if (submission.itemVersionsError) console.log(`  item versions error: ${submission.itemVersionsError}`)
 }
-for (const version of report.versions) console.log(`Version ${version.versionString} · ${version.state}`)
+for (const version of report.versions) console.log(`Version ${version.versionString} · ${version.id} · ${version.state}`)
 for (const product of report.products) console.log(`Product ${product.name} · ${product.state}`)
