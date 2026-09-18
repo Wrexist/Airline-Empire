@@ -222,8 +222,8 @@
     "uniqueImages": 18,
     "nativeCaptures": 20,
     "artworkVerifier": "passed",
-    "ascSelftests": 50,
-    "listingValidation": "passed with four pre-existing description URL/price warnings",
+    "ascSelftests": 53,
+    "listingValidation": "passed with no warnings; the description checks now accept the subscription Terms link and an accurate \"free\", and still catch a stray URL, an explicit price or a discount",
     "visualChecks": [
       "Headline fit and thumbnail readability",
       "Native gameplay content remains legible",

@@ -196,10 +196,14 @@ use. Both were stale, so the whole artwork path was re-run:
   composed images are unchanged in structure; the refreshed frames show the
   revamped home, fleet, route, finance, rivals and progression screens.
 
-`validate-metadata.mjs --allow-placeholders` and `asc/selftest.mjs` (50 tests)
-still pass, with the same four pre-existing description URL/price warnings.
-Nothing was uploaded to Apple: the listing's screenshots are refreshed on disk
-and wait for the next release run.
+`validate-metadata.mjs` now passes with **no warnings**: the description checks
+were narrowed to what Apple actually rejects — a URL that is not one of the
+app's declared links, an explicit price, a discount or a trial — rather than
+flagging the subscription Terms link the guidelines require and the accurate
+word "free". `asc/selftest.mjs` (53 tests) and
+`validate-metadata.mjs` both pass, and `upload-iap-review.mjs --check` confirms
+the three prepared purchase review images. Nothing was uploaded to Apple: the
+listing's screenshots are refreshed on disk and wait for the next release run.
 
 ## Next recommendation
 

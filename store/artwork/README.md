@@ -40,6 +40,13 @@ on 13 September 2026. [The upload run](https://github.com/Wrexist/Airline-Empire
 changed screenshots only. All 36 source checksums, six ordered sets and Apple's
 COMPLETE processing states were verified; see [verification report](upload-verification.json).
 
+**The uploaded set is superseded in the repository.** The seven screen revamps
+(AE-049) changed every storyboard source, so the captures were re-run
+([35191948365](https://github.com/Wrexist/Airline-Empire/actions/runs/35191948365)),
+the artwork re-rendered and re-verified, and `upload-verification.json` carries
+a `supersededBy` note. The App Store listing keeps showing the 13 September
+images until the next `screenshots_only` apply run replaces them.
+
 The version was removed from its unsubmitted review draft to unlock screenshot
 editing. The open page subsequently showed build 1.0.21 (10) selected and
 concurrent unsaved listing edits. Those edits were left intact, with the version
