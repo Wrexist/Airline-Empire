@@ -60,6 +60,13 @@ const decode = (id) => {
 }
 for (const item of items) console.log(`item ${item.id} · ${item.attributes?.state} · ${decode(item.id)}`)
 
+// Only a submission still in play can hold an item. A COMPLETE or CANCELED one
+// has been closed and no longer blocks a new submission - which is what
+// canceling the rejected submission was for.
+const BLOCKING_STATES = new Set([
+  'READY_FOR_REVIEW', 'WAITING_FOR_REVIEW', 'IN_REVIEW', 'UNRESOLVED_ISSUES',
+])
+
 let versionAttached = false
 let elsewhere = null
 for (const submission of submissions) {
@@ -80,7 +87,9 @@ for (const submission of submissions) {
     const decoded = decode(item.id).split('|')[2]
     if (related !== version.id && decoded !== version.id) continue
     if (submission.id === open.id) versionAttached = true
-    else elsewhere = { submissionId: submission.id, state: submission.attributes?.state, itemId: item.id }
+    else if (BLOCKING_STATES.has(submission.attributes?.state)) {
+      elsewhere = { submissionId: submission.id, state: submission.attributes?.state, itemId: item.id }
+    }
   }
 }
 console.log(`Version attached here: ${versionAttached}; held elsewhere: ${JSON.stringify(elsewhere)}`)
@@ -104,7 +113,7 @@ if (versionAttached) {
   let state = canceled?.data?.attributes?.state
   report.actions.push(`canceled submission ${elsewhere.submissionId} (state ${state})`)
   console.log(`Canceled submission ${elsewhere.submissionId}; state ${state}.`)
-  for (let attempt = 0; attempt < 12 && state !== 'CANCELED'; attempt++) {
+  for (let attempt = 0; attempt < 12 && !['CANCELED', 'COMPLETE'].includes(state); attempt++) {
     await new Promise((resolve) => setTimeout(resolve, 5000))
     const fresh = (await client.get(`/v1/reviewSubmissions/${elsewhere.submissionId}`)).data
     state = fresh?.attributes?.state
