@@ -1,6 +1,14 @@
 # Airline Empire — cinematic store collection
 
-Six coordinated App Store images pair original cinematic aviation artwork with genuine native gameplay. Midnight navy, pearl silver and warm gold connect the sequence: ambition, fleet, routes, finance, rivals and progression.
+> **Not used by the App Store listing.** App Review rejected version 1.0 under
+> Guideline 2.3.3 because the majority of each screenshot was decorative
+> illustration rather than the app in use. The listing is now composed
+> app-dominant by `scripts/store-art/build.cjs --native` — see
+> [`../screenshots/README.md`](../screenshots/README.md). This collection is
+> kept as the source of the artwork and the cinematic composition path, and
+> `build.cjs` without `--native` still renders it for non-store use.
+
+Six coordinated images pair original cinematic aviation artwork with genuine native gameplay. Midnight navy, pearl silver and warm gold connect the sequence: ambition, fleet, routes, finance, rivals and progression.
 
 The artwork was generated with the built-in image_gen tool. It is decorative marketing illustration, not 3D gameplay or an asset added to the game. Every final image clearly identifies the actual gameplay panel and Pro content. Captures are embedded as original pixels with only cropping and uniform scaling; no numbers, aircraft, achievements or UI are invented or retouched.
 
@@ -40,12 +48,14 @@ on 13 September 2026. [The upload run](https://github.com/Wrexist/Airline-Empire
 changed screenshots only. All 36 source checksums, six ordered sets and Apple's
 COMPLETE processing states were verified; see [verification report](upload-verification.json).
 
-**The uploaded set is superseded in the repository.** The seven screen revamps
-(AE-049) changed every storyboard source, so the captures were re-run
+**That uploaded set was rejected and is superseded.** App Review rejected
+version 1.0 on 17 September 2026 under Guideline 2.3.3 — the set was
+cinematic artwork with a minority of app UI. The repository now holds an
+app-dominant set rendered from re-captured screens
 ([35191948365](https://github.com/Wrexist/Airline-Empire/actions/runs/35191948365)),
-the artwork re-rendered and re-verified, and `upload-verification.json` carries
-a `supersededBy` note. The App Store listing keeps showing the 13 September
-images until the next `screenshots_only` apply run replaces them.
+and `upload-verification.json` carries a `supersededBy` note. The live listing
+keeps the rejected images until the next `screenshots_only` apply run replaces
+them.
 
 The version was removed from its unsubmitted review draft to unlock screenshot
 editing. The open page subsequently showed build 1.0.21 (10) selected and

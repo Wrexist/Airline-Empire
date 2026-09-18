@@ -229,9 +229,11 @@ Airline Empire Pro Lifetime
 Full Pro access with a one-time purchase.
 ```
 
-**IAP review screenshot:** a separate, genuine capture of the paywall showing
-the configured products and prices is still needed. The six marketing images
-are not substitutes for this review evidence. Verify products in StoreKit sandbox.
+**IAP review screenshot:** prepared, inspected and uploaded-ready for all
+three products (1206 × 2622 RGB). `node scripts/asc/upload-iap-review.mjs --check`
+verifies them, and the metadata workflow fills any empty slot. App Review still
+needs each product **added to the version's submission** — Apple rejected 1.0 for
+that, not for a missing image. Verify products in StoreKit sandbox.
 
 - Subscription group: **`Airline Empire Pro`**, holding the weekly and the
   yearly at the same group level.
@@ -426,9 +428,12 @@ https://wrexist.github.io/Airline-Empire/
 | iPad 13" | 2064 × 2752 | in `store/screenshots/` |
 | iPhone 6.5" (additional export) | 1242 × 2688 | six images in `store/screenshots/` |
 
-Portrait, PNG, **no alpha channel**, at most ten per size. The six-shot
-storyboard and captions are in `store/artwork/README.md`; the upload can be done for you
-by the metadata workflow with **screenshots** ticked.
+Portrait, PNG, **no alpha channel**, at most ten per size. Each image is the
+app itself, full screen, with a compact caption band — Review Guideline 2.3.3
+(rejection of 1.0) requires the majority of every screenshot to be the app, so
+the decorative illustration is not used here. The shot list and captions are in
+`docs/ASO.md` §5; the upload can be done for you by the metadata workflow with
+**screenshots** ticked.
 
 ### App Review Information
 
