@@ -88,6 +88,14 @@ jobs:
         run: |
           node scripts/asc/audit-beta-crashes.mjs
           node scripts/asc/audit-territories.mjs
+      # What App Review actually has: the review submission and the items in it.
+      # Guideline 2.1(b) is a fact about the submission, not about the products.
+      - name: Read the review submission
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+        run: node scripts/asc/audit-review-submission.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: apple-beta-crash-audit

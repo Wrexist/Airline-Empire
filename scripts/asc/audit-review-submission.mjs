@@ -1,0 +1,89 @@
+#!/usr/bin/env node
+// Read-only: what is in the open App Review submission for this app?
+//
+// App Review rejected 1.0 under Guideline 2.1(b) because the three Pro products
+// had not been submitted for review, even though all three are READY_TO_SUBMIT
+// with their App Review screenshots complete. That finding lives in the
+// submission, not in the products, so this reads the submission itself:
+// every review submission for the app, its state, and the items attached to
+// the open one.
+//
+// Writes apple-audit/review-submission.json and prints a summary. Never writes
+// to App Store Connect.
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { join, resolve, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { AppStoreConnect, findApp, listVersions } from './lib/asc.mjs'
+import { loadStore } from './lib/metadata.mjs'
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+const store = loadStore(join(root, 'store'))
+const client = AppStoreConnect.fromEnv()
+const app = await findApp(client, store.config.bundleId)
+if (!app) throw new Error(`No app record for ${store.config.bundleId}`)
+
+const submissions = await client.getAll(`/v1/apps/${app.id}/reviewSubmissions?limit=50`)
+const report = {
+  checkedAt: new Date().toISOString(),
+  appId: app.id,
+  bundleId: store.config.bundleId,
+  submissions: [],
+}
+
+for (const submission of submissions) {
+  const entry = {
+    id: submission.id,
+    state: submission.attributes?.state,
+    platform: submission.attributes?.platform,
+    submittedDate: submission.attributes?.submittedDate,
+    items: [],
+  }
+  // No `include`, deliberately: the relationship names differ between the
+  // classic products this app has (subscriptions v1, inAppPurchases v2) and
+  // the version-based ones newer records use, and an unknown include is a 400.
+  // Printing the relationship keys Apple returns is the honest read.
+  try {
+    const items = await client.getAll(`/v1/reviewSubmissions/${submission.id}/items?limit=50`)
+    entry.items = items.map((item) => ({
+      id: item.id,
+      state: item.attributes?.state,
+      relationships: Object.keys(item.relationships ?? {}),
+      related: Object.fromEntries(Object.entries(item.relationships ?? {})
+        .map(([name, value]) => [name, value?.data?.id ?? null])),
+    }))
+  } catch (error) {
+    entry.itemsError = String(error.message ?? error)
+  }
+  report.submissions.push(entry)
+}
+
+const versions = await listVersions(client, app.id)
+report.versions = versions.map((v) => ({ id: v.id, versionString: v.attributes?.versionString, state: v.attributes?.appStoreState ?? v.attributes?.state }))
+
+const products = [
+  { name: 'weekly', path: '/v1/subscriptions/6810782782' },
+  { name: 'yearly', path: '/v1/subscriptions/6810785364' },
+  { name: 'lifetime', path: '/v2/inAppPurchases/6810786506' },
+]
+report.products = []
+for (const product of products) {
+  const data = (await client.get(product.path)).data
+  report.products.push({
+    name: product.name,
+    productId: data.attributes?.productId,
+    state: data.attributes?.state,
+  })
+}
+
+mkdirSync(join(root, 'apple-audit'), { recursive: true })
+writeFileSync(join(root, 'apple-audit/review-submission.json'), JSON.stringify(report, null, 2) + '\n')
+
+for (const submission of report.submissions) {
+  console.log(`Submission ${submission.id} · ${submission.state} · ${submission.platform} · items ${submission.items.length}`)
+  for (const item of submission.items) {
+    console.log(`  item ${item.id} · ${item.state} · ${item.relationships.join(',')} · ${JSON.stringify(item.related)}`)
+  }
+  if (submission.itemsError) console.log(`  items error: ${submission.itemsError}`)
+}
+for (const version of report.versions) console.log(`Version ${version.versionString} · ${version.state}`)
+for (const product of report.products) console.log(`Product ${product.name} · ${product.state}`)
