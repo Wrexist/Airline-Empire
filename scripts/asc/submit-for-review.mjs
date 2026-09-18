@@ -63,16 +63,27 @@ for (const item of items) console.log(`item ${item.id} · ${item.attributes?.sta
 let versionAttached = false
 let elsewhere = null
 for (const submission of submissions) {
-  const submissionItems = submission.id === open.id
-    ? items
-    : await client.getAll(`/v1/reviewSubmissions/${submission.id}/items?limit=50`)
+  // The item id's trailing field is an internal number, not the appStoreVersion
+  // uuid, so ask Apple for the relationship. `include` is what makes the
+  // version id legible at all.
+  let submissionItems
+  try {
+    submissionItems = await client.getAll(
+      `/v1/reviewSubmissions/${submission.id}/items?limit=50&include=appStoreVersion`)
+  } catch {
+    submissionItems = submission.id === open.id
+      ? items
+      : await client.getAll(`/v1/reviewSubmissions/${submission.id}/items?limit=50`)
+  }
   for (const item of submissionItems) {
-    const parts = decode(item.id).split('|')
-    if (parts[2] !== version.id) continue
+    const related = item.relationships?.appStoreVersion?.data?.id
+    const decoded = decode(item.id).split('|')[2]
+    if (related !== version.id && decoded !== version.id) continue
     if (submission.id === open.id) versionAttached = true
     else elsewhere = { submissionId: submission.id, state: submission.attributes?.state, itemId: item.id }
   }
 }
+console.log(`Version attached here: ${versionAttached}; held elsewhere: ${JSON.stringify(elsewhere)}`)
 
 if (versionAttached) {
   report.actions.push('version already attached')
