@@ -57,6 +57,11 @@ on:
         description: 'Only plan or fill the three prepared purchase review images'
         type: boolean
         default: false
+      submit_for_review:
+        description: 'App Review submission: plan reads it, attach adds the app version to the open submission, submit also sends it to Apple'
+        type: choice
+        options: [off, plan, attach, submit]
+        default: off
 
 concurrency:
   # One writer at a time. Two concurrent pushes to the same listing would
@@ -219,6 +224,43 @@ jobs:
         run: |
           echo "::notice::The listing is written. Nothing has been submitted for review."
           echo "Attach a build and submit from App Store Connect when the release is ready."
+
+  # Guideline 2.1(b): App Review rejected 1.0 because the three Pro products were
+  # not in the submission. The products are READY_TO_SUBMIT with complete review
+  # images; what is missing is the app version in the same submission. This job
+  # is off by default and refuses to be reached by accident.
+  submit-review:
+    if: inputs.submit_for_review != 'off'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Attach the version, and submit when asked
+        run: |
+          FLAGS=""
+          if [ "${{ inputs.submit_for_review }}" = "attach" ] || [ "${{ inputs.submit_for_review }}" = "submit" ]; then
+            FLAGS="--apply"
+          fi
+          if [ "${{ inputs.submit_for_review }}" = "submit" ]; then
+            FLAGS="$FLAGS --submit"
+          fi
+          node scripts/asc/submit-for-review.mjs --version "${{ inputs.version }}" $FLAGS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: review-submission-report
+          path: apple-audit/submit-for-review.json
+          retention-days: 45
 
   purchase-review-images:
     if: inputs.review_images
