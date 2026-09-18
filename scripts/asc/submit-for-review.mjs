@@ -94,24 +94,23 @@ if (versionAttached) {
   console.log(`The version is held by submission ${elsewhere.submissionId} (${elsewhere.state}).`)
   console.log(`Would remove item ${elsewhere.itemId} there, then attach it here.`)
 } else if (elsewhere) {
-  // Apple: STATE_ERROR.ITEM_PART_OF_ANOTHER_SUBMISSION. A rejected submission
-  // keeps its items; the version has to be released before a new submission can
-  // hold it. Removing the item is the narrow act - it touches nothing else in
-  // that already-resolved submission.
-  try {
-    await client.delete(`/v1/reviewSubmissionItems/${elsewhere.itemId}`)
-    report.actions.push(`removed item ${elsewhere.itemId} from submission ${elsewhere.submissionId}`)
-    console.log(`Removed item ${elsewhere.itemId} from submission ${elsewhere.submissionId}.`)
-  } catch (error) {
-    report.releaseError = { status: error.status, errors: error.errors ?? String(error.message ?? error) }
-    console.error(JSON.stringify(report.releaseError, null, 2))
-    // Fall back to closing the resolved submission, which frees its items too.
-    const canceled = await client.patch(`/v1/reviewSubmissions/${elsewhere.submissionId}`, {
-      data: { type: 'reviewSubmissions', id: elsewhere.submissionId, attributes: { canceled: true } },
-    })
-    report.actions.push(`canceled submission ${elsewhere.submissionId} (state ${canceled?.data?.attributes?.state})`)
-    console.log(`Canceled submission ${elsewhere.submissionId}.`)
+  // Apple: STATE_ERROR.ITEM_PART_OF_ANOTHER_SUBMISSION, and a DELETE is refused
+  // with "Item was already submitted" - a submitted item cannot be removed. The
+  // resolved submission is closed instead, which releases what it holds. That
+  // is asynchronous, so wait for the state before attaching.
+  const canceled = await client.patch(`/v1/reviewSubmissions/${elsewhere.submissionId}`, {
+    data: { type: 'reviewSubmissions', id: elsewhere.submissionId, attributes: { canceled: true } },
+  })
+  let state = canceled?.data?.attributes?.state
+  report.actions.push(`canceled submission ${elsewhere.submissionId} (state ${state})`)
+  console.log(`Canceled submission ${elsewhere.submissionId}; state ${state}.`)
+  for (let attempt = 0; attempt < 12 && state !== 'CANCELED'; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 5000))
+    const fresh = (await client.get(`/v1/reviewSubmissions/${elsewhere.submissionId}`)).data
+    state = fresh?.attributes?.state
+    console.log(`  submission state: ${state}`)
   }
+  report.submission.releasedState = state
   const created = await client.post('/v1/reviewSubmissionItems', {
     data: {
       type: 'reviewSubmissionItems',
