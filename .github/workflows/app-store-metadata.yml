@@ -260,7 +260,7 @@ jobs:
             attach)          node scripts/asc/submit-for-review.mjs --version "${{ inputs.version }}" --apply ;;
             submit)          node scripts/asc/submit-for-review.mjs --version "${{ inputs.version }}" --apply --submit ;;
             retarget-plan)   node scripts/asc/resubmit-version.mjs --version "${{ inputs.version }}" ;;
-  retarget)        node scripts/asc/resubmit-version.mjs --version "${{ inputs.version }}" --apply ;;
+            retarget)        node scripts/asc/resubmit-version.mjs --version "${{ inputs.version }}" --apply ;;
             retarget-submit) node scripts/asc/resubmit-version.mjs --version "${{ inputs.version }}" --apply --submit ;;
             *) echo "::error::Unhandled submit_for_review value"; exit 1 ;;
           esac
