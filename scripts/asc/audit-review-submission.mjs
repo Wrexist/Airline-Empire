@@ -75,17 +75,30 @@ const versions = await listVersions(client, app.id)
 report.versions = versions.map((v) => ({ id: v.id, versionString: v.attributes?.versionString, state: v.attributes?.appStoreState ?? v.attributes?.state }))
 
 const products = [
-  { name: 'weekly', path: '/v1/subscriptions/6810782782' },
-  { name: 'yearly', path: '/v1/subscriptions/6810785364' },
-  { name: 'lifetime', path: '/v2/inAppPurchases/6810786506' },
+  { name: 'weekly', path: '/v1/subscriptions/6810782782', localizations: '/v1/subscriptions/6810782782/subscriptionLocalizations?limit=50' },
+  { name: 'yearly', path: '/v1/subscriptions/6810785364', localizations: '/v1/subscriptions/6810785364/subscriptionLocalizations?limit=50' },
+  { name: 'lifetime', path: '/v2/inAppPurchases/6810786506', localizations: '/v2/inAppPurchases/6810786506/inAppPurchaseLocalizations?limit=50' },
 ]
 report.products = []
 for (const product of products) {
   const data = (await client.get(product.path)).data
+  // An IAP with no localised display name or description is a rejection that
+  // costs a review cycle, and it is invisible in a product-state check.
+  let localizations = []
+  try {
+    localizations = (await client.getAll(product.localizations)).map((l) => ({
+      locale: l.attributes?.locale,
+      name: l.attributes?.name ?? null,
+      description: l.attributes?.description ? 'present' : 'MISSING',
+    }))
+  } catch (error) {
+    localizations = [{ error: String(error.message ?? error) }]
+  }
   report.products.push({
     name: product.name,
     productId: data.attributes?.productId,
     state: data.attributes?.state,
+    localizations,
   })
 }
 
@@ -104,4 +117,9 @@ for (const submission of report.submissions) {
   if (submission.itemVersionsError) console.log(`  item versions error: ${submission.itemVersionsError}`)
 }
 for (const version of report.versions) console.log(`Version ${version.versionString} · ${version.id} · ${version.state}`)
-for (const product of report.products) console.log(`Product ${product.name} · ${product.state}`)
+for (const product of report.products) {
+  const locales = product.localizations
+    .map((l) => l.error ? `error ${l.error}` : `${l.locale} name=${l.name ? 'yes' : 'NO'} description=${l.description}`)
+    .join('; ')
+  console.log(`Product ${product.name} · ${product.state} · ${locales}`)
+}
