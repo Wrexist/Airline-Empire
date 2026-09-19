@@ -142,10 +142,24 @@ if (target) {
 }
 
 // ---- release what the old submission holds --------------------------------
+// A submission that already carries *this* version is the one being prepared,
+// not one to cancel: prepare and submit run as separate dispatches, and
+// cancelling the prepared submission would rebuild it for no reason.
+let reusable = null
+for (const submission of blocking) {
+  const carries = report.carried.some((c) => c.from === submission.id && c.include === 'appStoreVersion')
+  const isTarget = report.carried.some(
+    (c) => c.from === submission.id && c.include === 'appStoreVersion' && c.id === target?.id)
+  if (isTarget) reusable = submission
+  report.actions.push(`${isTarget ? 'reuse' : carries ? 'hold' : 'n/a'} ${submission.id}`)
+}
+const toCancel = blocking.filter((s) => s.id !== reusable?.id)
+if (reusable) console.log(`Reusing submission ${reusable.id} (${reusable.attributes?.state}).`)
+
 if (!apply) {
-  for (const submission of blocking) console.log(`Would cancel submission ${submission.id} (${submission.attributes?.state}).`)
+  for (const submission of toCancel) console.log(`Would cancel submission ${submission.id} (${submission.attributes?.state}).`)
 } else {
-  for (const submission of blocking) {
+  for (const submission of toCancel) {
     const canceled = await client.patch(`/v1/reviewSubmissions/${submission.id}`, {
       data: { type: 'reviewSubmissions', id: submission.id, attributes: { canceled: true } },
     })
@@ -161,21 +175,28 @@ if (!apply) {
 
 // ---- the new submission ---------------------------------------------------
 if (target && report.build) {
-  if (!apply) {
-    console.log(`Would create a submission with version ${versionString} and ${productEntries.length} purchase item(s).`)
+  if (reusable && !submit) {
+    console.log(`Submission ${reusable.id} is prepared; nothing left to add here.`)
+  } else if (!apply) {
+    console.log(`Would create a submission with version ${versionString} and the ${productEntries.length} purchase item(s).`)
   } else {
-    const created = await client.post('/v1/reviewSubmissions', {
+    const submissionId = reusable?.id ?? (await client.post('/v1/reviewSubmissions', {
       data: {
         type: 'reviewSubmissions',
         attributes: { platform: 'IOS' },
         relationships: { app: { data: { type: 'apps', id: app.id } } },
       },
-    })
-    const submissionId = created.data.id
-    report.submission = { id: submissionId }
-    console.log(`Created submission ${submissionId}.`)
+    })).data.id
+    report.submission = { id: submissionId, reused: Boolean(reusable) }
+    console.log(`${reusable ? 'Using' : 'Created'} submission ${submissionId}.`)
 
+    const alreadyThere = new Set(
+      report.carried.filter((c) => c.from === submissionId).map((c) => `${c.include}:${c.id}`))
     const addItem = async (relationship, id) => {
+      if (alreadyThere.has(`${relationship}:${id}`)) {
+        console.log(`  ${relationship} ${id} already in the submission`)
+        return
+      }
       await client.post('/v1/reviewSubmissionItems', {
         data: {
           type: 'reviewSubmissionItems',
