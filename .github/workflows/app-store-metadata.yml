@@ -60,7 +60,7 @@ on:
       submit_for_review:
         description: 'App Review submission: plan reads it, attach adds the app version to the open submission, submit also sends it, retarget moves to a new version with its purchases'
         type: choice
-        options: [off, plan, attach, submit, retarget, retarget-submit]
+        options: [off, plan, attach, submit, retarget-plan, retarget, retarget-submit]
         default: off
 
 concurrency:
@@ -259,7 +259,8 @@ jobs:
             plan)            node scripts/asc/submit-for-review.mjs --version "${{ inputs.version }}" ;;
             attach)          node scripts/asc/submit-for-review.mjs --version "${{ inputs.version }}" --apply ;;
             submit)          node scripts/asc/submit-for-review.mjs --version "${{ inputs.version }}" --apply --submit ;;
-            retarget)        node scripts/asc/resubmit-version.mjs --version "${{ inputs.version }}" --apply ;;
+            retarget-plan)   node scripts/asc/resubmit-version.mjs --version "${{ inputs.version }}" ;;
+  retarget)        node scripts/asc/resubmit-version.mjs --version "${{ inputs.version }}" --apply ;;
             retarget-submit) node scripts/asc/resubmit-version.mjs --version "${{ inputs.version }}" --apply --submit ;;
             *) echo "::error::Unhandled submit_for_review value"; exit 1 ;;
           esac
