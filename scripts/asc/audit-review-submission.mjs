@@ -78,16 +78,22 @@ for (const v of versions) {
   // strings, and App Review reports the pair ("1.0 (10)"). Read both.
   let build = null
   try {
-    const attached = (await client.get(`/v1/appStoreVersions/${v.id}/build?include=preReleaseVersion`)).data
-    const prerelease = attached?.relationships?.preReleaseVersion?.data?.id ?? null
-    build = attached
-      ? {
-          id: attached.id,
-          buildNumber: attached.attributes?.version,
-          processingState: attached.attributes?.processingState,
-          preReleaseVersion: prerelease,
-        }
-      : null
+    const attached = (await client.get(`/v1/appStoreVersions/${v.id}/build`)).data
+    if (attached) {
+      build = {
+        id: attached.id,
+        buildNumber: attached.attributes?.version,
+        processingState: attached.attributes?.processingState,
+        preReleaseVersion: null,
+      }
+      // The include is a separate, optional read: if Apple refuses it, the
+      // build is still read and reported rather than reported as absent.
+      try {
+        const withPre = (await client.get(
+          `/v1/appStoreVersions/${v.id}/build?include=preReleaseVersion`)).data
+        build.preReleaseVersion = withPre?.relationships?.preReleaseVersion?.data?.id ?? null
+      } catch { /* include unsupported; the build is still known */ }
+    }
   } catch {
     build = null
   }
