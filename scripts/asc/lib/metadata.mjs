@@ -48,6 +48,9 @@ export const LIMITS = {
   marketing_url: 255,
   privacy_url: 255,
   review_notes: 4000,
+  // TestFlight's beta app description, and the build's "What to test". One
+  // file feeds both, so the tighter of the two limits applies.
+  testflight: 4000,
 }
 
 /** Files read per locale. `required` ones fail the build when absent. */
@@ -533,6 +536,10 @@ function validateReview(store, { error, warn, placeholder }) {
     warn('store/metadata/review/notes.txt is missing. Review notes are how a reviewer learns the game is offline and needs no account.')
   } else if (review.notes.length > LIMITS.review_notes) {
     error(`store/metadata/review/notes.txt: ${review.notes.length} characters, limit ${LIMITS.review_notes}.`)
+  }
+  // TestFlight truncates rather than refusing, so an over-long note fails here.
+  if (review.testflight && review.testflight.length > LIMITS.testflight) {
+    error(`store/metadata/review/testflight.txt: ${review.testflight.length} characters, limit ${LIMITS.testflight}.`)
   }
   for (const key of ['contactFirstName', 'contactLastName', 'contactEmail', 'contactPhone']) {
     if (!review[key]) error(`config.json review.${key} is required — App Review will not accept a version without a contact.`)

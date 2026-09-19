@@ -617,6 +617,13 @@ test('review contact details are required', () => {
   assertIncludes(validateStore(store).errors, 'contactEmail', 'a missing review contact passed')
 })
 
+test('an over-long TestFlight note is an error, not a silent truncation', () => {
+  const store = fixture(({ root }) => {
+    writeFileSync(join(root, 'metadata', 'review', 'testflight.txt'), 'x'.repeat(LIMITS.testflight + 1))
+  })
+  assertIncludes(validateStore(store).errors, 'testflight.txt', 'an over-long TestFlight note passed')
+})
+
 test('an unused keyword budget is a warning', () => {
   const store = fixture(({ files }) => {
     files['keywords.txt'] = 'aviation'
