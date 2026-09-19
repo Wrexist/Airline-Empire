@@ -72,7 +72,26 @@ for (const submission of submissions) {
 }
 
 const versions = await listVersions(client, app.id)
-report.versions = versions.map((v) => ({ id: v.id, versionString: v.attributes?.versionString, state: v.attributes?.appStoreState ?? v.attributes?.state }))
+report.versions = []
+for (const v of versions) {
+  // The version record and the attached build's marketing version are separate
+  // strings, and App Review reports the pair ("1.0 (10)"). Read both.
+  let build = null
+  try {
+    const attached = (await client.get(`/v1/appStoreVersions/${v.id}/build`)).data
+    build = attached
+      ? { id: attached.id, version: attached.attributes?.version, buildNumber: attached.attributes?.buildNumber, processingState: attached.attributes?.processingState }
+      : null
+  } catch {
+    build = null
+  }
+  report.versions.push({
+    id: v.id,
+    versionString: v.attributes?.versionString,
+    state: v.attributes?.appStoreState ?? v.attributes?.state,
+    build,
+  })
+}
 
 const products = [
   { name: 'weekly', path: '/v1/subscriptions/6810782782', localizations: '/v1/subscriptions/6810782782/subscriptionLocalizations?limit=50' },
@@ -116,7 +135,12 @@ for (const submission of report.submissions) {
   if (submission.itemsError) console.log(`  items error: ${submission.itemsError}`)
   if (submission.itemVersionsError) console.log(`  item versions error: ${submission.itemVersionsError}`)
 }
-for (const version of report.versions) console.log(`Version ${version.versionString} · ${version.id} · ${version.state}`)
+for (const version of report.versions) {
+  const build = version.build
+    ? `build ${version.build.version} (${version.build.buildNumber}) ${version.build.processingState}`
+    : 'NO BUILD ATTACHED'
+  console.log(`Version ${version.versionString} · ${version.id} · ${version.state} · ${build}`)
+}
 for (const product of report.products) {
   const locales = product.localizations
     .map((l) => l.error ? `error ${l.error}` : `${l.locale} name=${l.name ? 'yes' : 'NO'} description=${l.description}`)
