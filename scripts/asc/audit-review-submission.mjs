@@ -133,6 +133,38 @@ for (const product of products) {
   })
 }
 
+// Every build Apple holds, newest first: the version attached to the App Store
+// version under review is not necessarily the newest thing in TestFlight, and
+// a build whose marketing version differs cannot be attached to that version.
+report.builds = []
+try {
+  const builds = await client.getAll(
+    `/v1/builds?filter[app]=${app.id}&limit=50&include=preReleaseVersion&sort=-uploadedDate`)
+  for (const build of builds) {
+    const prereleaseId = build.relationships?.preReleaseVersion?.data?.id ?? null
+    report.builds.push({
+      id: build.id,
+      buildNumber: build.attributes?.version,
+      processingState: build.attributes?.processingState,
+      expired: build.attributes?.expired,
+      uploadedDate: build.attributes?.uploadedDate,
+      expirationDate: build.attributes?.expirationDate,
+      preReleaseVersionId: prereleaseId,
+    })
+  }
+  const versionsSeen = new Map((report.builds).map((b) => [b.preReleaseVersionId, null]))
+  for (const id of versionsSeen.keys()) {
+    if (!id) continue
+    try {
+      const pre = (await client.get(`/v1/preReleaseVersions/${id}`)).data
+      versionsSeen.set(id, pre.attributes?.version ?? '?')
+    } catch { versionsSeen.set(id, '?') }
+  }
+  for (const build of report.builds) build.marketingVersion = versionsSeen.get(build.preReleaseVersionId) ?? '?'
+} catch (error) {
+  report.buildsError = String(error.message ?? error)
+}
+
 mkdirSync(join(root, 'apple-audit'), { recursive: true })
 writeFileSync(join(root, 'apple-audit/review-submission.json'), JSON.stringify(report, null, 2) + '\n')
 
@@ -163,6 +195,11 @@ for (const id of prereleaseIds) {
     console.log(`Pre-release version ${id}: ${error.message ?? error}`)
   }
 }
+for (const build of report.builds ?? []) {
+  console.log(`Build ${build.marketingVersion} (${build.buildNumber}) · ${build.processingState} · uploaded ${build.uploadedDate} · expires ${build.expirationDate} · expired ${build.expired}`)
+}
+if (report.buildsError) console.log(`builds error: ${report.buildsError}`)
+
 for (const product of report.products) {
   const locales = product.localizations
     .map((l) => l.error ? `error ${l.error}` : `${l.locale} name=${l.name ? 'yes' : 'NO'} description=${l.description}`)
