@@ -174,8 +174,14 @@ jobs:
             exit 1
           fi
 
+      # Submitting locks the version: Apple refuses metadata edits on a version
+      # in review ("Version 1.0 is READY_FOR_REVIEW and does not accept metadata
+      # edits"). Pushing and submitting in the same dispatch therefore has to be
+      # sequenced, not raced - metadata first, then the submission - and a
+      # submit-only dispatch skips this step instead of going red for a refusal
+      # that is correct.
       - name: Push metadata
-        if: '!inputs.screenshots_only && !inputs.urls_only'
+        if: '!inputs.screenshots_only && !inputs.urls_only && inputs.submit_for_review != ''submit'''
         run: |
           node scripts/asc/push-metadata.mjs \
             --version "${{ inputs.version }}" \
@@ -231,7 +237,9 @@ jobs:
   # is off by default and refuses to be reached by accident.
   submit-review:
     if: inputs.submit_for_review != 'off'
-    needs: validate
+    # After `push`, deliberately: metadata must land before the version is
+    # submitted, because submitting locks it.
+    needs: [validate, push]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
