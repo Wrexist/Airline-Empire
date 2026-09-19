@@ -78,9 +78,15 @@ for (const v of versions) {
   // strings, and App Review reports the pair ("1.0 (10)"). Read both.
   let build = null
   try {
-    const attached = (await client.get(`/v1/appStoreVersions/${v.id}/build`)).data
+    const attached = (await client.get(`/v1/appStoreVersions/${v.id}/build?include=preReleaseVersion`)).data
+    const prerelease = attached?.relationships?.preReleaseVersion?.data?.id ?? null
     build = attached
-      ? { id: attached.id, version: attached.attributes?.version, buildNumber: attached.attributes?.buildNumber, processingState: attached.attributes?.processingState }
+      ? {
+          id: attached.id,
+          buildNumber: attached.attributes?.version,
+          processingState: attached.attributes?.processingState,
+          preReleaseVersion: prerelease,
+        }
       : null
   } catch {
     build = null
@@ -137,9 +143,19 @@ for (const submission of report.submissions) {
 }
 for (const version of report.versions) {
   const build = version.build
-    ? `build ${version.build.version} (${version.build.buildNumber}) ${version.build.processingState}`
+    ? `build ${version.build.buildNumber} ${version.build.processingState} prerelease ${version.build.preReleaseVersion ?? '?'}`
     : 'NO BUILD ATTACHED'
   console.log(`Version ${version.versionString} · ${version.id} · ${version.state} · ${build}`)
+}
+// The string the App Store page will show, read from Apple rather than assumed.
+const prereleaseIds = new Set(report.versions.map((v) => v.build?.preReleaseVersion).filter(Boolean))
+for (const id of prereleaseIds) {
+  try {
+    const prerelease = (await client.get(`/v1/preReleaseVersions/${id}`)).data
+    console.log(`Pre-release version ${prerelease.attributes?.version} · ${prerelease.attributes?.platform} · ${prerelease.attributes?.appStoreState ?? prerelease.attributes?.state}`)
+  } catch (error) {
+    console.log(`Pre-release version ${id}: ${error.message ?? error}`)
+  }
 }
 for (const product of report.products) {
   const locales = product.localizations
