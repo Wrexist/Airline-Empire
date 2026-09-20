@@ -202,8 +202,12 @@ final class CampaignUITests: AEUITestCase {
                 format: "label CONTAINS %@", "→")).firstMatch
             // The market sheet has just closed over this card; wait for the
             // suggestion to actually accept a tap rather than assuming a
-            // visible frame means a live control (run 99).
-            guard tapWhenReady(suggestion) else {
+            // visible frame means a live control (run 99). The briefing grew
+            // sections above Next Moves in AE-048, so scroll the sheet to the
+            // suggestion first — it exists below the fold and a tap that needs
+            // hittability never lands on an element only present.
+            guard scrollUntil(suggestion, "a Next Moves suggestion", swipes: 10, in: app),
+                  tapWhenReady(suggestion) else {
                 checkpoint("FEB-SUGGESTION-NO-TAP-\(attempt)")
                 break
             }

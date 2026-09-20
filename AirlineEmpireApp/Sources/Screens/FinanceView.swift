@@ -378,6 +378,7 @@ struct FinanceContent: View {
                 Image(systemName: "chevron.right")
                     .font(AEType.caption)
                     .foregroundStyle(AETheme.mutedText)
+                    .accessibilityHidden(true)
             }
             .frame(minHeight: 44)
             .contentShape(Rectangle())

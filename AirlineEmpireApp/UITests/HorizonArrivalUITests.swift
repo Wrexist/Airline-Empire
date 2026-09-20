@@ -145,18 +145,41 @@ final class HorizonArrivalUITests: AEUITestCase {
         let planning = app.buttons["ae-route-tab-Pricing & Schedule"]
         if !planning.isHittable { app.buttons["ae-route-tab-Competition"].swipeRight() }
         planning.tap()
-        let increment = app.buttons["Increment"].firstMatch
-        if scrollUntil(increment, "the frequency stepper") {
-            increment.tap()
-            let apply = app.buttons["ae-route-plan-apply"]
-            guard scrollUntil(apply, "the route plan commit") else { return }
-            apply.tap()
-            let confirm = app.buttons["Confirm Route Plan"]
-            XCTAssertTrue(confirm.waitForExistence(timeout: 5))
-            confirm.tap()
-            XCTAssertTrue(app.staticTexts["Route plan saved"].waitForExistence(timeout: 10))
-            checkpoint("HZ5-after-response")
+        // The plan's frequency is a Stepper identified as `ae-route-frequency`.
+        // SwiftUI exposes its two controls differently across versions — the
+        // old screen answered to "Increment", the new one is a −/+ pair that
+        // carries the Stepper's own identifier — so try each shape and take the
+        // first that is genuinely reachable. All of them raise the frequency by
+        // one, which is the decision this step exists to make.
+        let identified = app.buttons.matching(identifier: "ae-route-frequency")
+        var candidates: [XCUIElement] = []
+        if identified.count >= 2 { candidates.append(identified.element(boundBy: identified.count - 1)) }
+        candidates.append(app.buttons["Increment"].firstMatch)
+        candidates.append(app.buttons["Increase"].firstMatch)
+        candidates.append(app.buttons.matching(identifier: "ae-route-frequency").firstMatch)
+        // A local probe, not `scrollUntil`: that helper fails the test when an
+        // element is missing, and the whole point here is that only one of the
+        // shapes is present.
+        func reachable(_ element: XCUIElement) -> Bool {
+            for _ in 0..<4 {
+                if element.exists, element.isHittable { return true }
+                app.swipeUp()
+            }
+            return element.exists && element.isHittable
         }
+        guard let increment = candidates.first(where: reachable),
+              tapWhenReady(increment) else {
+            XCTFail("No frequency control on the route plan was reachable.")
+            return
+        }
+        let apply = app.buttons["ae-route-plan-apply"]
+        guard scrollUntil(apply, "the route plan commit") else { return }
+        apply.tap()
+        let confirm = app.buttons["Confirm Route Plan"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        confirm.tap()
+        XCTAssertTrue(app.staticTexts["Route plan saved"].waitForExistence(timeout: 10))
+        checkpoint("HZ5-after-response")
         app.navigationBars.buttons.firstMatch.tap()
 
         // ── HORIZON-KEY-06 · two weeks later: the world after the response ─

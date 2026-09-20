@@ -89,6 +89,12 @@ struct AESectionHeader: View {
         HStack(spacing: AETheme.spacingXS) {
             if let systemImage {
                 Image(systemName: systemImage).font(.subheadline).foregroundStyle(AETheme.accent)
+                    // Decoration beside the title. VoiceOver should hear the
+                    // section, and an unhidden symbol exposes its own name
+                    // ("chart.bar"), which the accessibility audit rejects as
+                    // not human-readable — the Finance screen was the one that
+                    // shipped without a text label beside it.
+                    .accessibilityHidden(true)
             }
             Text(text)
                 .font(AEType.sectionTitle)
