@@ -262,9 +262,11 @@ if (target && report.build) {
       } catch (error) {
         // Apple's answer when the item is present. The scan above is
         // best-effort — an include can fail on its own — so this is what
-        // actually makes the assembly idempotent.
-        const detail = error.errors?.[0]?.detail ?? ''
-        if (detail.includes('already added')) {
+        // actually makes the assembly idempotent. The wording sits in the
+        // error's title, not its detail, so read both.
+        const first = error.errors?.[0] ?? {}
+        const text = [first.title, first.detail].filter(Boolean).join(' ')
+        if (/already added/i.test(text)) {
           console.log(`  ${relationship} ${id} already in the submission`)
           return
         }
