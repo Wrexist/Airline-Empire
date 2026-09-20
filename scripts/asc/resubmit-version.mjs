@@ -223,10 +223,8 @@ if (target) {
 
 // ---- the new submission ---------------------------------------------------
 if (target && report.build) {
-  if (reusable && !submit) {
-    console.log(`Submission ${reusable.id} is prepared; nothing left to add here.`)
-  } else if (!apply) {
-    console.log(`Would create a submission with version ${versionString} and the ${productEntries.length} purchase item(s).`)
+  if (!apply) {
+    console.log(`Would add version ${versionString} and the ${productEntries.length} purchase item(s) to the submission.`)
   } else {
     const submissionId = reusable?.id ?? (await client.post('/v1/reviewSubmissions', {
       data: {
