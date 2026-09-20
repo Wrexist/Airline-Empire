@@ -38,6 +38,11 @@ const app = await findApp(client, store.config.bundleId)
 if (!app) throw new Error(`No app record for ${store.config.bundleId}`)
 
 const BLOCKING = new Set(['READY_FOR_REVIEW', 'WAITING_FOR_REVIEW', 'IN_REVIEW', 'UNRESOLVED_ISSUES'])
+// The version this run is about, as Apple holds it now — needed before anything
+// is created, so a prepared submission can be recognised rather than withdrawn.
+const versionsBefore = await listVersions(client, app.id)
+const existingTargetId = versionsBefore
+  .find((v) => v.attributes?.versionString === versionString)?.id ?? null
 // Every relationship a submission item can carry that this app uses. Apple
 // rejects an unknown include for the whole request, so each is asked for alone.
 const ITEM_INCLUDES = [
@@ -76,6 +81,42 @@ console.log(`Carried by the current submission: ${report.carried.map((c) => `${c
 const productEntries = report.carried.filter((c) => c.include !== 'appStoreVersion')
 if (!productEntries.length) {
   console.warn('No purchase items found in a blocking submission; the new submission would hold only the version.')
+}
+
+// ---- withdraw first -------------------------------------------------------
+// Apple refuses to create a new version while another is in review
+// (ENTITY_ERROR.RELATIONSHIP.INVALID, "You cannot create a new version of the
+// App in the current state"), and an item can only be in one submission, so the
+// version in review is withdrawn before anything is created. Closing it also
+// releases the purchases, whose identifiers were read above.
+//
+// A submission that already carries *this* version is the one being prepared,
+// not one to cancel: prepare and submit run as separate dispatches, and
+// cancelling the prepared submission would rebuild it for no reason.
+let reusable = null
+for (const submission of blocking) {
+  const isTarget = report.carried.some(
+    (c) => c.from === submission.id && c.include === 'appStoreVersion' && c.id === existingTargetId)
+  if (isTarget) reusable = submission
+}
+const toCancel = blocking.filter((s) => s.id !== reusable?.id)
+if (reusable) console.log(`Reusing submission ${reusable.id} (${reusable.attributes?.state}).`)
+
+if (!apply) {
+  for (const submission of toCancel) console.log(`Would withdraw submission ${submission.id} (${submission.attributes?.state}).`)
+} else {
+  for (const submission of toCancel) {
+    const canceled = await client.patch(`/v1/reviewSubmissions/${submission.id}`, {
+      data: { type: 'reviewSubmissions', id: submission.id, attributes: { canceled: true } },
+    })
+    let state = canceled?.data?.attributes?.state
+    for (let attempt = 0; attempt < 12 && !['CANCELED', 'COMPLETE'].includes(state); attempt++) {
+      await new Promise((r) => setTimeout(r, 5000))
+      state = (await client.get(`/v1/reviewSubmissions/${submission.id}`)).data?.attributes?.state
+    }
+    report.actions.push(`withdrew ${submission.id} (${state})`)
+    console.log(`Withdrew submission ${submission.id}; state ${state}.`)
+  }
 }
 
 // ---- the target version ---------------------------------------------------
@@ -138,38 +179,6 @@ if (target) {
     })
     report.actions.push(`attached build ${buildToAttach.attributes?.version}`)
     console.log(`Attached build ${buildToAttach.attributes?.version} to version ${versionString}.`)
-  }
-}
-
-// ---- release what the old submission holds --------------------------------
-// A submission that already carries *this* version is the one being prepared,
-// not one to cancel: prepare and submit run as separate dispatches, and
-// cancelling the prepared submission would rebuild it for no reason.
-let reusable = null
-for (const submission of blocking) {
-  const carries = report.carried.some((c) => c.from === submission.id && c.include === 'appStoreVersion')
-  const isTarget = report.carried.some(
-    (c) => c.from === submission.id && c.include === 'appStoreVersion' && c.id === target?.id)
-  if (isTarget) reusable = submission
-  report.actions.push(`${isTarget ? 'reuse' : carries ? 'hold' : 'n/a'} ${submission.id}`)
-}
-const toCancel = blocking.filter((s) => s.id !== reusable?.id)
-if (reusable) console.log(`Reusing submission ${reusable.id} (${reusable.attributes?.state}).`)
-
-if (!apply) {
-  for (const submission of toCancel) console.log(`Would cancel submission ${submission.id} (${submission.attributes?.state}).`)
-} else {
-  for (const submission of toCancel) {
-    const canceled = await client.patch(`/v1/reviewSubmissions/${submission.id}`, {
-      data: { type: 'reviewSubmissions', id: submission.id, attributes: { canceled: true } },
-    })
-    let state = canceled?.data?.attributes?.state
-    for (let attempt = 0; attempt < 12 && !['CANCELED', 'COMPLETE'].includes(state); attempt++) {
-      await new Promise((r) => setTimeout(r, 5000))
-      state = (await client.get(`/v1/reviewSubmissions/${submission.id}`)).data?.attributes?.state
-    }
-    report.actions.push(`canceled ${submission.id} (${state})`)
-    console.log(`Canceled submission ${submission.id}; state ${state}.`)
   }
 }
 
