@@ -91,9 +91,61 @@ in `store/artwork/cinematic/` and is no longer part of the listing.
 | `store-art/verify.cjs` | 18 app-dominant RGB exports per locale |
 | Full Core suite | 604 tests passed, release build clean |
 
+## Resubmitted as 1.1.0 with a new binary (20 September 2026)
+
+App Review's message also asked for a new binary, and the binary they had
+reviewed (1.0.21 / build 10, uploaded 13 September) predated every one of the
+seven screen revamps — as did the newest build then in TestFlight, 1.1.0 (12),
+uploaded on the 14th. Nothing Apple held contained the work in this repository.
+
+So the release was re-run from this branch
+([35499150636](https://github.com/Wrexist/Airline-Empire/actions/runs/35499150636),
+candidate `a1f92a2`) after the full validation caught four UI regressions the
+branch had never been tested for — see "The validation's own findings" below.
+The archive uploaded **1.1.0 (13)**, Apple processed it VALID, and the version
+was moved across:
+
+| Step | Result |
+|---|---|
+| New build | 1.1.0 (13), VALID, uploaded 2026-09-20 |
+| Version | 1.0 renamed to **1.1.0** (Apple allows one editable version at a time, so a second could not be created; renaming kept the localisations and screenshots) |
+| Listing | metadata re-applied; the 36 screenshots already matched |
+| Products | the three Pro products and their group re-attached to the new submission |
+| Submission | `1b421a5f…` — **WAITING_FOR_REVIEW**, 5 items |
+| Withdrawn | `96ad6900…` (1.0) and the original rejection `a27498d9…`, both COMPLETE |
+
+### The validation's own findings
+
+The full UI suite had never run on this branch, and four shards failed the first
+time it did. Three were journeys asserting against screens that had moved on —
+the aircraft detail became tabbed, the route screen became the tabbed
+`RouteManagementView`, and the Home briefing grew sections above Next Moves, so
+a suggestion tap that needed hittability landed on nothing. One was a real
+accessibility defect: an unhidden SF Symbol in `AESectionHeader` exposed its own
+name as a label, which the audit rejects as not human-readable. All four are
+fixed in `7ef5d45` and `a1f92a2`.
+
+### Apple's API errors, for the next time
+
+Each cost a run, and none is self-explanatory:
+
+1. `ITEM_PART_OF_ANOTHER_SUBMISSION` — a version can be in one submission only.
+2. `DELETE` refused: "Item was already submitted" — a submitted item cannot be
+   removed; the submission is closed instead, and the cancel is asynchronous.
+3. `ENTITY_ERROR.RELATIONSHIP.INVALID`, "You cannot create a new version of the
+   App in the current state" — a version in review blocks a new one, and one
+   editable version is the limit, so the rejected version is renamed.
+4. `ENTITY_ERROR.RELATIONSHIP.INVALID`, "The given related type 'appStoreVersion'
+   is not valid for the relationship 'appStoreVersion'" — relationship keys are
+   singular, resource types plural.
+5. HTTP 401 on every call, twice, minutes apart, with no change to the secrets:
+   Apple returned a proper token error transitorily. Retrying is the right move.
+
 ## If this happens again
 
 `app-store-metadata.yml` now carries the whole path: `submit_for_review=plan`
-reads the submission, `attach` adds the version, `submit` sends it. Every step
-is idempotent — `attach` on a submission that already holds the version says so
-and changes nothing.
+reads the submission, `retarget-plan` / `retarget` moves to a new version with
+its purchases attached, `retarget-submit` sends it, and `attach` / `submit` do
+the same for the version already in a submission. Every step is idempotent — an
+item already added, a build already attached or a submission already prepared is
+recognised and left alone.
