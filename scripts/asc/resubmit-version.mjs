@@ -38,11 +38,6 @@ const app = await findApp(client, store.config.bundleId)
 if (!app) throw new Error(`No app record for ${store.config.bundleId}`)
 
 const BLOCKING = new Set(['READY_FOR_REVIEW', 'WAITING_FOR_REVIEW', 'IN_REVIEW', 'UNRESOLVED_ISSUES'])
-// The version this run is about, as Apple holds it now — needed before anything
-// is created, so a prepared submission can be recognised rather than withdrawn.
-const versionsBefore = await listVersions(client, app.id)
-const existingTargetId = versionsBefore
-  .find((v) => v.attributes?.versionString === versionString)?.id ?? null
 // Every relationship a submission item can carry that this app uses. Apple
 // rejects an unknown include for the whole request, so each is asked for alone.
 const ITEM_INCLUDES = [
@@ -103,39 +98,42 @@ if (!productEntries.length) {
   console.warn('No purchase items found on any submission; the new submission would hold only the version.')
 }
 
-// ---- withdraw first -------------------------------------------------------
+// ---- withdraw what is submitted, reuse what is prepared -------------------
 // Apple refuses to create a new version while another is in review
 // (ENTITY_ERROR.RELATIONSHIP.INVALID, "You cannot create a new version of the
-// App in the current state"), and an item can only be in one submission, so the
-// version in review is withdrawn before anything is created. Closing it also
-// releases the purchases, whose identifiers were read above.
+// App in the current state"), and an item can only be in one submission, so a
+// version already with Apple is withdrawn before anything is created. Closing it
+// also releases the purchases, whose identifiers were read above.
 //
-// A submission that already carries *this* version is the one being prepared,
-// not one to cancel: prepare and submit run as separate dispatches, and
-// cancelling the prepared submission would rebuild it for no reason.
-let reusable = null
-for (const submission of blocking) {
-  const isTarget = report.carried.some(
-    (c) => c.from === submission.id && c.include === 'appStoreVersion' && c.id === existingTargetId)
-  if (isTarget) reusable = submission
-}
-const toCancel = blocking.filter((s) => s.id !== reusable?.id)
-if (reusable) console.log(`Reusing submission ${reusable.id} (${reusable.attributes?.state}).`)
+// A submission still being prepared is reused, not withdrawn: only a submitted
+// one can be cancelled ("Resource is not in cancellable state" is what an empty
+// prepared submission answers), and prepare and submit run as separate
+// dispatches, so the second must find what the first assembled.
+let reusable = blocking.find((s) => s.attributes?.state === 'READY_FOR_REVIEW') ?? null
+const toWithdraw = blocking.filter((s) => s.attributes?.state !== 'READY_FOR_REVIEW')
+if (reusable) console.log(`Reusing prepared submission ${reusable.id}.`)
 
 if (!apply) {
-  for (const submission of toCancel) console.log(`Would withdraw submission ${submission.id} (${submission.attributes?.state}).`)
+  for (const submission of toWithdraw) console.log(`Would withdraw submission ${submission.id} (${submission.attributes?.state}).`)
 } else {
-  for (const submission of toCancel) {
-    const canceled = await client.patch(`/v1/reviewSubmissions/${submission.id}`, {
-      data: { type: 'reviewSubmissions', id: submission.id, attributes: { canceled: true } },
-    })
-    let state = canceled?.data?.attributes?.state
-    for (let attempt = 0; attempt < 12 && !['CANCELED', 'COMPLETE'].includes(state); attempt++) {
-      await new Promise((r) => setTimeout(r, 5000))
-      state = (await client.get(`/v1/reviewSubmissions/${submission.id}`)).data?.attributes?.state
+  for (const submission of toWithdraw) {
+    try {
+      const canceled = await client.patch(`/v1/reviewSubmissions/${submission.id}`, {
+        data: { type: 'reviewSubmissions', id: submission.id, attributes: { canceled: true } },
+      })
+      let state = canceled?.data?.attributes?.state
+      for (let attempt = 0; attempt < 12 && !['CANCELED', 'COMPLETE'].includes(state); attempt++) {
+        await new Promise((r) => setTimeout(r, 5000))
+        state = (await client.get(`/v1/reviewSubmissions/${submission.id}`)).data?.attributes?.state
+      }
+      report.actions.push(`withdrew ${submission.id} (${state})`)
+      console.log(`Withdrew submission ${submission.id}; state ${state}.`)
+    } catch (error) {
+      // Already closed, or Apple will not cancel it. Nothing to do but say so:
+      // it does not hold the version this run is about.
+      report.actions.push(`could not withdraw ${submission.id}: ${error.status ?? ''} ${error.errors?.[0]?.detail ?? error.message}`)
+      console.log(`Could not withdraw ${submission.id}: ${error.errors?.[0]?.detail ?? error.message}`)
     }
-    report.actions.push(`withdrew ${submission.id} (${state})`)
-    console.log(`Withdrew submission ${submission.id}; state ${state}.`)
   }
 }
 
