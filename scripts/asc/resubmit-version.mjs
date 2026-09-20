@@ -249,15 +249,27 @@ if (target && report.build) {
       // 'appStoreVersion' is not valid for the relationship 'appStoreVersion'".
       const resourceType = ITEM_TYPES[relationship]
       if (!resourceType) throw new Error(`No resource type known for ${relationship}`)
-      await client.post('/v1/reviewSubmissionItems', {
-        data: {
-          type: 'reviewSubmissionItems',
-          relationships: {
-            reviewSubmission: { data: { type: 'reviewSubmissions', id: submissionId } },
-            [relationship]: { data: { type: resourceType, id } },
+      try {
+        await client.post('/v1/reviewSubmissionItems', {
+          data: {
+            type: 'reviewSubmissionItems',
+            relationships: {
+              reviewSubmission: { data: { type: 'reviewSubmissions', id: submissionId } },
+              [relationship]: { data: { type: resourceType, id } },
+            },
           },
-        },
-      })
+        })
+      } catch (error) {
+        // Apple's answer when the item is present. The scan above is
+        // best-effort — an include can fail on its own — so this is what
+        // actually makes the assembly idempotent.
+        const detail = error.errors?.[0]?.detail ?? ''
+        if (detail.includes('already added')) {
+          console.log(`  ${relationship} ${id} already in the submission`)
+          return
+        }
+        throw error
+      }
       report.actions.push(`added ${relationship} ${id}`)
       console.log(`  added ${relationship} ${id}`)
     }
