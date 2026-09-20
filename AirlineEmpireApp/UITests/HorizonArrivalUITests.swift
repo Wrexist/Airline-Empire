@@ -146,17 +146,20 @@ final class HorizonArrivalUITests: AEUITestCase {
         if !planning.isHittable { app.buttons["ae-route-tab-Competition"].swipeRight() }
         planning.tap()
         // The plan's frequency is a Stepper identified as `ae-route-frequency`.
-        // SwiftUI exposes its two controls differently across versions — the
-        // old screen answered to "Increment", the new one is a −/+ pair that
-        // carries the Stepper's own identifier — so try each shape and take the
-        // first that is genuinely reachable. All of them raise the frequency by
-        // one, which is the decision this step exists to make.
+        // Its accessibility tree (run 35496119843) gives the two controls their
+        // own identifiers — `ae-route-frequency-Decrement` and
+        // `ae-route-frequency-Increment` — with labels like "2 round trips/day,
+        // Increment". The old route sheet answered to a bare "Increment", which
+        // no longer exists, so try the shapes it has taken and take the first
+        // that is genuinely reachable.
+        var candidates: [XCUIElement] = [
+            app.buttons["ae-route-frequency-Increment"],
+            app.buttons.matching(NSPredicate(
+                format: "label CONTAINS %@", "Increment")).firstMatch,
+            app.buttons["Increment"].firstMatch,
+        ]
         let identified = app.buttons.matching(identifier: "ae-route-frequency")
-        var candidates: [XCUIElement] = []
         if identified.count >= 2 { candidates.append(identified.element(boundBy: identified.count - 1)) }
-        candidates.append(app.buttons["Increment"].firstMatch)
-        candidates.append(app.buttons["Increase"].firstMatch)
-        candidates.append(app.buttons.matching(identifier: "ae-route-frequency").firstMatch)
         // A local probe, not `scrollUntil`: that helper fails the test when an
         // element is missing, and the whole point here is that only one of the
         // shapes is present.
