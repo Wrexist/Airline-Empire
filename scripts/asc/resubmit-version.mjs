@@ -122,21 +122,42 @@ if (!apply) {
 // ---- the target version ---------------------------------------------------
 let versions = await listVersions(client, app.id)
 let target = versions.find((v) => v.attributes?.versionString === versionString)
+const stateOf = (v) => v.attributes?.appStoreState ?? v.attributes?.state
+// Apple allows one editable version at a time, so a rejected, never-approved
+// version is renamed to the string the new build carries rather than duplicated:
+// it already holds the listing's localisations and screenshots, and deleting it
+// would throw those away.
+const RENAMEABLE = new Set([
+  'PREPARE_FOR_SUBMISSION', 'DEVELOPER_REJECTED', 'REJECTED', 'METADATA_REJECTED',
+  'INVALID_BINARY', 'READY_FOR_REVIEW', 'WAITING_FOR_REVIEW',
+])
 if (target) {
-  console.log(`Version ${versionString} exists (${target.attributes?.appStoreState ?? target.attributes?.state}).`)
-} else if (!apply) {
-  console.log(`Would create App Store version ${versionString} (IOS).`)
+  console.log(`Version ${versionString} exists (${stateOf(target)}).`)
 } else {
-  const created = await client.post('/v1/appStoreVersions', {
-    data: {
-      type: 'appStoreVersions',
-      attributes: { platform: 'IOS', versionString },
-      relationships: { app: { data: { type: 'apps', id: app.id } } },
-    },
-  })
-  target = created.data
-  report.actions.push(`created version ${versionString} (${target.id})`)
-  console.log(`Created App Store version ${versionString} (${target.id}).`)
+  const renameable = versions.find((v) => RENAMEABLE.has(stateOf(v)))
+  if (!apply) {
+    console.log(renameable
+      ? `Would rename version ${renameable.attributes?.versionString} (${stateOf(renameable)}) to ${versionString}.`
+      : `Would create App Store version ${versionString} (IOS).`)
+  } else if (renameable) {
+    const renamed = await client.patch(`/v1/appStoreVersions/${renameable.id}`, {
+      data: { type: 'appStoreVersions', id: renameable.id, attributes: { versionString } },
+    })
+    target = renamed.data
+    report.actions.push(`renamed ${renameable.attributes?.versionString} to ${versionString} (${target.id})`)
+    console.log(`Renamed version ${renameable.attributes?.versionString} to ${versionString} (${target.id}).`)
+  } else {
+    const created = await client.post('/v1/appStoreVersions', {
+      data: {
+        type: 'appStoreVersions',
+        attributes: { platform: 'IOS', versionString },
+        relationships: { app: { data: { type: 'apps', id: app.id } } },
+      },
+    })
+    target = created.data
+    report.actions.push(`created version ${versionString} (${target.id})`)
+    console.log(`Created App Store version ${versionString} (${target.id}).`)
+  }
 }
 
 // ---- the build to attach --------------------------------------------------
