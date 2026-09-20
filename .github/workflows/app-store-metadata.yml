@@ -181,7 +181,7 @@ jobs:
       # submit-only dispatch skips this step instead of going red for a refusal
       # that is correct.
       - name: Push metadata
-        if: '!inputs.screenshots_only && !inputs.urls_only && inputs.submit_for_review != ''submit'''
+        if: '!inputs.screenshots_only && !inputs.urls_only && inputs.submit_for_review != ''submit'' && inputs.submit_for_review != ''retarget-submit'' && inputs.submit_for_review != ''retarget'''
         run: |
           node scripts/asc/push-metadata.mjs \
             --version "${{ inputs.version }}" \
