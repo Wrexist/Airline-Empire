@@ -49,6 +49,20 @@ const ITEM_INCLUDES = [
   'appStoreVersion', 'inAppPurchaseVersion', 'subscriptionVersion', 'subscriptionGroupVersion',
 ]
 
+/**
+ * Relationship name → the resource type Apple expects in `data.type`.
+ *
+ * The keys are singular and the types are plural; sending the key as the type
+ * is refused with "The given related type 'X' is not valid for the relationship
+ * 'X'", which reads like a naming problem and is really a pluralisation one.
+ */
+const ITEM_TYPES = {
+  appStoreVersion: 'appStoreVersions',
+  inAppPurchaseVersion: 'inAppPurchaseVersions',
+  subscriptionVersion: 'subscriptionVersions',
+  subscriptionGroupVersion: 'subscriptionGroupVersions',
+}
+
 const report = { checkedAt: new Date().toISOString(), appId: app.id, version: versionString, mode: submit ? 'apply+submit' : apply ? 'apply' : 'plan', actions: [] }
 
 // ---- what Apple holds now -------------------------------------------------
@@ -57,8 +71,14 @@ const blocking = submissions.filter((s) => BLOCKING.has(s.attributes?.state))
 report.blockingSubmissions = blocking.map((s) => ({ id: s.id, state: s.attributes?.state }))
 
 // The products' identifiers, read before anything is released.
+//
+// Every submission is scanned, not only the ones still in play: a closed
+// submission keeps its items, and after the first resubmission the purchases
+// are held by a COMPLETE one. Reading them from the products themselves would
+// mean a different endpoint per product type; the items Apple already has are
+// the ground truth for what a submission must carry.
 const carried = []
-for (const submission of blocking) {
+for (const submission of submissions) {
   const items = await client.getAll(`/v1/reviewSubmissions/${submission.id}/items?limit=50`)
   for (const item of items) {
     for (const include of ITEM_INCLUDES) {
@@ -76,11 +96,11 @@ for (const submission of blocking) {
 const unique = new Map()
 for (const entry of carried) unique.set(`${entry.include}:${entry.id}`, entry)
 report.carried = [...unique.values()]
-console.log(`Carried by the current submission: ${report.carried.map((c) => `${c.include}=${c.id}`).join(', ') || 'nothing'}`)
+console.log(`Found on Apple's submissions: ${report.carried.map((c) => `${c.include}=${c.id}`).join(', ') || 'nothing'}`)
 
 const productEntries = report.carried.filter((c) => c.include !== 'appStoreVersion')
 if (!productEntries.length) {
-  console.warn('No purchase items found in a blocking submission; the new submission would hold only the version.')
+  console.warn('No purchase items found on any submission; the new submission would hold only the version.')
 }
 
 // ---- withdraw first -------------------------------------------------------
@@ -227,12 +247,18 @@ if (target && report.build) {
         console.log(`  ${relationship} ${id} already in the submission`)
         return
       }
+      // The relationship key is singular and the resource type is plural:
+      // `appStoreVersion` takes `type: 'appStoreVersions'`. Sending the
+      // relationship name as the type is refused with "The given related type
+      // 'appStoreVersion' is not valid for the relationship 'appStoreVersion'".
+      const resourceType = ITEM_TYPES[relationship]
+      if (!resourceType) throw new Error(`No resource type known for ${relationship}`)
       await client.post('/v1/reviewSubmissionItems', {
         data: {
           type: 'reviewSubmissionItems',
           relationships: {
             reviewSubmission: { data: { type: 'reviewSubmissions', id: submissionId } },
-            [relationship]: { data: { type: relationship, id } },
+            [relationship]: { data: { type: resourceType, id } },
           },
         },
       })
