@@ -14,7 +14,7 @@
 
 ## Approved release and SDK integration
 
-Apple version **1.1.0, build 13**, is **Pending Developer Release**. Its approval, attached build, release settings, and pre-order were not changed. It does not contain RevenueCat's SDK. Server reporting does not add SDK-dependent paywalls, experiments, or installation metrics to that binary.
+Apple version **1.1.0, build 13**, is **Pending Developer Release**. The owner explicitly chose to keep this approved build for launch. Its approval, attached build, release settings, and pre-order were not changed. It does not contain RevenueCat's SDK. Server reporting does not add SDK-dependent paywalls, experiments, or installation metrics to that binary. The editable App Review notes were updated and saved to describe server purchase notifications while accurately stating that this binary uses StoreKit directly.
 
 The SDK integration is on `codex/revenuecat-launch-2026-09-23`, based on the current approved-release development branch `codex/ae049-aircraft-configuration`. It is intentionally not merged into `main`, whose app code differs substantially from that release branch.
 
@@ -38,7 +38,7 @@ Local app privacy text, privacy manifest, review notes, and the generated handof
 - Local release-source and App Store metadata validation passed.
 - First macOS build caught a `VerificationResult` name collision with RevenueCat; fixed by qualifying `StoreKit.VerificationResult`.
 - Corrected SDK purchase tests: [Launch safety run 35861049122](https://github.com/Wrexist/Airline-Empire/actions/runs/35861049122) — status must be checked before using this branch for a release.
-- No real Apple purchase notification had arrived during configuration. A TestFlight purchase and restore must appear in RevenueCat's sandbox customer history to establish end-to-end delivery. Simulator success is not evidence of live RevenueCat ingestion.
+- The owner reported completing a TestFlight purchase and restore. At the subsequent check, RevenueCat still showed **No notifications received** and the sandbox audience had **0 customers**. New transaction versus previously owned/restored purchase is being clarified. End-to-end Apple notification ingestion is **not yet verified**; do not mark it passed from the owner's report or from simulator tests alone.
 - Shipping the SDK requires a new signed build, device verification, and Apple review. The approved binary can retain its approval and use the configured server reporting.
 - Vendor number/financial report reconciliation and Small Business Program commission dates were not asserted without evidence; they are optional accounting configuration, not purchase validation credentials.
 
