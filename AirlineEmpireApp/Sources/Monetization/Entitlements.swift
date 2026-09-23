@@ -140,6 +140,7 @@ final class Entitlements {
     /// paid and did not get the game.
     func start() async {
         guard readsStoreKit, updatesTask == nil else { return }
+        RevenueCatReporting.configure()
         updatesTask = Task { [weak self] in
             for await update in StoreKit.Transaction.updates {
                 guard let self else { return }
@@ -148,6 +149,7 @@ final class Entitlements {
         }
         await refreshEntitlement()
         await loadProducts()
+        RevenueCatReporting.sync()
     }
 
     // MARK: - Products
@@ -240,6 +242,7 @@ final class Entitlements {
         }
         await refreshEntitlement()
         lastOutcome = isPro ? .restored : .nothingToRestore
+        RevenueCatReporting.sync(force: true)
         if isPro { presentedGate = nil }
     }
 
@@ -250,6 +253,7 @@ final class Entitlements {
             lastOutcome = .failed("Apple could not verify this purchase. Try Restore purchases or contact support.")
             return
         }
+        RevenueCatReporting.record(result)
         await transaction.finish()
         await refreshEntitlement()
     }
