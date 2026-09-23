@@ -32,7 +32,7 @@ enum RevenueCatReporting {
         #endif
     }
 
-    static func record(_ result: VerificationResult<StoreKit.Transaction>) {
+    static func record(_ result: StoreKit.VerificationResult<StoreKit.Transaction>) {
         guard enabled, case .verified = result else { return }
         Task {
             do {
