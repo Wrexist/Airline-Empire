@@ -35,11 +35,15 @@ Local app privacy text, privacy manifest, review notes, and the generated handof
 
 ## Validation and remaining release gates
 
-- Local release-source and App Store metadata validation passed.
+- Local release-source, live public-page and App Store metadata validation passed. The corrected CI run passed all 605 simulation tests.
 - First macOS build caught a `VerificationResult` name collision with RevenueCat; fixed by qualifying `StoreKit.VerificationResult`.
-- Corrected SDK purchase tests: [Launch safety run 35861049122](https://github.com/Wrexist/Airline-Empire/actions/runs/35861049122) — status must be checked before using this branch for a release.
-- The owner reported completing a TestFlight purchase and restore. At the subsequent check, RevenueCat still showed **No notifications received** and the sandbox audience had **0 customers**. New transaction versus previously owned/restored purchase is being clarified. End-to-end Apple notification ingestion is **not yet verified**; do not mark it passed from the owner's report or from simulator tests alone.
+- Corrected SDK validation: [Launch safety run 35861049122](https://github.com/Wrexist/Airline-Empire/actions/runs/35861049122). All 605 core tests and all 5 iOS UI tests passed. The app unit/StoreKit and Release checks were still running at handoff; their result must be checked before shipping the draft SDK branch. This does not change the approved launch binary.
+- The owner reported completing a TestFlight purchase and restore. At the subsequent check, RevenueCat still showed **No notifications received** and the sandbox audience had **0 customers**. The owner confirmed this was a new Weekly purchase with Apple confirmation, not only a restore. The notification still did not arrive on recheck. End-to-end Apple notification ingestion is **not yet verified**; do not mark it passed from the owner's report or from simulator tests alone.
 - Shipping the SDK requires a new signed build, device verification, and Apple review. The approved binary can retain its approval and use the configured server reporting.
 - Vendor number/financial report reconciliation and Small Business Program commission dates were not asserted without evidence; they are optional accounting configuration, not purchase validation credentials.
 
 References: [app-completed purchases](https://www.revenuecat.com/docs/migrating-to-revenuecat/sdk-or-not/finishing-transactions), [Apple server notifications](https://www.revenuecat.com/docs/platform-resources/server-notifications/apple-server-notifications).
+
+Apple documents up to one hour for sandbox metadata propagation on its server-notification setup page. This is a possible explanation, not a verified root cause. Recheck after propagation and inspect a fresh sandbox purchase/renewal before treating server reporting as proven: https://developer.apple.com/help/app-store-connect/configure-in-app-purchase-settings/enter-server-urls-for-app-store-server-notifications
+
+Handoff: [draft PR #38](https://github.com/Wrexist/Airline-Empire/pull/38) retains the SDK integration for a later build. Notifications were configured around 14:20 Europe/Stockholm; allow the documented sandbox propagation window, then repeat a fresh sandbox transaction around/after 15:20 and check both the sandbox customer history and app notification receipt status. If still absent, use Apple's Request a Test Notification / Get Test Notification Status with the existing In-App Purchase signing key to distinguish Apple delivery from RevenueCat processing. That private key is saved in RevenueCat and was not available locally; no replacement key was created or exported.
