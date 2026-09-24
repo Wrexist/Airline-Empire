@@ -976,7 +976,7 @@ struct SettingsView: View {
                 if let seed = controller.snapshot?.meta.worldSeed {
                     LabeledContent("World seed", value: String(seed))
                 }
-                Text("Your game runs on this device. Pro purchases and restores use Apple's StoreKit service. The game has no advertising, tracking or analytics.")
+                Text("Your game runs on this device. Apple handles Pro payments. RevenueCat validates and reports purchases using an anonymous customer ID. Gameplay stays on your device, with no advertising or cross-app tracking.")
                     .font(.caption)
                     .foregroundStyle(AETheme.mutedText)
             }
