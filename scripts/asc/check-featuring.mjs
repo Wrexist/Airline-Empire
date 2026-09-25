@@ -23,7 +23,7 @@ function limit(file, field, value, max) {
   else if (length > max) problems.push(`${file}: ${field} is ${length} characters, limit ${max}`)
 }
 
-for (const file of ['store/featuring-nomination.json', 'store/featuring-nomination-1.1.json']) {
+for (const file of ['store/featuring-nomination.json', 'store/featuring-nomination-1.2.json']) {
   const n = read(file)
   limit(file, 'name', n.name, 60)
   limit(file, 'description', n.description, 1000)

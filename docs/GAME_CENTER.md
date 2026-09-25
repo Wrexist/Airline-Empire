@@ -1,7 +1,8 @@
 # Game Center
 
-> Achievements and leaderboards for the **first update (1.1)**. Version 1.0
-> is approved and on pre-order, so Game Center does not ship in it; this is
+> Achievements and leaderboards for the **first update (1.2)**. Version
+> 1.1.0 (13) is approved and on pre-order for 16 October, so Game Center does
+> not ship in it; this is
 > built, tested and staged so the update — and its App Enhancements featuring
 > nomination (`docs/APP_STORE_FEATURING_NOMINATION.md`) — can go as soon as
 > 1.0 is out.
@@ -103,15 +104,15 @@ so the render is reproducible offline.
 3. **Leaderboards → + → Classic** for each row: ID, reference name, score
    format Integer, submission type *Best score*, sort High to low, score
    range 0 to 2,000,000,000. Localisation: title, format suffix, image.
-4. **The 1.1 version page → Game Center → add** all 17 achievements and 3
+4. **The 1.2 version page → Game Center → add** all 17 achievements and 3
    leaderboards, so they go to review with the build that reports them.
 5. **Privacy.** Game Center data is processed by Apple under the player's
    Game Center settings. Re-read Apple's current App Privacy guidance for
-   GameKit before submitting 1.1, and update the label only if it now
+   GameKit before submitting 1.2, and update the label only if it now
    requires a declaration; the in-app privacy line in Settings already
    says where the data goes.
 
-## 4. Signing — check before the first 1.1 archive
+## 4. Signing — check before the first 1.2 archive
 
 The app now declares `com.apple.developer.game-center`
 (`Resources/AirlineEmpire.entitlements`, wired by `project.yml`).
@@ -136,4 +137,4 @@ and leaderboard scores from a real session. Also: catalog ↔ Swift parity.
 
 Not proven: that GameKit authenticates, that reports and submissions reach
 Game Center, and that the Settings section renders — those need a device
-signed in to a sandbox Game Center account, on the first 1.1 TestFlight.
+signed in to a sandbox Game Center account, on the first 1.2 TestFlight.
