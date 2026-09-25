@@ -609,7 +609,17 @@ struct FinanceContent: View {
                 .accessibilityIdentifier("ae-confirm-action")
             Button("Cancel", role: .cancel) {}
         } message: { loan in
-            Text("\(Format.money(loan.principalRemaining)) leaves your cash now, and the \(Format.money(loan.monthlyPayment)) monthly payment stops.")
+            // Core charges the interest accrued since the month began along
+            // with the principal (`Loan.accruedInterest`), so the quote names
+            // both rather than promising only the principal.
+            let interest = controller.snapshot.map {
+                loan.accruedInterest(at: $0.clock.now, startYear: $0.meta.startYear)
+            } ?? .zero
+            if interest > .zero {
+                Text("\(Format.money(loan.principalRemaining)) plus \(Format.money(interest)) interest for this month leaves your cash now, and the \(Format.money(loan.monthlyPayment)) monthly payment stops.")
+            } else {
+                Text("\(Format.money(loan.principalRemaining)) leaves your cash now, and the \(Format.money(loan.monthlyPayment)) monthly payment stops.")
+            }
         }
     }
 

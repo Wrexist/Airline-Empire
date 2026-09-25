@@ -40,6 +40,12 @@ struct AircraftDetailTabs: View {
 struct AircraftOverviewCard: View {
     @Environment(GameController.self) private var controller
     @Environment(\.dynamicTypeSize) private var typeSize
+    /// The narrowest a spec column may get before the grid wraps. Five fixed
+    /// columns left each about 57 pt on an iPhone, so the step sizes above
+    /// the default broke "2,750 km" and "Fuel / seat / km" mid-word. Scaled
+    /// with the text, the same five fit at the default size and the grid
+    /// drops to four, then three, as the type grows.
+    @ScaledMetric(relativeTo: .caption) private var specColumnWidth: CGFloat = 56
     let card: FleetCardModel
     let spec: AircraftTypeSpec
     let change: () -> Void
@@ -57,10 +63,9 @@ struct AircraftOverviewCard: View {
             AircraftPanel {
                 VStack(spacing: 12) {
                     HStack(alignment: .top) {
-                        Label(card.status.isInMaintenance ? "Maintenance" : card.status.isOnOrder ? "On Order" : card.assignedRoute == nil ? "Available" : "In Service",
-                              systemImage: "circle.fill")
+                        Label(statusTitle, systemImage: "circle.fill")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(card.status.isActive ? AETheme.positive : AETheme.caution)
+                            .foregroundStyle(statusColor)
                         Spacer()
                         if let routeID = card.assignedRoute, let route = controller.snapshot?.routes[routeID] {
                             NavigationLink(value: routeID) {
@@ -82,7 +87,7 @@ struct AircraftOverviewCard: View {
                         AEAircraftMedallion(category: card.category, tint: AETheme.accent, size: 130)
                             .frame(maxWidth: .infinity).accessibilityHidden(true)
                     }
-                    LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.adaptive(minimum: 160))] : Array(repeating: GridItem(.flexible(), spacing: 6), count: 5), spacing: 12) {
+                    LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.adaptive(minimum: 160))] : [GridItem(.adaptive(minimum: specColumnWidth), spacing: 6)], spacing: 12) {
                         specItem("Seats", "\(aircraft?.cabin(for: spec).totalSeats ?? spec.seats)", "chair.lounge.fill")
                         specItem("Range", "\(spec.rangeKm.formatted()) km", "arrow.left.and.right")
                         specItem("Cruise speed", "\(spec.cruiseSpeedKmh) km/h", "stopwatch")
@@ -92,6 +97,17 @@ struct AircraftOverviewCard: View {
                 }
             }
         }
+    }
+    /// Idle is the one state here that is the player's to fix, and every
+    /// other fleet surface marks it in the caution colour. A green
+    /// "Available" on this card said the opposite about the same aeroplane.
+    private var statusTitle: String {
+        if card.status.isInMaintenance { return "Maintenance" }
+        if card.status.isOnOrder { return "On Order" }
+        return card.assignedRoute == nil ? "Idle" : "In Service"
+    }
+    private var statusColor: Color {
+        card.status.isActive && card.assignedRoute != nil ? AETheme.positive : AETheme.caution
     }
     private var title: some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -286,7 +302,7 @@ struct AircraftConfigurationEditor: View {
                 }.buttonStyle(.aePrimary).disabled(pending != nil || controller.precheck(command) != nil)
                     .accessibilityIdentifier("ae-cabin-apply")
                 if let rejection = controller.precheck(command) {
-                    Text(rejection.message).font(.caption).foregroundStyle(AETheme.caution)
+                    Text(Rejections.present(rejection).inline).font(.caption).foregroundStyle(AETheme.caution)
                 }
                 Button("Discard Changes") { draft = nil; saved = false }.frame(minHeight: 44)
             }
@@ -325,7 +341,8 @@ struct AircraftConfigurationEditor: View {
     }
     private var forecastSubtitle: String {
         guard let id = aircraft.assignedRoute, let route = snapshot.routes[id] else { return "Estimates based on your assigned route" }
-        return "\(route.origin.raw) – \(route.destination.raw) · \(route.distanceKm.formatted()) km · \(preview?.rotationsPerDay ?? 0) rotations/day"
+        let rotations = preview?.rotationsPerDay ?? 0
+        return "\(route.origin.raw) – \(route.destination.raw) · \(route.distanceKm.formatted()) km · \(rotations) \(rotations == 1 ? "rotation" : "rotations")/day"
     }
     private func metric(_ title: String, _ value: String, change: String?) -> some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -433,7 +450,7 @@ struct CabinClassControl: View {
             Label(cabin.title, systemImage: "chair.lounge.fill")
                 .font(.caption.weight(.semibold)).foregroundStyle(cabin.tint)
                 .frame(minHeight: 32, alignment: .topLeading)
-            Text("\(count) seats").font(.subheadline).monospacedDigit()
+            Text("\(count) \(count == 1 ? "seat" : "seats")").font(.subheadline).monospacedDigit()
             Text((Double(count) / Double(max(1, configuration.totalSeats))).formatted(.percent.precision(.fractionLength(0))))
                 .font(.caption.weight(.semibold)).monospacedDigit()
             if cabin == .economy {
@@ -524,8 +541,13 @@ struct AircraftSeatMap: View {
             context.draw(Text("WC").font(.system(size: 9, weight: .bold)).foregroundStyle(AETheme.mutedText), at: CGPoint(x: w * 0.92, y: h * 0.5))
         }
         .frame(height: 130)
-        .accessibilityLabel("Cabin seat map. Front galley, rear lavatories. " + CabinClass.allCases.map { "\(configuration[$0]) \($0.title) seats" }.joined(separator: ", "))
+        .accessibilityLabel("Cabin seat map. Front galley, rear lavatories. " + CabinClass.allCases.map { seatSummary($0) }.joined(separator: ", "))
         .accessibilityIdentifier("ae-aircraft-seat-map")
+    }
+    /// "1 First seat", not "1 First seats".
+    private func seatSummary(_ cabin: CabinClass) -> String {
+        let count = configuration[cabin]
+        return "\(count) \(cabin.title) \(count == 1 ? "seat" : "seats")"
     }
 }
 
@@ -544,7 +566,7 @@ struct AircraftHistoryCard: View {
                 description = "Aircraft delivered"
             default: return nil
             }
-            return "\(Format.date(GameCalendar.date(at: event.at, startYear: snapshot.meta.startYear))) · \(description)"
+            return "\(Format.longDate(GameCalendar.date(at: event.at, startYear: snapshot.meta.startYear))) · \(description)"
         }.prefix(8).map { $0 }
     }
     var body: some View {
@@ -554,7 +576,9 @@ struct AircraftHistoryCard: View {
                 if let history = aircraft.configurationHistory, !history.isEmpty {
                     ForEach(history, id: \.id) { change in
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Day \(change.at.dayIndex + 1) · Aircraft refit").font(.subheadline.weight(.semibold))
+                            // A date, as the maintenance entries below give
+                            // one — "Day 412" was a count nobody keeps.
+                            Text("\(Format.longDate(GameCalendar.date(at: change.at, startYear: snapshot.meta.startYear))) · Aircraft refit").font(.subheadline.weight(.semibold))
                             Text("\(change.configuration.totalSeats) seats · \(Format.money(change.cost))").font(.caption).foregroundStyle(AETheme.mutedText)
                         }
                     }

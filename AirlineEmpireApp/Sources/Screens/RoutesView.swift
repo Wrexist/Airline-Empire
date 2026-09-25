@@ -601,7 +601,7 @@ struct RouteDetailView: View {
                                 HStack(spacing: AETheme.spacingXS) {
                                     Text(card.typeName).font(AEType.caption)
                                     Spacer()
-                                    Text(Vocab.blocker(blocker))
+                                    Text(Vocab.blocker(blocker, startYear: controller.snapshot?.meta.startYear))
                                         .font(AEType.caption)
                                         .foregroundStyle(AETheme.mutedText)
                                 }
