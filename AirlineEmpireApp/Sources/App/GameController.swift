@@ -878,6 +878,7 @@ final class GameController {
                     await session.advance(ticks: Int(minutes / tick))
                 }
             }
+            guard self.session === session else { return }
             self.setSpeed(.x1)
         }
     }

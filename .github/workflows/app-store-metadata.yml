@@ -253,15 +253,34 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Attach the version, and submit when asked
+      # The same three acts of intent as a listing write. attach, submit,
+      # retarget and retarget-submit all change App Review state, so a dropdown
+      # choice alone must not reach Apple: they need mode=apply and APPLY typed.
+      - name: Check the confirmation for a submission write
+        env:
+          SUBMIT_ACTION: ${{ inputs.submit_for_review }}
+          RUN_MODE: ${{ inputs.mode }}
+          RUN_CONFIRM: ${{ inputs.confirm }}
         run: |
-          case "${{ inputs.submit_for_review }}" in
-            plan)            node scripts/asc/submit-for-review.mjs --version "${{ inputs.version }}" ;;
-            attach)          node scripts/asc/submit-for-review.mjs --version "${{ inputs.version }}" --apply ;;
-            submit)          node scripts/asc/submit-for-review.mjs --version "${{ inputs.version }}" --apply --submit ;;
-            retarget-plan)   node scripts/asc/resubmit-version.mjs --version "${{ inputs.version }}" ;;
-            retarget)        node scripts/asc/resubmit-version.mjs --version "${{ inputs.version }}" --apply ;;
-            retarget-submit) node scripts/asc/resubmit-version.mjs --version "${{ inputs.version }}" --apply --submit ;;
+          case "$SUBMIT_ACTION" in
+            plan|retarget-plan) exit 0 ;;
+          esac
+          if [ "$RUN_MODE" != "apply" ] || [ "$RUN_CONFIRM" != "APPLY" ]; then
+            echo "::error::submit_for_review=$SUBMIT_ACTION writes to App Review; it requires mode=apply and the confirm box to contain exactly APPLY."
+            exit 1
+          fi
+      - name: Attach the version, and submit when asked
+        env:
+          SUBMIT_ACTION: ${{ inputs.submit_for_review }}
+          STORE_VERSION: ${{ inputs.version }}
+        run: |
+          case "$SUBMIT_ACTION" in
+            plan)            node scripts/asc/submit-for-review.mjs --version "$STORE_VERSION" ;;
+            attach)          node scripts/asc/submit-for-review.mjs --version "$STORE_VERSION" --apply ;;
+            submit)          node scripts/asc/submit-for-review.mjs --version "$STORE_VERSION" --apply --submit ;;
+            retarget-plan)   node scripts/asc/resubmit-version.mjs --version "$STORE_VERSION" ;;
+            retarget)        node scripts/asc/resubmit-version.mjs --version "$STORE_VERSION" --apply ;;
+            retarget-submit) node scripts/asc/resubmit-version.mjs --version "$STORE_VERSION" --apply --submit ;;
             *) echo "::error::Unhandled submit_for_review value"; exit 1 ;;
           esac
       - uses: actions/upload-artifact@v4
