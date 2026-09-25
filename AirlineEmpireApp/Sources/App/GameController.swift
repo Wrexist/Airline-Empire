@@ -11,6 +11,12 @@ import AirlineEmpireCore
 @Observable
 final class GameController {
     private(set) var snapshot: GameState?
+    /// Changes only on a new simulation value, including commands while paused.
+    /// Airport quotes debounce this revision; body evaluation never runs a forecast.
+    private(set) var airportInvestmentRevision: UInt64 = 0
+    /// The same O(1) revision for the passenger-experience service quote, so a
+    /// paused route, fare or fleet change re-quotes it too.
+    private(set) var passengerExperienceRevision: UInt64 = 0
     private(set) var catalog: ContentCatalog?
     private(set) var recentEvents: [SimEvent] = []
     private(set) var speed: SimSpeed = .paused
@@ -158,6 +164,8 @@ final class GameController {
     @ObservationIgnored private var cachedMap: MapModel?
     @ObservationIgnored private var cachedNetwork: NetworkSummary?
     @ObservationIgnored private var cachedFleetSummary: FleetSummary?
+    @ObservationIgnored private var cachedFleetBoard: FleetBoard?
+    @ObservationIgnored private var cachedBriefing: BriefingModel?
     @ObservationIgnored private var cachedRouteCards: [RouteCardModel]?
     @ObservationIgnored private var cachedFleetCards: [FleetCardModel]?
     @ObservationIgnored private var cachedCompetition: CompetitionSummary?
@@ -169,6 +177,10 @@ final class GameController {
     /// six would re-run on every gesture frame precisely when it has nothing
     /// to say.
     @ObservationIgnored private var cachedNextMove: HomeNextMove??
+    /// The aircraft market's route comparison, per route. Keyed because the
+    /// market sheet can switch routes without the snapshot changing, and each
+    /// comparison prices every eligible airframe on the pair.
+    @ObservationIgnored private var cachedAircraftMarket: [RouteID: AircraftMarketComparison] = [:]
 
     /// Drops every derived cache. Called on each published snapshot.
     ///
@@ -192,10 +204,13 @@ final class GameController {
         cachedFleetCards = nil
         cachedNetwork = nil
         cachedFleetSummary = nil
+        cachedFleetBoard = nil
+        cachedBriefing = nil
         cachedCompetition = nil
         cachedDashboard = nil
         cachedProgression = nil
         cachedNextMove = nil
+        cachedAircraftMarket = [:]
     }
 
     /// The competitive picture — Home's one rival fact, the World hub's live
@@ -225,6 +240,44 @@ final class GameController {
         let summary = snapshot.fleetSummary(for: player.id)
         cachedFleetSummary = summary
         return summary
+    }
+
+    /// The fleet health board — the Fleet tab's actionable header. Computed
+    /// once per snapshot like the other read models: it walks the fleet, each
+    /// assigned route and the maintenance arithmetic.
+    var fleetBoard: FleetBoard? {
+        guard let snapshot, let player = snapshot.playerAirline, let catalog else { return nil }
+        if let cachedFleetBoard { return cachedFleetBoard }
+        let board = snapshot.fleetBoard(for: player.id, catalog: catalog)
+        cachedFleetBoard = board
+        return board
+    }
+
+    /// The briefing's decision hierarchy — its lead alerts and the summaries
+    /// under them. Computed once per snapshot, like the summaries it composes.
+    var briefingModel: BriefingModel? {
+        guard let snapshot, let catalog else { return nil }
+        if let cachedBriefing { return cachedBriefing }
+        let model = snapshot.briefingModel(catalog: catalog)
+        cachedBriefing = model
+        return model
+    }
+
+    /// Every eligible airframe priced on one route, with route, fare and
+    /// frequency held constant. Nil without a route, a player or content, and
+    /// nil for a route that is not this airline's.
+    ///
+    /// Cached per route: the sheet switches routes without a new snapshot,
+    /// and each comparison prices every eligible airframe through the demand
+    /// engine.
+    func aircraftMarketComparison(for routeID: RouteID?) -> AircraftMarketComparison? {
+        guard let routeID, let snapshot, let catalog else { return nil }
+        if let cached = cachedAircraftMarket[routeID] { return cached }
+        let comparison = snapshot.aircraftMarketComparison(
+            routeID: routeID, catalog: catalog,
+            era: min(snapshot.progression.era, eraCeiling))
+        if let comparison { cachedAircraftMarket[routeID] = comparison }
+        return comparison
     }
 
     /// The airline at a glance — the map's top bar and briefing strip, the
@@ -933,6 +986,12 @@ final class GameController {
         publishedAt = Date()
         publishedTickFraction = fraction
         invalidateCaches()
+        // Every mutation is a tick or an applied command (which emits an event).
+        // O(1) invalidation avoids comparing the whole world at publish cadence.
+        if state.clock.tickCount != snapshot?.clock.tickCount || state.eventLog.totalCount != snapshot?.eventLog.totalCount {
+            airportInvestmentRevision &+= 1
+            passengerExperienceRevision &+= 1
+        }
         snapshot = state
         speed = sessionSpeed
         checkEraCeiling(state)

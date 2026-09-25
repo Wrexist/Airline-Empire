@@ -229,9 +229,11 @@ Airline Empire Pro Lifetime
 Full Pro access with a one-time purchase.
 ```
 
-**IAP review screenshot:** a separate, genuine capture of the paywall showing
-the configured products and prices is still needed. The six marketing images
-are not substitutes for this review evidence. Verify products in StoreKit sandbox.
+**IAP review screenshot:** prepared, inspected and uploaded-ready for all
+three products (1206 × 2622 RGB). `node scripts/asc/upload-iap-review.mjs --check`
+verifies them, and the metadata workflow fills any empty slot. App Review still
+needs each product **added to the version's submission** — Apple rejected 1.0 for
+that, not for a missing image. Verify products in StoreKit sandbox.
 
 - Subscription group: **`Airline Empire Pro`**, holding the weekly and the
   yearly at the same group level.
@@ -426,9 +428,12 @@ https://wrexist.github.io/Airline-Empire/
 | iPad 13" | 2064 × 2752 | in `store/screenshots/` |
 | iPhone 6.5" (additional export) | 1242 × 2688 | six images in `store/screenshots/` |
 
-Portrait, PNG, **no alpha channel**, at most ten per size. The six-shot
-storyboard and captions are in `store/artwork/README.md`; the upload can be done for you
-by the metadata workflow with **screenshots** ticked.
+Portrait, PNG, **no alpha channel**, at most ten per size. Each image is the
+app itself, full screen, with a compact caption band — Review Guideline 2.3.3
+(rejection of 1.0) requires the majority of every screenshot to be the app, so
+the decorative illustration is not used here. The shot list and captions are in
+`docs/ASO.md` §5; the upload can be done for you by the metadata workflow with
+**screenshots** ticked.
 
 ### App Review Information
 
@@ -519,17 +524,23 @@ Apple reviews the first build of each version.
 ```text
 Airline Empire is a single-player airline management simulation. Found an airline, acquire aircraft, open routes, set fares, and run a network while competitors, seasons, fuel prices and world events change the market.
 
-Gameplay works offline without a game account. Optional Pro purchases and Restore purchases use Apple’s App Store services and need a connection. Free players use Founder, the nearest twenty airports and the first two eras; existing operations remain playable at the expansion boundary.
+Gameplay works offline without a game account. Optional Pro purchases and Restore purchases use Apple's App Store services and need a connection. Free players use Founder, the nearest twenty airports and the first two eras; existing operations remain playable at the expansion boundary.
+
+WHAT IS IN THIS BUILD (1.0, resubmitted September 2026)
+- App Review rejected 1.0 under Guideline 2.1(b): the three Pro products were not in the same submission as the version. Pro Weekly, Pro Yearly, Pro Lifetime and their subscription group are now submitted together with the app.
+- App Review rejected 1.0 under Guideline 2.3.3: the store screenshots were decorative artwork with a minority of app UI. The listing is now the app itself, full screen and unretouched, with a compact caption.
+- Home, fleet, routes, finance, progression, the briefing, world events and competitors, and the aircraft market were rebuilt this cycle. The market now compares airframes for one route with the route, its fare and its frequency held still.
+- A crash on Home in build 1 (28 August 2026) - a date precondition reached from the daily digest - is fixed and has a regression test.
 
 WHAT TO TEST
 1. Found a free airline. Home should open on the map with a next action and no immediate purchase offer.
-2. Open the aircraft market from Home, read the suggested aircraft/route, and sign a lease. The market should close and the aircraft should appear in your fleet.
+2. Open the aircraft market from Home, choose a route, read the comparison for that route, and sign a lease. The market should close and the aircraft should appear in your fleet.
 3. Open a suggested route from Home, then assign the aircraft from the route detail screen.
 4. Run at 1x, 4x and 16x. Follow a live flight using the map menu, then drag to release the camera. Check departure, arrival and feed updates.
 5. Advance to the next day and cross a month boundary; inspect route results and the Finance statement.
 6. Save and quit, then continue. Check date, cash, fleet and network. Export a backup, quit, and import it into a fresh campaign slot where your plan permits another save.
 7. Background mid-flight and return. Rehearse termination, low-storage failure and retry on a test device; existing campaigns must remain recoverable.
-8. In the App Store sandbox, test Pro purchase, cancellation, pending approval, restore and expiry. After expiry, existing operations should continue while new paid expansion is blocked.
+8. In the App Store sandbox, test Pro purchase, cancellation, pending approval, restore and expiry, including the weekly introductory offer (pay as you go, first week at the reduced price). After expiry, existing operations should continue while new paid expansion is blocked.
 
 WHAT WE MOST WANT TO HEAR ABOUT
 Report crashes, unreadable layouts, controls that do not respond, slow or hot devices, missing saves, incorrect purchase access, and numbers whose assumptions are unclear. Include device, iOS version, scenario, seed and steps. Do not include account passwords or payment details.

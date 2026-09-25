@@ -461,5 +461,11 @@
         }
       ]
     }
-  ]
+  ],
+  "supersededBy": {
+    "reason": "The seven screen revamps changed every storyboard source; the repo now holds re-captured and re-rendered screenshots.",
+    "captureRun": 35191948365,
+    "commit": "56f3442",
+    "effect": "The App Store listing still shows this uploaded set until the next upload-screenshots run replaces it."
+  }
 }

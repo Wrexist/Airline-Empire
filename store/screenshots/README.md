@@ -1,8 +1,16 @@
 # Screenshots
 
-Six cinematic designs combine original 3D-style aviation illustrations with
-genuine iPhone and iPad gameplay from one simulated campaign. English artwork
-is supplied for both en-US and en-GB.
+The app itself, full screen, from one simulated campaign — with a compact
+caption band at the top. English artwork is supplied for both en-US and en-GB.
+
+App Review **rejected version 1.0** under Guideline 2.3.3: the majority of each
+screenshot has to be the app in use, and marketing or promotional material that
+does not reflect the UI is not appropriate. The set is therefore composed
+app-dominant (`scripts/store-art/build.cjs --native`): the native capture is
+full-bleed at its native aspect and nothing is drawn over it except the caption
+band, which is under a tenth of the canvas. The decorative illustration set is
+kept in [`../artwork/cinematic/`](../artwork/cinematic/) but is no longer part
+of the listing.
 
 ## Layout
 
@@ -33,18 +41,16 @@ product page, so the numeric prefix is the storyboard.
 - At most ten per display type per locale.
 - Captured from a **real mid-game world**, one seed, one airline, across all six.
 - Caption text legible at gallery-thumbnail size.
+- **The app is the majority of the image** (Guideline 2.3.3). No illustration,
+  no promotional proof line, no crop that hides the screen.
 - Nothing on screen the app cannot actually do.
 
-The artwork identifies Pro gameplay and labels the aviation art as illustrative.
-Numbers in UI are actual simulation results, not a promise of what every player
-will earn. UI is cropped and uniformly scaled from native captures, never
-regenerated. Upload only the six ordered PNGs per slot, not the overview sheets
-or manifests. The 18 unique exports are reused for the two English locales.
-This collection was uploaded to App Store Connect version 1.0 on 13 September
-2026. All 36 files across both English locales and all three display types
-passed remote checksum, order and COMPLETE-processing verification in
-[run 34784324536](https://github.com/Wrexist/Airline-Empire/actions/runs/34784324536).
-The upload did not submit or publish the app.
+The caption band names Pro gameplay; the UI is scaled and cropped from native
+captures, never regenerated. Numbers in UI are actual simulation results, not a
+promise of what every player will earn. Upload only the six ordered PNGs per
+slot, not the overview sheets or manifests. The 18 unique exports are reused for
+the two English locales. Re-run `node scripts/store-art/verify.cjs` after any
+regeneration.
 
 See [artwork provenance and reproduction](../artwork/README.md).
 The six shots, what each one has to prove, and the captions:

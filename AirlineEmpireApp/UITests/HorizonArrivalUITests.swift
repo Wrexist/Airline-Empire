@@ -141,18 +141,48 @@ final class HorizonArrivalUITests: AEUITestCase {
         // The twin measured the choice: a tenth off the fare buys share and
         // costs money; another rotation on the aircraft already there earns
         // more. The journey takes the rotation.
-        let increment = app.buttons["Increment"].firstMatch
-        if scrollUntil(increment, "the frequency stepper") {
-            increment.tap()
-            Thread.sleep(forTimeInterval: 1)
-            // The count lives on the Stepper's own label ("Frequency:
-            // 3×/day"), not on a static text: run 121 photographed the
-            // route at 3×/day and still failed a staticTexts query for it.
-            let three = app.descendants(matching: .any).matching(NSPredicate(
-                format: "label CONTAINS %@", "3×/day")).firstMatch
-            XCTAssertTrue(three.waitForExistence(timeout: 6), "Tapping the frequency stepper did not take Munich–Istanbul to 3×/day.")
-            checkpoint("HZ5-after-response")
+        for _ in 0..<8 { app.swipeDown() }
+        let planning = app.buttons["ae-route-tab-Pricing & Schedule"]
+        if !planning.isHittable { app.buttons["ae-route-tab-Competition"].swipeRight() }
+        planning.tap()
+        // The plan's frequency is a Stepper identified as `ae-route-frequency`.
+        // Its accessibility tree (run 35496119843) gives the two controls their
+        // own identifiers — `ae-route-frequency-Decrement` and
+        // `ae-route-frequency-Increment` — with labels like "2 round trips/day,
+        // Increment". The old route sheet answered to a bare "Increment", which
+        // no longer exists, so try the shapes it has taken and take the first
+        // that is genuinely reachable.
+        var candidates: [XCUIElement] = [
+            app.buttons["ae-route-frequency-Increment"],
+            app.buttons.matching(NSPredicate(
+                format: "label CONTAINS %@", "Increment")).firstMatch,
+            app.buttons["Increment"].firstMatch,
+        ]
+        let identified = app.buttons.matching(identifier: "ae-route-frequency")
+        if identified.count >= 2 { candidates.append(identified.element(boundBy: identified.count - 1)) }
+        // A local probe, not `scrollUntil`: that helper fails the test when an
+        // element is missing, and the whole point here is that only one of the
+        // shapes is present.
+        func reachable(_ element: XCUIElement) -> Bool {
+            for _ in 0..<4 {
+                if element.exists, element.isHittable { return true }
+                app.swipeUp()
+            }
+            return element.exists && element.isHittable
         }
+        guard let increment = candidates.first(where: reachable),
+              tapWhenReady(increment) else {
+            XCTFail("No frequency control on the route plan was reachable.")
+            return
+        }
+        let apply = app.buttons["ae-route-plan-apply"]
+        guard scrollUntil(apply, "the route plan commit") else { return }
+        apply.tap()
+        let confirm = app.buttons["Confirm Route Plan"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        confirm.tap()
+        XCTAssertTrue(app.staticTexts["Route plan saved"].waitForExistence(timeout: 10))
+        checkpoint("HZ5-after-response")
         app.navigationBars.buttons.firstMatch.tap()
 
         // ── HORIZON-KEY-06 · two weeks later: the world after the response ─
@@ -185,6 +215,10 @@ final class HorizonArrivalUITests: AEUITestCase {
             XCTFail("The \(code) row did not accept a tap.")
             return false
         }
+        let competition = app.buttons["ae-route-tab-Competition"]
+        guard competition.waitForExistence(timeout: 8) else { XCTFail("Missing Competition tab"); return false }
+        if !competition.isHittable { app.buttons["ae-route-tab-Aircraft"].swipeLeft() }
+        competition.tap()
         let header = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "WHO ELSE FLIES THIS")).firstMatch
         if header.waitForExistence(timeout: 8) { return true }
         return scrollUntil(header, "the competition section on the route screen")

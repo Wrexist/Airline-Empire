@@ -99,15 +99,17 @@ enum Vocab {
         }
     }
 
-    /// What choosing a tier actually does, so the choice is informed.
+    /// What choosing a tier actually does, so the choice is informed. The
+    /// numbers (per-passenger cost, target) come from Core on the screen —
+    /// this copy stays qualitative so tuning has one owner.
     static func serviceTierDetail(_ tier: ServiceTier) -> String {
         switch tier {
         case .basic:
-            "Cheapest per passenger. Service reputation drifts down; fine for a value carrier that is honest about it."
+            "Cheapest per passenger. The service reputation target sits below the market, so this is for a carrier that is honest about a no-frills product."
         case .standard:
             "The middle. Costs and expectations both sit at the market's level."
         case .premium:
-            "Most expensive per passenger, and the only tier that lifts service reputation far. Premium fares need it."
+            "Most expensive per passenger, and the only tier whose service reputation target sits above the market. Premium fares need it."
         }
     }
 
@@ -187,6 +189,31 @@ enum Vocab {
         }
     }
 
+    /// A glyph per era, so the campaign header reads as a chapter rather than
+    /// as a label.
+    static func eraIcon(_ era: Era) -> String {
+        switch era {
+        case .startup: "leaf.fill"
+        case .regional: "map.fill"
+        case .national: "building.columns.fill"
+        case .international: "globe.europe.africa.fill"
+        case .empire: "crown.fill"
+        }
+    }
+
+    /// A mission, named the way both the commitments card and the campaign
+    /// log need it, so the same mission never has two names.
+    static func missionTitle(_ kind: MissionKind) -> String {
+        switch kind {
+        case .boomRush(let region, let target):
+            "Carry \(Format.count(target)) passengers in \(Vocab.region(region))"
+        case .flightContract(let target):
+            "Complete \(Format.count(target)) flights"
+        case .passengerContract(let target):
+            "Carry \(Format.count(target)) passengers across your network"
+        }
+    }
+
     static func capability(_ code: CapabilityCode) -> String {
         switch code {
         case .efficientTurnarounds: "Efficient turnarounds"
@@ -217,6 +244,39 @@ enum Vocab {
         case .fuelHedging: "fuelpump"
         case .networkOpsCenter: "antenna.radiowaves.left.and.right"
         case .groundExperience: "sparkles"
+        }
+    }
+
+    /// A logged campaign moment, named and explained. One entry in the record
+    /// reads the same wherever it appears.
+    static func momentIcon(_ kind: ProgressionMoment.Kind) -> String {
+        switch kind {
+        case .eraAdvanced: "flag.checkered"
+        case .milestone: "star.fill"
+        case .achievement: "rosette"
+        case .capability(let code): capabilityIcon(code)
+        case .mission: "target"
+        }
+    }
+
+    static func momentTitle(_ kind: ProgressionMoment.Kind) -> String {
+        switch kind {
+        // `Self.` because the bound value shadows the `era(_:)` helper.
+        case .eraAdvanced(let era): "Reached the \(Self.era(era)) era"
+        case .milestone(let code): milestone(code)
+        case .achievement(let code): achievement(code)
+        case .capability(let code): capability(code)
+        case .mission(let mission, _): missionTitle(mission)
+        }
+    }
+
+    static func momentDetail(_ kind: ProgressionMoment.Kind) -> String {
+        switch kind {
+        case .eraAdvanced(let era): eraDetail(era)
+        case .milestone(let code): milestoneDetail(code)
+        case .achievement(let code): achievementDetail(code)
+        case .capability(let code): "Programme complete. \(capabilityDetail(code))"
+        case .mission(_, let reward): "Completed and paid \(Format.money(reward))."
         }
     }
 
@@ -641,6 +701,42 @@ extension Vocab {
         }
     }
 
+    /// The health board's issues, named. These are the *actionable* ones only:
+    /// "in check" and "on order" are availability, and the board says those
+    /// with a date instead of an issue.
+    static func fleetIssue(_ issue: FleetBoard.Issue) -> String {
+        switch issue {
+        case .idle: "Idle"
+        case .lowCondition: "Condition"
+        case .wornReliability: "Reliability"
+        case .leaseEnding: "Lease"
+        }
+    }
+
+    static func fleetIssueIcon(_ issue: FleetBoard.Issue) -> String {
+        switch issue {
+        case .idle: "pause.circle.fill"
+        case .lowCondition: "wrench.and.screwdriver.fill"
+        case .wornReliability: "bolt.slash.fill"
+        case .leaseEnding: "calendar.badge.exclamationmark"
+        }
+    }
+
+    /// A short, number-carrying chip for one issue, so two rows can be
+    /// compared rather than just read.
+    static func fleetIssueDetail(_ issue: FleetBoard.Issue, row: FleetBoard.Row) -> String {
+        switch issue {
+        case .idle:
+            return "no route"
+        case .lowCondition:
+            return Format.percent(row.card.condition)
+        case .wornReliability:
+            return Format.percent(row.card.reliability)
+        case .leaseEnding:
+            return "\(row.leaseMonthsRemaining ?? 0)mo left"
+        }
+    }
+
     /// An airport, said the way people say airports: "Sjövik (Stockholm)" —
     /// the field's own name first, the city it serves in brackets, the way a
     /// traveller says "Arlanda" and clarifies with "(Stockholm)".
@@ -700,9 +796,17 @@ extension Vocab {
         }
     }
 
+    /// The single attractiveness term that separates the player from the
+    /// strongest rival, for a compact comparison row. Nil when nothing
+    /// dominates — a screen is never handed a reason that is not one.
+    static func edge(_ model: MarketCompetition) -> String? {
+        guard let edge = model.edge else { return nil }
+        return edgeClause(edge)
+    }
+
     /// The term that separates the player from the strongest rival, read
     /// after the standing.
-    private static func edgeClause(_ edge: MarketCompetition.Edge) -> String {
+    static func edgeClause(_ edge: MarketCompetition.Edge) -> String {
         switch edge {
         case .fare(let ahead):
             return ahead ? "mostly because your fare is lower"
@@ -848,6 +952,52 @@ extension Vocab {
         case .assignAircraft: "arrow.triangle.branch"
         case .watchFirstFlight: "play.circle"
         case .earnFirstRevenue: "banknote"
+        }
+    }
+
+    // MARK: - The briefing's alerts
+
+    static func briefingAlertIcon(_ kind: BriefingModel.Alert.Kind) -> String {
+        switch kind {
+        case .insolvency: "exclamationmark.octagon.fill"
+        case .idleAircraft: "pause.circle.fill"
+        case .groundedRoutes: "airplane"
+        case .losingRoutes: "chart.line.downtrend.xyaxis"
+        }
+    }
+
+    static func briefingAlertTitle(_ kind: BriefingModel.Alert.Kind) -> String {
+        switch kind {
+        case .insolvency(let days, _):
+            guard let days else { return "The airline is overdrawn" }
+            return days == 1 ? "Administration tomorrow"
+                            : "Administration in \(days) days"
+        case .idleAircraft(let count):
+            return count == 1 ? "One aircraft is idle"
+                              : "\(count) aircraft are idle"
+        case .groundedRoutes(let count):
+            return count == 1 ? "One route has no aircraft"
+                              : "\(count) routes have no aircraft"
+        case .losingRoutes(let count):
+            return count == 1 ? "One route is losing money"
+                              : "\(count) routes are losing money"
+        }
+    }
+
+    /// Why it matters — the reason, not the instruction. A recommendation
+    /// that only restates the number teaches the player nothing.
+    static func briefingAlertDetail(_ kind: BriefingModel.Alert.Kind) -> String {
+        switch kind {
+        case .insolvency(_, let fatal):
+            return fatal
+                ? "A second failure ends the campaign. Sell what you can and cut what loses money."
+                : "Restructuring is coming. Selling an idle aircraft or closing a losing route buys time."
+        case .idleAircraft:
+            return "Parked costs the same as flying and earns nothing. Give it a route."
+        case .groundedRoutes:
+            return "An open route with nothing on it earns nothing and holds its slots."
+        case .losingRoutes:
+            return "Fares, frequency or the aircraft — the routes board shows which."
         }
     }
 }

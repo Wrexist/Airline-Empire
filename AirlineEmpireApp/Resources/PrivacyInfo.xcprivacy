@@ -3,13 +3,27 @@
 <plist version="1.0">
 <dict>
   <!-- Preferences and paywall history are private app UserDefaults.
-       StoreKit handles purchases; no developer tracking or analytics SDKs. -->
+       StoreKit handles payments; RevenueCat processes anonymous purchase history. -->
   <key>NSPrivacyTracking</key>
   <false/>
   <key>NSPrivacyTrackingDomains</key>
   <array/>
   <key>NSPrivacyCollectedDataTypes</key>
-  <array/>
+  <array>
+    <dict>
+      <key>NSPrivacyCollectedDataType</key>
+      <string>NSPrivacyCollectedDataTypePurchaseHistory</string>
+      <key>NSPrivacyCollectedDataTypeLinked</key>
+      <false/>
+      <key>NSPrivacyCollectedDataTypeTracking</key>
+      <false/>
+      <key>NSPrivacyCollectedDataTypePurposes</key>
+      <array>
+        <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+        <string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+      </array>
+    </dict>
+  </array>
   <key>NSPrivacyAccessedAPITypes</key>
   <array>
     <dict>

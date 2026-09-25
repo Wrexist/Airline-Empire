@@ -88,6 +88,35 @@ public struct FlightSchedulingSystem: SimulationSystem {
         return max(0, Int(ops.operatingDayMinutes / roundTripBlock))
     }
 
+    /// Round trips the scheduler allots one airframe on a route: the type's
+    /// daily maximum, capped by the aircraft's even share of the route's
+    /// requested frequency. The same arithmetic that materialises the
+    /// schedule, exposed so a read model can size a check interval without a
+    /// second copy of it.
+    public static func rotationsPerDay(route: Route, aircraftID: AircraftID,
+                                       state: GameState, spec: AircraftTypeSpec,
+                                       ops: OpsTuning) -> Int? {
+        let active = route.assignedAircraft.sorted()
+            .compactMap { state.aircraft[$0] }.filter(\.isOperational)
+        guard let index = active.firstIndex(where: { $0.id == aircraftID }) else { return nil }
+        let maximum = roundTripsPerAircraftPerDay(distanceKm: route.distanceKm,
+                                                  spec: spec, ops: ops)
+        return min(maximum, max(0, (route.dailyRoundTrips + active.count - 1 - index) / active.count))
+    }
+
+    /// Block hours that airframe flies per day at those rotations.
+    public static func blockHoursPerDay(route: Route, aircraftID: AircraftID,
+                                        state: GameState, spec: AircraftTypeSpec,
+                                        ops: OpsTuning) -> Double? {
+        guard let rotations = rotationsPerDay(route: route, aircraftID: aircraftID,
+                                              state: state, spec: spec, ops: ops)
+        else { return nil }
+        let minutes = flightMinutes(distanceKm: route.distanceKm,
+                                    cruiseSpeedKmh: spec.cruiseSpeedKmh,
+                                    overheadMinutes: ops.flightOverheadMinutes)
+        return Double(rotations * 2) * Double(minutes) / 60
+    }
+
     /// Cruise time + fixed overhead, whole minutes.
     static func flightMinutes(distanceKm: Int, cruiseSpeedKmh: Int,
                               overheadMinutes: Int64) -> Int64 {

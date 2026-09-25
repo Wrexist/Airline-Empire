@@ -214,6 +214,12 @@ final class ShellAndMapUITests: AEUITestCase {
             .matching(identifier: "ae-fleet-row").firstMatch
         require(aircraftRow, "the leased aircraft on the fleet board")
         aircraftRow.tap()
+        // The detail is tabbed since the cabin-configuration work, and
+        // Ownership lives under Operations — it is not on the first tab.
+        let operations = app.buttons["ae-aircraft-tab-Operations"]
+        if !operations.isHittable { app.buttons["ae-aircraft-tab-Upgrades"].swipeLeft() }
+        guard require(operations, "the aircraft detail's Operations tab"),
+              tapWhenReady(operations) else { return }
         // Content only aircraft detail has. The first attempt asked for
         // "condition", which the fleet board's own summary also says — so
         // run 60 photographed the board under the name "aircraft-detail" and

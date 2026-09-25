@@ -42,7 +42,7 @@ public struct FlightOpsSystem: SimulationSystem {
                         let outbound = flight.from == route.origin
                         let remaining = outbound ? route.remainingOutboundToday
                                                  : route.remainingInboundToday
-                        let sold = min(spec.seats, max(0, remaining))
+                        let sold = min(aircraft.cabin(for: spec).totalSeats, max(0, remaining))
                         flight.passengers = sold
                         if outbound {
                             route.remainingOutboundToday = remaining - sold
@@ -59,6 +59,8 @@ public struct FlightOpsSystem: SimulationSystem {
                     let reliability = aircraft.currentReliability(
                         type: spec, tuning: context.catalog.tuning.fleet)
                     var disruptionProbability = 1 - reliability
+                    disruptionProbability *= state.airlines[aircraft.owner]?.facilities(at: flight.from)
+                        .technicalDisruptionMultiplier(tuning: context.catalog.tuning.airportServices) ?? 1
                     if state.isPlayer(aircraft.owner),
                        state.playerHasCapability(.networkOpsCenter) {
                         disruptionProbability *= 0.8
@@ -94,7 +96,9 @@ public struct FlightOpsSystem: SimulationSystem {
                         flight.phase = .enRoute(actualDeparture: now)
                         if flight.kind == .revenue, flight.passengers > 0,
                            var route = state.routes[flight.route] {
-                            let revenue = route.ticketPrice * Int64(flight.passengers)
+                            let spec = context.catalog.aircraftType(aircraft.typeCode)!
+                            let revenue = Money(rounding: route.ticketPrice.asDouble * Double(flight.passengers)
+                                * aircraft.cabin(for: spec).yieldMultiplier(tuning: context.catalog.tuning.cabin))
                             state.ledger.post(
                                 airline: aircraft.owner, category: .ticketRevenue,
                                 amount: revenue, at: now,
@@ -122,7 +126,7 @@ public struct FlightOpsSystem: SimulationSystem {
                         route.stats.flightsCompleted += 1
                         route.stats.passengersCarried += Int64(flight.passengers)
                         let spec = context.catalog.aircraftType(aircraft.typeCode)!
-                        route.stats.seatsFlown += Int64(spec.seats)
+                        route.stats.seatsFlown += Int64(aircraft.cabin(for: spec).totalSeats)
                         if flight.wasDelayed {
                             route.stats.flightsDelayed += 1
                             route.stats.totalDelayMinutes += flight.delayMinutes
@@ -214,6 +218,7 @@ public struct FlightOpsSystem: SimulationSystem {
         if flight.kind == .revenue, flight.passengers > 0,
            let airline = state.airlines[owner] {
             let perPax = catalog.tuning.reputation.serviceCostPerPax(airline.serviceTier)
+                + aircraft.cabin(for: spec).serviceCostPerPassenger(tuning: catalog.tuning.cabin)
             let serviceCost = perPax * Int64(flight.passengers)
             state.ledger.post(airline: owner, category: .passengerService,
                               amount: -serviceCost, at: context.current,

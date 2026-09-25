@@ -514,6 +514,52 @@ test("Apple's own marks are fine in a description and wrong in a subtitle", () =
   assertIncludes(validateStore(wrong).errors, 'indexed field', 'a platform name in the subtitle passed')
 })
 
+test('the subscription Terms link and the app\'s own links are fine in a description', () => {
+  // Guideline 3.1.2 wants the Terms of Use link in the metadata, and the
+  // privacy/support/marketing links are the app's own.
+  const store = fixture(({ files }) => {
+    files['description.txt'] = 'One aircraft. One route.\n\n'
+      + 'Terms of Use (Apple Standard EULA): '
+      + 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/\n'
+      + 'Privacy Policy: https://example.com/privacy'
+  })
+  const { warnings } = validateStore(store)
+  assert(
+    !warnings.some((w) => w.includes('contains a URL')),
+    `a declared legal link was flagged as a stray URL:\n    ${warnings.join('\n    ')}`,
+  )
+})
+
+test('a URL that is not the app\'s own still warns', () => {
+  const store = fixture(({ files }) => {
+    files['description.txt'] = 'One aircraft.\n\nRead more at https://somewhere-else.example/page'
+  })
+  assertIncludes(validateStore(store).warnings, 'contains a URL', 'a stray URL passed')
+})
+
+test('a price, a discount or a trial warns; the word "free" does not', () => {
+  const pricey = fixture(({ files }) => {
+    files['description.txt'] = 'One aircraft.\n\nJust $4.99 for the first year.'
+  })
+  assertIncludes(validateStore(pricey).warnings, 'price', 'an explicit price passed')
+
+  const discounted = fixture(({ files }) => {
+    files['description.txt'] = 'One aircraft.\n\n50% off this week only.'
+  })
+  assertIncludes(validateStore(discounted).warnings, 'price', 'a discount claim passed')
+
+  // The app's App Store price is FREE and the free tier is permanent, so the
+  // word is accurate and warning on it only makes the check ignorable.
+  const honest = fixture(({ files }) => {
+    files['description.txt'] = 'One aircraft.\n\nSTART FREE. EXPAND WITH PRO.'
+  })
+  const { warnings } = validateStore(honest)
+  assert(
+    !warnings.some((w) => w.includes('price')),
+    `an accurate "free" was treated as a price claim:\n    ${warnings.join('\n    ')}`,
+  )
+})
+
 test('a placeholder or a TODO never reaches the store', () => {
   const store = fixture(({ files }) => {
     files['promotional_text.txt'] = 'TODO write this'
@@ -569,6 +615,13 @@ test('review contact details are required', () => {
     config.review.contactEmail = ''
   })
   assertIncludes(validateStore(store).errors, 'contactEmail', 'a missing review contact passed')
+})
+
+test('an over-long TestFlight note is an error, not a silent truncation', () => {
+  const store = fixture(({ root }) => {
+    writeFileSync(join(root, 'metadata', 'review', 'testflight.txt'), 'x'.repeat(LIMITS.testflight + 1))
+  })
+  assertIncludes(validateStore(store).errors, 'testflight.txt', 'an over-long TestFlight note passed')
 })
 
 test('an unused keyword budget is a warning', () => {

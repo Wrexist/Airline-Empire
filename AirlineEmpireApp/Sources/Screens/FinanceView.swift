@@ -42,16 +42,17 @@ struct FinanceContent: View {
                 // resolving it again inside `runwayCard` doubled the cost of
                 // every refresh of this screen.
                 let solvency = snapshot.solvencyModel(for: player.id, catalog: catalog)
+                let breakdown = snapshot.financeBreakdown(for: player.id, catalog: catalog)
                 VStack(spacing: AETheme.spacingM) {
                     if let solvency {
                         SolvencyBanner(model: solvency)
                     }
                     topLine(model)
-                    // What the airline is earning *now*. The screen showed
-                    // cash, net worth, debt and leverage — a balance sheet —
-                    // and nothing about whether operations are making money
-                    // this month, which is the question §15 puts first.
-                    operatingStrip()
+                    // Three questions, in the order an operator asks them:
+                    // is the airline earning, where did the cash go, and what
+                    // must it find every month.
+                    operatingPanel(breakdown)
+                    cashPanel(breakdown, cash: model.cash)
                     trendCard(model)
                     DisclosureGroup("Cash runway & credit limits") {
                         runwayCard(model, solvency: solvency).padding(.top, 8)
@@ -61,6 +62,7 @@ struct FinanceContent: View {
                     .padding(.horizontal, 4)
                     routeExtremes()
                     statementCard(snapshot: snapshot, player: player.id)
+                    commitmentsPanel(breakdown)
                     loansCard(model, snapshot: snapshot, player: player.id)
                 }
                 .aePageInsets()
@@ -112,29 +114,215 @@ struct FinanceContent: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// Whether the airline is making money flying aeroplanes, before
-    /// financing (MASTER PROMPT 4 §15).
+    /// Is the airline making money flying aeroplanes? (MASTER PROMPT 4 §15.)
     ///
     /// The tiles above answer "what is the airline worth"; this answers "is it
-    /// working", which is a different question and the one an operator asks
-    /// first. Absent rather than zeroed when there are no routes — an
-    /// operating profit of nothing is not the same claim as an airline that
-    /// has not started, and `NetworkSummary` draws that distinction
-    /// deliberately.
+    /// working", this month to date, from the ledger's own live month
+    /// accumulator — the same postings the month-end statement will close
+    /// over. The route figure below it is deliberately the *direct*
+    /// contribution: it says what the network earns before the company costs
+    /// the commitments panel lists, and the two are labelled so they cannot be
+    /// read as the same number.
+    private func operatingPanel(_ breakdown: FinanceBreakdown) -> some View {
+        AEPanel {
+            VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                AESectionHeader(text: "Operating performance",
+                                systemImage: "chart.line.uptrend.xyaxis")
+                periodLabel("This month (to date)")
+                if let flow = breakdown.monthToDate, flow.hasOperatingActivity {
+                    figureRow("Revenue", flow.operatingRevenue)
+                    figureRow("Operating costs", flow.operatingExpenses)
+                    Divider()
+                    figureTotal("Operating profit", flow.operatingProfit)
+                } else {
+                    Text("Nothing has operated since the last month boundary.")
+                        .font(.caption).foregroundStyle(AETheme.mutedText)
+                }
+                if let network = controller.networkSummary, network.routeCount > 0 {
+                    Divider()
+                    periodLabel("Routes this month")
+                    Text("Direct contribution \(Format.money(network.monthToDateProfit)) after fuel, fees and crew — before maintenance, leases, payroll and overhead.")
+                        .font(.caption).foregroundStyle(AETheme.mutedText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    /// Cash, which is not the same claim as profit.
+    ///
+    /// A month can be profitable and still lose cash (buying an aircraft), or
+    /// lose money and gain cash (a loan drawdown). Both are shown, and the
+    /// note says which movements are which, rather than letting one number
+    /// stand in for the other.
+    private func cashPanel(_ breakdown: FinanceBreakdown, cash: Money) -> some View {
+        AEPanel {
+            VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                AESectionHeader(text: "Cash movements",
+                                systemImage: "arrow.left.arrow.right")
+                if let flow = breakdown.monthToDate {
+                    periodLabel("This month (to date)")
+                    figureRow("From operations", flow.operatingProfit)
+                    figureRow("Capital movements", flow.capitalMovements)
+                    figureRow("Loan interest", flow.financingCost)
+                    Divider()
+                    figureTotal("Net cash change", flow.netCashChange)
+                    Text("Cash in hand \(Format.money(cash)). Cash change is not profit: aircraft, loan principal and founding capital move cash without touching operating profit.")
+                        .font(.caption).foregroundStyle(AETheme.mutedText)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text("Nothing has moved since the last month boundary. Cash in hand \(Format.money(cash)).")
+                        .font(.caption).foregroundStyle(AETheme.mutedText)
+                }
+            }
+        }
+    }
+
+    private func periodLabel(_ text: String) -> some View {
+        Text(text)
+            .font(AEType.eyebrow)
+            .foregroundStyle(AETheme.mutedText)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    // Plain rows, no `children: .combine`: other journeys query the
+    // statement's own "Net profit" static text, and merging the row would
+    // take that label away. They stack at large text sizes rather than
+    // squeezing the figure against its label.
+    private func figureRow(_ label: String, _ money: Money) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack {
+                Text(label).font(.subheadline)
+                Spacer()
+                MoneyText(money: money).font(.subheadline)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label).font(.subheadline)
+                MoneyText(money: money).font(.subheadline)
+            }
+        }
+    }
+
+    private func figureTotal(_ label: String, _ money: Money) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack {
+                Text(label).font(.subheadline.weight(.semibold))
+                Spacer()
+                MoneyText(money: money).font(.subheadline.weight(.semibold))
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label).font(.subheadline.weight(.semibold))
+                MoneyText(money: money).font(.subheadline.weight(.semibold))
+            }
+        }
+    }
+
+    /// What must be found every month, at today's size and contracts.
+    ///
+    /// Leases, loan payments and station services are exact charges the
+    /// simulation will post; payroll is charged from the fleet and routes
+    /// held at the boundary, so it is an estimate and says so. Loan payments
+    /// include principal, which reduces debt rather than counting as a cost.
+    private func commitmentsPanel(_ breakdown: FinanceBreakdown) -> some View {
+        let recurring = breakdown.recurring
+        return AEPanel {
+            VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                AESectionHeader(text: "Monthly commitments",
+                                systemImage: "calendar.badge.clock")
+                Text("What the airline must find every month at today's size and contracts.")
+                    .font(.caption).foregroundStyle(AETheme.mutedText)
+                    .fixedSize(horizontal: false, vertical: true)
+                commitmentRow("Aircraft leases", recurring.leases, link: .fleet)
+                commitmentRow("Loan payments", recurring.loanPayments, link: nil)
+                ForEach(recurring.stationsByAirport.keys.sorted(), id: \.self) { code in
+                    NavigationLink {
+                        AirportDetailView(code: code, initialSection: .facilities)
+                    } label: {
+                        commitmentLabel("\(code.raw) services",
+                                        recurring.stationsByAirport[code] ?? .zero,
+                                        linked: true, tint: AETheme.accent)
+                    }
+                    .buttonStyle(.aePress)
+                }
+                commitmentRow("Payroll (estimate)", recurring.payroll, link: nil)
+                commitmentRow("Company overhead", recurring.overhead, link: nil)
+                Divider()
+                figureTotal("Total each month", recurring.monthlyTotal)
+                Text("Payroll is charged from the fleet and routes held at the month boundary; leases, station services and loan service bill there too, so they land in the following month's statement. Loan payments include principal, which reduces debt rather than counting as a cost.")
+                    .font(.caption2).foregroundStyle(AETheme.mutedText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
     @ViewBuilder
-    private func operatingStrip() -> some View {
-        if let network = controller.networkSummary, network.routeCount > 0 {
-            AEMetricStrip([
-                AEMetric("revenue this month",
-                         Format.money(network.monthToDateRevenue)),
-                AEMetric("direct costs",
-                         Format.money(network.monthToDateCosts)),
-                AEMetric("operating profit",
-                         Format.money(network.monthToDateProfit),
-                         tint: network.monthToDateProfit.isNegative
-                             ? AETheme.negative : AETheme.positive,
-                         emphasised: true),
-            ])
+    private func commitmentRow(_ label: String, _ money: Money, link: FinanceLink?) -> some View {
+        if let link {
+            NavigationLink {
+                destination(for: link)
+            } label: {
+                commitmentLabel(label, money, linked: true, tint: AETheme.accent)
+            }
+            .buttonStyle(.aePress)
+        } else {
+            commitmentLabel(label, money, linked: false, tint: nil)
+        }
+    }
+
+    private func commitmentLabel(_ label: String, _ money: Money,
+                                 linked: Bool, tint: Color?) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack {
+                Text(label).font(.subheadline).foregroundStyle(tint ?? .primary)
+                Spacer()
+                moneyWithChevron(money, linked: linked)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label).font(.subheadline).foregroundStyle(tint ?? .primary)
+                moneyWithChevron(money, linked: linked)
+            }
+        }
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+    }
+
+    private func moneyWithChevron(_ money: Money, linked: Bool) -> some View {
+        HStack(spacing: AETheme.spacingXS) {
+            MoneyText(money: money).font(.subheadline)
+            if linked {
+                Image(systemName: "chevron.right")
+                    .font(.caption2).foregroundStyle(AETheme.mutedText)
+                    .accessibilityHidden(true)
+            }
+        }
+    }
+
+    /// Where an expense's decision lives. Only categories a player can act on
+    /// through another screen carry a destination; payroll and overhead do
+    /// not, and a link that led somewhere unconnected would be worse than
+    /// none.
+    private enum FinanceLink { case routes, fleet, service }
+
+    @ViewBuilder
+    private func destination(for link: FinanceLink) -> some View {
+        switch link {
+        case .routes: RoutesList().navigationTitle("Routes").aeTimeToolbar()
+        case .fleet: FleetList().navigationTitle("Fleet").aeTimeToolbar()
+        case .service: PassengerExperienceView()
+        }
+    }
+
+    private func financeLink(_ category: TransactionCategory) -> FinanceLink? {
+        switch category {
+        case .ticketRevenue, .missionReward, .fuel, .airportFees, .crewCosts:
+            return .routes
+        case .maintenance, .leasePayment, .leasePenalty, .aircraftPurchase, .aircraftSale:
+            return .fleet
+        case .passengerService:
+            return .service
+        case .initialCapital, .salaries, .overhead, .loanProceeds, .loanPrincipal, .loanInterest:
+            return nil
         }
     }
 
@@ -190,6 +378,7 @@ struct FinanceContent: View {
                 Image(systemName: "chevron.right")
                     .font(AEType.caption)
                     .foregroundStyle(AETheme.mutedText)
+                    .accessibilityHidden(true)
             }
             .frame(minHeight: 44)
             .contentShape(Rectangle())
@@ -258,6 +447,14 @@ struct FinanceContent: View {
         }
     }
 
+    /// The last closed month, grouped so it reads as a P&L rather than a list
+    /// of every category in enum order: revenue, operating costs, the
+    /// operating line, financing, then the net line. Capital movements sit
+    /// behind a disclosure because they are real cash but not profit.
+    ///
+    /// The header keeps its exact "Mar 2030 statement" shape — a journey
+    /// asserts that string — and "Net profit" stays an uncombined label for
+    /// the same reason.
     private func statementCard(snapshot: GameState, player: AirlineID) -> some View {
         AECard {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
@@ -265,7 +462,20 @@ struct FinanceContent: View {
                     AESectionHeader(
                         text: "\(Format.monthAbbreviation(statement.month)) \(statement.year) statement",
                         systemImage: "doc.text")
-                    statementRows(statement)
+                    Text("Closed month · every cent classified")
+                        .font(.caption).foregroundStyle(AETheme.mutedText)
+                    categoryGroup(statement, .operatingRevenue)
+                    categoryGroup(statement, .operatingExpense)
+                    Divider()
+                    figureTotal("Operating profit", statement.operatingProfit)
+                    if !categories(statement, .financing).isEmpty {
+                        categoryGroup(statement, .financing)
+                    }
+                    Divider()
+                    figureTotal("Net profit", statement.netProfit)
+                    if !categories(statement, .capital).isEmpty {
+                        capitalDisclosure(statement)
+                    }
                 } else {
                     AESectionHeader(text: "Latest statement", systemImage: "doc.text")
                     Text("No closed month yet.")
@@ -277,29 +487,80 @@ struct FinanceContent: View {
     }
 
     @ViewBuilder
-    private func statementRows(_ statement: MonthlyStatement) -> some View {
-        // Sorted category rows: every cent classified and visible.
-        let rows = statement.byCategory
-            .sorted { $0.key.rawValue < $1.key.rawValue }
-            .filter { $0.value != 0 }
-        ForEach(rows, id: \.key) { category, cents in
-            HStack {
-                Text(DigestCard.label(for: category)).font(.subheadline)
-                Spacer()
-                MoneyText(money: Money(cents: cents)).font(.subheadline)
+    private func capitalDisclosure(_ statement: MonthlyStatement) -> some View {
+        DisclosureGroup("Capital movements (not in profit)") {
+            VStack(alignment: .leading, spacing: AETheme.spacingXS) {
+                ForEach(categories(statement, .capital), id: \.self) { category in
+                    categoryRow(statement, category)
+                }
+                Text("Aircraft, loan principal and founding capital move cash without touching profit — they are in Cash movements above.")
+                    .font(.caption2).foregroundStyle(AETheme.mutedText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.top, 4)
+        }
+        .font(.subheadline)
+        .tint(AETheme.mutedText)
+    }
+
+    /// The non-zero categories in one classification, largest magnitude
+    /// first, so the biggest cost is the first thing read.
+    private func categories(_ statement: MonthlyStatement,
+                            _ classification: CategoryClassification) -> [TransactionCategory] {
+        statement.byCategory.keys
+            .filter {
+                $0.classification == classification
+                    && (statement.byCategory[$0] ?? 0) != 0
+            }
+            .sorted {
+                abs(statement.byCategory[$0] ?? 0) > abs(statement.byCategory[$1] ?? 0)
+            }
+    }
+
+    @ViewBuilder
+    private func categoryGroup(_ statement: MonthlyStatement,
+                               _ classification: CategoryClassification) -> some View {
+        let items = categories(statement, classification)
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: AETheme.spacingXS) {
+                ForEach(items, id: \.self) { category in
+                    categoryRow(statement, category)
+                }
             }
         }
-        Divider()
-        HStack {
-            Text("Operating profit").font(.subheadline.weight(.semibold))
-            Spacer()
-            MoneyText(money: statement.operatingProfit)
+    }
+
+    @ViewBuilder
+    private func categoryRow(_ statement: MonthlyStatement,
+                             _ category: TransactionCategory) -> some View {
+        let money = statement.total(category)
+        if let link = financeLink(category) {
+            NavigationLink {
+                destination(for: link)
+            } label: {
+                categoryLabel(category, money, linked: true)
+            }
+            .buttonStyle(.aePress)
+            .accessibilityIdentifier("ae-finance-category-\(category.rawValue)")
+        } else {
+            categoryLabel(category, money, linked: false)
         }
+    }
+
+    private func categoryLabel(_ category: TransactionCategory, _ money: Money,
+                               linked: Bool) -> some View {
         HStack {
-            Text("Net profit").font(.subheadline.weight(.semibold))
+            Text(DigestCard.label(for: category)).font(.subheadline)
             Spacer()
-            MoneyText(money: statement.netProfit)
+            MoneyText(money: money).font(.subheadline)
+            if linked {
+                Image(systemName: "chevron.right")
+                    .font(.caption2).foregroundStyle(AETheme.mutedText)
+                    .accessibilityHidden(true)
+            }
         }
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
     }
 
     private func loansCard(_ model: FinanceModel, snapshot: GameState,

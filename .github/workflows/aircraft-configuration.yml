@@ -1,0 +1,142 @@
+name: Aircraft, route and airport management validation
+on:
+  workflow_dispatch:
+    inputs:
+      captures_only:
+        description: Run only hosted airport layout captures
+        type: boolean
+        default: false
+      tablet_only:
+        description: Run only native iPad validation after an iPhone pass
+        type: boolean
+        default: false
+  push:
+    branches: [codex/ae049-aircraft-configuration]
+    paths:
+      - AirlineEmpireApp/**
+      - AirlineEmpireCore/**
+permissions:
+  contents: read
+concurrency:
+  group: aircraft-validation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  core:
+    if: inputs.tablet_only != true && inputs.captures_only != true
+    runs-on: ubuntu-latest
+    container: swift:6.0.3-jammy
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Core regression tests
+        working-directory: AirlineEmpireCore
+        run: swift test --filter 'AirportFacilitiesTests|EconomyTests|FinanceBreakdownTests|FinanceTests|SummaryModelTests|ProgressionTests|CampaignRecordTests|BriefingModelTests|CompetitionPriorityTests|CompetitionTests|RivalPressureCampaignTests|AircraftMarketTests|AdvisoryModelTests|OnboardingTests|NextMovesTests|LiveryMigrationTests|RoutePlanningTests|AircraftConfigurationTests|ServiceDemandTests|DemandTests|ReputationTests|PassengerExperienceTests|FleetBoardTests|FleetTests|RouteManagementTests|FlightOpsTests|PersistenceTests|SaveStoreTests'
+      - name: Release build
+        working-directory: AirlineEmpireCore
+        run: swift build -c release -Xswiftc -warnings-as-errors
+  native:
+    runs-on: macos-26
+    # Raised from 45 after this branch's UI suite outgrew it: the iPhone and
+    # iPad journeys are sequential in one job and now include the airport,
+    # passenger, fleet, finance, campaign and briefing classes plus the hosted
+    # capture suites. Measured run 35109891089 finished every step green and
+    # was cancelled by the 45-minute cap at the very end.
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate project
+        run: |
+          mkdir -p build
+          brew install xcodegen
+          cd AirlineEmpireApp
+          xcodegen generate
+      - name: Build iOS app and tests
+        working-directory: AirlineEmpireApp
+        run: |
+          if xcodebuild -jobs 2 -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'generic/platform=iOS Simulator' -derivedDataPath ../build/ae049 CODE_SIGNING_ALLOWED=NO SWIFT_USE_INTEGRATED_DRIVER=NO build-for-testing > ../build/ae049-build.log 2>&1; then
+            exit 0
+          fi
+          if grep -q 'The Xcode build system has crashed' ../build/ae049-build.log; then
+            mkdir -p ../build/ae049-crashes
+            find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 1 -type f -name '*.ips' -exec cp {} ../build/ae049-crashes/ \;
+            xcodebuild -jobs 2 -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'generic/platform=iOS Simulator' -derivedDataPath ../build/ae049 CODE_SIGNING_ALLOWED=NO SWIFT_USE_INTEGRATED_DRIVER=NO build-for-testing >> ../build/ae049-build.log 2>&1
+          else
+            tail -80 ../build/ae049-build.log
+            exit 1
+          fi
+      - name: Select simulator
+        id: simulator
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+          devices = json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','-j']))['devices']
+          supported = [ds for runtime, ds in devices.items() if 'iOS-26-2' in runtime] or list(devices.values())
+          phone = next(d for ds in supported for d in ds if d['name'].startswith('iPhone'))
+          tablet = next(d for ds in supported for d in ds if d['name'].startswith('iPad'))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f: f.write('id=' + phone['udid'] + '\nipad=' + tablet['udid'] + '\n')
+          PY
+      - name: Airport and passenger screen journeys
+        if: inputs.tablet_only != true && inputs.captures_only != true
+        working-directory: AirlineEmpireApp
+        run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ui.xcresult -only-testing:AirlineEmpireUITests/AirportManagementUITests -only-testing:AirlineEmpireUITests/PassengerExperienceUITests -only-testing:AirlineEmpireUITests/FleetHealthUITests -only-testing:AirlineEmpireUITests/FinanceBreakdownUITests -only-testing:AirlineEmpireUITests/CampaignProgressUITests -only-testing:AirlineEmpireUITests/BriefingHierarchyUITests -only-testing:AirlineEmpireUITests/WorldAndCompetitionUITests -only-testing:AirlineEmpireUITests/AircraftMarketUITests -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testAirportManagementAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testPassengerExperienceAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testFleetBoardAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testFinanceBreakdownAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testCampaignProgressAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testBriefingHierarchyAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testWorldEventsAndCompetitionAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testAircraftMarketAtAccessibleSizes -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ui.log 2>&1
+      - name: Hosted airport and passenger captures
+        if: inputs.captures_only == true
+        working-directory: AirlineEmpireApp
+        run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ui.xcresult -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testAirportManagementAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testPassengerExperienceAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testFleetBoardAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testFinanceBreakdownAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testCampaignProgressAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testBriefingHierarchyAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testWorldEventsAndCompetitionAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testAircraftMarketAtAccessibleSizes -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ui.log 2>&1
+      - name: Prepare isolated iPad simulator
+        if: inputs.captures_only != true
+        run: |
+          python3 - <<'PY'
+          import json, subprocess
+          tablet = '${{ steps.simulator.outputs.ipad }}'
+          devices = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devices', '-j']))['devices']
+          all_devices = [d for group in devices.values() for d in group]
+          for device in all_devices:
+              if device['state'] == 'Booted' and device['udid'] != tablet:
+                  subprocess.run(['xcrun', 'simctl', 'shutdown', device['udid']], check=True)
+          target = next(d for d in all_devices if d['udid'] == tablet)
+          if target['state'] != 'Booted':
+              subprocess.run(['xcrun', 'simctl', 'boot', tablet], check=True)
+          subprocess.run(['xcrun', 'simctl', 'bootstatus', tablet, '-b'], check=True)
+          PY
+      - name: iPad airport and passenger journeys
+        if: inputs.captures_only != true
+        working-directory: AirlineEmpireApp
+        run: xcodebuild -project AirlineEmpire.xcodeproj -scheme AirlineEmpire -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.ipad }}' -derivedDataPath ../build/ae049 -resultBundlePath ../build/ae049-ipad.xcresult -only-testing:AirlineEmpireUITests/AirportManagementUITests/testAirportInvestmentJourney -only-testing:AirlineEmpireUITests/PassengerExperienceUITests/testPassengerExperienceJourney -only-testing:AirlineEmpireUITests/FleetHealthUITests/testFleetHealthBoardJourney -only-testing:AirlineEmpireUITests/FinanceBreakdownUITests/testFinanceBreakdownJourney -only-testing:AirlineEmpireUITests/CampaignProgressUITests/testCampaignProgressJourney -only-testing:AirlineEmpireUITests/BriefingHierarchyUITests/testBriefingHierarchyJourney -only-testing:AirlineEmpireUITests/WorldAndCompetitionUITests/testCompetitorsCompareRoutesAndPrioritiseMoves -only-testing:AirlineEmpireUITests/AircraftMarketUITests/testAircraftMarketComparesOneRoute -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testAirportManagementAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testPassengerExperienceAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testFleetBoardAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testFinanceBreakdownAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testCampaignProgressAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testBriefingHierarchyAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testWorldEventsAndCompetitionAtAccessibleSizes -only-testing:AirlineEmpireTests/AccessibilitySurfaceReviewTests/testAircraftMarketAtAccessibleSizes -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test-without-building > ../build/ae049-ipad.log 2>&1
+      - name: Collect simulator diagnostics
+        if: always()
+        run: |
+          mkdir -p build/ae049-crashes
+          find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 1 -type f -name '*.ips' -exec cp {} build/ae049-crashes/ \;
+      - name: Export screenshots
+        if: always()
+        run: |
+          for device in ui ipad; do
+            if [ -d "build/ae049-$device.xcresult" ]; then
+              xcrun xcresulttool export attachments --path "build/ae049-$device.xcresult" --output-path "build/ae049-$device-screens"
+            fi
+          done
+      - name: Upload review images and logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: airport-review
+          path: |
+            build/ae049-build.log
+            build/ae049-ui.log
+            build/ae049-ipad.log
+            build/ae049-*-screens/*.png
+            build/ae049-*-screens/*.txt
+            build/ae049-*-screens/manifest.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aircraft-validation
+          path: |
+            build/ae049-build.log
+            build/ae049-crashes
+            build/ae049-ui.log
+            build/ae049-ui.xcresult
+            build/ae049-ipad.log
+            build/ae049-ipad.xcresult
+            build/ae049-*-screens

@@ -72,7 +72,7 @@ public struct DemandSystem: SimulationSystem {
                 leisure.append(0)
                 continue
             }
-            let ratio = route.ticketPrice.asDouble / refFare
+            let ratio = route.ticketPrice.asDouble / refFare * Self.cabinYield(route: route, state: state, catalog: catalog)
             business.append(Self.utility(fareRatio: ratio, quality: quality,
                                          sensitivity: tuning.priceSensitivityBusiness))
             leisure.append(Self.utility(fareRatio: ratio, quality: quality,
@@ -139,7 +139,7 @@ public struct DemandSystem: SimulationSystem {
         for route in incumbents {
             guard let quality = offerQualityTerms(route: route, state: state,
                                                   catalog: catalog)?.product else { continue }
-            let ratio = route.ticketPrice.asDouble / refFare
+            let ratio = route.ticketPrice.asDouble / refFare * Self.cabinYield(route: route, state: state, catalog: catalog)
             business += utility(fareRatio: ratio, quality: quality,
                                 sensitivity: tuning.priceSensitivityBusiness)
             leisure += utility(fareRatio: ratio, quality: quality,
@@ -150,6 +150,27 @@ public struct DemandSystem: SimulationSystem {
 
     /// Quality multiplier for an offer; nil when the route cannot carry
     /// anyone (no assigned aircraft).
+    static func cabinYield(route: Route, state: GameState, catalog: ContentCatalog) -> Double {
+        cabinTerms(route: route, state: state, catalog: catalog).yield
+    }
+
+    /// Cabin changes on every assigned airframe contribute to the offer.
+    /// Preserve the existing representative type's baseline, then weight
+    /// refit improvements and fares by the seats actually offered.
+    private static func cabinTerms(route: Route, state: GameState,
+                                   catalog: ContentCatalog) -> (yield: Double, bonus: Double) {
+        var seats = 0.0, yield = 0.0, bonus = 0.0
+        for id in route.assignedAircraft.sorted() {
+            guard let aircraft = state.aircraft[id], let spec = catalog.aircraftType(aircraft.typeCode) else { continue }
+            let cabin = aircraft.cabin(for: spec)
+            let count = Double(cabin.totalSeats)
+            seats += count
+            yield += count * cabin.yieldMultiplier(tuning: catalog.tuning.cabin)
+            bonus += count * (aircraft.passengerComfort(for: spec, tuning: catalog.tuning.cabin) - spec.comfortBaseline)
+        }
+        return seats > 0 ? (yield / seats, bonus / seats) : (1, 0)
+    }
+
     private func offerQuality(route: Route, state: GameState,
                               catalog: ContentCatalog) -> Double? {
         Self.offerQualityTerms(route: route, state: state, catalog: catalog)?.product
@@ -181,10 +202,15 @@ public struct DemandSystem: SimulationSystem {
             let spec = catalog.aircraftType(firstAircraft.typeCode) else { return nil }
         let reputation = state.airlines[route.airline]?.reputation
             .demandMultiplier(tuning: catalog.tuning.reputation) ?? 1.0
+        let owner = state.airlines[route.airline]
+        let loungeLevels = (owner?.facilities(at: route.origin).lounge ?? 0)
+            + (owner?.facilities(at: route.destination).lounge ?? 0)
+        let airportComfort = Double(loungeLevels) / 2 * catalog.tuning.airportServices.loungeComfortPerLevel
         return offerQualityTerms(
             spec: spec, roundTripsPerDay: route.dailyRoundTrips,
             operationsScore: route.stats.completionRate * 0.5 + route.stats.punctuality * 0.5,
-            reputationMultiplier: reputation, tuning: catalog.tuning.demand)
+            reputationMultiplier: reputation, tuning: catalog.tuning.demand,
+            comfortOverride: min(1, spec.comfortBaseline + cabinTerms(route: route, state: state, catalog: catalog).bonus + airportComfort))
     }
 
     /// The same four terms for a service that has not been flown yet: an
@@ -197,11 +223,11 @@ public struct DemandSystem: SimulationSystem {
     public static func offerQualityTerms(spec: AircraftTypeSpec, roundTripsPerDay: Int,
                                          operationsScore: Double,
                                          reputationMultiplier: Double,
-                                         tuning: DemandTuning) -> OfferQualityTerms {
+                                         tuning: DemandTuning, comfortOverride: Double? = nil) -> OfferQualityTerms {
         let trips = Double(min(roundTripsPerDay, tuning.scheduleQualityTripCap))
         let schedule = pow(trips / tuning.scheduleQualityReferenceTrips,
                            tuning.scheduleQualityExponent)
-        let comfort = tuning.comfortBase + tuning.comfortWeight * spec.comfortBaseline
+        let comfort = tuning.comfortBase + tuning.comfortWeight * (comfortOverride ?? spec.comfortBaseline)
         let operations = tuning.operationsBase + tuning.operationsWeight * operationsScore
         return OfferQualityTerms(schedule: schedule, comfort: comfort,
                                  operations: operations, reputation: reputationMultiplier)

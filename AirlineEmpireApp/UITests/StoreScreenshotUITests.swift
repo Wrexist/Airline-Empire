@@ -30,10 +30,6 @@ class StoreScreenshotUITests: AEUITestCase {
         guard openAirlineSection("Fleet") else { return }
         shot("02-fleet")
         guard verifyFleetControls() else { return }
-        guard openAircraftMarket() else { return }
-        shot("02b-market")
-        guard verifyMarketControls() else { return }
-        app.navigationBars.buttons.firstMatch.tap()
 
         guard openAirlineSection("Routes") else { return }
         shot("03b-routes")
@@ -43,6 +39,19 @@ class StoreScreenshotUITests: AEUITestCase {
             "ae-route-row", "ARN", "IST")).firstMatch
         guard scrollUntil(row, "the Stockholm to Istanbul route"), tapWhenReady(row) else { return }
         shot("03-route")
+
+        // The market compares airframes only for a route it was opened on,
+        // and a route is where the market is entered with one. Capture it
+        // from the route rather than from the Fleet tab's unrouted catalogue.
+        // The route sheet is long: scroll until the action is genuinely
+        // reachable, not merely present below the fold.
+        let find = app.buttons["ae-route-find-aircraft"]
+        guard scrollUntil(find, "the route's aircraft market", swipes: 10, in: app),
+              tapWhenReady(find) else { return }
+        guard verifyMarketComparison() else { return }
+        shot("02b-market")
+        guard verifyMarketControls() else { return }
+        guard dismissMarket() else { return }
 
         openTab("Finance")
         shot("04-finance")
@@ -86,19 +95,47 @@ class StoreScreenshotUITests: AEUITestCase {
         return true
     }
 
+    /// The market's comparing shape, which is the frame the store keeps: a
+    /// route chosen and the airframes priced on it, same fare and frequency.
+    private func verifyMarketComparison() -> Bool {
+        let panel = app.descendants(matching: .any)
+            .matching(identifier: "ae-aircraft-comparison").firstMatch
+        guard require(panel, "the route comparison") else { return false }
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(
+            format: "label BEGINSWITH %@", "Compare on ")).firstMatch.exists,
+                      "The comparison must name the route it is for")
+        let rows = app.descendants(matching: .any)
+            .matching(identifier: "ae-aircraft-comparison-row")
+        XCTAssertGreaterThanOrEqual(rows.count, 2,
+                                    "A chosen route must compare more than one airframe")
+        return true
+    }
+
+    private func dismissMarket() -> Bool {
+        let done = app.buttons["Done"].firstMatch
+        guard require(done, "the market's Done button"), tapWhenReady(done) else { return false }
+        return app.navigationBars["Aircraft market"].waitForNonExistence(timeout: 10)
+    }
+
     private func verifyMarketControls() -> Bool {
+        // The comparison panel sits above the catalogue, so the first
+        // aircraft's facts start below the fold. Scroll until each control is
+        // genuinely reachable rather than merely present.
         let model = app.staticTexts.matching(identifier: "ae-market-model-name").firstMatch
-        guard scrollUntil(model, "the aircraft model facts"), tapWhenReady(model) else { return false }
+        guard scrollUntil(model, "the aircraft model facts", swipes: 10, in: app),
+              tapWhenReady(model) else { return false }
         let modelName = model.label
         let used = app.buttons.matching(NSPredicate(
             format: "identifier == %@ AND label CONTAINS %@", "ae-deal-buy-used", modelName)).firstMatch
-        guard scrollUntil(used, "the used deal selector for this aircraft"), tapWhenReady(used) else { return false }
+        guard scrollUntil(used, "the used deal selector for this aircraft", swipes: 10, in: app),
+              tapWhenReady(used) else { return false }
         // The purchase footer is a separate lazy List row. On an iPad sheet
         // it may not exist until scrolled into view; keep the model identity
         // fixed while the list recycles rows.
         let commit = app.buttons.matching(NSPredicate(
             format: "identifier == %@ AND label CONTAINS %@", "ae-market-buy-used", modelName)).firstMatch
-        guard scrollUntil(commit, "the selected aircraft's used purchase action") else { return false }
+        guard scrollUntil(commit, "the selected aircraft's used purchase action",
+                          swipes: 10, in: app) else { return false }
         XCTAssertTrue(commit.isHittable,
                       "Choosing a deal updates its own commit action without purchasing")
         XCTAssertTrue(app.navigationBars["Aircraft market"].exists,
