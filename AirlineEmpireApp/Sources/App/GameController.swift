@@ -773,7 +773,6 @@ final class GameController {
         lastSaveOutcome = nil
         autoPauseReason = nil
         celebration = nil
-        celebratedFirstLanding = false
         isBeyondEraCeiling = false
         earnedLockedEra = nil
         eraQualificationObserved = false
@@ -1026,7 +1025,6 @@ final class GameController {
     /// counters the instant it happens.
     private func celebrateFirstLanding(_ state: GameState) {
         let passengers = state.progression.counters.passengersCarried
-        celebratedFirstLanding = true
         celebrate(title: "Your first flight has landed",
                   detail: passengers > 0
                       ? "\(Format.count(passengers)) passengers flew with you. Their fares are in the bank."
@@ -1034,9 +1032,6 @@ final class GameController {
                   icon: "airplane.arrival")
     }
 
-    /// Set when the landing was celebrated this session, so the midnight
-    /// milestone does not announce the same flight a second time.
-    @ObservationIgnored private var celebratedFirstLanding = false
 
     /// The four things the simulation emits that a player worked for.
     /// Deliberately narrow: celebrating everything celebrates nothing.
@@ -1047,8 +1042,12 @@ final class GameController {
             celebration = Celebration(
                 id: celebrationCounter, title: "A new era",
                 detail: "Your airline has reached \(Vocab.era(era)).", icon: "flag.fill")
-        case .milestoneReached(let code) where code == "firstFlight" && celebratedFirstLanding:
-            // Already celebrated at the landing itself.
+        case .milestoneReached(let code) where code == "firstFlight":
+            // Celebrated at the landing itself (`celebrateFirstLanding`).
+            // Keyed on the code alone, not on whether that banner has shown:
+            // in a multi-day advance the event can arrive before the refresh
+            // that celebrates the landing, and the player saw "First flight"
+            // replaced a moment later by "Your first flight has landed".
             celebrationCounter -= 1
         case .milestoneReached(let code):
             celebration = Celebration(
