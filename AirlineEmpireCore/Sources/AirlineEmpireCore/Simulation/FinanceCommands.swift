@@ -81,7 +81,9 @@ public struct RepayLoanCommand: Command, Equatable {
         guard borrower.loans.indices.contains(loanIndex) else {
             return CommandRejection(code: "finance.noSuchLoan", message: "No such loan")
         }
-        let owed = borrower.loans[loanIndex].principalRemaining
+        let loan = borrower.loans[loanIndex]
+        let owed = loan.principalRemaining
+            + loan.accruedInterest(at: state.clock.now, startYear: state.meta.startYear)
         if state.ledger.balance(of: airline) < owed {
             return CommandRejection(code: "finance.insufficientFunds",
                                     message: "Full payoff needs \(owed.compact)")
@@ -93,6 +95,16 @@ public struct RepayLoanCommand: Command, Equatable {
         var borrower = state.airlines[airline]!
         let loan = borrower.loans.remove(at: loanIndex)
         state.airlines[airline] = borrower
+        // The days since the last month boundary are owed at payoff: loan
+        // service only charges interest at a boundary, so a loan drawn and
+        // repaid inside one month used to be free money.
+        let interest = loan.accruedInterest(at: context.current,
+                                            startYear: state.meta.startYear)
+        if interest > .zero {
+            state.ledger.post(airline: airline, category: .loanInterest,
+                              amount: -interest, at: context.current,
+                              memo: "Interest to payoff")
+        }
         state.ledger.post(airline: airline, category: .loanPrincipal,
                           amount: -loan.principalRemaining, at: context.current,
                           memo: "Early payoff")

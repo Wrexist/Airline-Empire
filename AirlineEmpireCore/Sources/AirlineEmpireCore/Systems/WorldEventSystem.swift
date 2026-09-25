@@ -115,7 +115,7 @@ public struct WorldEventSystem: SimulationSystem {
                                 tuning: EventTuning) {
         for airlineID in state.orderedAirlineIDs {
             guard let airline = state.airlines[airlineID], airline.status == .active,
-                  airline.reputation.service < tuning.strikeServiceThreshold,
+                  Self.serviceInvitesStrike(airline.reputation.service, tuning: tuning),
                   !state.world.strikeActive(for: airlineID, at: context.current)
             else { continue }
             let cooldownKey = "strike.\(airlineID.raw)"
@@ -132,6 +132,18 @@ public struct WorldEventSystem: SimulationSystem {
                 endsAt: context.current + .days(days), severity: 1,
                 state: &state, context: context, isMajor: false)
         }
+    }
+
+    /// Service within this of the strike threshold counts as recovered. The
+    /// basic tier's service target is the threshold itself (0.35), and a
+    /// drift only ever approaches its target: a basic-tier airline scarred
+    /// by administration (×0.85) climbed back to 0.34999… and stayed
+    /// strike-eligible for good.
+    static let strikeRecoveryTolerance = 1e-9
+
+    /// docs/EVENTS.md: service reputation under 0.35 invites a strike.
+    static func serviceInvitesStrike(_ service: Double, tuning: EventTuning) -> Bool {
+        service < tuning.strikeServiceThreshold - strikeRecoveryTolerance
     }
 
     // MARK: Helpers

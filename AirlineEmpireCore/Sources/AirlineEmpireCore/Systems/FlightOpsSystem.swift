@@ -122,34 +122,43 @@ public struct FlightOpsSystem: SimulationSystem {
                     aircraft.activeFlight = nil
                     state.flights[flightID] = nil
                     state.aircraft[flight.aircraft] = aircraft
-                    if flight.kind == .revenue, var route = state.routes[flight.route] {
-                        route.stats.flightsCompleted += 1
-                        route.stats.passengersCarried += Int64(flight.passengers)
-                        let spec = context.catalog.aircraftType(aircraft.typeCode)!
-                        route.stats.seatsFlown += Int64(aircraft.cabin(for: spec).totalSeats)
-                        if flight.wasDelayed {
-                            route.stats.flightsDelayed += 1
-                            route.stats.totalDelayMinutes += flight.delayMinutes
-                        }
-                        state.routes[flight.route] = route
-                        if var airline = state.airlines[aircraft.owner] {
-                            airline.opsToday.completed += 1
-                            if flight.wasDelayed { airline.opsToday.delayed += 1 }
-                            let isPlayer = airline.kind == .player
-                            state.airlines[aircraft.owner] = airline
-                            if isPlayer {
-                                state.progression.counters.flightsCompleted += 1
-                                state.progression.counters.passengersCarried
-                                    += Int64(flight.passengers)
-                            }
-                        }
-                    }
+                    Self.recordCompletion(of: flight, aircraft: aircraft,
+                                          state: &state, catalog: context.catalog)
                     continue
                 }
             }
 
             state.flights[flightID] = flight
             state.aircraft[flight.aircraft] = aircraft
+        }
+    }
+
+    /// The books a revenue flight closes when it is done: route stats, the
+    /// airline's day, and the player's progression counters (which missions
+    /// and contracts measure). Revenue and costs were posted at departure
+    /// and arrival. Shared with `CloseRouteCommand`, which ends a flight's
+    /// turnaround early and used to delete it with none of this recorded.
+    static func recordCompletion(of flight: Flight, aircraft: Aircraft,
+                                 state: inout GameState, catalog: ContentCatalog) {
+        guard flight.kind == .revenue, var route = state.routes[flight.route] else { return }
+        route.stats.flightsCompleted += 1
+        route.stats.passengersCarried += Int64(flight.passengers)
+        let spec = catalog.aircraftType(aircraft.typeCode)!
+        route.stats.seatsFlown += Int64(aircraft.cabin(for: spec).totalSeats)
+        if flight.wasDelayed {
+            route.stats.flightsDelayed += 1
+            route.stats.totalDelayMinutes += flight.delayMinutes
+        }
+        state.routes[flight.route] = route
+        if var airline = state.airlines[aircraft.owner] {
+            airline.opsToday.completed += 1
+            if flight.wasDelayed { airline.opsToday.delayed += 1 }
+            let isPlayer = airline.kind == .player
+            state.airlines[aircraft.owner] = airline
+            if isPlayer {
+                state.progression.counters.flightsCompleted += 1
+                state.progression.counters.passengersCarried += Int64(flight.passengers)
+            }
         }
     }
 

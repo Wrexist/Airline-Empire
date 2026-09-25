@@ -12,8 +12,9 @@ public struct EconomySystem: SimulationSystem {
             var airline = state.airlines[airlineID]!
             guard airline.status == .active else { continue }
 
-            // Payroll & overhead scale with the operation's size.
-            let fleetCount = Int64(state.fleet(of: airlineID).count)
+            // Payroll & overhead scale with the operation's size. An aircraft
+            // still on order has no crew yet, so it draws no payroll.
+            let fleetCount = Int64(state.fleet(of: airlineID).filter { !$0.status.isOnOrder }.count)
             let routeCount = Int64(state.routes(of: airlineID).count)
             let salaries = tuning.payrollPerAircraftMonthly * fleetCount
                 + tuning.payrollPerRouteMonthly * routeCount
