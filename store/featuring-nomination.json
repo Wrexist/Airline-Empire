@@ -32,5 +32,9 @@
     "CHN",
     "VNM"
   ],
-  "verification": "App Store Connect displayed One new nomination was successfully submitted and Submitted (1)."
+  "verification": "App Store Connect displayed One new nomination was successfully submitted and Submitted (1).",
+  "submittedSupplementalMaterials": [
+    "https://airline-empire-official.isacmolin.chatgpt.site/press.html"
+  ],
+  "supplementalMaterialsNote": "Submitted on 11 September with the chatgpt.site press URL, two days before public links moved to GitHub Pages (c1023f1). Both returned HTTP 200 on 25 September. Update the submitted nomination to the GitHub Pages URL in App Store Connect if it is still editable; keep the old page live until it is."
 }

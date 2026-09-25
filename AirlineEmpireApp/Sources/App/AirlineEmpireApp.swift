@@ -9,6 +9,8 @@ struct AirlineEmpireApp: App {
     /// must exist — two `Entitlements` would mean two transaction listeners
     /// racing to finish the same purchase.
     @State private var entitlements = Entitlements()
+    /// Optional, and never in the way: see `GameCenter`.
+    @State private var gameCenter = GameCenter()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -16,6 +18,7 @@ struct AirlineEmpireApp: App {
             RootView()
                 .environment(controller)
                 .environment(entitlements)
+                .environment(gameCenter)
                 // The controller owns feedback because it is the composition
                 // root and because it is the only object that knows when a
                 // game begins, ends, or publishes a tick — which is all three
@@ -30,6 +33,22 @@ struct AirlineEmpireApp: App {
                     // to reach a playable screen whether or not the App Store
                     // answers, and this awaits the network.
                     await entitlements.start()
+                    // After the store, and without awaiting anything: GameKit
+                    // answers on its own schedule, and nothing waits for it.
+                    gameCenter.start()
+                }
+                // Game Center hears about progress when the earned set changes,
+                // which the fingerprint captures in one Int — not on every one
+                // of the four snapshots a second the pump publishes.
+                .onChange(of: controller.snapshot.map {
+                    GameCenterCatalog.fingerprint(of: $0.progression)
+                }) { _, _ in
+                    guard let snapshot = controller.snapshot else { return }
+                    gameCenter.reportAchievements(snapshot.progression)
+                    if let player = snapshot.playerAirline?.id {
+                        gameCenter.noteScores(
+                            GameCenterCatalog.scores(for: player, in: snapshot))
+                    }
                 }
                 // Keeps the clock's ceiling in step with what the player owns.
                 // `initial: true` for the same reason the scene phase below
@@ -53,6 +72,15 @@ struct AirlineEmpireApp: App {
                     // Scene-phase autosave (docs/PERSISTENCE_ARCHITECTURE §4).
                     if phase == .background || phase == .inactive {
                         controller.saveOnBackground()
+                    }
+                    // One leaderboard submission per session, as the player
+                    // leaves — scores only grow, so the latest is the best.
+                    if phase == .background,
+                       let snapshot = controller.snapshot,
+                       let player = snapshot.playerAirline?.id {
+                        gameCenter.noteScores(
+                            GameCenterCatalog.scores(for: player, in: snapshot))
+                        gameCenter.submitScores()
                     }
                     // Only a real background hands the audio route back
                     // (docs/AUDIO_ARCHITECTURE §9). `.inactive` is every

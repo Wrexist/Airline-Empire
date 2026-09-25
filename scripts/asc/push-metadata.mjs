@@ -40,7 +40,7 @@
 
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { AppStoreConnect, findApp, listVersions, versionState, EDITABLE_VERSION_STATES } from './lib/asc.mjs'
+import { AppStoreConnect, findApp, listVersions, versionState, EDITABLE_VERSION_STATES, refuseVersionCreation } from './lib/asc.mjs'
 import { loadStore, validateStore } from './lib/metadata.mjs'
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -196,6 +196,13 @@ let version = iosVersions.find((candidate) => candidate.attributes?.versionStrin
 const isFirstVersion = iosVersions.length === 0 || (iosVersions.length === 1 && version)
 
 if (!version) {
+  // Refused in plan mode too, so the mistake shows up on the harmless run.
+  const refusal = refuseVersionCreation(
+    versionString, iosVersions.map((candidate) => candidate.attributes?.versionString).filter(Boolean))
+  if (refusal) {
+    console.error(`✗ Version: ${refusal}`)
+    process.exit(1)
+  }
   const attributes = {
     platform: store.config.platform ?? 'IOS',
     versionString,
