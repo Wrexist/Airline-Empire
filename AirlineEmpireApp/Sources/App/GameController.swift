@@ -773,6 +773,7 @@ final class GameController {
         lastSaveOutcome = nil
         autoPauseReason = nil
         celebration = nil
+        celebratedFirstLanding = false
         isBeyondEraCeiling = false
         earnedLockedEra = nil
         eraQualificationObserved = false
@@ -1016,6 +1017,27 @@ final class GameController {
                                   detail: detail, icon: icon)
     }
 
+    /// The first landing, celebrated when it happens.
+    ///
+    /// The "First flight" milestone is checked by the daily progression pass,
+    /// so its banner — and the first-flight offer keyed to it — arrived at
+    /// the next midnight: minutes of real time after the aircraft actually
+    /// touched down, with the moment long gone. The landing is visible in the
+    /// counters the instant it happens.
+    private func celebrateFirstLanding(_ state: GameState) {
+        let passengers = state.progression.counters.passengersCarried
+        celebratedFirstLanding = true
+        celebrate(title: "Your first flight has landed",
+                  detail: passengers > 0
+                      ? "\(Format.count(passengers)) passengers flew with you. Their fares are in the bank."
+                      : "Your airline is flying. Fares arrive with every landing.",
+                  icon: "airplane.arrival")
+    }
+
+    /// Set when the landing was celebrated this session, so the midnight
+    /// milestone does not announce the same flight a second time.
+    @ObservationIgnored private var celebratedFirstLanding = false
+
     /// The four things the simulation emits that a player worked for.
     /// Deliberately narrow: celebrating everything celebrates nothing.
     private func noteCelebration(_ event: SimEvent) {
@@ -1025,6 +1047,9 @@ final class GameController {
             celebration = Celebration(
                 id: celebrationCounter, title: "A new era",
                 detail: "Your airline has reached \(Vocab.era(era)).", icon: "flag.fill")
+        case .milestoneReached(let code) where code == "firstFlight" && celebratedFirstLanding:
+            // Already celebrated at the landing itself.
+            celebrationCounter -= 1
         case .milestoneReached(let code):
             celebration = Celebration(
                 id: celebrationCounter, title: Vocab.milestone(code),
@@ -1111,7 +1136,8 @@ final class GameController {
         // event), so these two counters — plus the session's identity — say
         // in O(1) whether this publish carries a new world at all.
         let sessionID = ObjectIdentifier(session)
-        let changed = snapshot == nil || publishedSession != sessionID
+        let sameSession = publishedSession == sessionID
+        let changed = snapshot == nil || !sameSession
             || state.clock.tickCount != snapshot?.clock.tickCount
             || state.eventLog.totalCount != snapshot?.eventLog.totalCount
         publishedSession = sessionID
@@ -1134,6 +1160,11 @@ final class GameController {
             airportInvestmentRevision &+= 1
             passengerExperienceRevision &+= 1
             mapRevision &+= 1
+            if sameSession, let previous = snapshot,
+               previous.progression.counters.flightsCompleted == 0,
+               state.progression.counters.flightsCompleted > 0 {
+                celebrateFirstLanding(state)
+            }
             snapshot = state
         }
         if speed != sessionSpeed { speed = sessionSpeed }

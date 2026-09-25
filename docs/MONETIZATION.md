@@ -149,24 +149,24 @@ selling advantage.
 
 ### 4.1 How the era ceiling is enforced
 
-The airline still advances. `ProgressionSystem` decides eras from what the
-airline has earned, and a paywall must not be able to change what the world
-does — so the era transition happens, the celebration fires, and the player
-sees that they earned it. What stops is **the clock**.
+*Updated 25 September 2026 — the clock no longer stops.* The session carries a
+progression ceiling (`GameSession.setProgressionCeiling`, from
+`ContentAccess.eraCeiling`): `ProgressionSystem` will not advance the airline
+past it, and `ExpansionAccess` refuses the commands that would reach beyond it
+(aircraft classes, capability programmes, airports outside the free region).
+Time keeps running and everything the airline already has keeps flying.
 
-`GameController.eraCeiling` holds time at the ceiling and refuses to resume;
-`EraCeilingBar` says so at the bottom of the screen. Every screen still
-reads, every command still works, the save is intact. Buying Pro lifts the
-bar immediately, mid-campaign, with no reload.
+`EraCeilingBar` appears **when the airline has earned the next era** — every
+requirement of National met — and says so: "National era earned". It used to
+appear on the first day of Regional and stay for the whole era, over a
+paywall headline ("You have run a regional carrier profitably") that was not
+yet true. The moment of qualification also gets a one-time celebration banner
+during play (not on every load). A lapsed save already past the ceiling shows
+the bar too. Buying Pro lifts it immediately, mid-campaign, with no reload.
 
-The alternative — refusing the era inside Core — would have meant a new field
-in the save, a save-version bump, and a paying player's rules living in a
-file that 253 deterministic tests depend on. This is the smaller blast radius
-and the better sales moment.
-
-The check runs on every snapshot rather than only on the `eraAdvanced` event,
-because loading a save made before a subscription lapsed puts an airline
-three eras past the ceiling with no transition to observe.
+The check runs on every published snapshot that carries a change, because
+loading a save made before a subscription lapsed puts an airline past the
+ceiling with no transition to observe.
 
 ## 5. The paywall
 
@@ -250,10 +250,20 @@ time the player asks, and nag on a long fuse.**
 
 | Trigger | Frequency |
 |---|---|
-| First run, after the first airline is founded | Exactly once, ever |
+| First flight landed (`ProGate.firstFlight`, its own headline) | Exactly once, ever — a beat after the "First flight" banner, only when prices have loaded; if skipped (offline), made on the next return to the game |
 | A gate the player walked into (era, scenario, save, airport) | Every time, unthrottled |
 | Opened from Settings or a Pro badge | Every time |
 | Unprompted nudge | No sooner than 7 days, and **never after 4 refusals** |
+
+*Updated 25 September 2026:* only the app's own offers (first flight, nudge)
+spend the first-run offer or the nudge budget (`PaywallPolicy.record(…,
+wasUnprompted:)`). Closing a paywall the player opened is looking, not
+refusing; it only restarts the nudge interval. Before, one curious tap on the
+crowned Magnate pill during setup silently cancelled the first-flight offer,
+and four taps on locked airports ended the nudge for good. The game pauses
+under any paywall and resumes at its previous speed; the benefit grid leads
+with the benefit the player reached for; a purchase, restore or Ask to Buy
+approval is thanked with a banner on the game.
 
 Games start 81.5% of their trials on the day of install, so an offer that
 never appears on day zero mostly never converts. The same report's 1.0%
@@ -261,10 +271,10 @@ median install-to-paid rate is why 99 of every 100 players must not be
 followed around: after four refusals the app stops offering by itself and Pro
 lives in Settings, permanently, one tap away.
 
-The first-run offer comes **after** founding, not before. By then the player
-has named an airline, chosen a livery and picked a home — the offer lands on
-something they have begun, and declining leads into a real game instead of an
-empty menu.
+The first-run offer comes **after the first flight lands**, not at founding.
+By then the player has named an airline, chosen a livery, picked a home and
+watched their own aircraft fly — the offer lands on something they have begun,
+and declining leads straight back into a real game instead of an empty menu.
 
 The nudge fires when the app returns to the foreground **with a game open**,
 not on a timer inside a session: a sheet that interrupts someone mid-decision

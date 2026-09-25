@@ -118,11 +118,13 @@ struct RootView: View {
         // (docs/MONETIZATION.md §6).
         .aePaywall()
         // Let the player complete a real flight before making an offer.
-        .onChange(of: controller.snapshot?.progression.milestones.contains("firstFlight") == true) { _, completed in
+        // Keyed on the landing itself, not on the "firstFlight" milestone the
+        // daily progression pass records at the next midnight.
+        .onChange(of: (controller.snapshot?.progression.counters.flightsCompleted ?? 0) > 0) { _, completed in
             guard completed else { return }
-            // The "First flight" banner lands on the same publish. Offering
-            // in the same instant covered the one win the player had just
-            // earned; a beat later, the offer follows the win instead.
+            // The "first flight has landed" banner lands on the same publish.
+            // Offering in the same instant covered the one win the player had
+            // just earned; a beat later, the offer follows the win instead.
             Task { @MainActor in
                 try? await Task.sleep(for: .seconds(2.5))
                 entitlements.offerOnFirstRunIfDue()

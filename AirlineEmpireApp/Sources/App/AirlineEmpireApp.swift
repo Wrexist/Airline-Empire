@@ -77,7 +77,7 @@ struct AirlineEmpireApp: App {
                     // suspended. Refresh before deciding whether to offer Pro.
                     await entitlements.refreshEntitlement()
                     guard !Task.isCancelled else { return }
-                    if controller.snapshot?.progression.hasMilestone("firstFlight") == true {
+                    if (controller.snapshot?.progression.counters.flightsCompleted ?? 0) > 0 {
                         // The first-flight offer is skipped when prices could
                         // not load (a first flight landed offline); it is
                         // made here instead, on the next return to the game.
