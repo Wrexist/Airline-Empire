@@ -432,6 +432,7 @@ struct CompetitorsView: View {
                         overview(summary)
                         whereYouAreFighting(summary)
                         rivalMoves(summary, snapshot: snapshot)
+                        archetypeLegend(summary)
                         ForEach(summary.rivals, id: \.airline) { rival in
                             rivalCard(rival)
                         }
@@ -666,6 +667,41 @@ struct CompetitorsView: View {
         }
     }
 
+    /// What each kind of rival does, once, for the kinds actually present.
+    ///
+    /// This sentence used to sit under every rival's name, beside a badge that
+    /// already named the kind — five rivals, five repetitions of four
+    /// possible lines. Collapsed by default: the badge is enough to scan by,
+    /// and the explanation is one tap away (AUD-04).
+    @ViewBuilder
+    private func archetypeLegend(_ summary: CompetitionSummary) -> some View {
+        let present = AIArchetype.allCases.filter { kind in
+            summary.rivals.contains { $0.archetype == kind && $0.status != .collapsed }
+        }
+        if !present.isEmpty {
+            AECard {
+                DisclosureGroup("How each kind of rival behaves") {
+                    VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                        ForEach(present, id: \.self) { kind in
+                            HStack(alignment: .firstTextBaseline, spacing: AETheme.spacingS) {
+                                AEBadge(text: Vocab.archetype(kind), color: AETheme.fare)
+                                Text(Vocab.archetypeDetail(kind))
+                                    .font(.caption)
+                                    .foregroundStyle(AETheme.mutedText)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .accessibilityElement(children: .combine)
+                        }
+                    }
+                    .padding(.top, AETheme.spacingS)
+                }
+                .font(.subheadline.weight(.medium))
+                .tint(AETheme.mutedText)
+            }
+            .accessibilityIdentifier("ae-rival-legend")
+        }
+    }
+
     private func rivalCard(_ rival: RivalStanding) -> some View {
         AECard(tint: rival.marketsWherePlayerTrails > 0
                       ? AETheme.caution.opacity(0.12)
@@ -675,12 +711,6 @@ struct CompetitorsView: View {
                     AEClayIcon(systemName: "airplane", tint: Vocab.liveryColor(rival.livery), size: 44)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(rival.name).font(.headline)
-                        if let archetype = rival.archetype {
-                            Text(Vocab.archetypeDetail(archetype))
-                                .font(.caption)
-                                .foregroundStyle(AETheme.mutedText)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
                     }
                     Spacer(minLength: AETheme.spacingS)
                     if rival.status == .collapsed {
@@ -712,12 +742,17 @@ struct CompetitorsView: View {
                             .font(.subheadline)
                             .foregroundStyle(AETheme.mutedText)
                     } else if rival.sharedAirports > 0 {
-                        Text("You share \(rival.sharedAirports) airport\(rival.sharedAirports == 1 ? "" : "s") but no city pair — presence, not a fight.")
+                        // Short, because it repeats: most rivals in a
+                        // mid-game world share an airport and no route, and
+                        // the full sentence under each one was the prose the
+                        // audit flagged (AUD-04). What it means is in the
+                        // overview above.
+                        Text("Shares \(rival.sharedAirports) airport\(rival.sharedAirports == 1 ? "" : "s") · no shared routes")
                             .font(.subheadline)
                             .foregroundStyle(AETheme.mutedText)
                             .fixedSize(horizontal: false, vertical: true)
                     } else {
-                        Text("You do not fly anywhere they fly.")
+                        Text("No overlap with your network")
                             .font(.subheadline)
                             .foregroundStyle(AETheme.mutedText)
                     }

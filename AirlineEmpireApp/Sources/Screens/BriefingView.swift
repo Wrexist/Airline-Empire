@@ -841,7 +841,12 @@ struct NextMovesCard: View {
         guard market.paysForItsAirframe else {
             return "No aircraft you can fly today covers its own lease here."
         }
-        return "Estimated \(market.monthlyAfterAirframe.compact)/month on a \(spec.seats)-seat \(spec.model). " + PlayerRouteDefaults.forecastAssumptions
+        // Estimate, basis and overhead stay beside the number — the audit
+        // (AUD-04) kept those three per row and moved only the shared
+        // caveats into one disclosure under the list.
+        return "Estimated \(market.monthlyAfterAirframe.compact)/month · "
+            + "\(spec.seats)-seat \(spec.model), "
+            + PlayerRouteDefaults.forecastBasis
     }
 
     var body: some View {
@@ -889,6 +894,22 @@ struct NextMovesCard: View {
                                 .background(AETheme.accent.opacity(0.06), in: AETheme.cardShape)
                             }
                             .buttonStyle(.aePress)
+                        }
+                        // Said once for the whole list. Every row used to end
+                        // with these three sentences, so two opportunities
+                        // could not be compared without reading six.
+                        if markets.contains(where: { $0.paysForItsAirframe }) {
+                            DisclosureGroup("How these are estimated") {
+                                Text(PlayerRouteDefaults.forecastAssumptions)
+                                    .font(.caption)
+                                    .foregroundStyle(AETheme.mutedText)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.top, AETheme.spacingXS)
+                            }
+                            .font(.caption)
+                            .tint(AETheme.mutedText)
+                            .accessibilityIdentifier("ae-next-moves-assumptions")
                         }
                     }
                 }
