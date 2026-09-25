@@ -160,9 +160,12 @@ struct PlayerJourneyTests {
         #expect(state.ledger.balance(of: player) > cashBefore)
         #expect(state.integrityViolations().isEmpty)
 
-        // Back to the start of the arc, honestly reported.
+        // This player has flown, so the first-flight arc stays finished:
+        // unwinding the airline does not restart the tutorial (the Home row
+        // still points an airline with no aircraft back to the market).
         let onboarding = try #require(state.onboardingModel(catalog: catalog))
-        #expect(onboarding.nextStep == .acquireAircraft)
+        #expect(state.progression.counters.flightsCompleted > 0)
+        #expect(onboarding.isComplete)
     }
 
     /// Save mid-journey, reload, and keep playing — the contract a player

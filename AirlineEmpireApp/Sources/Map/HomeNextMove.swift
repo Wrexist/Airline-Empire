@@ -100,6 +100,17 @@ struct HomeNextMove: Equatable {
                                 snapshot: snapshot, player: player)
         }
 
+        // 2b · Past the tutorial but with no aircraft at all — everything
+        // sold or returned. The first-flight arc does not restart for a
+        // player who has flown, but the way back to the market must remain.
+        if snapshot.fleet(of: player.id).isEmpty {
+            return HomeNextMove(icon: Vocab.onboardingIcon(.acquireAircraft),
+                                title: Vocab.onboardingStep(.acquireAircraft),
+                                detail: "Routes need aircraft. Lease one to start flying again.",
+                                tone: .caution,
+                                move: .aircraftMarket)
+        }
+
         // 3 · An aeroplane earning nothing. It bills like a flying one.
         if let idle = snapshot.fleet(of: player.id)
             .first(where: { $0.assignedRoute == nil }) {
