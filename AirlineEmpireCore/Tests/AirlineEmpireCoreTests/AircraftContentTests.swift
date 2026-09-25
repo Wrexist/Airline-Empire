@@ -231,7 +231,8 @@ struct FleetFilterTests {
     /// not by this suite.
     @Test("An assigned aircraft in a check is Maintenance, not Flying")
     func maintenanceWithARouteIsNotFlying() async throws {
-        var (state, player, catalog) = try await fleetState()
+        let (fixture, player, catalog) = try await fleetState()
+        var state = fixture
         let assigned = try #require(state.fleet(of: player)
             .first { $0.assignedRoute != nil && $0.status.isActive },
             "fixture must fly at least one aircraft")
