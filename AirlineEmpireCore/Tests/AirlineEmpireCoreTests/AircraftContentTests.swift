@@ -153,6 +153,12 @@ struct FleetFilterTests {
 
     private func fleet(seed: UInt64 = 3131, aircraft: Int = 24) async throws
         -> ([FleetCardModel], ContentCatalog) {
+        let (state, player, catalog) = try await fleetState(seed: seed, aircraft: aircraft)
+        return (state.fleetCards(for: player, catalog: catalog), catalog)
+    }
+
+    private func fleetState(seed: UInt64 = 3131, aircraft: Int = 24) async throws
+        -> (GameState, AirlineID, ContentCatalog) {
         let catalog = try ContentCatalog.loadBundled()
         let session = GameSession(state: Fixtures.newState(seed: seed),
                                   systems: GamePipeline.standard(),
@@ -198,7 +204,7 @@ struct FleetFilterTests {
             }
         }
         state = await session.snapshot
-        return (state.fleetCards(for: player, catalog: catalog), catalog)
+        return (state, player, catalog)
     }
 
     @Test("The status filters partition the fleet exactly once")
@@ -214,6 +220,38 @@ struct FleetFilterTests {
         }
         #expect(counted == cards.count,
                 "status buckets summed to \(counted) of \(cards.count) aircraft")
+    }
+
+    /// The case the fixture above never produces: an aircraft that keeps its
+    /// route while it sits in a maintenance check. The Flying filter used to
+    /// match it on the route alone, so it appeared under both Flying and
+    /// Maintenance, the chip counts summed past the fleet, and the Flying chip
+    /// disagreed with the summary's "assigned" figure, which has always
+    /// required an active aircraft. Found by the 14 September release audit,
+    /// not by this suite.
+    @Test("An assigned aircraft in a check is Maintenance, not Flying")
+    func maintenanceWithARouteIsNotFlying() async throws {
+        var (state, player, catalog) = try await fleetState()
+        let assigned = try #require(state.fleet(of: player)
+            .first { $0.assignedRoute != nil && $0.status.isActive },
+            "fixture must fly at least one aircraft")
+        state.aircraft[assigned.id]?.status =
+            .inMaintenance(until: SimTime(rawMinutes: Int64.max / 4))
+
+        let cards = state.fleetCards(for: player, catalog: catalog)
+        let summary = state.fleetSummary(for: player)
+        let flying = cards.matching(FleetFilter(status: .assigned))
+        let checks = cards.matching(FleetFilter(status: .inMaintenance))
+
+        #expect(!flying.contains { $0.id == assigned.id })
+        #expect(checks.contains { $0.id == assigned.id })
+        #expect(flying.count == summary.assigned,
+                "Flying chip \(flying.count) vs summary \(summary.assigned)")
+        var counted = 0
+        for status in FleetFilter.Status.allCases where status != .all {
+            counted += cards.matching(FleetFilter(status: status)).count
+        }
+        #expect(counted == cards.count)
     }
 
     @Test("Ownership splits the fleet in two, with nothing left over")

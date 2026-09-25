@@ -266,7 +266,12 @@ public struct FleetFilter: Equatable, Sendable {
         switch status {
         case .all: break
         case .assigned:
-            guard card.assignedRoute != nil else { return false }
+            // A route alone is not flying. An aircraft keeps its assignment
+            // through a maintenance check, and matching on the route put it
+            // under Flying *and* Maintenance — so the chips summed past the
+            // fleet and Flying disagreed with `FleetSummary.assigned`, which
+            // has always required an active aircraft. Same rule, both places.
+            guard card.assignedRoute != nil, card.status.isActive else { return false }
         case .idle:
             // Idle means "could be flying and is not". An aircraft in a check
             // or still on order is not idle — the player cannot act on it,
