@@ -11,13 +11,15 @@ import AirlineEmpireCore
 /// arithmetic the simulation resolves against.
 struct ProgressionView: View {
     @Environment(GameController.self) private var controller
+    @Environment(Entitlements.self) private var entitlements
 
     var body: some View {
         ScrollView {
             VStack(spacing: AETheme.spacingM) {
+                // The controller's per-snapshot model: this screen derived its
+                // own on every body pass — the O(world) walk the cache is for.
                 if let snapshot = controller.snapshot,
-                   let catalog = controller.catalog,
-                   let model = snapshot.progressionModel(catalog: catalog),
+                   let model = controller.progressionModel,
                    let player = snapshot.playerAirline {
                     campaignHero(model, snapshot: snapshot)
                     nextChapterCard(model)
@@ -84,7 +86,7 @@ struct ProgressionView: View {
                           destinations: Int) -> String {
         var parts: [String] = []
         if let since = model.eraSince {
-            parts.append("Since \(Format.date(GameCalendar.date(at: since, startYear: snapshot.meta.startYear)))")
+            parts.append("Since \(Format.longDate(GameCalendar.date(at: since, startYear: snapshot.meta.startYear)))")
         }
         if let dashboard = controller.dashboard {
             parts.append("\(dashboard.routeCount) \(dashboard.routeCount == 1 ? "route" : "routes")")
@@ -139,6 +141,12 @@ struct ProgressionView: View {
                     Text(Vocab.eraDetail(next))
                         .font(.caption).foregroundStyle(AETheme.mutedText)
                         .fixedSize(horizontal: false, vertical: true)
+                    // A chapter past what this player has bought: say how it
+                    // opens, where the chapter is described, instead of
+                    // letting the bar fill toward a wall it never mentions.
+                    if next > controller.eraCeiling, !entitlements.isPro {
+                        EraProOffer(era: next)
+                    }
                 } else {
                     Label("There is no era above this one. The network is the goal now.",
                           systemImage: "crown")
@@ -236,7 +244,11 @@ struct ProgressionView: View {
             VStack(alignment: .leading, spacing: AETheme.spacingM) {
                 AESectionHeader(text: "Capability programmes",
                                 systemImage: "wrench.and.screwdriver")
-                ForEach(Array(ordered.enumerated()), id: \.offset) { _, status in
+                // Keyed by programme, not position: the order changes as a
+                // programme starts or finishes, and a row's confirmation
+                // dialog lives with its identity — by position, an open
+                // "Start X?" could end up on the row for Y.
+                ForEach(ordered, id: \.code) { status in
                     capabilityRow(status, player: player)
                 }
             }
@@ -373,7 +385,7 @@ struct ProgressionView: View {
                     .font(.caption).foregroundStyle(AETheme.mutedText)
                     .fixedSize(horizontal: false, vertical: true)
                 if let time {
-                    Text("Earned \(Format.date(GameCalendar.date(at: time, startYear: startYear)))")
+                    Text("Earned \(Format.longDate(GameCalendar.date(at: time, startYear: startYear)))")
                         .font(.caption2).foregroundStyle(AETheme.mutedText)
                 }
             }
@@ -421,7 +433,7 @@ struct ProgressionView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: AETheme.spacingS)
-            Text(Format.date(GameCalendar.date(at: moment.at, startYear: startYear)))
+            Text(Format.longDate(GameCalendar.date(at: moment.at, startYear: startYear)))
                 .font(.caption2).monospacedDigit()
                 .foregroundStyle(AETheme.mutedText)
         }

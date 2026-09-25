@@ -30,6 +30,11 @@ struct FinanceContent: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(GameController.self) private var controller
     @State private var showingLoanSheet = false
+    /// The loan an open payoff confirmation is about, held by value. Each row
+    /// used to own its dialog, keyed by position: when the simulation retired
+    /// a loan the rows shifted, and an open dialog could confirm the payoff
+    /// of a different loan from the one it described.
+    @State private var payingOff: Loan?
 
     var body: some View {
         ScrollView {
@@ -51,7 +56,7 @@ struct FinanceContent: View {
                     // Three questions, in the order an operator asks them:
                     // is the airline earning, where did the cash go, and what
                     // must it find every month.
-                    operatingPanel(breakdown)
+                    operatingPanel(breakdown, dayOfMonth: snapshot.currentDate.day)
                     cashPanel(breakdown, cash: model.cash)
                     trendCard(model)
                     DisclosureGroup("Cash runway & credit limits") {
@@ -66,6 +71,11 @@ struct FinanceContent: View {
                     loansCard(model, snapshot: snapshot, player: player.id)
                 }
                 .aePageInsets()
+                // A reading width on iPad, as the other management screens
+                // have: full-width in landscape put each label ~1000pt from
+                // its amount.
+                .frame(maxWidth: 920)
+                .frame(maxWidth: .infinity)
             } else {
                 LoadingState(message: "Adding it up")
                     .frame(minHeight: 240)
@@ -123,7 +133,7 @@ struct FinanceContent: View {
     /// contribution: it says what the network earns before the company costs
     /// the commitments panel lists, and the two are labelled so they cannot be
     /// read as the same number.
-    private func operatingPanel(_ breakdown: FinanceBreakdown) -> some View {
+    private func operatingPanel(_ breakdown: FinanceBreakdown, dayOfMonth: Int) -> some View {
         AEPanel {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "Operating performance",
@@ -134,6 +144,16 @@ struct FinanceContent: View {
                     figureRow("Operating costs", flow.operatingExpenses)
                     Divider()
                     figureTotal("Operating profit", flow.operatingProfit)
+                    // Leases, payroll, overhead and interest all bill on the
+                    // 1st (FleetBillingSystem, EconomySystem) while fares
+                    // arrive flight by flight, so every month opens in the
+                    // red. Without this line a healthy airline read as a
+                    // failing one for the first ten days of every month.
+                    if flow.operatingProfit.isNegative && dayOfMonth <= 10 {
+                        Text("Leases, payroll and overhead are billed on the 1st; fares build up day by day. An early-month loss is normal — judge the month when it closes.")
+                            .font(.caption).foregroundStyle(AETheme.mutedText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 } else {
                     Text("Nothing has operated since the last month boundary.")
                         .font(.caption).foregroundStyle(AETheme.mutedText)
@@ -578,29 +598,65 @@ struct FinanceContent: View {
                 }
             }
         }
+        // One confirmation for the card, presenting the loan it was opened
+        // for (`payingOff`), so what it says and what it pays off cannot come
+        // apart when the rows shift.
+        .confirmationDialog("Pay off this loan?",
+                            isPresented: Binding(get: { payingOff != nil },
+                                                 set: { if !$0 { payingOff = nil } }),
+                            titleVisibility: .visible, presenting: payingOff) { loan in
+            Button("Pay off") { repay(loan, player: player) }
+                .accessibilityIdentifier("ae-confirm-action")
+            Button("Cancel", role: .cancel) {}
+        } message: { loan in
+            Text("\(Format.money(loan.principalRemaining)) leaves your cash now, and the \(Format.money(loan.monthlyPayment)) monthly payment stops.")
+        }
     }
 
     private func loanRow(_ loan: Loan, player: AirlineID) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(Format.money(loan.principalRemaining))
-                    .font(.subheadline.weight(.medium))
-                Text("\(Format.decimal(Double(loan.annualRateBasisPoints) / 100, places: 1))% · \(loan.monthsRemaining) months · \(Format.money(loan.monthlyPayment))/mo")
-                    .font(.caption)
-                    .foregroundStyle(AETheme.mutedText)
+        // Core refuses a payoff the cash cannot cover. Asked before the tap,
+        // as the fleet screen does — the button used to take a confirmation
+        // and then fail.
+        let blocked = payoffRefusal(loan, player: player)
+        return VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(Format.money(loan.principalRemaining))
+                        .font(.subheadline.weight(.medium))
+                    Text("\(Format.decimal(Double(loan.annualRateBasisPoints) / 100, places: 1))% · \(loan.monthsRemaining) \(loan.monthsRemaining == 1 ? "month" : "months") · \(Format.money(loan.monthlyPayment))/mo")
+                        .font(.caption)
+                        .foregroundStyle(AETheme.mutedText)
+                }
+                Spacer()
+                Button {
+                    // Honours the confirmations setting, as `ConfirmableButton`
+                    // does; the dialog itself is the card's (`payingOff`).
+                    if controller.preferences.confirmDestructive {
+                        payingOff = loan
+                    } else {
+                        repay(loan, player: player)
+                    }
+                } label: {
+                    Text("Pay off").frame(minHeight: 44)
+                }
+                .buttonStyle(.bordered)
+                .font(.caption)
+                .disabled(blocked != nil)
             }
-            Spacer()
-            ConfirmableButton(
-                title: "Pay off this loan?",
-                message: "\(Format.money(loan.principalRemaining)) leaves your cash now, and the \(Format.money(loan.monthlyPayment)) monthly payment stops.",
-                confirmTitle: "Pay off", role: nil,
-                action: { repay(loan, player: player) }
-            ) {
-                Text("Pay off").frame(minHeight: 44)
+            // The reason alone: the generic "take a loan" advice for a
+            // cash shortfall is no advice for paying one off.
+            if let blocked {
+                RefusalNote(rejection: blocked, detail: .reason)
             }
-            .buttonStyle(.bordered)
-            .font(.caption)
         }
+    }
+
+    /// Whether paying off `loan` would be accepted now. Resolved by value,
+    /// like `repay`, because the command addresses loans by index.
+    private func payoffRefusal(_ loan: Loan, player: AirlineID) -> CommandRejection? {
+        guard let index = controller.snapshot?.airlines[player]?.loans.firstIndex(of: loan)
+        else { return nil }
+        return controller.precheck(RepayLoanCommand(airline: player, loanIndex: index))
     }
 
     /// `RepayLoanCommand` addresses a loan **by array index**, and the index
