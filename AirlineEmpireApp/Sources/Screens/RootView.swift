@@ -122,13 +122,12 @@ struct RootView: View {
         // daily progression pass records at the next midnight.
         .onChange(of: (controller.snapshot?.progression.counters.flightsCompleted ?? 0) > 0) { _, completed in
             guard completed else { return }
-            // The "first flight has landed" banner lands on the same publish.
-            // Offering in the same instant covered the one win the player had
-            // just earned; a beat later, the offer follows the win instead.
-            Task { @MainActor in
-                try? await Task.sleep(for: .seconds(2.5))
-                entitlements.offerOnFirstRunIfDue()
-            }
+            // At once, not after a pause. The offer's own headline is "Your
+            // first flight has landed", so the sheet is the celebration; and a
+            // modal raised a beat after the moment lands under whatever the
+            // player is tapping by then — the delayed version was measured
+            // swallowing a tap on the time controls (CI run 36146835502).
+            entitlements.offerOnFirstRunIfDue()
         }
     }
 

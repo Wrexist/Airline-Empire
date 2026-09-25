@@ -250,7 +250,7 @@ time the player asks, and nag on a long fuse.**
 
 | Trigger | Frequency |
 |---|---|
-| First flight landed (`ProGate.firstFlight`, its own headline) | Exactly once, ever — a beat after the "First flight" banner, only when prices have loaded; if skipped (offline), made on the next return to the game |
+| First flight landed (`ProGate.firstFlight`, its own headline) | Exactly once, ever — at the landing itself (the sheet's headline is the celebration), only when prices have loaded; if skipped (offline), made on the next return to the game |
 | A gate the player walked into (era, scenario, save, airport) | Every time, unthrottled |
 | Opened from Settings or a Pro badge | Every time |
 | Unprompted nudge | No sooner than 7 days, and **never after 4 refusals** |

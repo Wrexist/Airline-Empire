@@ -40,8 +40,9 @@ changed here, with the reason).
 - **Fixed** — unprompted offers wait for prices (no burning the one-time offer
   on "Prices are unavailable" while offline) and are retried on return.
 - **Fixed** — the first-flight offer follows the landing itself (it waited
-  for the next midnight's milestone pass), a beat after a "Your first flight
-  has landed" banner, with its own headline.
+  for the next midnight's milestone pass), with its own headline: "Your first
+  flight has landed". It is raised at once — a delayed sheet was measured
+  swallowing a tap on the time controls.
 - **Fixed** — the era wall appears when National is actually earned, with
   true copy ("National era earned"), instead of for the whole Regional era.
 - **Fixed** — the paywall no longer sells two achievements free players earn.
