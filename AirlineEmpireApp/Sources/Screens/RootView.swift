@@ -120,7 +120,13 @@ struct RootView: View {
         // Let the player complete a real flight before making an offer.
         .onChange(of: controller.snapshot?.progression.milestones.contains("firstFlight") == true) { _, completed in
             guard completed else { return }
-            entitlements.offerOnFirstRunIfDue()
+            // The "First flight" banner lands on the same publish. Offering
+            // in the same instant covered the one win the player had just
+            // earned; a beat later, the offer follows the win instead.
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(2.5))
+                entitlements.offerOnFirstRunIfDue()
+            }
         }
     }
 
@@ -331,11 +337,22 @@ struct GameOverView: View {
                 }
 
                 // Without a way out this screen is a dead end (BUG-003).
+                //
+                // The collapsed airline's save goes with it. It can never be
+                // continued — loading it only returns here — and on the free
+                // tier it held the one save slot, so founding the next airline
+                // opened the paywall instead of the setup screen.
                 Button("Start a new airline") {
+                    let collapsed = controller.activeSaveSlot
                     controller.quitToMenu()
+                    if let collapsed { controller.deleteSlot(collapsed) }
                 }
                 .buttonStyle(.aePrimary)
                 .padding(.top, AETheme.spacingS)
+                Text("This airline's save is cleared. Its seed, above, replays the same world.")
+                    .font(.caption)
+                    .foregroundStyle(AETheme.mutedText)
+                    .multilineTextAlignment(.center)
             }
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)

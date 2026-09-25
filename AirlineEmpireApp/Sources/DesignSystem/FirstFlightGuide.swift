@@ -100,7 +100,7 @@ struct RouteFlightStatus: View {
         }.min { $0.departureTime < $1.departureTime }
         if let next {
             let minutes = max(0, next.departureTime.rawMinutes - state.clock.now.rawMinutes)
-            return "Next scheduled departure: \(next.from.raw) to \(next.to.raw), in \(minutes) game minutes. Delays may change this."
+            return "Next scheduled departure: \(next.from.raw) to \(next.to.raw), in \(Format.duration(minutes: minutes)) of game time. Delays may change this."
         }
         if state.flights.values.contains(where: {
             guard $0.route == routeID else { return false }
@@ -133,7 +133,8 @@ enum RouteScheduleSummary {
                 return paused ? "Departure pending. Resume time to continue."
                     : "Departure pending. Check schedule details for delays."
             }
-            let timing = "Next planned departure in \(minutes) game minutes."
+            // "1h 14m", not "74 game minutes": a duration is read at a glance.
+            let timing = "Next planned departure in \(Format.duration(minutes: minutes)) of game time."
             return paused ? timing + " Time is paused." : timing
         }
         if flights.contains(where: {

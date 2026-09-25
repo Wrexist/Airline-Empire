@@ -49,6 +49,8 @@ struct PaywallView: View {
             // refresh having finished. The owner coalesces overlapping loads.
             if entitlements.products.isEmpty {
                 await entitlements.loadProducts()
+            } else {
+                await entitlements.refreshOfferEligibility()
             }
         }
         .toolbar { closeButton }
@@ -87,7 +89,7 @@ struct PaywallView: View {
 
                 plans
 
-                PaywallBenefits()
+                PaywallBenefits(gate: gate)
                 assurances
                 Text(PaywallContent.subscriptionTerms)
                     .font(AEType.caption)
@@ -142,6 +144,10 @@ struct PaywallView: View {
                     footnote: entitlements.footnote(tier)) {
                         withAnimation(AEMotion.selection) { selection = tier }
                     }
+                    // A purchase in flight is for the plan it was started
+                    // with; switching the selection under Apple's sheet made
+                    // the checkout name a plan that was not being bought.
+                    .disabled(entitlements.isPurchasing)
                     .accessibilityIdentifier("ae-paywall-plan-\(tier.rawValue)")
             }
 
@@ -264,6 +270,9 @@ extension View {
 
 private struct PaywallPresentation: ViewModifier {
     @Environment(Entitlements.self) private var entitlements
+    @Environment(GameController.self) private var controller
+    /// The speed the game was running at when the sheet covered it.
+    @State private var speedBeforePaywall: SimSpeed?
 
     func body(content: Content) -> some View {
         @Bindable var entitlements = entitlements
@@ -276,6 +285,46 @@ private struct PaywallPresentation: ViewModifier {
             // a swipe-down is a decline too, and counting only the button
             // would let the nudge fire forever for anyone who swipes.
             .onDisappear { entitlements.paywallDismissed() }
+        }
+        // The sheet covers the whole game. At 16x, thirty seconds spent
+        // reading it were thirty-two game hours of an airline nobody was
+        // watching — so the clock stops under it and picks up where it was.
+        .onChange(of: entitlements.presentedGate != nil) { _, shown in
+            if shown {
+                guard controller.hasGame, controller.speed != .paused else { return }
+                speedBeforePaywall = controller.speed
+                controller.setSpeed(.paused)
+            } else if let speed = speedBeforePaywall {
+                speedBeforePaywall = nil
+                if controller.hasGame, controller.speed == .paused {
+                    controller.setSpeed(speed)
+                }
+            }
+        }
+        // The sheet closes itself the moment Pro is owned, so the thanks has
+        // to land on the game. Keyed on the outcome rather than on `isPro`,
+        // which also turns true at every launch for an existing subscriber.
+        .onChange(of: entitlements.lastOutcome) { _, outcome in
+            switch outcome {
+            case .purchased:
+                controller.celebrate(
+                    title: "Welcome to Airline Empire Pro",
+                    detail: "Every airport, every scenario, and the National, International and Empire eras are open.",
+                    icon: "crown.fill")
+            case .restored:
+                controller.celebrate(title: "Pro restored",
+                                     detail: "Your purchase is back on this device.",
+                                     icon: "crown.fill")
+            default:
+                break
+            }
+        }
+        // An Ask to Buy approval arrives later, on the transaction listener.
+        .onChange(of: entitlements.isPro) { wasPro, isPro in
+            guard !wasPro, isPro, entitlements.lastOutcome == .pending else { return }
+            controller.celebrate(title: "Pro approved",
+                                 detail: "The purchase went through. The whole world is open.",
+                                 icon: "crown.fill")
         }
     }
 }
