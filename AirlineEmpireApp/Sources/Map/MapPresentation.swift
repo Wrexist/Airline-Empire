@@ -39,6 +39,33 @@ struct MapProjector {
                 y: (point.y - size.height / 2) / worldHeight + center.y)
     }
 
+    /// `point` in world copy `offset`: the same place, `offset` worlds east.
+    func project(_ point: MapPoint, offset: Double) -> CGPoint {
+        project(MapPoint(x: point.x + offset, y: point.y))
+    }
+
+    /// The copy of `point` nearest the middle of the canvas, among the world
+    /// copies in `offsets`. An airport's label is placed on, and rides with,
+    /// this copy: zoomed out far enough to show the world twice, every copy
+    /// of an airport draws, and exactly one of them is named.
+    ///
+    /// Offsets are tried in order and only a strictly nearer copy replaces
+    /// the best so far — the same rule `MapFrame` uses to pick the copy it
+    /// hands the placer, so the placement and its replay agree on a tie.
+    func projectNearestCopy(_ point: MapPoint, among offsets: [Double]) -> CGPoint {
+        var best: CGPoint?
+        var bestDistance = CGFloat.infinity
+        for offset in offsets {
+            let candidate = project(point, offset: offset)
+            let distance = abs(candidate.x - size.width / 2)
+            if distance < bestDistance {
+                best = candidate
+                bestDistance = distance
+            }
+        }
+        return best ?? project(point)
+    }
+
     /// The world copies the viewport actually shows, as x offsets in map
     /// space.
     ///
@@ -136,11 +163,25 @@ struct InterpolatedFlight {
                            + gameMinutes / Double(flight.flightMinutes))
         let position = MapMath.greatCirclePoint(from: origin, to: destination,
                                                 fraction: advanced)
-        let ahead = MapMath.greatCirclePoint(from: origin, to: destination,
-                                             fraction: min(1, advanced + 0.02))
+        // Measured over the leg just flown once the fraction is clamped at
+        // arrival. "A little ahead" of 1 is 1 again, and a heading between
+        // two identical points has no direction — it came back as 0°, so
+        // every arriving aircraft snapped to face north (or south) for its
+        // last frames. Core's `heading(alongRouteFrom:)` has the same rule;
+        // it is inlined here so the tip is not slerped twice per frame.
+        let heading: Double
+        if advanced >= 1 {
+            let behind = MapMath.greatCirclePoint(from: origin, to: destination,
+                                                  fraction: max(0, advanced - 0.02))
+            heading = MapMath.heading(from: behind, to: position)
+        } else {
+            let ahead = MapMath.greatCirclePoint(from: origin, to: destination,
+                                                 fraction: min(1, advanced + 0.02))
+            heading = MapMath.heading(from: position, to: ahead)
+        }
         return InterpolatedFlight(
             flight: flight, position: MapPoint(coordinate: position),
-            heading: MapMath.heading(from: position, to: ahead),
+            heading: heading,
             progress: advanced)
     }
 }
@@ -211,6 +252,24 @@ enum MapGeodesy {
 
     static func worldOffsets(for points: [MapPoint]) -> [Double] {
         MapMath.worldOffsets(for: points)
+    }
+
+    /// Every world copy an unwrapped line should be drawn in: each copy the
+    /// viewport shows (`MapProjector.visibleWorldOffsets`), shifted again by
+    /// the seam copies the line itself runs into. With one world on screen
+    /// this is exactly `worldOffsets(for:)`. Zoomed out far enough to see the
+    /// world twice, or parked on the dateline, it is what keeps a route on
+    /// every copy of the coastline the geography already draws — the network
+    /// used to exist on one copy only, beside bare land on the others.
+    static func copies(of points: [MapPoint], visible: [Double]) -> [Double] {
+        let seams = worldOffsets(for: points)
+        var result: [Double] = []
+        for world in visible {
+            for seam in seams where !result.contains(world + seam) {
+                result.append(world + seam)
+            }
+        }
+        return result
     }
 }
 
@@ -387,8 +446,53 @@ enum MapLabelLayout {
         let priority: Int
         let isPlayer: Bool
         let emphasis: Bool
+        /// The box the label claimed, so replaying the memory between
+        /// placements tests exactly the box the placer measured.
+        let size: CGSize
+        /// The text rung it was chosen under: the zoom level, and whether
+        /// full airport names were on offer (`fullNameZoom`). Memory from
+        /// another rung is ignored — a code remembered from the world view
+        /// otherwise held a zoomed-in label on "BOM" long after "Mumbai"
+        /// had room.
+        let level: MapZoomLevel
+        let fullNames: Bool
     }
 
+    /// The zoom at which labels may carry an airport's full name. Below it
+    /// a label is the city or the code: "Chhatrapati Shivaji (Mumbai)" at a
+    /// continental zoom crowds out three neighbours to say what "Mumbai"
+    /// already says.
+    static let fullNameZoom: CGFloat = 8
+
+    /// The texts an airport's label may carry at this zoom, fullest first;
+    /// the placer takes the first that fits.
+    ///
+    /// The code alone at world zoom, where the map is read as a shape. The
+    /// city, falling back to the code, everywhere else — so one view never
+    /// mixes official names, cities and codes by whichever happened to fit.
+    /// The full name only for the selected airport, which has earned the
+    /// room, and at street-level zoom, where there is room to spare.
+    static func texts(for airport: MapModel.MapAirport, level: MapZoomLevel,
+                      zoom: CGFloat, selected: AirportCode?) -> [String] {
+        if level == .world || airport.city.isEmpty { return [airport.code.raw] }
+        if airport.code == selected || zoom >= fullNameZoom {
+            return [Vocab.airportDisplay(name: airport.name, city: airport.city),
+                    airport.city, airport.code.raw]
+        }
+        return [airport.city, airport.code.raw]
+    }
+
+    /// A label's box: its measured text, padded 3pt a side and 2pt above
+    /// and below so neighbours keep a visible gap rather than touching.
+    static func labelBox(centre: CGPoint, textWidth: CGFloat) -> CGRect {
+        CGRect(x: centre.x - textWidth / 2, y: centre.y - 6,
+               width: textWidth, height: 12).insetBy(dx: -3, dy: -2)
+    }
+
+    /// - Parameter textWidth: the drawn width of a label's text
+    ///   (`MapTextMetrics`). It was estimated at 6.4pt a character plus
+    ///   10pt, which is generous for "Lille" and short for "Mumbai" — boxes
+    ///   that did not match their text either overlapped or wasted room.
     static func place(_ airports: [(MapModel.MapAirport, CGPoint)],
                       level: MapZoomLevel,
                       zoom: CGFloat,
@@ -396,6 +500,7 @@ enum MapLabelLayout {
                       limit: Int,
                       bounds: CGRect,
                       markerRadius: (MapModel.MapAirport) -> CGFloat,
+                      textWidth: (String) -> CGFloat,
                       remembered: [Remembered] = []) -> [MapLabel] {
         let cap = min(limit, labelBudget(zoom: zoom))
         // Hysteresis at the edges (docs/MAP_PERFORMANCE_TARGETS.md L4): a
@@ -443,18 +548,28 @@ enum MapLabelLayout {
         // its text rung and its side while it still fits: same anchor, same
         // offset, looser bounds, and a 0.4-zoom grace on its reveal
         // threshold so a hair of zoom drift cannot evict it.
+        //
+        // Only memory from this rung, and only text this rung still offers
+        // (`texts(for:)`). The selected airport is always placed afresh, so
+        // selecting one shows its full name rather than whatever it was
+        // wearing before. Colour is re-derived rather than remembered: an
+        // airport that stopped being selected kept its ember highlight.
+        let fullNames = zoom >= fullNameZoom
         let anchors = Dictionary(airports.map { ($0.0.code, ($0.0, $0.1)) },
                                  uniquingKeysWith: { first, _ in first })
         for memory in remembered.sorted(by: { $0.priority > $1.priority }) {
             guard labels.count < cap,
-                  let (airport, point) = anchors[memory.code],
-                  priority(airport, selected: selected, level: level,
-                           zoom: zoom + 0.4) > 0 else { continue }
-            let width = CGFloat(memory.text.count) * 6.4 + 10
+                  memory.level == level, memory.fullNames == fullNames,
+                  memory.code != selected,
+                  let (airport, point) = anchors[memory.code] else { continue }
+            let score = priority(airport, selected: selected, level: level,
+                                 zoom: zoom + 0.4)
+            guard score > 0,
+                  texts(for: airport, level: level, zoom: zoom,
+                        selected: selected).contains(memory.text) else { continue }
             let centre = CGPoint(x: point.x + memory.offset.width,
                                  y: point.y + memory.offset.height)
-            let box = CGRect(x: centre.x - width / 2, y: centre.y - 7,
-                             width: width, height: 14)
+            let box = labelBox(centre: centre, textWidth: textWidth(memory.text))
             guard keepBounds.contains(box),
                   !placed.contains(where: { $0.intersects(box) }),
                   !discs.contains(where: {
@@ -464,9 +579,9 @@ enum MapLabelLayout {
             kept.insert(memory.code)
             labels.append(MapLabel(
                 text: memory.text, point: centre,
-                priority: priority(airport, selected: selected,
-                                   level: level, zoom: zoom + 0.4),
-                isPlayer: memory.isPlayer, emphasis: memory.emphasis,
+                priority: score,
+                isPlayer: airport.servedByPlayer || airport.isPlayerHome,
+                emphasis: airport.isPlayerHome || airport.code == selected,
                 box: box, code: memory.code, anchorOffset: memory.offset))
         }
 
@@ -488,14 +603,13 @@ enum MapLabelLayout {
             // any box overlapping one already placed — so a dense corner
             // quietly falls back to codes while an empty one keeps its cities,
             // with no threshold to guess at.
-            // Fullest first: the airport's own name with its city —
-            // "Sjövik (Stockholm)" — which is how people actually say an
-            // airport. The placer's fit rule degrades a crowded corner to
-            // the bare city and then the code, so density still self-tunes.
-            let candidates = level == .world || airport.city.isEmpty
-                ? [airport.code.raw]
-                : [Vocab.airportDisplay(name: airport.name, city: airport.city),
-                   airport.city, airport.code.raw]
+            //
+            // The full name is offered only where `texts(for:)` says it has
+            // earned the room. Offered first everywhere, it won wherever it
+            // happened to fit, so one view mixed "Chhatrapati Shivaji
+            // (Mumbai)" with bare codes a few hundred kilometres away.
+            let candidates = texts(for: airport, level: level, zoom: zoom,
+                                   selected: selected)
 
             // Four placements per candidate, tried in that order: above the
             // marker, below it, then out to the right and the left.
@@ -510,18 +624,18 @@ enum MapLabelLayout {
             let r = markerRadius(airport)
             var chosen: (text: String, centre: CGPoint, box: CGRect)?
             search: for text in candidates {
-                // Approximate the text box; exact metrics are not worth a
-                // layout pass per frame, and the padding absorbs the error.
-                let width = CGFloat(text.count) * 6.4 + 10
+                // Measured once per string (`MapTextMetrics`), not per frame:
+                // placement runs on a settle, and the widths are cached.
+                let width = textWidth(text)
+                let half = width / 2 + 3
                 let centres = [
                     CGPoint(x: point.x, y: point.y - 13),
                     CGPoint(x: point.x, y: point.y + r + 9),
-                    CGPoint(x: point.x + r + 4 + width / 2, y: point.y),
-                    CGPoint(x: point.x - r - 4 - width / 2, y: point.y),
+                    CGPoint(x: point.x + r + 4 + half, y: point.y),
+                    CGPoint(x: point.x - r - 4 - half, y: point.y),
                 ]
                 for centre in centres {
-                    let box = CGRect(x: centre.x - width / 2, y: centre.y - 7,
-                                     width: width, height: 14)
+                    let box = labelBox(centre: centre, textWidth: width)
                     guard enterBounds.contains(box) else { continue }
                     let hitsLabel = placed.contains { $0.intersects(box) }
                     let hitsMarker = discs.contains {
@@ -560,10 +674,13 @@ enum MapLabelLayout {
     ///   bounds check at all, and run 84/85 frames photographed the result —
     ///   "BELA…" cut at the right edge. A truncated country name is noise; a
     ///   country whose anchor sits at the edge simply waits for the camera.
+    /// - Parameter textWidth: the drawn width of a caption, flag, capitals
+    ///   and letterspacing included (`MapTextMetrics`).
     static func placeCountries(_ countries: [(CountryLabel, CGPoint)],
                                blocked: [CGRect],
                                limit: Int,
-                               bounds: CGRect) -> [MapLabel] {
+                               bounds: CGRect,
+                               textWidth: (String) -> CGFloat) -> [MapLabel] {
         let ranked = countries.sorted { lhs, rhs in
             lhs.0.minZoom != rhs.0.minZoom
                 ? lhs.0.minZoom < rhs.0.minZoom
@@ -574,17 +691,17 @@ enum MapLabelLayout {
         var labels: [MapLabel] = []
         for (country, point) in ranked {
             guard labels.count < limit else { break }
-            // The flag counts roughly double a letter, and the gap after it
-            // one more. Approximate, like the airport boxes, and padded for
-            // the same reason: exact metrics are not worth a layout pass per
-            // frame at 30fps.
-            let width = CGFloat(country.name.count) * 5.4 + 22
+            // Measured rather than estimated. The estimate (5.4pt a letter
+            // and 22 for the flag) was a lowercase figure for a label drawn
+            // in tracked capitals, so a box was narrower than its own text
+            // and two countries could overlap without either noticing.
+            let width = textWidth(country.caption) + 6
             let box = CGRect(x: point.x - width / 2, y: point.y - 8,
                              width: width, height: 16)
             guard bounds.insetBy(dx: 2, dy: 2).contains(box) else { continue }
             guard !placed.contains(where: { $0.intersects(box) }) else { continue }
             placed.append(box)
-            labels.append(MapLabel(text: country.display, point: point,
+            labels.append(MapLabel(text: country.caption, point: point,
                                    priority: 0, isPlayer: false,
                                    emphasis: false, box: box))
         }
@@ -612,6 +729,48 @@ enum MapLabelLayout {
     }
 }
 
+/// Label widths, measured with the text the map actually draws and kept per
+/// string.
+///
+/// The boxes used to be estimated from a character count, which is wrong
+/// both ways — "MUMBAI" in tracked capitals is far wider than six average
+/// letters, "Lille" narrower than five — and a box that is not its text
+/// either lets labels overlap or turns away labels there was room for. The
+/// strings a label can carry are a small, stable set (codes, cities, names,
+/// country captions), so each is measured once, by resolving it in the
+/// frame's own `GraphicsContext` with the font it is drawn in.
+///
+/// A plain class, read and written only from inside the draw, for
+/// `MapRenderCache`'s reason.
+final class MapTextMetrics {
+    private var airportWidths: [String: CGFloat] = [:]
+    private var countryWidths: [String: CGFloat] = [:]
+    private let unbounded = CGSize(width: 10_000, height: 200)
+
+    /// Measured in the widest face an airport label is drawn in — 11pt
+    /// semibold, the emphasised size (`MapFrame`) — so a box is never
+    /// narrower than its text.
+    func airportTextWidth(_ text: String, in context: GraphicsContext) -> CGFloat {
+        if let width = airportWidths[text] { return width }
+        let resolved = context.resolve(
+            Text(text).font(.system(size: 11, weight: .semibold)))
+        let width = resolved.measure(in: unbounded).width.rounded(.up)
+        airportWidths[text] = width
+        return width
+    }
+
+    /// A country caption at its larger (local-zoom) size, with the 1.4pt
+    /// tracking it is drawn with.
+    func countryTextWidth(_ text: String, in context: GraphicsContext) -> CGFloat {
+        if let width = countryWidths[text] { return width }
+        let resolved = context.resolve(
+            Text(text).font(.system(size: 10, weight: .semibold)).tracking(1.4))
+        let width = resolved.measure(in: unbounded).width.rounded(.up)
+        countryWidths[text] = width
+        return width
+    }
+}
+
 // MARK: - Hit testing
 
 /// What the player just tapped.
@@ -625,12 +784,26 @@ enum MapHit: Hashable {
 }
 
 enum MapHitTester {
-    /// Resolves a tap, nearest-first within a tolerance.
+    /// An aircraft's reach, and how far a near-tie leans its way. A moving
+    /// silhouette a few points across is the hardest target on the map, so
+    /// it reaches further than a marker and wins when the two are about
+    /// equally close — but only about: a finger on an airport now selects
+    /// the airport even with a flight passing overhead.
+    static let aircraftReach: CGFloat = 34
+    static let aircraftLean: CGFloat = 6
+    /// A tap inside an airport's label counts as this close to the airport:
+    /// the text is a deliberate target, so it beats a marker that is merely
+    /// in reach, and loses to one under the finger.
+    static let labelScore: CGFloat = 8
+
+    /// Resolves a tap: the nearest thing within reach, then routes.
     ///
-    /// Order matters and is deliberate: **aircraft, then airports, then
-    /// routes.** An aircraft is the smallest and most transient thing on the
-    /// map, so it must win where it overlaps; a route line passes under
-    /// hundreds of pixels and would otherwise swallow every tap near it.
+    /// **Aircraft, airports and their labels in one nearest-wins pass, then
+    /// routes.** It used to be aircraft first outright: any flight within
+    /// 26pt took the tap before an airport was even considered, so a busy
+    /// hub under its own departures could not be selected at all. Routes
+    /// stay last, on a tighter tolerance: a line passes under hundreds of
+    /// pixels and would otherwise swallow every tap near it.
     /// `routeLocation`/`routeTolerance` exist because route polylines are
     /// now tested in the render cache's own screen space (MapHitGeometry):
     /// the tap and the tolerance are carried there, airports and flights
@@ -640,6 +813,7 @@ enum MapHitTester {
                     airports: [(MapModel.MapAirport, CGPoint)],
                     flights: [(InterpolatedFlight, CGPoint)],
                     routes: [(MapModel.MapRoute, [CGPoint])],
+                    labels: [(AirportCode, CGRect)] = [],
                     tolerance: CGFloat = 26,
                     routeLocation: CGPoint? = nil,
                     routeTolerance: CGFloat? = nil) -> MapHit? {
@@ -647,16 +821,20 @@ enum MapHitTester {
 
         for (flight, point) in flights {
             let distance = hypot(point.x - location.x, point.y - location.y)
-            if distance < tolerance, distance < (best?.1 ?? .infinity) {
-                best = (.aircraft(flight.flight.id), distance)
+            let score = distance - aircraftLean
+            if distance < aircraftReach, score < (best?.1 ?? .infinity) {
+                best = (.aircraft(flight.flight.id), score)
             }
         }
-        if let best { return best.0 }
-
         for (airport, point) in airports {
             let distance = hypot(point.x - location.x, point.y - location.y)
             if distance < tolerance, distance < (best?.1 ?? .infinity) {
                 best = (.airport(airport.code), distance)
+            }
+        }
+        for (code, box) in labels where box.contains(location) {
+            if labelScore < (best?.1 ?? .infinity) {
+                best = (.airport(code), labelScore)
             }
         }
         if let best { return best.0 }
