@@ -248,6 +248,14 @@ jobs:
       - name: App symbols and key paths resolve
         run: node scripts/check-app-symbols.mjs
 
+      # Game Center IDs, points and titles live twice: in Core, which the app
+      # reports from, and in store/game-center/catalog.json, which is what a
+      # human types into App Store Connect. A mismatch is an achievement that
+      # never unlocks for anyone, so it fails here, in milliseconds, with no
+      # browser (docs/GAME_CENTER.md).
+      - name: Game Center catalog matches Core
+        run: node store/game-center/render.mjs --check
+
       # A sound cue with no file is the one audio bug that reports itself as
       # working: nothing throws, nothing logs, the moment simply passes in
       # silence. Checked against Core's own `AudioCue.assetName`, on the cheap
