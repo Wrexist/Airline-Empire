@@ -461,8 +461,10 @@ enum MapLabelLayout {
     /// The zoom at which labels may carry an airport's full name. Below it
     /// a label is the city or the code: "Chhatrapati Shivaji (Mumbai)" at a
     /// continental zoom crowds out three neighbours to say what "Mumbai"
-    /// already says.
-    static let fullNameZoom: CGFloat = 8
+    /// already says. 12 of a maximum 16: framing a two-city network lands
+    /// near 8, and at 8 CI photographed a whole continent of "Arlanda
+    /// (Stockholm)" and "Eleftherios Venizelos (Athens)".
+    static let fullNameZoom: CGFloat = 12
 
     /// The texts an airport's label may carry at this zoom, fullest first;
     /// the placer takes the first that fits.
