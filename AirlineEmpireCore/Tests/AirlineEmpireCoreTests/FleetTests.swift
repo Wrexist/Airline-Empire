@@ -77,6 +77,40 @@ struct AcquisitionTests {
             .contains(.aircraftDelivered(id: aircraft.id)))
     }
 
+    /// An order used to age, depreciate and draw payroll through its lead
+    /// time, so a new airframe arrived years old and far under what was
+    /// paid (an MR410 on its 720-day lead: two years, $62M).
+    @Test func orderedAircraftArrivesNewAtWhatWasPaid() throws {
+        let (catalog, engine, airline) = try FleetFixtures.catalogAndEngine()
+        let spec = try #require(catalog.aircraftType("NA70"))
+        #expect(engine.applyNow(BuyNewAircraftCommand(buyer: airline, type: "NA70")) == .applied)
+        let id = try #require(engine.state.aircraft.values.first).id
+
+        // Three month boundaries inside the 120-day lead time.
+        engine.advance(ticks: Fixtures.ticksPerDay * 100)
+        let waiting = try #require(engine.state.aircraft[id])
+        #expect(waiting.status.isOnOrder)
+        #expect(waiting.ageDays == 0)
+        #expect(waiting.ownership == .owned(bookValue: spec.listPrice))
+        #expect(!engine.state.ledger.recent.contains { $0.category == .salaries },
+                "An aircraft on order has no crew to pay")
+        #expect(engine.state.financeBreakdown(for: airline, catalog: catalog)
+            .recurring.payroll == .zero)
+
+        engine.advance(ticks: Fixtures.ticksPerDay * 21)
+        let delivered = try #require(engine.state.aircraft[id])
+        #expect(delivered.isOperational)
+        #expect(delivered.ageDays <= 1)
+        guard case .owned(let book) = delivered.ownership else {
+            Issue.record("Expected owned"); return
+        }
+        // What was paid, less at most the curve since delivery.
+        let sinceDelivery = FleetEconomics.depreciatedValue(
+            type: spec, ageYears: delivered.ageYears, tuning: catalog.tuning.fleet)
+        #expect(book <= spec.listPrice)
+        #expect(book >= sinceDelivery)
+    }
+
     @Test func insufficientFundsRejected() throws {
         let (_, engine, airline) = try FleetFixtures.catalogAndEngine(cash: Money.dollars(1000))
         let result = engine.applyNow(BuyNewAircraftCommand(buyer: airline, type: "NA70"))
@@ -132,7 +166,29 @@ struct AcquisitionTests {
         guard case .leased(_, let remaining) = aircraft.ownership else {
             Issue.record("Expected lease"); return
         }
-        #expect(remaining == 23)
+        // Two of the 24 months are paid (signing, Feb 1): 22 remain. This
+        // read 23 while signing did not count toward the term.
+        #expect(remaining == 22)
+    }
+
+    /// Signing pays the term's first month, so a 12-month lease is paid by
+    /// the signing and eleven monthly billings — it used to take thirteen.
+    @Test func twelveMonthLeaseTakesTwelvePayments() throws {
+        let (_, engine, airline) = try FleetFixtures.catalogAndEngine()
+        #expect(engine.applyNow(LeaseAircraftCommand(
+            lessee: airline, type: "AV90", termMonths: 12)) == .applied)
+        let id = try #require(engine.state.aircraft.values.first).id
+
+        // Signed Jan 1; Feb 1 through Dec 1 are eleven month boundaries.
+        engine.advance(ticks: Fixtures.ticksPerDay * 335)
+        guard case .leased(_, let remaining) = engine.state.aircraft[id]!.ownership else {
+            Issue.record("Expected lease"); return
+        }
+        #expect(remaining == 0)
+        let payments = engine.state.ledger.recent.filter {
+            $0.airline == airline && $0.category == .leasePayment
+        }.count
+        #expect(payments == 12)
     }
 
     @Test func badLeaseTermRejected() throws {
@@ -162,6 +218,36 @@ struct DisposalTests {
         #expect(net.isNegative)
         let loss = -net
         #expect(loss > Money(rounding: bought.asDouble * 0.05))
+    }
+
+    /// The oldest used airframe arrives at the market's condition for its
+    /// age (0.56), under the check threshold, and its first check restores
+    /// it to 1.0. The sale used to price that restored condition: bought for
+    /// $22.35M, sold days later for $23.18M — a profit even after the check.
+    @Test func checkedOldAirframeStillSellsAtALoss() throws {
+        let (catalog, engine, airline) = try FleetFixtures.catalogAndEngine()
+        let start = engine.state.ledger.balance(of: airline)
+        #expect(engine.applyNow(BuyUsedAircraftCommand(
+            buyer: airline, type: "MR180",
+            ageYears: catalog.tuning.fleet.maxUsedPurchaseAgeYears)) == .applied)
+        let id = try #require(engine.state.aircraft.values.first).id
+        #expect(engine.state.aircraft[id]!.condition
+                < catalog.tuning.fleet.maintenanceConditionThreshold)
+
+        var checked = false
+        for _ in 0..<10 {
+            engine.advance(ticks: Fixtures.ticksPerDay)
+            if engine.state.eventLog.recent.map(\.kind).contains(.maintenanceCompleted(id: id)) {
+                checked = true
+                break
+            }
+        }
+        #expect(checked, "The first check never completed")
+        #expect(engine.state.aircraft[id]!.condition == 1.0)
+
+        #expect(engine.applyNow(SellAircraftCommand(seller: airline, aircraftID: id)) == .applied)
+        // Flipping must lose money (docs/GAME_BALANCE.md §7), check or not.
+        #expect(engine.state.ledger.balance(of: airline) < start)
     }
 
     @Test func sellingRejectedForLeasedOrderedOrForeign() throws {
@@ -210,7 +296,8 @@ struct DisposalTests {
         let (_, engine, airline) = try FleetFixtures.catalogAndEngine()
         _ = engine.applyNow(LeaseAircraftCommand(lessee: airline, type: "AV90", termMonths: 6))
         let aircraft = engine.state.aircraft.values.first!
-        // Run out the 6-month term (183 days crosses Jul 1 = 6 monthly bills).
+        // Run out the 6-month term (signing plus the Feb 1–Jun 1 bills; 185
+        // days is past it).
         engine.advance(ticks: Fixtures.ticksPerDay * 185)
         guard case .leased(_, let remaining) = engine.state.aircraft[aircraft.id]!.ownership else {
             Issue.record("Expected lease"); return
@@ -281,8 +368,11 @@ struct FleetLifecycleTests {
             Issue.record("Expected owned"); return
         }
         #expect(bookAfter2y < spec.listPrice)
-        let expected2y = spec.listPrice.asDouble * 0.92 * 0.92
-        #expect(abs(bookAfter2y.asDouble - expected2y) / expected2y < 0.02)
+        // The MR180's 365-day delivery lead is not service life: two years
+        // after the order the airframe has one year on it, not two (it used
+        // to age, and depreciate, while it waited).
+        let expected1y = spec.listPrice.asDouble * 0.92
+        #expect(abs(bookAfter2y.asDouble - expected1y) / expected1y < 0.02)
 
         // Floor: after very long service, value stops at 25% of list.
         engine.advance(ticks: Fixtures.ticksPerYear * 20)

@@ -22,6 +22,9 @@ public struct Aircraft: Equatable, Codable, Sendable {
     public var condition: Double
     /// Lifetime flying, drives maintenance economics (accrues from Phase 6).
     public var totalFlightHours: Double
+    /// Optional so saves written before cabin configuration decode unchanged.
+    public var configuration: AircraftConfiguration?
+    public var configurationHistory: [AircraftConfigurationChange]?
 
     public init(id: AircraftID, typeCode: AircraftTypeCode, owner: AirlineID,
                 ownership: AircraftOwnership, status: AircraftStatus,
@@ -132,10 +135,18 @@ public enum FleetEconomics {
 
     /// Sale proceeds: used-market price minus liquidity friction (the
     /// buy/sell spread that kills fleet-flipping — docs/GAME_BALANCE.md §7).
+    ///
+    /// The buyer prices no better than the condition the used market
+    /// assumes at this age: a check restores the seller's airframe to 1.0,
+    /// not the market's view of a 22-year-old one. Pricing the restored
+    /// condition made the oldest used airframe a money printer — a 22-year-old
+    /// MR180 bought at 0.56 was checked and sold three days later above what
+    /// it cost. Wear still lowers the price; a check no longer raises it.
     public static func saleValue(type: AircraftTypeSpec, ageYears: Double,
                                  condition: Double, tuning: FleetTuning) -> Money {
-        Money(rounding: usedPrice(type: type, ageYears: ageYears, condition: condition,
-                                  tuning: tuning).asDouble * (1 - tuning.saleFriction))
+        let priced = min(condition, usedMarketCondition(ageYears: ageYears, tuning: tuning))
+        return Money(rounding: usedPrice(type: type, ageYears: ageYears, condition: priced,
+                                         tuning: tuning).asDouble * (1 - tuning.saleFriction))
     }
 
     /// Deterministic condition of a used-market airframe by age: buyers know
@@ -154,6 +165,24 @@ public enum FleetEconomics {
             * tuning.maintenanceCheckHoursEquivalent * ageMultiplier)
     }
 
+    /// Condition an airframe loses in a day at `blockHoursPerDay` of flying:
+    /// the daily decay every aircraft carries, plus wear per flight hour.
+    /// The same terms `FleetSystem` and `FlightOpsSystem` apply, in one place.
+    public static func conditionPerDay(blockHoursPerDay: Double, fleet: FleetTuning,
+                                       ops: OpsTuning) -> Double {
+        fleet.dailyConditionDecay + ops.wearPerFlightHour * max(0, blockHoursPerDay)
+    }
+
+    /// Estimated whole days until condition falls through the check
+    /// threshold at today's rate. Zero means the check is due now; nil means
+    /// there is no positive rate to estimate from.
+    public static func daysUntilCheck(condition: Double, conditionPerDay: Double,
+                                      threshold: Double) -> Int? {
+        guard conditionPerDay > 0 else { return nil }
+        guard condition > threshold else { return 0 }
+        return Int(((condition - threshold) / conditionPerDay).rounded(.down))
+    }
+
     /// What the fleet system's checks cost per day, ahead of time, for an
     /// airframe flying `blockHoursPerDay`: condition falls by the daily
     /// decay plus the wear per flight hour, a check is due each time it
@@ -165,8 +194,9 @@ public enum FleetEconomics {
     public static func expectedMaintenancePerDay(type: AircraftTypeSpec, ageYears: Double,
                                                  blockHoursPerDay: Double,
                                                  fleet: FleetTuning, ops: OpsTuning) -> Double {
-        let conditionPerDay = fleet.dailyConditionDecay + ops.wearPerFlightHour * blockHoursPerDay
-        let checksPerDay = conditionPerDay / (1 - fleet.maintenanceConditionThreshold)
+        let decayPerDay = conditionPerDay(blockHoursPerDay: blockHoursPerDay,
+                                          fleet: fleet, ops: ops)
+        let checksPerDay = decayPerDay / (1 - fleet.maintenanceConditionThreshold)
         return maintenanceCheckCost(type: type, ageYears: ageYears, tuning: fleet).asDouble * checksPerDay
     }
 }

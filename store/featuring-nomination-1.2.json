@@ -1,0 +1,28 @@
+{
+  "name": "Airline Empire: Game Center achievements and leaderboards",
+  "type": "App Enhancements",
+  "status": "draft — not submitted",
+  "description": "Airline Empire's first update brings Game Center to a deep airline management game for iPhone and iPad. Seventeen achievements follow the milestones players already celebrate, from a first flight and first profitable month to an intercontinental route, a million passengers and an airline empire. Three leaderboards rank passengers flown, network size and fleet — never money, so a player's standing reflects how they built their airline rather than which scenario they started. Game Center is entirely optional: nothing in the game waits on it, and sign-in is offered only when the player asks. The first session is warmer too: a new player now watches their very first takeoff instead of waiting on an empty map, the map responds instantly, and the briefing says shared forecast caveats once instead of on every row. No ads, energy meters, premium currency or paid shortcuts, as at launch.",
+  "helpfulDetails": "Native SwiftUI for iPhone and iPad; campaigns run on device with no game account. Game Center adds no rules: every achievement is a milestone the game already awards, and leaderboards rank passengers, network and fleet rather than cash. The update also carries a whole-game audit: a crash fix, first-session and map responsiveness improvements, and VoiceOver and Dynamic Type fixes. Developer: Isac Molin, Sweden.",
+  "plannedPublishDate": "owner decides — after 1.1.0 publishes on 2026-10-16",
+  "platforms": [
+    "iOS (iPhone)",
+    "iOS (iPad)"
+  ],
+  "localizations": [
+    "en-US",
+    "en-GB"
+  ],
+  "editorialFocusRegions": [
+    "USA",
+    "GBR",
+    "CAN",
+    "AUS",
+    "SWE"
+  ],
+  "supplementalMaterials": [
+    "https://wrexist.github.io/Airline-Empire/press.html"
+  ],
+  "inAppEvent": "store/in-app-events/game-center/event.json",
+  "preorderPlanned": false
+}

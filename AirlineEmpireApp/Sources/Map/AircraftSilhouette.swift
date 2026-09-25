@@ -81,7 +81,11 @@ enum AircraftSilhouette {
     /// A simplified mark for the smallest zooms, where a planform is a smudge.
     /// A directional wedge still says *which way it is going*, which is the
     /// one thing that survives at four points across.
-    static var wedge: Path {
+    ///
+    /// This and the four planforms are `static let`, built once. They were
+    /// computed properties, so every aircraft on the map rebuilt its unit
+    /// path — curves and all — on every frame, only to transform it.
+    static let wedge: Path = {
         var path = Path()
         path.move(to: CGPoint(x: 0.5, y: 0.0))
         path.addLine(to: CGPoint(x: 0.92, y: 0.9))
@@ -89,13 +93,13 @@ enum AircraftSilhouette {
         path.addLine(to: CGPoint(x: 0.08, y: 0.9))
         path.closeSubpath()
         return path
-    }
+    }()
 
     // MARK: - Planforms
 
     /// High straight wing, deep nose, broad tailplane: the shape of a
     /// short-field turboprop seen from above.
-    private static var turboprop: Path {
+    private static let turboprop: Path = {
         var path = Path()
         path.move(to: CGPoint(x: 0.50, y: 0.00))
         path.addQuadCurve(to: CGPoint(x: 0.57, y: 0.20),
@@ -122,10 +126,10 @@ enum AircraftSilhouette {
                           control: CGPoint(x: 0.43, y: 0.07))
         path.closeSubpath()
         return path
-    }
+    }()
 
     /// Slim fuselage, modest sweep, tall T-tail — a regional jet.
-    private static var regionalJet: Path {
+    private static let regionalJet: Path = {
         var path = Path()
         path.move(to: CGPoint(x: 0.50, y: 0.00))
         path.addQuadCurve(to: CGPoint(x: 0.56, y: 0.22),
@@ -150,10 +154,10 @@ enum AircraftSilhouette {
                           control: CGPoint(x: 0.44, y: 0.08))
         path.closeSubpath()
         return path
-    }
+    }()
 
     /// The familiar single-aisle: pronounced sweep, wing at mid-body.
-    private static var narrowbody: Path {
+    private static let narrowbody: Path = {
         var path = Path()
         path.move(to: CGPoint(x: 0.50, y: 0.00))
         path.addQuadCurve(to: CGPoint(x: 0.57, y: 0.20),
@@ -178,11 +182,11 @@ enum AircraftSilhouette {
                           control: CGPoint(x: 0.43, y: 0.06))
         path.closeSubpath()
         return path
-    }
+    }()
 
     /// Twin-aisle: a wide body, long span, and four visible engine pylons —
     /// the notch pattern is what makes it read as "big" at small sizes.
-    private static var widebody: Path {
+    private static let widebody: Path = {
         var path = Path()
         path.move(to: CGPoint(x: 0.50, y: 0.00))
         path.addQuadCurve(to: CGPoint(x: 0.60, y: 0.18),
@@ -214,7 +218,7 @@ enum AircraftSilhouette {
                           control: CGPoint(x: 0.40, y: 0.05))
         path.closeSubpath()
         return path
-    }
+    }()
 
     // MARK: - Placement
 

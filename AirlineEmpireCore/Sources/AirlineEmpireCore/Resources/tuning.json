@@ -194,5 +194,39 @@
   "fuelMaxFactor": 2.2,
   "fuelMeanReversion": 0.02,
   "fuelMinFactor": 0.6
+ },
+ "aircraftConfiguration": {
+  "firstYield": 3.2,
+  "businessYield": 1.85,
+  "premiumEconomyYield": 1.35,
+  "economyYield": 1.0,
+  "premiumComfortWeight": 0.22,
+  "comfortPerUpgradeLevel": 0.025,
+  "seatChangeCost": {
+   "cents": 25000
+  },
+  "equipmentPerSeatPerLevel": {
+   "cents": 12000
+  },
+  "wifiPerPassengerPerLevel": {
+   "cents": 75
+  },
+  "diningPerPassengerPerLevel": {
+   "cents": 200
+  },
+  "seatsPerPassengerPerLevel": {
+   "cents": 50
+  },
+  "entertainmentPerPassengerPerLevel": {
+   "cents": 75
+  }
+ },
+ "airportFacilities": {
+  "loungeInstallation": {"cents": 15000000},
+  "groundInstallation": {"cents": 10000000},
+  "loungeMonthly": {"cents": 1500000},
+  "groundMonthly": {"cents": 1000000},
+  "loungeComfortPerLevel": 0.04,
+  "groundRiskReductionPerLevel": 0.1
  }
 }

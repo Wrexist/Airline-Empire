@@ -136,6 +136,20 @@ make money" breakdown).
   alike; Phase 10 layers AI-specific cleanup, Phase 12 the player game-over
   flow.
 
+### Finance breakdown (2026-09-16)
+
+`FinanceBreakdown` (`AirlineEmpireCore/Session/FinanceBreakdown.swift`) is the
+Finance screen's read model: `MonthFlow` splits this month's ledger postings by
+P&L classification (operating, financing, capital — with `netCashChange`
+explicitly separate from `operatingProfit`), `RecurringCommitments` quotes the
+charges the monthly systems will bill (leases, loan payments, station services,
+payroll at today's fleet and routes, base overhead), and the latest closed
+statement is exposed with it. `Ledger.monthTotals(for:)` is the read-only
+accessor beside the existing drain; nothing else changed in the simulation. The
+screen groups operating result, cash movements and commitments, labels each
+period, and links an expense to the screen that owns the decision. See
+docs/FINANCE_REVIEW.md for the audit and evidence.
+
 ### Test coverage (14 new; 144 total)
 Fuel band + variability over 2 years; economy visits boom and bust over 8
 years; annuity math (incl. zero-rate); loan lifecycle to full amortization

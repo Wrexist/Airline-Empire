@@ -92,7 +92,35 @@ struct LoanTests {
             airline: airline, amount: Money.dollars(5_000_000), termMonths: 60))
         #expect(engine.applyNow(RepayLoanCommand(airline: airline, loanIndex: 0)) == .applied)
         #expect(engine.state.airlines[airline]!.loans.isEmpty)
+        // Repaid the instant it was drawn: no time held, no interest.
         #expect(engine.state.ledger.balance(of: airline) == Money.dollars(20_000_000))
+    }
+
+    /// Interest is only charged at month boundaries, and early payoff used to
+    /// settle principal alone: a loan drawn and repaid inside one month cost
+    /// nothing. The days held are now owed at payoff.
+    @Test func earlyRepaymentPaysInterestForTheDaysHeld() throws {
+        let (_, engine, airline) = try FleetFixtures.catalogAndEngine(
+            cash: Money.dollars(20_000_000))
+        #expect(engine.applyNow(TakeLoanCommand(
+            airline: airline, amount: Money.dollars(5_000_000), termMonths: 60)) == .applied)
+        let loan = try #require(engine.state.airlines[airline]?.loans.first)
+
+        // Ten days into January: no boundary, so no loan service yet.
+        engine.advance(ticks: Fixtures.ticksPerDay * 10)
+        let before = engine.state.ledger.balance(of: airline)
+        #expect(engine.applyNow(RepayLoanCommand(airline: airline, loanIndex: 0)) == .applied)
+        #expect(engine.state.airlines[airline]!.loans.isEmpty)
+
+        let interest = -engine.state.ledger.recent
+            .filter { $0.airline == airline && $0.category == .loanInterest }
+            .reduce(Money.zero) { $0 + $1.amount }
+        // Ten of January's 31 days at the loan's monthly rate.
+        let expected = loan.principalRemaining.asDouble * loan.monthlyRate * 10 / 31
+        #expect(interest > .zero)
+        #expect(abs(interest.asDouble - expected) < 0.02)
+        #expect(engine.state.ledger.balance(of: airline)
+                == before - loan.principalRemaining - interest)
     }
 }
 

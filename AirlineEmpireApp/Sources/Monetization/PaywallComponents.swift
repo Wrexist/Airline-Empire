@@ -196,6 +196,8 @@ struct PaywallStatBar: View {
 /// What Pro unlocks: two columns at reading sizes, one when the type grows.
 struct PaywallBenefits: View {
     @Environment(\.dynamicTypeSize) private var typeSize
+    /// What raised the paywall; its own benefit is listed first.
+    var gate: ProGate = .direct
 
     private var columns: Int { typeSize.isAccessibilitySize ? 1 : 2 }
 
@@ -206,7 +208,7 @@ struct PaywallBenefits: View {
                 .tracking(1.2)
                 .foregroundStyle(.secondary)
 
-            let rows = Self.chunk(PaywallContent.benefits, into: columns)
+            let rows = Self.chunk(PaywallContent.benefits(leadingWith: gate), into: columns)
             VStack(alignment: .leading, spacing: AETheme.spacingM) {
                 ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                     HStack(alignment: .top, spacing: AETheme.spacingM) {

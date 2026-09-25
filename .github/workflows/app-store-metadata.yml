@@ -57,6 +57,11 @@ on:
         description: 'Only plan or fill the three prepared purchase review images'
         type: boolean
         default: false
+      submit_for_review:
+        description: 'App Review submission: plan reads it, attach adds the app version to the open submission, submit also sends it, retarget moves to a new version with its purchases'
+        type: choice
+        options: [off, plan, attach, submit, retarget-plan, retarget, retarget-submit]
+        default: off
 
 concurrency:
   # One writer at a time. Two concurrent pushes to the same listing would
@@ -88,6 +93,14 @@ jobs:
         run: |
           node scripts/asc/audit-beta-crashes.mjs
           node scripts/asc/audit-territories.mjs
+      # What App Review actually has: the review submission and the items in it.
+      # Guideline 2.1(b) is a fact about the submission, not about the products.
+      - name: Read the review submission
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+        run: node scripts/asc/audit-review-submission.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: apple-beta-crash-audit
@@ -161,8 +174,14 @@ jobs:
             exit 1
           fi
 
+      # Submitting locks the version: Apple refuses metadata edits on a version
+      # in review ("Version 1.0 is READY_FOR_REVIEW and does not accept metadata
+      # edits"). Pushing and submitting in the same dispatch therefore has to be
+      # sequenced, not raced - metadata first, then the submission - and a
+      # submit-only dispatch skips this step instead of going red for a refusal
+      # that is correct.
       - name: Push metadata
-        if: '!inputs.screenshots_only && !inputs.urls_only'
+        if: '!inputs.screenshots_only && !inputs.urls_only && inputs.submit_for_review != ''submit'' && inputs.submit_for_review != ''retarget-submit'' && inputs.submit_for_review != ''retarget'''
         run: |
           node scripts/asc/push-metadata.mjs \
             --version "${{ inputs.version }}" \
@@ -211,6 +230,65 @@ jobs:
         run: |
           echo "::notice::The listing is written. Nothing has been submitted for review."
           echo "Attach a build and submit from App Store Connect when the release is ready."
+
+  # Guideline 2.1(b): App Review rejected 1.0 because the three Pro products were
+  # not in the submission. The products are READY_TO_SUBMIT with complete review
+  # images; what is missing is the app version in the same submission. This job
+  # is off by default and refuses to be reached by accident.
+  submit-review:
+    if: inputs.submit_for_review != 'off'
+    # After `push`, deliberately: metadata must land before the version is
+    # submitted, because submitting locks it.
+    needs: [validate, push]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # The same three acts of intent as a listing write. attach, submit,
+      # retarget and retarget-submit all change App Review state, so a dropdown
+      # choice alone must not reach Apple: they need mode=apply and APPLY typed.
+      - name: Check the confirmation for a submission write
+        env:
+          SUBMIT_ACTION: ${{ inputs.submit_for_review }}
+          RUN_MODE: ${{ inputs.mode }}
+          RUN_CONFIRM: ${{ inputs.confirm }}
+        run: |
+          case "$SUBMIT_ACTION" in
+            plan|retarget-plan) exit 0 ;;
+          esac
+          if [ "$RUN_MODE" != "apply" ] || [ "$RUN_CONFIRM" != "APPLY" ]; then
+            echo "::error::submit_for_review=$SUBMIT_ACTION writes to App Review; it requires mode=apply and the confirm box to contain exactly APPLY."
+            exit 1
+          fi
+      - name: Attach the version, and submit when asked
+        env:
+          SUBMIT_ACTION: ${{ inputs.submit_for_review }}
+          STORE_VERSION: ${{ inputs.version }}
+        run: |
+          case "$SUBMIT_ACTION" in
+            plan)            node scripts/asc/submit-for-review.mjs --version "$STORE_VERSION" ;;
+            attach)          node scripts/asc/submit-for-review.mjs --version "$STORE_VERSION" --apply ;;
+            submit)          node scripts/asc/submit-for-review.mjs --version "$STORE_VERSION" --apply --submit ;;
+            retarget-plan)   node scripts/asc/resubmit-version.mjs --version "$STORE_VERSION" ;;
+            retarget)        node scripts/asc/resubmit-version.mjs --version "$STORE_VERSION" --apply ;;
+            retarget-submit) node scripts/asc/resubmit-version.mjs --version "$STORE_VERSION" --apply --submit ;;
+            *) echo "::error::Unhandled submit_for_review value"; exit 1 ;;
+          esac
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: review-submission-report
+          path: apple-audit/submit-for-review.json
+          retention-days: 45
 
   purchase-review-images:
     if: inputs.review_images

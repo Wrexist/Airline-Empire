@@ -1,0 +1,82 @@
+[
+  {
+    "id": "com.airlineempire.game.achievement.firstFlight",
+    "file": "achievements/firstFlight.png"
+  },
+  {
+    "id": "com.airlineempire.game.achievement.firstOwnedAircraft",
+    "file": "achievements/firstOwnedAircraft.png"
+  },
+  {
+    "id": "com.airlineempire.game.achievement.firstProfitableMonth",
+    "file": "achievements/firstProfitableMonth.png"
+  },
+  {
+    "id": "com.airlineempire.game.achievement.eraRegional",
+    "file": "achievements/eraRegional.png"
+  },
+  {
+    "id": "com.airlineempire.game.achievement.fleet10",
+    "file": "achievements/fleet10.png"
+  },
+  {
+    "id": "com.airlineempire.game.achievement.destinations10",
+    "file": "achievements/destinations10.png"
+  },
+  {
+    "id": "com.airlineempire.game.achievement.passengers100k",
+    "file": "achievements/passengers100k.png"
+  },
+  {
+    "id": "com.airlineempire.game.achievement.firstMillionMonth",
+    "file": "achievements/firstMillionMonth.png"
+  },
+  {
+    "id": "com.airlineempire.game.achievement.eraNational",
+    "file": "achievements/eraNational.png"
+  },
+  {
+    "id": "com.airlineempire.game.achievement.firstIntercontinental",
+    "file": "achievements/firstIntercontinental.png"
+  },
+  {
+    "id": "com.airlineempire.game.achievement.eraInternational",
+    "file": "achievements/eraInternational.png"
+  },
+  {
+    "id": "com.airlineempire.game.achievement.passengers1m",
+    "file": "achievements/passengers1m.png"
+  },
+  {
+    "id": "com.airlineempire.game.achievement.eraEmpire",
+    "file": "achievements/eraEmpire.png"
+  },
+  {
+    "id": "com.airlineempire.game.achievement.debtFree",
+    "file": "achievements/debtFree.png"
+  },
+  {
+    "id": "com.airlineempire.game.achievement.weatherProof",
+    "file": "achievements/weatherProof.png"
+  },
+  {
+    "id": "com.airlineempire.game.achievement.valueLegend",
+    "file": "achievements/valueLegend.png"
+  },
+  {
+    "id": "com.airlineempire.game.achievement.purist",
+    "file": "achievements/purist.png"
+  },
+  {
+    "id": "com.airlineempire.game.leaderboard.passengers",
+    "file": "leaderboards/passengers.png"
+  },
+  {
+    "id": "com.airlineempire.game.leaderboard.destinations",
+    "file": "leaderboards/destinations.png"
+  },
+  {
+    "id": "com.airlineempire.game.leaderboard.fleet",
+    "file": "leaderboards/fleet.png"
+  }
+]

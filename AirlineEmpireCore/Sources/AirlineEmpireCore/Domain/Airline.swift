@@ -26,6 +26,8 @@ public struct Airline: Equatable, Codable, Sendable {
     public var aiProfile: AIProfile?
     /// Same-day ops counters, reset daily by ReputationSystem.
     public var opsToday: DailyOps
+    public var airportFacilities: [AirportCode: AirportFacilities]?
+    public var airportFacilityHistory: [AirportFacilityChange]?
 
     public init(id: AirlineID, name: String, kind: AirlineKind,
                 homeAirport: AirportCode, foundedAt: SimTime) {

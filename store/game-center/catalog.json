@@ -1,0 +1,50 @@
+{
+  "$comment": [
+    "Game Center configuration for App Store Connect, mirrored from",
+    "AirlineEmpireCore/Sources/AirlineEmpireCore/Session/GameCenterCatalog.swift.",
+    "IDs, points and titles must match that file exactly; `render.mjs --check`",
+    "fails if they drift. Descriptions are App Store Connect's pre-earned and",
+    "earned text (max 255 characters each)."
+  ],
+  "achievements": [
+    {"suffix": "firstFlight", "points": 20, "title": "First flight", "icon": "flight_takeoff", "hidden": false,
+     "preEarned": "Fly your airline's first passenger service.", "earned": "Your first flight left the gate — and brought in your first ticket money."},
+    {"suffix": "firstOwnedAircraft", "points": 15, "title": "First aircraft of your own", "icon": "key", "hidden": false,
+     "preEarned": "Buy an aircraft outright instead of leasing it.", "earned": "You own an aircraft outright. No lease, no landlord."},
+    {"suffix": "firstProfitableMonth", "points": 25, "title": "First profitable month", "icon": "trending_up", "hidden": false,
+     "preEarned": "Close a month with your airline in profit.", "earned": "A whole month in the black. The airline pays its own way."},
+    {"suffix": "eraRegional", "points": 30, "title": "Regional carrier", "icon": "map", "hidden": false,
+     "preEarned": "Grow your startup into a regional airline.", "earned": "You run a regional airline, with a network people rely on."},
+    {"suffix": "fleet10", "points": 40, "title": "A fleet of ten", "icon": "flight", "hidden": false,
+     "preEarned": "Operate ten aircraft at once.", "earned": "Ten aircraft in your colours."},
+    {"suffix": "destinations10", "points": 40, "title": "Ten destinations", "icon": "hub", "hidden": false,
+     "preEarned": "Serve ten different airports.", "earned": "Ten airports on your route map."},
+    {"suffix": "passengers100k", "points": 50, "title": "100,000 passengers", "icon": "groups", "hidden": false,
+     "preEarned": "Carry 100,000 passengers.", "earned": "One hundred thousand people have flown with you."},
+    {"suffix": "firstMillionMonth", "points": 60, "title": "First million-dollar month", "icon": "payments", "hidden": false,
+     "preEarned": "Earn a million dollars of profit in a single month.", "earned": "A million-dollar month. The airline is a real business now."},
+    {"suffix": "eraNational", "points": 60, "title": "National airline", "icon": "travel_explore", "hidden": false,
+     "preEarned": "Grow into a national airline.", "earned": "A national airline, with the reputation to match."},
+    {"suffix": "firstIntercontinental", "points": 70, "title": "First intercontinental route", "icon": "connecting_airports", "hidden": false,
+     "preEarned": "Open a route between two continents.", "earned": "Your first route across an ocean."},
+    {"suffix": "eraInternational", "points": 80, "title": "International airline", "icon": "public", "hidden": false,
+     "preEarned": "Grow into an international airline.", "earned": "Your airline flies the world."},
+    {"suffix": "passengers1m", "points": 90, "title": "One million passengers", "icon": "diversity_3", "hidden": false,
+     "preEarned": "Carry one million passengers.", "earned": "A million passengers have trusted you to get them there."},
+    {"suffix": "eraEmpire", "points": 100, "title": "Airline empire", "icon": "emoji_events", "hidden": false,
+     "preEarned": "Build an airline empire.", "earned": "From one aircraft on one route to an airline empire."},
+    {"suffix": "debtFree", "points": 80, "title": "Debt free", "icon": "savings", "hidden": false,
+     "preEarned": "Run a substantial airline with no debt at all.", "earned": "A real airline, and not a cent owed to anyone."},
+    {"suffix": "weatherProof", "points": 80, "title": "Weatherproof", "icon": "thunderstorm", "hidden": false,
+     "preEarned": "Keep flight completion above 97% across hundreds of flights.", "earned": "Storms, fog and snow — and your flights still went."},
+    {"suffix": "valueLegend", "points": 80, "title": "Value legend", "icon": "workspace_premium", "hidden": false,
+     "preEarned": "Hold an outstanding value reputation for a full season.", "earned": "Passengers know your fares are worth it."},
+    {"suffix": "purist", "points": 80, "title": "Single-family purist", "icon": "diamond", "hidden": false,
+     "preEarned": "Build your whole fleet from one manufacturer.", "earned": "One manufacturer, one fleet, perfect commonality."}
+  ],
+  "leaderboards": [
+    {"suffix": "passengers", "title": "Passengers flown", "icon": "groups", "format": "Integer", "unit": "passengers", "sort": "High to low", "type": "Classic, all time"},
+    {"suffix": "destinations", "title": "Largest network", "icon": "hub", "format": "Integer", "unit": "destinations", "sort": "High to low", "type": "Classic, all time"},
+    {"suffix": "fleet", "title": "Largest fleet", "icon": "flight", "format": "Integer", "unit": "aircraft", "sort": "High to low", "type": "Classic, all time"}
+  ]
+}

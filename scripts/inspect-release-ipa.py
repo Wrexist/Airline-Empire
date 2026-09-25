@@ -45,8 +45,26 @@ def inspect(path, version, build):
                 errors.append('Privacy tracking must explicitly be false')
             if privacy.get('NSPrivacyTrackingDomains', []):
                 errors.append('Tracking domains contradict the declared privacy label')
-            if privacy.get('NSPrivacyCollectedDataTypes', []):
-                errors.append('Collected data types contradict Data Not Collected')
+            # The published App Store label (docs/REVENUECAT_SETUP_2026-09-23.md)
+            # declares exactly one collected type: anonymous Purchase History
+            # for App Functionality and Analytics, not linked, not tracking.
+            # The manifest must say the same and nothing more; the old rule
+            # ("no collected types at all") rejected every build carrying the
+            # RevenueCat disclosure.
+            for item in privacy.get('NSPrivacyCollectedDataTypes', []):
+                if item.get('NSPrivacyCollectedDataType') != 'NSPrivacyCollectedDataTypePurchaseHistory':
+                    errors.append(f"Collected data type {item.get('NSPrivacyCollectedDataType')!r} "
+                                  'is not on the published privacy label')
+                    continue
+                if item.get('NSPrivacyCollectedDataTypeLinked') is not False:
+                    errors.append('Purchase History must be declared not linked to identity')
+                if item.get('NSPrivacyCollectedDataTypeTracking') is not False:
+                    errors.append('Purchase History must be declared not used for tracking')
+                purposes = set(item.get('NSPrivacyCollectedDataTypePurposes', []))
+                allowed = {'NSPrivacyCollectedDataTypePurposeAppFunctionality',
+                           'NSPrivacyCollectedDataTypePurposeAnalytics'}
+                if not purposes or not purposes.issubset(allowed):
+                    errors.append('Purchase History purposes differ from the published label')
             defaults = [x for x in privacy.get('NSPrivacyAccessedAPITypes', [])
                         if x.get('NSPrivacyAccessedAPIType') == 'NSPrivacyAccessedAPICategoryUserDefaults']
             if len(defaults) != 1 or 'CA92.1' not in defaults[0].get('NSPrivacyAccessedAPITypeReasons', []):

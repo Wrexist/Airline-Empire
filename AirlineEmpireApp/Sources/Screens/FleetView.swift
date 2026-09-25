@@ -36,40 +36,32 @@ struct FleetList: View {
                         .aeEmptyStatePlacement()
                 } else {
                     List {
-                        if let summary = controller.fleetSummary {
-                            FleetSummaryRow(summary: summary)
+                        if let summary = controller.fleetSummary,
+                           let board = controller.fleetBoard {
+                            FleetSummaryRow(summary: summary, board: board)
                                 .aeListRow()
-                        }
-                        // The fleet board's own next move. An idle airframe
-                        // is the one thing on this screen that costs money
-                        // per hour for nothing, the summary strip already
-                        // counts them in orange — and counting was as far as
-                        // the screen went (tasks/BUGS.md BUG-059). This is
-                        // the same fact with somewhere to press.
-                        if let idle = firstIdle(all) {
-                            NavigationLink(value: idle.id) {
-                                Label {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("\(idleCount(all)) idle \(idleCount(all) == 1 ? "aircraft needs" : "aircraft need") a route")
-                                            .font(.subheadline.weight(.semibold))
-                                        Text("Assign \(idle.typeName) at \(idle.location.raw)")
-                                            .font(.caption).foregroundStyle(AETheme.mutedText)
-                                    }
-                                } icon: {
-                                    Image(systemName: "pause.circle.fill")
-                                        .foregroundStyle(AETheme.caution)
-                                }
-                                .frame(minHeight: 44)
-                            }
-                            .aeListRow()
-                            .accessibilityIdentifier("ae-fleet-next-step")
                         }
                         // The bar only appears once there are enough aircraft
                         // for scanning to be work. At four aeroplanes a filter
                         // is a control that costs a row and saves nothing.
+                        //
+                        // It stays directly under the summary, where it has
+                        // always been: the health board below it is the longer
+                        // element, and moving the filter under the board would
+                        // push a control players already reach for down the
+                        // screen.
                         if all.count >= 8 || filter.isNarrowed {
                             FleetFilterBar(filter: $filter,
                                            categories: all.presentCategories)
+                                .aeListRow()
+                        }
+                        // The fleet's own to-do list: idle airframes, the ones
+                        // closing on a check, a lease coming up, and what
+                        // cannot fly at all. BUG-059's finding was that the
+                        // board counted idle aeroplanes and went no further;
+                        // this names each one and links to its actions.
+                        if let board = controller.fleetBoard, !board.rows.isEmpty {
+                            FleetHealthBoard(board: board)
                                 .aeListRow()
                         }
                         if cards.isEmpty {
@@ -90,7 +82,11 @@ struct FleetList: View {
                             .aeListRow()
                         }
                         ForEach(cards, id: \.id) { card in
-                            NavigationLink(value: card.id) {
+                            // The list is the way into an aircraft's cabin
+                            // (AE-049), idle or not; the board above is the
+                            // way into its decisions.
+                            NavigationLink(value: AircraftDetailLink(aircraftID: card.id,
+                                                                     section: .cabin)) {
                                 FleetRow(card: card, catalog: catalog)
                             }
                             .aeListRow()
@@ -106,7 +102,8 @@ struct FleetList: View {
                     // leaves as aircraft are given work, and it should do
                     // that as a movement rather than as a flicker.
                     .aeAnimation(AEMotion.content, value: cards.count)
-                    .aeAnimation(AEMotion.content, value: idleCount(all))
+                    .aeAnimation(AEMotion.content,
+                                 value: controller.fleetBoard?.needsDecision.count ?? 0)
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) { sortMenu }
                     }
@@ -114,6 +111,12 @@ struct FleetList: View {
             } else {
                 LoadingState(message: "Loading your fleet")
             }
+        }
+        // Registered here rather than on each stack that shows the fleet:
+        // only this screen pushes the type, and it is pushed from four
+        // stacks (the Airline tab, the briefing, Finance and Reputation).
+        .navigationDestination(for: AircraftDetailLink.self) { link in
+            AircraftDetailView(aircraftID: link.aircraftID, initialSection: link.section)
         }
     }
 
@@ -143,17 +146,6 @@ struct FleetList: View {
         case .condition:
             return cards.sorted { $0.condition < $1.condition }
         }
-    }
-
-    /// Aircraft that could fly and are not. `sorted(_:)` already puts them
-    /// first under the default order, but the prompt has to be right whatever
-    /// the player has sorted by, so it is found rather than assumed.
-    private func firstIdle(_ cards: [FleetCardModel]) -> FleetCardModel? {
-        cards.first { $0.assignedRoute == nil && $0.status.isActive }
-    }
-
-    private func idleCount(_ cards: [FleetCardModel]) -> Int {
-        cards.filter { $0.assignedRoute == nil && $0.status.isActive }.count
     }
 
     private func statusRank(_ card: FleetCardModel) -> Int {
@@ -284,15 +276,23 @@ struct FleetFilterBar: View {
 /// condition and is tested against the cards it summarises.
 struct FleetSummaryRow: View {
     let summary: FleetSummary
+    let board: FleetBoard
 
     private var details: [AEMetric] {
         var list = [
             AEMetric("In use", summary.utilization.map(Format.percent) ?? "\u{2014}"),
             AEMetric("Average age", summary.averageAgeYears.map { "\(Format.decimal($0, places: 0)) y" } ?? "\u{2014}"),
             AEMetric("Condition", summary.averageCondition.map(Format.percent) ?? "\u{2014}"),
-            AEMetric("In maintenance", "\(summary.inMaintenance)"),
+            AEMetric("Needs a decision", "\(board.needsDecision.count)"),
+            AEMetric("In check", "\(summary.inMaintenance)"),
             AEMetric("On order", "\(summary.onOrder)")
         ]
+        if board.lowConditionCount > 0 {
+            list.append(AEMetric("Condition low", "\(board.lowConditionCount)"))
+        }
+        if board.leaseEndingCount > 0 {
+            list.append(AEMetric("Leases ending", "\(board.leaseEndingCount)"))
+        }
         if summary.leasedCount > 0 {
             list.append(AEMetric("Monthly leases", Format.money(summary.monthlyLeaseCost)))
         }
@@ -306,6 +306,183 @@ struct FleetSummaryRow: View {
             AEMetric("idle", "\(summary.idle)", tint: summary.idle > 0 ? AETheme.caution : nil)
         ], details: details, identifier: "ae-fleet-statistics")
         .accessibilityLabel("Fleet summary")
+    }
+}
+
+/// The fleet's to-do list, ranked and grouped.
+///
+/// The summary strip counts idle aircraft and the list below holds every
+/// aeroplane; neither answers "which one wants me now". This does: the flyable
+/// aircraft with something to act on, then the ones that simply cannot fly
+/// today, each row a link to that aircraft's own screen and actions.
+///
+/// It is deliberately short — four rows a group, with the rest left to the
+/// list — so the board stays a priority list rather than a second copy of the
+/// fleet.
+struct FleetHealthBoard: View {
+    @Environment(GameController.self) private var controller
+    let board: FleetBoard
+
+    private var isClear: Bool {
+        board.needsDecision.isEmpty && board.unavailable.isEmpty
+    }
+
+    var body: some View {
+        AEPanel {
+            VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                HStack(spacing: AETheme.spacingS) {
+                    AESectionHeader(text: "Fleet health", systemImage: "stethoscope")
+                    Spacer(minLength: AETheme.spacingS)
+                    if isClear {
+                        AEBadge(text: "all clear", color: AETheme.positive,
+                                icon: "checkmark")
+                    } else if !board.dueSoon.isEmpty {
+                        AEBadge(text: "\(board.dueSoon.count) check\(board.dueSoon.count == 1 ? "" : "s") due",
+                                color: AETheme.caution, icon: "wrench")
+                    }
+                }
+                if isClear {
+                    Text("Every available aircraft is flying. Checks, deliveries and lease renewals appear here when they are due.")
+                        .font(.caption).foregroundStyle(AETheme.mutedText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                group("Needs a decision", rows: board.needsDecision)
+                group("Unavailable", rows: board.unavailable)
+                if !board.dueSoon.isEmpty {
+                    Text("Checks estimated within \(Format.days(FleetAttentionThresholds.checkSoonDays)) are quoted at \(Format.money(board.dueSoonCost)) in total.")
+                        .font(.caption2).foregroundStyle(AETheme.mutedText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Fleet health")
+        .accessibilityIdentifier("ae-fleet-health")
+    }
+
+    @ViewBuilder
+    private func group(_ title: String, rows: [FleetBoard.Row]) -> some View {
+        if !rows.isEmpty {
+            VStack(alignment: .leading, spacing: AETheme.spacingXS) {
+                Text(title.uppercased())
+                    .font(AEType.eyebrow)
+                    .foregroundStyle(AETheme.mutedText)
+                    .accessibilityAddTraits(.isHeader)
+                ForEach(rows.prefix(4), id: \.aircraftID) { row in
+                    // Every row here is a decision — a route, a sale, a
+                    // return — and those live under Operations. Opening on
+                    // the seat map sent the player looking for them.
+                    NavigationLink(value: AircraftDetailLink(aircraftID: row.aircraftID,
+                                                             section: .operations)) {
+                        FleetHealthRow(row: row,
+                                       startYear: controller.snapshot?.meta.startYear ?? 2030)
+                    }
+                    .buttonStyle(.aePress)
+                    .accessibilityIdentifier("ae-fleet-health-row")
+                }
+                if rows.count > 4 {
+                    Text("+\(rows.count - 4) more in the list below")
+                        .font(.caption2).foregroundStyle(AETheme.mutedText)
+                }
+            }
+        }
+    }
+}
+
+/// One aircraft on the board, in the same shape as every other so two can be
+/// compared: what it is, where it is, what is wrong with it, and — when the
+/// check is close — what it is quoted to cost.
+struct FleetHealthRow: View {
+    let row: FleetBoard.Row
+    let startYear: Int
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    var body: some View {
+        Group {
+            // The badges need the row's full width at accessibility sizes; an
+            // HStack beside the icon squeezed them into one syllable a line.
+            // No chevron of its own: the List draws one for the link.
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: AETheme.spacingXS) {
+                    Text(row.card.typeName).font(.subheadline.weight(.semibold))
+                    whereText
+                    chips
+                }
+            } else {
+                HStack(alignment: .top, spacing: AETheme.spacingS) {
+                    AEClayIcon(systemName: Vocab.categoryIcon(row.card.category), size: 34)
+                    VStack(alignment: .leading, spacing: 3) {
+                        // Two lines, not one: at one, "Pacifica PA-184
+                        // Current" lost the word that tells two variants
+                        // apart, which is the one word this row needs.
+                        Text(row.card.typeName)
+                            .font(.subheadline.weight(.semibold))
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                        whereText
+                        chips
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityText)
+    }
+
+    private var whereText: some View {
+        Text(whereLine)
+            .font(.caption).foregroundStyle(AETheme.mutedText)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder
+    private var chips: some View {
+        if !row.issues.isEmpty || showsCheckChip {
+            AEChipRow {
+                ForEach(row.issues, id: \.self) { issue in
+                    AEBadge(text: "\(Vocab.fleetIssue(issue)) · \(Vocab.fleetIssueDetail(issue, row: row))",
+                            color: AETheme.caution,
+                            icon: Vocab.fleetIssueIcon(issue))
+                }
+                if showsCheckChip, let days = row.checkDueInDays {
+                    AEBadge(text: "Check in \(days)d · \(Format.money(row.checkCost))",
+                            color: AETheme.caution, icon: "wrench")
+                }
+            }
+        }
+    }
+
+    private var showsCheckChip: Bool {
+        row.availability.isAvailable
+            && (row.checkDueInDays ?? .max) <= FleetAttentionThresholds.checkSoonDays
+    }
+
+    private var whereLine: String {
+        switch row.availability {
+        case .inCheck(let until):
+            return "In a check until \(Format.longDate(GameCalendar.date(at: until, startYear: startYear)))"
+        case .onOrder(let deliveryAt):
+            return "Arrives \(Format.longDate(GameCalendar.date(at: deliveryAt, startYear: startYear)))"
+        case .available:
+            if let assignment = row.assignment {
+                return "\(assignment.origin.raw) – \(assignment.destination.raw) · \(assignment.dailyRoundTrips)×/day"
+            }
+            return "Idle at \(row.card.location.raw)"
+        }
+    }
+
+    private var accessibilityText: String {
+        var parts = [row.card.typeName, whereLine]
+        for issue in row.issues {
+            parts.append("\(Vocab.fleetIssue(issue)) \(Vocab.fleetIssueDetail(issue, row: row))")
+        }
+        if showsCheckChip, let days = row.checkDueInDays {
+            parts.append("Check in \(Format.days(days)), \(Format.money(row.checkCost))")
+        }
+        return parts.joined(separator: ", ")
     }
 }
 
@@ -338,6 +515,44 @@ struct FleetRow: View {
             }
         }
         .padding(.vertical, 2)
+        // The chips are shorthand for the eye — "12y", "cond 85%", "/mo" —
+        // and VoiceOver read them letter for letter. The row says the same
+        // facts in words.
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityText)
+    }
+
+    private var accessibilityText: String {
+        var parts = [card.typeName, spokenStatus, spokenAge,
+                     "condition \(Format.percent(card.condition))"]
+        switch card.ownershipDescription {
+        case .owned(let book):
+            parts.append("owned, book value \(Format.moneyAccessibility(book))")
+        case .leased(let rate, _):
+            parts.append("leased at \(Format.moneyAccessibility(rate)) a month")
+        }
+        if card.assignedRoute == nil, card.status.isActive {
+            parts.append("idle")
+        }
+        return parts.joined(separator: ", ")
+    }
+
+    private var spokenStatus: String {
+        switch card.status {
+        case .active: "at \(card.location.raw)"
+        case .ordered: "on order"
+        case .inMaintenance: "in a maintenance check"
+        }
+    }
+
+    /// Whole years, as the chip shows them.
+    private var spokenAge: String {
+        let years = Int(card.ageYears.rounded())
+        switch years {
+        case ..<1: return "less than a year old"
+        case 1: return "1 year old"
+        default: return "\(years) years old"
+        }
     }
 
     @ViewBuilder
@@ -353,6 +568,17 @@ struct FleetRow: View {
     }
 }
 
+/// A way into an aircraft that names the tab to open on.
+///
+/// A bare `AircraftID` opens wherever the aircraft's state says (see
+/// `AircraftDetailView.openingSection`). The fleet screen pushes this instead,
+/// because its two entry points want different tabs whatever the state: the
+/// list is the way into a cabin, the health board the way into a decision.
+struct AircraftDetailLink: Hashable {
+    let aircraftID: AircraftID
+    let section: AircraftDetailSection
+}
+
 /// One aircraft, in full — including the reliability and hours Core has always
 /// computed and no screen ever showed, and both destructive actions behind a
 /// confirmation with the money attached.
@@ -364,6 +590,24 @@ struct AircraftDetailView: View {
     /// `Menu`, because the menu was the wrong container for the decision —
     /// see `AssignRouteSheet`.
     @State private var assigning = false
+    /// The tab on show. Nil until it has been chosen — by the caller, by the
+    /// player, or on first appearance from the aircraft's state.
+    @State private var section: AircraftDetailSection?
+    @State private var changingAircraft = false
+    @State private var configurationDraft: AircraftConfiguration?
+
+    init(aircraftID: AircraftID, initialSection: AircraftDetailSection? = nil) {
+        self.aircraftID = aircraftID
+        _section = State(initialValue: initialSection)
+    }
+
+    /// Where an aircraft opens when nobody named a tab. One with no route
+    /// opens on Operations: choosing its route, selling it and returning it
+    /// all live there, and the seat map is not what an idle aeroplane — a
+    /// lease billing for nothing — needs first.
+    static func openingSection(for card: FleetCardModel) -> AircraftDetailSection {
+        card.assignedRoute == nil ? .operations : .cabin
+    }
 
     var body: some View {
         ScrollView {
@@ -372,12 +616,34 @@ struct AircraftDetailView: View {
                let catalog = controller.catalog,
                let card = controller.fleetCard(aircraftID),
                let spec = catalog.aircraftType(card.typeCode) {
+                let shown = section ?? Self.openingSection(for: card)
                 VStack(spacing: AETheme.spacingM) {
-                    identity(card, spec: spec)
-                    assignment(card, snapshot: snapshot, player: player.id, catalog: catalog)
-                    condition(card, spec: spec)
-                    ownership(card, spec: spec, player: player.id)
+                    AircraftOverviewCard(card: card, spec: spec) {
+                        changingAircraft = true
+                    }
+                    AircraftDetailTabs(selection: Binding(get: { shown },
+                                                          set: { section = $0 }))
+                    if shown != .operations, card.status.isActive, card.assignedRoute == nil {
+                        idleNotice(card)
+                    }
+                    if let aircraft = snapshot.aircraft[aircraftID] {
+                        switch shown {
+                        case .cabin, .upgrades:
+                            AircraftConfigurationEditor(aircraft: aircraft, spec: spec,
+                                snapshot: snapshot, catalog: catalog, section: shown, draft: $configurationDraft)
+                                .id(aircraftID)
+                        case .operations:
+                            assignment(card, snapshot: snapshot, player: player.id, catalog: catalog)
+                            ownership(card, spec: spec, player: player.id, catalog: catalog)
+                        case .condition:
+                            condition(card, spec: spec)
+                        case .history:
+                            AircraftHistoryCard(aircraft: aircraft, snapshot: snapshot)
+                            condition(card, spec: spec)
+                        }
+                    }
                 }
+                .frame(maxWidth: 920)
                 .aePageInsets()
             } else {
                 EmptyStateView(icon: "airplane.slash", title: "Aircraft gone",
@@ -398,58 +664,118 @@ struct AircraftDetailView: View {
         }.map(\.model) ?? "Aircraft")
         .navigationBarTitleDisplayMode(.inline)
         .aeTimeToolbar()
+        // Chosen once, on the way in. Chosen on every render instead, an
+        // idle aircraft given a route from Operations would jump to the
+        // cabin under the player's finger the moment the route took.
+        .onAppear {
+            if section == nil, let card = controller.fleetCard(aircraftID) {
+                section = Self.openingSection(for: card)
+            }
+        }
         .sheet(isPresented: $assigning) {
             AssignRouteSheet(aircraftID: aircraftID)
         }
-    }
-
-    /// The airline's livery, falling back to the accent before an airline
-    /// exists — this view is reachable only inside a game, but a colour that
-    /// resolves through an optional should say what it does when it cannot.
-    private var livery: Color {
-        // `Airline.livery` is non-optional, so `?.livery.map(_:)` would bind
-        // `map` inside the optional chain and not compile. Bind, then convert.
-        guard let livery = controller.snapshot?.playerAirline?.livery else {
-            return AETheme.accent
+        .sheet(isPresented: $changingAircraft) {
+            NavigationStack {
+                List(controller.fleetCards, id: \.id) { card in
+                    NavigationLink {
+                        AircraftDetailView(aircraftID: card.id)
+                    } label: {
+                        changeAircraftRow(card)
+                    }
+                }
+                // What is pushed from here links onward — a route's own
+                // screen lists its aircraft by `AircraftID` — and a link
+                // with no destination in its stack is silently dead.
+                .navigationDestination(for: RouteID.self) { RouteDetailView(routeID: $0) }
+                .navigationDestination(for: AircraftID.self) { AircraftDetailView(aircraftID: $0) }
+                .navigationTitle("Change Aircraft")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Done") { changingAircraft = false }
+                    }
+                }
+            }
         }
-        return Vocab.liveryColor(livery)
     }
 
-    private func identity(_ card: FleetCardModel, spec: AircraftTypeSpec) -> some View {
-        AECard {
-            VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                HStack(spacing: AETheme.spacingS) {
-                    // §10 asks for an aircraft visual here. The silhouette is
-                    // the airline's own livery colour, so a player's fleet
-                    // reads as theirs rather than as generic stock.
-                    AEAircraftMedallion(category: card.category, tint: livery, size: 76)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("\(spec.manufacturer) \(spec.model)").font(.headline)
-                        Text(Vocab.role(spec.role))
-                            .font(AEType.secondary)
-                            .foregroundStyle(AETheme.mutedText)
-                    }
-                    Spacer()
-                }
-                AEChipRow {
-                    AEChip(icon: "person.2.fill", text: "\(spec.seats) seats")
-                    AEChip(icon: "arrow.left.and.right", text: "\(spec.rangeKm) km")
-                    // Was `fuelBurnKgPerKm` whole — which says a widebody is
-                    // thirsty, which is true and useless, because it is also
-                    // carrying three times the passengers. The band compares
-                    // per seat, against the best in the catalogue, which is
-                    // the comparison a fleet decision actually turns on.
-                    if let band = controller.catalog?.seatEfficiency(of: spec) {
-                        AEChip(icon: "fuelpump.fill",
-                               text: Vocab.seatEfficiency(band))
-                    }
-                }
-                Text("Needs a \(Vocab.runway(spec.runwayRequirement).lowercased()) · cruises at \(spec.cruiseSpeedKmh) km/h · \(spec.turnaroundMinutes) min turnaround")
+    /// An idle aircraft opened on another tab — the fleet list opens the
+    /// cabin — still says what it needs, and takes the player there.
+    private func idleNotice(_ card: FleetCardModel) -> some View {
+        Button { section = .operations } label: {
+            HStack(spacing: AETheme.spacingS) {
+                Label("Idle at \(card.location.raw). Choose its route in Operations.",
+                      systemImage: "pause.circle.fill")
+                    .font(AEType.secondary.weight(.medium))
+                    .foregroundStyle(AETheme.caution)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
                     .font(.caption)
+                    .foregroundStyle(AETheme.mutedText)
+                    .accessibilityHidden(true)
+            }
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.aePress)
+        .accessibilityHint("Opens the Operations tab")
+    }
+
+    /// One row of the "Change Aircraft" list. Ten of one type used to be ten
+    /// identical lines; where each one is, and which one is open, is what
+    /// tells them apart.
+    private func changeAircraftRow(_ card: FleetCardModel) -> some View {
+        let isCurrent = card.id == aircraftID
+        return HStack(spacing: AETheme.spacingS) {
+            Image(systemName: Vocab.categoryIcon(card.category))
+                .foregroundStyle(AETheme.accent)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(card.typeName)
+                    .font(AEType.body.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(changeAircraftSubtitle(card))
+                    .font(AEType.secondary)
                     .foregroundStyle(AETheme.mutedText)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            Spacer(minLength: AETheme.spacingS)
+            if isCurrent {
+                Image(systemName: "checkmark")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(AETheme.accent)
+                    .accessibilityHidden(true)
+            }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(isCurrent ? .isSelected : [])
+    }
+
+    private func changeAircraftSubtitle(_ card: FleetCardModel) -> String {
+        if let routeID = card.assignedRoute, let route = controller.snapshot?.routes[routeID] {
+            return "\(route.origin.raw) – \(route.destination.raw) · \(route.dailyRoundTrips)×/day"
+        }
+        switch card.status {
+        case .ordered(let deliveryAt):
+            guard let startYear = controller.snapshot?.meta.startYear else { return "On order" }
+            let date = GameCalendar.date(at: deliveryAt, startYear: startYear)
+            return "On order · arrives \(Format.longDate(date))"
+        case .inMaintenance:
+            return "In a check at \(card.location.raw)"
+        case .active:
+            return "Idle at \(card.location.raw)"
+        }
+    }
+
+    /// The on-order line, with the date. "Until it is delivered" left the
+    /// player to find out when — for a new build, anything up to two years.
+    private func onOrderLine(_ card: FleetCardModel, startYear: Int) -> String {
+        guard case .ordered(let deliveryAt) = card.status else {
+            return "On order — it cannot fly until it is delivered."
+        }
+        let date = GameCalendar.date(at: deliveryAt, startYear: startYear)
+        return "On order — arrives \(Format.longDate(date)). It cannot fly until then."
     }
 
     private func assignment(_ card: FleetCardModel, snapshot: GameState,
@@ -474,17 +800,30 @@ struct AircraftDetailView: View {
                         }
                         .frame(minHeight: 44)
                     }
+                    // Asked before it is offered: Core refuses an unassign
+                    // while the aircraft is working a flight, which is most
+                    // of an operating day, and the button used to find that
+                    // out by being pressed.
+                    let unassign = UnassignAircraftCommand(airline: player, aircraftID: card.id)
+                    let unassignBlocked = controller.precheck(unassign)
                     Button("Unassign") {
-                        controller.submit(UnassignAircraftCommand(
-                            airline: player, aircraftID: card.id))
+                        controller.submit(unassign)
                     }
                     .buttonStyle(.bordered)
                     .frame(minHeight: 44)
+                    .disabled(unassignBlocked != nil)
+                    if let unassignBlocked {
+                        Text(Rejections.present(unassignBlocked).inline)
+                            .font(.caption2)
+                            .foregroundStyle(AETheme.caution)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 } else if card.status.isOnOrder {
-                    Label("On order — it cannot fly until it is delivered.",
+                    Label(onOrderLine(card, startYear: snapshot.meta.startYear),
                           systemImage: "shippingbox")
                         .font(.subheadline)
                         .foregroundStyle(AETheme.mutedText)
+                        .fixedSize(horizontal: false, vertical: true)
                 } else {
                     // An unassigned aircraft in a check used to be described
                     // as "idle", which reads as the player's fault and as
@@ -566,7 +905,7 @@ struct AircraftDetailView: View {
                             HStack(spacing: AETheme.spacingXS) {
                                 Text("\(route.origin.raw) – \(route.destination.raw)")
                                     .font(AEType.caption)
-                                Text(Vocab.blocker(blocker))
+                                Text(Vocab.blocker(blocker, startYear: snapshot.meta.startYear))
                                     .font(AEType.caption)
                                     .foregroundStyle(AETheme.mutedText)
                             }
@@ -610,8 +949,21 @@ struct AircraftDetailView: View {
     }
 
     private func ownership(_ card: FleetCardModel, spec: AircraftTypeSpec,
-                           player: AirlineID) -> some View {
-        AECard {
+                           player: AirlineID, catalog: ContentCatalog) -> some View {
+        let tuning = catalog.tuning.fleet
+        // What a sale pays is Core's own number — the used-market price for
+        // this age and condition, less the buy/sell spread — computed with
+        // the function `SellAircraftCommand` calls. The dialog used to quote
+        // the book value, which no sale ever pays: a sale comes in at least
+        // a tenth below it, and far below for a worn airframe.
+        let proceeds = FleetEconomics.saleValue(type: spec, ageYears: card.ageYears,
+                                                condition: card.condition, tuning: tuning)
+        // Likewise the return: Core charges this many months only while the
+        // term still has months to run, and nothing once it has ended.
+        let penaltyMonths = tuning.earlyLeaseReturnPenaltyMonths
+        let penaltyWording = penaltyMonths == 1
+            ? "one month's payment" : "\(penaltyMonths) months' payments"
+        return AECard {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "Ownership", systemImage: "doc.text")
                 switch card.ownershipDescription {
@@ -621,13 +973,14 @@ struct AircraftDetailView: View {
                     // as an answer.
                     labelled("Ownership", "Owned outright")
                     labelled("Book value", Format.money(book))
-                    Text("Selling returns roughly its market value, which falls with age and condition.")
+                    labelled("Sale value", Format.money(proceeds))
+                    Text("A sale pays the used-market price for its age and condition, less a \(Format.percent(tuning.saleFriction)) spread — not the book value.")
                         .font(.caption)
                         .foregroundStyle(AETheme.mutedText)
                         .fixedSize(horizontal: false, vertical: true)
                     destructive(
                         title: "Sell this aircraft?",
-                        message: "You receive roughly \(Format.money(book)) and lose the airframe. This cannot be undone.",
+                        message: "You receive \(Format.money(proceeds)) and lose the airframe. This cannot be undone.",
                         confirmTitle: "Sell",
                         label: "Sell aircraft", icon: "banknote",
                         command: SellAircraftCommand(seller: player, aircraftID: card.id))
@@ -635,13 +988,19 @@ struct AircraftDetailView: View {
                     labelled("Leased", "\(Format.money(rate))/month")
                     labelled("Months remaining", "\(months)")
                     labelled("Committed", Format.money(rate * Int64(months)))
-                    Text("Returning it early costs a penalty, but stops the monthly bill.")
+                    labelled("Return penalty",
+                             months > 0 ? Format.money(rate * Int64(penaltyMonths)) : "None")
+                    Text(months > 0
+                         ? "Returning it before the term ends costs \(penaltyWording), and stops the monthly bill."
+                         : "The term is complete: returning it costs nothing, and stops the monthly bill.")
                         .font(.caption)
                         .foregroundStyle(AETheme.mutedText)
                         .fixedSize(horizontal: false, vertical: true)
                     destructive(
                         title: "Return this aircraft?",
-                        message: "You stop paying \(Format.money(rate)) a month and pay an early-return penalty. This cannot be undone.",
+                        message: months > 0
+                            ? "You pay \(Format.money(rate * Int64(penaltyMonths))) for returning it early, and stop paying \(Format.money(rate)) a month. This cannot be undone."
+                            : "The term is complete, so there is no penalty. You stop paying \(Format.money(rate)) a month. This cannot be undone.",
                         confirmTitle: "Return",
                         label: "Return to lessor", icon: "arrow.uturn.left",
                         command: ReturnLeasedAircraftCommand(lessee: player,
@@ -671,7 +1030,9 @@ struct AircraftDetailView: View {
             .tint(AETheme.negative)
             .disabled(blocked != nil)
             if let blocked {
-                Text(blocked.message)
+                // The player-facing reading, with what to do about it —
+                // Core's own sentence is written for the simulation.
+                Text(Rejections.present(blocked).inline)
                     .font(.caption2)
                     .foregroundStyle(AETheme.caution)
                     .fixedSize(horizontal: false, vertical: true)
@@ -764,7 +1125,7 @@ struct AssignRouteSheet: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("\(route.origin.raw) – \(route.destination.raw)")
                                         .font(AEType.body.weight(.medium))
-                                    Text(Vocab.blocker(blocker))
+                                    Text(Vocab.blocker(blocker, startYear: snapshot.meta.startYear))
                                         .font(AEType.secondary)
                                         .foregroundStyle(AETheme.mutedText)
                                         .fixedSize(horizontal: false, vertical: true)
@@ -813,7 +1174,9 @@ struct AssignRouteSheet: View {
     private func commitBar(player: AirlineID) -> some View {
         VStack(alignment: .leading, spacing: AETheme.spacingXS) {
             if let rejection {
-                Label(rejection.message, systemImage: "xmark.octagon")
+                // The player-facing reading: "Aircraft cannot reach", not
+                // "MR180 range 2750 km < route 4100 km".
+                Label(Rejections.present(rejection).summary, systemImage: "xmark.octagon")
                     .font(AEType.secondary)
                     .foregroundStyle(AETheme.negative)
                     .fixedSize(horizontal: false, vertical: true)
@@ -855,6 +1218,7 @@ struct AssignRouteSheet: View {
 /// era-locked types explain themselves instead of showing nothing.
 struct AircraftShopSheet: View {
     @Environment(GameController.self) private var controller
+    @Environment(Entitlements.self) private var entitlements
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var usedAge = 8
@@ -882,7 +1246,9 @@ struct AircraftShopSheet: View {
     @State private var confirmingAcquisition = false
     @State private var pendingAcquisition: Acquisition?
     @State private var previousAircraft: Set<AircraftID> = []
-    @State private var acquisitionFailure: String?
+    /// Kept as the refusal rather than its text, so the review panel can say
+    /// it the way the rest of the app does (`Rejections`).
+    @State private var acquisitionFailure: CommandRejection?
     @AccessibilityFocusState private var reviewHeadingFocused: Bool
     @AccessibilityFocusState private var acquisitionErrorFocused: Bool
     @AccessibilityFocusState private var focusedPurchase: AircraftTypeCode?
@@ -971,6 +1337,10 @@ struct AircraftShopSheet: View {
                 let limits = (seats: fleetTypes.map(\.seats).max() ?? 1,
                               range: fleetTypes.map(\.rangeKm).max() ?? 1)
                 let availableTypes = types(catalog: catalog, snapshot: snapshot)
+                // The comparison panel scrolls the list to the aircraft it
+                // names, so the shortlist is a way in rather than a second
+                // catalogue beside the first.
+                ScrollViewReader { proxy in
                 List {
                     Section {
                         FirstFlightProgress()
@@ -1044,6 +1414,14 @@ struct AircraftShopSheet: View {
                             .listRowBackground(marketCardSurface)
                         }
                     }
+                    if let route = selectedRouteID.flatMap({ snapshot.routes[$0] }),
+                       let comparison = controller.aircraftMarketComparison(for: route.id),
+                       !comparison.candidates.isEmpty {
+                        Section {
+                            comparisonPanel(comparison, proxy: proxy)
+                                .listRowBackground(marketCardSurface)
+                        }
+                    }
                     if let market = starterOpportunity,
                        let code = market.bestAirframe,
                        let spec = catalog.aircraftTypes[code] {
@@ -1086,9 +1464,10 @@ struct AircraftShopSheet: View {
                         Section {
                             shopRow(spec, catalog: catalog, snapshot: snapshot,
                                     player: player.id, limits: limits)
+                                // The comparison panel scrolls here by type.
+                                .id(spec.code)
                                 .listRowBackground(marketCardSurface)
-                                .listRowSeparator(.hidden)
-                            // The commit is its own row on purpose: a row
+                                .listRowSeparator(.hidden)                            // The commit is its own row on purpose: a row
                             // whose only button is default-styled makes
                             // the whole row the tap target (the pattern
                             // every working control in this sheet uses).
@@ -1122,6 +1501,7 @@ struct AircraftShopSheet: View {
                 .opacity(showsAcquisitionPanel ? 0 : 1)
                 .allowsHitTesting(!showsAcquisitionPanel)
                 .accessibilityHidden(showsAcquisitionPanel)
+                }
             } else {
                 LoadingState(message: "Loading the market")
             }
@@ -1173,8 +1553,11 @@ struct AircraftShopSheet: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: assignedRoute) {
-            if assignmentPending != nil, assignedRoute == assignmentRoute {
+            if let aircraftID = assignmentPending, assignedRoute == assignmentRoute {
                 assignmentPending = nil
+                if let aircraft = controller.snapshot?.aircraft[aircraftID] {
+                    announce(aircraft, flying: assignmentRoute)
+                }
                 dismiss()
             }
         }
@@ -1184,13 +1567,13 @@ struct AircraftShopSheet: View {
                 acquiring = false
                 requestedAcquisition = request
                 confirmingAcquisition = true
-                acquisitionFailure = failure.message
+                acquisitionFailure = failure
                 controller.clearRejection()
                 return
             }
             guard assignmentPending != nil, let failure = controller.lastRejection else { return }
             assignmentPending = nil
-            acquisitionReceipt = "Aircraft acquired. Assignment could not finish: \(failure.message)"
+            acquisitionReceipt = "Aircraft acquired. Assignment could not finish: \(Rejections.present(failure).inline)"
             controller.clearRejection()
         }
         .disabled(acquiring || assignmentPending != nil)
@@ -1244,8 +1627,8 @@ struct AircraftShopSheet: View {
                             .font(.body).fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                if let failure = acquisitionFailure ?? blocked?.message {
-                    Text(failure)
+                if let failure = acquisitionFailure ?? blocked {
+                    Text(Rejections.present(failure).summary)
                         .foregroundStyle(AETheme.caution)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityFocused($acquisitionErrorFocused)
@@ -1318,7 +1701,7 @@ struct AircraftShopSheet: View {
         if let rejection = controller.submit(request.facts.command(for: request.deal)) {
             requestedAcquisition = request
             confirmingAcquisition = true
-            acquisitionFailure = rejection.message
+            acquisitionFailure = rejection
             controller.clearRejection()
         } else {
             requestedAcquisition = nil
@@ -1392,6 +1775,149 @@ struct AircraftShopSheet: View {
         }
     }
 
+    /// The shortlist, for one route, holding route, fare and frequency still.
+    ///
+    /// Every type's number is the same arithmetic the simulation flies —
+    /// `CompetitorAISystem.airframeDayEstimate` on the demand engine's own
+    /// allocation, with the incumbents actually on the pair in the way — so
+    /// two candidates differ only by the airframe. The panel is deliberately
+    /// not a profit forecast: it is a month of the route's operating result
+    /// after the airframe's lease, its crew and the route payroll, before
+    /// airline overhead, exactly the figure `MarketOpportunity` carries.
+    @ViewBuilder
+    private func comparisonPanel(_ comparison: AircraftMarketComparison,
+                                 proxy: ScrollViewProxy) -> some View {
+        VStack(alignment: .leading, spacing: AETheme.spacingM) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Compare on \(comparison.origin.raw)–\(comparison.destination.raw)")
+                    .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
+                Text("\(Format.count(Int64(comparison.distanceKm))) km \u{00B7} "
+                     + "\(Format.money(comparison.fare)) fare \u{00B7} "
+                     + "\(comparison.dailyRoundTrips)\u{00D7}/day held still")
+                    .font(.caption).foregroundStyle(AETheme.mutedText)
+                Text(comparison.marketDemandToday > 0
+                     ? "\(Format.count(Int64(comparison.marketDemandToday))) passengers a day want this pair; \(Format.count(Int64(comparison.demandToday))) fly with you today."
+                     : "No passengers are allocated to this pair today yet.")
+                    .font(.caption).foregroundStyle(AETheme.mutedText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            ForEach(Array(comparison.shortlist.enumerated()), id: \.element.id) { index, candidate in
+                Button {
+                    focusedPurchase = candidate.spec.code
+                    withAnimation(AEMotion.selection) {
+                        proxy.scrollTo(candidate.spec.code, anchor: .top)
+                    }
+                } label: {
+                    comparisonRow(candidate, isBest: index == 0,
+                                  frequency: comparison.dailyRoundTrips)
+                }
+                .buttonStyle(.borderless)
+                .accessibilityIdentifier("ae-aircraft-comparison-row")
+                .accessibilityLabel(comparisonLabel(candidate,
+                                                    frequency: comparison.dailyRoundTrips))
+                .accessibilityHint("Opens this aircraft's purchase terms")
+            }
+            if comparison.candidates.count > comparison.shortlist.count {
+                Text("\(comparison.shortlist.count) of \(comparison.candidates.count) types this era can buy, best result first.")
+                    .font(.caption2).foregroundStyle(AETheme.mutedText)
+            }
+        }
+        // `.contain`, not `.combine`: the panel's own identifier must not
+        // overwrite the rows' (run 35136273799).
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("ae-aircraft-comparison")
+    }
+
+    private func comparisonRow(_ candidate: AircraftMarketComparison.Candidate,
+                               isBest: Bool, frequency: Int) -> some View {
+        let tint = candidate.monthlyAfterAirframe > .zero
+            ? AETheme.positive
+            : candidate.monthlyAfterAirframe < .zero ? AETheme.negative : AETheme.mutedText
+        return Group {
+            if typeSize.isAccessibilitySize {
+                // The money shares the row only while both columns fit; at
+                // accessibility sizes a 50/50 split left the model name a
+                // couple of characters wide.
+                VStack(alignment: .leading, spacing: AETheme.spacingXS) {
+                    comparisonIdentity(candidate, isBest: isBest, frequency: frequency)
+                    comparisonMoney(candidate, tint: tint)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                HStack(alignment: .top, spacing: AETheme.spacingS) {
+                    comparisonIdentity(candidate, isBest: isBest, frequency: frequency)
+                    Spacer(minLength: AETheme.spacingS)
+                    comparisonMoney(candidate, tint: tint)
+                }
+            }
+        }
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+    }
+
+    private func comparisonIdentity(_ candidate: AircraftMarketComparison.Candidate,
+                                    isBest: Bool, frequency: Int) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: AETheme.spacingXS) {
+                Text("\(candidate.spec.manufacturer) \(candidate.spec.model)")
+                    .font(.subheadline.weight(.semibold))
+                if isBest {
+                    AEBadge(text: "best", color: AETheme.positive, icon: "checkmark")
+                }
+            }
+            Text("\(candidate.spec.seats) seats \u{00B7} "
+                 + "\(candidate.rotationsPerAircraft)\u{00D7}/day per aircraft"
+                 + (candidate.coversFrequencyAlone
+                    ? "" : " \u{00B7} needs \(candidate.aircraftNeeded) aircraft"))
+                .font(.caption).foregroundStyle(AETheme.mutedText)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(comparisonFit(candidate, frequency: frequency))
+                .font(.caption2).foregroundStyle(AETheme.mutedText)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func comparisonMoney(_ candidate: AircraftMarketComparison.Candidate,
+                                 tint: Color) -> some View {
+        VStack(alignment: .trailing, spacing: 1) {
+            Text(Format.money(candidate.monthlyAfterAirframe))
+                .font(.subheadline.weight(.bold)).monospacedDigit()
+                .foregroundStyle(tint)
+            Text("a month")
+                .font(.caption2).foregroundStyle(AETheme.mutedText)
+            Image(systemName: "chevron.down")
+                .font(.caption2).foregroundStyle(AETheme.mutedText)
+        }
+    }
+
+    /// One sentence per candidate, for VoiceOver: the model, the cabin, the
+    /// fleet the schedule needs and the result — the same four facts the row
+    /// draws.
+    private func comparisonLabel(_ candidate: AircraftMarketComparison.Candidate,
+                                 frequency: Int) -> String {
+        let trips = frequency == 1 ? "1 round trip" : "\(frequency) round trips"
+        return "\(candidate.spec.manufacturer) \(candidate.spec.model), "
+            + "\(candidate.spec.seats) seats, "
+            + (candidate.coversFrequencyAlone
+               ? "one aircraft covers \(trips) a day, "
+               : "needs \(candidate.aircraftNeeded) aircraft for \(trips) a day, ")
+            + "\(Format.money(candidate.monthlyAfterAirframe)) a month after lease and payroll"
+    }
+
+    /// The one line that says why a type ranks where it does, in seats: the
+    /// gap between what the route's frequency offers and what the pair wants.
+    /// No profit is claimed here — the money is the number on the right.
+    private func comparisonFit(_ candidate: AircraftMarketComparison.Candidate,
+                               frequency: Int) -> String {
+        if candidate.coversFrequencyAlone {
+            return candidate.carriesTodayDemand
+                ? "One aircraft flies \(frequency)\u{00D7}/day and the cabin covers the demand."
+                : "One aircraft flies \(frequency)\u{00D7}/day; the cabin seats \(Format.count(Int64(candidate.frequencySeatsPerDay))) of \(Format.count(Int64(candidate.demandToday))) a day."
+        }
+        return "\(frequency)\u{00D7}/day takes \(candidate.aircraftNeeded) of this type; a single one flies \(candidate.rotationsPerAircraft)\u{00D7}."
+    }
+
     private func routePicker(snapshot: GameState, catalog: ContentCatalog,
                              player: AirlineID) -> some View {
         let routes = focusedRoutes(snapshot: snapshot, catalog: catalog, player: player)
@@ -1414,7 +1940,7 @@ struct AircraftShopSheet: View {
         switch need.reason {
         case .unassigned: "No aircraft assigned. Lease or buy used to put one to work now."
         case .frequency: "Your assigned fleet cannot cover the requested daily frequency. Aircraft in maintenance may also cause this gap."
-        case .seats: "Today's demand exceeds scheduled capacity by \(need.dailySeatShortfall) seats. Consider a larger aircraft or increase frequency; adding aircraft alone may not increase flights."
+        case .seats: "Today's demand exceeds scheduled capacity by \(need.dailySeatShortfall) \(need.dailySeatShortfall == 1 ? "seat" : "seats"). Consider a larger aircraft or increase frequency; adding aircraft alone may not increase flights."
         }
     }
 
@@ -1424,23 +1950,56 @@ struct AircraftShopSheet: View {
     }
 
     private func completeAcquisition(aircraftID: AircraftID, routeID: RouteID?) {
-        guard let routeID, let state = controller.snapshot, let player = state.playerAirline,
+        guard let state = controller.snapshot, let player = state.playerAirline,
               let acquired = state.aircraft[aircraftID] else {
             dismiss()
             return
         }
-        if case .ordered = acquired.status {
-            acquisitionReceipt = "Your new aircraft is on order. Return to this route after delivery to assign it."
+        guard let routeID else {
+            // The market closes on success, as it always has — and used to
+            // close without a word, so the first aircraft of a new airline
+            // arrived to silence. The banner lands on the screen beneath.
+            announce(acquired, flying: nil)
+            dismiss()
+            return
+        }
+        if case .ordered(let deliveryAt) = acquired.status {
+            let date = GameCalendar.date(at: deliveryAt, startYear: state.meta.startYear)
+            acquisitionReceipt = "Your new aircraft is on order and arrives \(Format.longDate(date)). Return to this route after delivery to assign it."
             return
         }
         if let failure = controller.submit(AssignAircraftToRouteCommand(
             airline: player.id, route: routeID, aircraftID: acquired.id)) {
             controller.clearRejection()
-            acquisitionReceipt = "The aircraft was acquired, but could not be assigned: \(failure.message) It is available in your fleet."
+            acquisitionReceipt = "The aircraft was acquired, but could not be assigned: \(Rejections.present(failure).inline) It is available in your fleet."
         } else {
             assignmentRoute = routeID
             assignmentPending = aircraftID
         }
+    }
+
+    /// The banner a finished acquisition leaves as the market closes: what
+    /// arrived, and what it needs next. Only called once the aircraft is in
+    /// the fleet — a refused or still-queued command never gets here.
+    private func announce(_ aircraft: Aircraft, flying routeID: RouteID?) {
+        guard let state = controller.snapshot,
+              let spec = controller.catalog?.aircraftType(aircraft.typeCode) else { return }
+        let title: String
+        let detail: String
+        if case .ordered(let deliveryAt) = aircraft.status {
+            // A new build is a wait, not an aircraft: the date is the news.
+            let date = GameCalendar.date(at: deliveryAt, startYear: state.meta.startYear)
+            title = "Aircraft ordered"
+            detail = "\(spec.model) arrives \(Format.longDate(date)). It cannot fly until then."
+        } else {
+            title = aircraft.ownership.isLeased ? "Aircraft leased" : "Aircraft bought"
+            if let route = routeID.flatMap({ state.routes[$0] }) {
+                detail = "\(spec.model) now flies \(route.origin.raw)–\(route.destination.raw)."
+            } else {
+                detail = "\(spec.model) is ready at \(aircraft.location.raw). Put it on a route to start earning."
+            }
+        }
+        controller.celebrate(title: title, detail: detail, icon: "airplane.circle.fill")
     }
 
     private func wallet(snapshot: GameState, player: AirlineID) -> some View {
@@ -1477,7 +2036,7 @@ struct AircraftShopSheet: View {
     /// a two-line name should hang off the top of the glyph, not straddle it.
     @ViewBuilder
     private func shopRowHeader(_ spec: AircraftTypeSpec,
-                               locked: Bool) -> some View {
+                               locked: Bool, bestFor starterPair: String?) -> some View {
         // The silhouette, not a generic glyph. `AircraftShape` was written for
         // exactly this — its own doc comment says "a fleet row, a detail
         // header" — and until now only the map used the underlying path. A
@@ -1497,6 +2056,16 @@ struct AircraftShopSheet: View {
             Text(Vocab.role(spec.role))
                 .font(AEType.secondary).foregroundStyle(AETheme.mutedText)
                 .fixedSize(horizontal: false, vertical: true)
+            // The market already knew which aircraft the suggested first
+            // route is best flown with — it sorts that one first — and said
+            // so only by the order. The claim is Core's
+            // (`MarketOpportunity.bestAirframe`), and names its route.
+            if let starterPair {
+                AEBadge(text: "Best for \(starterPair)", color: AETheme.positive,
+                        icon: "star.fill")
+                    .padding(.top, 2)
+                    .accessibilityLabel("Best aircraft for the suggested first route, \(starterPair)")
+            }
         }
         let badge = Group {
             if locked {
@@ -1532,8 +2101,19 @@ struct AircraftShopSheet: View {
         // and the bars must not re-scale when the era filter flips.
         let maxSeats = limits.seats
         let maxRange = limits.range
+        let starterPair: String? = starterOpportunity.flatMap { market in
+            !isLocked && market.bestAirframe == spec.code
+                ? Vocab.pair(market.origin, market.destination) : nil
+        }
+        let unlock = unlockEra(for: spec.category)
+        // An era past the free tier's last is not reached by playing on:
+        // only Pro opens it, and the row said "unlocks in the National era"
+        // as though it were a wait. A Pro player's ceiling is the last era,
+        // so this never shows for them.
+        let needsPro = isLocked && !entitlements.isPro && unlock > controller.eraCeiling
+        let proNote = needsPro ? " Part of Pro." : ""
         return VStack(alignment: .leading, spacing: AETheme.spacingS) {
-            shopRowHeader(spec, locked: isLocked)
+            shopRowHeader(spec, locked: isLocked, bestFor: starterPair)
             // The spec as bars, not prose: three chips of digits made every
             // aircraft read the same, and comparing was the whole point of
             // the screen. A bar against the catalogue's best is legible at a
@@ -1567,10 +2147,29 @@ struct AircraftShopSheet: View {
             if isLocked {
                 // A locked row used to show nothing at all, so the player
                 // could not plan toward it.
-                Text("Unlocks in the \(Vocab.era(unlockEra(for: spec.category))) era. \(Vocab.eraDetail(unlockEra(for: spec.category))).")
+                Text("Unlocks in the \(Vocab.era(unlock)) era. \(Vocab.eraDetail(unlock)).\(proNote)")
                     .font(.caption)
                     .foregroundStyle(AETheme.mutedText)
                     .fixedSize(horizontal: false, vertical: true)
+                if needsPro {
+                    // Borderless: it shares the row with the card's other
+                    // content, and borderless is the style a List hit-tests
+                    // per button rather than as the whole row.
+                    Button {
+                        entitlements.present(.eraCeiling)
+                    } label: {
+                        HStack(spacing: AETheme.spacingXS) {
+                            ProBadge()
+                            Text("See Pro")
+                        }
+                        .font(.caption.weight(.semibold))
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("See Pro")
+                    .accessibilityIdentifier("ae-market-see-pro")
+                }
             } else {
                 Divider().padding(.vertical, AETheme.spacingXS)
                 ShopDealPicker(
@@ -1601,7 +2200,8 @@ struct AircraftShopSheet: View {
                     ageYears: Double(usedAge), tuning: catalog.tuning.fleet),
                 tuning: catalog.tuning.fleet),
             cash: snapshot.ledger.balance(of: player),
-            player: player)
+            player: player,
+            leasePenaltyMonths: catalog.tuning.fleet.earlyLeaseReturnPenaltyMonths)
     }
 
     /// One spec line: name, a bar against the catalogue's best, the number.
@@ -1708,7 +2308,13 @@ struct ShopDealFacts {
     let usedPrice: Money
     let cash: Money
     let player: AirlineID
+    /// Months of payments Core charges for handing a lease back before its
+    /// term ends (`FleetTuning.earlyLeaseReturnPenaltyMonths`).
+    let leasePenaltyMonths: Int
 
+    /// What leaves the bank today. For a lease that is the first month —
+    /// Core takes it at signing (`LeaseAircraftCommand`) — so it is the
+    /// price the wallet bar and the confirmation subtract, like the others.
     func price(for option: ShopDeal) -> Money {
         switch option {
         case .new: spec.listPrice
@@ -1756,7 +2362,9 @@ struct ShopDealFacts {
         case .used:
             "On the apron today, in used condition."
         case .lease:
-            "No cash down. \(Format.money(spec.leaseMonthly * Int64(leaseTermMonths))) over \(leaseTermMonths) months."
+            // Not "no cash down": the term's first month is due at signing
+            // (`LeaseAircraftCommand`).
+            "\(Format.money(spec.leaseMonthly))/month for a \(leaseTermMonths)-month term, the first due today."
         }
     }
 
@@ -1788,11 +2396,23 @@ struct ShopDealFacts {
     }
 
     func dialogMessage(for option: ShopDeal) -> String {
+        let now = Format.money(price(for: option))
+        let after = Format.money(cash - price(for: option))
         switch option {
-        case .new, .used:
-            "\(Format.money(price(for: option))) now, leaving \(Format.money(cash - price(for: option)))."
+        case .new:
+            // The wait is the catch in buying new, and the confirmation
+            // never mentioned it: the aircraft is paid for today and cannot
+            // fly for months.
+            return "\(now) now, leaving \(after). Delivery takes \(Format.days(spec.deliveryLeadDays)) — it cannot fly until then."
+        case .used:
+            return "\(now) now, leaving \(after)."
         case .lease:
-            "\(Format.money(spec.leaseMonthly)) every month for \(leaseTermMonths) months. Returning early costs a penalty."
+            // The terms Core bills: the term's first month at signing, the
+            // rest monthly, then month to month until the aircraft is
+            // returned (`FleetBillingSystem`) — and the early-return penalty
+            // as money rather than as "a penalty".
+            let penalty = Format.money(spec.leaseMonthly * Int64(leasePenaltyMonths))
+            return "First payment today: \(now), leaving \(after). The same each month until the \(leaseTermMonths)-month term is up, then month to month until you return it. Returning it before the term ends costs \(penalty)."
         }
     }
 
@@ -1880,8 +2500,10 @@ struct ShopDealPicker: View {
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
-    /// One line that answers "and then what?" for the selected deal, plus —
-    /// for the cash deals — a wallet bar showing what stays in the bank.
+    /// One line that answers "and then what?" for the selected deal, plus a
+    /// wallet bar showing what stays in the bank. Every deal gets the bar:
+    /// a lease takes its first month at signing, and hiding the bar for it
+    /// was what let the card claim "no cash down".
     @ViewBuilder
     private var consequence: some View {
         HStack(spacing: AETheme.spacingS - 2) {
@@ -1894,7 +2516,7 @@ struct ShopDealPicker: View {
                 .foregroundStyle(AETheme.mutedText)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        if deal != .lease, facts.cash.cents > 0 {
+        if facts.cash.cents > 0 {
             let after = facts.cash - facts.price(for: deal)
             let fraction = Double(max(after.cents, 0)) / Double(facts.cash.cents)
             HStack(spacing: AETheme.spacingS) {
@@ -1961,7 +2583,9 @@ struct ShopCommitButton: View {
             .accessibilityFocused(focus, equals: facts.spec.code)
             .disabled(blocked != nil)
             if let blocked {
-                Text(blocked.message)
+                // Said the way the rest of the app says it, with the way out
+                // ("…or take a loan from Finance"), not in Core's words.
+                Text(Rejections.present(blocked).inline)
                     .font(.caption2)
                     .foregroundStyle(AETheme.caution)
                     .fixedSize(horizontal: false, vertical: true)

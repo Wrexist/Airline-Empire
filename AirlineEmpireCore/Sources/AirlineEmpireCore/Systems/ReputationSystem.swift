@@ -31,28 +31,18 @@ public struct ReputationSystem: SimulationSystem {
 
             // Service drifts toward the tier the airline pays for
             // (+ ground-experience capability bump for the player).
-            var serviceTarget = tuning.serviceTarget(airline.serviceTier)
-            if airline.kind == .player, state.playerHasCapability(.groundExperience) {
-                serviceTarget = min(1, serviceTarget + 0.08)
-            }
+            let serviceTarget = Self.serviceTarget(
+                for: airline.serviceTier, isPlayer: airline.kind == .player,
+                hasGroundExperience: state.playerHasCapability(.groundExperience),
+                tuning: tuning)
             Reputation.drift(&airline.reputation.service,
                              toward: serviceTarget, rate: tuning.driftRate)
 
             // Comfort: seat-weighted fleet hardware quality.
-            let fleet = state.fleet(of: airlineID)
-            if !fleet.isEmpty {
-                var seatSum = 0.0
-                var weighted = 0.0
-                for aircraft in fleet {
-                    guard let spec = context.catalog.aircraftType(aircraft.typeCode)
-                    else { continue }
-                    seatSum += Double(spec.seats)
-                    weighted += Double(spec.seats) * spec.comfortBaseline
-                }
-                if seatSum > 0 {
-                    Reputation.drift(&airline.reputation.comfort,
-                                     toward: weighted / seatSum, rate: tuning.driftRate)
-                }
+            if let target = Self.seatWeightedComfort(of: state.fleet(of: airlineID),
+                                                    catalog: context.catalog) {
+                Reputation.drift(&airline.reputation.comfort,
+                                 toward: target, rate: tuning.driftRate)
             }
 
             // Value perception: quality delivered relative to price position.
@@ -82,5 +72,39 @@ public struct ReputationSystem: SimulationSystem {
 
             state.airlines[airlineID] = airline
         }
+    }
+}
+
+extension ReputationSystem {
+    /// The service component a tier drifts toward, including the player's
+    /// ground-experience capability bump. One definition for the daily system,
+    /// the aircraft experience profile and the service-policy preview, so a
+    /// forecast cannot promise a different target than the engine delivers.
+    public static func serviceTarget(for tier: ServiceTier, isPlayer: Bool,
+                                     hasGroundExperience: Bool,
+                                     tuning: ReputationTuning) -> Double {
+        var target = tuning.serviceTarget(tier)
+        if isPlayer, hasGroundExperience {
+            target = min(1, target + 0.08)
+        }
+        return target
+    }
+
+    /// Seat-weighted cabin comfort — exactly the value the comfort component
+    /// drifts toward, and nil when nothing in the fleet can be measured
+    /// (no aircraft, or no catalog type for any of them).
+    public static func seatWeightedComfort(of fleet: [Aircraft],
+                                           catalog: ContentCatalog) -> Double? {
+        var seatSum = 0.0
+        var weighted = 0.0
+        for aircraft in fleet {
+            guard let spec = catalog.aircraftType(aircraft.typeCode) else { continue }
+            let seats = Double(aircraft.cabin(for: spec).totalSeats)
+            seatSum += seats
+            weighted += seats * aircraft.passengerComfort(
+                for: spec, tuning: catalog.tuning.cabin)
+        }
+        guard seatSum > 0 else { return nil }
+        return weighted / seatSum
     }
 }

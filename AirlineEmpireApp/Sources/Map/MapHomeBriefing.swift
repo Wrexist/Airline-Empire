@@ -210,6 +210,7 @@ struct MapHomeBriefing: View {
         case .openRoute(let suggestion): openRoute(suggestion)
         case .startClock: controller.setSpeed(.x1)
         case .nextMorning: controller.advanceToNextMorning()
+        case .firstTakeoff: controller.skipToFirstBoarding()
         case .follow(let flight): followFlight(flight)
         case .briefing: openBriefing()
         case .route, .aircraft: break   // navigation links, handled above

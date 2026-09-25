@@ -60,8 +60,18 @@ extension GameState {
     /// Onboarding checklist for the player airline; nil before one exists.
     /// Pure derivation — calling it never mutates anything.
     public func onboardingModel(catalog: ContentCatalog,
-                                suggestionLimit: Int = 2) -> OnboardingModel? {
+                                suggestionLimit: Int = 2,
+                                allowedAirports: Set<AirportCode>? = nil) -> OnboardingModel? {
         guard let player = playerAirline else { return nil }
+        // A player who has landed a flight has finished the arc, whatever
+        // happened to that route or aircraft since. Deriving the steps only
+        // from the routes and fleet that exist *now* showed "Your first
+        // flight, 1 of 5" again to anyone who closed their first route or
+        // returned its aircraft — a tutorial for someone who has already flown.
+        if progression.counters.flightsCompleted > 0 {
+            return OnboardingModel(completed: Set(OnboardingModel.Step.allCases),
+                                   nextStep: nil, suggestions: [])
+        }
         let fleet = fleet(of: player.id)
         let routes = routes(of: player.id)
 
@@ -93,7 +103,8 @@ extension GameState {
         let suggestions = completed.contains(.openRoute) || suggestionLimit <= 0
             ? []
             : firstRouteSuggestions(for: player, catalog: catalog,
-                                    limit: suggestionLimit)
+                                    limit: suggestionLimit,
+                                    allowedAirports: allowedAirports)
         return OnboardingModel(completed: completed, nextStep: next,
                                suggestions: suggestions)
     }
@@ -104,8 +115,10 @@ extension GameState {
     /// one ranking too many, and the map needs the general form anyway.
     private func firstRouteSuggestions(for player: Airline,
                                        catalog: ContentCatalog,
-                                       limit: Int) -> [FirstRouteSuggestion] {
-        marketOpportunities(catalog: catalog, limit: limit)
+                                       limit: Int,
+                                       allowedAirports: Set<AirportCode>?) -> [FirstRouteSuggestion] {
+        marketOpportunities(catalog: catalog, limit: limit,
+                            allowedAirports: allowedAirports)
             .map(\.asFirstRouteSuggestion)
     }
 }

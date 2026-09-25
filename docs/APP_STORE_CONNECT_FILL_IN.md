@@ -229,9 +229,11 @@ Airline Empire Pro Lifetime
 Full Pro access with a one-time purchase.
 ```
 
-**IAP review screenshot:** a separate, genuine capture of the paywall showing
-the configured products and prices is still needed. The six marketing images
-are not substitutes for this review evidence. Verify products in StoreKit sandbox.
+**IAP review screenshot:** prepared, inspected and uploaded-ready for all
+three products (1206 × 2622 RGB). `node scripts/asc/upload-iap-review.mjs --check`
+verifies them, and the metadata workflow fills any empty slot. App Review still
+needs each product **added to the version's submission** — Apple rejected 1.0 for
+that, not for a missing image. Verify products in StoreKit sandbox.
 
 - Subscription group: **`Airline Empire Pro`**, holding the weekly and the
   yearly at the same group level.
@@ -253,11 +255,11 @@ are not substitutes for this review evidence. Verify products in StoreKit sandbo
 **hand-entry only.** Left sidebar → App Privacy → Get Started.
 
 **"Do you or your third-party partners collect data from this app?"** →
-**No**
+**Yes — Purchase History, for App Functionality and Analytics.**
 
-The current app has no developer-operated analytics, advertising SDK, crash
-reporter or game account. Gameplay is local; purchases and restores use Apple
-services, and legal/support links open external web pages. Confirm the privacy
+RevenueCat processes anonymous purchase history. Mark it not linked to identity
+and not used for tracking. There is no advertising SDK or game account.
+Gameplay is local; Apple processes payments. Confirm the privacy
 declaration against the submitted build, its privacy manifest and public policy.
 
 **Privacy Policy URL (asked again here)** — 53/255 characters
@@ -276,10 +278,10 @@ pushes for you._
 
 ### English (U.S.)
 
-**Promotional Text** — 151/170 characters
+**Promotional Text** — 154/170 characters
 
 ```text
-Build a regional airline into a global network. Master routes, grow your fleet and outsmart rivals. 94 airports to discover. No ads. Play at your pace.
+Start free with one aircraft and one route, then build a global airline. 94 real airports, rivals that fight back, no ads, no timers. Plays fully offline.
 ```
 
 > The only field that can be changed **without submitting a new version**.
@@ -348,10 +350,10 @@ https://wrexist.github.io/Airline-Empire/
 
 ### English (U.K.)
 
-**Promotional Text** — 155/170 characters
+**Promotional Text** — 158/170 characters
 
 ```text
-Build a regional airline into a global network. Master routes, grow your fleet and outsmart rivals. 94 airports to discover. No adverts. Play at your pace.
+Start free with one aircraft and one route, then build a global airline. 94 real airports, rivals that fight back, no adverts, no timers. Plays fully offline.
 ```
 
 > The only field that can be changed **without submitting a new version**.
@@ -426,9 +428,12 @@ https://wrexist.github.io/Airline-Empire/
 | iPad 13" | 2064 × 2752 | in `store/screenshots/` |
 | iPhone 6.5" (additional export) | 1242 × 2688 | six images in `store/screenshots/` |
 
-Portrait, PNG, **no alpha channel**, at most ten per size. The six-shot
-storyboard and captions are in `store/artwork/README.md`; the upload can be done for you
-by the metadata workflow with **screenshots** ticked.
+Portrait, PNG, **no alpha channel**, at most ten per size. Each image is the
+app itself, full screen, with a compact caption band — Review Guideline 2.3.3
+(rejection of 1.0) requires the majority of every screenshot to be the app, so
+the decorative illustration is not used here. The shot list and captions are in
+`docs/ASO.md` §5; the upload can be done for you by the metadata workflow with
+**screenshots** ticked.
 
 ### App Review Information
 
@@ -441,7 +446,7 @@ by the metadata workflow with **screenshots** ticked.
 - **Phone Number** — `+46723241663`
 - **Email** — `isacmolin@gmail.com`
 
-**Notes** — 3956/4000 characters
+**Notes** — 3996/4000 characters
 
 ```text
 Airline Empire is a single-player airline management simulation. No sign-in is required.
@@ -449,7 +454,7 @@ Airline Empire is a single-player airline management simulation. No sign-in is r
 WHAT THE APP DOES NOT DO
 • No account, no sign-in, no user-generated content, no social features, no chat.
 • Gameplay works offline. Prices, purchases and Restore purchases use Apple's StoreKit services and need a connection. Legal and support links open web pages. The simulation pauses while the app is closed; there is no offline catch-up.
-• No advertising, third-party SDKs, analytics or tracking. Nothing is collected, so the privacy label declares no data collection and the bundled privacy manifest declares no tracking domains and private UserDefaults use (CA92.1) for preferences and Pro offer history.
+• No advertising or cross-app tracking. RevenueCat uses anonymous purchase history for functionality and analytics. Gameplay stays local. The privacy label declares purchase history, not linked to identity and not used for tracking; private UserDefaults use (CA92.1) covers preferences and Pro offer history.
 • No gambling, no loot boxes, no randomised paid rewards. The only randomness is the simulation's own seeded world generation, which the player sets and can repeat.
 
 IN-APP PURCHASES
@@ -519,17 +524,23 @@ Apple reviews the first build of each version.
 ```text
 Airline Empire is a single-player airline management simulation. Found an airline, acquire aircraft, open routes, set fares, and run a network while competitors, seasons, fuel prices and world events change the market.
 
-Gameplay works offline without a game account. Optional Pro purchases and Restore purchases use Apple’s App Store services and need a connection. Free players use Founder, the nearest twenty airports and the first two eras; existing operations remain playable at the expansion boundary.
+Gameplay works offline without a game account. Optional Pro purchases and Restore purchases use Apple's App Store services and need a connection. Free players use Founder, the nearest twenty airports and the first two eras; existing operations remain playable at the expansion boundary.
+
+WHAT IS IN THIS BUILD (1.0, resubmitted September 2026)
+- App Review rejected 1.0 under Guideline 2.1(b): the three Pro products were not in the same submission as the version. Pro Weekly, Pro Yearly, Pro Lifetime and their subscription group are now submitted together with the app.
+- App Review rejected 1.0 under Guideline 2.3.3: the store screenshots were decorative artwork with a minority of app UI. The listing is now the app itself, full screen and unretouched, with a compact caption.
+- Home, fleet, routes, finance, progression, the briefing, world events and competitors, and the aircraft market were rebuilt this cycle. The market now compares airframes for one route with the route, its fare and its frequency held still.
+- A crash on Home in build 1 (28 August 2026) - a date precondition reached from the daily digest - is fixed and has a regression test.
 
 WHAT TO TEST
 1. Found a free airline. Home should open on the map with a next action and no immediate purchase offer.
-2. Open the aircraft market from Home, read the suggested aircraft/route, and sign a lease. The market should close and the aircraft should appear in your fleet.
+2. Open the aircraft market from Home, choose a route, read the comparison for that route, and sign a lease. The market should close and the aircraft should appear in your fleet.
 3. Open a suggested route from Home, then assign the aircraft from the route detail screen.
 4. Run at 1x, 4x and 16x. Follow a live flight using the map menu, then drag to release the camera. Check departure, arrival and feed updates.
 5. Advance to the next day and cross a month boundary; inspect route results and the Finance statement.
 6. Save and quit, then continue. Check date, cash, fleet and network. Export a backup, quit, and import it into a fresh campaign slot where your plan permits another save.
 7. Background mid-flight and return. Rehearse termination, low-storage failure and retry on a test device; existing campaigns must remain recoverable.
-8. In the App Store sandbox, test Pro purchase, cancellation, pending approval, restore and expiry. After expiry, existing operations should continue while new paid expansion is blocked.
+8. In the App Store sandbox, test Pro purchase, cancellation, pending approval, restore and expiry, including the weekly introductory offer (pay as you go, first week at the reduced price). After expiry, existing operations should continue while new paid expansion is blocked.
 
 WHAT WE MOST WANT TO HEAR ABOUT
 Report crashes, unreadable layouts, controls that do not respond, slow or hot devices, missing saves, incorrect purchase access, and numbers whose assumptions are unclear. Include device, iOS version, scenario, seed and steps. Do not include account passwords or payment details.
@@ -550,7 +561,7 @@ Report crashes, unreadable layouts, controls that do not respond, slow or hot de
 - [ ] No `REPLACE_ME` remains: `node scripts/asc/validate-metadata.mjs` passes without `--allow-placeholders`.
 - [ ] `node scripts/asc/check-app-icon.mjs` passes.
 - [ ] The support and privacy URLs open in a browser you are not signed into.
-- [ ] Age rating shows 4+ and App Privacy shows no data collected.
+- [ ] Age rating shows 4+ and App Privacy discloses anonymous Purchase History for App Functionality and Analytics, without tracking.
 
 Then **Add for Review** → **Submit**. With the release option above, an
 approved version waits for you to press **Release**.

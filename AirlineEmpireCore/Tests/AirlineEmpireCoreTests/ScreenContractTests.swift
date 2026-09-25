@@ -198,3 +198,24 @@ struct ScreenContractTests {
         }
     }
 }
+
+/// AUD-04 moved the shared forecast caveats into one disclosure and kept a
+/// short basis beside each figure. That split is only honest if the short
+/// part still says the two things that change what the number means.
+@Suite("Forecast wording")
+struct ForecastWordingTests {
+    @Test("The per-row basis names the schedule and excludes overhead")
+    func basisCarriesScheduleAndOverhead() {
+        let basis = PlayerRouteDefaults.forecastBasis
+        #expect(basis.contains("\(PlayerRouteDefaults.dailyRoundTrips) daily round trips"))
+        #expect(basis.contains("before airline overhead"))
+    }
+
+    @Test("The shared assumptions still state what the basis abbreviates")
+    func assumptionsStayComplete() {
+        let full = PlayerRouteDefaults.forecastAssumptions
+        #expect(full.contains("\(PlayerRouteDefaults.dailyRoundTrips) daily round trips"))
+        #expect(full.contains("before airline overhead"))
+        #expect(full.contains("can change the result"))
+    }
+}

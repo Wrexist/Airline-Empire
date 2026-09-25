@@ -137,6 +137,19 @@ struct DailyDigestTests {
         #expect(!future.hasContent)
     }
 
+    /// A negative day index must return nil, not trap.
+    ///
+    /// TestFlight build 1 (28 August 2026) crashed here from Home:
+    /// `GameCalendar.date(at:startYear:)` has a precondition that a day
+    /// before the epoch has no date, and `dailyDigest` reached it before the
+    /// guard existed. The guard fixed the ship; this is the regression test.
+    @Test func aDayBeforeTheEpochHasNoDigestInsteadOfTrapping() throws {
+        let (engine, player) = try flyingWorld()
+        let state = engine.state
+        #expect(state.dailyDigest(for: player, day: -1) == nil)
+        #expect(state.dailyDigest(for: player, day: Int64.min) == nil)
+    }
+
     /// Honesty under pressure: when the transaction ring cannot hold a
     /// whole day, the digest must say so instead of under-reporting.
     @Test func truncationIsReportedNotHidden() throws {

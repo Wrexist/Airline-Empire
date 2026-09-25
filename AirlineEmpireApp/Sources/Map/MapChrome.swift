@@ -113,7 +113,9 @@ struct MapTopBar: View {
 struct MapOverlayPicker: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Binding var selection: MapOverlay
-    @State private var expanded = false
+    /// Owned by the map screen, which needs to know: the open list makes the
+    /// top chrome much taller, and a transient menu must not re-fit the map.
+    @Binding var expanded: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: AETheme.spacingXS) {
@@ -326,12 +328,29 @@ struct MapOverlayHint: View {
             // chrome for one row of meaning is the map's own rule broken
             // (`MapChrome`: nothing permanent occupies the middle, and the
             // bottom is a consequence of what is happening).
+            //
+            // What an unflown route costs, said truthfully. This said it was
+            // "still paying fees", and it is not: airport fees are charged per
+            // flight (`FlightOpsSystem`), so a route with no aircraft pays
+            // none. What it does pay is the monthly route payroll every open
+            // route carries (`EconomySystem`) — so that, with its figure.
             let grounded = mine.filter { $0.health == .grounded }.count
             guard grounded > 0 else { return nil }
-            return Hint(icon: "pause.circle.fill",
-                        text: grounded == 1
-                            ? "1 route has no aircraft and is still paying fees."
-                            : "\(grounded) routes have no aircraft and are still paying fees.",
+            let cost = controller.catalog.map {
+                Format.money($0.tuning.finance.payrollPerRouteMonthly * Int64(grounded))
+            }
+            let text: String
+            switch (grounded == 1, cost) {
+            case (true, let amount?):
+                text = "1 route has no aircraft: it earns nothing and still costs \(amount) a month in route payroll."
+            case (false, let amount?):
+                text = "\(grounded) routes have no aircraft: they earn nothing and still cost \(amount) a month in route payroll."
+            case (true, nil):
+                text = "1 route has no aircraft: it earns nothing and still costs route payroll."
+            case (false, nil):
+                text = "\(grounded) routes have no aircraft: they earn nothing and still cost route payroll."
+            }
+            return Hint(icon: "pause.circle.fill", text: text,
                         tint: AETheme.caution)
         case .opportunity:
             guard let best = model.opportunities.first else { return nil }

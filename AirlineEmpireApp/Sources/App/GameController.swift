@@ -11,6 +11,17 @@ import AirlineEmpireCore
 @Observable
 final class GameController {
     private(set) var snapshot: GameState?
+    /// Changes only on a new simulation value, including commands while paused.
+    /// Airport quotes debounce this revision; body evaluation never runs a forecast.
+    private(set) var airportInvestmentRevision: UInt64 = 0
+    /// The same O(1) revision for the passenger-experience service quote, so a
+    /// paused route, fare or fleet change re-quotes it too.
+    private(set) var passengerExperienceRevision: UInt64 = 0
+    /// The same O(1) revision for the map's render caches. The map used to
+    /// key them on `snapshotReceivedAt`, which moves only on a tick — so a
+    /// route opened, assigned or closed while paused (the state every game
+    /// starts in) did not appear on the map until time ran.
+    private(set) var mapRevision: UInt64 = 0
     private(set) var catalog: ContentCatalog?
     private(set) var recentEvents: [SimEvent] = []
     private(set) var speed: SimSpeed = .paused
@@ -93,6 +104,14 @@ final class GameController {
     private var sessionCheckpoint: SessionCheckpoint?
     private(set) var lastSessionReport: SessionReport?
     private(set) var lastSessionNextMove: String?
+
+    /// The menu's "since you opened this campaign" card belongs to the
+    /// session that just ended. It outlived that save's deletion and the
+    /// next airline's founding, and greeted the menu with a stranger's recap.
+    private func clearSessionReport() {
+        lastSessionReport = nil
+        lastSessionNextMove = nil
+    }
     private var saveManager: SaveManager?
     private var pumpTask: Task<Void, Never>?
     private var eventTask: Task<Void, Never>?
@@ -158,6 +177,8 @@ final class GameController {
     @ObservationIgnored private var cachedMap: MapModel?
     @ObservationIgnored private var cachedNetwork: NetworkSummary?
     @ObservationIgnored private var cachedFleetSummary: FleetSummary?
+    @ObservationIgnored private var cachedFleetBoard: FleetBoard?
+    @ObservationIgnored private var cachedBriefing: BriefingModel?
     @ObservationIgnored private var cachedRouteCards: [RouteCardModel]?
     @ObservationIgnored private var cachedFleetCards: [FleetCardModel]?
     @ObservationIgnored private var cachedCompetition: CompetitionSummary?
@@ -169,6 +190,10 @@ final class GameController {
     /// six would re-run on every gesture frame precisely when it has nothing
     /// to say.
     @ObservationIgnored private var cachedNextMove: HomeNextMove??
+    /// The aircraft market's route comparison, per route. Keyed because the
+    /// market sheet can switch routes without the snapshot changing, and each
+    /// comparison prices every eligible airframe on the pair.
+    @ObservationIgnored private var cachedAircraftMarket: [RouteID: AircraftMarketComparison] = [:]
 
     /// Drops every derived cache. Called on each published snapshot.
     ///
@@ -192,10 +217,13 @@ final class GameController {
         cachedFleetCards = nil
         cachedNetwork = nil
         cachedFleetSummary = nil
+        cachedFleetBoard = nil
+        cachedBriefing = nil
         cachedCompetition = nil
         cachedDashboard = nil
         cachedProgression = nil
         cachedNextMove = nil
+        cachedAircraftMarket = [:]
     }
 
     /// The competitive picture — Home's one rival fact, the World hub's live
@@ -225,6 +253,44 @@ final class GameController {
         let summary = snapshot.fleetSummary(for: player.id)
         cachedFleetSummary = summary
         return summary
+    }
+
+    /// The fleet health board — the Fleet tab's actionable header. Computed
+    /// once per snapshot like the other read models: it walks the fleet, each
+    /// assigned route and the maintenance arithmetic.
+    var fleetBoard: FleetBoard? {
+        guard let snapshot, let player = snapshot.playerAirline, let catalog else { return nil }
+        if let cachedFleetBoard { return cachedFleetBoard }
+        let board = snapshot.fleetBoard(for: player.id, catalog: catalog)
+        cachedFleetBoard = board
+        return board
+    }
+
+    /// The briefing's decision hierarchy — its lead alerts and the summaries
+    /// under them. Computed once per snapshot, like the summaries it composes.
+    var briefingModel: BriefingModel? {
+        guard let snapshot, let catalog else { return nil }
+        if let cachedBriefing { return cachedBriefing }
+        let model = snapshot.briefingModel(catalog: catalog)
+        cachedBriefing = model
+        return model
+    }
+
+    /// Every eligible airframe priced on one route, with route, fare and
+    /// frequency held constant. Nil without a route, a player or content, and
+    /// nil for a route that is not this airline's.
+    ///
+    /// Cached per route: the sheet switches routes without a new snapshot,
+    /// and each comparison prices every eligible airframe through the demand
+    /// engine.
+    func aircraftMarketComparison(for routeID: RouteID?) -> AircraftMarketComparison? {
+        guard let routeID, let snapshot, let catalog else { return nil }
+        if let cached = cachedAircraftMarket[routeID] { return cached }
+        let comparison = snapshot.aircraftMarketComparison(
+            routeID: routeID, catalog: catalog,
+            era: min(snapshot.progression.era, eraCeiling))
+        if let comparison { cachedAircraftMarket[routeID] = comparison }
+        return comparison
     }
 
     /// The airline at a glance — the map's top bar and briefing strip, the
@@ -259,7 +325,8 @@ final class GameController {
         if let cachedNextMove { return cachedNextMove }
         let move = HomeNextMove.resolve(snapshot: snapshot, model: model,
                                         catalog: catalog,
-                                        fleetSummary: fleetSummary)
+                                        fleetSummary: fleetSummary,
+                                        allowedAirports: recommendationAirports)
         cachedNextMove = .some(move)
         return move
     }
@@ -267,10 +334,30 @@ final class GameController {
     var mapModel: MapModel? {
         guard let snapshot, let catalog else { return nil }
         if let cachedMap { return cachedMap }
-        let model = snapshot.mapModel(catalog: catalog)
+        let model = snapshot.mapModel(catalog: catalog,
+                                      allowedAirports: recommendationAirports)
         cachedMap = model
         return model
     }
+
+    /// The airports the game may *recommend*: the free region for a free
+    /// airline, nil (everything) for Pro. Every "open a route here" the game
+    /// suggests — the first-route tutorial, the Home row, the map's dashed
+    /// arcs — is filtered through it, so a free player is never advised into
+    /// a market the route sheet then refuses. Locked cities stay visible and
+    /// badged where the player browses; they are just not *advice*.
+    var recommendationAirports: Set<AirportCode>? {
+        guard eraCeiling < .empire, let catalog,
+              let home = snapshot?.playerAirline?.homeAirport else { return nil }
+        if let cached = cachedRecommendationAirports, cached.home == home {
+            return cached.airports
+        }
+        let airports = ContentAccess.free.servableAirports(home: home, catalog: catalog)
+        cachedRecommendationAirports = (home, airports)
+        return airports
+    }
+    /// Per home airport: the free region never changes within a game.
+    @ObservationIgnored private var cachedRecommendationAirports: (home: AirportCode, airports: Set<AirportCode>)?
 
     var routeCards: [RouteCardModel] {
         guard let snapshot, let catalog, let player = snapshot.playerAirline
@@ -337,8 +424,21 @@ final class GameController {
         }
     }
 
-    /// Expansion is capped; the current airline remains playable.
+    /// Whether the era wall is up: the airline has earned an era its access
+    /// does not cover (or a lapsed save is already past the free ceiling).
+    /// The current airline remains playable either way.
     private(set) var isBeyondEraCeiling = false
+
+    /// The era the airline has *qualified for* but cannot enter without Pro,
+    /// or nil. Distinct from `isBeyondEraCeiling` so the wall can say "National
+    /// era earned" — true — instead of appearing on the first day of Regional
+    /// and staying up for the whole era, which is what it used to do.
+    private(set) var earnedLockedEra: Era?
+
+    /// Set after the first publish of a game, so qualification that was
+    /// already true when a save loaded is not celebrated again on every
+    /// launch — only the moment it is earned during play.
+    @ObservationIgnored private var eraQualificationObserved = false
 
     // MARK: Lifecycle
 
@@ -347,6 +447,7 @@ final class GameController {
                       livery: Livery = .default) {
         guard session == nil else { return }
         startupFailure = nil
+        clearSessionReport()
         let catalog: ContentCatalog
         do {
             catalog = try ContentCatalog.loadBundled()
@@ -400,6 +501,7 @@ final class GameController {
     func loadGame(slot: String) {
         guard session == nil else { return }
         startupFailure = nil
+        clearSessionReport()
         do {
             let catalog = try ContentCatalog.loadBundled()
             let manager = makeSaveManager()
@@ -449,6 +551,7 @@ final class GameController {
 
     private func loadGame(fileURL: URL) {
         startupFailure = nil
+        clearSessionReport()
         do {
             let catalog = try ContentCatalog.loadBundled()
             let manager = makeSaveManager()
@@ -524,6 +627,8 @@ final class GameController {
         let manager = saveManager ?? makeSaveManager()
         do {
             try manager.store.deleteSlot(slot)
+            // The recap may describe the airline that was just deleted.
+            clearSessionReport()
             return true
         } catch {
             lastSaveOutcome = .failed("That save could not be deleted.")
@@ -650,6 +755,7 @@ final class GameController {
         mapRouteRequest = nil
         pumpTask?.cancel()
         pumpTask = nil
+        isPumping = false
         eventTask?.cancel()
         eventTask = nil
         rejectionTask?.cancel()
@@ -667,6 +773,9 @@ final class GameController {
         lastSaveOutcome = nil
         autoPauseReason = nil
         celebration = nil
+        isBeyondEraCeiling = false
+        earnedLockedEra = nil
+        eraQualificationObserved = false
         // Per-game, like everything else here. Without this the next airline
         // opens Settings to a warning that *this* one's autosave failed
         // (tasks/BUGS.md BUG-028) — the same leak class as BUG-013.
@@ -677,11 +786,19 @@ final class GameController {
         // inherits the last one's history and never hears its own first route
         // (tasks/BUGS.md BUG-013).
         feedback.endSession()
+        playMenuSoundscape()
         // Every derived cache, by the one function that knows them all. This
         // was an inline copy of that list and had already drifted once: a
         // cache added for a screen is a cache the *next* airline inherits
         // unless somebody remembers two places (BUG-013's shape).
         invalidateCaches()
+    }
+
+    /// The menu's music. The soundscape is otherwise derived from each game
+    /// snapshot, and the menu has none — so `music_menu` was decoded at
+    /// every launch and never heard.
+    func playMenuSoundscape() {
+        feedback.updateSoundscape(state: nil, speed: .paused, stage: .healthy)
     }
 
     /// Game minutes to add to the published snapshot's clock to get the world
@@ -695,14 +812,27 @@ final class GameController {
     /// stay where the pause found them instead of stepping back to the last
     /// tick (BUG-058).
     func predictedGameMinutes(at date: Date) -> Double {
+        // With the pump stopped (Control Center, a banner, the app switcher)
+        // the world is not moving, so neither is the prediction. It used to
+        // keep extrapolating from the last publish for up to 1.5 s of 16x —
+        // aircraft ran ahead, then snapped back on the first publish after
+        // returning.
+        guard isPumping else { return publishedTickFraction }
         let realSeconds = min(max(0, date.timeIntervalSince(publishedAt)),
                               Self.maxPredictionSeconds)
         return publishedTickFraction + realSeconds * speed.gameMinutesPerRealSecond
     }
 
+    /// Whether the simulation pump is running (the scene is active).
+    @ObservationIgnored private var isPumping = false
+
     // MARK: Time control
 
     func setSpeed(_ newSpeed: SimSpeed) {
+        // Prediction restarts from this instant: `refresh` no longer
+        // re-stamps `publishedAt` while paused, and extrapolating a resumed
+        // speed from a stale stamp would jump aircraft ahead.
+        publishedAt = Date()
         speed = newSpeed
         autoPauseReason = nil
         guard let session else { return }
@@ -721,6 +851,45 @@ final class GameController {
             await session.advanceToNextMorning()
             await self.refresh()
         }
+    }
+
+    /// The first takeoff, without the dead wait before it.
+    ///
+    /// Schedules are built at midnight and a new game starts at 00:00 on a
+    /// day that has none, so the first departure (06:00 at the earliest) was
+    /// minutes of real time on a map where nothing moved. This runs the
+    /// world — every system, the same ticks the clock would have run — to
+    /// half an hour before the player's next departure and plays at 1x, so
+    /// the takeoff is seconds away. Near a departure it only sets the speed,
+    /// which is what makes a second press harmless where "advance to next
+    /// morning" used to skip the whole first day.
+    func skipToFirstBoarding() {
+        guard let session, let player = snapshot?.playerAirline?.id else { return }
+        Task {
+            var state = await session.snapshot
+            if Self.nextDeparture(of: player, in: state) == nil {
+                await session.advanceToNextMorning()
+                state = await session.snapshot
+            }
+            if let departure = Self.nextDeparture(of: player, in: state) {
+                let tick = state.meta.tickMinutes
+                let minutes = departure.rawMinutes - 30 - state.clock.now.rawMinutes
+                if minutes >= tick {
+                    await session.advance(ticks: Int(minutes / tick))
+                }
+            }
+            guard self.session === session else { return }
+            self.setSpeed(.x1)
+        }
+    }
+
+    private static func nextDeparture(of player: AirlineID, in state: GameState) -> SimTime? {
+        state.flights.values.filter { flight in
+            guard flight.kind == .revenue,
+                  state.routes[flight.route]?.airline == player else { return false }
+            if case .scheduled = flight.phase { return true }
+            return false
+        }.map(\.departureTime).min()
     }
 
     /// Several mornings, one refresh: what `count` taps of the sunrise do
@@ -748,7 +917,11 @@ final class GameController {
     func setPumping(_ active: Bool) {
         pumpTask?.cancel()
         pumpTask = nil
+        isPumping = active && session != nil
         guard active, session != nil else { return }
+        // Prediction restarts from now, not from the publish before the
+        // pause (see `predictedGameMinutes`).
+        publishedAt = Date()
         pumpTask = Task { [weak self] in
             var last = ContinuousClock.now
             while !Task.isCancelled {
@@ -835,6 +1008,32 @@ final class GameController {
         celebration = nil
     }
 
+    /// A banner for something the player just did that the simulation does
+    /// not emit as an event — signing for the first aircraft, becoming Pro.
+    /// Same overlay and the same one-at-a-time rule as the event banners.
+    func celebrate(title: String, detail: String, icon: String) {
+        celebrationCounter += 1
+        celebration = Celebration(id: celebrationCounter, title: title,
+                                  detail: detail, icon: icon)
+    }
+
+    /// The first landing, celebrated when it happens.
+    ///
+    /// The "First flight" milestone is checked by the daily progression pass,
+    /// so its banner — and the first-flight offer keyed to it — arrived at
+    /// the next midnight: minutes of real time after the aircraft actually
+    /// touched down, with the moment long gone. The landing is visible in the
+    /// counters the instant it happens.
+    private func celebrateFirstLanding(_ state: GameState) {
+        let passengers = state.progression.counters.passengersCarried
+        celebrate(title: "Your first flight has landed",
+                  detail: passengers > 0
+                      ? "\(Format.count(passengers)) passengers flew with you. Their fares are in the bank."
+                      : "Your airline is flying. Fares arrive with every landing.",
+                  icon: "airplane.arrival")
+    }
+
+
     /// The four things the simulation emits that a player worked for.
     /// Deliberately narrow: celebrating everything celebrates nothing.
     private func noteCelebration(_ event: SimEvent) {
@@ -844,6 +1043,13 @@ final class GameController {
             celebration = Celebration(
                 id: celebrationCounter, title: "A new era",
                 detail: "Your airline has reached \(Vocab.era(era)).", icon: "flag.fill")
+        case .milestoneReached(let code) where code == "firstFlight":
+            // Celebrated at the landing itself (`celebrateFirstLanding`).
+            // Keyed on the code alone, not on whether that banner has shown:
+            // in a multi-day advance the event can arrive before the refresh
+            // that celebrates the landing, and the player saw "First flight"
+            // replaced a moment later by "Your first flight has landed".
+            celebrationCounter -= 1
         case .milestoneReached(let code):
             celebration = Celebration(
                 id: celebrationCounter, title: Vocab.milestone(code),
@@ -926,19 +1132,57 @@ final class GameController {
         if state.clock.tickCount != snapshot?.clock.tickCount {
             snapshotReceivedAt = Date()
         }
-        // Every publish, tick or no tick: this pair *is* the current game
-        // time, and `state.clock.now + fraction` is continuous across a tick
-        // boundary precisely because the fraction drops by a tick as the
-        // clock gains one.
-        publishedAt = Date()
-        publishedTickFraction = fraction
-        invalidateCaches()
-        snapshot = state
-        speed = sessionSpeed
-        checkEraCeiling(state)
-        checkSolvency(state)
+        // Every mutation is a tick or an applied command (which emits an
+        // event), so these two counters — plus the session's identity — say
+        // in O(1) whether this publish carries a new world at all.
+        let sessionID = ObjectIdentifier(session)
+        let sameSession = publishedSession == sessionID
+        let changed = snapshot == nil || !sameSession
+            || state.clock.tickCount != snapshot?.clock.tickCount
+            || state.eventLog.totalCount != snapshot?.eventLog.totalCount
+        publishedSession = sessionID
+        // This pair *is* the current game time, and `state.clock.now +
+        // fraction` is continuous across a tick boundary precisely because the
+        // fraction drops by a tick as the clock gains one. While paused
+        // nothing moves, and re-stamping it four times a second only redrew
+        // every view that reads the clock.
+        if changed || sessionSpeed != .paused || fraction != publishedTickFraction {
+            publishedAt = Date()
+            publishedTickFraction = fraction
+        }
+        if changed {
+            // The pump publishes four times a second at every speed, and
+            // between ticks — for 3.75 s at a time at 1x, forever while
+            // paused — it publishes the same world. Clearing every cache and
+            // reassigning `snapshot` on each of those rebuilt the map, the
+            // dashboard and the next move for a picture that had not changed.
+            invalidateCaches()
+            airportInvestmentRevision &+= 1
+            passengerExperienceRevision &+= 1
+            mapRevision &+= 1
+            if sameSession, let previous = snapshot,
+               previous.progression.counters.flightsCompleted == 0,
+               state.progression.counters.flightsCompleted > 0 {
+                celebrateFirstLanding(state)
+            }
+            snapshot = state
+        }
+        if speed != sessionSpeed { speed = sessionSpeed }
+        if changed {
+            // A collapsed airline is over: nothing may keep simulating (and
+            // autosaving) behind the game-over screen.
+            if state.progression.gameOver, sessionSpeed != .paused {
+                setSpeed(.paused)
+            }
+            checkEraCeiling(state)
+            checkSolvency(state)
+        }
         publishAudio(state)
     }
+
+    /// The session whose state `snapshot` holds, so a new or imported game
+    /// always publishes even if its counters happen to match the last one's.
+    @ObservationIgnored private var publishedSession: ObjectIdentifier?
 
     /// Hands the batch to the director together with the state that produced
     /// it. Drained unconditionally — the director is asked on every refresh
@@ -956,8 +1200,36 @@ final class GameController {
     }
 
     /// Present an expansion offer without pausing the player's operations.
+    ///
+    /// The wall appears when the airline has *earned* the next era and its
+    /// access stops it there — the moment the offer is both true and wanted —
+    /// not when it merely enters the last free era. Properties are assigned
+    /// only on change: this runs on every publish, and an `@Observable`
+    /// assignment invalidates its readers even when the value is the same.
     private func checkEraCeiling(_ state: GameState) {
-        isBeyondEraCeiling = eraCeiling < .empire && state.progression.era >= eraCeiling
+        var earned: Era?
+        if eraCeiling < .empire, state.progression.era == eraCeiling,
+           let next = EraGate.next(after: eraCeiling),
+           let catalog, let player = state.playerAirline,
+           EraGate.isPassed(next, player: player, state: state, catalog: catalog,
+                            tuning: catalog.tuning.progression) {
+            earned = next
+        }
+        let beyond = eraCeiling < .empire
+            && (state.progression.era > eraCeiling || earned != nil)
+        if earned != earnedLockedEra {
+            if let earned, earnedLockedEra == nil, eraQualificationObserved {
+                celebrationCounter += 1
+                celebration = Celebration(
+                    id: celebrationCounter,
+                    title: "\(Vocab.era(earned)) era earned",
+                    detail: "Your airline qualifies for the next chapter. Keep flying free, or open it with Pro.",
+                    icon: "crown.fill")
+            }
+            earnedLockedEra = earned
+        }
+        if beyond != isBeyondEraCeiling { isBeyondEraCeiling = beyond }
+        eraQualificationObserved = true
         if autoPauseReason == .eraCeiling { autoPauseReason = nil }
     }
 

@@ -37,6 +37,7 @@ public struct MigrationChain: Sendable {
         MigrationV10AddLivery(),
         MigrationV11AddMarketMoves(),
         MigrationV12AddRescueDecision(),
+        MigrationV13AddProgressionRecord(),
     ])
 
     public func migrate(payload: [String: Any], from version: Int) throws -> [String: Any] {
@@ -53,6 +54,22 @@ public struct MigrationChain: Sendable {
             v += 1
         }
         return current
+    }
+}
+
+/// v13 → v14: progression gained `record`, the bounded dated log of completed
+/// work. An older save starts with an empty log — its retained milestones,
+/// achievements and completed programs are untouched, and nothing is
+/// manufactured backwards from the event feed, which never held the whole
+/// campaign anyway. The log begins from this build.
+public struct MigrationV13AddProgressionRecord: SaveMigration {
+    public let fromVersion = 13
+    public init() {}
+    public func migrate(_ payload: inout [String: Any]) throws {
+        guard var progression = payload["progression"] as? [String: Any],
+              progression["record"] == nil else { return }
+        progression["record"] = [Any]()
+        payload["progression"] = progression
     }
 }
 
