@@ -23,9 +23,11 @@ write, screenshot and URL steps were skipped):
 **Tooling finding.** `push-metadata.mjs` looks versions up by exact
 `versionString`. Asked for `1.0`, `1.0.0` or `1.0.22` it plans to **create**
 that version, because none exists. An `apply` run with the wrong string would
-therefore create a stray version rather than fail. Always pass the real
-version (`1.1.0` today, `1.2.0` next). A guard that refuses to create a
-version lower than an existing one is worth adding before the next apply.
+therefore have created a stray version rather than failed. **Fixed:**
+`refuseVersionCreation` in `scripts/asc/lib/asc.mjs` now refuses — in plan
+mode too — to create any version that is not higher than every existing one,
+with two selftests covering the 25 September strings. Still pass the real
+version (`1.1.0` today, `1.2.0` next).
 
 ## 2. What can still change while 1.1.0 waits for release
 

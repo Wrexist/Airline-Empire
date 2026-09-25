@@ -26,7 +26,7 @@ import { join, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Buffer } from 'node:buffer'
 
-import { decodePrivateKey, credentialsFromEnv, mintToken, AppStoreConnect, AscError } from './lib/asc.mjs'
+import { decodePrivateKey, credentialsFromEnv, mintToken, AppStoreConnect, AscError, compareVersionStrings, refuseVersionCreation } from './lib/asc.mjs'
 import { loadStore, validateStore, checkBundleIdConsistency, checkAppIcon, inspectPng, LIMITS, SCREENSHOT_SIZES } from './lib/metadata.mjs'
 import { checkBundleConfig } from './check-bundle-config.mjs'
 import {
@@ -82,6 +82,21 @@ function assertIncludes(list, needle, message) {
 
 const { privateKey: testKeyObject, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' })
 const testPem = testKeyObject.export({ type: 'pkcs8', format: 'pem' })
+
+test('version strings compare numerically, missing parts as zero', () => {
+  assert(compareVersionStrings('1.10.0', '1.9') === 1)
+  assert(compareVersionStrings('1.1', '1.1.0') === 0)
+  assert(compareVersionStrings('1.0.22', '1.1.0') === -1)
+})
+
+test('creating a version lower than an existing one is refused', () => {
+  // The 25 September case: the approved version was 1.1.0.
+  for (const typo of ['1.0', '1.0.0', '1.0.22', '1.1.0']) {
+    assert(refuseVersionCreation(typo, ['1.1.0']) !== null, `${typo} should be refused`)
+  }
+  assert(refuseVersionCreation('1.2.0', ['1.1.0']) === null)
+  assert(refuseVersionCreation('1.0.0', []) === null, 'a first version is always allowed')
+})
 
 test('decodePrivateKey accepts raw PEM', () => {
   assert(decodePrivateKey(testPem)?.includes('BEGIN PRIVATE KEY'), 'raw PEM was not accepted')
