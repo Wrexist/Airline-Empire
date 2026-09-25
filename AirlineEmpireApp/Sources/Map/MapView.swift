@@ -35,6 +35,7 @@ struct MapScreen: View {
     @Environment(GameController.self) private var controller
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.feedback) private var feedback
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var path = NavigationPath()
     @State private var camera = MapCamera()
@@ -75,9 +76,21 @@ struct MapScreen: View {
     /// `-AEUITestProbes` and published through the canvas's accessibility
     /// value so a UI test can drag the real map and read real numbers.
     @State private var drawStats = MapDrawStats()
-    private var probesEnabled: Bool {
+    /// Read once per process. It was a scan of the launch arguments on every
+    /// read — and it is read inside the draw, thirty times a second.
+    private static let probesArgument =
         ProcessInfo.processInfo.arguments.contains("-AEUITestProbes")
+    private var probesEnabled: Bool { Self.probesArgument }
+    /// The last single tap, so a second one close behind it — within 0.3 s
+    /// and 30 pt — reads as a double tap (`tapped(at:)`).
+    @State private var lastTap: TapRecord?
+    private struct TapRecord {
+        let time: Date
+        let location: CGPoint
     }
+    /// Whether the layer picker's list is open. It grows the top chrome, and
+    /// a transient menu must not re-fit the map under it.
+    @State private var overlayPickerOpen = false
 
     private var presentsSheet: Bool {
         showingBriefing || showingAircraftMarket || routeDraft != nil || airportDraft != nil
@@ -143,11 +156,29 @@ struct MapScreen: View {
                         bottom: bottomChromeHeight + geometry.safeAreaInsets.bottom),
                               initial: true) { _, viewport in
                         guard topChromeHeight > 0, bottomChromeHeight > 0 else { return }
+                        let resized = camera.viewport.size != viewport.size
                         camera.viewport = viewport
-                        if !hasFramedHome || camera.isNetworkFramed {
+                        if !hasFramedHome {
                             hasFramedHome = true
                             camera.frameNetwork(model, animated: false)
+                        } else if camera.isNetworkFramed, !overlayPickerOpen,
+                                  resized || (!hasLiveSelection(model)
+                                              && !camera.networkFits(model)) {
+                            // A framed network re-fits when the canvas itself
+                            // changes size — a rotation, a split view — and
+                            // otherwise only when chrome has actually covered
+                            // one of its airports, and then as a glide. It used
+                            // to re-fit, instantly, on every change of chrome:
+                            // the layer list opening, a banner, the briefing
+                            // growing a line, a card replacing it — the map
+                            // jumped under each. A size change is still
+                            // followed by chrome settling to the new width,
+                            // which this second test absorbs.
+                            camera.frameNetwork(model, animated: !reduceMotion)
                         }
+                        // A card that has just risen over the selection moves
+                        // the camera the least distance that shows it again.
+                        revealSelection(selection, in: model)
                     }
                     // The camera cannot read the environment itself, so the
                     // screen tells it. `initial: true` because the setting is
@@ -185,6 +216,20 @@ struct MapScreen: View {
                 followMemory.clear()
                 camera.frameNetwork(model, animated: !reduceMotion)
                 selection = .route(request.routeID)
+                // Consumed. `initial: true` replays whatever is still set each
+                // time this screen is built — on iPad, every return to Home —
+                // so a handled request reselected its route and shut whatever
+                // sheet the player had open, again and again. Cleared a turn
+                // later, and only if it is still this request: the shell's tab
+                // switch and an open route sheet's dismissal observe the same
+                // value, and both ignore nil.
+                let handled = request.id
+                let gameController = controller
+                Task { @MainActor in
+                    if gameController.mapRouteRequest?.id == handled {
+                        gameController.mapRouteRequest = nil
+                    }
+                }
             }
             .navigationTitle(controller.snapshot?.playerAirline?.name ?? "Airline Empire")
             .navigationBarTitleDisplayMode(.inline)
@@ -227,10 +272,21 @@ struct MapScreen: View {
         // size they must be given.
         let gestureSize = CGSize(width: size.width,
                                  height: size.height + bottomOcclusion)
+        // What the caches key on: it moves whenever the simulation hands over
+        // a new world — a tick, or a command applied while paused
+        // (docs/MAP_INTERACTION_ARCHITECTURE.md §3). Read here, in the body,
+        // so the draw only ever sees a value that matches its model.
+        let revision = controller.mapRevision
         // `isMoving` keeps the clock running through a camera move even with
         // the simulation paused: the world stops, the map still has to travel.
+        // And the clock stops whenever nobody can see the map: under a sheet
+        // (the briefing covered thirty frames a second of it) or with the
+        // app not in the foreground. The map still redraws when its model
+        // changes; it just stops interpolating for no one.
+        let paused = (!animating && !camera.isMoving)
+            || presentsSheet || scenePhase != .active
         return TimelineView(.animation(minimumInterval: 1.0 / 30.0,
-                                       paused: !animating && !camera.isMoving)) { timeline in
+                                       paused: paused)) { timeline in
             Canvas(opaque: true, rendersAsynchronously: false) { context, canvasSize in
                 // The camera as of *this frame's* date: a move in flight is
                 // evaluated here rather than stepped anywhere, which is what
@@ -267,7 +323,7 @@ struct MapScreen: View {
                                      // where the pause found it, which is a
                                      // fraction of a tick past the last one.
                                      gameMinutes: minutes,
-                                     tick: referenceDate,
+                                     revision: revision,
                                      settle: camera.settleGeneration,
                                      bottomOcclusion: bottomOcclusion,
                                      cache: renderCache)
@@ -299,48 +355,61 @@ struct MapScreen: View {
                 // hop bought nothing and cost a frame of staleness.
                 hitGeometry.store(frame.geometry)
             }
-            .contentShape(Rectangle())
-            .gesture(SimultaneousGesture(dragGesture(size: gestureSize),
-                                         zoomGesture(size: gestureSize)))
-            // Double tap before single tap: SwiftUI gives the higher count
-            // first refusal, and a single tap still selects after the
-            // double-tap window lapses. Declared the other way round the
-            // double tap is unreachable.
-            .onTapGesture(count: 2) { location in
-                camera.stopFollowing(landingAt: followMemory.lastPoint)
-                followMemory.clear()
-                camera.zoomIn(about: location, size: gestureSize)
+        }
+        // Everything below hangs off the timeline rather than being built
+        // inside it. Its closure runs thirty times a second, and every
+        // modifier in it ran with it: the accessibility summary (three
+        // filters and a formatted string), both gestures and the follow check
+        // were rebuilt per frame to produce the same values. Out here they are
+        // evaluated when the screen's body is.
+        .contentShape(Rectangle())
+        .gesture(SimultaneousGesture(dragGesture(size: gestureSize),
+                                     zoomGesture(size: gestureSize)))
+        // One tap recognizer, not two. With a double-tap recognizer beside
+        // it, every single tap waited out the double-tap window (~0.3 s)
+        // before selecting — at 16× an aircraft has moved well off the spot
+        // the finger aimed at by then. A tap now selects at once, and a
+        // second tap close behind it is the zoom (`tapped(at:)`).
+        .onTapGesture { location in
+            tapped(at: location, size: gestureSize, model: model)
+        }
+        .accessibilityElement()
+        .accessibilityIdentifier("ae-map-canvas")
+        .accessibilityLabel("World map")
+        .modifier(MapFrameAccessibility(summary: accessibilitySummary(model),
+                                        probesEnabled: probesEnabled,
+                                        stats: drawStats, cache: renderCache))
+        .accessibilityHint("Use the zoom controls to explore. Browse airports in World and routes in Airline. Use Follow a flight to select an airborne aircraft.")
+        // A followed flight lands, and Core removes it from the world
+        // after its turnaround. The camera must not keep chasing an id
+        // that no longer resolves, and it must not fall back to the
+        // centre it had when the follow began — an ocean away. It holds
+        // where the aircraft last was, which is the airport it landed at.
+        // Scanned only while following: `flights` is up to 450 entries
+        // late-game and this is evaluated on every body pass, including
+        // the ones a finger drives (baseline §2's multiplier).
+        .onChange(of: camera.followed.map { id in
+            model.flights.contains(where: { $0.id == id })
+        } ?? true) { _, live in
+            guard camera.followed != nil, !live else { return }
+            camera.stopFollowing(landingAt: followMemory.lastPoint)
+            followMemory.clear()
+        }
+        // The end of a camera move, signalled. `isMoving` is read from the
+        // clock, so nothing observable changed when a move finished and the
+        // timeline — unpaused for the move — ran on at 30fps over a paused
+        // world until something else happened to redraw the screen. This
+        // wakes at the move's deadline and lets go of the finished move,
+        // which re-evaluates `paused` above. Restarted by every new move.
+        .task(id: camera.moveDeadline) {
+            guard let deadline = camera.moveDeadline else { return }
+            let wait = deadline.timeIntervalSinceNow
+            if wait > 0 {
+                do { try await Task.sleep(for: .seconds(wait)) } catch { return }
             }
-            .onTapGesture { location in handleTap(at: location, model: model) }
-            .accessibilityElement()
-            .accessibilityIdentifier("ae-map-canvas")
-            .accessibilityLabel("World map")
-            .modifier(MapFrameAccessibility(summary: accessibilitySummary(model),
-                                            probesEnabled: probesEnabled,
-                                            stats: drawStats, cache: renderCache))
-            .accessibilityHint("Use the zoom controls to explore. Browse airports in World and routes in Airline. Use Follow a flight to select an airborne aircraft.")
-            // A followed flight lands, and Core removes it from the world
-            // after its turnaround. The camera must not keep chasing an id
-            // that no longer resolves, and it must not fall back to the
-            // centre it had when the follow began — an ocean away. It holds
-            // where the aircraft last was, which is the airport it landed at.
-            // Scanned only while following: `flights` is up to 450 entries
-            // late-game and this is evaluated on every body pass, including
-            // the ones a finger drives (baseline §2's multiplier).
-            .onChange(of: camera.followed.map { id in
-                model.flights.contains(where: { $0.id == id })
-            } ?? true) { _, live in
-                guard camera.followed != nil, !live else { return }
-                camera.stopFollowing(landingAt: followMemory.lastPoint)
-                followMemory.clear()
-            }
+            camera.settleMove()
         }
     }
-
-    /// The tick the route cache and the label memory key on: it moves when
-    /// Core hands over a new tick and not otherwise
-    /// (docs/MAP_INTERACTION_ARCHITECTURE.md §3).
-    private var referenceDate: Date { controller.snapshotReceivedAt }
 
     // MARK: - Chrome
 
@@ -354,7 +423,8 @@ struct MapScreen: View {
 
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                        MapOverlayPicker(selection: $overlay)
+                        MapOverlayPicker(selection: $overlay,
+                                         expanded: $overlayPickerOpen)
                         let flights = model.flights.filter { $0.isPlayer && $0.airborne }
                         if !flights.isEmpty {
                             Menu {
@@ -491,7 +561,10 @@ struct MapScreen: View {
                 camera.stopFollowing(landingAt: followMemory.lastPoint)
                 followMemory.clear()
                 camera.beginPinch(at: value.startLocation, size: size)
-                camera.pinch = value.magnification
+                // Floored: a magnification of 0 (fingers meeting) made the
+                // zoom 0 — an infinite world scale, and infinite line widths
+                // once the replay divided by it.
+                camera.pinch = max(0.05, value.magnification)
             }
             .onEnded { _ in camera.commitZoom(size: size) }
     }
@@ -518,9 +591,61 @@ struct MapScreen: View {
         reportFocus()
     }
 
+    /// A tap selects at once. A second tap within 0.3 s and 30 pt of it is
+    /// a double tap, and zooms in about where it landed — the first has
+    /// already selected whatever was under the finger, which a double tap on
+    /// an airport is usually aiming at anyway.
+    private func tapped(at location: CGPoint, size: CGSize, model: MapModel) {
+        let now = Date()
+        if let last = lastTap, now.timeIntervalSince(last.time) < 0.3,
+           hypot(location.x - last.location.x, location.y - last.location.y) < 30 {
+            lastTap = nil
+            camera.stopFollowing(landingAt: followMemory.lastPoint)
+            followMemory.clear()
+            camera.zoomIn(about: location, size: size)
+            return
+        }
+        lastTap = TapRecord(time: now, location: location)
+        handleTap(at: location, model: model)
+    }
+
     private func handleTap(at location: CGPoint, model: MapModel) {
         let hit = hitGeometry.hit(at: location)
+        // Selecting anything else lets go of a followed flight. The flight's
+        // card is the only control that stops a follow, and a tap elsewhere
+        // replaced the card while the camera kept riding — a locked camera
+        // with nothing on screen to unlock it.
+        if let followed = camera.followed, hit != .aircraft(followed) {
+            camera.stopFollowing(landingAt: followMemory.lastPoint)
+            followMemory.clear()
+        }
         withAnimation(AEMotion.content) { selection = hit }
+        revealSelection(hit, in: model)
+    }
+
+    /// Keeps the selection out from under the chrome — the card rising over
+    /// it, most often — by the smallest shift of the camera that shows it.
+    /// Nothing moves while it is already clear, or while the camera is riding
+    /// with a flight (which keeps that flight in the clear region itself).
+    private func revealSelection(_ selected: MapHit?, in model: MapModel) {
+        guard camera.followed == nil, let selected else { return }
+        switch selected {
+        case .airport(let code):
+            guard let airport = model.airports.first(where: { $0.code == code })
+            else { return }
+            camera.reveal([CGPoint(x: airport.position.x, y: airport.position.y)])
+        case .aircraft(let id):
+            let minutes = reduceMotion ? 0
+                : controller.predictedGameMinutes(at: Date())
+            guard let point = MapFollow.point(flight: id, model: model,
+                                              gameMinutes: minutes) else { return }
+            camera.reveal([point])
+        case .route(let id):
+            // Any stretch of the route in the clear is enough; only a route
+            // hidden end to end is brought back, by its nearest waypoint.
+            guard let route = model.routes.first(where: { $0.id == id }) else { return }
+            camera.reveal(route.arc.map { CGPoint(x: $0.x, y: $0.y) })
+        }
     }
 
     /// Translates the renderer's zoom ladder into the one Core's soundscape
@@ -699,6 +824,21 @@ final class MapCamera {
     var isMoving: Bool {
         guard let move else { return false }
         return !move.isDone(at: Date())
+    }
+
+    /// When the move in flight lands, or nil with none in flight. The screen
+    /// waits on it (`settleMove`), because `isMoving` is read from the clock
+    /// and nothing observable changes by itself when a move ends.
+    var moveDeadline: Date? {
+        move.map { $0.start.addingTimeInterval($0.duration) }
+    }
+
+    /// Lets go of a move that has played out. It draws nothing different —
+    /// a finished move already evaluates to its target — but clearing it is
+    /// an observable change, and that is what lets the timeline pause again.
+    func settleMove(at date: Date = Date()) {
+        guard let move, move.isDone(at: date) else { return }
+        self.move = nil
     }
 
     var prefersReducedMotion = false
@@ -990,12 +1130,79 @@ final class MapCamera {
     }
 
     /// Fit the player's airports into the measured space between the controls
-    /// and bottom panel. Keep the ordinary longitude extent: airport markers
-    /// use one world copy, so fitting a shorter dateline arc would hide them.
+    /// and bottom panel. Keep the ordinary longitude extent: the fit and the
+    /// camera's clamp both work in the single [0, 1] world, so a shorter
+    /// dateline arc is not a frame this camera can hold.
     func frameNetwork(_ model: MapModel, animated: Bool = true) {
-        let points = model.airports.filter { $0.servedByPlayer || $0.isPlayerHome }
+        frame(points: Self.networkPoints(model), animated: animated)
+    }
+
+    /// The airports `frameNetwork` fits: every one the player serves, and home.
+    static func networkPoints(_ model: MapModel) -> [CGPoint] {
+        model.airports.filter { $0.servedByPlayer || $0.isPlayerHome }
             .map { CGPoint(x: $0.position.x, y: $0.position.y) }
-        frame(points: points, animated: animated)
+    }
+
+    /// Whether every airport `frameNetwork` fits still lands in the clear
+    /// region at the committed camera — the test a chrome change has to fail
+    /// before it may move a framed map. Same 1pt tolerance as the framing
+    /// probe the UI tests read.
+    func networkFits(_ model: MapModel) -> Bool {
+        let projector = MapProjector(zoom: zoom, center: center, size: viewport.size)
+        let clear = viewport.usable.insetBy(dx: -1, dy: -1)
+        return Self.networkPoints(model).allSatisfy {
+            clear.contains(projector.project(MapPoint(x: Double($0.x),
+                                                      y: Double($0.y))))
+        }
+    }
+
+    /// Brings a selection out from under the chrome by the smallest shift of
+    /// the centre that does it, or does nothing when any of `points` (map
+    /// space) is already in the clear region. With several — a route's
+    /// waypoints — the one nearest the clear region is the one brought in.
+    ///
+    /// Never while a gesture or a follow owns the camera. The move starts
+    /// from wherever the camera is showing now, so it can take over from a
+    /// move in flight without a jump; the committed zoom is kept.
+    func reveal(_ points: [CGPoint]) {
+        guard followed == nil, pinchAnchor == nil, panOffset == .zero,
+              !points.isEmpty else { return }
+        let projector = MapProjector(zoom: zoom, center: center, size: viewport.size)
+        let usable = viewport.usable
+        // Brought a little inside the edge rather than onto it, where a
+        // marker's rings and label would still be under the chrome.
+        let inset = min(16, usable.width / 4, usable.height / 4)
+        let target = usable.insetBy(dx: inset, dy: inset)
+        let tolerance = usable.insetBy(dx: -1, dy: -1)
+        var shift: CGSize?
+        for point in points where point.x.isFinite && point.y.isFinite {
+            // The copy of the point nearest the camera, so a selection just
+            // across the dateline is measured where it is drawn.
+            var x = point.x
+            while x - center.x > 0.5 { x -= 1 }
+            while center.x - x > 0.5 { x += 1 }
+            let screen = projector.project(MapPoint(x: Double(x), y: Double(point.y)))
+            if tolerance.contains(screen) { return }
+            let dx = screen.x < target.minX ? screen.x - target.minX
+                : screen.x > target.maxX ? screen.x - target.maxX : 0
+            let dy = screen.y < target.minY ? screen.y - target.minY
+                : screen.y > target.maxY ? screen.y - target.maxY : 0
+            if let best = shift,
+               hypot(best.width, best.height) <= hypot(dx, dy) { continue }
+            shift = CGSize(width: dx, height: dy)
+        }
+        guard let shift else { return }
+        let destination = clamp(CGPoint(x: center.x + shift.width / projector.worldWidth,
+                                        y: center.y + shift.height / projector.worldHeight))
+        guard abs(destination.x - center.x) > 0.000_01
+                || abs(destination.y - center.y) > 0.000_01 else { return }
+        let now = Date()
+        let fromZoom = movedZoom(at: now), fromCenter = movedCenter(at: now)
+        isNetworkFramed = false
+        settleGeneration += 1
+        center = destination
+        beginMove(fromZoom: fromZoom, fromCenter: fromCenter,
+                  duration: MoveDuration.step)
     }
 
     func frame(points: [CGPoint], animated: Bool = true) {
@@ -1036,6 +1243,7 @@ final class MapHitGeometry {
     private var routes: [(MapModel.MapRoute, [CGPoint])] = []
     private var routeTransform: CGAffineTransform = .identity
     private var selectedRoute: (MapModel.MapRoute, [CGPoint])?
+    private var labels: [(AirportCode, CGRect)] = []
 
     func store(_ geometry: MapFrame.Geometry) {
         airports = geometry.airports
@@ -1043,6 +1251,7 @@ final class MapHitGeometry {
         routes = geometry.routes
         routeTransform = geometry.routeTransform
         selectedRoute = geometry.selectedRoute
+        labels = geometry.labels
     }
 
     func hit(at location: CGPoint) -> MapHit? {
@@ -1063,6 +1272,7 @@ final class MapHitGeometry {
         return MapHitTester.hit(at: location, airports: airports,
                                 flights: flights,
                                 routes: cacheRoutes,
+                                labels: labels,
                                 routeLocation: location.applying(inverse),
                                 routeTolerance: 26 / scale)
     }

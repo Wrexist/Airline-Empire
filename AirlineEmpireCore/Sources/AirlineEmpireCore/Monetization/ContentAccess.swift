@@ -166,6 +166,10 @@ public enum ProGate: Equatable, Sendable, Hashable, CaseIterable, Identifiable {
     case airport
     /// Opened from Settings or the menu with nothing specific in mind.
     case direct
+    /// The once-only offer after the player's first flight lands. Its own
+    /// case so the sheet can speak to the moment the player just had, rather
+    /// than wearing the generic headline of a paywall opened from Settings.
+    case firstFlight
 
     /// The headline the paywall wears when it was raised by this gate.
     public var headline: String {
@@ -175,6 +179,7 @@ public enum ProGate: Equatable, Sendable, Hashable, CaseIterable, Identifiable {
         case .saveSlot: "Run more than one airline"
         case .airport: "The rest of the world is waiting"
         case .direct: "Build the whole empire"
+        case .firstFlight: "Your first flight has landed"
         }
     }
 
@@ -198,6 +203,9 @@ public enum ProGate: Equatable, Sendable, Hashable, CaseIterable, Identifiable {
         case .direct:
             "Airline Empire is free to fly — the whole simulation, no ads, "
             + "no timers. Pro opens the rest of the world."
+        case .firstFlight:
+            "Keep flying free — the whole simulation, no ads, no timers. "
+            + "Pro opens every airport, every scenario and three more eras."
         }
     }
 }

@@ -120,12 +120,7 @@ public struct JSONSaveCodec: Sendable {
             let state = try JSONDecoder().decode(GameState.self, from: payload)
             // Synthesized Decodable bypasses GameMeta's initializer checks.
             // Reject malformed imports before the simulation can divide by zero.
-            guard state.meta.tickMinutes > 0,
-                  state.meta.tickMinutes <= GameCalendar.minutesPerDay,
-                  GameCalendar.minutesPerDay % state.meta.tickMinutes == 0,
-                  state.clock.tickCount >= 0,
-                  state.clock.now.rawMinutes <= Int64.max - 2 * GameCalendar.minutesPerDay,
-                  state.integrityViolations().isEmpty else {
+            guard state.isLoadable else {
                 throw SaveError.corruptPayload("This save contains an invalid game state. Choose another backup.")
             }
             return state
@@ -138,6 +133,20 @@ public struct JSONSaveCodec: Sendable {
 }
 
 extension GameState {
+    /// Everything `JSONSaveCodec.decode` demands of a decoded state: a tick
+    /// that divides the day, a clock with headroom, and no integrity
+    /// violation. `SaveManager.save` asks the same question, so a state the
+    /// loader would refuse is never written over the saves it would load.
+    var isLoadable: Bool {
+        guard meta.tickMinutes > 0,
+              meta.tickMinutes <= GameCalendar.minutesPerDay,
+              GameCalendar.minutesPerDay % meta.tickMinutes == 0,
+              clock.tickCount >= 0,
+              clock.now.rawMinutes <= Int64.max - 2 * GameCalendar.minutesPerDay
+        else { return false }
+        return integrityViolations().isEmpty
+    }
+
     /// Stable content hash of the full state — the determinism oracle used
     /// by dual-run and save/restore tests.
     public func stateHash() throws -> UInt64 {

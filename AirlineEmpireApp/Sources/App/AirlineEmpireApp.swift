@@ -70,11 +70,18 @@ struct AirlineEmpireApp: App {
                 .task(id: scenePhase) {
                     guard scenePhase == .active else { return }
                     controller.feedback.prepare()
+                    // The menu has its own bed, decoded at launch; without a
+                    // game there is no snapshot to derive it from.
+                    if !controller.hasGame { controller.playMenuSoundscape() }
                     // Ownership may have changed on another device while
                     // suspended. Refresh before deciding whether to offer Pro.
                     await entitlements.refreshEntitlement()
                     guard !Task.isCancelled else { return }
-                    if controller.snapshot?.progression.hasMilestone("firstFlight") == true {
+                    if (controller.snapshot?.progression.counters.flightsCompleted ?? 0) > 0 {
+                        // The first-flight offer is skipped when prices could
+                        // not load (a first flight landed offline); it is
+                        // made here instead, on the next return to the game.
+                        entitlements.offerOnFirstRunIfDue()
                         entitlements.nudgeIfDue()
                     }
                 }

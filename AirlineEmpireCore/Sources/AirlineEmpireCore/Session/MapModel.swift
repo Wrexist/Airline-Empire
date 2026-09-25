@@ -411,7 +411,8 @@ extension GameState {
     /// One pass over routes builds every per-airport tally, so the whole model
     /// is O(airports + routes + flights) rather than O(airports × routes).
     public func mapModel(catalog: ContentCatalog,
-                         opportunityLimit: Int = 6) -> MapModel {
+                         opportunityLimit: Int = 6,
+                         allowedAirports: Set<AirportCode>? = nil) -> MapModel {
         let player = playerAirline?.id
         let home = playerAirline?.homeAirport
 
@@ -631,7 +632,8 @@ extension GameState {
         }
 
         let mapOpportunities = opportunityLimit == 0 ? []
-            : marketOpportunities(catalog: catalog, limit: opportunityLimit)
+            : marketOpportunities(catalog: catalog, limit: opportunityLimit,
+                                  allowedAirports: allowedAirports)
                 .compactMap { MapModel.opportunity($0, catalog: catalog) }
 
         return MapModel(airports: airports, routes: mapRoutes, flights: mapFlights,

@@ -117,7 +117,10 @@ public struct RecurringCommitments: Equatable, Sendable {
             stations = stations + commitment.monthly
             byAirport[commitment.airport] = commitment.monthly
         }
-        let payroll = tuning.payrollPerAircraftMonthly * Int64(state.fleet(of: airline).count)
+        // Aircraft still on order draw no payroll (EconomySystem), so the
+        // commitment the screen quotes leaves them out too.
+        let crewed = state.fleet(of: airline).filter { !$0.status.isOnOrder }.count
+        let payroll = tuning.payrollPerAircraftMonthly * Int64(crewed)
             + tuning.payrollPerRouteMonthly * Int64(state.routes(of: airline).count)
         return RecurringCommitments(
             leases: leases, loanPayments: loanPayments, stations: stations,

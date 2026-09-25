@@ -1,14 +1,20 @@
 import SwiftUI
 import AirlineEmpireCore
 
-/// A quote is keyed by the airline, the proposed tier and a controller
-/// revision that moves on a new tick or any applied command — so a paused
-/// route, fare or fleet change also invalidates it.
+/// A quote is keyed by the airline, the proposed and installed tiers and the
+/// game day.
+///
+/// It was keyed on a controller revision that moves on every tick, so the
+/// quote restarted every 3.75 s at 1× and blanked itself while it ran —
+/// the spinner came back, Apply switched off and an open confirmation lost
+/// its text. The passengers and reputation it prices move at the daily
+/// update. A route, fare or fleet change made elsewhere re-quotes when this
+/// screen appears again, which is when `task` restarts.
 private struct ServiceQuoteRequest: Equatable {
     let airline: AirlineID
     let proposed: ServiceTier
     let installed: ServiceTier
-    let revision: UInt64
+    let day: Int64
 }
 
 /// Passenger Experience & Reputation: what the airline's reputation is made
@@ -28,6 +34,11 @@ struct PassengerExperienceView: View {
     @State private var pending: ServiceTier?
     @State private var confirming = false
     @State private var saved = false
+    /// The driver cards' minimum width grows with the text. Each title is a
+    /// single word, so wrapping would split it ("Punc-tuality") and the fixed
+    /// 165pt column truncated it at the larger sizes; a wider column lets the
+    /// word fit whole, falling to fewer columns as the type grows.
+    @ScaledMetric(relativeTo: .subheadline) private var driverCardMinimum: CGFloat = 165
 
     /// The capture tests render the review state without a tap.
     init(initialDraft: ServiceTier? = nil) {
@@ -55,10 +66,11 @@ struct PassengerExperienceView: View {
     }
 
     private var quoteRequest: ServiceQuoteRequest? {
-        guard let player = controller.snapshot?.playerAirline else { return nil }
+        guard let snapshot = controller.snapshot,
+              let player = snapshot.playerAirline else { return nil }
         return ServiceQuoteRequest(airline: player.id, proposed: proposedTier ?? player.serviceTier,
                                    installed: player.serviceTier,
-                                   revision: controller.passengerExperienceRevision)
+                                   day: snapshot.clock.now.dayIndex)
     }
 
     var body: some View {
@@ -148,7 +160,7 @@ struct PassengerExperienceView: View {
                         }
                     }
                 }
-                Text("Reputation multiplies how attractive your fares look to passengers. It blends five parts — punctuality 25%, reliability 25%, service 20%, comfort 15% and value 15% — and moves slowly in both directions, over weeks rather than days. A good history buys grace, never immunity: no decision raises it today.")
+                Text("Reputation multiplies demand. It blends punctuality 25%, reliability 25%, service 20%, comfort 15% and value 15%, and moves both ways over weeks, not days.")
                     .font(.subheadline)
                     .foregroundStyle(AETheme.mutedText)
                     .fixedSize(horizontal: false, vertical: true)
@@ -190,7 +202,7 @@ struct PassengerExperienceView: View {
             hasGroundExperience: hasGroundExperience, tuning: catalog.tuning.reputation)
         let columns = typeSize.isAccessibilitySize
             ? [GridItem(.flexible(), alignment: .topLeading)]
-            : [GridItem(.adaptive(minimum: 165), spacing: AETheme.spacingS, alignment: .topLeading)]
+            : [GridItem(.adaptive(minimum: driverCardMinimum), spacing: AETheme.spacingS, alignment: .topLeading)]
         return VStack(alignment: .leading, spacing: AETheme.spacingS) {
             AESectionHeader(text: "What it is made of", systemImage: "chart.bar.doc.horizontal")
             LazyVGrid(columns: columns, alignment: .leading, spacing: AETheme.spacingS) {
@@ -549,6 +561,8 @@ struct PassengerExperienceView: View {
                 .multilineTextAlignment(.center)
             }
             .buttonStyle(AEButtonStyle(role: .primary, expandedLabel: typeSize.isAccessibilitySize))
+            // `preview` is nil only until these two tiers have been quoted
+            // once; a daily re-quote keeps the last figures (`refreshQuote`).
             .disabled(!isChange || pending != nil || preview == nil
                 || command.map { controller.precheck($0) != nil } ?? true)
             .accessibilityIdentifier("ae-service-apply")
@@ -576,7 +590,12 @@ struct PassengerExperienceView: View {
         guard let request = quoteRequest,
               let state = controller.snapshot,
               let catalog = controller.catalog else { return }
-        preview = nil
+        // Only a different question takes the old answer down. The same two
+        // tiers on a new day keep their figures — and Apply, and an open
+        // confirmation's text — until the new quote lands.
+        if preview?.proposedTier != request.proposed || preview?.currentTier != request.installed {
+            preview = nil
+        }
         // Debounce a rapid run through the tiers; only pure Core work leaves
         // the main actor and a cancelled result is discarded.
         do { try await Task.sleep(for: .milliseconds(180)) } catch { return }

@@ -309,7 +309,8 @@ struct BriefingView: View {
             sectionHeader("Next opportunity", "sparkle",
                           id: "ae-briefing-opportunity")
             if let catalog = controller.catalog,
-               let onboarding = snapshot.onboardingModel(catalog: catalog),
+               let onboarding = snapshot.onboardingModel(
+                   catalog: catalog, allowedAirports: controller.recommendationAirports),
                !onboarding.isComplete {
                 OnboardingCard(model: onboarding) { suggestion in
                     guidedRoute = GuidedRoute(suggestion)
@@ -321,7 +322,8 @@ struct BriefingView: View {
                 // surface went silent exactly when the player first had
                 // freedom. Same ranking the map coach uses, same guided-route
                 // flow the checklist used.
-                NextMovesCard(snapshot: snapshot, catalog: catalog) { suggestion in
+                NextMovesCard(snapshot: snapshot, catalog: catalog,
+                              allowedAirports: controller.recommendationAirports) { suggestion in
                     guidedRoute = GuidedRoute(suggestion)
                 }
             }
@@ -610,7 +612,7 @@ struct DigestCard: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Yesterday").font(.headline)
-                        Text(Format.date(digest.date))
+                        Text(Format.longDate(digest.date))
                             .font(.caption)
                             .foregroundStyle(AETheme.mutedText)
                     }
@@ -782,6 +784,8 @@ struct OnboardingCard: View {
 struct NextMovesCard: View {
     let snapshot: GameState
     let catalog: ContentCatalog
+    /// The free region, or nil for Pro (`GameController.recommendationAirports`).
+    var allowedAirports: Set<AirportCode>? = nil
     let openSuggestion: (FirstRouteSuggestion) -> Void
 
     /// Aircraft earning nothing. Kept as the aeroplanes rather than as a
@@ -799,7 +803,8 @@ struct NextMovesCard: View {
         // Servable markets first: advice the fleet cannot act on today is a
         // wish, not a move. Two at most — a ranked pair is a decision, a
         // longer list is homework.
-        let ranked = snapshot.marketOpportunities(catalog: catalog, limit: 4)
+        let ranked = snapshot.marketOpportunities(catalog: catalog, limit: 4,
+                                                  allowedAirports: allowedAirports)
         let servable = ranked.filter(\.servableNow)
         return Array((servable.isEmpty ? ranked : servable).prefix(2))
     }
@@ -842,28 +847,14 @@ struct NextMovesCard: View {
     var body: some View {
         let idle = idleCount
         let markets = opportunities
-        if idle > 0 || !markets.isEmpty {
+        // Idle aircraft are not repeated here: the briefing's "Needs you
+        // now" section lists them (with the same link to the aircraft)
+        // whenever any exist, and the same row twice on one screen read as
+        // two problems.
+        if !markets.isEmpty {
             AECard {
                 VStack(alignment: .leading, spacing: AETheme.spacingS) {
                     Text("Next moves").font(.headline)
-                    // Pressable, and it lands on the aeroplane itself — the
-                    // screen with the assignment on it — rather than naming
-                    // the tab the player should go and find. Home already
-                    // registers `AircraftID` as a destination; the advice
-                    // simply had never used it.
-                    if let waiting = idleAircraft.first {
-                        NavigationLink(value: waiting.id) {
-                            AENextStepLabel(
-                                icon: "pause.circle.fill",
-                                title: idle == 1 ? "One aircraft is idle"
-                                                 : "\(idle) aircraft are idle",
-                                detail: "Parked costs the same as flying. Give it a route.",
-                                tint: AETheme.caution,
-                                attention: true)
-                        }
-                        .buttonStyle(.aePress)
-                        .accessibilityIdentifier("ae-next-moves-idle")
-                    }
                     if !markets.isEmpty {
                         Text(marketsHeading(idleWarningAbove: idle > 0))
                             .font(.caption)

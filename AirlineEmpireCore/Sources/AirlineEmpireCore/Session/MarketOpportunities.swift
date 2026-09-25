@@ -166,8 +166,14 @@ extension GameState {
     ///
     /// Deterministic: ties break on origin then destination code, so the same
     /// world always proposes the same markets in the same order.
+    /// - Parameter allowedAirports: when non-nil, only markets with both ends
+    ///   in this set are offered — the free tier's region. Without it the
+    ///   first-route tutorial, the Home row and the map's highlighted markets
+    ///   recommended cities the free game cannot open (Paris is the 21st
+    ///   airport from Stockholm), and the route sheet then refused them.
     public func marketOpportunities(catalog: ContentCatalog,
-                                    limit: Int = 8) -> [MarketOpportunity] {
+                                    limit: Int = 8,
+                                    allowedAirports: Set<AirportCode>? = nil) -> [MarketOpportunity] {
         guard limit > 0, let player = playerAirline else { return [] }
 
         // Where the airline can start from, and what it already flies.
@@ -215,7 +221,9 @@ extension GameState {
         let routesByMarket = routesByMarket()
         var scored: [(MarketOpportunity, Double, Double)] = []
         for origin in origins.sorted(by: { $0.raw < $1.raw }) {
+            if let allowedAirports, !allowedAirports.contains(origin) { continue }
             for code in catalog.orderedAirportCodes where code != origin {
+                if let allowedAirports, !allowedAirports.contains(code) { continue }
                 guard !served.contains(Route.market(origin, code)),
                       let distance = catalog.distanceKm(origin, code)
                 else { continue }

@@ -135,10 +135,18 @@ public enum FleetEconomics {
 
     /// Sale proceeds: used-market price minus liquidity friction (the
     /// buy/sell spread that kills fleet-flipping — docs/GAME_BALANCE.md §7).
+    ///
+    /// The buyer prices no better than the condition the used market
+    /// assumes at this age: a check restores the seller's airframe to 1.0,
+    /// not the market's view of a 22-year-old one. Pricing the restored
+    /// condition made the oldest used airframe a money printer — a 22-year-old
+    /// MR180 bought at 0.56 was checked and sold three days later above what
+    /// it cost. Wear still lowers the price; a check no longer raises it.
     public static func saleValue(type: AircraftTypeSpec, ageYears: Double,
                                  condition: Double, tuning: FleetTuning) -> Money {
-        Money(rounding: usedPrice(type: type, ageYears: ageYears, condition: condition,
-                                  tuning: tuning).asDouble * (1 - tuning.saleFriction))
+        let priced = min(condition, usedMarketCondition(ageYears: ageYears, tuning: tuning))
+        return Money(rounding: usedPrice(type: type, ageYears: ageYears, condition: priced,
+                                         tuning: tuning).asDouble * (1 - tuning.saleFriction))
     }
 
     /// Deterministic condition of a used-market airframe by age: buyers know

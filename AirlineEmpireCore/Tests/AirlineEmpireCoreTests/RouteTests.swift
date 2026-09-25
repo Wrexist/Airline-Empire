@@ -267,6 +267,52 @@ struct FlightOpsTests {
         #expect(engine.state.routes[route]!.stats.flightsCompleted > 0)
     }
 
+    /// The ferry used to head for the route's origin or nowhere: with the
+    /// origin beyond the aircraft's range, it stayed put for good, silently,
+    /// though the destination was within reach.
+    @Test func ferryHeadsForTheEndItCanReach() throws {
+        let base = try ContentCatalog.loadBundled()
+        // On the equator: home to near ~1,110 km, home to far ~3,340 km,
+        // near to far ~2,220 km.
+        let home = TestAirports.make(code: "HOM", latitude: 0, longitude: 0, slotCapacity: 400)
+        let near = TestAirports.make(code: "NER", latitude: 0, longitude: 10, slotCapacity: 400)
+        let far = TestAirports.make(code: "FAR", latitude: 0, longitude: 30, slotCapacity: 400)
+        let jet = AircraftTypeSpec(
+            code: "JET", manufacturer: "Test", model: "Jet", category: .narrowbody,
+            seats: 150, rangeKm: 3000, cruiseSpeedKmh: 800, fuelBurnKgPerKm: 2.5,
+            listPrice: Money.dollars(50_000_000), leaseMonthly: Money.dollars(400_000),
+            maintenancePerFlightHour: Money.dollars(800), crewCockpit: 2, crewCabin: 4,
+            reliabilityBaseline: 1.0, runwayRequirement: .large, comfortBaseline: 0.5,
+            turnaroundMinutes: 40, deliveryLeadDays: 180)
+        let catalog = try ContentCatalog(
+            version: "ferry", airports: [home, near, far],
+            seasonality: [TestAirports.flatProfile], aircraftTypes: [jet],
+            tuning: base.tuning)
+        let engine = SimulationEngine(
+            state: Fixtures.newState(),
+            systems: GamePipeline.standard().filter { $0.id != "worldEvents" },
+            catalog: catalog)
+        #expect(engine.applyNow(FoundAirlineCommand(
+            airlineName: "Ferry Air", kind: .player, homeAirport: "HOM",
+            startingCash: Money.dollars(300_000_000))) == .applied)
+        let airline = try #require(engine.state.playerAirline).id
+        #expect(engine.applyNow(LeaseAircraftCommand(
+            lessee: airline, type: "JET", termMonths: 12)) == .applied)
+        let aircraft = try #require(engine.state.aircraft.values.first).id
+        #expect(engine.applyNow(OpenRouteCommand(
+            airline: airline, origin: "FAR", destination: "NER",
+            dailyRoundTrips: 1, ticketPrice: Money.dollars(199))) == .applied)
+        let route = try #require(engine.state.routes.values.first).id
+        #expect(engine.applyNow(AssignAircraftToRouteCommand(
+            airline: airline, route: route, aircraftID: aircraft)) == .applied)
+
+        engine.advance(ticks: Fixtures.ticksPerDay * 3)
+        let location = try #require(engine.state.aircraft[aircraft]).location
+        #expect(location == AirportCode("NER") || location == AirportCode("FAR"))
+        let stats = try #require(engine.state.routes[route]).stats
+        #expect(stats.flightsCompleted > 0)
+    }
+
     @Test func maintenanceGroundingPausesFlying() throws {
         let (_, engine, airline, _, route) = try Self.operating(trips: 4)
         // Wear the aircraft down fast by flying many days. Track each
@@ -327,6 +373,94 @@ struct FlightOpsTests {
         #expect(stats.punctuality < 0.995)
     }
 
+    /// A route flown at its full daily frequency must fly every leg, day
+    /// after day. The last leg of such a day lands after midnight (each leg
+    /// boards on the tick its aircraft frees up and leaves a tick later), so
+    /// the midnight scheduler read the airport that leg had left and put the
+    /// next morning's first departure at the wrong end: one cancellation a
+    /// day, at 10:00, for as long as the route flew.
+    @Test func fullFrequencyRouteFliesEveryLegDayAfterDay() throws {
+        let real = try ContentCatalog.loadBundled()
+        // ~701 km apart on the equator: 70 min in the air plus 20 overhead
+        // at 600 km/h, so with a 45-minute turn four rotations fill the day.
+        let west = TestAirports.make(code: "WST", latitude: 0, longitude: 0, slotCapacity: 400)
+        let east = TestAirports.make(code: "EST", latitude: 0, longitude: 6.3, slotCapacity: 400)
+        let shuttle = AircraftTypeSpec(
+            code: "SHT", manufacturer: "Test", model: "Shuttle", category: .narrowbody,
+            seats: 150, rangeKm: 3000, cruiseSpeedKmh: 600, fuelBurnKgPerKm: 2.5,
+            listPrice: Money.dollars(50_000_000), leaseMonthly: Money.dollars(400_000),
+            maintenancePerFlightHour: Money.dollars(800), crewCockpit: 2, crewCabin: 4,
+            reliabilityBaseline: 1.0, runwayRequirement: .large, comfortBaseline: 0.5,
+            turnaroundMinutes: 45, deliveryLeadDays: 180)
+        // Reliability that never erodes, and no world events: every dispatch
+        // roll passes, so any cancellation here is the schedule's own.
+        let base = real.tuning
+        let fleet = FleetTuning(
+            annualDepreciationRate: base.fleet.annualDepreciationRate,
+            residualValueFraction: base.fleet.residualValueFraction,
+            saleFriction: base.fleet.saleFriction,
+            usedPriceConditionFloor: base.fleet.usedPriceConditionFloor,
+            usedMarketConditionFloor: base.fleet.usedMarketConditionFloor,
+            usedMarketConditionLossPerYear: base.fleet.usedMarketConditionLossPerYear,
+            maxUsedPurchaseAgeYears: base.fleet.maxUsedPurchaseAgeYears,
+            dailyConditionDecay: base.fleet.dailyConditionDecay,
+            maintenanceConditionThreshold: base.fleet.maintenanceConditionThreshold,
+            maintenanceCheckDays: base.fleet.maintenanceCheckDays,
+            maintenanceCheckHoursEquivalent: base.fleet.maintenanceCheckHoursEquivalent,
+            maintenanceAgeCostGrowthPerYear: base.fleet.maintenanceAgeCostGrowthPerYear,
+            reliabilityConditionWeight: 0, reliabilityAgePenaltyPerYear: 0,
+            reliabilityFloor: base.fleet.reliabilityFloor,
+            minLeaseTermMonths: base.fleet.minLeaseTermMonths,
+            maxLeaseTermMonths: base.fleet.maxLeaseTermMonths,
+            earlyLeaseReturnPenaltyMonths: base.fleet.earlyLeaseReturnPenaltyMonths)
+        let tuning = Tuning(
+            minRouteDistanceKm: base.minRouteDistanceKm, fleet: fleet, ops: base.ops,
+            demand: base.demand, finance: base.finance, world: base.world,
+            reputation: base.reputation, ai: base.ai, events: base.events,
+            progression: base.progression, aircraftConfiguration: base.cabin,
+            airportFacilities: base.airportServices)
+        let catalog = try ContentCatalog(
+            version: "shuttle", airports: [west, east],
+            seasonality: [TestAirports.flatProfile], aircraftTypes: [shuttle],
+            tuning: tuning)
+        let engine = SimulationEngine(
+            state: Fixtures.newState(),
+            systems: GamePipeline.standard().filter { $0.id != "worldEvents" },
+            catalog: catalog)
+
+        #expect(engine.applyNow(FoundAirlineCommand(
+            airlineName: "Shuttle Air", kind: .player, homeAirport: "WST",
+            startingCash: Money.dollars(300_000_000))) == .applied)
+        let airline = try #require(engine.state.playerAirline).id
+        #expect(engine.applyNow(LeaseAircraftCommand(
+            lessee: airline, type: "SHT", termMonths: 12)) == .applied)
+        let aircraft = try #require(engine.state.aircraft.values.first).id
+        let trips = FlightSchedulingSystem.roundTripsPerAircraftPerDay(
+            distanceKm: Geo.distanceKm(from: west.coordinate, to: east.coordinate),
+            spec: shuttle, ops: catalog.tuning.ops)
+        #expect(trips >= 2)
+        #expect(engine.applyNow(OpenRouteCommand(
+            airline: airline, origin: "WST", destination: "EST",
+            dailyRoundTrips: trips, ticketPrice: Money.dollars(99))) == .applied)
+        let route = try #require(engine.state.routes.values.first).id
+        #expect(engine.applyNow(AssignAircraftToRouteCommand(
+            airline: airline, route: route, aircraftID: aircraft)) == .applied)
+
+        // By the second midnight, the first day's last leg is still in the
+        // air: the moment the scheduler used to misread.
+        engine.advance(ticks: Fixtures.ticksPerDay * 2)
+        let today = engine.state.clock.now.dayIndex
+        #expect(engine.state.flights.values.contains {
+            $0.aircraft == aircraft && $0.scheduledDeparture.dayIndex < today
+        }, "The fixture should end its day after midnight")
+
+        engine.advance(ticks: Fixtures.ticksPerDay * 4)
+        let stats = try #require(engine.state.routes[route]).stats
+        #expect(stats.flightsCancelled == 0)
+        // Five flown days; every leg but the last one still airborne.
+        #expect(stats.flightsCompleted >= Int64(2 * trips * 4))
+    }
+
     @Test func closedRouteStopsCleanly() throws {
         let (_, engine, airline, aircraft, route) = try Self.operating(trips: 2)
         engine.advance(ticks: Fixtures.ticksPerDay + 40) // mid-day, flights live
@@ -345,6 +479,31 @@ struct FlightOpsTests {
         #expect(engine.state.integrityViolations().isEmpty)
         // World keeps running fine afterwards.
         engine.advance(ticks: Fixtures.ticksPerDay * 2)
+        #expect(engine.state.integrityViolations().isEmpty)
+    }
+
+    /// Closing a route while its flight turns around used to delete a flight
+    /// that had flown — paid for, fuelled, landed — with its completion never
+    /// recorded: the player's flight and passenger counters (and the missions
+    /// and contracts read from them) lost it.
+    @Test func closingDuringTurnaroundStillCountsTheFlight() throws {
+        let (_, engine, airline, _, route) = try Self.operating(trips: 2)
+        var turning: Flight?
+        for _ in 0..<(Fixtures.ticksPerDay * 3) {
+            engine.advance(ticks: 1)
+            turning = engine.state.flights.values.first {
+                if case .turnaround = $0.phase { $0.route == route } else { false }
+            }
+            if turning != nil { break }
+        }
+        let flight = try #require(turning, "No flight reached its turnaround")
+        let before = engine.state.progression.counters
+
+        #expect(engine.applyNow(CloseRouteCommand(airline: airline, route: route)) == .applied)
+        let after = engine.state.progression.counters
+        #expect(after.flightsCompleted == before.flightsCompleted + 1)
+        #expect(after.passengersCarried == before.passengersCarried + Int64(flight.passengers))
+        #expect(engine.state.flights.isEmpty)
         #expect(engine.state.integrityViolations().isEmpty)
     }
 

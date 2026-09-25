@@ -192,8 +192,15 @@ struct RouteRow: View {
             }
             AEChipRow {
                 AEBadge(text: "\(card.dailyRoundTrips)×/day", color: AETheme.accent)
-                AEBadge(text: "load \(Format.percent(card.loadFactor))",
-                        color: card.loadFactor > 0.7 ? AETheme.positive : AETheme.caution)
+                // A route that has never flown has no load factor yet; "load
+                // 0%" in the warning colour read as a failing route, not a
+                // new one.
+                if card.hasFlown {
+                    AEBadge(text: "load \(Format.percent(card.loadFactor))",
+                            color: card.loadFactor > 0.7 ? AETheme.positive : AETheme.caution)
+                } else {
+                    AEBadge(text: "load \u{2014}", color: .secondary)
+                }
                 AEBadge(text: Format.money(card.ticketPrice), color: AETheme.fare)
                 if card.assignedAircraftCount == 0 {
                     AEBadge(text: "no aircraft", color: AETheme.negative,
@@ -247,7 +254,9 @@ struct RouteDetailView: View {
                             RouteFlightStatus(routeID: routeID) {
                                 controller.showRouteOnMap(routeID); dismiss()
                             }
-                            aircraftSection(card, player: player.id, catalog: catalog)
+                            aircraftSection(card, player: player.id, catalog: catalog,
+                                            candidates: snapshot.assignmentCandidates(
+                                                forRoute: routeID, catalog: catalog))
                             operations(card)
                             demandSection(card, snapshot: snapshot)
                             Button("Plan fare & schedule") { section = .planning }
@@ -255,13 +264,13 @@ struct RouteDetailView: View {
                         case .planning:
                             RoutePlanEditor(route: route, snapshot: snapshot, catalog: catalog, draft: $planDraft)
                         case .aircraft:
-                            aircraftSection(card, player: player.id, catalog: catalog)
-                            RouteAircraftComparison(route: route, snapshot: snapshot, catalog: catalog)
+                            aircraftTab(card, route: route, snapshot: snapshot,
+                                        player: player.id, catalog: catalog)
                         case .competition:
                             demandSection(card, snapshot: snapshot)
                             competitorSection(card, snapshot: snapshot, player: player.id)
                         case .history:
-                            RoutePlanHistoryCard(route: route)
+                            RoutePlanHistoryCard(route: route, startYear: snapshot.meta.startYear)
                             breakdown(card, catalog: catalog)
                             dangerZone(player: player.id)
                         }
@@ -291,6 +300,18 @@ struct RouteDetailView: View {
         guard let snapshot = controller.snapshot,
               let route = snapshot.routes[routeID] else { return "Route" }
         return "\(route.origin.raw) – \(route.destination.raw)"
+    }
+
+    /// The Aircraft tab. Eligibility is asked of Core once per pass and
+    /// shared: the section and the comparison each walked the fleet for the
+    /// same answer, and the comparison did it twice.
+    @ViewBuilder
+    private func aircraftTab(_ card: RouteCardModel, route: Route, snapshot: GameState,
+                             player: AirlineID, catalog: ContentCatalog) -> some View {
+        let candidates = snapshot.assignmentCandidates(forRoute: routeID, catalog: catalog)
+        aircraftSection(card, player: player, catalog: catalog, candidates: candidates)
+        RouteAircraftComparison(route: route, snapshot: snapshot, catalog: catalog,
+                                eligibility: candidates)
     }
 
     /// Colour follows the standing, never carries it: the sentence already
@@ -339,15 +360,22 @@ struct RouteDetailView: View {
         AEPanel {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "Where the money went", systemImage: "chart.pie")
-                HStack {
-                    Spacer()
+                if typeSize.isAccessibilitySize {
+                    // Stacked rows carry their own "Last month" label; the
+                    // column headings have no columns to head.
                     Text("This month").font(.caption2)
                         .foregroundStyle(AETheme.mutedText)
-                        .frame(width: 82, alignment: .trailing)
-                    if card.hasClosedMonth {
-                        Text("Last").font(.caption2)
+                } else {
+                    HStack {
+                        Spacer()
+                        Text("This month").font(.caption2)
                             .foregroundStyle(AETheme.mutedText)
                             .frame(width: 82, alignment: .trailing)
+                        if card.hasClosedMonth {
+                            Text("Last").font(.caption2)
+                                .foregroundStyle(AETheme.mutedText)
+                                .frame(width: 82, alignment: .trailing)
+                        }
                     }
                 }
                 comparisonRow("Ticket revenue",
@@ -426,7 +454,10 @@ struct RouteDetailView: View {
             VStack(alignment: .leading, spacing: AETheme.spacingM) {
                 AESectionHeader(text: "Flight performance", systemImage: "gauge.with.dots.needle.67percent")
                 LazyVGrid(columns: instrumentColumns, spacing: 10) {
-                    AEInstrument(label: "Load factor", value: Format.percent(card.loadFactor),
+                    // Like punctuality and completion below: no flights, no
+                    // load factor — not a measured 0%.
+                    AEInstrument(label: "Load factor",
+                                 value: card.hasFlown ? Format.percent(card.loadFactor) : "—",
                                  icon: "person.2.fill")
                     AEInstrument(label: "Aircraft assigned", value: "\(card.assignedAircraftCount)",
                                  icon: "airplane", tint: AETheme.leased)
@@ -437,7 +468,9 @@ struct RouteDetailView: View {
                                  value: card.hasFlown ? Format.percent(card.completionRate) : "—",
                                  icon: "checkmark.seal", tint: AETheme.positive)
                 }
-                labelled("Frequency", "\(card.dailyRoundTrips)× round trips a day")
+                labelled("Frequency", card.dailyRoundTrips == 1
+                         ? "1 round trip a day"
+                         : "\(card.dailyRoundTrips) round trips a day")
                 labelled("Distance", "\(Format.count(Int64(card.distanceKm))) km")
             }
         }
@@ -455,19 +488,18 @@ struct RouteDetailView: View {
 
     /// Who flies this route — and the way to put an idle aircraft on it
     /// (without this, nothing ever takes off).
+    ///
+    /// `candidates` is Core's eligibility for this route, which is the whole
+    /// point: this list used to be "unassigned and active", which offered
+    /// aeroplanes that could not reach the route or land on its runways, and
+    /// hid ones in a maintenance check that Core would have accepted. See
+    /// `AssignmentEligibility` — the rules live beside the validator they
+    /// mirror, and a test fails the day the two disagree.
     private func aircraftSection(_ card: RouteCardModel, player: AirlineID,
-                                 catalog: ContentCatalog) -> some View {
+                                 catalog: ContentCatalog,
+                                 candidates: [AssignmentCandidate]) -> some View {
         let fleet = controller.fleetCards
         let assigned = fleet.filter { $0.assignedRoute == routeID }
-        // Eligibility comes from Core, which is the whole point: this list
-        // used to be "unassigned and active", which offered aeroplanes that
-        // could not reach the route or land on its runways, and hid ones in a
-        // maintenance check that Core would have accepted. See
-        // `AssignmentEligibility` — the rules live beside the validator they
-        // mirror, and a test fails the day the two disagree.
-        let candidates = controller.snapshot
-            .map { $0.assignmentCandidates(forRoute: routeID,
-                                           catalog: catalog) } ?? []
         let offerable = candidates.filter { $0.isEligible }
         let unavailable = candidates.filter {
             // Aircraft already on *this* route are listed above as assigned,
@@ -479,30 +511,46 @@ struct RouteDetailView: View {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "Aircraft", systemImage: "airplane")
                 if assigned.isEmpty {
-                    Label("No aircraft — this route is not flying, and it is still paying its airport fees.",
+                    // Airport fees are charged per flight, so an unflown route
+                    // pays none; what it does cost is its share of payroll,
+                    // billed per open route every month (EconomySystem).
+                    Label("No aircraft — this route is not flying. It earns nothing, and its payroll still costs \(Format.money(catalog.tuning.finance.payrollPerRouteMonthly)) a month.",
                           systemImage: "exclamationmark.triangle")
                         .font(.subheadline)
                         .foregroundStyle(AETheme.caution)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 ForEach(assigned, id: \.id) { aircraft in
-                    HStack {
-                        NavigationLink(value: aircraft.id) {
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(aircraft.typeName).font(.subheadline)
-                                Text("\(installedSeats(aircraft, catalog: catalog)) seats · condition \(Format.percent(aircraft.condition))")
-                                    .font(.caption)
-                                    .foregroundStyle(AETheme.mutedText)
+                    // Asked before the tap, as the fleet screen does: an
+                    // aircraft with a flight under way cannot be taken off
+                    // the route, and the button used to find that out by
+                    // failing.
+                    let unassign = UnassignAircraftCommand(airline: player,
+                                                           aircraftID: aircraft.id)
+                    let blocked = controller.precheck(unassign)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack {
+                            NavigationLink(value: aircraft.id) {
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(aircraft.typeName).font(.subheadline)
+                                    Text("\(installedSeats(aircraft, catalog: catalog)) seats · condition \(Format.percent(aircraft.condition))")
+                                        .font(.caption)
+                                        .foregroundStyle(AETheme.mutedText)
+                                }
                             }
+                            Spacer()
+                            Button("Unassign") {
+                                controller.submit(unassign)
+                            }
+                            .buttonStyle(.bordered)
+                            .font(.caption)
+                            .frame(minHeight: 44)
+                            .disabled(blocked != nil)
                         }
-                        Spacer()
-                        Button("Unassign") {
-                            controller.submit(UnassignAircraftCommand(
-                                airline: player, aircraftID: aircraft.id))
+                        if let blocked {
+                            RefusalNote(rejection: blocked, detail: .advice,
+                                        tint: AETheme.mutedText)
                         }
-                        .buttonStyle(.bordered)
-                        .font(.caption)
-                        .frame(minHeight: 44)
                     }
                 }
                 if offerable.isEmpty, assigned.isEmpty {
@@ -553,7 +601,7 @@ struct RouteDetailView: View {
                                 HStack(spacing: AETheme.spacingXS) {
                                     Text(card.typeName).font(AEType.caption)
                                     Spacer()
-                                    Text(Vocab.blocker(blocker))
+                                    Text(Vocab.blocker(blocker, startYear: controller.snapshot?.meta.startYear))
                                         .font(AEType.caption)
                                         .foregroundStyle(AETheme.mutedText)
                                 }
@@ -689,7 +737,12 @@ struct RouteDetailView: View {
     }
 
     private func dangerZone(player: AirlineID) -> some View {
-        AEPanel {
+        let close = CloseRouteCommand(airline: player, route: routeID)
+        // Core will not close a route with flights in the air. Asked before
+        // the confirmation rather than after it, so the button says so
+        // instead of accepting a confirmed tap and refusing it.
+        let blocked = controller.precheck(close)
+        return AEPanel {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "Close this route", systemImage: "xmark.circle")
                 Text("Closing frees the slots at both airports and unassigns its aircraft. It cannot be undone; reopening starts the route's history from nothing.")
@@ -704,8 +757,7 @@ struct RouteDetailView: View {
                     action: {
                         // Only leave if the route actually closed; the
                         // rejection alert is useless behind a dismissed sheet.
-                        if controller.submit(
-                            CloseRouteCommand(airline: player, route: routeID)) == nil {
+                        if controller.submit(close) == nil {
                             dismiss()
                         }
                     }
@@ -715,25 +767,51 @@ struct RouteDetailView: View {
                 }
                 .buttonStyle(.bordered)
                 .tint(AETheme.negative)
+                .disabled(blocked != nil)
+                if let blocked {
+                    RefusalNote(rejection: blocked, detail: .advice)
+                }
             }
         }
     }
 
+    /// Two 82pt columns at ordinary sizes. At accessibility sizes a figure no
+    /// longer fits 82pt and broke mid-number, so each row stacks instead —
+    /// label, this month, then last month named in words.
+    @ViewBuilder
     private func comparisonRow(_ label: String, _ thisMonth: Money, _ lastMonth: Money,
                                showsLast: Bool, emphasised: Bool = false) -> some View {
-        HStack {
-            Text(label)
-                .font(emphasised ? .subheadline.weight(.semibold) : .subheadline)
-            Spacer()
-            MoneyText(money: thisMonth)
-                .font(.subheadline)
-                .frame(width: 82, alignment: .trailing)
-            if showsLast {
-                Text(Format.money(lastMonth))
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(emphasised ? .subheadline.weight(.semibold) : .subheadline)
+                    .fixedSize(horizontal: false, vertical: true)
+                MoneyText(money: thisMonth)
                     .font(.subheadline)
-                    .monospacedDigit()
-                    .foregroundStyle(AETheme.mutedText)
+                if showsLast {
+                    Text("Last month \(Format.money(lastMonth))")
+                        .font(.subheadline)
+                        .monospacedDigit()
+                        .foregroundStyle(AETheme.mutedText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            HStack {
+                Text(label)
+                    .font(emphasised ? .subheadline.weight(.semibold) : .subheadline)
+                Spacer()
+                MoneyText(money: thisMonth)
+                    .font(.subheadline)
                     .frame(width: 82, alignment: .trailing)
+                if showsLast {
+                    Text(Format.money(lastMonth))
+                        .font(.subheadline)
+                        .monospacedDigit()
+                        .foregroundStyle(AETheme.mutedText)
+                        .frame(width: 82, alignment: .trailing)
+                }
             }
         }
     }
@@ -784,6 +862,10 @@ struct OpenRouteSheet: View {
     @State private var primed = false
     @State private var opening = false
     @State private var markets: [MarketOpportunity] = []
+    /// Idle aircraft that could fly each destination, counted when the
+    /// markets are. Every row used to ask Core for its own count — a walk of
+    /// the whole fleet per destination, on every pass of `body`.
+    @State private var idleCounts: [AirportCode: Int] = [:]
 
     private enum RouteDiscoveryFilter: String, CaseIterable {
         case all, idle, fleet, uncontested
@@ -830,41 +912,78 @@ struct OpenRouteSheet: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if let snapshot = controller.snapshot,
-                   let player = snapshot.playerAirline,
-                   let catalog = controller.catalog {
-                    content(snapshot: snapshot, player: player, catalog: catalog)
-                } else {
-                    LoadingState(message: "Loading the world")
+            marketTriggers(sheetContent)
+                .navigationDestination(item: $createdRoute) { routeID in
+                    RouteDetailView(routeID: routeID)
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Done") { dismiss() }
+                                    .accessibilityIdentifier("ae-route-setup-done")
+                            }
+                        }
                 }
-            }
-            .onChange(of: controller.mapRouteRequest) { _, request in
-                if request != nil { dismiss() }
-            }
-            .navigationTitle("Open a route")
-            .disabled(opening)
-            .interactiveDismissDisabled(opening)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                        .disabled(opening)
+                .navigationDestination(for: AircraftID.self) { AircraftDetailView(aircraftID: $0) }
+                // Buying Pro from inside this sheet opens the rest of the map
+                // without closing and reopening it.
+                .onChange(of: entitlements.access) { _, _ in
+                    refreshServableAirports()
                 }
+                .aeSheetFeedback()
+                // The route-creation journey, in three beats
+                // (docs/AUDIO_ARCHITECTURE.md §5). Choosing where you fly from is
+                // a selection; choosing where you fly *to* is the moment the line
+                // between two cities exists, so it resolves upward; and the
+                // commit is voiced by `routeOpened` when Core says it happened,
+                // not when the button was pressed.
+                .aeFeedback(.uiSelect, on: origin)
+                .aeFeedback(.uiConfirm, on: destination)
+        }
+    }
+
+    /// The sheet, its chrome and its lifecycle. Split from `body` — with the
+    /// refresh triggers in `marketTriggers` — because the single modifier
+    /// chain grew past what the type-checker resolves in reasonable time.
+    private var sheetContent: some View {
+        Group {
+            if let snapshot = controller.snapshot,
+               let player = snapshot.playerAirline,
+               let catalog = controller.catalog {
+                content(snapshot: snapshot, player: player, catalog: catalog)
+            } else {
+                LoadingState(message: "Loading the world")
             }
-            .onAppear {
-                #if DEBUG
-                Logger(subsystem: "com.airlineempire.presentation", category: "route-setup")
-                    .notice("Route setup appeared; primed: \(primed), has destination: \(destination != nil), has created route: \(createdRoute != nil)")
-                #endif
-                prime()
+        }
+        .onChange(of: controller.mapRouteRequest) { _, request in
+            if request != nil { dismiss() }
+        }
+        .navigationTitle("Open a route")
+        .disabled(opening)
+        .interactiveDismissDisabled(opening)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") { dismiss() }
+                    .disabled(opening)
             }
-            .onChange(of: createdRoute) { _, value in
-                #if DEBUG
-                Logger(subsystem: "com.airlineempire.presentation", category: "route-setup")
-                    .notice("Route setup destination changed; has route: \(value != nil)")
-                #endif
-            }
+        }
+        .onAppear {
+            #if DEBUG
+            Logger(subsystem: "com.airlineempire.presentation", category: "route-setup")
+                .notice("Route setup appeared; primed: \(primed), has destination: \(destination != nil), has created route: \(createdRoute != nil)")
+            #endif
+            prime()
+        }
+        .onChange(of: createdRoute) { _, value in
+            #if DEBUG
+            Logger(subsystem: "com.airlineempire.presentation", category: "route-setup")
+                .notice("Route setup destination changed; has route: \(value != nil)")
+            #endif
+        }
+    }
+
+    /// What re-ranks the destinations, and what settles an open request.
+    private func marketTriggers<Content: View>(_ content: Content) -> some View {
+        content
             .onChange(of: origin) { refreshMarkets() }
             .onChange(of: filter) {
                 guard let destination, let snapshot = controller.snapshot,
@@ -876,8 +995,14 @@ struct OpenRouteSheet: View {
                     rejection = nil
                 }
             }
-            .onChange(of: controller.snapshot?.currentDate) { refreshMarkets() }
+            // The day, not `currentDate`: that carries the hour and minute,
+            // so the ~90 destinations were re-ranked on every tick for a
+            // ranking that changes when demand does — at the daily update.
+            .onChange(of: controller.snapshot?.clock.now.dayIndex) { refreshMarkets() }
             .onChange(of: controller.snapshot?.orderedAircraftIDs) { refreshMarkets() }
+            // An assignment made from the route this sheet just opened
+            // changes which aircraft are idle without changing the fleet.
+            .onChange(of: controller.fleetSummary?.idle) { refreshMarkets() }
             .onChange(of: controller.snapshot?.orderedRouteIDs) {
                 refreshMarkets()
                 guard opening, let player = controller.snapshot?.playerAirline,
@@ -894,31 +1019,6 @@ struct OpenRouteSheet: View {
                 rejection = failure
                 controller.clearRejection()
             }
-            .navigationDestination(item: $createdRoute) { routeID in
-                RouteDetailView(routeID: routeID)
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Done") { dismiss() }
-                                .accessibilityIdentifier("ae-route-setup-done")
-                        }
-                    }
-            }
-            .navigationDestination(for: AircraftID.self) { AircraftDetailView(aircraftID: $0) }
-            // Buying Pro from inside this sheet opens the rest of the map
-            // without closing and reopening it.
-            .onChange(of: entitlements.access) { _, _ in
-                refreshServableAirports()
-            }
-            .aeSheetFeedback()
-            // The route-creation journey, in three beats
-            // (docs/AUDIO_ARCHITECTURE.md §5). Choosing where you fly from is
-            // a selection; choosing where you fly *to* is the moment the line
-            // between two cities exists, so it resolves upward; and the
-            // commit is voiced by `routeOpened` when Core says it happened,
-            // not when the button was pressed.
-            .aeFeedback(.uiSelect, on: origin)
-            .aeFeedback(.uiConfirm, on: destination)
-        }
     }
 
     private func prime() {
@@ -1135,8 +1235,7 @@ struct OpenRouteSheet: View {
             .compactMap { market -> Candidate? in
                 guard !existingMarkets.contains(Route.market(from, market.destination)) else { return nil }
                 guard let spec = catalog.airport(market.destination) else { return nil }
-                let idleCount = snapshot.idleAircraft(from: from, to: market.destination,
-                                                       catalog: catalog).count
+                let idleCount = idleCounts[market.destination] ?? 0
                 switch filter {
                 case .all: break
                 case .idle: guard idleCount > 0 else { return nil }
@@ -1162,7 +1261,14 @@ struct OpenRouteSheet: View {
     private func refreshMarkets() {
         guard let snapshot = controller.snapshot, let catalog = controller.catalog,
               let from = origin ?? snapshot.playerAirline?.homeAirport else { return }
-        markets = snapshot.marketCandidates(from: from, catalog: catalog)
+        let ranked = snapshot.marketCandidates(from: from, catalog: catalog)
+        var counts: [AirportCode: Int] = [:]
+        for market in ranked {
+            counts[market.destination] = snapshot.idleAircraft(
+                from: from, to: market.destination, catalog: catalog).count
+        }
+        markets = ranked
+        idleCounts = counts
     }
 
     private func destinationRow(_ candidate: Candidate) -> some View {
@@ -1250,7 +1356,15 @@ struct OpenRouteSheet: View {
 
     private func serviceControls(from: AirportCode, to: AirportCode,
                                  catalog: ContentCatalog) -> some View {
-        VStack(alignment: .leading, spacing: AETheme.spacingS) {
+        let reference = catalog.distanceKm(from, to).map {
+            DemandSystem.referenceFare(distanceKm: $0, tuning: catalog.tuning.demand)
+        }
+        // The market fare grows with distance and passes $800 near 9,000 km,
+        // so a fixed 30...800 range clamped a long-haul fare the moment the
+        // slider was touched — a $1,100 fare silently became $800. Twice the
+        // reference keeps the same headroom above the market on every route.
+        let upperFare = max(800, ((reference ?? 0) * 2).rounded())
+        return VStack(alignment: .leading, spacing: AETheme.spacingS) {
             Stepper("Round trips per day: \(trips)", value: $trips, in: 1...20)
                 .frame(minHeight: 44)
             VStack(alignment: .leading, spacing: AETheme.spacingXS) {
@@ -1260,12 +1374,12 @@ struct OpenRouteSheet: View {
                     Text(Format.money(Money.dollars(Int64(fare))))
                         .monospacedDigit()
                 }
-                Slider(value: $fare, in: 30...800, step: 1) { editing in
+                Slider(value: $fare, in: 30...upperFare, step: 1) { editing in
                     if editing { fareTouched = true }
                 }
-                if let distance = catalog.distanceKm(from, to) {
-                    let reference = DemandSystem.referenceFare(
-                        distanceKm: distance, tuning: catalog.tuning.demand)
+                .accessibilityLabel("Fare")
+                .accessibilityValue(Format.money(Money.dollars(Int64(fare))))
+                if let reference {
                     Text(fareGuidance(fare: fare, reference: reference))
                         .font(.caption)
                         .foregroundStyle(AETheme.mutedText)
@@ -1344,10 +1458,22 @@ struct OpenRouteSheet: View {
             }
             .accessibilityElement(children: .combine)
             if let blocked {
-                Label(blocked.message, systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(AETheme.caution)
-                    .fixedSize(horizontal: false, vertical: true)
+                RefusalNote(rejection: blocked)
+                // A destination outside the free region is more world, not a
+                // dead end: the refusal names what opens it, and one tap
+                // shows what Pro is (docs/MONETIZATION.md §4). A locked row
+                // tapped in the list already does this; a destination handed
+                // to the sheet — from a map airport — arrived without it.
+                if blocked.code == "access.proRequired" {
+                    Button {
+                        entitlements.present(.airport)
+                    } label: {
+                        Label("See what Pro opens", systemImage: "crown.fill")
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.aeSecondary)
+                    .accessibilityIdentifier("ae-route-pro")
+                }
             }
             // Opening a route no aircraft can fly is allowed — a route may
             // precede its aircraft — but it must never be a surprise: the
@@ -1364,10 +1490,8 @@ struct OpenRouteSheet: View {
                     .accessibilityIdentifier("ae-route-unservable")
             }
             if let rejection {
-                Label(rejection.message, systemImage: "xmark.octagon")
-                    .font(.caption)
-                    .foregroundStyle(AETheme.negative)
-                    .fixedSize(horizontal: false, vertical: true)
+                RefusalNote(rejection: rejection, systemImage: "xmark.octagon",
+                            tint: AETheme.negative)
             }
             Button {
                 // The sheet stays open on refusal, keeping every input, and
@@ -1386,5 +1510,56 @@ struct OpenRouteSheet: View {
             .disabled(blocked != nil || opening)
             .accessibilityIdentifier("ae-route-open")
         }
+    }
+}
+
+/// A refusal in the player's words, for the space beside the control it
+/// disables (MASTER PROMPT 4 §24).
+///
+/// Core's `message` is written for whoever reads the simulation — "Wait for
+/// airborne flights to land before closing", "Unknown airport" — and inline
+/// captions were showing it verbatim while the alerts already went through
+/// `Rejections`. One mapping, so the two can never tell a player different
+/// things about the same refusal.
+struct RefusalNote: View {
+    enum Detail {
+        /// Title, why, and what to try — where there is room for all three.
+        case full
+        /// "Title. Why." — where the generic next step would be wrong for
+        /// this control ("take a loan" is no advice for paying one off).
+        case reason
+        /// "Title. What to try." — under a small control, where the "why"
+        /// only repeats the title.
+        case advice
+    }
+
+    let rejection: CommandRejection
+    var detail: Detail = .full
+    var systemImage = "exclamationmark.triangle"
+    var tint: Color = AETheme.caution
+
+    var body: some View {
+        let refusal = Rejections.present(rejection)
+        Label {
+            switch detail {
+            case .full:
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(refusal.title).fontWeight(.semibold)
+                    Text(refusal.explanation)
+                    if let suggestion = refusal.suggestion {
+                        Text(suggestion)
+                    }
+                }
+            case .reason:
+                Text(refusal.title + ". " + refusal.explanation)
+            case .advice:
+                Text(refusal.title + ". " + (refusal.suggestion ?? refusal.explanation))
+            }
+        } icon: {
+            Image(systemName: systemImage)
+        }
+        .font(.caption)
+        .foregroundStyle(tint)
+        .fixedSize(horizontal: false, vertical: true)
     }
 }

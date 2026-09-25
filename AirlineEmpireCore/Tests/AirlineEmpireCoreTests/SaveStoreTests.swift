@@ -106,6 +106,34 @@ struct SaveStoreTests {
         #expect(loaded.state == state)
     }
 
+    /// Saving used to skip the integrity check loading enforces, and the
+    /// engine's own check is an `assert` that Release strips: a broken
+    /// invariant was written as the current save and rotated the good
+    /// generations out behind it.
+    @Test func stateThatWouldNotLoadIsNeverSaved() throws {
+        let root = Self.scratch()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let manager = SaveManager(store: FileSaveStore(rootDirectory: root))
+        let (good, _) = try Self.populatedState()
+        try manager.save(good, slot: "1")
+
+        // An aircraft owned by an airline that does not exist.
+        let aircraft = try #require(good.orderedAircraftIDs.first)
+        var surgery = good
+        surgery.aircraft[aircraft]?.owner = AirlineID(raw: 999_999)
+        let broken = surgery
+        #expect(!broken.integrityViolations().isEmpty)
+        #expect(throws: SaveError.self) {
+            try manager.save(broken, slot: "1")
+        }
+
+        // Nothing was rotated: the good save is still the current one.
+        #expect(manager.store.candidates(slot: "1").count == 1)
+        let loaded = try manager.load(slot: "1")
+        #expect(loaded.generation == 0)
+        #expect(loaded.state == good)
+    }
+
     @Test func repeatedSaveLoadCyclesOnDiskStayIdentical() throws {
         let root = Self.scratch()
         defer { try? FileManager.default.removeItem(at: root) }

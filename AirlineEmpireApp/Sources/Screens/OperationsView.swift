@@ -41,6 +41,9 @@ struct OperationsView: View {
                     conditions
                 }
                 .aePageInsets()
+                // A reading width on iPad, like the other management screens.
+                .frame(maxWidth: 920)
+                .frame(maxWidth: .infinity)
             }
             .aeScreenBackground()
             .navigationTitle("World")
@@ -60,7 +63,9 @@ struct OperationsView: View {
     /// different reasons, one as world weather and one as a cost you carry.
     @ViewBuilder
     private var conditions: some View {
-        if let dashboard = controller.snapshot?.dashboardModel() {
+        // The controller's cached model, not a fresh `dashboardModel()` —
+        // that walks the routes, fleet and asset valuation on every pass.
+        if let dashboard = controller.dashboard {
             AEMetricStrip([
                 AEMetric("fuel per ton",
                          Format.money(dashboard.fuelPricePerTon)),
@@ -122,8 +127,9 @@ struct OperationsView: View {
     }
 
     private var progressionBadge: (String, Color)? {
-        guard let snapshot = controller.snapshot, let catalog = controller.catalog,
-              let model = snapshot.progressionModel(catalog: catalog) else { return nil }
+        // Cached per snapshot by the controller, as the Progression screen
+        // itself now reads it.
+        guard let model = controller.progressionModel else { return nil }
         if let mission = model.missions.first {
             return ("mission · \(Format.days(mission.daysRemaining)) left", AETheme.accent)
         }
@@ -230,6 +236,8 @@ struct WorldEventsView: View {
                 }
             }
             .aePageInsets()
+            .frame(maxWidth: 920)
+            .frame(maxWidth: .infinity)
         }
         .aeScreenBackground()
         .navigationTitle("World events")
@@ -398,7 +406,7 @@ struct WorldEventsView: View {
         }
         let days = Int(max(0, event.endsAt.rawMinutes - now.rawMinutes)
             / GameCalendar.minutesPerDay)
-        return days == 0 ? "Ends today" : "Until \(Format.date(endDate)) · \(Format.days(days)) left"
+        return days == 0 ? "Ends today" : "Until \(Format.longDate(endDate)) · \(Format.days(days)) left"
     }
 }
 
@@ -434,6 +442,8 @@ struct CompetitorsView: View {
                 }
             }
             .aePageInsets()
+            .frame(maxWidth: 920)
+            .frame(maxWidth: .infinity)
         }
         .aeScreenBackground()
         .navigationTitle("Competitors")
@@ -683,7 +693,8 @@ struct CompetitorsView: View {
                 if rival.status != .collapsed {
                     HStack(spacing: AETheme.spacingS) {
                         AEBadge(text: "\(rival.fleet) aircraft", color: .secondary)
-                        AEBadge(text: "\(rival.routes) routes", color: .secondary)
+                        AEBadge(text: "\(rival.routes) \(rival.routes == 1 ? "route" : "routes")",
+                                color: .secondary)
                         AEBadge(text: "rep \(Format.percent(rival.reputationScore))",
                                 color: AETheme.accent)
                     }
@@ -809,6 +820,8 @@ struct EconomyDetailView: View {
                 }
             }
             .aePageInsets()
+            .frame(maxWidth: 920)
+            .frame(maxWidth: .infinity)
         }
         .aeScreenBackground()
         .navigationTitle("Economy")
@@ -855,7 +868,10 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(AETheme.mutedText)
                 Toggle("Confirm destructive actions", isOn: $preferences.confirmDestructive)
-                Text("Selling an aircraft, returning a lease and closing a route ask first.")
+                // Every control that reads the setting, not just the three
+                // that are strictly destructive: `ConfirmableButton` and the
+                // aircraft market's commit both skip their question when off.
+                Text("Asks first before aircraft purchases, leases, sales and returns, route closures, loan payoffs, new programmes, contracts and rescue offers. Off, they act on the first tap.")
                     .font(.caption)
                     .foregroundStyle(AETheme.mutedText)
             }

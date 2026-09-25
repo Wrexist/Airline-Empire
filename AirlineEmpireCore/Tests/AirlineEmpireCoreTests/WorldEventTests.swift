@@ -145,6 +145,39 @@ struct WorldEventTests {
         #expect(flyingDuring > flyingBefore, "Unaffected airline was grounded too")
     }
 
+    /// The basic tier's service target is the strike threshold itself, and a
+    /// drift only ever approaches its target: a basic-tier airline scarred
+    /// by administration climbed back to 0.34999… and could strike forever.
+    @Test func serviceRecoveredToTheBasicTargetEndsStrikeRisk() throws {
+        let catalog = try ContentCatalog.loadBundled()
+        let events = catalog.tuning.events
+        let reputation = catalog.tuning.reputation
+        let target = reputation.serviceTarget(.basic)
+        #expect(target == events.strikeServiceThreshold)
+
+        // Scarred, then two years of the daily drift back toward the target.
+        var service = target * reputation.administrationScar
+        #expect(WorldEventSystem.serviceInvitesStrike(service, tuning: events))
+        for _ in 0..<730 {
+            Reputation.drift(&service, toward: target, rate: reputation.driftRate)
+        }
+        #expect(!WorldEventSystem.serviceInvitesStrike(service, tuning: events))
+
+        // And the event system agrees: a year at that service, no strike.
+        let setup = SimulationEngine(state: Fixtures.newState(seed: 17), systems: [],
+                                     catalog: catalog)
+        _ = setup.applyNow(FoundAirlineCommand(airlineName: "Basic Air", kind: .ai,
+                                               homeAirport: "ARN",
+                                               startingCash: Money.dollars(50_000_000)))
+        var state = setup.state
+        let airline = try #require(state.airlines.values.first).id
+        state.airlines[airline]?.reputation.service = service
+        let engine = SimulationEngine(state: state, systems: [WorldEventSystem()],
+                                      catalog: catalog)
+        engine.advance(ticks: Fixtures.ticksPerYear)
+        #expect(engine.state.world.eventCooldowns["strike.\(airline.raw)"] == nil)
+    }
+
     @Test func tourismBoomLiftsRouteDemand() throws {
         let (engine, _, route) = try DemandFixtures.market(fare: Money.dollars(129))
         engine.advance(ticks: Fixtures.ticksPerDay * 10)

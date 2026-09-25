@@ -13,6 +13,19 @@ struct CountryLabel {
 
     /// Flag and name, in that order, as one string to draw and measure.
     var display: String { "\(flag) \(name)" }
+
+    /// `display` in the capitals the map draws it in, made once at parse
+    /// time. It was uppercased in the draw — every country label, every
+    /// frame, thirty times a second, to produce the same string.
+    let caption: String
+
+    init(name: String, flag: String, point: MapPoint, minZoom: CGFloat) {
+        self.name = name
+        self.flag = flag
+        self.point = point
+        self.minZoom = minZoom
+        self.caption = "\(flag) \(name.uppercased())"
+    }
 }
 
 enum CountryLabels {

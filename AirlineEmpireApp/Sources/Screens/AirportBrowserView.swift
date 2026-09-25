@@ -15,8 +15,8 @@ struct AirportBrowserView: View {
     @State private var cache = RowCache()
     @State private var selectedAirport: AirportCode?
 
-    /// Per-tick memo for the row list (UIUX_FORENSIC_AUDIT UI-016, the same
-    /// problem `GameController` solved for the map).
+    /// Per-revision memo for the row list (UIUX_FORENSIC_AUDIT UI-016, the
+    /// same problem `GameController` solved for the map).
     ///
     /// The reachability scan runs once per catalog airport and, inside that,
     /// once per served origin and owned aircraft type — O(world) work that
@@ -24,9 +24,14 @@ struct AirportBrowserView: View {
     /// reference type deliberately: it is a memo of what the snapshot already
     /// says, not state a view should observe, so writing to it must not
     /// invalidate the render that filled it.
+    ///
+    /// Keyed on the controller's revision, which moves on a tick *or* an
+    /// applied command. It was keyed on the tick, and a game spends its
+    /// first minutes paused: a route opened or an aircraft bought left
+    /// "your network" and "out of reach" wrong until time ran.
     @MainActor private final class RowCache {
         private struct Key: Equatable {
-            let tick: Int64
+            let revision: UInt64
             let facilityRevision: Int64
             let scope: Scope
             let search: String
@@ -35,9 +40,9 @@ struct AirportBrowserView: View {
         private var key: Key?
         private var rows: [Row] = []
 
-        func rows(tick: Int64, facilityRevision: Int64, scope: Scope, search: String,
+        func rows(revision: UInt64, facilityRevision: Int64, scope: Scope, search: String,
                   build: () -> [Row]) -> [Row] {
-            let wanted = Key(tick: tick, facilityRevision: facilityRevision, scope: scope, search: search)
+            let wanted = Key(revision: revision, facilityRevision: facilityRevision, scope: scope, search: search)
             if key == wanted { return rows }
             rows = build()
             key = wanted
@@ -62,7 +67,7 @@ struct AirportBrowserView: View {
             if let snapshot = controller.snapshot,
                let player = snapshot.playerAirline,
                let catalog = controller.catalog {
-                let rows = cache.rows(tick: snapshot.clock.tickCount,
+                let rows = cache.rows(revision: controller.airportInvestmentRevision,
                                       facilityRevision: player.airportFacilityHistory?.first?.id ?? 0,
                                       scope: scope, search: search) {
                     airports(snapshot: snapshot, player: player, catalog: catalog)
@@ -206,9 +211,10 @@ struct AirportBrowserView: View {
                     AEBadge(text: "out of reach", color: .secondary, icon: "lock")
                 }
                 if let distance = row.distanceKm, distance > 0 {
-                    AEBadge(text: "\(distance) km from home", color: .secondary)
+                    AEBadge(text: "\(Format.count(Int64(distance))) km from home", color: .secondary)
                 }
-                AEBadge(text: "\(row.slotsUsed)/\(row.spec.slotCapacityPerDay) slots", color: .secondary)
+                AEBadge(text: "\(Format.count(Int64(row.slotsUsed)))/\(Format.count(Int64(row.spec.slotCapacityPerDay))) slots",
+                        color: .secondary)
             }
         }
     }

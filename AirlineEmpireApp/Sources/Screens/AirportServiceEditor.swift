@@ -1,11 +1,25 @@
 import SwiftUI
 import AirlineEmpireCore
 
+/// What an airport quote answers.
+///
+/// Keyed on the game day, not on the controller's revision: that moves on
+/// every tick, so the quote restarted every 3.75 s at 1× — two demand passes
+/// each time — and blanked itself while it ran, switching Apply off under the
+/// player's finger. The demand it prices changes at the daily update, and a
+/// change to this airport's services changes `installed`.
 private struct AirportQuoteRequest: Equatable {
     let airport: AirportCode
     let proposed: AirportFacilities
     let installed: AirportFacilities
-    let revision: UInt64
+    let day: Int64
+
+    /// Whether `other` priced the same proposal, perhaps on an earlier day.
+    func asks(sameAs other: AirportQuoteRequest?) -> Bool {
+        guard let other else { return false }
+        return other.airport == airport && other.proposed == proposed
+            && other.installed == installed
+    }
 }
 
 struct AirportFacilityEditor: View {
@@ -18,11 +32,18 @@ struct AirportFacilityEditor: View {
     let catalog: ContentCatalog
     @Binding var draft: AirportFacilities?
     @State private var preview: AirportInvestmentPreview?
+    /// The request `preview` answers, so a new day can re-price the same
+    /// proposal without taking the old figures down first.
+    @State private var quoted: AirportQuoteRequest?
     @State private var pending: AirportFacilities?
     @State private var confirming = false
     @State private var saved = false
     private var installed: AirportFacilities { player.facilities(at: airport) }
     private var proposed: AirportFacilities { draft ?? installed }
+    private var quoteRequest: AirportQuoteRequest {
+        AirportQuoteRequest(airport: airport, proposed: proposed, installed: installed,
+                            day: snapshot.clock.now.dayIndex)
+    }
     private var tuning: AirportFacilityTuning { catalog.tuning.airportServices }
     private var cost: Money { proposed.installationCost(from: installed, tuning: tuning) }
     private var command: ConfigureAirportFacilitiesCommand {
@@ -48,16 +69,19 @@ struct AirportFacilityEditor: View {
                     .accessibilityIdentifier("ae-airport-investment-saved")
             }
         }
-        .task(id: AirportQuoteRequest(airport: airport, proposed: proposed, installed: installed,
-                                     revision: controller.airportInvestmentRevision)) {
-            let next = proposed, state = snapshot, content = catalog, id = player.id, code = airport
-            preview = nil
+        .task(id: quoteRequest) {
+            let request = quoteRequest
+            let next = request.proposed, state = snapshot, content = catalog, id = player.id, code = request.airport
+            // A different proposal clears the old figures — they price
+            // something else. The same one on a new day keeps them up while
+            // it is re-priced.
+            if !request.asks(sameAs: quoted) { preview = nil }
             do { try await Task.sleep(for: .milliseconds(180)) } catch { return }
             let result = await Task.detached(priority: .userInitiated) {
                 AirportInvestmentPreview.make(airline: id, airport: code, proposed: next, state: state, catalog: content)
             }.value
             guard !Task.isCancelled else { return }
-            preview = result
+            preview = result; quoted = request
         }
         .onChange(of: installed) { _, value in
             if pending == value { pending = nil; draft = nil; saved = true }
@@ -225,6 +249,9 @@ struct AirportFacilityEditor: View {
                 }.frame(maxWidth: .infinity, minHeight: 52)
                     .multilineTextAlignment(.center)
             }.buttonStyle(AEButtonStyle(role: .primary, expandedLabel: typeSize.isAccessibilitySize))
+                // `preview` is nil only until this proposal has been priced
+                // once: a daily re-quote keeps the last figures, so Apply no
+                // longer switches off while one runs.
                 .disabled(proposed == installed || pending != nil || preview == nil || controller.precheck(command) != nil)
                 .accessibilityIdentifier("ae-airport-investment-apply")
             if proposed != installed, let rejection = controller.precheck(command) {

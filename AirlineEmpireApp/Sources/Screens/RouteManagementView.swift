@@ -53,7 +53,7 @@ struct RouteOverviewHero: View {
     }
     private var facts: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("\(route.distanceKm.formatted()) km · \(route.dailyRoundTrips) round trips/day").font(.caption.weight(.semibold))
+            Text("\(route.distanceKm.formatted()) km · \(roundTripsLabel(route.dailyRoundTrips))").font(.caption.weight(.semibold))
             Text("\(route.assignedAircraft.count) aircraft assigned").font(.caption).foregroundStyle(AETheme.mutedText)
         }
     }
@@ -114,12 +114,33 @@ private struct RouteAirportDiagram: View {
     }
 }
 
+/// "1 round trip/day", "3 round trips/day".
+private func roundTripsLabel(_ count: Int) -> String {
+    count == 1 ? "1 round trip/day" : "\(count) round trips/day"
+}
+
+/// What a route forecast is keyed on.
+///
+/// The day and the fleet's *identities* — not `Aircraft` values, whose
+/// position and condition change every tick. Keyed on those, the forecast
+/// restarted every 3.75 s at 1×, blanked itself each time and re-ran two
+/// demand passes for figures that only move at the daily update. Operational
+/// aircraft only, so a check that grounds one still re-quotes.
 private struct RouteQuoteRequest: Equatable {
     let plan: RoutePlan
     let original: RoutePlan
     let day: Int64
-    let fleet: [Aircraft]
+    let fleet: [AircraftID]
     let comparison: AircraftID?
+
+    /// Whether `other` asked the same question, perhaps on an earlier day or
+    /// with a different fleet. Its figures may stay on screen while this one
+    /// is calculated; figures for a different plan may not.
+    func asks(sameAs other: RouteQuoteRequest?) -> Bool {
+        guard let other else { return false }
+        return other.plan == plan && other.original == original
+            && other.comparison == comparison
+    }
 }
 
 struct RoutePlanEditor: View {
@@ -130,12 +151,20 @@ struct RoutePlanEditor: View {
     @Binding var draft: RoutePlan?
     @State private var quote: RoutePlanPreview?
     @State private var baseline: RoutePlanPreview?
+    /// The request `quote` answers, so a re-quote of the same plan can keep
+    /// it on screen.
+    @State private var quoted: RouteQuoteRequest?
     @State private var pending: RoutePlan?
     @State private var confirming = false
     @State private var saved = false
     private var original: RoutePlan { RoutePlan(route: route) }
     private var current: RoutePlan { draft ?? original }
     private var command: ApplyRoutePlanCommand { .init(airline: route.airline, route: route.id, plan: current) }
+    private var quoteRequest: RouteQuoteRequest {
+        RouteQuoteRequest(plan: current, original: original, day: snapshot.clock.now.dayIndex,
+                          fleet: route.assignedAircraft.filter { snapshot.aircraft[$0]?.isOperational == true },
+                          comparison: nil)
+    }
     var body: some View {
         VStack(spacing: 14) {
             AircraftPanel {
@@ -157,7 +186,7 @@ struct RoutePlanEditor: View {
                                 .accessibilityIdentifier("ae-route-fare-\(percent)")
                         }
                     }
-                    Stepper("\(current.frequency) round trips/day", value: Binding(get: { current.frequency }, set: {
+                    Stepper(roundTripsLabel(current.frequency), value: Binding(get: { current.frequency }, set: {
                         var plan = current; plan.frequency = $0; draft = plan; saved = false
                     }), in: 1...20).frame(minHeight: 44)
                         .accessibilityIdentifier("ae-route-frequency")
@@ -172,7 +201,7 @@ struct RoutePlanEditor: View {
                         Text("Review changes").font(.headline)
                         Text("Fare: \(Format.money(original.fare)) to \(Format.money(current.fare))")
                             .font(.subheadline)
-                        Text("Frequency: \(original.frequency) to \(current.frequency) round trips/day")
+                        Text("Frequency: \(original.frequency) to \(roundTripsLabel(current.frequency))")
                             .font(.subheadline)
                         Button { confirming = true } label: {
                             Text("Apply Route Plan").frame(maxWidth: .infinity, minHeight: 44)
@@ -187,17 +216,21 @@ struct RoutePlanEditor: View {
             }
             if saved { Label("Route plan saved", systemImage: "checkmark.circle.fill").foregroundStyle(AETheme.positive) }
         }
-        .task(id: RouteQuoteRequest(plan: current, original: original, day: snapshot.clock.now.dayIndex,
-            fleet: route.assignedAircraft.compactMap { snapshot.aircraft[$0] }, comparison: nil)) {
-            let plan = current, installed = original, state = snapshot, content = catalog, id = route.id
-            quote = nil
+        .task(id: quoteRequest) {
+            let request = quoteRequest
+            let plan = request.plan, installed = request.original, state = snapshot, content = catalog, id = route.id
+            // The same plan on a new day keeps its figures up until the new
+            // ones land; blanking them made the card flash its placeholder on
+            // every re-quote. A different plan clears them — they describe a
+            // choice the player has moved away from.
+            if !request.asks(sameAs: quoted) { quote = nil }
             do { try await Task.sleep(for: .milliseconds(180)) } catch { return }
             let results = await Task.detached(priority: .userInitiated) {
                 (RoutePlanPreview.make(routeID: id, plan: plan, state: state, catalog: content),
                  RoutePlanPreview.make(routeID: id, plan: installed, state: state, catalog: content))
             }.value
             guard !Task.isCancelled else { return }
-            quote = results.0; baseline = results.1
+            quote = results.0; baseline = results.1; quoted = request
         }
         .onChange(of: original) { _, value in
             if pending == value { draft = nil; pending = nil; saved = true }
@@ -207,7 +240,7 @@ struct RoutePlanEditor: View {
             Button("Confirm Route Plan") { if controller.submit(command) == nil { pending = current } }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("Base fare \(Format.money(current.fare)), \(current.frequency) round trips/day. Slots update together with the plan. Demand and scheduling respond at their next simulation update; existing flights are retained.")
+            Text("Base fare \(Format.money(current.fare)), \(roundTripsLabel(current.frequency)). Slots update together with the plan. Demand and scheduling respond at their next simulation update; existing flights are retained.")
         }
     }
 }
@@ -238,7 +271,7 @@ struct RouteForecastCard: View {
                         Text("Profit change: \(change.cents >= 0 ? "+" : "")\(Format.money(change)) / month")
                             .font(.subheadline.weight(.semibold)).foregroundStyle(change.cents >= 0 ? AETheme.positive : AETheme.caution)
                     }
-                    Text("\(quote.rotations) achievable round trips/day · \(quote.seatsPerDay) seats/day")
+                    Text("\(roundTripsLabel(quote.rotations)) achievable · \(Format.count(Int64(quote.seatsPerDay))) seats/day")
                         .font(.caption).foregroundStyle(AETheme.mutedText)
                     if quote.rotations < target {
                         Label("The fleet cannot cover the full frequency target.", systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(AETheme.caution)
@@ -269,14 +302,24 @@ struct RouteAircraftComparison: View {
     let route: Route
     let snapshot: GameState
     let catalog: ContentCatalog
+    /// Core's eligibility for this route, asked once by the route screen and
+    /// shared with its aircraft section rather than asked again here.
+    let eligibility: [AssignmentCandidate]
     @State private var selected: AircraftID?
     @State private var quote: RoutePlanPreview?
     @State private var baseline: RoutePlanPreview?
-    private var candidates: [Aircraft] {
-        let eligible = Set(snapshot.assignmentCandidates(forRoute: route.id, catalog: catalog).filter(\.isEligible).map(\.aircraftID))
+    /// The request `quote` answers (see `RouteQuoteRequest.asks(sameAs:)`).
+    @State private var quoted: RouteQuoteRequest?
+    private func comparisonAircraft() -> [Aircraft] {
+        let eligible = Set(eligibility.filter(\.isEligible).map(\.aircraftID))
         return snapshot.aircraft.values.filter { $0.owner == route.airline && $0.isOperational && (route.assignedAircraft.contains($0.id) || eligible.contains($0.id)) }.sorted { $0.id < $1.id }
     }
     var body: some View {
+        // Once per pass: the picker and the task key each rebuilt this list.
+        let candidates = comparisonAircraft()
+        let request = RouteQuoteRequest(plan: RoutePlan(route: route), original: RoutePlan(route: route),
+                                        day: snapshot.clock.now.dayIndex,
+                                        fleet: candidates.map(\.id), comparison: selected)
         VStack(spacing: 14) {
             AircraftPanel {
                 VStack(alignment: .leading, spacing: 12) {
@@ -299,22 +342,29 @@ struct RouteAircraftComparison: View {
             }
             RouteForecastCard(quote: quote, baseline: selected == nil ? nil : baseline, target: route.dailyRoundTrips)
         }
-        .task(id: RouteQuoteRequest(plan: RoutePlan(route: route), original: RoutePlan(route: route), day: snapshot.clock.now.dayIndex, fleet: candidates, comparison: selected)) {
-            let state = snapshot, content = catalog, id = route.id, comparison = selected, plan = RoutePlan(route: route)
-            quote = nil
+        .task(id: request) {
+            let state = snapshot, content = catalog, id = route.id, comparison = request.comparison, plan = request.plan
+            // Same rule as the planner: a new day or a changed fleet keeps the
+            // last figures up while they are re-quoted; another aircraft
+            // clears them.
+            if !request.asks(sameAs: quoted) { quote = nil }
             do { try await Task.sleep(for: .milliseconds(180)) } catch { return }
             let result = await Task.detached(priority: .userInitiated) {
                 (RoutePlanPreview.make(routeID: id, plan: plan, comparisonAircraft: comparison, state: state, catalog: content),
                  RoutePlanPreview.make(routeID: id, plan: plan, state: state, catalog: content))
             }.value
             guard !Task.isCancelled else { return }
-            quote = result.0; baseline = result.1
+            quote = result.0; baseline = result.1; quoted = request
         }
     }
 }
 
 struct RoutePlanHistoryCard: View {
     let route: Route
+    /// The campaign's first year, so a change reads as a date ("14 Mar
+    /// 2031") rather than as "Day 412", a count the player never sees
+    /// anywhere else.
+    let startYear: Int
     var body: some View {
         AircraftPanel {
             VStack(alignment: .leading, spacing: 14) {
@@ -322,9 +372,10 @@ struct RoutePlanHistoryCard: View {
                 if let history = route.planHistory, !history.isEmpty {
                     ForEach(history, id: \.id) { change in
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Day \(change.at.dayIndex + 1)").font(.subheadline.bold())
+                            Text(Format.longDate(GameCalendar.date(at: change.at, startYear: startYear)))
+                                .font(.subheadline.bold())
                             Text("Fare: \(Format.money(change.previous.fare)) → \(Format.money(change.updated.fare))")
-                            Text("Frequency: \(change.previous.frequency) → \(change.updated.frequency) round trips/day")
+                            Text("Frequency: \(change.previous.frequency) → \(roundTripsLabel(change.updated.frequency))")
                         }.font(.caption).accessibilityElement(children: .combine)
                     }
                 } else {

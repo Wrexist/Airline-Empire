@@ -33,6 +33,28 @@ struct RejectionPresentation: Equatable {
         guard let suggestion else { return explanation }
         return "\(explanation)\n\n\(suggestion)"
     }
+
+    /// The explanation and the suggestion as one short paragraph, for a
+    /// caption beside the control the refusal disabled. The title is left
+    /// out: under a greyed-out "Sell aircraft", "Not right now" says less
+    /// than the sentence after it.
+    var inline: String {
+        guard let suggestion else { return Self.sentence(explanation) }
+        return "\(Self.sentence(explanation)) \(suggestion)"
+    }
+
+    /// Title and all, as one paragraph — for a panel that shows the refusal
+    /// in place, where an alert would have had a title bar.
+    var summary: String {
+        "\(title). \(inline)"
+    }
+
+    /// Core writes its messages without a closing full stop ("Need $45.0M
+    /// for this aircraft"); run into a suggestion, they need one.
+    private static func sentence(_ text: String) -> String {
+        guard let last = text.last, !".!?".contains(last) else { return text }
+        return text + "."
+    }
 }
 
 enum Rejections {
@@ -56,10 +78,14 @@ enum Rejections {
                             + "flying, or take a loan from Finance.")
 
         case "finance.overLeveraged":
+            // Loans are only ever repaid whole — `RepayLoanCommand` takes a
+            // loan, not an amount — so "repay part of one" named a control
+            // that does not exist. The ratio counts the new loan as well, so
+            // a smaller one can pass where this one did not.
             return .init(title: "Too much debt",
                          explanation: rejection.message,
-                         suggestion: "Repay part of an existing loan before "
-                            + "borrowing again.")
+                         suggestion: "Borrow less, or pay off a loan in "
+                            + "Finance first.")
 
         case "finance.tooManyLoans":
             return .init(title: "Too many loans",
@@ -88,17 +114,31 @@ enum Rejections {
                          suggestion: "Use a smaller aircraft, or choose an "
                             + "airport that can take this one.")
 
-        case "fleet.alreadyAssigned", "fleet.assigned":
+        case "fleet.alreadyAssigned":
             return .init(title: "Aircraft already flying",
                          explanation: "This aircraft is assigned to another "
                             + "route.",
                          suggestion: "Unassign it there first, or use an idle "
                             + "aircraft.")
 
+        // Sell and return refuse an aircraft that still has a route. They
+        // shared the copy above, which told a player selling their own
+        // aeroplane that it was flying "another route".
+        case "fleet.assigned":
+            return .init(title: "Still on a route",
+                         explanation: "This aircraft is assigned to a route.",
+                         suggestion: "Unassign it from the route first, then "
+                            + "try again.")
+
         case "fleet.inFlight":
-            return .init(title: "Aircraft is in the air",
-                         explanation: "This aircraft is mid-flight.",
-                         suggestion: "Wait for it to land, then try again.")
+            // `activeFlight` runs from boarding to the end of the
+            // turnaround, not just the time in the air — "wait for it to
+            // land" was a third of the answer, and the aircraft screen now
+            // shows this beside its Unassign button most of the day.
+            return .init(title: "Aircraft is on a flight",
+                         explanation: "This aircraft is working a flight: "
+                            + "boarding, in the air or turning round.",
+                         suggestion: "Try again once that flight is done.")
 
         case "fleet.notDelivered":
             return .init(title: "Not delivered yet",
@@ -113,10 +153,14 @@ enum Rejections {
                          suggestion: "Return it to the lessor instead.")
 
         case "fleet.notSellableNow", "fleet.notReturnableNow":
+            // Core raises these for an aircraft that is not operational — in
+            // a maintenance check, or still on order. "Unassign it" answered
+            // a different refusal (`fleet.assigned`) and fixed neither.
             return .init(title: "Not right now",
                          explanation: rejection.message,
-                         suggestion: "Unassign it from its route and wait for "
-                            + "it to be on the ground.")
+                         suggestion: "It is in a maintenance check or still "
+                            + "on order. Try again once the check is done "
+                            + "or it has been delivered.")
 
         // MARK: Slots and airports
 
@@ -192,12 +236,13 @@ enum Rejections {
             // The refusal a player meets most often in the aircraft market,
             // and it had no mapping at all — so the one purchase they cannot
             // yet make explained itself in the same voice as a broken
-            // invariant.
+            // invariant. Not Core's sentence: it names the class by its raw
+            // value ("largeNarrowbody aircraft unlock in a later era").
             return .init(title: "Not available in this era",
-                         explanation: rejection.message,
+                         explanation: "Your airline's era does not include "
+                            + "this class of aircraft yet.",
                          suggestion: "Grow the airline to reach the era that "
                             + "unlocks this class of aircraft.")
-
 
         case "progression.eraLocked":
             return .init(title: "Not available yet",
@@ -214,6 +259,21 @@ enum Rejections {
             return .init(title: "Already under way",
                          explanation: rejection.message,
                          suggestion: nil)
+
+        // MARK: Pro
+
+        case "access.proRequired":
+            // `ExpansionAccess` refuses what lies past the free tier: an
+            // airport beyond the nearest few to home, an aircraft class past
+            // the free era, a new capability programme. Its message already
+            // names which, and that nothing already running stops; what it
+            // did not say is where the line is and what moves it.
+            let freeEra = Vocab.era(ContentAccess.freeEraCeiling)
+            let freeAirports = ContentAccess.freeAirportRadius
+            return .init(title: "Part of Airline Empire Pro",
+                         explanation: rejection.message,
+                         suggestion: "The free game runs to the end of the \(freeEra) era, "
+                            + "across the \(freeAirports) airports nearest your home. Pro opens the rest.")
 
         // MARK: Founding
 

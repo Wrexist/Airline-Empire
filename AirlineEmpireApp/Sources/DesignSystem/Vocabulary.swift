@@ -566,10 +566,19 @@ extension Vocab {
     /// Each reads as a fact about *this* pairing rather than a refusal, because
     /// it is shown beside a disabled row the player has not tapped yet — "you
     /// cannot do that" is the wrong tense for something nobody has tried.
-    static func blocker(_ blocker: AssignmentCandidate.Blocker) -> String {
+    ///
+    /// `startYear` turns the delivery `SimTime` into a date. A caller without
+    /// it still says where the date is, rather than a bare "Not delivered
+    /// yet" that left the player to wonder for how long.
+    static func blocker(_ blocker: AssignmentCandidate.Blocker,
+                        startYear: Int? = nil) -> String {
         switch blocker {
-        case .notDelivered:
-            return "Not delivered yet"
+        case .notDelivered(let deliveryAt):
+            guard let startYear else {
+                return "Not delivered yet — see Fleet for the date"
+            }
+            let date = GameCalendar.date(at: deliveryAt, startYear: startYear)
+            return "Not delivered yet — arrives \(Format.longDate(date))"
         case .alreadyAssigned:
             return "Already on a route"
         case .beyondRange(let rangeKm, let distanceKm):
@@ -891,7 +900,9 @@ extension Vocab {
                 ? "You are losing 1 of your \(contested) contested route\(contested == 1 ? "" : "s") — see why."
                 : "You are losing \(routes) of your \(contested) contested routes — see why."
         case .rivalExpanding(let rival):
-            return "\(rival.name) added \(rival.marketsEnteredRecently) routes this month, \(rival.sharedAirports == 1 ? "at an airport you serve" : "at airports you serve")."
+            let added = rival.marketsEnteredRecently == 1
+                ? "a route" : "\(rival.marketsEnteredRecently) routes"
+            return "\(rival.name) added \(added) this month, \(rival.sharedAirports == 1 ? "at an airport you serve" : "at airports you serve")."
         case .fighting(let contested):
             return contested == 1
                 ? "One of your routes is contested — an even fight so far."

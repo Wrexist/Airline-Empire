@@ -255,11 +255,11 @@ that, not for a missing image. Verify products in StoreKit sandbox.
 **hand-entry only.** Left sidebar → App Privacy → Get Started.
 
 **"Do you or your third-party partners collect data from this app?"** →
-**No**
+**Yes — Purchase History, for App Functionality and Analytics.**
 
-The current app has no developer-operated analytics, advertising SDK, crash
-reporter or game account. Gameplay is local; purchases and restores use Apple
-services, and legal/support links open external web pages. Confirm the privacy
+RevenueCat processes anonymous purchase history. Mark it not linked to identity
+and not used for tracking. There is no advertising SDK or game account.
+Gameplay is local; Apple processes payments. Confirm the privacy
 declaration against the submitted build, its privacy manifest and public policy.
 
 **Privacy Policy URL (asked again here)** — 53/255 characters
@@ -278,10 +278,10 @@ pushes for you._
 
 ### English (U.S.)
 
-**Promotional Text** — 151/170 characters
+**Promotional Text** — 154/170 characters
 
 ```text
-Build a regional airline into a global network. Master routes, grow your fleet and outsmart rivals. 94 airports to discover. No ads. Play at your pace.
+Start free with one aircraft and one route, then build a global airline. 94 real airports, rivals that fight back, no ads, no timers. Plays fully offline.
 ```
 
 > The only field that can be changed **without submitting a new version**.
@@ -350,10 +350,10 @@ https://wrexist.github.io/Airline-Empire/
 
 ### English (U.K.)
 
-**Promotional Text** — 155/170 characters
+**Promotional Text** — 158/170 characters
 
 ```text
-Build a regional airline into a global network. Master routes, grow your fleet and outsmart rivals. 94 airports to discover. No adverts. Play at your pace.
+Start free with one aircraft and one route, then build a global airline. 94 real airports, rivals that fight back, no adverts, no timers. Plays fully offline.
 ```
 
 > The only field that can be changed **without submitting a new version**.
@@ -446,7 +446,7 @@ the decorative illustration is not used here. The shot list and captions are in
 - **Phone Number** — `+46723241663`
 - **Email** — `isacmolin@gmail.com`
 
-**Notes** — 3956/4000 characters
+**Notes** — 3996/4000 characters
 
 ```text
 Airline Empire is a single-player airline management simulation. No sign-in is required.
@@ -454,7 +454,7 @@ Airline Empire is a single-player airline management simulation. No sign-in is r
 WHAT THE APP DOES NOT DO
 • No account, no sign-in, no user-generated content, no social features, no chat.
 • Gameplay works offline. Prices, purchases and Restore purchases use Apple's StoreKit services and need a connection. Legal and support links open web pages. The simulation pauses while the app is closed; there is no offline catch-up.
-• No advertising, third-party SDKs, analytics or tracking. Nothing is collected, so the privacy label declares no data collection and the bundled privacy manifest declares no tracking domains and private UserDefaults use (CA92.1) for preferences and Pro offer history.
+• No advertising or cross-app tracking. RevenueCat uses anonymous purchase history for functionality and analytics. Gameplay stays local. The privacy label declares purchase history, not linked to identity and not used for tracking; private UserDefaults use (CA92.1) covers preferences and Pro offer history.
 • No gambling, no loot boxes, no randomised paid rewards. The only randomness is the simulation's own seeded world generation, which the player sets and can repeat.
 
 IN-APP PURCHASES
@@ -561,7 +561,7 @@ Report crashes, unreadable layouts, controls that do not respond, slow or hot de
 - [ ] No `REPLACE_ME` remains: `node scripts/asc/validate-metadata.mjs` passes without `--allow-placeholders`.
 - [ ] `node scripts/asc/check-app-icon.mjs` passes.
 - [ ] The support and privacy URLs open in a browser you are not signed into.
-- [ ] Age rating shows 4+ and App Privacy shows no data collected.
+- [ ] Age rating shows 4+ and App Privacy discloses anonymous Purchase History for App Functionality and Analytics, without tracking.
 
 Then **Add for Review** → **Submit**. With the release option above, an
 approved version waits for you to press **Release**.

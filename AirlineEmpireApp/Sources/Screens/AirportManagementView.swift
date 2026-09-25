@@ -44,7 +44,7 @@ struct AirportDetailView: View {
                     case .facilities:
                         AirportFacilityEditor(airport: code, player: player, snapshot: state, catalog: catalog, draft: $draft)
                     case .competition: competition(state: state, player: player)
-                    case .history: history(player: player)
+                    case .history: history(player: player, startYear: state.meta.startYear)
                     }
                 }.frame(maxWidth: 920).frame(maxWidth: .infinity).aePageInsets()
             } else { LoadingState(message: "Loading the airport").frame(minHeight: 240) }
@@ -159,12 +159,17 @@ struct AirportDetailView: View {
                     NavigationLink(value: route.id) {
                         VStack(alignment: .leading, spacing: 5) {
                             HStack { Text("\(route.origin.raw) – \(route.destination.raw)").font(.headline); Spacer(); Image(systemName: "chevron.right") }
-                            Text("\(route.dailyRoundTrips) round trips/day · \(route.assignedAircraft.count) aircraft · \(Format.money(route.ticketPrice)) base fare")
+                            Text("\(route.dailyRoundTrips) \(route.dailyRoundTrips == 1 ? "round trip" : "round trips")/day · \(route.assignedAircraft.count) aircraft · \(Format.money(route.ticketPrice)) base fare")
                                 .font(.caption).foregroundStyle(AETheme.mutedText)
                         }.frame(minHeight: 54)
                     }.buttonStyle(.plain)
                 }
-                if code != player.homeAirport, let distance = catalog.distanceKm(player.homeAirport, code) {
+                // Only for a market not already flown: the offer used to sit
+                // under the very route it would open, and its one possible
+                // outcome was "You already serve this city pair".
+                if code != player.homeAirport,
+                   !routes.contains(where: { $0.sameMarket(origin: player.homeAirport, destination: code) }),
+                   let distance = catalog.distanceKm(player.homeAirport, code) {
                     Button {
                         routeSheet = RouteDraft(suggestion: FirstRouteSuggestion(origin: player.homeAirport, destination: code,
                             destinationCity: spec.city, distanceKm: distance, expectedDailyPassengers: 0,
@@ -202,7 +207,7 @@ struct AirportDetailView: View {
             }
         }
     }
-    private func history(player: Airline) -> some View {
+    private func history(player: Airline, startYear: Int) -> some View {
         let changes = (player.airportFacilityHistory ?? []).filter { $0.airport == code }
         return AircraftPanel {
             VStack(alignment: .leading, spacing: 14) {
@@ -210,7 +215,10 @@ struct AirportDetailView: View {
                 if changes.isEmpty { Text("Confirmed facility changes will appear here.").foregroundStyle(AETheme.mutedText) }
                 ForEach(changes, id: \.id) { item in
                     VStack(alignment: .leading, spacing: 5) {
-                        AirportFact(title: "Day \(item.at.dayIndex + 1)", value: Format.money(item.cost))
+                        // A date, as everywhere else: "Day 412" was a count
+                        // the player never sees anywhere else.
+                        AirportFact(title: Format.longDate(GameCalendar.date(at: item.at, startYear: startYear)),
+                                    value: Format.money(item.cost))
                         Text("Lounge: \(item.previous.lounge) → \(item.updated.lounge) · Ground services: \(item.previous.groundServices) → \(item.updated.groundServices)")
                             .font(.caption).foregroundStyle(AETheme.mutedText)
                     }
