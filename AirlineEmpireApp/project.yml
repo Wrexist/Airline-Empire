@@ -109,6 +109,15 @@ targets:
 
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 
+        # Game Center (docs/GAME_CENTER.md). The one capability the app
+        # declares. A distribution profile must carry it too: Game Center is
+        # on by default for an explicit App ID, so an App Store profile
+        # generated for com.airlineempire.game normally includes it — but the
+        # manual-signing path uses the profile stored in the
+        # IOS_PROVISIONING_PROFILE_BASE64 secret, and one made before this
+        # line existed must be checked before the first archive that has it.
+        CODE_SIGN_ENTITLEMENTS: Resources/AirlineEmpire.entitlements
+
         # Signing is deliberately not pinned here. A local build uses
         # automatic signing with whatever team the developer is logged into;
         # the release workflow passes DEVELOPMENT_TEAM, CODE_SIGN_STYLE and

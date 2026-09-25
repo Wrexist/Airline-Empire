@@ -896,6 +896,7 @@ struct SettingsView: View {
         @Bindable var preferences = controller.preferences
         return List {
             ProSection()
+            GameCenterSection()
 
             Section("Playing") {
                 Toggle("Pause when money runs short", isOn: $preferences.autoPauseOnDanger)
@@ -1027,7 +1028,7 @@ struct SettingsView: View {
                 if let seed = controller.snapshot?.meta.worldSeed {
                     LabeledContent("World seed", value: String(seed))
                 }
-                Text("Your game runs on this device. Apple handles Pro payments. RevenueCat validates and reports purchases using an anonymous customer ID. Gameplay stays on your device, with no advertising or cross-app tracking.")
+                Text("Your game runs on this device. Apple handles Pro payments. RevenueCat validates and reports purchases using an anonymous customer ID. If you sign in to Game Center, achievements and leaderboard scores go to Apple's Game Center under your Game Center settings. Gameplay stays on your device, with no advertising or cross-app tracking.")
                     .font(.caption)
                     .foregroundStyle(AETheme.mutedText)
             }
