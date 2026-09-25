@@ -912,41 +912,78 @@ struct OpenRouteSheet: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if let snapshot = controller.snapshot,
-                   let player = snapshot.playerAirline,
-                   let catalog = controller.catalog {
-                    content(snapshot: snapshot, player: player, catalog: catalog)
-                } else {
-                    LoadingState(message: "Loading the world")
+            marketTriggers(sheetContent)
+                .navigationDestination(item: $createdRoute) { routeID in
+                    RouteDetailView(routeID: routeID)
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Done") { dismiss() }
+                                    .accessibilityIdentifier("ae-route-setup-done")
+                            }
+                        }
                 }
-            }
-            .onChange(of: controller.mapRouteRequest) { _, request in
-                if request != nil { dismiss() }
-            }
-            .navigationTitle("Open a route")
-            .disabled(opening)
-            .interactiveDismissDisabled(opening)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                        .disabled(opening)
+                .navigationDestination(for: AircraftID.self) { AircraftDetailView(aircraftID: $0) }
+                // Buying Pro from inside this sheet opens the rest of the map
+                // without closing and reopening it.
+                .onChange(of: entitlements.access) { _, _ in
+                    refreshServableAirports()
                 }
+                .aeSheetFeedback()
+                // The route-creation journey, in three beats
+                // (docs/AUDIO_ARCHITECTURE.md §5). Choosing where you fly from is
+                // a selection; choosing where you fly *to* is the moment the line
+                // between two cities exists, so it resolves upward; and the
+                // commit is voiced by `routeOpened` when Core says it happened,
+                // not when the button was pressed.
+                .aeFeedback(.uiSelect, on: origin)
+                .aeFeedback(.uiConfirm, on: destination)
+        }
+    }
+
+    /// The sheet, its chrome and its lifecycle. Split from `body` — with the
+    /// refresh triggers in `marketTriggers` — because the single modifier
+    /// chain grew past what the type-checker resolves in reasonable time.
+    private var sheetContent: some View {
+        Group {
+            if let snapshot = controller.snapshot,
+               let player = snapshot.playerAirline,
+               let catalog = controller.catalog {
+                content(snapshot: snapshot, player: player, catalog: catalog)
+            } else {
+                LoadingState(message: "Loading the world")
             }
-            .onAppear {
-                #if DEBUG
-                Logger(subsystem: "com.airlineempire.presentation", category: "route-setup")
-                    .notice("Route setup appeared; primed: \(primed), has destination: \(destination != nil), has created route: \(createdRoute != nil)")
-                #endif
-                prime()
+        }
+        .onChange(of: controller.mapRouteRequest) { _, request in
+            if request != nil { dismiss() }
+        }
+        .navigationTitle("Open a route")
+        .disabled(opening)
+        .interactiveDismissDisabled(opening)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") { dismiss() }
+                    .disabled(opening)
             }
-            .onChange(of: createdRoute) { _, value in
-                #if DEBUG
-                Logger(subsystem: "com.airlineempire.presentation", category: "route-setup")
-                    .notice("Route setup destination changed; has route: \(value != nil)")
-                #endif
-            }
+        }
+        .onAppear {
+            #if DEBUG
+            Logger(subsystem: "com.airlineempire.presentation", category: "route-setup")
+                .notice("Route setup appeared; primed: \(primed), has destination: \(destination != nil), has created route: \(createdRoute != nil)")
+            #endif
+            prime()
+        }
+        .onChange(of: createdRoute) { _, value in
+            #if DEBUG
+            Logger(subsystem: "com.airlineempire.presentation", category: "route-setup")
+                .notice("Route setup destination changed; has route: \(value != nil)")
+            #endif
+        }
+    }
+
+    /// What re-ranks the destinations, and what settles an open request.
+    private func marketTriggers<Content: View>(_ content: Content) -> some View {
+        content
             .onChange(of: origin) { refreshMarkets() }
             .onChange(of: filter) {
                 guard let destination, let snapshot = controller.snapshot,
@@ -982,31 +1019,6 @@ struct OpenRouteSheet: View {
                 rejection = failure
                 controller.clearRejection()
             }
-            .navigationDestination(item: $createdRoute) { routeID in
-                RouteDetailView(routeID: routeID)
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Done") { dismiss() }
-                                .accessibilityIdentifier("ae-route-setup-done")
-                        }
-                    }
-            }
-            .navigationDestination(for: AircraftID.self) { AircraftDetailView(aircraftID: $0) }
-            // Buying Pro from inside this sheet opens the rest of the map
-            // without closing and reopening it.
-            .onChange(of: entitlements.access) { _, _ in
-                refreshServableAirports()
-            }
-            .aeSheetFeedback()
-            // The route-creation journey, in three beats
-            // (docs/AUDIO_ARCHITECTURE.md §5). Choosing where you fly from is
-            // a selection; choosing where you fly *to* is the moment the line
-            // between two cities exists, so it resolves upward; and the
-            // commit is voiced by `routeOpened` when Core says it happened,
-            // not when the button was pressed.
-            .aeFeedback(.uiSelect, on: origin)
-            .aeFeedback(.uiConfirm, on: destination)
-        }
     }
 
     private func prime() {
