@@ -27,6 +27,9 @@ final class AccessibilitySurfaceReviewTests: XCTestCase {
         let content = view
             .environment(controller)
             .environment(Entitlements(arguments: ["-AEUITestFree"]))
+            // SettingsView's GameCenterSection reads this from the app root;
+            // a test argument keeps GameKit's sign-in out of the capture.
+            .environment(GameCenter(arguments: ["-AEUITestFree"]))
             .environment(\.dynamicTypeSize, typeSize)
             .environment(\.legibilityWeight, .bold)
             .environment(\.colorScheme, dark ? .dark : .light)
