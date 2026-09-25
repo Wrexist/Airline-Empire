@@ -1,0 +1,32 @@
+{
+  "$comment": "In-App Event for the 1.1 update. See docs/APP_STORE_IN_APP_EVENT.md. Limits are checked by scripts/asc/check-featuring.mjs.",
+  "referenceName": "1.1 Game Center arrives",
+  "badge": "Major Update",
+  "purpose": "Attract new users, keep active users informed, and bring back lapsed users",
+  "purchaseRequirement": "None",
+  "priority": "High",
+  "primaryLocale": "en-US",
+  "localizations": {
+    "en-US": {
+      "name": "Game Center Arrives",
+      "shortDescription": "17 achievements and three leaderboards to climb",
+      "longDescription": "Every milestone your airline reaches now counts in Game Center. Compare passengers, network and fleet with friends."
+    },
+    "en-GB": {
+      "name": "Game Center Arrives",
+      "shortDescription": "17 achievements and three leaderboards to climb",
+      "longDescription": "Every milestone your airline reaches now counts in Game Center. Compare passengers, network and fleet with friends."
+    }
+  },
+  "media": {
+    "eventCard": "store/in-app-events/game-center/event-card.png",
+    "detailsPage": "store/in-app-events/game-center/details-page.png"
+  },
+  "deepLink": null,
+  "schedule": {
+    "status": "proposal — owner decides",
+    "rule": "Event start is the day 1.1 is live on the App Store. Promotion may begin up to 14 days earlier. Duration up to 31 days.",
+    "durationDays": 14
+  },
+  "territories": "Same 173 as the app"
+}

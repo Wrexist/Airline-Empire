@@ -256,6 +256,10 @@ jobs:
       - name: Game Center catalog matches Core
         run: node store/game-center/render.mjs --check
 
+      # Nomination and In-App Event copy against Apple's field limits.
+      - name: Featuring copy fits Apple's limits
+        run: node scripts/asc/check-featuring.mjs
+
       # A sound cue with no file is the one audio bug that reports itself as
       # working: nothing throws, nothing logs, the moment simply passes in
       # silence. Checked against Core's own `AudioCue.assetName`, on the cheap

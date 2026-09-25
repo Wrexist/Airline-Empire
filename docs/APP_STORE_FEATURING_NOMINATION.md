@@ -27,11 +27,18 @@ Built with native SwiftUI for iPhone and iPad. Campaigns run locally without a g
 ## Supplemental material
 
 ```text
-https://airline-empire-official.isacmolin.chatgpt.site/press.html
+https://wrexist.github.io/Airline-Empire/press.html
 ```
+
+**As submitted on 11 September** the nomination carries
+`https://airline-empire-official.isacmolin.chatgpt.site/press.html` — public
+links moved to GitHub Pages two days later (`c1023f1`). Both returned HTTP 200
+on 25 September. If App Store Connect still lets the submitted nomination be
+edited, switch it to the GitHub Pages URL above; until then, keep the old page
+live, since it is the one Apple's editors will open.
 
 Contact: Isac Molin — isacmolin@gmail.com.
 
-The name, description and helpful-details fields use 53/60, 946/1000 and 390/500 characters. This single launch nomination has been submitted. Do not duplicate it under New Content or App Enhancements. A nomination is a request for editorial consideration, not a featuring guarantee.
+The name, description and helpful-details fields use 53/60, 946/1000 and 390/500 characters. This single launch nomination has been submitted. Do not submit the 1.0 launch again under New Content or App Enhancements. The first update is a separate submission with its own content — see [`APP_STORE_NOMINATION_1_1.md`](APP_STORE_NOMINATION_1_1.md). A nomination is a request for editorial consideration, not a featuring guarantee.
 
 Reference: https://developer.apple.com/help/app-store-connect/manage-featuring-nominations/nominate-your-app-for-featuring/
