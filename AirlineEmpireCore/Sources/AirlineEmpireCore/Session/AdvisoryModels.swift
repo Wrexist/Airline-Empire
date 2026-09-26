@@ -116,6 +116,16 @@ public struct ProgressionModel: Equatable, Sendable {
     public let milestones: [String]
     public let achievements: [String]
 
+    /// The campaign's own totals, for the header that should feel lived-in.
+    public let counters: ProgressionCounters
+    /// The bounded, dated log of completed work, oldest first.
+    public let record: [ProgressionMoment]
+    /// Aircraft classes the next era opens that the current one does not.
+    public let nextEraUnlocks: [AircraftCategory]
+    /// When the current era began, from the log. Nil for a campaign that has
+    /// not advanced an era since the log began.
+    public let eraSince: SimTime?
+
     /// 0…1 across the next era's requirements; 1 when there is no next era.
     public var nextEraProgress: Double {
         guard !nextEraRequirements.isEmpty else { return 1 }
@@ -225,10 +235,20 @@ extension GameState {
                          daysRemaining: Int(minutesLeft / GameCalendar.minutesPerDay))
         }
 
+        let unlocks: [AircraftCategory] = next.map { nextEra in
+            nextEra.allowedCategories.filter {
+                !progression.era.allowedCategories.contains($0)
+            }
+        } ?? []
+
         return ProgressionModel(
             era: progression.era, nextEra: next, nextEraRequirements: requirements,
             capabilities: capabilities, missions: missions,
             milestones: progression.milestones,
-            achievements: progression.achievements)
+            achievements: progression.achievements,
+            counters: progression.counters,
+            record: progression.record,
+            nextEraUnlocks: unlocks,
+            eraSince: progression.eraSince)
     }
 }

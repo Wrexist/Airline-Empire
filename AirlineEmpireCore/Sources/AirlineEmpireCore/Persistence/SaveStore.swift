@@ -145,6 +145,15 @@ public final class SaveManager: Sendable {
     }
 
     public func save(_ state: GameState, slot: String) throws {
+        // Loading refuses a state with integrity violations, but saving never
+        // asked — and the engine's own per-tick check is an `assert`, compiled
+        // out of Release. One broken invariant would have been written as the
+        // current save and rotated through both backups within three
+        // autosaves, leaving nothing that loads. Refuse it here instead, so
+        // the generations already on disk survive.
+        guard state.isLoadable else {
+            throw SaveError.corruptPayload("The game state failed its integrity check, so it was not saved. Your existing saves are unchanged.")
+        }
         let data = try codec.encode(state)
         try store.save(data, slot: slot, meta: Self.meta(for: state))
     }

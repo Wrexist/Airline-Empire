@@ -52,6 +52,10 @@ final class Feedback {
     func prepare() {
         audio.prepare()
         haptics.prepare()
+        // A player who muted everything should not pay for a running engine
+        // on every launch and foreground; `settingsChanged` was the only
+        // place that idled it.
+        audio.setActive(!preferences.audio.isSilent)
     }
 
     func applicationDidEnterBackground() {
@@ -59,7 +63,7 @@ final class Feedback {
     }
 
     func applicationWillEnterForeground() {
-        audio.resume()
+        if !preferences.audio.isSilent { audio.resume() }
         // Both continuous layers were torn down on the way out; forcing a
         // re-derive is what brings them back on the next snapshot.
         lastMix = nil

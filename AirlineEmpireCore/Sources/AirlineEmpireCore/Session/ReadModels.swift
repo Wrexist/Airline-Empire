@@ -204,7 +204,7 @@ extension GameState {
                         destinationMovement: destination.movementFee(for: spec, ops: ops),
                         originPassenger: origin.passengerFee,
                         destinationPassenger: destination.passengerFee,
-                        seats: spec.seats)
+                        seats: aircraft.cabin(for: spec).totalSeats)
     }
 
     /// Fleet cards for an airline, deterministic order.

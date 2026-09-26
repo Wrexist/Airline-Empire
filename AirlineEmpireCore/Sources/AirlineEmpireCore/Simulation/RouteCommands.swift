@@ -126,6 +126,15 @@ public struct CloseRouteCommand: Command, Equatable {
         // Cancel not-yet-departed flights (scheduled/boarding/turnaround).
         for flightID in state.orderedFlightIDs {
             guard let flight = state.flights[flightID], flight.route == route else { continue }
+            // A flight in its turnaround has flown, and its revenue and costs
+            // are posted; only its completion was still to be recorded.
+            // Deleting it outright dropped it from the day's operations and
+            // the player's flight and passenger counters (and so from
+            // missions and contracts).
+            if case .turnaround = flight.phase, let aircraft = state.aircraft[flight.aircraft] {
+                FlightOpsSystem.recordCompletion(of: flight, aircraft: aircraft,
+                                                 state: &state, catalog: context.catalog)
+            }
             if var aircraft = state.aircraft[flight.aircraft], aircraft.activeFlight == flightID {
                 aircraft.activeFlight = nil
                 state.aircraft[flight.aircraft] = aircraft

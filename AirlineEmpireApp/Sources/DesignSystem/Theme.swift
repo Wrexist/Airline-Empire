@@ -317,10 +317,12 @@ enum Format {
         let dollars = Double(money.cents) / 100
         let magnitude = abs(dollars)
         let sign = dollars < 0 ? "−" : ""
+        // Thresholds sit where the *rounded* figure reaches the next unit:
+        // $999,700 is "$1.0M", not "$1,000k", and $999.96M is "$1.00B".
         switch magnitude {
-        case 1_000_000_000...:
+        case 999_950_000...:
             return "\(sign)$\(decimal(magnitude / 1_000_000_000, places: 2))B"
-        case 1_000_000...:
+        case 999_500...:
             return "\(sign)$\(decimal(magnitude / 1_000_000, places: 1))M"
         case 10_000...:
             return "\(sign)$\(decimal(magnitude / 1_000, places: 0))k"
@@ -364,6 +366,14 @@ enum Format {
     /// "14 Mar" — the form that fits in a navigation bar beside a control.
     static func shortDate(_ date: GameDate) -> String {
         "\(date.day) \(monthAbbreviation(date.month))"
+    }
+
+    /// "14 Mar 2031" — for dates inside a sentence: deadlines, milestones,
+    /// "until" and "since". The ISO form stays on the clock headers, where it
+    /// is the game's timestamp; inside prose, "Deadline: 2035-01-29 at 00:00"
+    /// read like a database row. A spelled month is just as unambiguous.
+    static func longDate(_ date: GameDate) -> String {
+        "\(date.day) \(monthAbbreviation(date.month)) \(date.year)"
     }
 
     static func monthAbbreviation(_ month: Int) -> String {

@@ -89,6 +89,12 @@ struct AESectionHeader: View {
         HStack(spacing: AETheme.spacingXS) {
             if let systemImage {
                 Image(systemName: systemImage).font(.subheadline).foregroundStyle(AETheme.accent)
+                    // Decoration beside the title. VoiceOver should hear the
+                    // section, and an unhidden symbol exposes its own name
+                    // ("chart.bar"), which the accessibility audit rejects as
+                    // not human-readable — the Finance screen was the one that
+                    // shipped without a text label beside it.
+                    .accessibilityHidden(true)
             }
             Text(text)
                 .font(AEType.sectionTitle)
@@ -1074,15 +1080,17 @@ enum AEButtonRole {
 /// level down in something that really is a `View`.
 struct AEButtonStyle: ButtonStyle {
     let role: AEButtonRole
+    var expandedLabel = false
 
     func makeBody(configuration: Configuration) -> some View {
-        Surface(configuration: configuration, role: role)
+        Surface(configuration: configuration, role: role, expandedLabel: expandedLabel)
     }
 
     /// The actual chrome. A `View`, so it can read the environment.
     private struct Surface: View {
         let configuration: ButtonStyleConfiguration
         let role: AEButtonRole
+        let expandedLabel: Bool
         @Environment(\.isEnabled) private var isEnabled
         @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -1099,7 +1107,7 @@ struct AEButtonStyle: ButtonStyle {
                 .padding(.horizontal, AETheme.spacingM)
                 .padding(.vertical, AETheme.spacingS + 2)
                 .frame(minHeight: 44)
-                .modifier(AEActionSurface(role: role))
+                .modifier(AEActionSurface(role: role, expandedLabel: expandedLabel))
                 .opacity(isEnabled ? (configuration.isPressed ? 0.82 : 1) : 0.45)
                 .scaleEffect(reduceMotion || !configuration.isPressed ? 1 : 0.972)
                 .animation(reduceMotion ? .easeOut(duration: 0.12) : AEMotion.selection,

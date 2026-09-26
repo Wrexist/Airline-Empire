@@ -16,19 +16,23 @@ import AirlineEmpireCore
 /// **What is cached, in which space:** two independent path sets, both in
 /// screen space at the camera they were built with —
 /// - *geography*: graticule, equator, land (fill + coast), lakes, borders,
-///   and the day/night terminator, keyed by LOD tier, world-offset set,
-///   canvas size, and the game hour (the terminator's clock);
+///   and the day/night terminator, keyed by LOD tier, world-offset set and
+///   canvas size. The terminator alone also follows the game hour, and is
+///   rebuilt alone when the hour turns — at the reference camera the rest
+///   was built at, so the one replay transform still serves all of it;
 /// - *routes*: one stroke list per route (glow underlay + main stroke, in
-///   z-order, rivals before players), plus each route's hit polyline, keyed
-///   by the same camera terms plus overlay, simulation tick and selection.
+///   z-order, rivals before players), plus each route's hit polylines, keyed
+///   by the same camera terms plus overlay, simulation revision and
+///   selection.
 ///
 /// **Invalidation, exhaustively** (each cause counted, for the probe):
 /// LOD tier change, world-offset set change, canvas size change, game-hour
-/// change (geography only), simulation tick (routes only — health and
-/// frequency restyle per tick), overlay or selected-route change (routes
-/// only), zoom drifting past ±25% of the built zoom, or the camera panning
-/// beyond the culling headroom. Nothing else rebuilds; in particular a
-/// finger move never does.
+/// change (the night layer only), simulation revision (routes only —
+/// health and frequency restyle per tick, and a route opened, assigned or
+/// closed while paused has to appear without a tick), overlay or
+/// selected-route change (routes only), zoom drifting past ±25% of the
+/// built zoom, or the camera panning beyond the culling headroom. Nothing
+/// else rebuilds; in particular a finger move never does.
 ///
 /// **Headroom:** paths are built with the viewport expanded by
 /// `panHeadroom` screens on every side, and a rebuild triggers at 80% of
@@ -123,11 +127,15 @@ final class MapRenderCache {
 
     // MARK: - Geography
 
+    /// No clock in the key. The game hour used to be part of it, so the
+    /// terminator's hourly step threw away every coastline with it — about
+    /// once a real second at 16×, each a 29,000-point rebuild the player
+    /// felt as a hitch. The night layer now keeps its own hour
+    /// (`nightHour`).
     private struct GeographyKey: Equatable {
         let level: MapZoomLevel
         let offsets: [Double]
         let size: CGSize
-        let gameHour: Int
     }
 
     private struct Geography {
@@ -146,6 +154,8 @@ final class MapRenderCache {
     private var geographyKey: GeographyKey?
     private var geographyZoom: CGFloat = 1
     private var geographyCenter = CGPoint.zero
+    /// The game hour the night layer was last built for.
+    private var nightHour: Int?
 
     /// Ensures the geography cache is valid for this camera, then draws it —
     /// grid, equator, land, lakes, borders, night, in the exact order the
@@ -155,9 +165,12 @@ final class MapRenderCache {
                        date: GameDate) {
         let key = GeographyKey(level: policy.level,
                                offsets: projector.visibleWorldOffsets,
-                               size: projector.size,
-                               gameHour: ((date.month * 31) + date.day) * 24
-                                   + date.hour)
+                               size: projector.size)
+        // The terminator's clock, one step per game hour. The year is in it
+        // so a save reopened a year later to the hour cannot keep a stale
+        // night.
+        let hour = ((date.year * 12 + date.month) * 31 + date.day) * 24
+            + date.hour
         if geography == nil {
             countRebuild("first")
             buildGeography(projector: projector, policy: policy, date: date, key: key)
@@ -169,9 +182,19 @@ final class MapRenderCache {
                                             projector: projector) {
             countRebuild(drift)
             buildGeography(projector: projector, policy: policy, date: date, key: key)
+        } else if nightHour != hour {
+            // Only the terminator moved. Built at the camera the rest of the
+            // geography was built at, so the one replay transform below still
+            // places it: two 97-point polygons instead of the whole world.
+            countRebuild("night")
+            let reference = MapProjector(zoom: geographyZoom,
+                                         center: geographyCenter,
+                                         size: projector.size)
+            geography?.night = Self.nightPolygons(projector: reference, date: date)
         } else {
             replays += 1
         }
+        nightHour = hour
         guard let geography else { return }
 
         let replay = replayTransform(builtZoom: geographyZoom,
@@ -206,7 +229,6 @@ final class MapRenderCache {
         if old.level != new.level { return "lod" }
         if old.size != new.size { return "size" }
         if old.offsets != new.offsets { return "offsets" }
-        if old.gameHour != new.gameHour { return "gameHour" }
         return "key"
     }
 
@@ -259,9 +281,9 @@ final class MapRenderCache {
     }
 
     /// The day/night terminator, moved here verbatim from `MapFrame` so it is
-    /// built on the cache's schedule (once per game hour or camera rebuild)
-    /// instead of 30 times a second. Astronomy unchanged
-    /// (docs/MAP_RUNTIME_BASELINE.md §4 · P3).
+    /// built on the cache's schedule (with every geography rebuild, and on
+    /// its own when the game hour turns) instead of 30 times a second.
+    /// Astronomy unchanged (docs/MAP_RUNTIME_BASELINE.md §4 · P3).
     private static func nightPolygons(projector: MapProjector,
                                       date: GameDate) -> [(Path, Double)] {
         // One source for where the sun is (`SolarGeometry`, in Core with
@@ -317,12 +339,15 @@ final class MapRenderCache {
 
     // MARK: - Routes
 
+    /// `revision` is `GameController.mapRevision`, not the tick's arrival
+    /// time: it also moves when a command lands while the game is paused,
+    /// which is when most routes are opened, assigned and closed.
     private struct RoutesKey: Equatable {
         let level: MapZoomLevel
         let offsets: [Double]
         let size: CGSize
         let overlay: MapOverlay
-        let tick: Date
+        let revision: UInt64
         let selectedRoute: RouteID?
     }
 
@@ -357,7 +382,7 @@ final class MapRenderCache {
     func drawRoutes(into context: inout GraphicsContext,
                     model: MapModel, projector: MapProjector,
                     policy: MapDetailPolicy, overlay: MapOverlay,
-                    tick: Date, selectedRoute: RouteID?,
+                    revision: UInt64, selectedRoute: RouteID?,
                     playerColor: Color,
                     style: (MapModel.MapRoute, Bool) -> MapFrame.RouteStyle,
                     shows: (MapModel.MapRoute) -> Bool)
@@ -365,7 +390,7 @@ final class MapRenderCache {
         let key = RoutesKey(level: policy.level,
                             offsets: projector.visibleWorldOffsets,
                             size: projector.size, overlay: overlay,
-                            tick: tick, selectedRoute: selectedRoute)
+                            revision: revision, selectedRoute: selectedRoute)
         if !routesBuilt {
             countRebuild("routesFirst")
             buildRoutes(model: model, projector: projector, key: key,
@@ -402,7 +427,7 @@ final class MapRenderCache {
 
     private func routesReason(old: RoutesKey?, new: RoutesKey) -> String {
         guard let old else { return "routesFirst" }
-        if old.tick != new.tick { return "tick" }
+        if old.revision != new.revision { return "revision" }
         if old.overlay != new.overlay { return "overlay" }
         if old.selectedRoute != new.selectedRoute { return "selection" }
         if old.level != new.level { return "routesLod" }
@@ -427,9 +452,11 @@ final class MapRenderCache {
             let unwrapped = MapGeodesy.unwrap(route.arc)
             guard !unwrapped.isEmpty else { continue }
             let routeStyle = style(route, route.isPlayer)
-            var hitPoints: [CGPoint]?
 
-            for offset in MapGeodesy.worldOffsets(for: unwrapped) {
+            // Every copy of the world on screen, not only the first: the
+            // geography draws each visible copy, and a network that exists
+            // on one of them reads as missing on the others.
+            for offset in MapGeodesy.copies(of: unwrapped, visible: key.offsets) {
                 let points = unwrapped.map {
                     projector.project(MapPoint(x: $0.x + offset, y: $0.y))
                 }
@@ -451,10 +478,9 @@ final class MapRenderCache {
                     path: path,
                     color: routeStyle.color.opacity(routeStyle.opacity),
                     width: routeStyle.width, dash: routeStyle.dash))
-                if hitPoints == nil { hitPoints = points }
-            }
-            if let hitPoints {
-                routeHits.append(CachedRouteHit(route: route, points: hitPoints))
+                // One hit polyline per drawn copy: whichever copy the
+                // player taps is the route.
+                routeHits.append(CachedRouteHit(route: route, points: points))
             }
         }
         routesKey = key
@@ -470,15 +496,15 @@ final class MapRenderCache {
     /// 3.92 identity changes and 1.72 position hops per frame while panning
     /// (docs/MAP_RUNTIME_BASELINE.md §5). So the decision runs only when
     /// something decision-worthy changes — a gesture settles, the LOD tier
-    /// or selection or tick changes, or the camera drifts past the same
-    /// bands the geometry cache uses — and every frame in between simply
-    /// re-projects the remembered choices, which move exactly with the
-    /// world.
+    /// or selection or simulation revision changes, or the camera drifts
+    /// past the same bands the geometry cache uses — and every frame in
+    /// between simply re-projects the remembered choices, which move exactly
+    /// with the world.
     private struct PlacementKey: Equatable {
         let level: MapZoomLevel
         let size: CGSize
         let offsets: [Double]
-        let tick: Date
+        let revision: UInt64
         let selection: AirportCode?
         let settle: Int
     }
@@ -487,24 +513,35 @@ final class MapRenderCache {
     private var placementZoom: CGFloat = 1
     private var placementCenter = CGPoint.zero
     private var airportMemory: [MapLabelLayout.Remembered] = []
-    /// Country label memory: map-space anchor, display text, and the box's
+    /// Country label memory: map-space anchor, caption, and the box's
     /// width — everything needed to redraw without re-deciding.
     private var countryMemory: [(anchor: CGPoint, text: String, width: CGFloat)] = []
     private(set) var placementRuns = 0
 
+    /// Label widths, measured once per string (`MapTextMetrics`). Kept here
+    /// because this is the object that outlives a frame.
+    let textMetrics = MapTextMetrics()
+
     /// Airport labels for this frame: re-projected memory while the
     /// placement key holds, a fresh (memory-seeded) placement when it does
     /// not. `placedNow` tells the country pass whether to re-decide too.
+    ///
+    /// `airports` is one copy per airport — `MapFrame` passes the copy
+    /// nearest the middle of the canvas — and the replay below re-projects
+    /// each remembered label onto that same copy.
     func airportLabels(airports: [(MapModel.MapAirport, CGPoint)],
                        byCode: [AirportCode: MapModel.MapAirport],
                        projector: MapProjector, policy: MapDetailPolicy,
-                       selected: AirportCode?, tick: Date, settle: Int,
+                       selected: AirportCode?, revision: UInt64, settle: Int,
                        limit: Int, labelBounds: CGRect,
-                       markerRadius: (MapModel.MapAirport) -> CGFloat)
+                       markerRadius: (MapModel.MapAirport) -> CGFloat,
+                       textWidth: (String) -> CGFloat)
         -> (labels: [MapLabel], placedNow: Bool) {
+        let offsets = projector.visibleWorldOffsets
         let key = PlacementKey(level: policy.level, size: projector.size,
-                               offsets: projector.visibleWorldOffsets,
-                               tick: tick, selection: selected, settle: settle)
+                               offsets: offsets,
+                               revision: revision, selection: selected,
+                               settle: settle)
         if placementKey == key,
            cameraDrifted(builtZoom: placementZoom,
                          builtCenter: placementCenter,
@@ -522,12 +559,15 @@ final class MapRenderCache {
             let keep = labelBounds
             for memory in airportMemory {
                 guard let airport = byCode[memory.code] else { continue }
-                let anchor = projector.project(airport.position)
+                let anchor = projector.projectNearestCopy(airport.position,
+                                                          among: offsets)
                 let centre = CGPoint(x: anchor.x + memory.offset.width,
                                      y: anchor.y + memory.offset.height)
-                let width = CGFloat(memory.text.count) * 6.4 + 10
-                let box = CGRect(x: centre.x - width / 2, y: centre.y - 7,
-                                 width: width, height: 14)
+                // The box the placer measured, not a re-estimate of it.
+                let box = CGRect(x: centre.x - memory.size.width / 2,
+                                 y: centre.y - memory.size.height / 2,
+                                 width: memory.size.width,
+                                 height: memory.size.height)
                 guard keep.contains(box) else { continue }
                 out.append(MapLabel(
                     text: memory.text, point: centre,
@@ -544,13 +584,16 @@ final class MapRenderCache {
             airports, level: policy.level, zoom: policy.zoom,
             selected: selected, limit: limit,
             bounds: labelBounds,
-            markerRadius: markerRadius, remembered: airportMemory)
+            markerRadius: markerRadius, textWidth: textWidth,
+            remembered: airportMemory)
+        let fullNames = policy.zoom >= MapLabelLayout.fullNameZoom
         airportMemory = labels.compactMap { label in
             guard let code = label.code else { return nil }
             return MapLabelLayout.Remembered(
                 code: code, text: label.text, offset: label.anchorOffset,
                 priority: label.priority, isPlayer: label.isPlayer,
-                emphasis: label.emphasis)
+                emphasis: label.emphasis, size: label.box.size,
+                level: policy.level, fullNames: fullNames)
         }
         placementKey = key
         placementZoom = projector.zoom
@@ -563,7 +606,8 @@ final class MapRenderCache {
     /// via `unproject`, so re-projection moves them exactly with the world.
     func countryLabels(projector: MapProjector, policy: MapDetailPolicy,
                        blocked: [CGRect], placedNow: Bool,
-                       labelBounds: CGRect) -> [MapLabel] {
+                       labelBounds: CGRect,
+                       textWidth: (String) -> CGFloat) -> [MapLabel] {
         if !placedNow {
             // Same edge rule as the airports: full containment, or the
             // label sits this frame out rather than drawing torn.
@@ -593,7 +637,7 @@ final class MapRenderCache {
         let labels = MapLabelLayout.placeCountries(
             projected, blocked: blocked,
             limit: policy.level == .world ? 10 : 18,
-            bounds: labelBounds)
+            bounds: labelBounds, textWidth: textWidth)
         countryMemory = labels.map {
             (anchor: projector.unproject($0.point), text: $0.text,
              width: $0.box.width)
@@ -601,22 +645,43 @@ final class MapRenderCache {
         return labels
     }
 
+    // MARK: - Airport index
+
+    private var indexedAirports: [AirportCode: MapModel.MapAirport] = [:]
+    private var indexedRevision: UInt64?
+
+    /// The model's airports by code, rebuilt when the simulation revision
+    /// moves rather than per frame. Frames read positions from it (which
+    /// never change) and the label replay reads the same, so an index one
+    /// publish old is still exact.
+    func airportIndex(for model: MapModel,
+                      revision: UInt64) -> [AirportCode: MapModel.MapAirport] {
+        if indexedRevision != revision {
+            indexedAirports = Dictionary(
+                model.airports.map { ($0.code, $0) },
+                uniquingKeysWith: { first, _ in first })
+            indexedRevision = revision
+        }
+        return indexedAirports
+    }
+
     // MARK: - Flight trail arcs
 
     /// The full great-circle sample set for a flight's route, cached per
-    /// tick. The trail draw used to slerp 21 points per player flight per
-    /// frame; the arc itself only changes when the flight does, so it is
-    /// computed once per (flight, tick) and the per-frame work drops to one
-    /// slerp for the moving tip. Cleared wholesale on tick change — at most
-    /// one entry per live player flight, so memory is bounded by the fleet.
+    /// simulation revision. The trail draw used to slerp 21 points per
+    /// player flight per frame; the arc itself only changes when the flight
+    /// does, so it is computed once per (flight, revision) and the per-frame
+    /// work drops to one slerp for the moving tip. Cleared wholesale when
+    /// the revision moves — at most one entry per live player flight, so
+    /// memory is bounded by the fleet.
     private var trailArcs: [FlightID: [MapPoint]] = [:]
-    private var trailTick: Date?
+    private var trailRevision: UInt64?
 
-    func trailArc(for flight: FlightID, tick: Date,
+    func trailArc(for flight: FlightID, revision: UInt64,
                   compute: () -> [MapPoint]) -> [MapPoint] {
-        if trailTick != tick {
+        if trailRevision != revision {
             trailArcs.removeAll(keepingCapacity: true)
-            trailTick = tick
+            trailRevision = revision
         }
         if let cached = trailArcs[flight] { return cached }
         let arc = compute()

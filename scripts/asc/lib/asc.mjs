@@ -300,6 +300,36 @@ export function versionState(version) {
  * first draft of this tooling used exactly that, in three places; one helper
  * means the endpoint is spelled once and can be corrected once.
  */
+/**
+ * Compares two dotted version strings numerically ("1.10.0" > "1.9").
+ * Missing components count as zero, so "1.1" equals "1.1.0".
+ */
+export function compareVersionStrings(a, b) {
+  const pa = String(a).split('.').map((n) => Number.parseInt(n, 10) || 0)
+  const pb = String(b).split('.').map((n) => Number.parseInt(n, 10) || 0)
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] ?? 0) - (pb[i] ?? 0)
+    if (d !== 0) return Math.sign(d)
+  }
+  return 0
+}
+
+/**
+ * Why creating `requested` would be a mistake, or null if it is fine.
+ *
+ * `push-metadata` finds a version by exact string and plans to create any it
+ * cannot find. On 25 September plan runs for 1.0, 1.0.0 and 1.0.22 all said
+ * "create" while the real version was 1.1.0 — an apply with any of them
+ * would have made a stray version instead of failing. A new App Store
+ * version is always higher than every existing one; anything else is a typo.
+ */
+export function refuseVersionCreation(requested, existingVersionStrings) {
+  const notLower = existingVersionStrings.filter((v) => compareVersionStrings(v, requested) >= 0)
+  if (notLower.length === 0) return null
+  return `refusing to create ${requested}: App Store Connect already has ${notLower.join(', ')}. ` +
+    'A new version must be higher than every existing one — check the version string.'
+}
+
 export async function listVersions(client, appId, { fields = [], limit = 50 } = {}) {
   const attributes = ['versionString', 'appVersionState', 'appStoreState', 'platform', ...fields]
   const versions = await client.getAll(

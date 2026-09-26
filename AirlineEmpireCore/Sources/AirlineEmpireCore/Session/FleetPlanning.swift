@@ -35,7 +35,7 @@ extension GameState {
             let rotations = FlightSchedulingSystem.roundTripsPerAircraftPerDay(
                 distanceKm: route.distanceKm, spec: spec, ops: catalog.tuning.ops)
             let trips = min(route.dailyRoundTrips, rotations * ready.count)
-            let shortfall = max(0, demand - trips * spec.seats * 2)
+            let shortfall = max(0, demand - trips * first.cabin(for: spec).totalSeats * 2)
             if trips < route.dailyRoundTrips {
                 return RouteFleetNeed(routeID: route.id, reason: .frequency,
                                       dailySeatShortfall: shortfall)

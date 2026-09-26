@@ -14,12 +14,20 @@ public struct FleetSystem: SimulationSystem {
         let tuning = context.catalog.tuning.fleet
         for aircraftID in state.orderedAircraftIDs {
             var aircraft = state.aircraft[aircraftID]!
-            aircraft.ageDays += 1
+            // An airframe on order has not been built: it starts ageing on
+            // delivery. Ageing it through the lead time delivered a new
+            // MR410 two years old and $62M under its price.
+            if !aircraft.status.isOnOrder {
+                aircraft.ageDays += 1
+            }
 
             switch aircraft.status {
             case .ordered(let deliveryAt):
                 if deliveryAt <= context.current {
                     aircraft.status = .active
+                    // New off the line. Clears the age a save from before
+                    // this rule gave the airframe while it waited.
+                    aircraft.ageDays = 0
                     context.emit(.aircraftDelivered(id: aircraftID))
                 }
 
@@ -75,9 +83,12 @@ public struct FleetBillingSystem: SimulationSystem {
 
             case .owned:
                 // Recomputed from the curve each month (idempotent, driftless).
+                // An order is carried at age zero — list, what was paid —
+                // until delivery: nothing depreciates before it exists.
                 let spec = context.catalog.aircraftType(aircraft.typeCode)!
+                let ageYears = aircraft.status.isOnOrder ? 0 : aircraft.ageYears
                 aircraft.ownership = .owned(bookValue: FleetEconomics.depreciatedValue(
-                    type: spec, ageYears: aircraft.ageYears, tuning: tuning))
+                    type: spec, ageYears: ageYears, tuning: tuning))
             }
             state.aircraft[aircraftID] = aircraft
         }

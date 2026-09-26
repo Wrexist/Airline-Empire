@@ -118,8 +118,15 @@ struct RootView: View {
         // (docs/MONETIZATION.md §6).
         .aePaywall()
         // Let the player complete a real flight before making an offer.
-        .onChange(of: controller.snapshot?.progression.milestones.contains("firstFlight") == true) { _, completed in
+        // Keyed on the landing itself, not on the "firstFlight" milestone the
+        // daily progression pass records at the next midnight.
+        .onChange(of: (controller.snapshot?.progression.counters.flightsCompleted ?? 0) > 0) { _, completed in
             guard completed else { return }
+            // At once, not after a pause. The offer's own headline is "Your
+            // first flight has landed", so the sheet is the celebration; and a
+            // modal raised a beat after the moment lands under whatever the
+            // player is tapping by then — the delayed version was measured
+            // swallowing a tap on the time controls (CI run 36146835502).
             entitlements.offerOnFirstRunIfDue()
         }
     }
@@ -331,11 +338,22 @@ struct GameOverView: View {
                 }
 
                 // Without a way out this screen is a dead end (BUG-003).
+                //
+                // The collapsed airline's save goes with it. It can never be
+                // continued — loading it only returns here — and on the free
+                // tier it held the one save slot, so founding the next airline
+                // opened the paywall instead of the setup screen.
                 Button("Start a new airline") {
+                    let collapsed = controller.activeSaveSlot
                     controller.quitToMenu()
+                    if let collapsed { controller.deleteSlot(collapsed) }
                 }
                 .buttonStyle(.aePrimary)
                 .padding(.top, AETheme.spacingS)
+                Text("This airline's save is cleared. Its seed, above, replays the same world.")
+                    .font(.caption)
+                    .foregroundStyle(AETheme.mutedText)
+                    .multilineTextAlignment(.center)
             }
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)

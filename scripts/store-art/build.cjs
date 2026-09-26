@@ -61,23 +61,68 @@ function compose(shot,index,f,source,art){
   </svg>`;
 }
 
+// App-dominant composition for the App Store, required by Review Guideline
+// 2.3.3: the majority of every screenshot must be the app itself. Decorative
+// artwork is marketing material and is not appropriate here, so this renders
+// the native capture full-bleed at its native aspect, with only a compact
+// headline band over the top — no illustration, no proof line, no crop that
+// hides the screen.
+function composeNative(shot,index,f,source){
+  const ipad=f.device==='ipad',W=ipad?2064:1320,H=ipad?2752:2868,m=ipad?104:64;
+  const gold='#F3C47A',t=ipad?108:96;
+  const scale=Math.max(W/source.meta.width,H/source.meta.height);
+  const w=source.meta.width*scale,h=source.meta.height*scale;
+  const x=(W-w)/2,y=(H-h)/2;
+  const headTop=ipad?136:104,firstLine=headTop+62*t/96,band=ipad?430:380;
+  const lines=shot.headline.map((s,i)=>`<text x="${m-4}" y="${firstLine+i*t*1.02}" font-size="${t}" font-weight="700" letter-spacing="-4" fill="${i?'url(#gold)':'white'}">${esc(s)}</text>`).join('');
+  const lastLine=firstLine+(shot.headline.length-1)*t*1.02;
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${f.width}" height="${f.height}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMin meet">
+    <defs>
+      <linearGradient id="band" x2="0" y2="1"><stop stop-color="#040B17"/><stop offset="1" stop-color="#040B17"/></linearGradient>
+      <linearGradient id="gold"><stop stop-color="#F9DCAA"/><stop offset="1" stop-color="#D99A47"/></linearGradient>
+    </defs>
+    <rect width="${W}" height="${H}" fill="#040B17"/>
+    <image x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="none" xlink:href="${source.uri}"/>
+    <rect width="${W}" height="${band}" fill="url(#band)"/>
+    <g font-family="Arial,Helvetica,sans-serif">
+      <path d="M${m} ${headTop} L${m+24} ${headTop-16} L${m+15} ${headTop+2} L${m+12} ${headTop-7} Z" fill="${gold}"/>
+      <text x="${m+36}" y="${headTop+1}" font-size="26" font-weight="700" letter-spacing="5" fill="#DCE5EF">AIRLINE EMPIRE</text>
+      <text x="${W-m}" y="${headTop+1}" text-anchor="end" font-size="23" letter-spacing="3" fill="#B7C7D9">ACTUAL GAMEPLAY · 0${index+1} / 0${board.shots.length}</text>
+      ${lines}
+      <text x="${m-4}" y="${lastLine+46}" font-size="${ipad?26:23}" fill="#9FB2C6">Gameplay shown with Pro</text>
+    </g>
+  </svg>`;
+}
+
 (async()=>{
+  // Flags are not positional: `--native` may appear before or after the device.
+  const positional=process.argv.slice(2).filter(a=>!a.startsWith('--'));
+  const deviceArg=positional[2];
+  const nativeOnly=process.argv.includes('--native');
   const records=[];
-  for(const f of sizes.filter(s=>!process.argv[4]||s.device===process.argv[4])){
+  for(const f of sizes.filter(s=>!deviceArg||s.device===deviceArg)){
     fs.mkdirSync(path.join(outputRoot,f.key),{recursive:true});
     for(const [i,shot]of board.shots.entries()){
       const native=fs.readFileSync(path.join(captureRoot,f.device,shot.source));
       const source={uri:uri(native),meta:await sharp(native).metadata()};
       if(source.meta.format!=='png'||source.meta.width<1200)throw Error('Native PNG required');
-      const artPath=`store/artwork/cinematic/${shot.id}.png`,artwork=fs.readFileSync(path.join(project,artPath));
-      const file=`${f.key}/${shot.id}.png`,svg=compose(shot,i,f,source,{uri:uri(artwork)});
+      const file=`${f.key}/${shot.id}.png`;
+      let svg,record;
+      if(nativeOnly){
+        svg=composeNative(shot,i,f,source);
+        record={file,nativeSource:`${f.device}/${shot.source}`,nativeSha256:sha(native),nativeWidth:source.meta.width,nativeHeight:source.meta.height,sourceCrop:[0,0,source.meta.width,source.meta.height],headline:shot.headline.join(' '),composition:'native-dominant'};
+      }else{
+        const artPath=`store/artwork/cinematic/${shot.id}.png`,artwork=fs.readFileSync(path.join(project,artPath));
+        svg=compose(shot,i,f,source,{uri:uri(artwork)});
+        record={file,nativeSource:`${f.device}/${shot.source}`,nativeSha256:sha(native),nativeWidth:source.meta.width,nativeHeight:source.meta.height,sourceCrop:shot.crop[f.device],detailCrop:shot.detailCrop?.[f.device],headline:shot.headline.join(' '),artwork:artPath,artworkSha256:sha(artwork),artworkRole:'Decorative illustration, outside gameplay panel',composition:'cinematic'};
+      }
       const encoded=await sharp(Buffer.from(svg)).flatten({background:'#071322'}).removeAlpha().png({compressionLevel:9}).toBuffer();
       await sharp(encoded).raw().toBuffer();fs.writeFileSync(path.join(outputRoot,file),encoded);
       const meta=await sharp(encoded).metadata();
       if(meta.width!==f.width||meta.height!==f.height||meta.hasAlpha)throw Error('Invalid export');
-      records.push({file,width:meta.width,height:meta.height,bytes:encoded.length,sha256:sha(encoded),nativeSource:`${f.device}/${shot.source}`,nativeSha256:sha(native),nativeWidth:source.meta.width,nativeHeight:source.meta.height,sourceCrop:shot.crop[f.device],detailCrop:shot.detailCrop?.[f.device],headline:shot.headline.join(' '),artwork:artPath,artworkSha256:sha(artwork),artworkRole:'Decorative illustration, outside gameplay panel'});
+      records.push({...record,width:meta.width,height:meta.height,bytes:encoded.length,sha256:sha(encoded)});
       console.log(`${file} ${meta.width}x${meta.height}`);
     }
   }
-  fs.writeFileSync(path.join(outputRoot,'export-manifest.json'),JSON.stringify({direction:board.creativeDirection,exports:records},null,2)+'\n');
+  fs.writeFileSync(path.join(outputRoot,'export-manifest.json'),JSON.stringify({direction:board.creativeDirection,composition:nativeOnly?'native-dominant':'cinematic',exports:records},null,2)+'\n');
 })().catch(e=>{console.error(e);process.exit(1)});

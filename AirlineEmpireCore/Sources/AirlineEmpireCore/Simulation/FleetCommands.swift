@@ -226,9 +226,13 @@ public struct LeaseAircraftCommand: Command, Equatable {
         state.ledger.post(airline: lessee, category: .leasePayment,
                           amount: -spec.leaseMonthly, at: context.current,
                           memo: "Lease signing, \(spec.model)")
+        // The signing payment is the term's first month, so the monthly
+        // billing owes one fewer. Counting the full term here made a
+        // 12-month lease take 13 payments before it ran out.
         state.aircraft[id] = Aircraft(
             id: id, typeCode: type, owner: lessee,
-            ownership: .leased(monthlyRate: spec.leaseMonthly, termMonthsRemaining: termMonths),
+            ownership: .leased(monthlyRate: spec.leaseMonthly,
+                               termMonthsRemaining: termMonths - 1),
             status: .active, location: airline.homeAirport,
             ageDays: 0, condition: 1.0)
         context.emit(.aircraftDelivered(id: id))

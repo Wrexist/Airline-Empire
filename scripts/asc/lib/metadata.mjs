@@ -48,6 +48,9 @@ export const LIMITS = {
   marketing_url: 255,
   privacy_url: 255,
   review_notes: 4000,
+  // TestFlight's beta app description, and the build's "What to test". One
+  // file feeds both, so the tighter of the two limits applies.
+  testflight: 4000,
 }
 
 /** Files read per locale. `required` ones fail the build when absent. */
@@ -144,6 +147,18 @@ export const SCREENSHOT_SIZES = {
 
 /** Marks a value only a human with the Apple Developer account can fill in. */
 export const PLACEHOLDER = 'REPLACE_ME'
+
+/**
+ * Apple's standard End User License Agreement.
+ *
+ * App Review Guideline 3.1.2 expects an auto-renewable subscription's metadata
+ * to carry a Terms of Use link, and pointing at Apple's standard EULA is what
+ * this app does rather than shipping a custom one.
+ */
+export const STANDARD_EULA = new Set([
+  'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
+  'https://www.apple.com/legal/internet-services/itunes/dev/stdeula',
+])
 
 /** Apple allows at most ten screenshots per display type per locale. */
 export const MAX_SCREENSHOTS_PER_SET = 10
@@ -488,11 +503,30 @@ function validateDescription(locale, fields, { warn }) {
   if (firstParagraph.length > 300) {
     warn(`${locale}/description.txt: the first paragraph is ${firstParagraph.length} characters. Only ~170 show before "more".`)
   }
-  if (/https?:\/\//.test(description)) {
-    warn(`${locale}/description.txt: contains a URL. Links are not clickable in the description; use the marketing URL field.`)
+
+  // A URL in the description renders as dead text, so the default is to warn —
+  // except for the links Apple requires or the app already declares elsewhere.
+  // Guideline 3.1.2 asks an auto-renewable subscription to carry a Terms of Use
+  // link in its metadata, and the description is where it fits; the privacy,
+  // support and marketing links are already the app's own. Anything else is
+  // what this check exists to catch.
+  const declared = new Set(
+    [fields.privacy_url, fields.support_url, fields.marketing_url]
+      .filter(Boolean).map((value) => String(value).trim()),
+  )
+  const urls = description.match(/https?:\/\/[^\s]+/g) ?? []
+  for (const match of urls) {
+    const url = match.replace(/[.,;)]+$/, '')
+    if (declared.has(url) || STANDARD_EULA.has(url)) continue
+    warn(`${locale}/description.txt: contains a URL (${url}) that is not one of the app's declared links. Links are not clickable in the description; use the marketing URL field.`)
   }
-  if (/\b(free|sale|discount|limited time)\b/i.test(description)) {
-    warn(`${locale}/description.txt: mentions price or promotion. Prices change and Apple rejects price claims in metadata.`)
+
+  // An explicit price, a discount or a trial is what Apple rejects under 2.3.7
+  // and 3.1.2. The bare word "free" is not: this app's App Store price is FREE,
+  // and the free tier is a permanent way to play rather than a trial — so
+  // warning on it would train the reader to ignore this check.
+  if (/([$£€]\s?\d)|(\b\d+\s?%\s?off\b)|(\b(sale|discount|limited[- ]time|free trial)\b)/i.test(description)) {
+    warn(`${locale}/description.txt: mentions a price, a discount or a trial. Apple rejects price claims in metadata.`)
   }
 }
 
@@ -502,6 +536,10 @@ function validateReview(store, { error, warn, placeholder }) {
     warn('store/metadata/review/notes.txt is missing. Review notes are how a reviewer learns the game is offline and needs no account.')
   } else if (review.notes.length > LIMITS.review_notes) {
     error(`store/metadata/review/notes.txt: ${review.notes.length} characters, limit ${LIMITS.review_notes}.`)
+  }
+  // TestFlight truncates rather than refusing, so an over-long note fails here.
+  if (review.testflight && review.testflight.length > LIMITS.testflight) {
+    error(`store/metadata/review/testflight.txt: ${review.testflight.length} characters, limit ${LIMITS.testflight}.`)
   }
   for (const key of ['contactFirstName', 'contactLastName', 'contactEmail', 'contactPhone']) {
     if (!review[key]) error(`config.json review.${key} is required — App Review will not accept a version without a contact.`)

@@ -28,6 +28,25 @@ real tradeoff: the year-long test shows premium both costs visibly and
 out-carries standard — the loop from GAME_DESIGN §4.10 (service → 
 reputation → demand → revenue) is closed and measured.
 
+## Passenger experience screen (2026-09-15)
+
+The reputation screen is now the passenger-experience screen
+(`AirlineEmpireApp/Sources/Screens/PassengerExperienceView.swift`). It reads the
+simulation directly — the five components, seat-weighted fleet comfort, and
+`ServicePolicyPreview`, a pure quote for a proposed tier built on the demand
+engine's own allocation — and states plainly what the model does: a tier sets a
+*target* the service component drifts toward (basic 0.35 / standard 0.60 /
+premium 0.85, plus 0.08 for a player with the ground-experience capability), and
+no decision raises reputation on the day it is made.
+
+Choosing a tier is a draft; `SetServiceTierCommand` is submitted only after an
+explicit confirmation. The forecast reports the tier's per-passenger cost at a
+30-day reference passenger volume and the demand multiplier only *if* service
+settles at the target with the other four components held where they are. The
+comfort card names the real driver — cabin layout and onboard upgrades, seat
+weighted; aircraft age moves reliability, not comfort. See
+docs/PASSENGER_EXPERIENCE_REVIEW.md for the audit, decisions and evidence.
+
 ## Feedback loops verified by tests
 
 - Reliable ops build punctuality/reliability > 0.9/0.85 over a year;

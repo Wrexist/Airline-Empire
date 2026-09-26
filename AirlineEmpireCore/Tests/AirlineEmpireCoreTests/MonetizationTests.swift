@@ -236,6 +236,34 @@ struct MonetizationTests {
         #expect(history.hasShownFirstRun)
     }
 
+    /// Closing a paywall the player opened (a lock, Settings) is looking, not
+    /// refusing: it must neither cancel the first-flight offer nor spend the
+    /// nudge budget. It does delay the next nudge by a full interval.
+    @Test func aPaywallThePlayerOpenedSpendsNeitherOfferNorBudget() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        var history = PaywallPolicy.History()
+        for _ in 0..<(PaywallPolicy.maxUnpromptedPresentations + 2) {
+            history = PaywallPolicy.record(history, at: now, wasPurchase: false,
+                                           wasUnprompted: false)
+        }
+        #expect(history.declineCount == 0)
+        #expect(history.hasShownFirstRun == false)
+        #expect(history.lastPresented == now)
+        #expect(PaywallPolicy.shouldOfferOnFirstRun(access: .free, history: history))
+
+        // Once the first-run offer has been made and declined, the nudge
+        // still waits a full interval after the player's own last look.
+        history = PaywallPolicy.record(history, at: now, wasPurchase: false)
+        let lookedAgain = now.addingTimeInterval(3 * 86_400)
+        history = PaywallPolicy.record(history, at: lookedAgain, wasPurchase: false,
+                                       wasUnprompted: false)
+        #expect(history.declineCount == 1)
+        #expect(PaywallPolicy.shouldNudge(access: .free, history: history,
+                                          now: now.addingTimeInterval(PaywallPolicy.nudgeInterval + 1)) == false)
+        #expect(PaywallPolicy.shouldNudge(access: .free, history: history,
+                                          now: lookedAgain.addingTimeInterval(PaywallPolicy.nudgeInterval + 1)))
+    }
+
     // MARK: - Paywall copy and compliance
 
     @Test func statsComeFromTheCatalogue() throws {
@@ -313,6 +341,18 @@ struct MonetizationTests {
             headlines.insert(gate.headline)
         }
         #expect(headlines.count == ProGate.allCases.count)
+    }
+
+    @Test func benefitsLeadWithWhatThePlayerReachedFor() {
+        #expect(PaywallContent.benefits(leadingWith: .airport).first?.id == "world")
+        #expect(PaywallContent.benefits(leadingWith: .scenario).first?.id == "scenarios")
+        #expect(PaywallContent.benefits(leadingWith: .saveSlot).first?.id == "saves")
+        #expect(PaywallContent.benefits(leadingWith: .direct) == PaywallContent.benefits)
+        for gate in ProGate.allCases {
+            let reordered = PaywallContent.benefits(leadingWith: gate)
+            #expect(reordered.count == PaywallContent.benefits.count)
+            #expect(Set(reordered.map(\.id)) == Set(PaywallContent.benefits.map(\.id)))
+        }
     }
 
     @Test func benefitsAreDistinctAndDescribed() {

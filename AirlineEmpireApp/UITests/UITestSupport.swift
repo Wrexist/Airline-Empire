@@ -1491,4 +1491,52 @@ class AEUITestCase: XCTestCase {
         }
         return true
     }
+
+    /// Drag a control fully into the safe viewport — clear of the navigation
+    /// bar and the floating tab bar — and prove it settled before anyone taps.
+    ///
+    /// Hittability alone includes controls partly under the tab bar, which is
+    /// how a confirmed tap can land on the wrong thing. Shared by the
+    /// management journeys, which all end on a long form's action.
+    func scrollFullyIntoView(_ element: XCUIElement, _ what: String,
+                             swipes: Int = 30) {
+        var up = true
+        var unknownRun = 0
+        for _ in 0..<swipes {
+            let frame = element.exists ? element.frame : .zero
+            let top = app.frame.minY + 120
+            // The app frame, not the tab bar's: this screen is reached inside
+            // the briefing sheet, which covers the tab bar — a hidden tab bar
+            // still reports a frame, and reserving space for it left the last
+            // control permanently short of the bound. `isHittable` below is
+            // what proves the control is not occluded.
+            let bottom = app.frame.maxY - 40
+            if !frame.isEmpty, frame.minY >= top, frame.midY <= bottom, element.isHittable {
+                XCTAssertTrue(waitUntilStill(element))
+                return
+            }
+            if frame.isEmpty {
+                // An unrealised element could be above or below. Sweep one
+                // way, then the other, so "the tier panel after a reset" —
+                // which is above the button that was just tapped — is found
+                // too.
+                if unknownRun >= 5 {
+                    up.toggle()
+                    unknownRun = 0
+                }
+                unknownRun += 1
+            } else {
+                up = frame.minY >= top
+            }
+            // A full-screen swipe, not a hand-built coordinate drag: the drag
+            // started too near the floating tab bar on some layouts and
+            // simply did not move the scroll view.
+            if up { app.swipeUp() } else { app.swipeDown() }
+            Thread.sleep(forTimeInterval: 0.4)
+        }
+        // Never touch the element in the message: `identifier` on an element
+        // below the fold resolves a snapshot that does not exist and throws,
+        // turning a clean failure into an XCUITest error.
+        XCTFail("\(what) did not become fully visible after scrolling")
+    }
 }

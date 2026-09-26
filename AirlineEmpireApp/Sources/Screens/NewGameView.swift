@@ -315,8 +315,19 @@ struct NewGameView: View {
                 .aeAnimation(AEMotion.selection, value: nameFocused)
                 .accessibilityLabel("Airline name")
                 .accessibilityHint("Leave empty to be called Skyline Air")
+                // Core refuses names over 40 characters, and a refused
+                // founding returned to the menu with the whole setup — name,
+                // home, colours — rebuilt from scratch. Capped as typed.
+                .onChange(of: airlineName) { _, name in
+                    if name.count > Self.maxNameLength {
+                        airlineName = String(name.prefix(Self.maxNameLength))
+                    }
+                }
         }
     }
+
+    /// Mirrors `FoundAirlineCommand`'s limit in Core.
+    private static let maxNameLength = 40
 
     // MARK: - 1b · Colours
     //

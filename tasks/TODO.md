@@ -1,5 +1,14 @@
 # Airline Empire — TODO
 
+## Whole-game audit - 25 September 2026
+
+Branch `claude/game-audit-optimize-a28480` (development line `codex/ae049-aircraft-configuration` + `main`). Six audits and their fixes are recorded in [GAME_AUDIT_2026-09-25.md](../docs/GAME_AUDIT_2026-09-25.md). The approved 1.1.0 (13) binary is unchanged; these fixes ship in the next signed build.
+
+- [x] Audit core simulation, app shell, monetization, first session, screens and map.
+- [x] Fix the P0 audio crash, the four P1 simulation bugs, paywall timing, first-flight flow and the IPA privacy gate.
+- [ ] CI: compile and Core tests on the branch; then the onboarding, acquisition and full UI suites.
+- [ ] Follow-ups listed at the end of the audit record (pipeline reorder baselines, launch colour key, Swift 6 mode, import off the main thread).
+
 ## Current pre-TestFlight work - 14 September 2026
 
 Current app source: `eeb0bc7` (steps 1/2 and portrait map framing implemented; production app code identical to `df7a45c`). Distributed build: **1.0.22 (11)**. **No new TestFlight build or upload until the user explicitly approves.**

@@ -16,6 +16,7 @@ public struct Route: Equatable, Codable, Sendable {
     public var ticketPrice: Money
     /// Sorted aircraft IDs serving this route.
     public var assignedAircraft: [AircraftID]
+    public var planHistory: [RoutePlanChange]?
     public var stats: RouteStats
     /// Today's bookable demand per direction (set daily by DemandSystem;
     /// consumed at boarding). Outbound = origin -> destination.

@@ -32,8 +32,10 @@ struct MapFrame {
     /// tick accumulator, and deriving it here is what let the two drift apart
     /// (tasks/BUGS.md BUG-058).
     let gameMinutes: Double
-    /// When the snapshot arrived — the route cache's tick key.
-    let tick: Date
+    /// `GameController.mapRevision` — the caches' key for "the world
+    /// changed". Not the tick's arrival time: that moved only when time ran,
+    /// so a route opened, assigned or closed while paused never appeared.
+    let revision: UInt64
     /// The camera's settle generation — the label memory's re-decide signal.
     let settle: Int
     /// Height of chrome covering the canvas's bottom (the floating tab bar):
@@ -59,6 +61,9 @@ struct MapFrame {
         /// The selected route is drawn per frame (halo underneath), so its
         /// hit polyline is in *current* screen space, separately.
         var selectedRoute: (MapModel.MapRoute, [CGPoint])?
+        /// The boxes the airport labels were drawn in, so tapping a name
+        /// selects its airport rather than whatever lies under the text.
+        var labels: [(AirportCode, CGRect)] = []
     }
 
     private(set) var geometry = Geometry()
@@ -68,14 +73,19 @@ struct MapFrame {
     /// costs one array copy of at most ~30 elements.
     private(set) var placedLabels: [MapLabel] = []
 
-    /// Built once per frame. Interpolating fifty flights was doing a linear
-    /// scan of eighty airports twice each, thirty times a second.
+    /// Interpolating fifty flights was doing a linear scan of eighty airports
+    /// twice each, thirty times a second; then the index itself was rebuilt
+    /// every frame. It is the cache's now, rebuilt when the world changes.
     private let airportsByCode: [AirportCode: MapModel.MapAirport]
+
+    /// The world copies on screen (`MapProjector.visibleWorldOffsets`),
+    /// derived once per frame for every layer that draws per copy.
+    private let worldOffsets: [Double]
 
     init(model: MapModel, snapshot: GameState, projector: MapProjector,
          policy: MapDetailPolicy, overlay: MapOverlay, selection: MapHit?,
          speed: SimSpeed, elapsed: TimeInterval, gameMinutes: Double,
-         tick: Date, settle: Int,
+         revision: UInt64, settle: Int,
          bottomOcclusion: CGFloat = 0,
          cache: MapRenderCache) {
         self.model = model
@@ -87,12 +97,12 @@ struct MapFrame {
         self.speed = speed
         self.elapsed = elapsed
         self.gameMinutes = gameMinutes
-        self.tick = tick
+        self.revision = revision
         self.settle = settle
         self.bottomOcclusion = bottomOcclusion
         self.cache = cache
-        self.airportsByCode = Dictionary(
-            model.airports.map { ($0.code, $0) }, uniquingKeysWith: { first, _ in first })
+        self.airportsByCode = cache.airportIndex(for: model, revision: revision)
+        self.worldOffsets = projector.visibleWorldOffsets
     }
 
     /// Where a label is allowed to live: the canvas minus the strip the tab
@@ -131,9 +141,13 @@ struct MapFrame {
         // Choosing before the country names is what lets them yield. Drawing
         // last is what keeps the codes on top of everything.
         projectAirports()
-        let airportLabels = placeAirportLabels()
+        let airportLabels = placeAirportLabels(measuringIn: context)
         placedLabels = airportLabels
-        drawCountryLabels(&context, avoiding: airportLabels.map(\.box))
+        geometry.labels = airportLabels.compactMap { label -> (AirportCode, CGRect)? in
+            guard let code = label.code else { return nil }
+            return (code, label.box)
+        }
+        drawCountryLabels(&context, avoiding: airportLabels)
         drawEventRegions(&context)
         drawOpportunities(&context)
         drawRoutes(&context)
@@ -165,10 +179,16 @@ struct MapFrame {
     private func drawEventRegions(_ context: inout GraphicsContext) {
         guard overlay == .disruption || overlay == .network else { return }
         for event in model.events where !event.isGlobal {
-            let points = event.affectedAirports
+            let positions = event.affectedAirports
                 .compactMap { airportsByCode[$0]?.position }
-                .map(projector.project)
-            guard !points.isEmpty else { continue }
+            guard !positions.isEmpty else { continue }
+            // On every copy of the world the airports themselves draw on.
+            var points: [CGPoint] = []
+            for offset in worldOffsets {
+                for position in positions {
+                    points.append(projector.project(position, offset: offset))
+                }
+            }
             let tint = eventTint(event)
             // Severity is a real number in 0…1 within a kind, and the field
             // was ignoring it: a mild storm and a severe one drew the same
@@ -225,7 +245,9 @@ struct MapFrame {
     /// Where the player could go. This is what fills an early-game map, and
     /// it is also the demand overlay — the same ranking, drawn.
     private func drawOpportunities(_ context: inout GraphicsContext) {
-        guard overlay == .opportunity || model.routes.filter(\.isPlayer).isEmpty
+        // `contains`, not `filter(…).isEmpty`: this runs every frame, and the
+        // answer is known at the first player route.
+        guard overlay == .opportunity || !model.routes.contains(where: \.isPlayer)
         else { return }
         for opportunity in model.opportunities {
             let unwrapped = MapGeodesy.unwrap([opportunity.from, opportunity.to])
@@ -261,7 +283,7 @@ struct MapFrame {
         // cache's own space with the transform they are shown under.
         let replay = cache.drawRoutes(
             into: &context, model: model, projector: projector,
-            policy: policy, overlay: overlay, tick: tick,
+            policy: policy, overlay: overlay, revision: revision,
             selectedRoute: selectedRoute, playerColor: playerColor,
             style: { self.routeStyle($0, isPlayer: $1, isSelected: false) },
             shows: { self.showsRoute($0) })
@@ -279,17 +301,20 @@ struct MapFrame {
     private mutating func drawRoute(_ route: MapModel.MapRoute,
                                     into context: inout GraphicsContext,
                                     isPlayer: Bool) {
-        guard showsRoute(route) else { return }
+        let isSelected = selection == .route(route.id)
+        // The selection always draws. A rival route selected on the Rivals
+        // layer vanished the moment the player zoomed out to the world or
+        // switched layer, leaving its card describing a line not on the map.
+        guard isSelected || showsRoute(route) else { return }
         // Unwrapped so a Pacific crossing does not draw a line back across the
         // whole map (BUG-012), and drawn in each world copy it reaches into.
         let unwrapped = MapGeodesy.unwrap(route.arc)
         guard !unwrapped.isEmpty else { return }
 
-        let isSelected = selection == .route(route.id)
         let style = routeStyle(route, isPlayer: isPlayer, isSelected: isSelected)
         var drawnForHitTest: [CGPoint]?
 
-        for offset in MapGeodesy.worldOffsets(for: unwrapped) {
+        for offset in MapGeodesy.copies(of: unwrapped, visible: worldOffsets) {
             let points = unwrapped.map {
                 projector.project(MapPoint(x: $0.x + offset, y: $0.y))
             }
@@ -398,18 +423,66 @@ struct MapFrame {
 
     /// Which airports are on screen, and where. Separate from drawing them
     /// because the label placer needs the answer before anything is drawn.
+    ///
+    /// Every world copy on screen, as the geography has: zoomed out past one
+    /// world, or parked on the dateline, the second copy of the coastline
+    /// used to carry no airports at all. The same airport can therefore
+    /// appear twice here — both copies draw and both answer a tap — and
+    /// `labelAnchors` names it once.
     private mutating func projectAirports() {
-        for airport in model.airports {
-            guard policy.shows(airport) else { continue }
-            let point = projector.project(airport.position)
-            guard projector.isVisible(point) else { continue }
-            geometry.airports.append((airport, point))
+        for offset in worldOffsets {
+            for airport in model.airports {
+                guard policy.shows(airport) else { continue }
+                let point = projector.project(airport.position, offset: offset)
+                guard projector.isVisible(point) else { continue }
+                geometry.airports.append((airport, point))
+            }
         }
+    }
+
+    /// One copy of each airport for the label placer: the one nearest the
+    /// middle of the canvas, chosen by the rule the label memory's replay
+    /// uses (`MapProjector.projectNearestCopy`), so the two always agree on
+    /// which copy a name belongs to.
+    private var labelAnchors: [(MapModel.MapAirport, CGPoint)] {
+        guard worldOffsets.count > 1 else { return geometry.airports }
+        let middle = projector.size.width / 2
+        var nearest: [AirportCode: Int] = [:]
+        for (index, entry) in geometry.airports.enumerated() {
+            if let current = nearest[entry.0.code],
+               abs(geometry.airports[current].1.x - middle)
+                <= abs(entry.1.x - middle) { continue }
+            nearest[entry.0.code] = index
+        }
+        var anchors: [(MapModel.MapAirport, CGPoint)] = []
+        for (index, entry) in geometry.airports.enumerated()
+        where nearest[entry.0.code] == index {
+            anchors.append(entry)
+        }
+        return anchors
+    }
+
+    /// Per airport, how many player routes touch it and how many of those
+    /// are weak — the profit layer's reading. One pass over the routes for
+    /// the whole frame; it used to filter every route once per airport.
+    private func playerRouteHealth() -> [AirportCode: (total: Int, weak: Int)] {
+        var result: [AirportCode: (total: Int, weak: Int)] = [:]
+        for route in model.routes where route.isPlayer {
+            let weak = route.health <= .weak ? 1 : 0
+            for code in [route.origin, route.destination] {
+                let current = result[code] ?? (total: 0, weak: 0)
+                result[code] = (total: current.total + 1,
+                                weak: current.weak + weak)
+            }
+        }
+        return result
     }
 
     private func drawAirports(_ context: inout GraphicsContext) {
         // One pass over the flights, shared by every marker below.
         let movements = airportMovements
+        let routeHealth: [AirportCode: (total: Int, weak: Int)] =
+            overlay == .profitability ? playerRouteHealth() : [:]
         for (airport, point) in geometry.airports {
             let radius = policy.radius(airport)
             let isSelected = selection == .airport(airport.code)
@@ -448,7 +521,7 @@ struct MapFrame {
 
             // Overlay-specific field behind the marker, so a heat reading and
             // the airport itself never fight for the same pixels.
-            if let field = overlayField(airport) {
+            if let field = overlayField(airport, routeHealth: routeHealth) {
                 let r = radius * 5
                 context.fill(
                     Path(ellipseIn: CGRect(x: point.x - r, y: point.y - r,
@@ -545,18 +618,21 @@ struct MapFrame {
             let darkness = SolarGeometry.darkness(at: airport.position.coordinate,
                                                   date: date)
             guard darkness > 0.08 else { continue }
-            let point = projector.project(airport.position)
-            guard projector.isVisible(point, margin: 20) else { continue }
             // A quiet town and a capital are not the same light.
             let radius = (1.4 + CGFloat(airport.prominence) * 5.2) * scale
             let strength = darkness * (0.28 + airport.prominence * 0.5)
-            context.fill(
-                Path(ellipseIn: CGRect(x: point.x - radius, y: point.y - radius,
-                                       width: radius * 2, height: radius * 2)),
-                with: .radialGradient(
-                    Gradient(colors: [AETheme.cityLight.opacity(strength),
-                                      AETheme.cityLight.opacity(0)]),
-                    center: point, startRadius: 0, endRadius: radius))
+            // Lit on every copy of the world the night side covers.
+            for offset in worldOffsets {
+                let point = projector.project(airport.position, offset: offset)
+                guard projector.isVisible(point, margin: 20) else { continue }
+                context.fill(
+                    Path(ellipseIn: CGRect(x: point.x - radius, y: point.y - radius,
+                                           width: radius * 2, height: radius * 2)),
+                    with: .radialGradient(
+                        Gradient(colors: [AETheme.cityLight.opacity(strength),
+                                          AETheme.cityLight.opacity(0)]),
+                        center: point, startRadius: 0, endRadius: radius))
+            }
         }
     }
 
@@ -590,8 +666,11 @@ struct MapFrame {
     }
 
     /// The heat behind an airport for the current overlay, or nil when this
-    /// overlay has nothing to say about airports.
-    private func overlayField(_ airport: MapModel.MapAirport) -> Color? {
+    /// overlay has nothing to say about airports. `routeHealth` is
+    /// `playerRouteHealth()`, computed once per frame by the caller.
+    private func overlayField(_ airport: MapModel.MapAirport,
+                              routeHealth: [AirportCode: (total: Int, weak: Int)])
+        -> Color? {
         switch overlay {
         case .network:
             return nil
@@ -602,13 +681,10 @@ struct MapFrame {
             }
             return relevant ? AETheme.positive : nil
         case .profitability:
-            guard airport.servedByPlayer else { return nil }
-            let routes = model.routes.filter {
-                $0.isPlayer && ($0.origin == airport.code || $0.destination == airport.code)
-            }
-            guard !routes.isEmpty else { return nil }
-            let weak = routes.filter { $0.health <= .weak }.count
-            return weak > routes.count / 2 ? AETheme.caution : AETheme.positive
+            guard airport.servedByPlayer,
+                  let routes = routeHealth[airport.code], routes.total > 0
+            else { return nil }
+            return routes.weak > routes.total / 2 ? AETheme.caution : AETheme.positive
         case .competition:
             guard airport.competitorCount > 0 else { return nil }
             return airport.competitorHubCount > 0
@@ -642,17 +718,24 @@ struct MapFrame {
 
         for flight in model.flights where flight.isPlayer && flight.airborne {
             guard let (origin, destination) = catalogAirports(flight) else { continue }
+            // The aircraft's own cull, before the interpolation it saves: a
+            // trail lies on its flight's great circle, so a flight that cannot
+            // be on screen has no trail on screen either. Trails used to skip
+            // it and pay the slerps for every player flight in the world.
+            guard worldOffsets.contains(where: {
+                mayBeVisible(from: origin, to: destination, offset: $0)
+            }) else { continue }
             let progress = interpolate(flight).progress
             guard progress > 0.01 else { continue }
 
             // Sampled rather than clipped from the route's own arc: the route
             // polyline is shared by every flight on it, and slicing it at a
             // per-flight fraction would land between vertices. The full-arc
-            // samples are cached per (flight, tick) — they only change when
-            // the flight does — so the per-frame cost is the moving tip's
+            // samples are cached per (flight, revision) — they only change
+            // when the flight does — so the per-frame cost is the moving tip's
             // single slerp rather than twenty-one (baseline §4).
             let steps = 20
-            let full = cache.trailArc(for: flight.id, tick: tick) {
+            let full = cache.trailArc(for: flight.id, revision: revision) {
                 (0...steps).map { step -> MapPoint in
                     MapPoint(coordinate: MapMath.greatCirclePoint(
                         from: origin, to: destination,
@@ -667,7 +750,7 @@ struct MapFrame {
             guard unwrapped.count > 1 else { continue }
 
             let color = Vocab.liveryColor(flight.livery)
-            for offset in MapGeodesy.worldOffsets(for: unwrapped) {
+            for offset in MapGeodesy.copies(of: unwrapped, visible: worldOffsets) {
                 let points = unwrapped.map {
                     projector.project(MapPoint(x: $0.x + offset, y: $0.y))
                 }
@@ -698,81 +781,99 @@ struct MapFrame {
         }
     }
 
+    /// Whether a flight between these endpoints can be on screen in world
+    /// copy `offset` — the cull that runs before interpolating, because the
+    /// slerp is the cost (450 flights at late-game scale —
+    /// docs/MAP_RUNTIME_BASELINE.md §4). A flight lies on the great circle
+    /// between its endpoints, whose deviation from the chord is bounded, so a
+    /// bounding box over both projected endpoints padded by 20% of the world
+    /// width safely contains it. At world zoom this culls nothing (all of it
+    /// is visible), which is also correct.
+    private func mayBeVisible(from origin: Coordinate, to destination: Coordinate,
+                              offset: Double) -> Bool {
+        let a = projector.project(MapPoint(coordinate: origin), offset: offset)
+        let b = projector.project(MapPoint(coordinate: destination), offset: offset)
+        let pad = projector.worldWidth * 0.2 + 60
+        let box = CGRect(x: min(a.x, b.x) - pad, y: min(a.y, b.y) - pad,
+                         width: abs(a.x - b.x) + pad * 2,
+                         height: abs(a.y - b.y) + pad * 2)
+        let viewport = CGRect(origin: .zero, size: projector.size)
+            .insetBy(dx: -40, dy: -40)
+        return box.intersects(viewport)
+    }
+
     private mutating func drawFlights(_ context: inout GraphicsContext) {
         for flight in model.flights {
-            guard flight.isPlayer || policy.showsRivalAircraft(speed: speed) else {
-                continue
+            // The selection always draws. A rival aircraft picked out of the
+            // sky vanished when the clock went to 16× at world zoom, or the
+            // Demand layer opened — its card still open, describing nothing
+            // on the map.
+            let isSelected = selection == .aircraft(flight.id)
+            guard isSelected || flight.isPlayer
+                    || policy.showsRivalAircraft(speed: speed) else { continue }
+            guard isSelected || flight.isPlayer || overlay != .opportunity
+            else { continue }
+
+            let endpoints = catalogAirports(flight)
+            // Interpolated once, lazily — only if some copy survives the cull.
+            var interpolated: InterpolatedFlight?
+            // Every world copy on screen, as the airports have.
+            for offset in worldOffsets {
+                if let (origin, destination) = endpoints,
+                   !mayBeVisible(from: origin, to: destination, offset: offset) {
+                    continue
+                }
+                let state = interpolated ?? interpolate(flight)
+                interpolated = state
+                let point = projector.project(state.position, offset: offset)
+                guard projector.isVisible(point) else { continue }
+                // Airborne only. A parked aircraft draws a 2pt dot *at its
+                // airport's own position*, and a hit target there made its
+                // airport permanently untappable, starting with the home base,
+                // which almost always has one (tasks/BUGS.md BUG-020). Parked
+                // aircraft are reachable through the airport card, which is
+                // the better route to them anyway.
+                if flight.airborne { geometry.flights.append((state, point)) }
+                drawAircraft(flight, heading: state.heading, at: point,
+                             isSelected: isSelected, into: &context)
             }
-            guard overlay != .opportunity || flight.isPlayer else { continue }
+        }
+    }
 
-            // Cull before interpolating, not after: the slerp is the cost
-            // (450 flights at late-game scale — docs/MAP_RUNTIME_BASELINE.md
-            // §4). A flight lies on the great circle between its endpoints,
-            // whose deviation from the chord is bounded, so a bounding box
-            // over both projected endpoints padded by 20% of the world width
-            // safely contains it. At world zoom this culls nothing (all of
-            // it is visible), which is also correct.
-            if let (origin, destination) = catalogAirports(flight) {
-                let a = projector.project(MapPoint(coordinate: origin))
-                let b = projector.project(MapPoint(coordinate: destination))
-                let pad = projector.worldWidth * 0.2 + 60
-                let box = CGRect(x: min(a.x, b.x) - pad, y: min(a.y, b.y) - pad,
-                                 width: abs(a.x - b.x) + pad * 2,
-                                 height: abs(a.y - b.y) + pad * 2)
-                let viewport = CGRect(origin: .zero, size: projector.size)
-                    .insetBy(dx: -40, dy: -40)
-                guard box.intersects(viewport) else { continue }
-            }
+    private func drawAircraft(_ flight: MapModel.MapFlight, heading: Double,
+                              at point: CGPoint, isSelected: Bool,
+                              into context: inout GraphicsContext) {
+        let size = policy.aircraftSize(isPlayer: flight.isPlayer)
+        let color = flight.isPlayer
+            ? Vocab.liveryColor(flight.livery)
+            : Vocab.liveryColor(flight.livery).opacity(0.5)
 
-            let interpolated = interpolate(flight)
-            let point = projector.project(interpolated.position)
-            guard projector.isVisible(point) else { continue }
-            // Airborne only. A parked aircraft draws a 2pt dot *at its
-            // airport's own position*, and the hit tester gives every flight a
-            // 26pt target and tests flights first — so a parked aircraft made
-            // its airport permanently untappable, starting with the home base,
-            // which almost always has one (tasks/BUGS.md BUG-020).
-            //
-            // The ordering rationale in `MapHitTester` — that an aircraft is
-            // the smallest and most transient thing on the map, so it must win
-            // where it overlaps — is about an aircraft *in flight*. It was
-            // never an argument for a stationary dot outranking the airport
-            // underneath it. Parked aircraft are reachable through the airport
-            // card, which is the better route to them anyway.
-            if flight.airborne { geometry.flights.append((interpolated, point)) }
+        if isSelected {
+            strokeCircle(&context, at: point, radius: size * 0.9,
+                         color: .white, width: 1.4)
+        }
 
-            let size = policy.aircraftSize(isPlayer: flight.isPlayer)
-            let color = flight.isPlayer
-                ? Vocab.liveryColor(flight.livery)
-                : Vocab.liveryColor(flight.livery).opacity(0.5)
+        // Parked aircraft sit as a small dot at their stand rather than a
+        // silhouette on the ground, which reads as flying.
+        guard flight.airborne else {
+            fillCircle(&context, at: point, radius: 2, color: color.opacity(0.8))
+            return
+        }
 
-            if selection == .aircraft(flight.id) {
-                strokeCircle(&context, at: point, radius: size * 0.9,
-                             color: .white, width: 1.4)
-            }
+        let path = AircraftSilhouette.placed(
+            flight.category, at: point, heading: heading,
+            size: size, simplified: policy.simplifiedAircraft)
+        // A dark outline keeps a light livery readable over land.
+        context.stroke(path, with: .color(AETheme.mapBackground.opacity(0.85)),
+                       lineWidth: 1.6)
+        context.fill(path, with: .color(color))
 
-            // Parked aircraft sit as a small dot at their stand rather than a
-            // silhouette on the ground, which reads as flying.
-            guard flight.airborne else {
-                fillCircle(&context, at: point, radius: 2, color: color.opacity(0.8))
-                continue
-            }
-
-            let path = AircraftSilhouette.placed(
-                flight.category, at: point, heading: interpolated.heading,
-                size: size, simplified: policy.simplifiedAircraft)
-            // A dark outline keeps a light livery readable over land.
-            context.stroke(path, with: .color(AETheme.mapBackground.opacity(0.85)),
-                           lineWidth: 1.6)
-            context.fill(path, with: .color(color))
-
-            // A late flight carries a warning dot; the map should show trouble
-            // where trouble is, not only in the feed.
-            if flight.isPlayer, flight.delayMinutes > 20 {
-                fillCircle(&context, at: CGPoint(x: point.x + size * 0.5,
-                                                 y: point.y - size * 0.5),
-                           radius: 2.2, color: AETheme.caution)
-            }
+        // A late flight carries a warning dot; the map should show trouble
+        // where trouble is, not only in the feed.
+        if flight.isPlayer, flight.delayMinutes > 20 {
+            fillCircle(&context, at: CGPoint(x: point.x + size * 0.5,
+                                             y: point.y - size * 0.5),
+                       radius: 2.2, color: AETheme.caution)
         }
     }
 
@@ -800,25 +901,46 @@ struct MapFrame {
     /// Which country names fit, and where.
     ///
     /// Deliberately subordinate: smaller than an airport code, dimmer than
-    /// one, and yielding to every box an airport label already claimed. A
+    /// one, and yielding to every airport label and every airport marker. A
     /// player reads this map for airports and routes; the country name is
     /// there to answer "where am I", once, and then get out of the way.
     private func drawCountryLabels(_ context: inout GraphicsContext,
-                                   avoiding blocked: [CGRect]) {
+                                   avoiding airportLabels: [MapLabel]) {
+        // What a country name must stay clear of: each airport label's box
+        // grown by a few points, so the two never butt together into one
+        // line of text, and each marker disc — a name used to run straight
+        // through an airport's dot, because only the labels were blocked.
+        // Built only when placement actually runs; a replayed frame keeps
+        // the last decision and never reads it.
+        var blocked: [CGRect] = []
+        if labelsPlacedThisFrame {
+            blocked.reserveCapacity(airportLabels.count + geometry.airports.count)
+            for label in airportLabels {
+                blocked.append(label.box.insetBy(dx: -4, dy: -3))
+            }
+            for (airport, point) in geometry.airports {
+                let r = policy.radius(airport) + 3
+                blocked.append(CGRect(x: point.x - r, y: point.y - r,
+                                      width: r * 2, height: r * 2))
+            }
+        }
         // Decided with the airports, frozen with them between placements
-        // (MapRenderCache.countryLabels); the drawing below is unchanged.
-        let labels = cache.countryLabels(projector: projector, policy: policy,
-                                         blocked: blocked,
-                                         placedNow: labelsPlacedThisFrame,
-                                         labelBounds: labelBounds)
+        // (MapRenderCache.countryLabels).
+        let metrics = cache.textMetrics
+        let measuring = context
+        let labels = cache.countryLabels(
+            projector: projector, policy: policy, blocked: blocked,
+            placedNow: labelsPlacedThisFrame, labelBounds: labelBounds,
+            textWidth: { metrics.countryTextWidth($0, in: measuring) })
         for label in labels {
             // Uppercase and letterspaced, which is how an atlas says "this is
             // a region, not a place". It matters more now that airports carry
             // city names: two labels in the same case at the same weight read
             // as the same kind of thing, and a player scanning for Stockholm
-            // should never stop on Sweden.
+            // should never stop on Sweden. The capitals are already in the
+            // text (`CountryLabel.caption`), made once rather than per frame.
             context.draw(
-                Text(label.text.uppercased())
+                Text(label.text)
                     .font(.system(size: policy.level == .local ? 10 : 9,
                                   weight: .semibold))
                     .tracking(1.4)
@@ -831,20 +953,25 @@ struct MapFrame {
     /// the memory (false) — the country pass follows the same choice.
     private var labelsPlacedThisFrame = false
 
-    private mutating func placeAirportLabels() -> [MapLabel] {
+    /// - Parameter context: the frame's context, used only to measure text
+    ///   (`MapTextMetrics`) — each string once, then from the cache.
+    private mutating func placeAirportLabels(measuringIn context: GraphicsContext)
+        -> [MapLabel] {
         // A statement rather than an `if case` expression: pattern-matching
         // conditions in expression position are the kind of thing that either
         // compiles or teaches you something, and this file has no business
         // finding out.
         var selectedCode: AirportCode?
         if case .airport(let code) = selection { selectedCode = code }
+        let metrics = cache.textMetrics
         let result = cache.airportLabels(
-            airports: geometry.airports, byCode: airportsByCode,
+            airports: labelAnchors, byCode: airportsByCode,
             projector: projector, policy: policy, selected: selectedCode,
-            tick: tick, settle: settle,
+            revision: revision, settle: settle,
             limit: policy.level == .world ? 10 : 32,
             labelBounds: labelBounds,
-            markerRadius: { policy.radius($0) })
+            markerRadius: { policy.radius($0) },
+            textWidth: { metrics.airportTextWidth($0, in: context) })
         labelsPlacedThisFrame = result.placedNow
         return result.labels
     }
@@ -854,9 +981,13 @@ struct MapFrame {
             let color: Color = label.emphasis ? AETheme.ember
                 : label.isPlayer ? playerColor.opacity(0.95)
                 : .white.opacity(0.72)
-            let text = Text(label.text)
-                .font(.system(size: label.emphasis ? 11 : 10,
-                              weight: label.isPlayer ? .semibold : .medium))
+            // Laid out once and drawn twice. Two `Text` draws — shadow, then
+            // colour — laid the same string out twice per label per frame.
+            // The text carries no colour of its own, so `shading` fills it.
+            var text = context.resolve(
+                Text(label.text)
+                    .font(.system(size: label.emphasis ? 11 : 10,
+                                  weight: label.isPlayer ? .semibold : .medium)))
 
             // A hairline of the ocean colour underneath, offset a point.
             //
@@ -866,10 +997,11 @@ struct MapFrame {
             // route on its way across. A shadow rather than a plate, because a
             // filled background behind every label is what makes a map look
             // like a diagram.
-            context.draw(text.foregroundStyle(AETheme.mapDeep.opacity(0.9)),
-                         at: CGPoint(x: label.point.x + 0.7,
-                                     y: label.point.y + 0.7))
-            context.draw(text.foregroundStyle(color), at: label.point)
+            text.shading = .color(AETheme.mapDeep.opacity(0.9))
+            context.draw(text, at: CGPoint(x: label.point.x + 0.7,
+                                           y: label.point.y + 0.7))
+            text.shading = .color(color)
+            context.draw(text, at: label.point)
         }
     }
 

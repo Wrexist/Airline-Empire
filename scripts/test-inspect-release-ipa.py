@@ -55,6 +55,19 @@ class ExportedAppTests(unittest.TestCase):
         self.privacy['NSPrivacyTracking'] = True
         self.assertFalse(self.inspect()['passed'])
 
+    def test_collection_beyond_the_published_label_is_rejected(self):
+        self.privacy.setdefault('NSPrivacyCollectedDataTypes', []).append({
+            'NSPrivacyCollectedDataType': 'NSPrivacyCollectedDataTypeEmailAddress',
+            'NSPrivacyCollectedDataTypeLinked': True,
+            'NSPrivacyCollectedDataTypeTracking': False,
+            'NSPrivacyCollectedDataTypePurposes': ['NSPrivacyCollectedDataTypePurposeAppFunctionality']})
+        self.assertFalse(self.inspect()['passed'])
+
+    def test_linked_purchase_history_is_rejected(self):
+        for item in self.privacy.get('NSPrivacyCollectedDataTypes', []):
+            item['NSPrivacyCollectedDataTypeLinked'] = True
+        self.assertFalse(self.inspect()['passed'])
+
     def test_incomplete_ipad_orientations_are_rejected(self):
         self.info['UISupportedInterfaceOrientations~ipad'].remove('UIInterfaceOrientationPortraitUpsideDown')
         self.assertFalse(self.inspect()['passed'])

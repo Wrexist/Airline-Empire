@@ -140,6 +140,7 @@ final class Entitlements {
     /// paid and did not get the game.
     func start() async {
         guard readsStoreKit, updatesTask == nil else { return }
+        RevenueCatReporting.configure()
         updatesTask = Task { [weak self] in
             for await update in StoreKit.Transaction.updates {
                 guard let self else { return }
@@ -148,6 +149,7 @@ final class Entitlements {
         }
         await refreshEntitlement()
         await loadProducts()
+        RevenueCatReporting.sync()
     }
 
     // MARK: - Products
@@ -175,6 +177,15 @@ final class Entitlements {
             loadFailure = "Prices are unavailable right now. "
                 + "Check your connection and try again."
         }
+    }
+
+    /// Re-asks StoreKit whether the introductory price is still available.
+    /// Called each time the paywall opens: eligibility used to be read only
+    /// when products loaded, so a player who took the $0.99 week in this
+    /// session was offered it again — a price they could no longer get.
+    func refreshOfferEligibility() async {
+        guard readsStoreKit else { return }
+        await refreshIntroEligibility()
     }
 
     private func refreshIntroEligibility() async {
@@ -232,15 +243,31 @@ final class Entitlements {
         isPurchasing = true
         lastOutcome = nil
         defer { isPurchasing = false }
+        var failure: Error?
+        var cancelled = false
         do {
             try await AppStore.sync()
+        } catch StoreKitError.userCancelled {
+            // The player dismissed Apple's sign-in. Nothing failed, and an
+            // error message for their own tap would read as a broken store.
+            cancelled = true
         } catch {
-            lastOutcome = .failed("Purchases could not be restored. " + error.localizedDescription)
-            return
+            failure = error
         }
+        // Re-read ownership whatever the sync did: `currentEntitlements` can
+        // already hold the purchase when the sync prompt fails or is
+        // dismissed, and returning early left such a player told "could not
+        // be restored" while owning Pro.
         await refreshEntitlement()
-        lastOutcome = isPro ? .restored : .nothingToRestore
-        if isPro { presentedGate = nil }
+        if isPro {
+            lastOutcome = .restored
+            presentedGate = nil
+        } else if let failure {
+            lastOutcome = .failed("Purchases could not be restored. " + failure.localizedDescription)
+        } else if !cancelled {
+            lastOutcome = .nothingToRestore
+        }
+        if failure == nil && !cancelled { RevenueCatReporting.sync(force: true) }
     }
 
     // MARK: - Entitlement
@@ -250,6 +277,7 @@ final class Entitlements {
             lastOutcome = .failed("Apple could not verify this purchase. Try Restore purchases or contact support.")
             return
         }
+        RevenueCatReporting.record(result)
         await transaction.finish()
         await refreshEntitlement()
     }
@@ -330,15 +358,33 @@ final class Entitlements {
                                                history: paywallHistory) else {
             return false
         }
+        presentationIsUnprompted = false
         presentedGate = gate
         return true
     }
 
+    /// Whether the open paywall is the app's own offer (first run, nudge)
+    /// rather than one the player asked for. Only the app's offers spend the
+    /// once-only first-run offer and the nudge budget (`PaywallPolicy.record`).
+    private var presentationIsUnprompted = false
+
+    /// Whether an unprompted offer could show real prices right now.
+    ///
+    /// The app's own offers are one-time or rationed. Spending one on a sheet
+    /// that can only say "prices are unavailable" — a player on a plane
+    /// landing their first flight — would burn it on the one screen that
+    /// cannot sell anything. A player who asks still gets the sheet at once.
+    private var canMakeUnpromptedOffer: Bool {
+        presentedGate == nil && !products.isEmpty
+    }
+
     /// The once-only offer made after the first completed flight.
     func offerOnFirstRunIfDue() {
-        guard PaywallPolicy.shouldOfferOnFirstRun(access: access,
+        guard canMakeUnpromptedOffer,
+              PaywallPolicy.shouldOfferOnFirstRun(access: access,
                                                   history: paywallHistory) else { return }
-        presentedGate = .direct
+        presentationIsUnprompted = true
+        presentedGate = .firstFlight
     }
 
     /// The periodic, unprompted nudge — the only way the app raises the
@@ -351,9 +397,10 @@ final class Entitlements {
     /// over by the policy — never sooner than a billing period, and never at
     /// all after four refusals.
     func nudgeIfDue() {
-        guard presentedGate == nil else { return }
+        guard canMakeUnpromptedOffer else { return }
         guard PaywallPolicy.shouldNudge(access: access,
                                         history: paywallHistory) else { return }
+        presentationIsUnprompted = true
         presentedGate = .direct
     }
 
@@ -372,7 +419,9 @@ final class Entitlements {
 
     private func recordPaywall(wasPurchase: Bool) {
         paywallHistory = PaywallPolicy.record(paywallHistory,
-                                              wasPurchase: wasPurchase)
+                                              wasPurchase: wasPurchase,
+                                              wasUnprompted: presentationIsUnprompted)
+        presentationIsUnprompted = false
         Self.save(paywallHistory, to: defaults)
     }
 
@@ -496,7 +545,7 @@ final class Entitlements {
             let weeks = Int((NSDecimalNumber(decimal: lifetime / weekly)
                 .doubleValue).rounded(.down))
             guard weeks >= 2 else { return nil }
-            return "About \(weeks) weeks of Pro Weekly — then never again"
+            return "The price of about \(weeks) weeks of Pro Weekly — yours for good"
         }
     }
 

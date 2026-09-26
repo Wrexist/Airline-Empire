@@ -272,6 +272,13 @@ struct CelebrationOverlay: View {
         // banner would fire two haptics for one moment, which is the
         // "haptics triggering repeatedly" failure in MASTER PROMPT 3 §29.
         .task(id: celebration.id) {
+            // The banner never takes focus, so without an announcement a
+            // VoiceOver player heard nothing of any win — first flight, new
+            // era, a finished programme.
+            if voiceOver {
+                AccessibilityNotification.Announcement(
+                    "\(celebration.title). \(celebration.detail)").post()
+            }
             // Long enough to read, short enough never to be in the way.
             do { try await Task.sleep(for: .seconds(voiceOver ? 10 : 4)) }
             catch { return }

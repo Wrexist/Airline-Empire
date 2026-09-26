@@ -73,6 +73,25 @@ final class AudioEngine {
     private var buffers: [AudioCue: AVAudioPCMBuffer] = [:]
     private(set) var isRunning = false
     private var graphPrepared = false
+
+    /// Whether the app wants sound right now — true between a successful
+    /// start and `suspend()`/`setActive(false)`. An interruption that ends
+    /// while the app is backgrounded must not restart the engine behind a
+    /// suspended game.
+    private var wantsRunning = false
+    /// The media server was reset: every node and the engine itself are now
+    /// invalid, and rebuilding the graph mid-session is not worth the risk.
+    /// The game goes quiet until the next launch rather than crashing.
+    private var servicesLost = false
+    private var observers: [NSObjectProtocol] = []
+
+    /// The engine can stop *itself*: a Bluetooth headset connecting changes
+    /// the output sample rate, and a call answered from the banner is an
+    /// interruption without backgrounding. `isRunning` alone went stale then,
+    /// and the next `AVAudioPlayerNode.play()` raised "player started when
+    /// engine not running" — an Objective-C exception Swift cannot catch, so
+    /// a crash. Every path that starts a node checks the real engine too.
+    private var canStartNodes: Bool { isRunning && engine.isRunning && !servicesLost }
     /// Cues whose file was missing or unreadable. Surfaced rather than
     /// swallowed: silence is indistinguishable from working, so the one place
     /// this can be noticed is a list somebody can look at.
@@ -84,9 +103,10 @@ final class AudioEngine {
     /// first frame — decoding fifty short files is milliseconds, but it is
     /// still not work to do while the player is waiting for a screen.
     func prepare() {
-        guard !isRunning else { return }
+        guard !canStartNodes, !servicesLost else { return }
         if graphPrepared { resume(); return }
         guard configureSession() else { return }
+        observeAudioSystem()
 
         // Buffers first, deliberately. A player node's output connection has
         // a format, and `scheduleBuffer` with a buffer that does not match it
@@ -155,6 +175,7 @@ final class AudioEngine {
             try engine.start()
             for voice in voices { voice.play() }
             isRunning = true
+            wantsRunning = true
         } catch {
             // A game that cannot start its audio engine is still a game. The
             // failure is recorded and every later call becomes a no-op.
@@ -165,6 +186,7 @@ final class AudioEngine {
     /// Releases the hardware. Called when the app leaves the foreground so a
     /// backgrounded game is not holding an audio route open (§28).
     func suspend() {
+        wantsRunning = false
         guard isRunning else { return }
         stopAmbience()
         stopMusic()
@@ -175,13 +197,72 @@ final class AudioEngine {
     }
 
     func resume() {
-        guard graphPrepared else { return }
+        guard graphPrepared, !servicesLost else { return }
         guard configureSession() else { isRunning = false; return }
         do {
             try engine.start()
             for voice in voices { voice.play() }
             isRunning = true
+            wantsRunning = true
         } catch { isRunning = false }
+    }
+
+    // MARK: - When the system stops the engine
+
+    private func observeAudioSystem() {
+        guard observers.isEmpty else { return }
+        let center = NotificationCenter.default
+        // The engine stops and uninitializes itself on a hardware format
+        // change (headphones, AirPods, CarPlay). Nodes stay attached and the
+        // mixers resample, so a restart is enough.
+        observers.append(center.addObserver(
+            forName: .AVAudioEngineConfigurationChange, object: engine,
+            queue: .main) { [weak self] _ in
+                Task { @MainActor in self?.restartAfterSystemStop() }
+            })
+        observers.append(center.addObserver(
+            forName: AVAudioSession.interruptionNotification, object: nil,
+            queue: .main) { [weak self] note in
+                let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
+                let began = raw.flatMap(AVAudioSession.InterruptionType.init(rawValue:)) == .began
+                Task { @MainActor in
+                    if began {
+                        self?.markStoppedBySystem()
+                    } else {
+                        self?.restartAfterSystemStop()
+                    }
+                }
+            })
+        observers.append(center.addObserver(
+            forName: AVAudioSession.mediaServicesWereResetNotification, object: nil,
+            queue: .main) { [weak self] _ in
+                Task { @MainActor in
+                    self?.servicesLost = true
+                    self?.markStoppedBySystem()
+                }
+            })
+    }
+
+    /// Forget what was sounding: the nodes are stopped, and the soundscape
+    /// asks again on the next snapshot, which restarts the right bed.
+    private func markStoppedBySystem() {
+        if let node = ambienceNode {
+            node.stop()
+            engine.detach(node)
+        }
+        ambienceNode = nil
+        ambienceCue = nil
+        musicFade?.cancel()
+        musicFade = nil
+        musicTrack = nil
+        musicMixer.outputVolume = 0
+        isRunning = false
+    }
+
+    private func restartAfterSystemStop() {
+        markStoppedBySystem()
+        guard wantsRunning else { return }
+        resume()
     }
 
     private func configureSession() -> Bool {
@@ -267,7 +348,7 @@ final class AudioEngine {
     /// busy moment overlaps rather than cutting itself off. The round robin
     /// spreads the load so no single node accumulates a long queue.
     func play(_ cue: AudioCue, gain: Float) {
-        guard isRunning, !cue.isLoop, let buffer = buffers[cue],
+        guard canStartNodes, !cue.isLoop, let buffer = buffers[cue],
               let node = voices.first,
               buffer.format == node.outputFormat(forBus: 0) else { return }
         effectsMixer.outputVolume = min(1, max(0, gain))
@@ -282,7 +363,7 @@ final class AudioEngine {
     /// playing is a no-op, which is what stops two copies stacking every time
     /// a view reappears (tasks/BUGS.md BUG-014).
     func startAmbience(_ cue: AudioCue, gain: Float) {
-        guard isRunning, cue.isLoop, let buffer = buffers[cue] else { return }
+        guard canStartNodes, cue.isLoop, let buffer = buffers[cue] else { return }
         guard ambienceCue != cue else {
             ambienceMixer.outputVolume = min(1, max(0, gain))
             return
@@ -323,7 +404,7 @@ final class AudioEngine {
     /// snapshot, which is exactly how a music system ends up with four copies
     /// of the same bed running at once.
     func setMusic(_ track: String?, gain: Float, fade: Double) {
-        guard isRunning, !musicDecks.isEmpty else { return }
+        guard canStartNodes, !musicDecks.isEmpty else { return }
         musicTarget = min(1, max(0, gain))
 
         guard track != musicTrack else {
@@ -364,6 +445,10 @@ final class AudioEngine {
 
         musicFade = Task { [weak self] in
             await self?.crossfade(from: outgoing, to: incoming, over: fade)
+            // A cancelled fade must not clear the handle of the fade that
+            // replaced it: Pause then Resume inside four seconds left the new
+            // fade uncancellable, and two fades fought over the same decks.
+            guard !Task.isCancelled else { return }
             self?.musicFade = nil
         }
     }
@@ -427,7 +512,9 @@ final class AudioEngine {
             if !engine.isRunning {
                 resume()
             }
-        } else if engine.isRunning {
+        } else {
+            wantsRunning = false
+            guard engine.isRunning else { return }
             stopAmbience()
             stopMusic()
             engine.pause()
@@ -440,7 +527,7 @@ final class AudioEngine {
     /// The three layers have independent settings, so "sound effects off" must
     /// not reach the music or the ambience bed.
     func stopEffects() {
-        guard isRunning else { return }
+        guard canStartNodes else { return }
         for voice in voices {
             voice.stop()
             voice.play()

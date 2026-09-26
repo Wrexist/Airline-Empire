@@ -16,6 +16,11 @@ public struct ProgressionState: Equatable, Codable, Sendable {
     public var valueStreakDays: Int
     /// Terminal: the player's airline collapsed for good.
     public var gameOver: Bool
+    /// Bounded, dated record of completed work — milestones, achievements,
+    /// capability programs, missions and era advances — so a campaign can be
+    /// read back without the fast-moving event feed. Oldest first; the newest
+    /// `recordLimit` are kept.
+    public var record: [ProgressionMoment]
 
     public init() {
         era = .startup
@@ -28,6 +33,7 @@ public struct ProgressionState: Equatable, Codable, Sendable {
         nextMissionID = 1
         valueStreakDays = 0
         gameOver = false
+        record = []
     }
 
     public func hasCapability(_ code: CapabilityCode) -> Bool {
@@ -36,6 +42,49 @@ public struct ProgressionState: Equatable, Codable, Sendable {
 
     public func hasMilestone(_ code: String) -> Bool {
         milestones.contains(code)
+    }
+
+    /// How much of the campaign is kept. A decade of play produces a few
+    /// hundred moments; the bound keeps the save small forever and the screen
+    /// shows the latest.
+    public static let recordLimit = 200
+
+    /// Notes a completed thing, dropping the oldest when the bound is
+    /// reached. The only writer; every recording site is in
+    /// `ProgressionSystem`.
+    public mutating func note(_ kind: ProgressionMoment.Kind, at time: SimTime) {
+        record.append(ProgressionMoment(at: time, kind: kind))
+        if record.count > Self.recordLimit {
+            record.removeFirst(record.count - Self.recordLimit)
+        }
+    }
+
+    /// When the current era began, from the record. Nil for a campaign that
+    /// has not advanced an era in this build's lifetime.
+    public var eraSince: SimTime? {
+        for moment in record.reversed() {
+            if case .eraAdvanced = moment.kind { return moment.at }
+        }
+        return nil
+    }
+}
+
+/// One thing the campaign did, with the day it happened.
+public struct ProgressionMoment: Equatable, Codable, Sendable {
+    public enum Kind: Equatable, Codable, Sendable {
+        case eraAdvanced(Era)
+        case milestone(String)
+        case achievement(String)
+        case capability(CapabilityCode)
+        case mission(MissionKind, reward: Money)
+    }
+
+    public let at: SimTime
+    public let kind: Kind
+
+    public init(at: SimTime, kind: Kind) {
+        self.at = at
+        self.kind = kind
     }
 }
 

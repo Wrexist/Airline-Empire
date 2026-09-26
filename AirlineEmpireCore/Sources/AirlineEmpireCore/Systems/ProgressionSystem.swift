@@ -34,6 +34,7 @@ public struct ProgressionSystem: SimulationSystem {
         for program in state.progression.activePrograms {
             if program.completesAt <= context.current {
                 state.progression.completedPrograms.append(program.code.rawValue)
+                state.progression.note(.capability(program.code), at: context.current)
                 context.emit(.capabilityCompleted(code: program.code))
             } else {
                 stillActive.append(program)
@@ -52,6 +53,7 @@ public struct ProgressionSystem: SimulationSystem {
                                catalog: context.catalog, tuning: tuning)
         else { return }
         state.progression.era = next
+        state.progression.note(.eraAdvanced(next), at: context.current)
         context.emit(.eraAdvanced(era: next))
     }
 
@@ -108,6 +110,7 @@ public struct ProgressionSystem: SimulationSystem {
                        state: inout GameState, context: SimContext) {
         guard condition, !state.progression.hasMilestone(code) else { return }
         state.progression.milestones.append(code)
+        state.progression.note(.milestone(code), at: context.current)
         context.emit(.milestoneReached(code: code))
     }
 
@@ -161,6 +164,7 @@ public struct ProgressionSystem: SimulationSystem {
                         state: inout GameState, context: SimContext) {
         guard condition, !state.progression.achievements.contains(code) else { return }
         state.progression.achievements.append(code)
+        state.progression.note(.achievement(code), at: context.current)
         context.emit(.achievementUnlocked(code: code))
     }
 
@@ -178,6 +182,8 @@ public struct ProgressionSystem: SimulationSystem {
                 state.ledger.post(airline: player.id, category: .missionReward,
                                   amount: mission.reward, at: context.current,
                                   memo: "Mission reward")
+                state.progression.note(.mission(mission.kind, reward: mission.reward),
+                                       at: context.current)
                 context.emit(.missionCompleted(id: mission.id, reward: mission.reward))
             } else if mission.deadline <= context.current {
                 context.emit(.missionExpired(id: mission.id))

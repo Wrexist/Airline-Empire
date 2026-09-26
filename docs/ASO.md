@@ -17,7 +17,7 @@ Apple recommends relevant comma-separated keywords, without repeating terms alre
 
 ## Conversion
 
-The first three screenshots tell a coherent story: build a network, grow a fleet, make routes work. The remaining images explain finance, AI rivals and progression. All artwork includes genuine native gameplay. The opening description presents the player's achievement; later sections explain the 20-airport/two-era free tier and optional Pro expansion. No false promise that the whole game is unlocked for free.
+The first three screenshots tell a coherent story: build a network, grow a fleet, make routes work. The remaining images explain finance, AI rivals and progression. Every image is the app itself, full screen, with a compact caption band: App Review Guideline 2.3.3 rejected version 1.0 because the majority of each screenshot was decorative illustration rather than the app in use, so the illustration is no longer part of the listing. The opening description presents the player's achievement; later sections explain the 20-airport/two-era free tier and optional Pro expansion. No false promise that the whole game is unlocked for free.
 
 The full catalogue contains 94 real airports across nine regions and 14 fictional aircraft types. Five eras, AI rivals, a route-level economy, autosaves, export/import, and a clock up to 16× are implemented. Gameplay is offline; purchases and restores use Apple services. Aircraft delivery lead times are simulation time, so copy says play at your pace rather than literally no timers.
 

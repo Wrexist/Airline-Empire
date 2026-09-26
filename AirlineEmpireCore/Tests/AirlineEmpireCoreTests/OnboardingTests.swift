@@ -130,6 +130,40 @@ struct OnboardingTests {
             .isDone(.watchFirstFlight) == true)
     }
 
+    /// Closing the first route or returning its aircraft must not restart the
+    /// tutorial for a player who has already flown.
+    @Test func aPlayerWhoHasFlownNeverSeesTheGuideAgain() throws {
+        let (engine, player) = try freshGame()
+        var state = engine.state
+        #expect(state.onboardingModel(catalog: engine.catalog)?.nextStep == .acquireAircraft)
+        state.progression.counters.flightsCompleted = 1
+        let model = try #require(state.onboardingModel(catalog: engine.catalog))
+        #expect(model.isComplete)
+        #expect(model.suggestions.isEmpty)
+        #expect(state.fleet(of: player).isEmpty)
+    }
+
+    /// A free player's tutorial must only recommend cities the free game can
+    /// open; recommending one outside the region led into a refusal.
+    @Test func freeRegionKeepsRecommendationsInsideIt() throws {
+        let (engine, _) = try freshGame()
+        let state = engine.state
+        let home = try #require(state.playerAirline?.homeAirport)
+        let allowed = ContentAccess.free.servableAirports(home: home, catalog: engine.catalog)
+        let ranked = state.marketOpportunities(catalog: engine.catalog, limit: 20,
+                                               allowedAirports: allowed)
+        #expect(!ranked.isEmpty)
+        #expect(ranked.allSatisfy { allowed.contains($0.origin) && allowed.contains($0.destination) })
+        let model = try #require(state.onboardingModel(catalog: engine.catalog,
+                                                       allowedAirports: allowed))
+        #expect(!model.suggestions.isEmpty)
+        #expect(model.suggestions.allSatisfy { allowed.contains($0.destination) })
+        let map = state.mapModel(catalog: engine.catalog, allowedAirports: allowed)
+        #expect(map.opportunities.allSatisfy {
+            allowed.contains($0.origin) && allowed.contains($0.destination)
+        })
+    }
+
     @Test func noPlayerNoModel() throws {
         let catalog = try ContentCatalog.loadBundled()
         let engine = SimulationEngine(state: Fixtures.newState(seed: 3),

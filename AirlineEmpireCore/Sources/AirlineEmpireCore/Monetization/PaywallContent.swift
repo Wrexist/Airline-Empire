@@ -79,15 +79,39 @@ public enum PaywallContent {
                 title: "Unlimited airlines",
                 detail: "Keep this one and start another. A different home, "
                     + "a different seed, a different world."),
+        // Only the achievements that live past the free ceiling. Value
+        // Legend and Weather Proof have no era condition in
+        // `ProgressionSystem.checkAchievements` — a free airline earns them —
+        // so naming them here sold something the free game already gives.
         Benefit(id: "achievements", symbol: "rosette",
-                title: "Every achievement",
-                detail: "Value Legend, Weather Proof and the rest of the "
-                    + "long-run challenges."),
+                title: "Late-game achievements",
+                detail: "Debt Free and Single-Family Purist are earned in the "
+                    + "National and International eras."),
         Benefit(id: "noads", symbol: "hand.raised.slash",
                 title: "No ads, ever",
                 detail: "No timers, no premium currency, nothing to wait "
                     + "out. As it is in the free game."),
     ]
+
+    /// The benefits, led by the one the player just reached for.
+    ///
+    /// A player who tapped a locked airport should read "The whole world"
+    /// first, not third — the same list, in an order that answers the tap.
+    /// Gates without a single matching benefit keep the default order.
+    public static func benefits(leadingWith gate: ProGate) -> [Benefit] {
+        let lead: String?
+        switch gate {
+        case .airport: lead = "world"
+        case .scenario: lead = "scenarios"
+        case .saveSlot: lead = "saves"
+        case .eraCeiling: lead = "eras"
+        case .direct, .firstFlight: lead = nil
+        }
+        guard let lead, let first = benefits.first(where: { $0.id == lead }) else {
+            return benefits
+        }
+        return [first] + benefits.filter { $0.id != lead }
+    }
 
     // MARK: - The free game, stated plainly
 

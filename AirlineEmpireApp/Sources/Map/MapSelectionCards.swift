@@ -76,7 +76,14 @@ private struct MapFact: View {
 
 struct MapAirportCard: View {
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(GameController.self) private var controller
+    @Environment(Entitlements.self) private var entitlements
     @State private var expanded = false
+    /// The airports a free airline may fly to: its home and the nearest
+    /// others (`ContentAccess.servableAirports`). Resolved when the card
+    /// appears and when access changes, never per body pass — it sorts the
+    /// world by distance from home. Nil for Pro, and until resolved.
+    @State private var freeRegion: Set<AirportCode>?
     let airport: MapModel.MapAirport
     let model: MapModel
     let snapshot: GameState
@@ -143,6 +150,29 @@ struct MapAirportCard: View {
         }
         .aeAnimation(AEMotion.content, value: expanded)
         .onChange(of: airport.code) { expanded = false }
+        .onAppear { resolveFreeRegion() }
+        // Buying Pro with the card open unlocks it where it stands.
+        .onChange(of: entitlements.access) { resolveFreeRegion() }
+    }
+
+    private func resolveFreeRegion() {
+        let access = entitlements.access
+        guard !access.isPro, let catalog = controller.catalog,
+              let home = snapshot.playerAirline?.homeAirport else {
+            freeRegion = nil
+            return
+        }
+        freeRegion = access.servableAirports(home: home, catalog: catalog)
+    }
+
+    /// Somewhere a free airline cannot fly yet. The route sheet refuses such
+    /// a destination, so "Create a route to…" here used to open a sheet whose
+    /// only possible answer was no, with no way on to Pro. An airport the
+    /// player already serves or is based at is never locked: it is theirs.
+    private var isLocked: Bool {
+        guard let region = freeRegion, !airport.servedByPlayer,
+              !airport.isPlayerHome else { return false }
+        return !region.contains(airport.code)
     }
 
     private var accent: Color {
@@ -189,17 +219,36 @@ struct MapAirportCard: View {
                 }
             }
         }
-        Button { openRoute(airport.code) } label: {
-            Label(airport.servedByPlayer || airport.isPlayerHome
-                  ? "Create a route from \(airport.code.raw)"
-                  : "Create a route to \(airport.code.raw)",
-                  systemImage: "plus.circle.fill")
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .fixedSize(horizontal: false, vertical: true)
+        let locked = isLocked
+        Button {
+            // A locked destination answers with why — the Pro sheet for the
+            // rest of the world — instead of a route sheet that can only
+            // refuse it (the route sheet's own locked rows do the same).
+            guard !locked else {
+                entitlements.present(.airport)
+                return
+            }
+            openRoute(airport.code)
+        } label: {
+            HStack(spacing: AETheme.spacingS) {
+                Label(airport.servedByPlayer || airport.isPlayerHome
+                      ? "Create a route from \(airport.code.raw)"
+                      : "Create a route to \(airport.code.raw)",
+                      systemImage: "plus.circle.fill")
+                if locked { ProBadge() }
+            }
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .fixedSize(horizontal: false, vertical: true)
         }
         .buttonStyle(.aePrimary)
         .disabled(airport.closed)
         .accessibilityIdentifier("ae-airport-create-route")
+        if locked {
+            Text("Outside your free region — opens with Pro")
+                .font(.caption2)
+                .foregroundStyle(AETheme.ember)
+                .fixedSize(horizontal: false, vertical: true)
+        }
         if let player = snapshot.playerAirline, airport.code != player.homeAirport,
            let market = model.opportunities.first(where: {
                $0.destination == airport.code || $0.origin == airport.code
@@ -216,6 +265,7 @@ struct MapAirportCard: View {
 // MARK: - Route
 
 struct MapRouteCard: View {
+    @Environment(GameController.self) private var controller
     let route: MapModel.MapRoute
     let snapshot: GameState
     let dismiss: () -> Void
@@ -271,9 +321,19 @@ struct MapRouteCard: View {
            !real.assignedAircraft.isEmpty, route.health != .disrupted {
             return "New route. Aircraft assigned; performance will appear after the first completed flight."
         }
+        // Not "paying its airport fees": those are charged per flight, and a
+        // route with no aircraft flies none. What it does pay is the route
+        // payroll every open route carries each month (`EconomySystem`).
+        if route.health == .grounded {
+            guard let catalog = controller.catalog else {
+                return "No aircraft assigned. It earns nothing and still costs its route payroll every month."
+            }
+            let payroll = Format.money(catalog.tuning.finance.payrollPerRouteMonthly)
+            return "No aircraft assigned. It earns nothing and still costs \(payroll) a month in route payroll."
+        }
         return switch route.health {
         case .grounded:
-            "No aircraft assigned. This route is paying its airport fees and flying nothing."
+            "No aircraft assigned."
         case .disrupted:
             "Disrupted — an airport on this route is closed, or too many flights are being cancelled."
         case .weak:

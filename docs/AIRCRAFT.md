@@ -81,6 +81,21 @@
 - Reliability = baseline − 0.1×(1−condition) − 0.003×ageYears, floored at
   0.85 (recovery is designed; nothing becomes unflyable garbage).
 
+## Fleet health board (2026-09-16)
+
+The Fleet tab opens on `FleetBoard` (`AirlineEmpireCore/Session/FleetBoard.swift`):
+a pure read that groups the fleet into what needs a decision (idle, condition
+low, lease ending, reliability down), what cannot fly today (in a check, on
+order), and what is working. It embeds the same `FleetCardModel` the list uses,
+quotes the exact `FleetEconomics.maintenanceCheckCost` a check will post, and
+estimates the interval to the next check from `conditionPerDay` — the same
+daily decay and wear-per-flight-hour `FleetSystem` and `FlightOpsSystem`
+apply. `FlightSchedulingSystem.rotationsPerDay`/`blockHoursPerDay` were
+extracted so the board and `AircraftConfigurationPreview` share one definition
+of how often an airframe flies. Classification thresholds live in
+`FleetAttentionThresholds`; nothing there feeds the engine. See
+docs/FLEET_OPERATIONS_REVIEW.md for the audit and evidence.
+
 ## Kernel changes this phase
 
 - `Command.validate(state:catalog:)` and `SimContext.catalog`: commands and

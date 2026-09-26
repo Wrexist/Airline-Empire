@@ -18,8 +18,7 @@ struct EraCeilingBar: View {
                     .font(AEType.sectionTitle)
                 Spacer(minLength: 0)
             }
-            Text("Keep flying your airline for free. Pro unlocks further "
-                 + "expansion, new aircraft classes and the whole world.")
+            Text(detail)
                 .font(AEType.secondary)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -27,8 +26,7 @@ struct EraCeilingBar: View {
             Button {
                 entitlements.present(.eraCeiling)
             } label: {
-                Text(entitlements.displayPrice(.weekly) == nil
-                     ? "See Pro" : "Expand with Pro")
+                Text(buttonTitle)
                     .frame(maxWidth: typeSize.isAccessibilitySize ? .infinity : nil)
             }
             .buttonStyle(.aePrimary)
@@ -44,8 +42,28 @@ struct EraCeilingBar: View {
     }
 
     private var title: String {
+        if let earned = controller.earnedLockedEra {
+            return "\(EraNames.title(earned)) era earned"
+        }
         guard let reachedEra else { return "The next era needs Pro" }
         return "\(EraNames.title(reachedEra)) era reached"
+    }
+
+    private var detail: String {
+        if let earned = controller.earnedLockedEra {
+            return "Your airline meets every \(EraNames.title(earned)) requirement. "
+                + "Keep flying for free, or open National, International and Empire with Pro."
+        }
+        return "Keep flying your airline for free. Pro unlocks further "
+            + "expansion, new aircraft classes and the whole world."
+    }
+
+    private var buttonTitle: String {
+        guard entitlements.displayPrice(.weekly) != nil else { return "See Pro" }
+        if let earned = controller.earnedLockedEra {
+            return "Enter \(EraNames.title(earned)) with Pro"
+        }
+        return "Expand with Pro"
     }
 }
 

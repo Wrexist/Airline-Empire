@@ -68,6 +68,11 @@ public struct PaywallPolicy: Equatable, Sendable {
             // Always honoured: this is a request, not an interruption.
             return true
 
+        case .firstFlight:
+            // Raised by `shouldOfferOnFirstRun`, which already rations it to
+            // once; this only answers "may it be shown to a free player".
+            return true
+
         case .eraCeiling, .scenario, .saveSlot, .airport:
             // The player reached for something that is not theirs. Answering
             // that with silence would leave a control that does nothing,
@@ -111,11 +116,24 @@ public struct PaywallPolicy: Equatable, Sendable {
     /// `wasPurchase` distinguishes a decline from a conversion so the count
     /// only ever measures refusals; a player who bought is out of this system
     /// altogether by way of `access.isPro`.
+    ///
+    /// `wasUnprompted` distinguishes the app's own offers (the first-run
+    /// offer and the nudge) from a paywall the player opened by tapping a
+    /// lock or Settings. Only the app's offers spend the first-run offer or
+    /// the nudge budget. Before this distinction, a new player who tapped the
+    /// crowned Magnate pill during setup and closed the sheet had silently
+    /// cancelled the first-flight offer, and four curious taps on locked
+    /// airports ended the nudge for good: the budget counts the times the
+    /// *app* asked, not the times the player looked. A player-opened sheet
+    /// still stamps `lastPresented`, so the next nudge waits a full interval
+    /// after the player last saw the offer.
     public static func record(_ history: History, at now: Date = Date(),
-                              wasPurchase: Bool) -> History {
+                              wasPurchase: Bool,
+                              wasUnprompted: Bool = true) -> History {
         var next = history
-        next.hasShownFirstRun = true
         next.lastPresented = now
+        guard wasUnprompted || wasPurchase else { return next }
+        next.hasShownFirstRun = true
         if !wasPurchase { next.declineCount += 1 }
         return next
     }

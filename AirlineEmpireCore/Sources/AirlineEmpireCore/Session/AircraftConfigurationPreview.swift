@@ -1,0 +1,75 @@
+/// A steady-state 30-day planning quote. Demand is allocated by the live
+/// demand system on a value copy; costs use the shared airframe estimator.
+public struct AircraftConfigurationPreview: Equatable, Sendable {
+    public let monthlyRevenue: Money
+    public let monthlyCosts: Money
+    public let loadFactor: Double
+    /// Passengers boarded over the same 30-day quote, after the seat limit.
+    /// Shared with the service-policy preview so a recurring per-passenger
+    /// cost is quoted on the same volume the airframe forecast carries.
+    public let monthlyPassengers: Int
+    public let rotationsPerDay: Int
+    public var monthlyProfit: Money { monthlyRevenue - monthlyCosts }
+
+    public static func make(aircraftID: AircraftID, configuration: AircraftConfiguration,
+                            state: GameState, catalog: ContentCatalog) -> Self? {
+        guard var aircraft = state.aircraft[aircraftID], aircraft.isOperational,
+              let spec = catalog.aircraftType(aircraft.typeCode),
+              configuration.isValid(capacity: spec.seats),
+              aircraft.assignedRoute != nil else { return nil }
+        var copy = state
+        aircraft.configuration = configuration
+        copy.aircraft[aircraftID] = aircraft
+        let context = SimContext(previous: state.clock.now, current: state.clock.now,
+            tick: .minutes(0), catalog: catalog, events: EventCollector(), progressionCeiling: .empire)
+        DemandSystem().update(state: &copy, context: context)
+        return makeAllocated(aircraftID: aircraftID, state: copy, catalog: catalog)
+    }
+
+    /// Internal shared estimator after the caller has allocated demand once.
+    static func makeAllocated(aircraftID: AircraftID, state: GameState, catalog: ContentCatalog) -> Self? {
+        guard let aircraft = state.aircraft[aircraftID], aircraft.isOperational,
+              let spec = catalog.aircraftType(aircraft.typeCode),
+              let routeID = aircraft.assignedRoute, let route = state.routes[routeID],
+              let airline = state.airlines[aircraft.owner],
+              let origin = catalog.airport(route.origin), let destination = catalog.airport(route.destination) else { return nil }
+        let configuration = aircraft.cabin(for: spec)
+        let forecast = route
+        let active = route.assignedAircraft.sorted().compactMap { state.aircraft[$0] }.filter(\.isOperational)
+        // One source for the allotment: the board's check estimate and this
+        // quote must not disagree about how often the airframe flies.
+        guard let rotations = FlightSchedulingSystem.rotationsPerDay(
+            route: route, aircraftID: aircraftID, state: state, spec: spec,
+            ops: catalog.tuning.ops) else { return nil }
+        let capacity = Double(rotations * 2 * configuration.totalSeats)
+        let routeCapacity = active.reduce(0.0) { sum, item in
+            guard let type = catalog.aircraftType(item.typeCode) else { return sum }
+            return sum + Double(item.cabin(for: type).totalSeats)
+        }
+        let share = Double(configuration.totalSeats) / max(1, routeCapacity)
+        let passengers = min(capacity, Double(forecast.demandOutboundToday + forecast.demandInboundToday) * share)
+        let ratio = route.ticketPrice.asDouble * configuration.yieldMultiplier(tuning: catalog.tuning.cabin)
+            / DemandSystem.referenceFare(distanceKm: route.distanceKm, tuning: catalog.tuning.demand)
+        func value(_ basis: CompetitorAISystem.RankingBasis) -> Double {
+            CompetitorAISystem.airframeDayValue(distanceKm: route.distanceKm,
+                passengersPerDay: passengers, spec: spec, fareRatio: ratio,
+                serviceTier: airline.serviceTier, origin: origin, destination: destination,
+                state: state, catalog: catalog, rotationsPerDay: rotations, basis: basis)
+        }
+        let revenue = value(.revenue)
+        let flightHours = Double(rotations * 2) * Double(FlightSchedulingSystem.flightMinutes(
+            distanceKm: route.distanceKm, cruiseSpeedKmh: spec.cruiseSpeedKmh,
+            overheadMinutes: catalog.tuning.ops.flightOverheadMinutes)) / 60
+        let ageReserve = FleetEconomics.expectedMaintenancePerDay(type: spec, ageYears: aircraft.ageYears,
+            blockHoursPerDay: flightHours, fleet: catalog.tuning.fleet, ops: catalog.tuning.ops)
+            - FleetEconomics.expectedMaintenancePerDay(type: spec, ageYears: 0,
+            blockHoursPerDay: flightHours, fleet: catalog.tuning.fleet, ops: catalog.tuning.ops)
+        let lease: Double
+        switch aircraft.ownership { case .leased(let rate, _): lease = rate.asDouble; case .owned: lease = 0 }
+        let costs = (revenue - value(.profit) + passengers * configuration.serviceCostPerPassenger(tuning: catalog.tuning.cabin).asDouble + ageReserve) * 30 + lease
+        return Self(monthlyRevenue: Money(rounding: revenue * 30), monthlyCosts: Money(rounding: costs),
+                    loadFactor: capacity > 0 ? passengers / capacity : 0,
+                    monthlyPassengers: Int((passengers * 30).rounded()),
+                    rotationsPerDay: rotations)
+    }
+}

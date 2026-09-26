@@ -17,7 +17,7 @@ final class RouteScheduleSummaryTests: XCTestCase {
     func testUsesEarliestPlannedDepartureAndGameTimeWhilePaused() {
         let text = RouteScheduleSummary.text(flights: [flight(departure: 190), flight(departure: 130)],
                                             now: now, paused: true, hasOperationalAircraft: true)
-        XCTAssertTrue(text.contains("30 game minutes"))
+        XCTAssertTrue(text.contains("30 min of game time"))
         XCTAssertTrue(text.contains("paused"))
     }
 
@@ -25,7 +25,7 @@ final class RouteScheduleSummaryTests: XCTestCase {
         var delayed = flight(departure: 90)
         delayed.departureTime = SimTime(rawMinutes: 145)
         XCTAssertTrue(RouteScheduleSummary.text(flights: [delayed], now: now,
-            paused: false, hasOperationalAircraft: true).contains("45 game minutes"))
+            paused: false, hasOperationalAircraft: true).contains("45 min of game time"))
         XCTAssertTrue(RouteScheduleSummary.text(flights: [flight(departure: 90)], now: now,
             paused: false, hasOperationalAircraft: true).contains("Departure pending"))
     }

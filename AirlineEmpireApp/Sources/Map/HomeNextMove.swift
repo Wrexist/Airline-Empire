@@ -31,6 +31,10 @@ struct HomeNextMove: Equatable {
         case aircraft(AircraftID)
         case startClock
         case nextMorning
+        /// Straight to the first boarding, then 1x. Idempotent near a
+        /// departure, so pressing it twice can never skip the flight it is
+        /// there to show (`GameController.skipToFirstBoarding`).
+        case firstTakeoff
         case follow(FlightID)
         case briefing
     }
@@ -65,7 +69,8 @@ struct HomeNextMove: Equatable {
     static func resolve(snapshot: GameState,
                         model: MapModel,
                         catalog: ContentCatalog?,
-                        fleetSummary: FleetSummary?) -> HomeNextMove? {
+                        fleetSummary: FleetSummary?,
+                        allowedAirports: Set<AirportCode>? = nil) -> HomeNextMove? {
         guard let player = snapshot.playerAirline else { return nil }
 
         // 1 · The airline is dying. Nothing else is the next move.
@@ -88,10 +93,22 @@ struct HomeNextMove: Equatable {
         // 2 · The first session's arc, from the model that owns it. One
         // onboarding system in this game; this reads it, it does not repeat it.
         if let catalog,
-           let onboarding = snapshot.onboardingModel(catalog: catalog),
+           let onboarding = snapshot.onboardingModel(catalog: catalog,
+                                                     allowedAirports: allowedAirports),
            let step = onboarding.nextStep {
             return firstSession(step: step, onboarding: onboarding,
                                 snapshot: snapshot, player: player)
+        }
+
+        // 2b · Past the tutorial but with no aircraft at all — everything
+        // sold or returned. The first-flight arc does not restart for a
+        // player who has flown, but the way back to the market must remain.
+        if snapshot.fleet(of: player.id).isEmpty {
+            return HomeNextMove(icon: Vocab.onboardingIcon(.acquireAircraft),
+                                title: Vocab.onboardingStep(.acquireAircraft),
+                                detail: "Routes need aircraft. Lease one to start flying again.",
+                                tone: .caution,
+                                move: .aircraftMarket)
         }
 
         // 3 · An aeroplane earning nothing. It bills like a flying one.
@@ -109,7 +126,8 @@ struct HomeNextMove: Equatable {
         // 4 · Growth, but only where the ranking says the market pays for the
         // aircraft it needs (BUG-055). Advice that cannot pay is not advice.
         if let catalog {
-            let ranked = snapshot.marketOpportunities(catalog: catalog, limit: 4)
+            let ranked = snapshot.marketOpportunities(catalog: catalog, limit: 4,
+                                                      allowedAirports: allowedAirports)
             if let best = ranked.first(where: { $0.servableNow && $0.paysForItsAirframe }) {
                 return HomeNextMove(
                     icon: "sparkle",
@@ -180,8 +198,16 @@ struct HomeNextMove: Equatable {
                                 tone: .caution,
                                 move: bare.map { Move.route($0.id) } ?? .briefing)
         case .watchFirstFlight:
-            return HomeNextMove(icon: icon, title: title, detail: detail,
-                                move: .startClock)
+            // Not `.startClock`. A new game starts at 00:00 on a day with no
+            // flights yet: at 1x the first departure was seven real minutes
+            // of an empty map away, and the fallback row ("advance to next
+            // morning") skipped the whole first day when pressed twice — the
+            // player never saw their own first takeoff.
+            return HomeNextMove(icon: "airplane.departure",
+                                title: "Watch your first takeoff",
+                                detail: "Skips ahead to boarding, then plays at 1×.",
+                                tone: .livery(player.livery),
+                                move: .firstTakeoff)
         case .earnFirstRevenue:
             if let flight = snapshot.flights.values.sorted(by: { $0.id < $1.id }).first(where: {
                 guard snapshot.routes[$0.route]?.airline == player.id else { return false }
@@ -193,7 +219,7 @@ struct HomeNextMove: Equatable {
                                     move: .follow(flight.id))
             }
             return HomeNextMove(icon: icon, title: "Waiting for your first arrival",
-                                detail: detail, move: .startClock)
+                                detail: detail, move: .firstTakeoff)
         }
     }
 }

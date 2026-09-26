@@ -1,5 +1,15 @@
 # Airline Empire — execution plan for the first release
 
+> **Current state, 18 September 2026.** Version 1.0 was **rejected on 17
+> September** under Guidelines 2.1(b) and 2.3.3. Both are fixed and verified
+> against App Store Connect: the listing screenshots are the app-dominant set
+> (36 files replaced, exact checksums and COMPLETE processing), and version 1.0
+> now sits in one submission with the three Pro products and their group,
+> **WAITING_FOR_REVIEW**. Findings, the four Apple state errors the
+> resubmission hit, and the evidence are in
+> [the rejection record](REVIEW_REJECTION_2026-09-17.md). The execution record
+> below is the 11 September snapshot and is kept as history.
+
 Updated 11 September 2026. PRs #22 through #26 are merged; no PRs remain open.
 Candidate `18253b31333f4e7c0e9a8b9b4410cda2ea45b80d` passed full CI,
 Launch safety and portability. TestFlight **1.0.16 (6)** is processed and

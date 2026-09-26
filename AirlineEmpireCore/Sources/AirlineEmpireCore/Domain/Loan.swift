@@ -21,6 +21,22 @@ public struct Loan: Equatable, Codable, Sendable {
     public var monthlyRate: Double {
         Double(annualRateBasisPoints) / 10_000 / 12
     }
+
+    /// Interest accrued since the last month boundary — or since drawdown,
+    /// if that is later — pro rata at the monthly rate. Loan service charges
+    /// interest only at month boundaries (EconomySystem), so an early payoff
+    /// owes this with the principal; without it, a loan repaid before its
+    /// first boundary cost nothing at all.
+    public func accruedInterest(at time: SimTime, startYear: Int) -> Money {
+        let date = GameCalendar.date(at: time, startYear: startYear)
+        let monthStart = GameCalendar.time(year: date.year, month: date.month, day: 1,
+                                           startYear: startYear)
+        let heldMinutes = (time - max(monthStart, takenAt)).minutes
+        guard heldMinutes > 0 else { return .zero }
+        let monthMinutes = GameCalendar.monthLengths[date.month - 1] * GameCalendar.minutesPerDay
+        return Money(rounding: principalRemaining.asDouble * monthlyRate
+            * Double(heldMinutes) / Double(monthMinutes))
+    }
 }
 
 /// Credit math — pure functions so UI quotes exactly what the simulation

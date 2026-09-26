@@ -35,56 +35,20 @@ struct BriefingView: View {
             ScrollView {
                 VStack(spacing: AETheme.spacingM) {
                     if let snapshot = controller.snapshot,
-                       let dashboard = snapshot.dashboardModel() {
-                        header(snapshot: snapshot, dashboard: dashboard)
-
-                        // The warning cascade, above everything else it could
-                        // possibly be less important than (UI-005).
-                        if let player = snapshot.playerAirline?.id,
-                           let catalog = controller.catalog,
-                           let solvency = snapshot.solvencyModel(for: player,
-                                                                 catalog: catalog) {
-                            SolvencyBanner(
-                                model: solvency,
-                                autoPaused: controller.autoPauseReason == .solvencyDanger)
-                            RescueOfferCard()
-                        }
-
-                        if let catalog = controller.catalog,
-                           let onboarding = snapshot.onboardingModel(catalog: catalog),
-                           !onboarding.isComplete {
-                            OnboardingCard(model: onboarding) { suggestion in
-                                guidedRoute = GuidedRoute(suggestion)
-                            }
-                        } else if let catalog = controller.catalog,
-                                  snapshot.playerAirline != nil {
-                            // The checklist's replacement, not its ghost. The
-                            // AE-033 audit's top finding (EXP-01): the game's
-                            // strongest guidance surface went silent exactly
-                            // when the player first had freedom. Same ranking
-                            // the map coach uses, same guided-route flow the
-                            // checklist used.
-                            NextMovesCard(snapshot: snapshot, catalog: catalog) { suggestion in
-                                guidedRoute = GuidedRoute(suggestion)
-                            }
-                        }
-                        // One competitive fact, only when the world has one
-                        // (AE-037). Not a feed: the most decision-relevant
-                        // thing a rival did or is doing to this airline.
-                        RivalPressureCard()
-                        if snapshot.progression.hasMilestone("firstFlight") {
-                            NextEraBriefing()
-                        }
-                        // The pulse comes before the history. This block
-                        // used to sit fifth, below yesterday's digest and next
-                        // week's calendar — so "how is my airline doing right
-                        // now" was two scrolls under "how did it do yesterday"
-                        // (MASTER PROMPT 4 §6).
-                        pulse(dashboard)
-                        statGrid(dashboard)
-                        DigestSlot(snapshot: snapshot)
-                        UpcomingCard(snapshot: snapshot, catalog: controller.catalog)
-                        eventsFeed(snapshot: snapshot)
+                       let briefing = controller.briefingModel {
+                        // The dashboard comes from the briefing model rather
+                        // than being derived twice on every body pass.
+                        header(snapshot: snapshot,
+                               dashboard: briefing.performance.dashboard)
+                        // One hierarchy, in the order a player reads it:
+                        // what needs you, how you are doing, what to do next,
+                        // and the history below it. `BriefingModel` owns the
+                        // urgent order; the sections are the screen's own
+                        // composition of the same models.
+                        needsYouNow(briefing, snapshot: snapshot)
+                        howItIsGoing(briefing)
+                        nextOpportunity(snapshot: snapshot)
+                        theStorySoFar(snapshot: snapshot)
                     } else {
                         LoadingState(message: "Preparing your airline")
                             .frame(minHeight: 240)
@@ -106,7 +70,7 @@ struct BriefingView: View {
                 case .routes:
                     RoutesList().navigationTitle("Routes").aeTimeToolbar()
                 case .reputation:
-                    ReputationDetailView()
+                    PassengerExperienceView()
                 case .finance:
                     FinanceContent().navigationTitle("Finance").aeTimeToolbar()
                 case .economy:
@@ -236,6 +200,150 @@ struct BriefingView: View {
         }
     }
 
+    // MARK: - The decision hierarchy
+    //
+    // 1 urgent · 2 performance · 3 opportunity · 4 history. The order is the
+    // product decision; `BriefingModel` supplies the urgent stack so the
+    // order of what needs the player cannot drift between the map and here.
+
+    private func sectionHeader(_ title: String, _ icon: String,
+                                id: String) -> some View {
+        AESectionHeader(text: title, systemImage: icon)
+            .accessibilityIdentifier(id)
+    }
+
+    /// 1 · What needs the player now.
+    ///
+    /// The solvency banner keeps the very top — it is the one alarm that
+    /// outranks the whole screen — and the stack below it names every other
+    /// thing that is costing money, each with the reason it matters and the
+    /// control that fixes it. Absent entirely when there is nothing wrong,
+    /// which is a real answer, not an empty section.
+    @ViewBuilder
+    private func needsYouNow(_ briefing: BriefingModel, snapshot: GameState) -> some View {
+        if let player = snapshot.playerAirline?.id,
+           let catalog = controller.catalog,
+           let solvency = snapshot.solvencyModel(for: player, catalog: catalog),
+           solvency.stage != .healthy {
+            SolvencyBanner(
+                model: solvency,
+                autoPaused: controller.autoPauseReason == .solvencyDanger)
+            RescueOfferCard()
+        }
+        // The banner already carries the insolvency alert; the rows below are
+        // the things it does not say.
+        let rows = briefing.alerts.filter { !$0.kind.isInsolvency }
+        let hasRival = controller.competitionSummary?.headline != nil
+        if !rows.isEmpty || hasRival {
+            VStack(alignment: .leading, spacing: AETheme.spacingS) {
+                sectionHeader("Needs you now", "exclamationmark.circle",
+                              id: "ae-briefing-urgent")
+                ForEach(Array(rows.enumerated()), id: \.offset) { _, alert in
+                    alertRow(alert, snapshot: snapshot)
+                }
+                // One competitive fact, only when the world has one (AE-037).
+                RivalPressureCard()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func alertRow(_ alert: BriefingModel.Alert, snapshot: GameState) -> some View {
+        switch alert.kind {
+        case .insolvency:
+            EmptyView()
+        case .idleAircraft:
+            if let player = snapshot.playerAirline?.id,
+               let idle = snapshot.fleet(of: player).first(where: {
+                   $0.assignedRoute == nil && $0.isOperational
+               }) {
+                NavigationLink(value: idle.id) {
+                    AENextStepLabel(icon: Vocab.briefingAlertIcon(alert.kind),
+                                    title: Vocab.briefingAlertTitle(alert.kind),
+                                    detail: Vocab.briefingAlertDetail(alert.kind),
+                                    tint: alertTint(alert),
+                                    attention: alert.severity == .critical)
+                }
+                .buttonStyle(.aePress)
+                .accessibilityIdentifier("ae-briefing-idle")
+            }
+        case .groundedRoutes, .losingRoutes:
+            NavigationLink(value: DashboardRoute.routes) {
+                AENextStepLabel(icon: Vocab.briefingAlertIcon(alert.kind),
+                                title: Vocab.briefingAlertTitle(alert.kind),
+                                detail: Vocab.briefingAlertDetail(alert.kind),
+                                tint: alertTint(alert))
+            }
+            .buttonStyle(.aePress)
+            .accessibilityIdentifier(alert.kind.isGroundedRoutes
+                                     ? "ae-briefing-grounded"
+                                     : "ae-briefing-losing")
+        }
+    }
+
+    private func alertTint(_ alert: BriefingModel.Alert) -> Color {
+        switch alert.severity {
+        case .critical: AETheme.negative
+        case .warning: AETheme.caution
+        case .watch: AETheme.accent
+        }
+    }
+
+    /// 2 · How the airline is doing: the live strip and the six numbers that
+    /// open the screen explaining each one.
+    private func howItIsGoing(_ briefing: BriefingModel) -> some View {
+        VStack(alignment: .leading, spacing: AETheme.spacingS) {
+            sectionHeader("How the airline is doing",
+                          "chart.line.uptrend.xyaxis",
+                          id: "ae-briefing-performance")
+            pulse(briefing.performance)
+            statGrid(briefing.performance.dashboard)
+        }
+    }
+
+    /// 3 · What to do next: the first-session checklist while it runs, then
+    /// the ranking that replaces it; the next era; and what is coming up.
+    @ViewBuilder
+    private func nextOpportunity(snapshot: GameState) -> some View {
+        VStack(alignment: .leading, spacing: AETheme.spacingS) {
+            sectionHeader("Next opportunity", "sparkle",
+                          id: "ae-briefing-opportunity")
+            if let catalog = controller.catalog,
+               let onboarding = snapshot.onboardingModel(
+                   catalog: catalog, allowedAirports: controller.recommendationAirports),
+               !onboarding.isComplete {
+                OnboardingCard(model: onboarding) { suggestion in
+                    guidedRoute = GuidedRoute(suggestion)
+                }
+            } else if let catalog = controller.catalog,
+                      snapshot.playerAirline != nil {
+                // The checklist's replacement, not its ghost. The AE-033
+                // audit's top finding (EXP-01): the game's strongest guidance
+                // surface went silent exactly when the player first had
+                // freedom. Same ranking the map coach uses, same guided-route
+                // flow the checklist used.
+                NextMovesCard(snapshot: snapshot, catalog: catalog,
+                              allowedAirports: controller.recommendationAirports) { suggestion in
+                    guidedRoute = GuidedRoute(suggestion)
+                }
+            }
+            if snapshot.progression.hasMilestone("firstFlight") {
+                NextEraBriefing()
+            }
+            UpcomingCard(snapshot: snapshot, catalog: controller.catalog)
+        }
+    }
+
+    /// 4 · The history: yesterday with its why, and the live feed.
+    private func theStorySoFar(snapshot: GameState) -> some View {
+        VStack(alignment: .leading, spacing: AETheme.spacingS) {
+            sectionHeader("The story so far", "clock.arrow.circlepath",
+                          id: "ae-briefing-history")
+            DigestSlot(snapshot: snapshot)
+            eventsFeed(snapshot: snapshot)
+        }
+    }
+
     /// What the airline is doing *right now*, in one strip.
     ///
     /// Home had no live number at all. `liveFlightCount` was published by Core
@@ -245,27 +353,25 @@ struct BriefingView: View {
     ///
     /// One panel rather than four tiles: these are one picture of one moment,
     /// and four glass cards would read as four separate claims.
-    @ViewBuilder
-    private func pulse(_ dashboard: DashboardModel) -> some View {
-        if let network = controller.networkSummary,
-           let fleet = controller.fleetSummary {
-            AEMetricStrip([
-                AEMetric("in the air", "\(network.liveFlights)",
-                         tint: network.liveFlights > 0 ? AETheme.positive : nil,
-                         emphasised: true),
-                AEMetric("load factor",
-                         network.averageLoadFactor.map(Format.percent) ?? "—"),
-                AEMetric("aircraft used",
-                         fleet.utilization.map(Format.percent) ?? "—",
-                         tint: fleet.idle > 0 ? AETheme.caution : nil),
-                AEMetric("month to date",
-                         Format.money(network.monthToDateProfit),
-                         tint: network.monthToDateProfit.isNegative
-                             ? AETheme.negative : AETheme.positive),
-            ])
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel("Operations right now")
-        }
+    private func pulse(_ performance: BriefingModel.Performance) -> some View {
+        let network = performance.network
+        let fleet = performance.fleet
+        return AEMetricStrip([
+            AEMetric("in the air", "\(network.liveFlights)",
+                     tint: network.liveFlights > 0 ? AETheme.positive : nil,
+                     emphasised: true),
+            AEMetric("load factor",
+                     network.averageLoadFactor.map(Format.percent) ?? "—"),
+            AEMetric("aircraft used",
+                     fleet.utilization.map(Format.percent) ?? "—",
+                     tint: fleet.idle > 0 ? AETheme.caution : nil),
+            AEMetric("month to date",
+                     Format.money(network.monthToDateProfit),
+                     tint: network.monthToDateProfit.isNegative
+                         ? AETheme.negative : AETheme.positive),
+        ])
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Operations right now")
     }
 
     /// Six numbers, each of which opens the screen that explains it.
@@ -285,6 +391,7 @@ struct BriefingView: View {
                 StatTile(label: "Reputation",
                          value: Format.percent(dashboard.reputationScore))
             }
+            .accessibilityIdentifier("ae-stat-reputation")
             NavigationLink(value: DashboardRoute.finance) {
                 // No trend until a month has actually closed. The first
                 // version fell through to `.up` for nil, so for the whole of
@@ -312,7 +419,7 @@ struct BriefingView: View {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 AESectionHeader(text: "Operations feed", systemImage: "dot.radiowaves.left.and.right")
                 if controller.recentEvents.isEmpty {
-                    Text("Quiet skies. Open a route to get moving.")
+                    Text("Nothing here yet. Events appear as the world runs.")
                         .font(.subheadline)
                         .foregroundStyle(AETheme.mutedText)
                         .transition(.opacity)
@@ -505,7 +612,7 @@ struct DigestCard: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Yesterday").font(.headline)
-                        Text(Format.date(digest.date))
+                        Text(Format.longDate(digest.date))
                             .font(.caption)
                             .foregroundStyle(AETheme.mutedText)
                     }
@@ -677,6 +784,8 @@ struct OnboardingCard: View {
 struct NextMovesCard: View {
     let snapshot: GameState
     let catalog: ContentCatalog
+    /// The free region, or nil for Pro (`GameController.recommendationAirports`).
+    var allowedAirports: Set<AirportCode>? = nil
     let openSuggestion: (FirstRouteSuggestion) -> Void
 
     /// Aircraft earning nothing. Kept as the aeroplanes rather than as a
@@ -694,7 +803,8 @@ struct NextMovesCard: View {
         // Servable markets first: advice the fleet cannot act on today is a
         // wish, not a move. Two at most — a ranked pair is a decision, a
         // longer list is homework.
-        let ranked = snapshot.marketOpportunities(catalog: catalog, limit: 4)
+        let ranked = snapshot.marketOpportunities(catalog: catalog, limit: 4,
+                                                  allowedAirports: allowedAirports)
         let servable = ranked.filter(\.servableNow)
         return Array((servable.isEmpty ? ranked : servable).prefix(2))
     }
@@ -731,34 +841,25 @@ struct NextMovesCard: View {
         guard market.paysForItsAirframe else {
             return "No aircraft you can fly today covers its own lease here."
         }
-        return "Estimated \(market.monthlyAfterAirframe.compact)/month on a \(spec.seats)-seat \(spec.model). " + PlayerRouteDefaults.forecastAssumptions
+        // Estimate, basis and overhead stay beside the number — the audit
+        // (AUD-04) kept those three per row and moved only the shared
+        // caveats into one disclosure under the list.
+        return "Estimated \(market.monthlyAfterAirframe.compact)/month · "
+            + "\(spec.seats)-seat \(spec.model), "
+            + PlayerRouteDefaults.forecastBasis
     }
 
     var body: some View {
         let idle = idleCount
         let markets = opportunities
-        if idle > 0 || !markets.isEmpty {
+        // Idle aircraft are not repeated here: the briefing's "Needs you
+        // now" section lists them (with the same link to the aircraft)
+        // whenever any exist, and the same row twice on one screen read as
+        // two problems.
+        if !markets.isEmpty {
             AECard {
                 VStack(alignment: .leading, spacing: AETheme.spacingS) {
                     Text("Next moves").font(.headline)
-                    // Pressable, and it lands on the aeroplane itself — the
-                    // screen with the assignment on it — rather than naming
-                    // the tab the player should go and find. Home already
-                    // registers `AircraftID` as a destination; the advice
-                    // simply had never used it.
-                    if let waiting = idleAircraft.first {
-                        NavigationLink(value: waiting.id) {
-                            AENextStepLabel(
-                                icon: "pause.circle.fill",
-                                title: idle == 1 ? "One aircraft is idle"
-                                                 : "\(idle) aircraft are idle",
-                                detail: "Parked costs the same as flying. Give it a route.",
-                                tint: AETheme.caution,
-                                attention: true)
-                        }
-                        .buttonStyle(.aePress)
-                        .accessibilityIdentifier("ae-next-moves-idle")
-                    }
                     if !markets.isEmpty {
                         Text(marketsHeading(idleWarningAbove: idle > 0))
                             .font(.caption)
@@ -793,6 +894,22 @@ struct NextMovesCard: View {
                                 .background(AETheme.accent.opacity(0.06), in: AETheme.cardShape)
                             }
                             .buttonStyle(.aePress)
+                        }
+                        // Said once for the whole list. Every row used to end
+                        // with these three sentences, so two opportunities
+                        // could not be compared without reading six.
+                        if markets.contains(where: { $0.paysForItsAirframe }) {
+                            DisclosureGroup("How these are estimated") {
+                                Text(PlayerRouteDefaults.forecastAssumptions)
+                                    .font(.caption)
+                                    .foregroundStyle(AETheme.mutedText)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.top, AETheme.spacingXS)
+                            }
+                            .font(.caption)
+                            .tint(AETheme.mutedText)
+                            .accessibilityIdentifier("ae-next-moves-assumptions")
                         }
                     }
                 }

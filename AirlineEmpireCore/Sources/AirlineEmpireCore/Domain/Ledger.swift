@@ -47,6 +47,13 @@ public struct Ledger: Equatable, Codable, Sendable {
         monthAccumulator[airline] = nil
     }
 
+    /// The current month's signed totals, for a screen that wants "this month
+    /// so far" without consuming it. The statement rollup owns the drain; this
+    /// is a read.
+    public func monthTotals(for airline: AirlineID) -> [TransactionCategory: Int64] {
+        monthAccumulator[airline] ?? [:]
+    }
+
     /// Hands over and clears an airline's month accumulator (statement
     /// rollup).
     public mutating func drainMonthAccumulator(for airline: AirlineID)
