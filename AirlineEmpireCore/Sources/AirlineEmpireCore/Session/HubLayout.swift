@@ -382,10 +382,15 @@ struct HubPlanner {
     var runwayWidth: Double { spec.runwayClass >= .large ? 45 : 32 }
 
     var terminalLength: Double {
-        min(560, max(150, 150 + Double(spec.terminalCapacityPerDay) / 1_000 * 1.4))
+        let byCapacity = 120 + Double(spec.terminalCapacityPerDay) / 1_000 * 1.0
+        // Never shorter than the piers it feeds.
+        let piers = Double(max(0, pierCount - 1)) * pierSpacing + pierWidth + 40
+        return min(520, max(130, byCapacity, piers))
     }
 
-    let terminalDepth: Double = 72
+    var pierSpacing: Double { 2 * standDepth + pierWidth + 56 }
+
+    let terminalDepth: Double = 58
     let pierWidth: Double = 26
 
     var standPitch: Double { HubAircraftEnvelope.span(largestCategory) + 14 }
@@ -397,7 +402,7 @@ struct HubPlanner {
         let L = terminalLength
         // Terminal: airside face on z = 0.
         let terminal = HubRect(minX: -L / 2, minZ: 0, maxX: L / 2, maxZ: terminalDepth)
-        add(.terminalHall, terminal, height: 22, label: spec.city)
+        add(.terminalHall, terminal, height: 19, label: spec.city)
 
         let stands = planStands(terminal: terminal)
         let apronNorth = (stands.map(\.nose.z).min() ?? -60) - standDepth - 70
@@ -584,7 +589,6 @@ struct HubPlanner {
         // Runway geometry is not planned yet; departures are completed by
         // `routeStands` once the apron edge is known.
         let piers = pierCount
-        let pierSpacing = 2 * standDepth + pierWidth + 70
         var perPierSide: Int {
             piers == 0 ? 0 : Int((Double(n) / Double(piers * 2)).rounded(.up))
         }

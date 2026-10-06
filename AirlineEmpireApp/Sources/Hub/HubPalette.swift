@@ -48,8 +48,8 @@ struct HubPalette: Equatable {
     static let day = HubPalette(
         concrete: UIColor(hub: 0xA7AED6), concreteLight: UIColor(hub: 0xBAC2E3),
         asphalt: UIColor(hub: 0x6C779F), asphaltDark: UIColor(hub: 0x5A638C),
-        building: UIColor(hub: 0xDCE1F4), buildingShade: UIColor(hub: 0xC3CBEA),
-        roof: UIColor(hub: 0xE5E8F6), glass: UIColor(hub: 0x7DB6E4), glassOpacity: 0.55,
+        building: UIColor(hub: 0xD6DCF1), buildingShade: UIColor(hub: 0xBFC7E8),
+        roof: UIColor(hub: 0xCDD5F1), glass: UIColor(hub: 0x7DB6E4), glassOpacity: 0.55,
         grass: UIColor(hub: 0x6CC290), grassBright: UIColor(hub: 0x8AD6AB),
         tree: [UIColor(hub: 0x4DA16E), UIColor(hub: 0x5DB57C), UIColor(hub: 0x43925F)],
         trunk: UIColor(hub: 0x8A8FAE), marking: UIColor(hub: 0xF6F7FD), taxiLine: UIColor(hub: 0xF2C94C),

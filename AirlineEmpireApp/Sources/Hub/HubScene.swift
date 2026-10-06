@@ -304,7 +304,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
             switch anchor.kind {
             case .pin: guard shot == .terminal else { return nil }
             case .pill: guard shot == .district else { return nil }
-            case .callout: guard shot == .gate || shot == .overview else { return nil }
+            case .callout: guard shot == .gate else { return nil }
             }
             guard let p = arView.project(anchor.position),
                   p.x > -40, p.y > -40, p.x < size.width + 40, p.y < size.height + 40 else { return nil }

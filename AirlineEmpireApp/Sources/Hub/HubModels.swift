@@ -126,8 +126,8 @@ final class HubModels {
             // Winglet in livery.
             if !high {
                 let wl = HubMeshBatch.translation([tipLE - tipChord * 0.6, wingY + semi * dihedral + 0.2, tipZ])
-                livery.transform = wl
-                livery.box(center: .zero, size: [tipChord * 0.9, 2.0 + r * 0.3, 0.25])
+                livery.transform = wl * float4x4(simd_quatf(angle: side * 0.25, axis: [1, 0, 0]))
+                livery.box(center: .zero, size: [tipChord * 0.6, 1.0 + r * 0.25, 0.18])
                 livery.transform = matrix_identity_float4x4
             }
             // Engines.
@@ -168,9 +168,9 @@ final class HubModels {
                 [hsRoot, side * r * 0.3], [hsRoot - hsChord, side * r * 0.3],
                 [hsRoot - hsChord * 0.8 - hsSemi * 0.5, side * hsSemi], [hsRoot - hsSemi * 0.5, side * hsSemi],
             ]
-            livery.transform = HubMeshBatch.translation([0, hsY, 0])
-            livery.slab(poly, thickness: 0.3)
-            livery.transform = matrix_identity_float4x4
+            body.transform = HubMeshBatch.translation([0, hsY, 0])
+            body.slab(poly, thickness: 0.3)
+            body.transform = matrix_identity_float4x4
         }
 
         // Vertical fin: a swept quad in the xy plane, extruded in z.

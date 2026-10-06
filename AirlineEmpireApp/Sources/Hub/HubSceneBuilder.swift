@@ -250,7 +250,7 @@ struct HubSceneBuilder {
         }
         // Roof: overhanging slab, glass skylight ridge, plant.
         with(.terminalRoof, .roof) {
-            $0.box(center: [c.x, glassTop, c.z], size: [w + 8, 1.8, d + 10], bottom: true)
+            $0.box(center: [c.x, glassTop, c.z], size: [w + 3, 1.6, d + 5], bottom: true)
             $0.box(center: [c.x, glassTop + 1.8, c.z], size: [w * 0.86, 0.6, d * 0.7])
         }
         with(.terminalRoof, .glass) { $0.box(center: [c.x, glassTop + 2.4, c.z], size: [w * 0.8, 2.6, 9]) }
@@ -260,11 +260,11 @@ struct HubSceneBuilder {
             }
         }
         // Landside canopy on columns over the kerb.
-        with(.airside, .roof) { $0.box(center: [c.x, 10, c.z + d / 2 + 7], size: [w * 0.7, 0.8, 14]) }
+        with(.airside, .roof) { $0.box(center: [c.x, 9, c.z + d / 2 + 6], size: [w * 0.6, 0.7, 12]) }
         with(.airside, .white) {
-            var cx = c.x - w * 0.33
-            while cx <= c.x + w * 0.33 {
-                $0.cylinder(base: [cx, 0, c.z + d / 2 + 12], radius: 0.4, height: 10, segments: 8, caps: false)
+            var cx = c.x - w * 0.28
+            while cx <= c.x + w * 0.28 {
+                $0.cylinder(base: [cx, 0, c.z + d / 2 + 11], radius: 0.4, height: 9, segments: 8, caps: false)
                 cx += 18
             }
         }
@@ -275,7 +275,7 @@ struct HubSceneBuilder {
                                    materials: [materials[.houseRoof]])
             text.components.set(HubMaterialTag(key: .houseRoof))
             let bounds = text.visualBounds(relativeTo: nil)
-            text.position = [c.x - bounds.extents.x / 2, glassTop + 1.9, c.z + d / 2 + 5.05]
+            text.position = [c.x - bounds.extents.x / 2, glassTop + 0.1, c.z + d / 2 + 2.55]
             extras.append((.terminalRoof, text))
         }
         blob(c, w: w * 1.2, d: d * 1.6, y: 0.24)
@@ -544,18 +544,17 @@ struct HubSceneBuilder {
                 }
             }
         case .checkInDesk:
+            // Counter, bag belt, and the tall branded backboard behind it.
             with(.interior, .white) { $0.box(center: c + [0, 1.7, 0], size: [w, h, d]) }
-            with(.interior, .darkMetal) { $0.box(center: c + [0, 1.7 + h, 0], size: [w + 0.2, 0.08, d + 0.2]) }
+            with(.interior, .darkMetal) { $0.box(center: c + [-w * 0.7, 1.7, 0], size: [w * 0.5, 0.5, d]) }
+            with(.interior, .houseRoof) { $0.box(center: c + [-w * 1.1, 1.7, 0], size: [0.5, 3.6, d + 1]) }
             with(.interior, .screen) {
                 var z = c.z - d / 2 + 2
                 while z < c.z + d / 2 {
-                    $0.box(center: [c.x, 1.7 + h + 0.1, z], size: [0.1, 0.6, 0.9])
+                    $0.box(center: [c.x, 1.7 + h + 0.05, z], size: [0.1, 0.6, 0.9])
+                    $0.box(center: [c.x - w * 1.1 + 0.3, 4.2, z], size: [0.05, 0.7, 1.6])
                     z += 3
                 }
-            }
-            if let label = p.label {
-                with(.interior, .houseRoof) { $0.box(center: c + [0, 5.5, 0], size: [0.3, 1.4, 4]) }
-                _ = label
             }
         case .kiosk:
             with(.interior, .white) { $0.box(center: c + [0, 1.7, 0], size: [w, h, d]) }

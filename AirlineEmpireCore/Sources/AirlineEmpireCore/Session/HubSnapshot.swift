@@ -287,9 +287,16 @@ extension GameState {
         // airport looks busy and a quiet one does not.
         let slotUse = spec.slotCapacityPerDay == 0 ? 0
             : Double(world.slotsUsed(at: code)) / Double(spec.slotCapacityPerDay)
-        let busy = min(0.85, max(0.35, 0.3 + slotUse * 0.9))
+        // A hub always looks worked (the reference's apron is full); how
+        // full above that follows the slots other carriers hold.
+        let busy = min(0.95, max(0.65, 0.6 + slotUse * 0.5))
         let target = Int((Double(layout.stands.count) * busy).rounded())
         var jitter = HubJitter(code.raw + ".traffic")
+        // Spread background traffic across the piers rather than packing
+        // the first free stands.
+        for i in stride(from: free.count - 1, to: 0, by: -1) {
+            free.swapAt(i, jitter.int(i + 1))
+        }
         let trafficTypes = catalog.orderedAircraftTypeCodes.compactMap { catalog.aircraftType($0) }
         while occupants.count < target, !free.isEmpty {
             let stand = free.removeFirst()

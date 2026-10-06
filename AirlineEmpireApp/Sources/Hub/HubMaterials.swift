@@ -107,7 +107,7 @@ final class HubMaterials {
         case .darkMetal: return matte(HubPalette.darkMetal, roughness: 0.5)
         case .hiVis: return matte(HubPalette.hiVis, roughness: 0.7)
         case .cone: return matte(HubPalette.cone, roughness: 0.7)
-        case .white: return matte(night ? p.building : .white, roughness: 0.55)
+        case .white: return matte(night ? p.building : UIColor(hub: 0xF1F3FA), roughness: 0.55)
         case .safety: return unlit(HubPalette.safety)
         case .pulse: return unlit(HubPalette.pulse, opacity: 0.55, texture: texture("ring", Self.ringImage))
         case .queueGlow: return unlit(HubPalette.queueGlow, opacity: 0.85, texture: texture("strip", Self.stripImage))
