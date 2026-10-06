@@ -160,8 +160,10 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         case .overview:
             let apron = layout.pieces.first { $0.kind == .apron }?.groundBounds ?? layout.terminal
             let span = Float(max(apron.width, apron.depth * 1.4))
-            return HubCameraRig(target: f(apron.center) + [0, 0, 60], distance: max(800, span * 2.1) * min(fit, 1.8),
-                                pitch: 36 * .pi / 180, yaw: yaw)
+            // Close enough that the jets read as jets (reference shot A):
+            // the apron fills the frame and the runway is the horizon.
+            return HubCameraRig(target: f(apron.center) + [0, 0, 20], distance: max(420, span * 1.25) * min(fit, 1.9),
+                                pitch: 32 * .pi / 180, yaw: yaw)
         case .gate:
             guard let stand = focus else { return rig(for: .overview, layout: layout, focus: nil, aspect: aspect) }
             let h = Float(stand.heading)

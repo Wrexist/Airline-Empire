@@ -362,6 +362,17 @@ final class HubDynamics {
             let mover = HubMover(entity: e, path: loop, speeds: speeds, start: Float(k) * 2_600)
             movers.append(mover)
         }
+        // Jets taxiing between the stands and the taxiway, so the apron
+        // is never still.
+        for (k, stand) in layout.stands.enumerated() where k % 4 == 1 {
+            let pts = stand.departure.points
+            guard pts.count > 3 else { continue }
+            // From the pushback point out to the taxiway and back.
+            let lane = HubPath(Array(pts[1...3]))
+            let e = aircraftEntity(k % 8 == 1 ? .narrowbody : .regionalJet, livery: k % 8 == 1 ? .violet : .jade)
+            root.addChild(e)
+            movers.append(HubMover(entity: e, path: lane, speeds: [7, 9], start: Float(k * 31 % 120), pingPong: true))
+        }
         // Second runway gets departures only.
         if layout.runways.count > 1 {
             let r2 = layout.runways[1]
