@@ -136,8 +136,9 @@ struct HubTopBar: View {
                     .font(.system(size: 22))
                     .foregroundStyle(.white, HubChromeStyle.accent)
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("\(model.snapshot?.city ?? model.airport.raw) Hub")
+                    Text(wide ? "\(model.snapshot?.city ?? model.airport.raw) Hub" : "\(model.airport.raw) Hub")
                         .font(.system(size: 13, weight: .semibold)).foregroundStyle(HubChromeStyle.ink)
+                        .lineLimit(1).fixedSize()
                     if wide {
                         Text("\(model.airport.raw) · \(model.layout.stands.count) stands")
                             .font(.system(size: 11)).foregroundStyle(HubChromeStyle.secondary)
@@ -307,6 +308,7 @@ struct HubControls: View {
 @available(iOS 18.0, *)
 struct HubShotPicker: View {
     let model: HubScreenModel
+    var compact = false
 
     var body: some View {
         HStack(spacing: 2) {
@@ -318,8 +320,10 @@ struct HubShotPicker: View {
                     Label(shot.title, systemImage: shot.systemImage)
                         .font(.system(size: 12, weight: .semibold))
                         .labelStyle(.titleAndIcon)
+                        .lineLimit(1)
+                        .fixedSize()
                         .foregroundStyle(selected ? Color.white : HubChromeStyle.ink)
-                        .padding(.horizontal, 11)
+                        .padding(.horizontal, compact ? 8 : 11)
                         .frame(height: 30)
                         .background {
                             if selected {

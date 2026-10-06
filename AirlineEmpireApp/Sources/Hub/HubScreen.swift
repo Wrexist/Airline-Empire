@@ -56,6 +56,7 @@ struct HubScreen: View {
         let facilities = state.playerAirline?.airportFacilities?[airport] ?? AirportFacilities()
         let made = HubScreenModel(airport: airport, spec: spec, facilities: facilities, uiTest: Self.isUITest)
         model = made
+        made.showsInspector = UIScreen.main.bounds.width >= 760
         made.refresh(state: state, catalog: catalog)
         if let shot = Self.launchShot { made.select(shot) }
         if ProcessInfo.processInfo.arguments.contains("-AEUITestHubNight") { made.setLighting(.night) }
@@ -104,7 +105,7 @@ private struct HubDashboard: View {
                                     HubKPIRow(snapshot: model.snapshot).padding(.horizontal, 2).padding(.vertical, 6)
                                 }
                             }
-                            HubShotPicker(model: model)
+                            HubShotPicker(model: model, compact: !wide)
                         }
                         Spacer(minLength: 0)
                         if wide, model.showsInspector, let occupant = model.focusedOccupant {

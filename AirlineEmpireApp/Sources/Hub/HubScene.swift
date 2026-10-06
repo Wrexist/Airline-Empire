@@ -87,7 +87,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         self.layout = layout
         self.idleDrift = idleDrift
         arView = ARView(frame: .zero, cameraMode: .nonAR, automaticallyConfigureSession: false)
-        rig = HubSceneController.rig(for: .overview, layout: layout, focus: nil)
+        rig = HubSceneController.rig(for: .overview, layout: layout, focus: nil, aspect: 1.33)
         goal = rig
         super.init()
         HubMaterialTag.registerComponent()
@@ -149,33 +149,58 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
 
     // MARK: Shots
 
-    static func rig(for shot: HubShot, layout: HubLayout, focus: HubStand?) -> HubCameraRig {
+    /// Default framing per shot. `aspect` is width ÷ height: portrait
+    /// phones need the camera further back to fit the same subject.
+    static func rig(for shot: HubShot, layout: HubLayout, focus: HubStand?, aspect: Float = 1.33) -> HubCameraRig {
         let f: (HubVec) -> SIMD3<Float> = { SIMD3(Float($0.x), 0, Float($0.z)) }
         let yaw: Float = 35 * .pi / 180
+        // Horizontal fit: wider subjects need more distance on narrow screens.
+        let fit = max(1, 1.33 / max(aspect, 0.3))
         switch shot {
         case .overview:
             let apron = layout.pieces.first { $0.kind == .apron }?.groundBounds ?? layout.terminal
-            let span = Float(max(apron.width, apron.depth * 1.6))
-            return HubCameraRig(target: f(apron.center) + [0, 0, 40], distance: max(900, span * 2.6),
-                                pitch: 38 * .pi / 180, yaw: yaw)
+            let span = Float(max(apron.width, apron.depth * 1.4))
+            return HubCameraRig(target: f(apron.center) + [0, 0, 60], distance: max(800, span * 2.1) * min(fit, 1.8),
+                                pitch: 36 * .pi / 180, yaw: yaw)
         case .gate:
-            guard let stand = focus else { return rig(for: .overview, layout: layout, focus: nil) }
-            let fwd = SIMD3<Float>(Float(cos(stand.heading)), 0, Float(-sin(stand.heading)))
+            guard let stand = focus else { return rig(for: .overview, layout: layout, focus: nil, aspect: aspect) }
+            let h = Float(stand.heading)
+            let fwd = SIMD3<Float>(cos(h), 0, -sin(h))
+            let left = SIMD3<Float>(-sin(h), 0, -cos(h))
             let length = Float(HubAircraftEnvelope.length(stand.maxCategory))
-            return HubCameraRig(target: f(stand.nose) - fwd * (length * 0.45), distance: length * 5.6,
-                                pitch: 30 * .pi / 180, yaw: yaw)
+            // Look at the aircraft's door side, a little from behind the
+            // wing, with the bridge and building beyond — shot B.
+            let view = simd_normalize(left * 0.82 - fwd * 0.57)
+            return HubCameraRig(target: f(stand.nose) - fwd * (length * 0.42) + left * 4,
+                                distance: length * 3.3 * min(fit, 1.7), pitch: 29 * .pi / 180,
+                                yaw: atan2(view.x, view.z))
         case .terminal:
-            return HubCameraRig(target: f(layout.interior.bounds.center) + [0, 0, -4],
-                                distance: Float(layout.terminal.width) * 1.25 + 120, pitch: 42 * .pi / 180, yaw: yaw)
+            let b = layout.interior.bounds
+            return HubCameraRig(target: f(b.center) + [Float(b.width) * 0.06, 0, Float(b.depth) * 0.1],
+                                distance: (Float(b.width) * 0.62 + 70) * min(fit, 1.6), pitch: 44 * .pi / 180, yaw: yaw)
         case .district:
-            return HubCameraRig(target: f(layout.focus.district), distance: 620, pitch: 40 * .pi / 180, yaw: yaw)
+            let stop = layout.serviceStops.first.map(f) ?? f(layout.focus.district)
+            return HubCameraRig(target: stop + [8, 0, 10], distance: 210 * min(fit, 1.7), pitch: 36 * .pi / 180,
+                                yaw: yaw)
         }
     }
 
+    private var aspect: Float {
+        let size = arView.bounds.size
+        return size.height > 0 ? Float(size.width / size.height) : 1.33
+    }
+
+    private var framedAspect: Float = 0
+    private var framedForRealBounds = false
+    private var focusIndex: Int?
+
     func show(_ shot: HubShot, focus: Int?, animated: Bool = true) {
         self.shot = shot
+        focusIndex = focus
+        framedAspect = aspect
+        framedForRealBounds = arView.bounds.height > 0
         let stand = focus.flatMap { $0 < layout.stands.count ? layout.stands[$0] : nil }
-        goal = Self.rig(for: shot, layout: layout, focus: stand)
+        goal = Self.rig(for: shot, layout: layout, focus: stand, aspect: framedAspect)
         if !animated { rig = goal; applyRig() }
         let cutaway = shot == .terminal
         layers[.terminalRoof]?.isEnabled = !cutaway
@@ -248,6 +273,14 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
     private func tick(_ dt: Float) {
         let dt = min(dt, 0.1)
         dynamics.update(dt)
+        // Reframe when the view changes shape (rotation, split view) unless
+        // the player has just moved the camera.
+        if abs(aspect - framedAspect) > 0.05
+            && (!framedForRealBounds || Date().timeIntervalSince(lastInteraction) > 1.5) {
+            let keepDrift = lastInteraction
+            show(shot, focus: focusIndex, animated: !framedForRealBounds ? false : true)
+            lastInteraction = keepDrift
+        }
         if idleDrift && Date().timeIntervalSince(lastInteraction) > 5 {
             goal.yaw += dt * 0.012
         }

@@ -253,7 +253,7 @@ final class HubDynamics {
             for k in 0..<(focused ? 5 : 2) {
                 let p = entity(models.person(k, crew: true)) { key in key == .skin(0) ? .skin(k) : key }
                 p.position = nose - fwd * (m.length * (0.18 + 0.12 * Float(k))) + right * (m.radius + 2 + Float(k % 2) * 3)
-                p.scale = [1.3, 1.3, 1.3]
+                p.scale = [1.8, 1.8, 1.8]
                 group.addChild(p)
             }
         }
@@ -268,7 +268,7 @@ final class HubDynamics {
                     default: key
                     }
                 }
-                person.scale = [1.3, 1.3, 1.3]
+                person.scale = [1.8, 1.8, 1.8]
                 let offset = Float(k) / Float(count)
                 walkers.append((person, stand.queue, offset, stage == .boarding ? 0.03 : -0.03))
                 group.addChild(person)
@@ -429,7 +429,7 @@ final class HubDynamics {
     func populateInterior(load: Double) {
         interiorCrowd.children.removeAll()
         var jitter = SplitMix(seed: 7)
-        let count = 24 + Int(70 * load)
+        let count = 46 + Int(110 * load)
         let hotspots = layout.interior.hotspots
         let total = hotspots.reduce(0) { $0 + $1.weight }
         for k in 0..<count {
@@ -450,7 +450,7 @@ final class HubDynamics {
             p.position = [Float(spot.position.x + (jitter.unit() - 0.5) * spread * 2), 1.7,
                           Float(spot.position.z + (jitter.unit() - 0.5) * spread)]
             p.orientation = simd_quatf(angle: Float(jitter.unit() * 6.28), axis: [0, 1, 0])
-            p.scale = [1.25, 1.25, 1.25]
+            p.scale = [2.0, 2.0, 2.0]
             interiorCrowd.addChild(p)
         }
     }

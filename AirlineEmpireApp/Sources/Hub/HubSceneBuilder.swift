@@ -92,6 +92,7 @@ struct HubSceneBuilder {
         case .road:
             flat(.ground, .asphalt, p, top: 0.12)
             laneDashes(p)
+            streetLamps(p)
         case .sidewalk: flat(.ground, .concreteLight, p, top: 0.22)
         case .parking:
             flat(.ground, .asphaltDark, p, top: 0.13)
@@ -166,6 +167,27 @@ struct HubSceneBuilder {
                 }
                 t += 10
             }
+        }
+    }
+
+    private mutating func streetLamps(_ p: HubPiece) {
+        let c = Self.f(p.center)
+        let alongX = p.size.x >= p.size.z
+        let length = Float(alongX ? p.size.x : p.size.z)
+        let width = Float(alongX ? p.size.z : p.size.x)
+        guard length > 60 else { return }
+        var t = -length / 2 + 20
+        var k = 0
+        while t < length / 2 - 10 {
+            let side: Float = k % 2 == 0 ? 1 : -1
+            let off = side * (width / 2 + 1.5)
+            let base: SIMD3<Float> = alongX ? [c.x + t, 0, c.z + off] : [c.x + off, 0, c.z + t]
+            let arm: SIMD3<Float> = alongX ? [0, 0, -side * 1.6] : [-side * 1.6, 0, 0]
+            with(.landside, .darkMetal) { $0.cylinder(base: base, radius: 0.14, height: 7.5, segments: 5, caps: false) }
+            with(.lamps, .lamp) { $0.box(center: base + arm + [0, 7.3, 0], size: [0.9, 0.3, 0.9]) }
+            with(.lamps, .lampPool) { $0.plane(center: base + arm * 2 + [0, 0.36, 0], width: 12, depth: 12) }
+            t += 42
+            k += 1
         }
     }
 
@@ -426,7 +448,7 @@ struct HubSceneBuilder {
 
     private mutating func tree(_ p: HubPiece) {
         let c = Self.f(p.center)
-        let s = Float(p.size.x) / 8, h = Float(p.size.y)
+        let s = Float(p.size.x) / 8 * 1.45, h = Float(p.size.y) * 1.4
         with(.nature, .trunk) { $0.cylinder(base: c + [0, 0.15, 0], radius: 0.32 * s, topRadius: 0.22 * s, height: h * 0.45, segments: 6, caps: false) }
         with(.nature, .tree(p.variant)) {
             $0.sphere(center: c + [0, h * 0.62, 0], radius: 3.4 * s, scale: [1, 1.08, 1], segments: 12, rings: 8)

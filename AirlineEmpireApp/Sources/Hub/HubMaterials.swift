@@ -233,7 +233,7 @@ final class HubMaterials {
             for y in 0..<h {
                 for x in 0..<w {
                     let d = hypot(CGFloat(x) - sx, (CGFloat(y) - sy) * 1.4) / radius
-                    if d < 1 { field[y * w + x] += (1 - d * d) * spot.weight * (0.45 + load) }
+                    if d < 1 { field[y * w + x] += (1 - d * d) * spot.weight * (0.95 + load) }
                 }
             }
         }
@@ -251,7 +251,7 @@ final class HubMaterials {
                 let a = CGFloat((c0.1 >> shift) & 0xFF), b = CGFloat((c1.1 >> shift) & 0xFF)
                 return a + (b - a) * t
             }
-            let alpha = min(1, v * 1.6) * 0.85
+            let alpha = min(1, v * 2.2) * 0.9
             pixels[i * 4] = UInt8(ch(16) * alpha)
             pixels[i * 4 + 1] = UInt8(ch(8) * alpha)
             pixels[i * 4 + 2] = UInt8(ch(0) * alpha)

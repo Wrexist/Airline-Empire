@@ -22,17 +22,26 @@ final class HubViewUITests: AEUITestCase {
         Thread.sleep(forTimeInterval: 6)
     }
 
+    /// The whole screen, in the orientation the player sees. `app.screenshot()`
+    /// returns a landscape iPad cropped into a portrait buffer.
+    private func frame(_ name: String) {
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        shot.name = Self.logPrefix + name
+        shot.lifetime = .keepAlways
+        add(shot)
+    }
+
     private func shot(_ name: String, _ id: String) {
         let button = app.buttons["ae-hub-shot-\(id)"]
         require(button, "shot button \(id)")
         button.tap()
         Thread.sleep(forTimeInterval: 4)
-        checkpoint(name)
+        frame(name)
     }
 
     func testHubShotsMatchTheReference() throws {
         try open()
-        checkpoint("HUB-01-overview")
+        frame("HUB-01-overview")
         XCTAssertTrue(app.descendants(matching: .any)["ae-hub-kpis"].exists)
         shot("HUB-02-gate", "gate")
         shot("HUB-03-terminal", "terminal")
@@ -41,7 +50,7 @@ final class HubViewUITests: AEUITestCase {
         require(night, "night toggle")
         night.tap()
         Thread.sleep(forTimeInterval: 3)
-        checkpoint("HUB-05-district-night")
+        frame("HUB-05-district-night")
         shot("HUB-06-overview-night", "overview")
         XCUIDevice.shared.orientation = .portrait
     }

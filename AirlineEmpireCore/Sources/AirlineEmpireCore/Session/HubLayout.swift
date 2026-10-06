@@ -705,33 +705,42 @@ struct HubPlanner {
         }
     }
 
-    /// Lays out walled houses on a grid and returns the service-route stops.
+    /// Lays out walled houses on a grid with streets between the lots, and
+    /// returns the service-route stops.
     mutating func houses(in r: HubRect) -> [HubVec] {
         var stops: [HubVec] = []
-        let lot: Double = 58
-        var row = 0
-        var z = r.minZ + lot / 2 + 6
-        while z < r.maxZ - lot / 2 {
-            var x = r.minX + lot / 2 + 6
-            var col = 0
-            while x < r.maxX - lot / 2 {
-                let center = HubVec(x, 0, z)
-                pieces.append(HubPiece(.lawn, center: center, size: HubVec(lot - 6, 0.3, lot - 6)))
-                pieces.append(HubPiece(.gardenWall, center: center, size: HubVec(lot - 6, 1.6, lot - 6)))
-                let houseSize = HubVec(jitter.range(18, 24), 2 * 3.6, jitter.range(14, 18))
-                pieces.append(HubPiece(.house, center: center + HubVec(-4, 0, -4), size: houseSize,
+        let lot: Double = 56
+        let street: Double = 14
+        let pitch = lot + street
+        let cols = max(1, Int((r.width - street) / pitch))
+        let rows = max(1, Int((r.depth - street) / pitch))
+        let x0 = r.minX + (r.width - Double(cols) * pitch + street) / 2
+        let z0 = r.minZ + (r.depth - Double(rows) * pitch + street) / 2
+        // Streets between the lots.
+        for c in 1..<max(2, cols) where c < cols {
+            let x = x0 + Double(c) * pitch - street / 2
+            road(HubRect(minX: x - street / 2 + 1, minZ: z0, maxX: x + street / 2 - 1, maxZ: z0 + Double(rows) * pitch - street))
+        }
+        for row in 1..<max(2, rows) where row < rows {
+            let z = z0 + Double(row) * pitch - street / 2
+            road(HubRect(minX: x0, minZ: z - street / 2 + 1, maxX: x0 + Double(cols) * pitch - street, maxZ: z + street / 2 - 1))
+        }
+        for row in 0..<rows {
+            for col in 0..<cols {
+                let center = HubVec(x0 + Double(col) * pitch + lot / 2, 0, z0 + Double(row) * pitch + lot / 2)
+                pieces.append(HubPiece(.lawn, center: center, size: HubVec(lot, 0.3, lot)))
+                pieces.append(HubPiece(.gardenWall, center: center, size: HubVec(lot - 2, 1.6, lot - 2)))
+                let houseSize = HubVec(jitter.range(24, 30), 2 * 3.6, jitter.range(17, 21))
+                pieces.append(HubPiece(.house, center: center + HubVec(-3, 0, -5), size: houseSize,
                                        variant: (row + col) % 3, label: nil))
                 if (row + col) % 2 == 0 {
-                    pieces.append(HubPiece(.pool, center: center + HubVec(12, 0, 14), size: HubVec(10, 0.3, 6)))
+                    pieces.append(HubPiece(.pool, center: center + HubVec(13, 0, 16), size: HubVec(11, 0.3, 7)))
                 }
-                tree(at: center + HubVec(lot / 2 - 10, 0, lot / 2 - 10), scale: 1)
-                tree(at: center + HubVec(-lot / 2 + 9, 0, lot / 2 - 9), scale: 0.8)
+                tree(at: center + HubVec(lot / 2 - 8, 0, lot / 2 - 8), scale: 1.1)
+                tree(at: center + HubVec(-lot / 2 + 7, 0, lot / 2 - 7), scale: 0.9)
+                tree(at: center + HubVec(-lot / 2 + 7, 0, -lot / 2 + 8), scale: 1)
                 if stops.count < 3 && (row + col) % 2 == 0 { stops.append(center) }
-                x += lot
-                col += 1
             }
-            z += lot
-            row += 1
         }
         return stops
     }

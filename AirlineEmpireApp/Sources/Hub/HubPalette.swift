@@ -48,8 +48,8 @@ struct HubPalette: Equatable {
     static let day = HubPalette(
         concrete: UIColor(hub: 0xA7AED6), concreteLight: UIColor(hub: 0xBAC2E3),
         asphalt: UIColor(hub: 0x6C779F), asphaltDark: UIColor(hub: 0x5A638C),
-        building: UIColor(hub: 0xE4E8F8), buildingShade: UIColor(hub: 0xCBD3EF),
-        roof: UIColor(hub: 0xF2F4FC), glass: UIColor(hub: 0x7DB6E4), glassOpacity: 0.55,
+        building: UIColor(hub: 0xDCE1F4), buildingShade: UIColor(hub: 0xC3CBEA),
+        roof: UIColor(hub: 0xE5E8F6), glass: UIColor(hub: 0x7DB6E4), glassOpacity: 0.55,
         grass: UIColor(hub: 0x6CC290), grassBright: UIColor(hub: 0x8AD6AB),
         tree: [UIColor(hub: 0x4DA16E), UIColor(hub: 0x5DB57C), UIColor(hub: 0x43925F)],
         trunk: UIColor(hub: 0x8A8FAE), marking: UIColor(hub: 0xF6F7FD), taxiLine: UIColor(hub: 0xF2C94C),
@@ -57,23 +57,23 @@ struct HubPalette: Equatable {
         windowDark: UIColor(hub: 0x56648F), windowLit: UIColor(hub: 0xFFE2B0), windowGlow: 0,
         water: UIColor(hub: 0x6FC6EA), background: UIColor(hub: 0xC9D0EC),
         skyTop: UIColor(hub: 0xF4F6FF), skyHorizon: UIColor(hub: 0xC7CEF0),
-        blob: UIColor(hub: 0x4A4F86), lampGlow: 0, keyIntensity: 3_200,
-        keyColor: UIColor(hub: 0xFFF6EA), iblExponent: 1.15)
+        blob: UIColor(hub: 0x4A4F86), lampGlow: 0, keyIntensity: 1_900,
+        keyColor: UIColor(hub: 0xFFF6EA), iblExponent: 0.7)
 
     static let night = HubPalette(
-        concrete: UIColor(hub: 0x4E5070), concreteLight: UIColor(hub: 0x5D5F82),
-        asphalt: UIColor(hub: 0x34375A), asphaltDark: UIColor(hub: 0x2A2C4C),
-        building: UIColor(hub: 0x6E7398), buildingShade: UIColor(hub: 0x5A5F86),
-        roof: UIColor(hub: 0x7A7FA3), glass: UIColor(hub: 0x4B87CB), glassOpacity: 0.6,
-        grass: UIColor(hub: 0x2F5C4C), grassBright: UIColor(hub: 0x3C7059),
-        tree: [UIColor(hub: 0x24493E), UIColor(hub: 0x2C5847), UIColor(hub: 0x1F4036)],
+        concrete: UIColor(hub: 0x5A5C80), concreteLight: UIColor(hub: 0x6A6C90),
+        asphalt: UIColor(hub: 0x45486E), asphaltDark: UIColor(hub: 0x3A3C60),
+        building: UIColor(hub: 0x8A8FB8), buildingShade: UIColor(hub: 0x6E739E),
+        roof: UIColor(hub: 0x7F84AE), glass: UIColor(hub: 0x4B87CB), glassOpacity: 0.6,
+        grass: UIColor(hub: 0x3A6E5C), grassBright: UIColor(hub: 0x4A8A6C),
+        tree: [UIColor(hub: 0x2E5E4C), UIColor(hub: 0x376B55), UIColor(hub: 0x285444)],
         trunk: UIColor(hub: 0x3E4160), marking: UIColor(hub: 0xB9BEDD), taxiLine: UIColor(hub: 0xF2C94C),
         houseRoof: UIColor(hub: 0x2A3664), houseWood: UIColor(hub: 0x6E4E3E),
         windowDark: UIColor(hub: 0xFFD9A0), windowLit: UIColor(hub: 0xFFD9A0), windowGlow: 1.6,
-        water: UIColor(hub: 0x2F6FB0), background: UIColor(hub: 0x23265A),
+        water: UIColor(hub: 0x3A8FE0), background: UIColor(hub: 0x2A2E68),
         skyTop: UIColor(hub: 0x2D3175), skyHorizon: UIColor(hub: 0x1C1E4A),
-        blob: UIColor(hub: 0x0C0D26), lampGlow: 2.4, keyIntensity: 600,
-        keyColor: UIColor(hub: 0x9AA6FF), iblExponent: 0.2)
+        blob: UIColor(hub: 0x0C0D26), lampGlow: 2.4, keyIntensity: 1_300,
+        keyColor: UIColor(hub: 0xA4AEFF), iblExponent: 0.55)
 
     static func livery(_ livery: Livery) -> UIColor {
         switch livery {
