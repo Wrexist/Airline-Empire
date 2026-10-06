@@ -168,3 +168,34 @@ palette, camera, chrome and behaviour**; matching its *micro-detail*
 (individual faces, shelf stock, cabin windows at gate distance) needs authored
 models. The `HubAssetSlot` seam exists so an artist can replace any procedural
 piece with a USDZ without touching layout or simulation code.
+
+## 10. Status — first capture loop (2026-10-06)
+
+Six render-and-compare passes on the `hub-view-review` workflow (iPad Pro 13"
+landscape, iPhone 17 Pro Max portrait), each frame set laid beside the
+matching reference frame.
+
+**Matches the reference**
+
+- Composition of all five shots, camera language (isometric-reading
+  perspective, 24° FOV, diagonal axes), periwinkle-graded palette, matte clay
+  materials with soft shadows and contact-shadow decals.
+- The whole dashboard: frosted top bar with search, hub chip, live clock,
+  bell and profile; three KPI cards; vertical map controls; aircraft inspector
+  with profile render and fact rows; turnaround timeline with the tug riding
+  the progress line and a next-action card; departures/arrivals/delays board;
+  world-anchored glass callout, pins and pills.
+- Gate: jet bridges, gate signs, pink stand envelope, pulse rings, turnaround
+  vehicles and crew, passenger queue with cyan glow while boarding.
+- Terminal cutaway with heatmap pools; district of walled villas with the
+  glowing service route; indigo night with warm windows and lamp pools.
+
+**Still short of the reference**
+
+- Micro-detail: the reference's figures, shop stock, cabin windows and
+  façade structure are richer than procedural primitives. The `HubAssetSlot`
+  plan (§9) — authored USDZ models swapped in by piece kind — closes this.
+- The terminal interior is sparser than the reference's two-storey hall.
+- No baked global illumination: corners are lit evenly where the reference
+  pools soft occlusion.
+- Not yet measured on a physical device (Phase H5).
