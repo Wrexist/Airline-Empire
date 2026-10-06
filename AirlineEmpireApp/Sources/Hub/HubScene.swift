@@ -179,7 +179,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         case .terminal:
             // Close on the security hall, the busiest pool of the heatmap.
             let hot = layout.interior.hotspots.first.map { f($0.position) } ?? f(layout.interior.bounds.center)
-            return HubCameraRig(target: hot + [6, 0, 6], distance: 175 * min(fit, 1.6), pitch: 40 * .pi / 180, yaw: yaw)
+            return HubCameraRig(target: hot + [4, 0, 2], distance: 125 * min(fit, 1.6), pitch: 47 * .pi / 180, yaw: yaw)
         case .district:
             let stop = layout.serviceStops.first.map(f) ?? f(layout.focus.district)
             return HubCameraRig(target: stop + [6, 0, 8], distance: 175 * min(fit, 1.7), pitch: 33 * .pi / 180,

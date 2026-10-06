@@ -88,8 +88,9 @@ final class HubMaterials {
             m.metallic = .init(floatLiteral: 0.1)
             m.blending = .transparent(opacity: .init(floatLiteral: p.glassOpacity))
             if night {
+                // Lit interiors: the reference's night is warm windows.
                 m.emissiveColor = .init(color: p.windowLit)
-                m.emissiveIntensity = 0.35
+                m.emissiveIntensity = 1.1
             }
             return m
         case .grass: return matte(p.grass, roughness: 1)
