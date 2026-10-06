@@ -135,8 +135,11 @@ deterministic and unit-tested on Linux. The app only renders them.
 
 ## 7. Platform
 
-- `ARView(cameraMode: .nonAR)` in a `UIViewRepresentable`. Runs on the current
-  iOS 17 floor; no AR session, no camera permission.
+- `ARView(cameraMode: .nonAR)` in a `UIViewRepresentable`; no AR session, no
+  camera permission. **The Hub View needs iOS 18** (the app's floor stays
+  17): the iOS 26 SDK makes the CGImage-to-texture and CGImage-to-environment
+  generators iOS 18-only, and `OpacityComponent` is iOS 18. On iOS 17 the
+  "View hub in 3D" button simply does not appear.
 - Meshes: `MeshResource.generateBox(…cornerRadius:)` plus a small
   `MeshDescriptor` generator for lathed (fuselage, engines, tower) and extruded
   (wings, fins, roofs) shapes, because `generateCylinder`/`generateCone` need

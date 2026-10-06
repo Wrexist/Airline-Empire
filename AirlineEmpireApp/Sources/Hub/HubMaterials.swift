@@ -13,6 +13,7 @@ enum HubMaterialKey: Hashable {
     case office(floors: Int), screen
 }
 
+@available(iOS 18.0, *)
 @MainActor
 final class HubMaterials {
     private(set) var palette: HubPalette
@@ -141,15 +142,15 @@ final class HubMaterials {
 
     private func texture(_ name: String, _ image: () -> CGImage?) -> TextureResource {
         if let t = textures[name] { return t }
-        let t = image().flatMap { try? TextureResource.generate(from: $0, options: .init(semantic: .color)) }
-            ?? (try! TextureResource.generate(from: Self.solid(), options: .init(semantic: .color)))
+        let t = image().flatMap { try? TextureResource(image: $0, options: .init(semantic: .color)) }
+            ?? (try! TextureResource(image: Self.solid(), options: .init(semantic: .color)))
         textures[name] = t
         return t
     }
 
     func makeHeatmap(hotspots: [(x: CGFloat, y: CGFloat, weight: CGFloat)], load: CGFloat) {
         heatmap = Self.heatImage(hotspots: hotspots, load: load)
-            .flatMap { try? TextureResource.generate(from: $0, options: .init(semantic: .color)) }
+            .flatMap { try? TextureResource(image: $0, options: .init(semantic: .color)) }
         cache[.heat] = nil
     }
 

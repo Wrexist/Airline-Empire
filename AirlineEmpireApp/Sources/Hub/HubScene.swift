@@ -59,6 +59,7 @@ struct HubProjectedAnchor: Identifiable, Equatable {
 
 /// Owns the RealityKit view and everything in it. SwiftUI talks to it
 /// through `HubScreenModel`; it never reads `GameState` itself.
+@available(iOS 18.0, *)
 @MainActor
 final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
     let arView: ARView
@@ -111,9 +112,11 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
     }
 
     private func applyLighting(_ palette: HubPalette) {
-        if let sky = HubMaterials.skyImage(palette),
-           let env = try? EnvironmentResource.generate(fromEquirectangular: sky) {
-            arView.environment.lighting.resource = env
+        if let sky = HubMaterials.skyImage(palette) {
+            Task { @MainActor [weak self] in
+                guard let env = try? await EnvironmentResource(equirectangular: sky) else { return }
+                self?.arView.environment.lighting.resource = env
+            }
         }
         arView.environment.lighting.intensityExponent = palette.iblExponent
         arView.environment.background = .color(palette.background)

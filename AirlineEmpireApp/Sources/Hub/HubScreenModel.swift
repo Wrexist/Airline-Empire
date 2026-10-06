@@ -6,6 +6,7 @@ import AirlineEmpireCore
 /// and the latest read of the simulation. One per presentation.
 @MainActor
 @Observable
+@available(iOS 18.0, *)
 final class HubScreenModel {
     enum Lighting: String, CaseIterable {
         case auto, day, night

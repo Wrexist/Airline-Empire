@@ -7,6 +7,7 @@ enum AEFeature {
     static let hubView3D = true
 }
 
+@available(iOS 18.0, *)
 private struct HubSceneView: UIViewRepresentable {
     let scene: HubSceneController
 
@@ -16,6 +17,7 @@ private struct HubSceneView: UIViewRepresentable {
 
 /// The 3D hub: the player's airport as an isometric clay diorama under a
 /// light glass dashboard (docs/HUB_VIEW_3D.md).
+@available(iOS 18.0, *)
 struct HubScreen: View {
     let airport: AirportCode
     @Environment(GameController.self) private var controller
@@ -72,6 +74,7 @@ struct HubScreen: View {
     }
 }
 
+@available(iOS 18.0, *)
 private struct HubDashboard: View {
     @Bindable var model: HubScreenModel
     let dismiss: () -> Void

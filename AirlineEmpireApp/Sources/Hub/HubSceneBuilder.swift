@@ -12,6 +12,7 @@ enum HubLayer: String, CaseIterable {
 /// Turns a `HubLayout` into static RealityKit geometry
 /// (docs/HUB_VIEW_3D.md §5). Repeated pieces are batched per layer and
 /// material; only the gate signs (text) are separate entities.
+@available(iOS 18.0, *)
 @MainActor
 struct HubSceneBuilder {
     let layout: HubLayout

@@ -6,6 +6,7 @@ import AirlineEmpireCore
 /// Something that moves along a path forever: ambient air traffic, cars,
 /// the service cart. Speeds are per segment so a jet can float down the
 /// approach, brake on the runway and crawl along the taxiway.
+@available(iOS 18.0, *)
 @MainActor
 final class HubMover {
     let entity: Entity
@@ -74,6 +75,7 @@ struct HubAnchor: Identifiable, Equatable {
 }
 
 /// Everything in the scene that follows the simulation or moves.
+@available(iOS 18.0, *)
 @MainActor
 final class HubDynamics {
     let root = Entity()
@@ -237,8 +239,12 @@ final class HubDynamics {
         }
         // Cones at the nose and engines.
         if busy {
-            for p in [nose + fwd * 2, nose - fwd * (m.length * 0.35) + right * (m.span * 0.34),
-                      nose - fwd * (m.length * 0.35) - right * (m.span * 0.34), nose - fwd * (m.length + 2)] {
+            let engineLine: SIMD3<Float> = nose - fwd * (m.length * 0.35)
+            let engineOffset: SIMD3<Float> = right * (m.span * 0.34)
+            let noseCone: SIMD3<Float> = nose + fwd * 2
+            let tailCone: SIMD3<Float> = nose - fwd * (m.length + 2)
+            let conePositions: [SIMD3<Float>] = [noseCone, engineLine + engineOffset, engineLine - engineOffset, tailCone]
+            for p in conePositions {
                 let c = entity(models.cone())
                 c.position = p + [0, 0.1, 0]
                 group.addChild(c)

@@ -85,6 +85,7 @@ extension HubTurnaroundStage {
 
 // MARK: - Top bar
 
+@available(iOS 18.0, *)
 struct HubTopBar: View {
     let model: HubScreenModel
     let wide: Bool
@@ -259,6 +260,7 @@ struct HubKPIRow: View {
 
 // MARK: - Controls
 
+@available(iOS 18.0, *)
 struct HubControls: View {
     let model: HubScreenModel
 
@@ -302,6 +304,7 @@ struct HubControls: View {
     }
 }
 
+@available(iOS 18.0, *)
 struct HubShotPicker: View {
     let model: HubScreenModel
 
@@ -410,6 +413,7 @@ struct HubAircraftProfile: View {
     }
 }
 
+@available(iOS 18.0, *)
 struct HubInspector: View {
     let model: HubScreenModel
     let occupant: HubStandOccupant
@@ -488,6 +492,7 @@ struct HubInspector: View {
 
 // MARK: - Turnaround timeline
 
+@available(iOS 18.0, *)
 struct HubTimeline: View {
     let model: HubScreenModel
     let compact: Bool
@@ -601,6 +606,7 @@ struct HubTimeline: View {
 
 // MARK: - Departures board
 
+@available(iOS 18.0, *)
 struct HubBoard: View {
     @Bindable var model: HubScreenModel
 

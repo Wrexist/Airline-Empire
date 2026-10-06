@@ -13,6 +13,7 @@ struct HubPart {
 /// cached per shape so every jet of a category shares its meshes and only
 /// the livery material differs. Local frame: forward +x, up +y, right +z,
 /// origin at the centre of the footprint on the ground.
+@available(iOS 18.0, *)
 @MainActor
 final class HubModels {
     private var cache: [String: [HubPart]] = [:]

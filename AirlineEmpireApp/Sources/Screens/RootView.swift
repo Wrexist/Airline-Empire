@@ -249,14 +249,16 @@ struct GameShell: View {
         }
         // The 3D Hub View (docs/HUB_VIEW_3D.md), over everything.
         .fullScreenCover(item: hubRequest) { request in
-            HubScreen(airport: request.airport)
-                .environment(controller)
+            if #available(iOS 18.0, *) {
+                HubScreen(airport: request.airport)
+                    .environment(controller)
+            }
         }
         // UI tests open the player's home hub directly: `-AEUITestOpenHub`.
         .task {
             guard ProcessInfo.processInfo.arguments.contains("-AEUITestOpenHub") else { return }
             for _ in 0..<100 {
-                if let home = controller.snapshot?.playerAirline?.homeAirport {
+                if #available(iOS 18.0, *), let home = controller.snapshot?.playerAirline?.homeAirport {
                     controller.openHub(home)
                     return
                 }

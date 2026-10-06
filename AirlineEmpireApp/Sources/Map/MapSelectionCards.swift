@@ -219,7 +219,7 @@ struct MapAirportCard: View {
                 }
             }
         }
-        if AEFeature.hubView3D, airport.isPlayerHome || airport.servedByPlayer {
+        if #available(iOS 18.0, *), AEFeature.hubView3D, airport.isPlayerHome || airport.servedByPlayer {
             Button {
                 controller.openHub(airport.code)
             } label: {
