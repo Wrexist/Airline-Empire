@@ -219,6 +219,17 @@ struct MapAirportCard: View {
                 }
             }
         }
+        if AEFeature.hubView3D, airport.isPlayerHome || airport.servedByPlayer {
+            Button {
+                controller.openHub(airport.code)
+            } label: {
+                Label("View \(airport.code.raw) hub in 3D", systemImage: "cube.transparent")
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.aePress)
+            .foregroundStyle(.white)
+            .accessibilityIdentifier("ae-airport-open-hub")
+        }
         let locked = isLocked
         Button {
             // A locked destination answers with why — the Pro sheet for the

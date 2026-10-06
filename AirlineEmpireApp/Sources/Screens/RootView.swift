@@ -247,6 +247,22 @@ struct GameShell: View {
         .onChange(of: controller.mapRouteRequest) { _, request in
             if request != nil { selection = .home }
         }
+        // The 3D Hub View (docs/HUB_VIEW_3D.md), over everything.
+        .fullScreenCover(item: hubRequest) { request in
+            HubScreen(airport: request.airport)
+                .environment(controller)
+        }
+        // UI tests open the player's home hub directly: `-AEUITestOpenHub`.
+        .task {
+            guard ProcessInfo.processInfo.arguments.contains("-AEUITestOpenHub") else { return }
+            for _ in 0..<100 {
+                if let home = controller.snapshot?.playerAirline?.homeAirport {
+                    controller.openHub(home)
+                    return
+                }
+                try? await Task.sleep(for: .milliseconds(200))
+            }
+        }
         // Above whichever tab is open: a milestone should not depend on the
         // player happening to be on the Home screen when it lands.
         .overlay(alignment: .top) {
@@ -290,6 +306,10 @@ struct GameShell: View {
         case .finance: FinanceView()
         case .world: OperationsView()
         }
+    }
+
+    private var hubRequest: Binding<GameController.HubRequest?> {
+        Binding(get: { controller.hubRequest }, set: { controller.hubRequest = $0 })
     }
 
     /// A sidebar binds an optional selection; the shell always has a tab, so

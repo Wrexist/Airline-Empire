@@ -1,0 +1,86 @@
+name: Hub view review
+# Renders the 3D Hub View (docs/HUB_VIEW_3D.md) in every reference shot on
+# real simulators and uploads the frames for side-by-side comparison with
+# the reference clip.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/hub-view-review.yml'
+      - 'AirlineEmpireApp/Sources/Hub/**'
+      - 'AirlineEmpireApp/UITests/HubViewUITests.swift'
+      - 'AirlineEmpireCore/Sources/AirlineEmpireCore/Session/HubLayout.swift'
+      - 'AirlineEmpireCore/Sources/AirlineEmpireCore/Session/HubSnapshot.swift'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: hub-view-review-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  capture:
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [ipad, iphone]
+    runs-on: macos-26
+    timeout-minutes: 40
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Generate an earned campaign from the current simulation
+        working-directory: AirlineEmpireCore
+        run: |
+          swift run -c release ae-rival-probe 2039 1825 ARN LHR-CDG:0.88 --snapshot-hour 12 --save ../AirlineEmpireApp/UITests/Fixtures/store-campaign.json > ../store-campaign-ledger.txt
+          grep -E '^saved |^final:|^   player routes:' ../store-campaign-ledger.txt
+      - name: Generate Xcode project
+        working-directory: AirlineEmpireApp
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Boot the native display
+        id: sim
+        env:
+          CAPTURE_DEVICE: ${{ matrix.device }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+          devices = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devices', 'available', '--json']))['devices']
+          matches = [d for runtime, ds in devices.items() if runtime.endswith('iOS-26-2') for d in ds
+                     if d.get('isAvailable') and ((os.environ['CAPTURE_DEVICE'] == 'iphone' and d['name'] == 'iPhone 17 Pro Max')
+                     or (os.environ['CAPTURE_DEVICE'] == 'ipad' and 'iPad Pro' in d['name'] and '13-inch' in d['name']))]
+          if not matches: raise SystemExit('Required native display is not installed')
+          d = matches[0]
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f: f.write('id=' + d['udid'] + '\n')
+          print(d['name'], d['udid'])
+          subprocess.run(['xcrun', 'simctl', 'boot', d['udid']], check=True)
+          subprocess.run(['xcrun', 'simctl', 'bootstatus', d['udid'], '-b'], check=True)
+          subprocess.run(['xcrun', 'simctl', 'status_bar', d['udid'], 'override', '--time', '9:41', '--dataNetwork', 'wifi', '--wifiMode', 'active', '--wifiBars', '3', '--batteryState', 'charged', '--batteryLevel', '100'], check=True)
+          PY
+      - name: Capture the hub shots
+        working-directory: AirlineEmpireApp
+        run: |
+          set -o pipefail
+          xcodebuild test -project AirlineEmpire.xcodeproj -scheme AirlineEmpire \
+            -destination 'platform=iOS Simulator,id=${{ steps.sim.outputs.id }}' \
+            -parallel-testing-enabled NO -only-testing:AirlineEmpireUITests/HubViewUITests \
+            CODE_SIGNING_ALLOWED=NO -resultBundlePath HubReview.xcresult 2>&1 | tee ../hub-review-log.txt
+      - name: Export the frames
+        if: always()
+        run: |
+          mkdir -p captures
+          if [ -d AirlineEmpireApp/HubReview.xcresult ]; then
+            xcrun xcresulttool export attachments --path AirlineEmpireApp/HubReview.xcresult --output-path captures
+          fi
+          grep -E "error:|warning: .*Hub" hub-review-log.txt | head -200 > hub-review-errors.txt || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hub-review-${{ matrix.device }}
+          path: |
+            captures/
+            hub-review-log.txt
+            hub-review-errors.txt
+          retention-days: 30

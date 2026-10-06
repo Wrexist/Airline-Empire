@@ -31,6 +31,18 @@ final class GameController {
     }
     var mapRouteRequest: MapRouteRequest?
 
+    /// The 3D Hub View presentation (docs/HUB_VIEW_3D.md). Set to open the
+    /// hub for an airport; the shell presents it full screen.
+    struct HubRequest: Identifiable, Equatable {
+        let id = UUID()
+        let airport: AirportCode
+    }
+    var hubRequest: HubRequest?
+
+    func openHub(_ airport: AirportCode) {
+        hubRequest = HubRequest(airport: airport)
+    }
+
     func showRouteOnMap(_ routeID: RouteID) {
         mapRouteRequest = MapRouteRequest(routeID: routeID)
     }
