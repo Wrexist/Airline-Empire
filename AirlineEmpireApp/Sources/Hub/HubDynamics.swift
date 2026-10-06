@@ -309,7 +309,7 @@ final class HubDynamics {
             overlays.addChild(e)
         }
         // Two pulse rings at the wing root.
-        for _ in 0..<2 {
+        for _ in 0..<3 {
             let ring = entity(models.ring())
             ring.components.set(OpacityComponent(opacity: 0))
             overlays.addChild(ring)
@@ -486,11 +486,13 @@ final class HubDynamics {
             let fwd = current.entity.transform.matrix.columns.0
             let base = current.entity.position - SIMD3(fwd.x, 0, fwd.z) * (m.length * 0.08)
             for (k, ring) in pulse.enumerated() {
-                let phase = (time * 0.5 + Float(k) * 0.5).truncatingRemainder(dividingBy: 1)
-                let size = m.span * (0.25 + 0.55 * phase)
-                ring.position = base + [0, 0.05, 0]
+                let phase = (time * 0.45 + Float(k) / 3).truncatingRemainder(dividingBy: 1)
+                let size = m.span * (0.3 + 0.5 * phase)
+                // Stacked slightly so the rings read as a halo around the
+                // wing root and engine, as in reference shot B.
+                ring.position = base + [0, 0.05 + Float(k) * 0.9 + m.axisY * 0.3, 0]
                 ring.scale = [size, 1, size]
-                ring.components.set(OpacityComponent(opacity: (1 - phase) * 0.9))
+                ring.components.set(OpacityComponent(opacity: min(1, (1 - phase) * 1.3)))
             }
         }
     }

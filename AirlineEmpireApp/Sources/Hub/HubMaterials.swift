@@ -109,7 +109,8 @@ final class HubMaterials {
         case .cone: return matte(HubPalette.cone, roughness: 0.7)
         case .white: return matte(night ? p.building : UIColor(hub: 0xF1F3FA), roughness: 0.55)
         case .safety: return unlit(HubPalette.safety)
-        case .pulse: return unlit(HubPalette.pulse, opacity: 0.55, texture: texture("ring", Self.ringImage))
+        case .pulse: return unlit(HubPalette.queueGlow.mixed(with: HubPalette.pulse, 0.45), opacity: 1,
+                                  texture: texture("ring", Self.ringImage))
         case .queueGlow: return unlit(HubPalette.queueGlow, opacity: 0.85, texture: texture("strip", Self.stripImage))
         case .routeGlow: return unlit(HubPalette.queueGlow, opacity: 0.95)
         case .pinGlow: return unlit(HubPalette.pin, opacity: 0.4, texture: texture("blob", Self.blobImage))
@@ -188,8 +189,10 @@ final class HubMaterials {
             ctx.drawRadialGradient(g, startCenter: CGPoint(x: 128, y: 128), startRadius: 0,
                                    endCenter: CGPoint(x: 128, y: 128), endRadius: 128, options: [])
             ctx.setStrokeColor(UIColor.white.cgColor)
-            ctx.setLineWidth(3)
-            ctx.strokeEllipse(in: CGRect(x: 40, y: 40, width: 176, height: 176))
+            ctx.setLineWidth(7)
+            ctx.strokeEllipse(in: CGRect(x: 36, y: 36, width: 184, height: 184))
+            ctx.setLineWidth(4)
+            ctx.strokeEllipse(in: CGRect(x: 72, y: 72, width: 112, height: 112))
         }
     }
 

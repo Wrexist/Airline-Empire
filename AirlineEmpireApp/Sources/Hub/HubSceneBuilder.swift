@@ -227,11 +227,14 @@ struct HubSceneBuilder {
         let glassTop = h - 4
         // Plinth and floors.
         with(.airside, .buildingShade) { $0.box(center: c, size: [w, 1.6, d]) }
-        // Side walls (solid, white).
-        with(.terminalShell, .building) {
+        // Side walls (solid, white) stay up in the cutaway: the doll's-house
+        // frame of reference shot C.
+        with(.airside, .building) {
             $0.box(center: [c.x - w / 2 + 2, 1.6, c.z], size: [4, glassTop - 1.6, d])
             $0.box(center: [c.x + w / 2 - 2, 1.6, c.z], size: [4, glassTop - 1.6, d])
-            // Floor band between levels on both long faces.
+        }
+        with(.terminalShell, .building) {
+            // Floor band between levels on the landside face.
             $0.box(center: [c.x, 9.5, c.z + d / 2 - 0.4], size: [w, 1.0, 1.0])
         }
         with(.airside, .building) {
@@ -410,24 +413,56 @@ struct HubSceneBuilder {
         let w = Float(p.size.x), d = Float(p.size.z)
         let storey: Float = 3.6
         let v = p.variant
+        // Ground floor: a white box glazed on the garden (south) and east
+        // faces; upper floor set back, under a pitched navy roof with a flat
+        // canopy wing — the reference's modern villa.
+        let upper = c + [-w * 0.12, storey, -d * 0.08]
+        let upperW = w * 0.62, upperD = d * 0.78
         with(.landside, .building) {
-            $0.box(center: c, size: [w, storey, d])
-            $0.box(center: c + [-w * 0.12, storey, -d * 0.05], size: [w * 0.66, storey, d * 0.8])
+            $0.box(center: c + [0, 0, -d * 0.25], size: [w, storey, d * 0.5])
+            $0.box(center: c + [-w * 0.35, 0, d * 0.25], size: [w * 0.3, storey, d * 0.5])
+            $0.box(center: upper, size: [upperW, storey, upperD])
+            // Balcony slab.
+            $0.box(center: upper + [0, -0.3, upperD / 2 + 1.2], size: [upperW * 0.9, 0.35, 2.4])
+        }
+        with(.landside, .glass) {
+            $0.box(center: c + [w * 0.15, 0.1, d * 0.25], size: [w * 0.7 - 0.4, storey - 0.4, d * 0.5 - 0.4])
+            $0.box(center: upper + [upperW * 0.1, 0.5, upperD / 2], size: [upperW * 0.55, storey * 0.7, 0.2])
+        }
+        with(.landside, .white) {
+            // Window frames: mullions on the glass box.
+            for k in 0..<4 {
+                let x = c.x - w * 0.2 + Float(k) * w * 0.233
+                $0.box(center: [x, c.y, c.z + d / 2 - 0.1], size: [0.25, storey, 0.3])
+            }
+            $0.box(center: c + [w * 0.15, storey - 0.35, d * 0.25], size: [w * 0.7, 0.35, d * 0.5])
+            // Balcony rail.
+            $0.box(center: upper + [0, 0.05, upperD / 2 + 2.3], size: [upperW * 0.9, 1.0, 0.12])
         }
         with(.landside, .houseWood) {
-            $0.box(center: c + [w * 0.34, 0, d / 2 - 0.1], size: [w * 0.3, storey * 0.95, 0.3])
-            if v == 1 { $0.box(center: c + [-w * 0.12, storey, d * 0.35], size: [w * 0.3, storey, 0.3]) }
+            // Vertical slats beside the entrance.
+            for k in 0..<7 {
+                $0.box(center: c + [-w * 0.48 + Float(k) * 0.45, 0, d / 2 + 0.05], size: [0.2, storey * 0.92, 0.2])
+            }
+            $0.box(center: upper + [-upperW / 2 - 0.05, 0, 0], size: [0.2, storey * 0.9, upperD * 0.6])
+            if v == 1 { $0.box(center: upper + [upperW * 0.3, 0, upperD / 2 + 0.05], size: [upperW * 0.3, storey * 0.9, 0.25]) }
         }
         with(.landside, .houseRoof) {
-            $0.gable(center: c + [-w * 0.12, storey * 2, -d * 0.05], width: w * 0.66 + 1.4, depth: d * 0.8 + 1.4,
-                     height: 3.0, yaw: v == 2 ? .pi / 2 : 0)
-            $0.box(center: c + [w * 0.22, storey, 0], size: [w * 0.6, 0.5, d + 0.8])
+            $0.gable(center: upper + [0, storey, 0], width: upperW + 1.6, depth: upperD + 1.6,
+                     height: 3.2, yaw: v == 2 ? .pi / 2 : 0)
+            $0.box(center: c + [w * 0.15, storey, d * 0.2], size: [w * 0.75, 0.45, d * 0.62])
         }
         with(.landside, .windowDark) {
-            $0.box(center: c + [-w * 0.15, 0.5, d / 2], size: [w * 0.4, storey * 0.75, 0.25])
-            $0.box(center: c + [-w * 0.12, storey + 0.6, d * 0.35 + 0.05], size: [w * 0.4, storey * 0.6, 0.25])
-            $0.box(center: c + [w / 2, 0.6, 0], size: [0.25, storey * 0.6, d * 0.4])
+            $0.box(center: upper + [-upperW * 0.3, 0.6, upperD / 2 + 0.02], size: [upperW * 0.25, storey * 0.55, 0.2])
+            $0.box(center: c + [-w / 2 - 0.02, 0.7, -d * 0.2], size: [0.2, storey * 0.55, d * 0.3])
         }
+        // A car on the drive.
+        let car = c + [w * 0.25, 0.3, d / 2 + 6]
+        with(.landside, .cloth(v * 3)) {
+            $0.box(center: car, size: [1.9, 0.75, 4.4])
+            $0.box(center: car + [0, 0.75, -0.3], size: [1.7, 0.6, 2.4])
+        }
+        with(.landside, .windowDark) { $0.box(center: car + [0, 0.8, -0.3], size: [1.74, 0.42, 2.44], top: false) }
         blob(c, w: w * 1.5, d: d * 1.5, y: 0.34)
     }
 

@@ -174,15 +174,15 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
             // wing, with the bridge and building beyond — shot B.
             let view = simd_normalize(left * 0.82 - fwd * 0.57)
             return HubCameraRig(target: f(stand.nose) - fwd * (length * 0.42) + left * 4,
-                                distance: length * 3.3 * min(fit, 1.7), pitch: 29 * .pi / 180,
+                                distance: length * 2.5 * min(fit, 1.7), pitch: 24 * .pi / 180,
                                 yaw: atan2(view.x, view.z))
         case .terminal:
-            let b = layout.interior.bounds
-            return HubCameraRig(target: f(b.center) + [Float(b.width) * 0.06, 0, Float(b.depth) * 0.1],
-                                distance: (Float(b.width) * 0.62 + 70) * min(fit, 1.6), pitch: 44 * .pi / 180, yaw: yaw)
+            // Close on the security hall, the busiest pool of the heatmap.
+            let hot = layout.interior.hotspots.first.map { f($0.position) } ?? f(layout.interior.bounds.center)
+            return HubCameraRig(target: hot + [6, 0, 6], distance: 175 * min(fit, 1.6), pitch: 40 * .pi / 180, yaw: yaw)
         case .district:
             let stop = layout.serviceStops.first.map(f) ?? f(layout.focus.district)
-            return HubCameraRig(target: stop + [8, 0, 10], distance: 210 * min(fit, 1.7), pitch: 36 * .pi / 180,
+            return HubCameraRig(target: stop + [6, 0, 8], distance: 175 * min(fit, 1.7), pitch: 33 * .pi / 180,
                                 yaw: yaw)
         }
     }

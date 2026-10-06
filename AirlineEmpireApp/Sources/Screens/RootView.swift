@@ -256,7 +256,11 @@ struct GameShell: View {
         }
         // UI tests open the player's home hub directly: `-AEUITestOpenHub`.
         .task {
-            guard ProcessInfo.processInfo.arguments.contains("-AEUITestOpenHub") else { return }
+            // Once per launch: the shell reappears when the hub is closed,
+            // and a second open would make "close" impossible to test.
+            guard ProcessInfo.processInfo.arguments.contains("-AEUITestOpenHub"),
+                  !GameShell.didAutoOpenHub else { return }
+            GameShell.didAutoOpenHub = true
             for _ in 0..<100 {
                 if #available(iOS 18.0, *), let home = controller.snapshot?.playerAirline?.homeAirport {
                     controller.openHub(home)
@@ -309,6 +313,8 @@ struct GameShell: View {
         case .world: OperationsView()
         }
     }
+
+    @MainActor static var didAutoOpenHub = false
 
     private var hubRequest: Binding<GameController.HubRequest?> {
         Binding(get: { controller.hubRequest }, set: { controller.hubRequest = $0 })

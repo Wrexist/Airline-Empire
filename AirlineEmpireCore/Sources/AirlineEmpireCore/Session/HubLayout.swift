@@ -780,11 +780,16 @@ struct HubPlanner {
         }
         inside.append(HubPiece(.queueBarrier, center: HubVec(secX - 16, 0, floor.minZ + 30 + 10),
                                size: HubVec(14, 1, 22), variant: 1))
-        // Retail and seating airside east.
-        let shopX = floor.minX + w * 0.72
-        for i in 0..<3 {
-            inside.append(HubPiece(.shopShelf, center: HubVec(shopX + Double(i) * 9, 0, floor.maxZ - 14),
-                                   size: HubVec(7, 2.2, 1.4), variant: i, label: i == 0 ? "Duty Free" : nil))
+        // Retail and seating airside east: a duty-free block of shelving
+        // and a café counter.
+        let shopX = floor.minX + w * 0.68
+        let shopNames = ["Duty Free", "Café", "Books", "Travel"]
+        for i in 0..<8 {
+            let col = i % 4, row = i / 4
+            inside.append(HubPiece(.shopShelf,
+                                   center: HubVec(shopX + Double(col) * 10, 0, floor.maxZ - 10 - Double(row) * 7),
+                                   size: HubVec(8, 2.4, 1.6), variant: i,
+                                   label: row == 0 ? shopNames[col] : nil))
         }
         for i in 0..<6 {
             inside.append(HubPiece(.seatRow, center: HubVec(floor.maxX - 40 + Double(i % 3) * 10, 0,
