@@ -118,16 +118,36 @@ struct HubLayoutTests {
         #expect(layout.serviceRoute.points.count >= 5)
         #expect(layout.pieces(.tree).count > 60)
         #expect(!layout.interior.pieces.filter { $0.kind == .securityLane }.isEmpty)
-        #expect(layout.interior.hotspots.count == 3)
+        #expect(layout.interior.hotspots.count >= 3 && layout.interior.hotspots.count % 3 == 0)
+        // The reference's hall: kiosks, e-gates, shops, security arches, a
+        // stair and a departure board.
+        for kind in [HubPieceKind.kiosk, .securityLane, .shopShelf, .shopFront, .gondola, .cafeCounter,
+                     .metalDetector, .luggageTrolley, .electricCart, .escalator, .flightBoard, .wayfindingSign] {
+            #expect(layout.interior.pieces.contains { $0.kind == kind }, "no \(kind) in the hall")
+        }
     }
 
-    @Test func biggerTerminalsGetMoreCheckInAndSecurity() {
+    @Test func biggerTerminalsGetMoreKiosksAndSecurity() {
         let small = HubLayout.make(airport: Self.catalog.airport("GOT")!)
         let big = HubLayout.make(airport: Self.catalog.airport("ATL")!)
         func count(_ l: HubLayout, _ k: HubPieceKind) -> Int { l.interior.pieces.filter { $0.kind == k }.count }
         #expect(count(big, .securityLane) > count(small, .securityLane))
-        #expect(count(big, .checkInDesk) > count(small, .checkInDesk))
+        #expect(count(big, .kiosk) > count(small, .kiosk))
         #expect(big.terminal.width > small.terminal.width)
+    }
+
+    /// Interior furniture stays inside the hall's floor.
+    @Test func interiorStaysInsideTheHall() {
+        for spec in Self.allAirports.prefix(30) {
+            let interior = HubLayout.make(airport: spec).interior
+            let hall = interior.bounds
+            for piece in interior.pieces {
+                let r = piece.groundBounds
+                #expect(r.minX >= hall.minX - 0.5 && r.maxX <= hall.maxX + 0.5 &&
+                        r.minZ >= hall.minZ - 0.5 && r.maxZ <= hall.maxZ + 0.5,
+                        "\(piece.kind) outside the hall at \(spec.code)")
+            }
+        }
     }
 
     @Test func loungeAppearsOnlyWhenBought() {

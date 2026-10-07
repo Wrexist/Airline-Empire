@@ -51,6 +51,7 @@ public enum HubPieceKind: String, CaseIterable, Codable, Sendable {
     // Terminal interior (cutaway only)
     case floorSlab, mezzanine, checkInDesk, kiosk, securityLane, queueBarrier
     case shopShelf, seatRow, flightBoard, escalator, loungeBlock
+    case shopFront, gondola, cafeCounter, metalDetector, luggageTrolley, electricCart, wayfindingSign
 }
 
 /// One placed piece: an oriented box footprint with a height, plus a variant
@@ -751,66 +752,110 @@ struct HubPlanner {
 
     // Interior ---------------------------------------------------------------
 
+    /// The cutaway hall (reference shot C), as repeating 70 m bays so a long
+    /// terminal is as busy as the reference's short one. Each bay, back
+    /// (airside, low z) to front (street, high z): a pharmacy under the
+    /// mezzanine, the stair up to it, a row of e-gates under the departure
+    /// board, a convenience store and café on the right, self-service kiosks
+    /// with a queue maze at the front left, security arches, trolleys and
+    /// carts. Bigger terminals get more bays, so more of everything.
     mutating func planInterior(terminal t: HubRect) -> HubTerminalInterior {
         var inside: [HubPiece] = []
         let floor = HubRect(minX: t.minX + 2, minZ: t.minZ + 2, maxX: t.maxX - 2, maxZ: t.maxZ - 2)
         inside.append(HubPiece(.floorSlab, center: HubVec(floor.center.x, 0, floor.center.z),
                                size: HubVec(floor.width, 0.4, floor.depth)))
-        // Mezzanine over the airside third, escalators down to it.
-        inside.append(HubPiece(.mezzanine, center: HubVec(floor.center.x, 8, floor.minZ + 12),
-                               size: HubVec(floor.width, 0.6, 22)))
-        let w = floor.width
-        let checkInRows = max(2, min(8, spec.terminalCapacityPerDay / 30_000 + 2))
-        let lanes = max(2, min(10, spec.terminalCapacityPerDay / 25_000 + 2))
-        // Check-in islands: landside half, west portion.
-        let ciX0 = floor.minX + 12, ciX1 = floor.minX + w * 0.42
-        for i in 0..<checkInRows {
-            let x = ciX0 + (ciX1 - ciX0) * (Double(i) + 0.5) / Double(checkInRows)
-            inside.append(HubPiece(.checkInDesk, center: HubVec(x, 0, floor.maxZ - 26), size: HubVec(4, 1.1, 16),
-                                   label: String(UnicodeScalar(UInt8(65 + i)))))
-            inside.append(HubPiece(.kiosk, center: HubVec(x - 5, 0, floor.maxZ - 12), size: HubVec(1, 1.8, 1)))
-            inside.append(HubPiece(.queueBarrier, center: HubVec(x + 6, 0, floor.maxZ - 26), size: HubVec(6, 1, 14)))
+        let mezzDepth = min(14, floor.depth * 0.26)
+        inside.append(HubPiece(.mezzanine, center: HubVec(floor.center.x, 6, floor.minZ + mezzDepth / 2),
+                               size: HubVec(floor.width, 0.6, mezzDepth)))
+        let bayWidth: Double = 70
+        let bays = max(1, Int(floor.width / bayWidth))
+        let bayW = floor.width / Double(bays)
+        // Kiosks scale with throughput: two rows per bay, 3–5 per row.
+        let perRow = max(3, min(5, spec.terminalCapacityPerDay / (40_000 * bays) + 3))
+        let back = floor.minZ, front = floor.maxZ
+        let depth = floor.depth
+        func z(_ fraction: Double) -> Double { back + depth * fraction }
+        var hotspots: [(position: HubVec, weight: Double)] = []
+        let shopNames = ["Nord Care", "Café", "Market"]
+        for b in 0..<bays {
+            let x0 = floor.minX + Double(b) * bayW
+            func x(_ fraction: Double) -> Double { x0 + bayW * fraction }
+            // Pharmacy under the mezzanine, back left.
+            for i in 0..<3 {
+                inside.append(HubPiece(.shopShelf, center: HubVec(x(0.06 + Double(i) * 0.075), 0, back + 1.2),
+                                       size: HubVec(4.8, 2.4, 1.2), variant: i))
+            }
+            inside.append(HubPiece(.shopFront, center: HubVec(x(0.16), 0, back + mezzDepth - 0.5),
+                                   size: HubVec(bayW * 0.25, 4.6, 0.6), label: shopNames[0]))
+            inside.append(HubPiece(.cafeCounter, center: HubVec(x(0.2), 0, back + mezzDepth - 4),
+                                   size: HubVec(5, 1.1, 1.2), variant: 1))
+            // Stair up to the mezzanine.
+            inside.append(HubPiece(.escalator, center: HubVec(x(0.43), 3, back + mezzDepth + 7),
+                                   size: HubVec(4, 6, 14)))
+            // E-gates in a row under the departure board.
+            let gates = 6
+            for g in 0..<gates {
+                inside.append(HubPiece(.securityLane, center: HubVec(x(0.52) + Double(g) * 2.4, 0, z(0.36)),
+                                       size: HubVec(1, 1.3, 2.6), variant: g))
+            }
+            inside.append(HubPiece(.flightBoard, center: HubVec(x(0.62), 8.4, back + 0.6),
+                                   size: HubVec(12, 3.4, 0.4)))
+            inside.append(HubPiece(.wayfindingSign, center: HubVec(x(0.43), 5.2, back + mezzDepth + 1.5),
+                                   size: HubVec(4.5, 0.9, 0.2)))
+            inside.append(HubPiece(.wayfindingSign, center: HubVec(x(0.6), 5.2, z(0.3)),
+                                   size: HubVec(4.5, 0.9, 0.2), variant: 1))
+            // Convenience store on the right: shelves on the back and side
+            // walls, two island gondolas, café counter at the front.
+            for i in 0..<3 {
+                inside.append(HubPiece(.shopShelf, center: HubVec(x(0.8 + Double(i) * 0.065), 0, back + mezzDepth + 1.2),
+                                       size: HubVec(4.2, 2.6, 1.2), variant: i + 3,
+                                       label: i == 0 ? shopNames[2] : nil))
+            }
+            for i in 0..<3 {
+                inside.append(HubPiece(.shopShelf, center: HubVec(x(0.975), 0, z(0.45 + Double(i) * 0.1)),
+                                       size: HubVec(4.2, 2.6, 1.2), yaw: .pi / 2, variant: i + 6))
+            }
+            for i in 0..<2 {
+                inside.append(HubPiece(.gondola, center: HubVec(x(0.82 + Double(i) * 0.07), 0, z(0.5)),
+                                       size: HubVec(1.4, 1.4, 3.6), variant: i))
+            }
+            inside.append(HubPiece(.cafeCounter, center: HubVec(x(0.85), 0, z(0.72)),
+                                   size: HubVec(7, 1.1, 1.3), label: shopNames[1]))
+            // Kiosks at the front left, with their queue maze in front.
+            for row in 0..<2 {
+                for k in 0..<perRow {
+                    inside.append(HubPiece(.kiosk, center: HubVec(x(0.1) + Double(k) * 4.2, 0, z(0.55 + Double(row) * 0.12)),
+                                           size: HubVec(0.7, 1.7, 0.6), variant: k))
+                }
+            }
+            inside.append(HubPiece(.queueBarrier, center: HubVec(x(0.2), 0, z(0.86)),
+                                   size: HubVec(Double(perRow) * 4, 1, depth * 0.14)))
+            // Security arches, trolleys and carts.
+            for a in 0..<2 {
+                inside.append(HubPiece(.metalDetector, center: HubVec(x(0.66) + Double(a) * 4, 0, z(0.6)),
+                                       size: HubVec(1.4, 2.4, 1), variant: a))
+            }
+            for i in 0..<2 {
+                inside.append(HubPiece(.luggageTrolley, center: HubVec(x(0.56) + Double(i) * 3, 0, z(0.66)),
+                                       size: HubVec(1.6, 1.2, 1), variant: i))
+                inside.append(HubPiece(.electricCart, center: HubVec(x(0.45) + Double(i) * 4, 0, front - 5),
+                                       size: HubVec(2.8, 1.4, 1.5), variant: i))
+            }
+            for i in 0..<2 {
+                inside.append(HubPiece(.seatRow, center: HubVec(x(0.66), 0, z(0.82 + Double(i) * 0.08)),
+                                       size: HubVec(6, 0.9, 1.2)))
+            }
+            hotspots += [
+                (HubVec(x(0.58), 0, z(0.42)), 1.0),
+                (HubVec(x(0.2), 0, z(0.68)), 0.75),
+                (HubVec(x(0.86), 0, z(0.55)), 0.4),
+            ]
         }
-        // Security: centre, lanes along x.
-        let secX = floor.minX + w * 0.55
-        for i in 0..<lanes {
-            let z = floor.minZ + 30 + Double(i) * min(5, (floor.depth - 40) / Double(lanes))
-            inside.append(HubPiece(.securityLane, center: HubVec(secX, 0, z), size: HubVec(10, 2.4, 2.6),
-                                   variant: i))
-        }
-        inside.append(HubPiece(.queueBarrier, center: HubVec(secX - 16, 0, floor.minZ + 30 + 10),
-                               size: HubVec(14, 1, 22), variant: 1))
-        // Retail and seating airside east: a duty-free block of shelving
-        // and a café counter.
-        let shopX = floor.minX + w * 0.68
-        let shopNames = ["Duty Free", "Café", "Books", "Travel"]
-        for i in 0..<8 {
-            let col = i % 4, row = i / 4
-            inside.append(HubPiece(.shopShelf,
-                                   center: HubVec(shopX + Double(col) * 10, 0, floor.maxZ - 10 - Double(row) * 7),
-                                   size: HubVec(8, 2.4, 1.6), variant: i,
-                                   label: row == 0 ? shopNames[col] : nil))
-        }
-        for i in 0..<6 {
-            inside.append(HubPiece(.seatRow, center: HubVec(floor.maxX - 40 + Double(i % 3) * 10, 0,
-                                                             floor.minZ + 34 + Double(i / 3) * 8),
-                                   size: HubVec(8, 0.9, 1.4)))
-        }
-        inside.append(HubPiece(.flightBoard, center: HubVec(floor.center.x + 20, 6, floor.minZ + 26),
-                               size: HubVec(12, 4, 0.4)))
-        inside.append(HubPiece(.flightBoard, center: HubVec(floor.minX + 30, 4, floor.maxZ - 4),
-                               size: HubVec(10, 3, 0.4), variant: 1))
-        inside.append(HubPiece(.escalator, center: HubVec(floor.center.x - 14, 4, floor.minZ + 30),
-                               size: HubVec(4, 8, 18), yaw: 0))
         if facilities.lounge > 0 {
-            inside.append(HubPiece(.loungeBlock, center: HubVec(floor.maxX - 24, 8.3, floor.minZ + 12),
-                                   size: HubVec(30 + Double(facilities.lounge) * 10, 3, 18), variant: facilities.lounge))
+            inside.append(HubPiece(.loungeBlock, center: HubVec(floor.maxX - 24, 6.3, floor.minZ + mezzDepth / 2),
+                                   size: HubVec(30 + Double(facilities.lounge) * 10, 3, mezzDepth - 2),
+                                   variant: facilities.lounge))
         }
-        let hotspots: [(position: HubVec, weight: Double)] = [
-            (HubVec(secX - 16, 0, floor.minZ + 40), 1.0),
-            (HubVec((ciX0 + ciX1) / 2, 0, floor.maxZ - 22), 0.7),
-            (HubVec(shopX + 8, 0, floor.maxZ - 20), 0.45),
-        ]
         return HubTerminalInterior(bounds: floor, pieces: inside, hotspots: hotspots)
     }
 }

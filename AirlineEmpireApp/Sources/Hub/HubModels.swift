@@ -17,6 +17,40 @@ struct HubPart {
 @MainActor
 final class HubModels {
     private var cache: [String: [HubPart]] = [:]
+    /// Authored replacements (docs/HUB_MODEL_LIST.md); procedural otherwise.
+    let library = HubAssetLibrary()
+
+    /// The authored model for the first available slot, else the procedural
+    /// parts. Slots are tried in order, so variants fall back to the base.
+    func make(_ slots: [String], _ parts: @autoclosure () -> [HubPart], materials: HubMaterials,
+              remap: (HubMaterialKey) -> HubMaterialKey = { $0 }) -> Entity {
+        if let authored = library.instance(anyOf: slots, materials: materials, remap: remap) {
+            return authored
+        }
+        return entity(parts(), materials: materials, remap: remap)
+    }
+
+    static func slot(_ v: Vehicle) -> [String] {
+        switch v {
+        case .fuelTruck: ["vehicle_fuelTruck"]
+        case .tug: ["vehicle_tug"]
+        case .beltLoader: ["vehicle_beltLoader"]
+        case .cateringTruck: ["vehicle_serviceTruck"]
+        case .baggageTrain: ["vehicle_baggageTrain"]
+        case .bus: ["vehicle_bus"]
+        case .car: ["vehicle_car_sedan", "vehicle_car_suv"]
+        case .golfCart: ["vehicle_golfCart"]
+        case .tanker: ["vehicle_tankTrailer", "vehicle_fuelTruck"]
+        case .serviceVan: ["vehicle_serviceCar", "vehicle_serviceTruck"]
+        }
+    }
+
+    static func personSlots(_ variant: Int, crew: Bool) -> [String] {
+        if crew { return ["person_crew"] }
+        let letters = ["a", "b", "c", "d"]
+        let first = letters[abs(variant) % 4]
+        return ["person_passenger_\(first)"] + letters.filter { $0 != first }.map { "person_passenger_\($0)" }
+    }
 
     private func parts(_ key: String, _ build: () -> [(HubMaterialKey, HubMeshBatch)]) -> [HubPart] {
         if let hit = cache[key] { return hit }

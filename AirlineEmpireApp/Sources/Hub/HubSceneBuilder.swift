@@ -21,10 +21,109 @@ struct HubSceneBuilder {
     private var batches: [HubLayer: [HubMaterialKey: HubMeshBatch]] = [:]
     private var extras: [(HubLayer, Entity)] = []
 
-    init(layout: HubLayout, materials: HubMaterials) {
+    let library: HubAssetLibrary?
+
+    init(layout: HubLayout, materials: HubMaterials, library: HubAssetLibrary? = nil) {
         self.layout = layout
         self.materials = materials
+        self.library = library
     }
+
+    // MARK: Authored models (docs/HUB_MODEL_LIST.md)
+
+    /// How an authored model stands in for a piece: which files, which way
+    /// its +X front should face, and how it is fitted to the footprint.
+    private enum Fit { case footprint, height, none, stretchX }
+
+    private func authored(_ p: HubPiece) -> (slots: [String], yaw: Float, fit: Fit, layer: HubLayer)? {
+        // A building's authored front is +X; these turn it to face where the
+        // layout needs it (north = apron, south = street).
+        let faceNorth: Float = .pi / 2, faceSouth: Float = -.pi / 2
+        switch p.kind {
+        case .tree:
+            let base = ["tree_round", "tree_tall", "tree_small"][p.variant % 3]
+            return ([base, "tree_round"], 0, .height, .nature)
+        case .house:
+            let variants = ["house_villa", "house_villa_b", "house_villa_c"]
+            let first = variants[p.variant % 3]
+            return ([first] + variants.filter { $0 != first }, faceSouth, .footprint, .landside)
+        case .gardenWall: return (["house_garden"], faceSouth, .footprint, .landside)
+        case .pool: return (["pool"], 0, .footprint, .landside)
+        case .hangar: return (["hangar"], faceNorth, .footprint, .airside)
+        case .controlTower: return (["controlTower"], faceSouth, .height, .airside)
+        case .cargoShed: return (["cargoShed"], faceNorth, .footprint, .airside)
+        case .fuelTank: return (["fuelTank"], 0, .footprint, .airside)
+        case .officeBlock:
+            return (p.variant >= 4 ? ["midrise_apartment", "office_low"] : ["office_low", "midrise_apartment"],
+                    faceSouth, .footprint, .landside)
+        case .jetBridge: return (["jetBridge"], 0, .stretchX, .airside)
+        case .gateSign: return (["gateSign"], 0.61, .none, .airside)
+        case .terminalHall: return (["terminal_hall"], faceSouth, .footprint, .airside)
+        case .parkedCar: return (["vehicle_car_sedan", "vehicle_car_suv"], 0, .none, .landside)
+        case .kiosk: return (["kiosk_selfService"], faceSouth, .none, .interior)
+        case .checkInDesk: return (["checkInDesk"], faceSouth, .none, .interior)
+        case .securityLane: return (["eGate"], 0, .none, .interior)
+        case .shopShelf: return (["shop_shelving"], faceSouth, .none, .interior)
+        case .seatRow: return (["seatRow"], 0, .none, .interior)
+        default: return nil
+        }
+    }
+
+    /// Places the authored model for `p` if one ships. Returns false to fall
+    /// back to the procedural builder.
+    private mutating func placeAuthored(_ p: HubPiece, floor: Float = 0) -> Bool {
+        guard let library, let spec = authored(p) else { return false }
+        let colour = p.kind == .parkedCar ? HubMaterialKey.cloth([0, 1, 5, 6, 7, 5][p.variant % 6]) : nil
+        guard let e = library.instance(anyOf: spec.slots, materials: materials, remap: { key in
+            if let colour, case .cloth = key { return colour }
+            return key
+        }) else { return false }
+        let c = Self.f(p.center)
+        switch spec.fit {
+        case .footprint:
+            // Rotated a quarter turn the footprint's axes swap.
+            let quarter = abs(sin(spec.yaw)) > 0.5
+            HubAssetLibrary.fit(e, footprint: quarter ? [Float(p.size.z), Float(p.size.x)]
+                                                      : [Float(p.size.x), Float(p.size.z)])
+        case .height:
+            HubAssetLibrary.fit(e, footprint: [1, 1], height: Float(p.size.y) * 1.4)
+        case .stretchX:
+            let ext = e.visualBounds(relativeTo: e).extents
+            if ext.x > 0.1 { e.scale = [Float(p.size.x) / ext.x, 1, 1] }
+        case .none:
+            break
+        }
+        e.position = [c.x, c.y + floor, c.z]
+        e.orientation = simd_quatf(angle: Float(p.yaw) + spec.yaw, axis: [0, 1, 0])
+        if p.kind == .terminalHall {
+            // Prims named `cutaway…` are the roof and street wall the
+            // terminal shot lifts off.
+            for child in Array(e.children) where child.name.lowercased().hasPrefix("cutaway") {
+                let world = child.transformMatrix(relativeTo: nil)
+                child.removeFromParent()
+                child.setTransformMatrix(world, relativeTo: nil)
+                extras.append((.terminalShell, child))
+            }
+        }
+        if p.kind == .gateSign, let label = p.label {
+            let number = label.replacingOccurrences(of: "Gate ", with: "")
+            let text = ModelEntity(mesh: .generateText(number, extrusionDepth: 0.05,
+                                                       font: .systemFont(ofSize: 0.9, weight: .bold)),
+                                   materials: [materials[.lamp]])
+            text.components.set(HubMaterialTag(key: .lamp))
+            text.position = [0.4, 0.1, 0.25]
+            e.addChild(text)
+        }
+        extras.append((spec.layer, e))
+        if [.tree, .house, .hangar, .officeBlock, .terminalHall, .controlTower].contains(p.kind) {
+            blob(c, w: Float(p.size.x) * 1.4, d: Float(p.size.z) * 1.4)
+        }
+        return true
+    }
+
+    /// Whether an authored terminal interior ships (then the procedural
+    /// shell furniture — floor, mezzanine, stairs, boards — steps aside).
+    private var hasAuthoredInterior: Bool { library?.has("terminal_hall_interior") ?? false }
 
     private mutating func with(_ layer: HubLayer, _ key: HubMaterialKey, _ body: (inout HubMeshBatch) -> Void) {
         var batch = batches[layer]?[key] ?? HubMeshBatch()
@@ -37,6 +136,7 @@ struct HubSceneBuilder {
         ground()
         for piece in layout.pieces { place(piece) }
         for piece in layout.interior.pieces { placeInterior(piece) }
+        placeAuthoredInterior()
         runwayMarkings()
         standMarkings()
 
@@ -57,6 +157,44 @@ struct HubSceneBuilder {
         for (layer, entity) in extras { roots[layer]?.addChild(entity) }
         roots[.interior]?.isEnabled = false
         return roots
+    }
+
+    /// Tiles the authored glass concourse module along a pier.
+    private mutating func placeConcourse(_ p: HubPiece) -> Bool {
+        guard let library, library.has("concourse_glass") else { return false }
+        let c = Self.f(p.center)
+        let length = Float(p.size.z), width = Float(p.size.x)
+        let count = max(1, Int((length / 30).rounded()))
+        let module = length / Float(count)
+        for i in 0..<count {
+            let isTip = i == 0
+            guard let e = library.instance(anyOf: isTip ? ["concourse_glass_end", "concourse_glass"] : ["concourse_glass"],
+                                           materials: materials) else { continue }
+            let ext = e.visualBounds(relativeTo: e).extents
+            let sz = ext.z > 0.1 ? width / ext.z : 1
+            e.scale = [ext.x > 0.1 ? module / ext.x : 1, sz, sz]
+            // +X along the pier towards the apron (north).
+            e.orientation = simd_quatf(angle: .pi / 2, axis: [0, 1, 0])
+            let z = c.z - length / 2 + module * (Float(i) + 0.5)
+            e.position = [c.x, 0, z]
+            extras.append((.airside, e))
+        }
+        blob(c, w: width * 2.2, d: length * 1.1, y: 0.12)
+        return true
+    }
+
+    private mutating func placeAuthoredInterior() {
+        guard let library, let e = library.instance("terminal_hall_interior", materials: materials) else { return }
+        let b = layout.interior.bounds
+        let ext = e.visualBounds(relativeTo: e).extents
+        // Authored front (+X) faces the street (south).
+        if ext.x > 0.1, ext.z > 0.1 {
+            let s = min(Float(b.width) / ext.z, Float(b.depth) / ext.x)
+            e.scale = [s, s, s]
+        }
+        e.orientation = simd_quatf(angle: -.pi / 2, axis: [0, 1, 0])
+        e.position = [Float(b.center.x), 0, Float(b.center.z)]
+        extras.append((.interior, e))
     }
 
     // MARK: Ground
@@ -82,6 +220,8 @@ struct HubSceneBuilder {
     // MARK: Pieces
 
     private mutating func place(_ p: HubPiece) {
+        if placeAuthored(p) { return }
+        if p.kind == .pier, placeConcourse(p) { return }
         let c = Self.f(p.center)
         let w = Float(p.size.x), h = Float(p.size.y), d = Float(p.size.z)
         let yaw = Float(p.yaw)
@@ -562,89 +702,183 @@ struct HubSceneBuilder {
     // MARK: Interior (cutaway)
 
     private mutating func placeInterior(_ p: HubPiece) {
+        if placeAuthored(p, floor: 1.7) { return }
+        if hasAuthoredInterior, [.floorSlab, .mezzanine, .escalator, .flightBoard].contains(p.kind) { return }
         let c = Self.f(p.center)
         let w = Float(p.size.x), h = Float(p.size.y), d = Float(p.size.z)
         let yaw = Float(p.yaw)
+        let fl: Float = 1.7 // floor level inside the hall
+        let base = SIMD3<Float>(c.x, fl, c.z)
         switch p.kind {
         case .floorSlab:
             with(.interior, .concreteLight) { $0.box(center: c + [0, 1.6, 0], size: [w, 0.1, d]) }
+            // Walkway strips, slightly darker, as in the reference's floor.
+            with(.interior, .concrete) {
+                $0.box(center: c + [0, 1.7, d * 0.18], size: [w - 4, 0.02, 3])
+                $0.box(center: c + [0, 1.7, -d * 0.12], size: [w - 4, 0.02, 3])
+            }
         case .mezzanine:
-            with(.interior, .building) { $0.box(center: c, size: [w, 0.6, d], bottom: true) }
-            with(.interior, .glass) { $0.box(center: c + [0, 0.6, d / 2 - 0.1], size: [w, 1.1, 0.15]) }
+            with(.interior, .building) {
+                $0.box(center: c, size: [w, 0.6, d], bottom: true)
+                // Back wall up to the roof, where the departure board hangs.
+                $0.box(center: c + [0, -c.y + fl, -d / 2 - 0.2], size: [w, 14, 0.4])
+            }
+            with(.interior, .glass) { $0.box(center: c + [0, 0.6, d / 2 - 0.1], size: [w, 1.1, 0.12]) }
+            with(.interior, .darkMetal) { $0.box(center: c + [0, 1.7, d / 2 - 0.1], size: [w, 0.08, 0.16]) }
             with(.interior, .white) {
                 var x = c.x - w / 2 + 6
                 while x < c.x + w / 2 {
-                    $0.box(center: [x, 1.7, c.z + d / 2 - 1], size: [0.6, c.y - 1.7, 0.6])
+                    $0.box(center: [x, fl, c.z + d / 2 - 1], size: [0.7, c.y - fl, 0.7])
                     x += 12
                 }
             }
-        case .checkInDesk:
-            // Counter, bag belt, and the tall branded backboard behind it.
-            with(.interior, .white) { $0.box(center: c + [0, 1.7, 0], size: [w, h, d]) }
-            with(.interior, .darkMetal) { $0.box(center: c + [-w * 0.7, 1.7, 0], size: [w * 0.5, 0.5, d]) }
-            with(.interior, .houseRoof) { $0.box(center: c + [-w * 1.1, 1.7, 0], size: [0.5, 3.6, d + 1]) }
-            with(.interior, .screen) {
-                var z = c.z - d / 2 + 2
-                while z < c.z + d / 2 {
-                    $0.box(center: [c.x, 1.7 + h + 0.05, z], size: [0.1, 0.6, 0.9])
-                    $0.box(center: [c.x - w * 1.1 + 0.3, 4.2, z], size: [0.05, 0.7, 1.6])
-                    z += 3
+        case .escalator:
+            // A straight stair with glass sides, rising from the hall floor
+            // (front, +z) to the mezzanine (back, -z).
+            let rise: Float = 4.9, run = d // hall floor (1.7) to mezzanine deck (6.6)
+            let steps = 18
+            with(.interior, .white) { b in
+                for i in 0..<steps {
+                    let t = Float(i) / Float(steps)
+                    b.box(center: [c.x, fl + rise * t - 0.05, c.z + run / 2 - run * t - run / Float(steps) / 2],
+                          size: [w, rise / Float(steps) + 0.05, run / Float(steps)])
                 }
             }
-        case .kiosk:
-            with(.interior, .white) { $0.box(center: c + [0, 1.7, 0], size: [w, h, d]) }
-            with(.interior, .screen) { $0.box(center: c + [0, 1.7 + h * 0.55, d / 2], size: [w * 0.8, h * 0.35, 0.05]) }
-        case .securityLane:
-            with(.interior, .white) {
-                $0.box(center: c + [-2, 1.7, -d / 2 + 0.2], size: [0.3, h, 0.3])
-                $0.box(center: c + [-2, 1.7, d / 2 - 0.2], size: [0.3, h, 0.3])
-                $0.box(center: c + [-2, 1.7 + h, 0], size: [0.4, 0.3, d])
+            with(.interior, .glass) { b in
+                for side: Float in [-1, 1] {
+                    b.transform = HubMeshBatch.translation([c.x + side * (w / 2 + 0.05), fl, c.z])
+                        * HubMeshBatch.roll(atan2(rise, run))
+                    b.box(center: [0, 0.4, 0], size: [0.1, 1.1, sqrt(rise * rise + run * run)])
+                    b.transform = matrix_identity_float4x4
+                }
             }
-            with(.interior, .darkMetal) { $0.box(center: c + [2, 1.7, 0], size: [w * 0.6, 0.9, 0.9]) }
-            with(.interior, .pulse) { $0.box(center: c + [-2, 1.72, 0], size: [0.6, 0.02, d - 0.8]) }
+        case .checkInDesk:
+            with(.interior, .white) { $0.box(center: base, size: [w, h, d], yaw: yaw) }
+            with(.interior, .darkMetal) { $0.box(center: base + [0, h, 0], size: [w + 0.2, 0.08, d + 0.2], yaw: yaw) }
+        case .kiosk:
+            // White rounded pedestal with a tilted blue screen.
+            with(.interior, .white) {
+                $0.box(center: base, size: [0.55, 1.1, 0.45])
+                $0.box(center: base + [0, 1.1, -0.05], size: [0.7, 0.55, 0.3])
+            }
+            with(.interior, .screen) { b in
+                b.transform = HubMeshBatch.translation(base + [0, 1.38, 0.12]) * HubMeshBatch.roll(-0.45)
+                b.box(center: [0, -0.22, 0], size: [0.6, 0.44, 0.04])
+                b.transform = matrix_identity_float4x4
+            }
+        case .securityLane:
+            // An e-gate: white pedestal with glass flaps.
+            with(.interior, .white) { $0.box(center: base, size: [0.35, h, d]) }
+            with(.interior, .glass) {
+                $0.box(center: base + [0.5, 0.5, 0], size: [0.7, 0.8, 0.06])
+            }
+            with(.interior, .screen) { $0.box(center: base + [0, h, d / 2 - 0.3], size: [0.3, 0.25, 0.05]) }
+        case .metalDetector:
+            with(.interior, .white) {
+                $0.box(center: base + [-w / 2, 0, 0], size: [0.25, h, d])
+                $0.box(center: base + [w / 2, 0, 0], size: [0.25, h, d])
+                $0.box(center: base + [0, h, 0], size: [w + 0.25, 0.3, d])
+            }
         case .queueBarrier:
             with(.interior, .darkMetal) {
                 let rows = max(2, Int(d / 2.4))
                 for r in 0...rows {
                     let z = c.z - d / 2 + Float(r) * d / Float(rows)
-                    $0.box(center: [c.x, 1.7 + 0.9, z], size: [w, 0.08, 0.06])
+                    // Alternate gaps at the ends make the maze.
+                    let shift: Float = r % 2 == 0 ? 0.8 : -0.8
+                    $0.box(center: [c.x + shift, fl + 0.9, z], size: [w - 1.6, 0.06, 0.05])
                     for k in 0...3 {
-                        $0.cylinder(base: [c.x - w / 2 + Float(k) * w / 3, 1.7, z], radius: 0.06, height: 1, segments: 4, caps: false)
+                        $0.cylinder(base: [c.x + shift - (w - 1.6) / 2 + Float(k) * (w - 1.6) / 3, fl, z],
+                                    radius: 0.05, height: 0.95, segments: 5, caps: false)
                     }
                 }
             }
         case .shopShelf:
-            with(.interior, .houseWood) { $0.box(center: c + [0, 1.7, 0], size: [w, h, d], yaw: yaw) }
-            with(.interior, .cloth(p.variant + 2)) {
-                for k in 0..<3 {
-                    $0.box(center: c + [0, 1.9 + Float(k) * 0.7, d / 2 - 0.1], size: [w * 0.9, 0.35, 0.3], yaw: yaw)
+            with(.interior, .houseWood) {
+                $0.box(center: base, size: [w, h, d], yaw: yaw)
+            }
+            // Rows of stock in mixed colours, on the front face.
+            let colours = [2, 3, 4, 6, 0]
+            for k in 0..<4 {
+                let key = HubMaterialKey.cloth(colours[(k + p.variant) % colours.count])
+                let face = SIMD3<Float>(sin(yaw), 0, cos(yaw)) * (d / 2 + 0.02)
+                with(.interior, key) {
+                    $0.box(center: base + face + [0, 0.35 + Float(k) * (h - 0.5) / 4, 0],
+                           size: [w * 0.9, (h - 0.5) / 4 * 0.6, 0.18], yaw: yaw)
                 }
             }
-            if let label = p.label {
-                let text = ModelEntity(mesh: .generateText(label, extrusionDepth: 0.05,
-                                                           font: .systemFont(ofSize: 1.2, weight: .bold)),
-                                       materials: [materials[.houseRoof]])
-                text.components.set(HubMaterialTag(key: .houseRoof))
-                text.position = c + [-w / 2, 1.7 + h + 0.6, d / 2]
-                extras.append((.interior, text))
+            if let label = p.label { sign(label, at: base + [0, h + 0.5, d / 2 + 0.1], width: w) }
+        case .shopFront:
+            // Dark fascia band with the shop's name, over an open front.
+            with(.interior, .darkMetal) {
+                $0.box(center: base + [0, h - 1.1, 0], size: [w, 1.1, d])
+                $0.box(center: base + [-w / 2, 0, 0], size: [0.4, h, d])
+                $0.box(center: base + [w / 2, 0, 0], size: [0.4, h, d])
             }
+            if let label = p.label { sign(label, at: base + [0, h - 0.95, d / 2 + 0.05], width: w * 0.5) }
+        case .gondola:
+            with(.interior, .white) { $0.box(center: base, size: [w, h, d]) }
+            for k in 0..<3 {
+                with(.interior, .cloth([3, 5, 2, 6][(k + p.variant) % 4])) {
+                    $0.box(center: base + [0, 0.25 + Float(k) * 0.4, 0], size: [w + 0.15, 0.25, d * 0.92])
+                }
+            }
+        case .cafeCounter:
+            with(.interior, .houseWood) { $0.box(center: base, size: [w, h, d]) }
+            with(.interior, .white) { $0.box(center: base + [0, h, 0], size: [w + 0.2, 0.08, d + 0.2]) }
+            with(.interior, .glass) { $0.box(center: base + [-w * 0.25, h + 0.08, 0], size: [w * 0.4, 0.45, d * 0.8]) }
+            with(.interior, .darkMetal) { $0.box(center: base + [w * 0.3, h + 0.08, -d * 0.2], size: [0.7, 0.6, 0.5]) }
+            if let label = p.label { sign(label, at: base + [0, h + 2.4, -d / 2], width: w * 0.5) }
+        case .luggageTrolley:
+            with(.interior, .white) {
+                $0.box(center: base + [0, 0.25, 0], size: [w, 0.1, d])
+                $0.box(center: base + [-w / 2, 0.25, 0], size: [0.08, 1.0, d])
+            }
+            with(.interior, .cloth(6)) {
+                $0.box(center: base + [0.1, 0.35, 0], size: [w * 0.7, 0.45, d * 0.8])
+                $0.box(center: base + [0.1, 0.8, 0], size: [w * 0.55, 0.35, d * 0.7])
+            }
+            with(.interior, .tyre) { $0.box(center: base, size: [w * 0.9, 0.25, d * 0.9]) }
+        case .electricCart:
+            with(.interior, .white) {
+                $0.box(center: base + [0, 0.3, 0], size: [w, 0.5, d])
+                $0.box(center: base + [w * 0.35, 0.8, 0], size: [0.4, 0.6, d * 0.9])
+            }
+            with(.interior, .darkMetal) {
+                $0.box(center: base + [-w * 0.15, 0.8, 0], size: [w * 0.35, 0.15, d * 0.85])
+                $0.box(center: base + [-w * 0.32, 0.95, 0], size: [0.12, 0.45, d * 0.85])
+            }
+            with(.interior, .tyre) { $0.box(center: base, size: [w * 0.85, 0.3, d * 0.95]) }
+        case .wayfindingSign:
+            with(.interior, .darkMetal) {
+                $0.box(center: c + [0, fl, 0], size: [w, h, d])
+                $0.box(center: c + [0, fl + h, 0], size: [0.06, 8 - c.y, 0.06])
+            }
+            with(.interior, .hiVis) { $0.box(center: c + [-w * 0.3, fl + h * 0.2, d / 2 + 0.01], size: [w * 0.3, h * 0.6, 0.02]) }
         case .seatRow:
-            with(.interior, .darkMetal) { $0.box(center: c + [0, 1.7, 0], size: [w, 0.5, d]) }
-            with(.interior, .cloth(0)) { $0.box(center: c + [0, 2.2, -d / 2 + 0.2], size: [w, 0.6, 0.25]) }
-        case .flightBoard:
-            with(.interior, .darkMetal) { $0.box(center: c + [0, 1.7, 0], size: [w + 0.4, h + 0.4, d]) }
-            with(.interior, .screen) { $0.box(center: c + [0, 1.9, d / 2], size: [w, h, 0.05]) }
-        case .escalator:
-            with(.interior, .darkMetal) { b in
-                b.transform = HubMeshBatch.translation(c + [0, 1.7, 0]) * HubMeshBatch.yaw(.pi / 2) * HubMeshBatch.pitch(-0.42)
-                b.box(center: [0, -1, 0], size: [d, 0.4, w])
-                b.transform = matrix_identity_float4x4
+            with(.interior, .darkMetal) { $0.box(center: base, size: [w, 0.45, d]) }
+            with(.interior, .cloth(0)) {
+                $0.box(center: base + [0, 0.45, 0.1], size: [w, 0.12, d * 0.7])
+                $0.box(center: base + [0, 0.45, -d / 2 + 0.15], size: [w, 0.6, 0.15])
             }
-            with(.interior, .glass) { b in
-                b.transform = HubMeshBatch.translation(c + [0, 1.7, 0]) * HubMeshBatch.yaw(.pi / 2) * HubMeshBatch.pitch(-0.42)
-                b.box(center: [0, -0.6, -w / 2], size: [d, 1.0, 0.1])
-                b.box(center: [0, -0.6, w / 2], size: [d, 1.0, 0.1])
-                b.transform = matrix_identity_float4x4
+        case .flightBoard:
+            // Two big screens side by side on a dark frame (reference shot C).
+            with(.interior, .darkMetal) { $0.box(center: c + [0, fl, 0], size: [w + 0.6, h + 0.6, d]) }
+            with(.interior, .screen) {
+                $0.box(center: c + [-w / 4 - 0.1, fl + 0.3, d / 2], size: [w / 2 - 0.3, h, 0.05])
+                $0.box(center: c + [w / 4 + 0.1, fl + 0.3, d / 2], size: [w / 2 - 0.3, h, 0.05])
+            }
+            with(.interior, .grassBright) {
+                for r in 0..<5 {
+                    let y = fl + 0.6 + Float(r) * h / 5.5
+                    $0.box(center: c + [-w / 4 - 0.1, y, d / 2 + 0.03], size: [w / 2 - 0.9, 0.12, 0.02])
+                }
+            }
+            with(.interior, .marking) {
+                for r in 0..<5 {
+                    let y = fl + 0.6 + Float(r) * h / 5.5
+                    $0.box(center: c + [w / 4 + 0.1, y, d / 2 + 0.03], size: [w / 2 - 0.9, 0.12, 0.02])
+                }
             }
         case .loungeBlock:
             with(.interior, .houseWood) { $0.box(center: c, size: [w, 0.3, d]) }
@@ -654,5 +888,16 @@ struct HubSceneBuilder {
             }
         default: break
         }
+    }
+
+    /// A text label for shop fronts and counters.
+    private mutating func sign(_ text: String, at position: SIMD3<Float>, width: Float) {
+        let mesh = MeshResource.generateText(text, extrusionDepth: 0.04,
+                                             font: .systemFont(ofSize: 0.7, weight: .bold))
+        let label = ModelEntity(mesh: mesh, materials: [materials[.white]])
+        label.components.set(HubMaterialTag(key: .white))
+        let bounds = label.visualBounds(relativeTo: nil)
+        label.position = position + [-bounds.extents.x / 2, -bounds.extents.y / 2, 0]
+        extras.append((.interior, label))
     }
 }

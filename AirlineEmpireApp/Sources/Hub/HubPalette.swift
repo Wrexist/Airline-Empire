@@ -60,20 +60,22 @@ struct HubPalette: Equatable {
         blob: UIColor(hub: 0x4A4F86), lampGlow: 0, keyIntensity: 1_900,
         keyColor: UIColor(hub: 0xFFF6EA), iblExponent: 0.7)
 
+    /// The reference's night is a luminous indigo, not black: ground
+    /// `#3A3F8B`, roads `#5F5B80`, warm windows `#DECEB9` as rendered.
     static let night = HubPalette(
-        concrete: UIColor(hub: 0x5A5C80), concreteLight: UIColor(hub: 0x6A6C90),
-        asphalt: UIColor(hub: 0x45486E), asphaltDark: UIColor(hub: 0x3A3C60),
-        building: UIColor(hub: 0x8A8FB8), buildingShade: UIColor(hub: 0x6E739E),
-        roof: UIColor(hub: 0x7F84AE), glass: UIColor(hub: 0x4B87CB), glassOpacity: 0.6,
-        grass: UIColor(hub: 0x3E5F6E), grassBright: UIColor(hub: 0x4C7C66),
-        tree: [UIColor(hub: 0x2E5E4C), UIColor(hub: 0x376B55), UIColor(hub: 0x285444)],
-        trunk: UIColor(hub: 0x3E4160), marking: UIColor(hub: 0xB9BEDD), taxiLine: UIColor(hub: 0xF2C94C),
-        houseRoof: UIColor(hub: 0x2A3664), houseWood: UIColor(hub: 0x6E4E3E),
+        concrete: UIColor(hub: 0x60649C), concreteLight: UIColor(hub: 0x6E72A8),
+        asphalt: UIColor(hub: 0x4C4E80), asphaltDark: UIColor(hub: 0x424474),
+        building: UIColor(hub: 0x9298CA), buildingShade: UIColor(hub: 0x7C82B6),
+        roof: UIColor(hub: 0x8187BC), glass: UIColor(hub: 0x4B87CB), glassOpacity: 0.6,
+        grass: UIColor(hub: 0x3F6378), grassBright: UIColor(hub: 0x4B7E6E),
+        tree: [UIColor(hub: 0x2E6150), UIColor(hub: 0x37705B), UIColor(hub: 0x2A5848)],
+        trunk: UIColor(hub: 0x4A4E78), marking: UIColor(hub: 0xC4C8EA), taxiLine: UIColor(hub: 0xF2C94C),
+        houseRoof: UIColor(hub: 0x343F78), houseWood: UIColor(hub: 0x7A5844),
         windowDark: UIColor(hub: 0xFFD9A0), windowLit: UIColor(hub: 0xFFD9A0), windowGlow: 1.6,
-        water: UIColor(hub: 0x3A8FE0), background: UIColor(hub: 0x2A2E68),
-        skyTop: UIColor(hub: 0x4A4F9A), skyHorizon: UIColor(hub: 0x2D3175),
-        blob: UIColor(hub: 0x0C0D26), lampGlow: 2.4, keyIntensity: 1_500,
-        keyColor: UIColor(hub: 0xA4AEFF), iblExponent: 0.95)
+        water: UIColor(hub: 0x3A8FE0), background: UIColor(hub: 0x2F347A),
+        skyTop: UIColor(hub: 0x5A60B0), skyHorizon: UIColor(hub: 0x3A3F8B),
+        blob: UIColor(hub: 0x10123A), lampGlow: 2.4, keyIntensity: 1_700,
+        keyColor: UIColor(hub: 0xA9B2FF), iblExponent: 1.25)
 
     static func livery(_ livery: Livery) -> UIColor {
         switch livery {

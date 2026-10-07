@@ -102,7 +102,7 @@ final class HubMaterials {
         case .houseRoof: return matte(p.houseRoof, roughness: 0.7)
         case .houseWood: return matte(p.houseWood, roughness: 0.85)
         case .windowDark: return night ? glow(p.windowLit, intensity: p.windowGlow) : matte(p.windowDark, roughness: 0.2)
-        case .water: return matte(p.water, roughness: 0.15)
+        case .water: return night ? glow(p.water, intensity: 1.4) : matte(p.water, roughness: 0.15)
         case .blob: return unlit(p.blob, opacity: night ? 0.55 : 0.32, texture: texture("blob", Self.blobImage))
         case .tyre: return matte(HubPalette.tyre)
         case .darkMetal: return matte(HubPalette.darkMetal, roughness: 0.5)

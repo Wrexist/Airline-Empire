@@ -124,7 +124,7 @@ final class HubDynamics {
     }
 
     private func aircraftEntity(_ category: AircraftCategory, livery: Livery) -> Entity {
-        let e = entity(models.aircraft(category)) { key in
+        let e = models.make(["aircraft_\(category.rawValue)"], models.aircraft(category), materials: materials) { key in
             switch key {
             case .livery: .livery(livery)
             case .liveryAccent: .liveryAccent(livery)
@@ -204,7 +204,7 @@ final class HubDynamics {
         let nose = Self.f(stand.nose)
         let yaw = Float(stand.heading)
         func put(_ v: HubModels.Vehicle, _ p: SIMD3<Float>, _ angle: Float) {
-            let e = entity(models.vehicle(v))
+            let e = models.make(HubModels.slot(v), models.vehicle(v), materials: materials)
             e.position = p
             e.orientation = simd_quatf(angle: angle, axis: [0, 1, 0])
             let shadow = entity(models.blob())
@@ -245,13 +245,14 @@ final class HubDynamics {
             let tailCone: SIMD3<Float> = nose - fwd * (m.length + 2)
             let conePositions: [SIMD3<Float>] = [noseCone, engineLine + engineOffset, engineLine - engineOffset, tailCone]
             for p in conePositions {
-                let c = entity(models.cone())
+                let c = models.make(["cone"], models.cone(), materials: materials)
                 c.position = p + [0, 0.1, 0]
                 group.addChild(c)
             }
             // Ground crew.
             for k in 0..<(focused ? 5 : 2) {
-                let p = entity(models.person(k, crew: true)) { key in key == .skin(0) ? .skin(k) : key }
+                let p = models.make(HubModels.personSlots(k, crew: true), models.person(k, crew: true),
+                                    materials: materials) { key in key == .skin(0) ? .skin(k) : key }
                 p.position = nose - fwd * (m.length * (0.18 + 0.12 * Float(k))) + right * (m.radius + 2 + Float(k % 2) * 3)
                 p.scale = [1.8, 1.8, 1.8]
                 group.addChild(p)
@@ -261,7 +262,8 @@ final class HubDynamics {
         if stage == .boarding || stage == .deboarding {
             let count = focused ? 16 : 7
             for k in 0..<count {
-                let person = entity(models.person(k, crew: false)) { key in
+                let person = models.make(HubModels.personSlots(k, crew: false), models.person(k, crew: false),
+                                         materials: materials) { key in
                     switch key {
                     case .cloth: .cloth(k * 3 + stand.index)
                     case .skin: .skin(k + stand.index)
@@ -327,7 +329,7 @@ final class HubDynamics {
         }
         // Terminal hotspots (visible in the cutaway).
         let labels = ["Security", "Check-in", "Retail"]
-        for (k, spot) in layout.interior.hotspots.enumerated() {
+        for (k, spot) in layout.interior.hotspots.prefix(3).enumerated() {
             list.append(HubAnchor(id: "hot\(k)", position: Self.f(spot.position) + [0, 7, 0],
                                   kind: .pin(labels[k % labels.count])))
         }
@@ -401,7 +403,8 @@ final class HubDynamics {
                 let count = Int(half / 220) + 1
                 for i in 0..<count {
                     let colour = k
-                    let car = entity(models.vehicle(i % 5 == 0 ? .serviceVan : .car)) { key in
+                    let kind: HubModels.Vehicle = i % 5 == 0 ? .serviceVan : .car
+                    let car = models.make(HubModels.slot(kind), models.vehicle(kind), materials: materials) { key in
                         key == .cloth(0) ? .cloth([0, 1, 5, 6, 7, 3][colour % 6]) : key
                     }
                     root.addChild(car)
@@ -414,9 +417,10 @@ final class HubDynamics {
         }
         // The service cart and tanker on the district route (shot D).
         for (i, v) in [HubModels.Vehicle.golfCart, .tanker].enumerated() {
-            let e = entity(models.vehicle(v))
+            let e = models.make(HubModels.slot(v), models.vehicle(v), materials: materials)
             root.addChild(e)
-            movers.append(HubMover(entity: e, path: layout.serviceRoute, speeds: [7], start: Float(i) * 140,
+            // The cart tows the tank trailer: the trailer runs 6 m behind.
+            movers.append(HubMover(entity: e, path: layout.serviceRoute, speeds: [7], start: 140 - Float(i) * 6,
                                    pingPong: true))
         }
     }
@@ -440,7 +444,10 @@ final class HubDynamics {
     func populateInterior(load: Double) {
         interiorCrowd.children.removeAll()
         var jitter = SplitMix(seed: 7)
-        let count = 46 + Int(110 * load)
+        // ~34 people per bay of the hall at a quiet hour, ~84 when full —
+        // the reference's hall holds about 28 in one bay's worth of floor.
+        let bays = max(1, layout.interior.hotspots.count / 3)
+        let count = min(240, bays * (34 + Int(50 * load)))
         let hotspots = layout.interior.hotspots
         let total = hotspots.reduce(0) { $0 + $1.weight }
         for k in 0..<count {
@@ -450,7 +457,8 @@ final class HubDynamics {
                 pick -= h.weight
                 if pick <= 0 { spot = h; break }
             }
-            let p = entity(models.person(k, crew: false)) { key in
+            let p = models.make(HubModels.personSlots(k, crew: false), models.person(k, crew: false),
+                                materials: materials) { key in
                 switch key {
                 case .cloth: .cloth(k)
                 case .skin: .skin(k)

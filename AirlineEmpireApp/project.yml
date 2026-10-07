@@ -36,6 +36,12 @@ targets:
       # (docs/AUDIO_ARCHITECTURE.md §10).
       - path: Resources/Audio
         buildPhase: resources
+      # Authored Hub View models (docs/HUB_MODEL_LIST.md). A folder
+      # reference, so the files land in HubModels/ inside the bundle, where
+      # HubAssetLibrary looks for them.
+      - path: Resources/HubModels
+        type: folder
+        buildPhase: resources
       # The StoreKit test configuration. Declared with `buildPhase: none` on
       # purpose: it must appear in the project so the scheme below can point
       # at it and so a human can open it in Xcode's editor, but it must NOT

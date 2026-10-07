@@ -126,7 +126,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
 
     private func buildScene() {
         arView.scene.addAnchor(anchor)
-        var builder = HubSceneBuilder(layout: layout, materials: materials)
+        var builder = HubSceneBuilder(layout: layout, materials: materials, library: models.library)
         layers = builder.build()
         for (_, e) in layers { anchor.addChild(e) }
         dynamics = HubDynamics(layout: layout, models: models, materials: materials)
