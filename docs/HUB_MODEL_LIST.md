@@ -152,18 +152,20 @@ terminal shot (front-left, 4.5 s), three in the overview.
 Rigid three-axle tanker, 9.5 m × 2.5 m × 3.3 m.
 - Cab-over cab, white, rounded front, large dark windscreen and side
   windows, black grille strip, small round headlights.
-- Elliptical tank, **light silver-white** (`ae_white`, slightly greyer),
-  with three bands and a **round yellow logo** on the side (decal,
-  original design — not the reference's).
+- Elliptical tank in **polished silver** — the one deliberately shiny
+  surface in the reference (metallic 0.6, roughness 0.35, its own
+  un-prefixed material so the app leaves it alone), with three bands and a
+  **round yellow logo** on the side (decal, original design — not the
+  reference's).
 - Dark chassis, side skirts, rear ladder and hose reel cabinet.
 - Six dark wheels with light hubs.
 
 ### 2.2 `Hub_vehicle_beltLoader.usdz`
-Gate shot, at the forward hold (2.6 s). 7.5 m × 2 m. White low chassis
-with a driver seat on the left; long conveyor ramp with side rails,
-**metal grey belt, yellow edge stripes** (`ae_hiVis`), raised to ~3.5 m at
-the aircraft end. Separate the ramp as its own prim (`ramp`) pivoted at the
-low end so it can be raised.
+Gate shot, at the forward hold (2.6 s). 7.5 m × 2 m. A **white cab-over
+unit** (boxy cab, big dark windscreen, as on the reference board) carrying a
+long ramp with **yellow hand rails** (`ae_hiVis`) and a metal-grey belt,
+raised to ~3.5 m at the aircraft end. Separate the ramp as its own prim
+(`ramp`) pivoted at the low end so it can be raised.
 
 ### 2.3 `Hub_vehicle_tug.usdz` — pushback tractor
 White, low, wide, 5 m × 2.6 m × 1.7 m; small offset cab with dark windows,
@@ -269,10 +271,12 @@ small yellow text. Provide the panel as geometry and the text as a decal
 texture **without** the number; the app renders the number.
 
 ### 4.5 `Hub_hangar.usdz`
-The pair top-right of the overview (0.0–1.4 s). 60 m × 50 m × 22 m:
-**barrel-vault roof** in light grey-lavender, white side walls, the apron
-face mostly a **dark door opening** with a row of light window panels above
-it, a small text plate on the gable, a lower annex on one side.
+The pair top-right of the overview (0.0–1.4 s). Each 60 m × 50 m × 22 m,
+the two joined by a lower link block: **barrel-vault roof** in light
+grey-lavender whose front edge rolls down in a soft curve over the door, white
+side walls with a band of horizontal louvres, the apron face mostly a **dark
+door opening** divided into tall panels with a strip of light window panes
+above it, a small text plate on the gable.
 
 ### 4.6 `Hub_terminal_hall.usdz` + `Hub_terminal_hall_interior.usdz` — **hero of the terminal shot**
 The two-storey hall (terminal shot, 4.4–6.0 s). 60 m × 34 m × 12 m.
