@@ -250,7 +250,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         }
         if materials.heatmap == nil || abs(lastLoad - terminalLoad) > 0.05 {
             lastLoad = terminalLoad
-            materials.makeHeatmap(hotspots: hotspots, load: CGFloat(terminalLoad))
+            materials.makeHeatmap(hotspots: hotspots, load: CGFloat(terminalLoad), floorWidth: CGFloat(bounds.width))
             installHeatmap()
             dynamics.populateInterior(load: terminalLoad)
         }

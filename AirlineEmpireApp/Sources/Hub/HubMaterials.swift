@@ -150,8 +150,8 @@ final class HubMaterials {
         return t
     }
 
-    func makeHeatmap(hotspots: [(x: CGFloat, y: CGFloat, weight: CGFloat)], load: CGFloat) {
-        heatmap = Self.heatImage(hotspots: hotspots, load: load)
+    func makeHeatmap(hotspots: [(x: CGFloat, y: CGFloat, weight: CGFloat)], load: CGFloat, floorWidth: CGFloat) {
+        heatmap = Self.heatImage(hotspots: hotspots, load: load, floorWidth: floorWidth)
             .flatMap { try? TextureResource(image: $0, options: .init(semantic: .color)) }
         cache[.heat] = nil
     }
@@ -228,15 +228,20 @@ final class HubMaterials {
     }
 
     /// The terminal crowding heatmap: blue → green → yellow → red pools.
-    nonisolated static func heatImage(hotspots: [(x: CGFloat, y: CGFloat, weight: CGFloat)], load: CGFloat) -> CGImage? {
-        let w = 256, h = 128
+    nonisolated static func heatImage(hotspots: [(x: CGFloat, y: CGFloat, weight: CGFloat)], load: CGFloat,
+                                      floorWidth: CGFloat) -> CGImage? {
+        // Resolution follows the hall so a pool is metres across, as in the
+        // reference, however long the terminal is.
+        let w = min(1_024, max(256, Int(floorWidth * 2))), h = 128
         var field = [CGFloat](repeating: 0, count: w * h)
         for spot in hotspots {
             let sx = spot.x * CGFloat(w), sy = spot.y * CGFloat(h)
-            let radius = 26 + 40 * spot.weight * (0.5 + load)
+            // 8–20 m pools, in pixels of this texture.
+            let metres = 8 + 12 * spot.weight * (0.5 + load)
+            let radius = metres / max(floorWidth, 1) * CGFloat(w)
             for y in 0..<h {
                 for x in 0..<w {
-                    let d = hypot(CGFloat(x) - sx, (CGFloat(y) - sy) * 1.4) / radius
+                    let d = hypot(CGFloat(x) - sx, (CGFloat(y) - sy) * 0.85) / radius
                     if d < 1 { field[y * w + x] += (1 - d * d) * spot.weight * (0.95 + load) }
                 }
             }
