@@ -1031,7 +1031,9 @@ struct HubSceneBuilder {
         for stand in layout.stands {
             let fwd = SIMD3<Float>(Float(cos(stand.heading)), 0, Float(-sin(stand.heading)))
             let len = Float(HubAircraftEnvelope.length(stand.maxCategory))
-            let at = Self.f(stand.nose) - fwd * (len + 20)
+            // Beside the lead-in line, not on it.
+            let right = SIMD3<Float>(fwd.z * -1, 0, fwd.x)
+            let at = Self.f(stand.nose) - fwd * (len + 18) + right * 7
             let mesh = MeshResource.generateText("\(stand.gate)", extrusionDepth: 0.02,
                                                  font: .systemFont(ofSize: 6, weight: .heavy))
             let text = ModelEntity(mesh: mesh, materials: [materials[.marking]])

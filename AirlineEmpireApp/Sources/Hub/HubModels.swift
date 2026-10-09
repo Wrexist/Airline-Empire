@@ -413,13 +413,23 @@ final class HubModels {
         parts("person.\(crew)") { Self.buildPerson(crew: crew) }
     }
 
+    /// A figurine rather than a capsule: two legs, a torso that widens to
+    /// the shoulders, arms with hands, a neck, a head and a cap of hair.
+    /// Facing +x; about 1.8 m tall.
     private static func buildPerson(crew: Bool) -> [(HubMaterialKey, HubMeshBatch)] {
-        var body = HubMeshBatch(), head = HubMeshBatch(), legs = HubMeshBatch()
-        legs.cylinder(base: [0, 0, 0], radius: 0.2, topRadius: 0.24, height: 0.85, segments: 8)
-        body.cylinder(base: [0, 0.85, 0], radius: 0.27, topRadius: 0.24, height: 0.7, segments: 8)
-        body.sphere(center: [0, 1.55, 0], radius: 0.24, scale: [1, 0.5, 1], segments: 8, rings: 4)
-        head.sphere(center: [0, 1.82, 0], radius: 0.2, segments: 8, rings: 6)
-        return [(crew ? .hiVis : .cloth(0), body), (.skin(0), head), (.darkMetal, legs)]
+        var body = HubMeshBatch(), skin = HubMeshBatch(), legs = HubMeshBatch(), hair = HubMeshBatch()
+        for side: Float in [-1, 1] {
+            legs.cylinder(base: [0, 0, side * 0.11], radius: 0.1, topRadius: 0.12, height: 0.84, segments: 7)
+            legs.sphere(center: [0.05, 0.04, side * 0.11], radius: 0.1, scale: [1.5, 0.6, 1], segments: 6, rings: 3)
+            body.cylinder(base: [0, 0.86, side * 0.33], radius: 0.075, topRadius: 0.085, height: 0.56, segments: 6)
+            skin.sphere(center: [0, 0.84, side * 0.33], radius: 0.075, segments: 6, rings: 4)
+        }
+        body.cylinder(base: [0, 0.8, 0], radius: 0.24, topRadius: 0.28, height: 0.6, segments: 9)
+        body.sphere(center: [0, 1.4, 0], radius: 0.28, scale: [0.85, 0.32, 1.25], segments: 9, rings: 4)
+        skin.cylinder(base: [0, 1.42, 0], radius: 0.075, height: 0.12, segments: 6, caps: false)
+        skin.sphere(center: [0, 1.66, 0], radius: 0.165, scale: [0.95, 1.08, 0.92], segments: 9, rings: 6)
+        hair.sphere(center: [-0.02, 1.72, 0], radius: 0.172, scale: [1, 0.72, 0.96], segments: 9, rings: 5)
+        return [(crew ? .hiVis : .cloth(0), body), (.skin(0), skin), (.darkMetal, legs), (.tyre, hair)]
     }
 
     // MARK: Pieces used at a single position (for the gate shot)

@@ -127,6 +127,8 @@ struct HubPressStyle: ButtonStyle {
 struct HubTopBar: View {
     @Bindable var model: HubScreenModel
     let mode: HubChromeMode
+    /// Less than ~790 pt across: the shots shrink to icons.
+    var narrow = false
     let dismiss: () -> Void
     @FocusState private var searching: Bool
 
@@ -160,7 +162,7 @@ struct HubTopBar: View {
                 searchField.frame(maxWidth: 420)
             }
             if mode == .landscape {
-                HubShotPicker(model: model, compact: true)
+                HubShotPicker(model: model, compact: true, iconsOnly: narrow)
             }
 
             Spacer(minLength: 4)
@@ -487,6 +489,8 @@ struct HubControls: View {
 struct HubShotPicker: View {
     let model: HubScreenModel
     var compact = false
+    /// A narrow phone on its side: icons only, the names in VoiceOver.
+    var iconsOnly = false
     @Namespace private var selection
 
     var body: some View {
@@ -496,9 +500,14 @@ struct HubShotPicker: View {
                 Button {
                     withAnimation(HubMotion.snap) { model.select(shot) }
                 } label: {
-                    Label(shot.title, systemImage: shot.systemImage)
+                    Group {
+                        if iconsOnly {
+                            Image(systemName: shot.systemImage).frame(width: 20)
+                        } else {
+                            Label(shot.title, systemImage: shot.systemImage).labelStyle(.titleAndIcon)
+                        }
+                    }
                         .font(.system(size: 12, weight: .semibold))
-                        .labelStyle(.titleAndIcon)
                         .lineLimit(1)
                         .fixedSize()
                         .foregroundStyle(selected ? Color.white : HubChromeStyle.ink)
@@ -514,6 +523,7 @@ struct HubShotPicker: View {
                         }
                 }
                 .buttonStyle(HubPressStyle())
+                .accessibilityLabel(shot.title)
                 .accessibilityIdentifier("ae-hub-shot-\(shot.rawValue)")
                 .accessibilityAddTraits(selected ? .isSelected : [])
             }
@@ -803,8 +813,17 @@ struct HubTimeline: View {
                 track(stage: stage, progress: occupant?.stageProgress ?? 0)
             }
             if !compact {
-                nextAction(occupant)
-                    .frame(width: 190)
+                // Opens the inspector on the turnaround page.
+                Button {
+                    withAnimation(HubMotion.panel) {
+                        model.inspectorPage = .turnaround
+                        model.showsInspector = true
+                    }
+                } label: {
+                    nextAction(occupant)
+                }
+                .buttonStyle(HubPressStyle())
+                .frame(width: 190)
             }
         }
         .hubGlass(padding: slim ? 10 : 14)

@@ -82,6 +82,33 @@ glow and occlusion of a pre-rendered frame, which is step 5 on a device.
 depth is confirmed in `.nonAR`; additive glows; device performance pass
 (step 6).
 
+## 0b. Third session — motion, stats, dashboard, landscape (2026-10-09)
+
+The owner asked for more detail, for every control to work, for every stat
+to be visible, for motion that feels professional, and allowed landscape
+where it serves the game. What changed:
+
+| Area | Where | What |
+|---|---|---|
+| Camera motion | `HubScene.swift` (`HubSpring`, `HubRigSpring`) | Critically damped springs instead of a fixed lerp: starts from rest, never overshoots, keeps velocity when retargeted. Zoom runs in log space; the target leads on the way in, the zoom leads on the way out. Shot changes take 0.42–0.68 s smooth time by travel. Pans and twists coast after release (capped fling); the idle orbit eases in over ~4 s. |
+| Day ↔ night | `HubPalette.mix`, `HubMaterials.make` (`dusk`) | A 1.5 s eased crossfade, repainted in 12 steps; every glow scales with a continuous `dusk` value; the sky probe regenerates once, at the midpoint. |
+| Traffic motion | `HubMover`, `HubPath.rounded/offset/roundTrip` (Core) | Paths rounded through Bézier corners; acceleration and braking limits; look-ahead steering; jets bank into turns and pitch on climb-out; two-way loops with U-turns so nothing reverses; fades where open paths restart. Parked jets glide during pushback. |
+| Route fan | `HubDynamics.updateRouteFan` | The player's routes leave the terminal roof as arcs on their real great-circle bearings (north up the screen), coloured by load factor (cyan new, green ≥ 75 %, amber 55–75 %, rose < 55 %), with a light per daily round trip running out and back. Labels on the eight busiest; a highlighted route draws bright and thick. Overview only. |
+| Stand tags | `HubDynamics.rebuildAnchors`, `HubStandTagView` | Gate, flight and stage over each of the player's jets in the overview, tinted by state; tap to focus and cut to the gate. |
+| Layers | `HubOverlay`, layers dropdown | Route fan, stand tags, traffic, place labels — each switchable. |
+| Insights | `HubInsights.swift` (Core), `HubPanels.swift` | Side panel with four tabs: Overview (KPI tiles, terminal and slot gauges, movements by hour chart, alerts), Routes (load, trips, profit and trend; tap to light the route), Slots (stacked share by carrier), Airline (cash, hub money, reputation bars, facilities, fleet). Every KPI card opens it. |
+| Search | `HubSearch.swift` (Core) | Gates, flights, aircraft, routes and places, ranked; results take the camera there. ⌘K focuses it on iPad. |
+| Alerts | `HubInsights.alerts` | Delays, maintenance, slot and terminal pressure, thin routes; the bell shows the count; an alert about a stand focuses it. |
+| Hub switcher | `HubInsights.network`, `HubScreen.switchTo` | Every airport in the network, home first; swaps the airport in place with a crossfade. |
+| Inspector | `HubInspector` | Pages for Flight, Aircraft, Route and Turnaround, swiped or picked from tabs that widen to name the active page. |
+| Board | `HubBoard` | Rows slide in and out, open their stand or their route; counts as badges. |
+| Airfield | `HubSceneBuilder.airfieldLights` etc. | Runway edge, threshold and approach lights; blue taxiway edge lights; apron floodlight masts with light pools; windsocks; a perimeter fence; painted stand numbers. All glow after dusk. |
+| Landscape iPhone | `AEOrientation.swift`, `HubChromeMode`, `HubSafeArea.landscape` | The hub opens in landscape on iPhone and turns back on close (iPad keeps every orientation). Its own compact layout: shots in the top bar, KPI chips, controls down the right, a slim timeline, the board behind a Flights button. The framing solver has a landscape safe area. |
+| UI motion | `HubMotion`, `HubPressStyle` | One set of springs for every panel; buttons sink on press; the shot picker's pill slides between shots; numbers roll; the timeline's fill and tug glide; anchored labels scale in and out. |
+
+Captures now include the insights panel (`HUB-07`, `HUB-08`), and the
+iPhone captures are landscape.
+
 ---
 
 ## 1. Where things stood after the first build

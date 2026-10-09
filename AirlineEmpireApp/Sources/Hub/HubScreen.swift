@@ -184,7 +184,7 @@ private struct HubDashboard: View {
     /// behind a button.
     private func landscape(_ size: CGSize) -> some View {
         VStack(spacing: 0) {
-            HubTopBar(model: model, mode: .landscape, dismiss: dismiss)
+            HubTopBar(model: model, mode: .landscape, narrow: size.width < 790, dismiss: dismiss)
             HStack(alignment: .top, spacing: 8) {
                 HubKPIRow(model: model, compact: true)
                 Spacer(minLength: 0)
@@ -290,10 +290,13 @@ private struct HubDashboard: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             } else {
-                // A dropdown: a tap anywhere else closes it.
-                Color.black.opacity(0.001)
-                    .ignoresSafeArea()
-                    .onTapGesture { withAnimation(HubMotion.snap) { model.panel = nil } }
+                // A dropdown: a tap anywhere else closes it. Not under the
+                // iPad's search field, which stays live while results show.
+                if !(panel == .search && mode == .regular) {
+                    Color.black.opacity(0.001)
+                        .ignoresSafeArea()
+                        .onTapGesture { withAnimation(HubMotion.snap) { model.panel = nil } }
+                }
                 HubDropdown(model: model, panel: panel, mode: mode)
                     .padding(.top, panel == .board ? 0 : mode.topBarHeight + 8)
                     .padding(.bottom, panel == .board ? 56 : 0)
