@@ -346,7 +346,12 @@ struct HubInsightsPanel: View {
             }
             Text(names[min(names.count - 1, max(0, level))]).font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(HubChromeStyle.ink)
+            Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold))
+                .foregroundStyle(HubChromeStyle.tertiary)
         }
+        .padding(.vertical, 4)
+        // The whole row is the button, the gap by the spacer included.
+        .contentShape(Rectangle())
     }
 
     // MARK: Pieces
