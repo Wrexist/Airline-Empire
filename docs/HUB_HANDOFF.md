@@ -71,6 +71,13 @@ changes turn the short way; scene build no longer copies every mesh batch
 on each append (it was quadratic). Details in
 [`HUB_RENDERING_RESEARCH.md`](HUB_RENDERING_RESEARCH.md) §6.
 
+**Verdict after the second session:** composition, density, glass,
+palette and night now read as the reference's product in all five shots
+(night roads sample at (70, 74, 126) against the reference's `#4A4C78`).
+What still separates them is micro-detail — procedural jets, capsule
+people, plain vehicles — which is step 4's authored models, and the soft
+glow and occlusion of a pre-rendered frame, which is step 5 on a device.
+
 **Next:** judge bloom on a device; authored models (step 4); SSAO once
 depth is confirmed in `.nonAR`; additive glows; device performance pass
 (step 6).
@@ -93,9 +100,11 @@ depth is confirmed in `.nonAR`; additive glows; device performance pass
 | Capture workflow | `.github/workflows/hub-view-review.yml` + `UITests/HubViewUITests.swift` | Renders all six shots on iPad Pro 13" and iPhone 17 Pro Max simulators on every PR that touches the hub. |
 | Review loop | `scripts/hub-review/` | Fetch captures, cut reference frames, build side-by-side sheets (§4). |
 
-### How it looks today (iPad, `b5624e1`)
+### How it looks today (iPad, second session, `aa76094`)
 
-`docs/design/hub-view/hub-0*.jpg` are the latest renders.
+`docs/design/hub-view/hub-0*.jpg` are the latest renders (the first
+build's are in git history at `b5624e1`). The gap list below was written
+against the first build; §0 says what is closed.
 
 | Overview | Gate |
 |---|---|
