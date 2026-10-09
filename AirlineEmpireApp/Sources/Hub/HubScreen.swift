@@ -210,7 +210,9 @@ private struct HubDashboard: View {
                 HubTimeline(model: model, compact: true, slim: true)
                     .frame(maxWidth: min(520, size.width * 0.56))
                 Spacer(minLength: 0)
-                flightsButton
+                if model.panel != .insights {
+                    flightsButton.transition(.move(edge: .trailing).combined(with: .opacity))
+                }
             }
             .padding(.horizontal, 12)
             .padding(.bottom, 8)
