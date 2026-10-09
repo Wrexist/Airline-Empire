@@ -805,16 +805,16 @@ struct HubPlanner {
         }
     }
 
-    /// A row of mid-rise apartment blocks (5–7 floors) on lawns, trees
-    /// between them.
+    /// A row of mid-rise apartment blocks (4–6 floors) on lawns, trees
+    /// between them: a backdrop to the villas, not a wall.
     mutating func apartmentRow(x0: Double, x1: Double, z0: Double, z1: Double) {
-        let count = 3
-        let gap: Double = 18
+        let count = 4
+        let gap: Double = 16
         let w = (x1 - x0 - gap * Double(count - 1)) / Double(count)
-        let d = z1 - z0 - 8
+        let d = min(28, z1 - z0 - 8)
         for i in 0..<count {
             let cx = x0 + w / 2 + Double(i) * (w + gap)
-            let floors = 5 + jitter.int(3)
+            let floors = 4 + jitter.int(3)
             let center = HubVec(cx, 0, (z0 + z1) / 2)
             pieces.append(HubPiece(.lawn, center: center, size: HubVec(w + gap - 2, 0.2, z1 - z0)))
             pieces.append(HubPiece(.apartmentBlock, center: center, size: HubVec(w - 4, Double(floors) * 3.4, d),

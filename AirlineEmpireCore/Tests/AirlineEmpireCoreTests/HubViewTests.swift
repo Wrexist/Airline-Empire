@@ -238,7 +238,7 @@ struct HubLayoutTests {
                 d += 3
             }
             let flats = layout.pieces(.apartmentBlock)
-            #expect(flats.count == 3, "\(spec.code)")
+            #expect(flats.count == 4, "\(spec.code)")
             let houses = layout.pieces(.house)
             #expect(flats.allSatisfy { f in houses.allSatisfy { f.groundBounds.maxZ < $0.groundBounds.minZ } },
                     "apartments not behind the villas at \(spec.code)")

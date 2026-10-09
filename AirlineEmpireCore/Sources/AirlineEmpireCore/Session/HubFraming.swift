@@ -188,14 +188,17 @@ extension HubLayout {
             // from the terminal, the door side on a tie.
             let side = right.z < -1e-6 ? right : right * -1
             let offset = side * 0.66 - fwd * 0.75
-            var subject: [HubVec] = []
-            for a in [-length / 2, length / 2] {
-                for b in [-span / 2, span / 2] {
-                    subject.append(center + fwd * a + right * b)
-                }
-            }
-            subject.append(center - fwd * (length / 2) + HubVec(0, 12, 0))
-            subject.append(stand.bridgeRoot + HubVec(0, 12, 0))
+            // The jet itself — nose, tail and fin, swept wingtips — and the
+            // bridge, not the empty corners of its bounding box.
+            let tips = center - fwd * (length * 0.18)
+            let subject: [HubVec] = [
+                center + fwd * (length / 2) + HubVec(0, 3, 0),
+                center - fwd * (length / 2),
+                center - fwd * (length * 0.45) + HubVec(0, 11, 0),
+                tips + right * (span / 2) + HubVec(0, 2.5, 0),
+                tips - right * (span / 2) + HubVec(0, 2.5, 0),
+                stand.bridgeRoot + HubVec(0, 7, 0),
+            ]
             return HubFraming.solve(subject: subject, pitch: 21 * deg, yaw: atan2(offset.x, offset.z),
                                     aspect: aspect, safe: safe, minDistance: 60)
         case .terminal:

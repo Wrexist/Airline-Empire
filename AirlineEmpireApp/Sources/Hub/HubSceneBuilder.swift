@@ -411,7 +411,7 @@ struct HubSceneBuilder {
         let lanes: [Float] = [-d * 0.28, 0, d * 0.28]
         for dz in lanes {
             let frame = HubMeshBatch.translation([c.x, glassTop + 1.6, c.z + dz]) * HubMeshBatch.yaw(.pi / 2)
-            with(.terminalRoof, .glass) { b in
+            with(.terminalRoof, .skylight) { b in
                 b.transform = frame
                 b.vault(center: .zero, width: d * 0.2, depth: vaultLength, rise: 3.2, segments: 12, caps: false)
                 b.transform = matrix_identity_float4x4
@@ -479,7 +479,7 @@ struct HubSceneBuilder {
         }
         // The glazed barrel vault along the pier, white ribs every 7 m
         // (reference shot A: the piers are glass, not boxes).
-        with(.airside, .glass) {
+        with(.airside, .skylight) {
             $0.vault(center: c + [0, 10.1, 0], width: w + 0.6, depth: d + 1.2, rise: 5.2, segments: 16, caps: false)
         }
         with(.airside, .white) {

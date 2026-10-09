@@ -10,7 +10,7 @@ enum HubMaterialKey: Hashable {
     case houseRoof, houseWood, windowDark, water, blob, tyre, darkMetal, hiVis, cone, white
     case safety, pulse, queueGlow, routeGlow, pinGlow, lamp, lampPool, heat
     case livery(Livery), liveryAccent(Livery), cloth(Int), skin(Int)
-    case office(floors: Int), screen, kioskScreen
+    case office(floors: Int), screen, kioskScreen, skylight
 }
 
 @available(iOS 18.0, *)
@@ -81,6 +81,19 @@ final class HubMaterials {
         case .building: return matte(p.building, roughness: 0.8)
         case .buildingShade: return matte(p.buildingShade, roughness: 0.85)
         case .roof: return matte(p.roof, roughness: 0.75)
+        case .skylight:
+            // Glazed roofs: paler than the curtain walls by day, a soft warm
+            // glow at night rather than a lantern.
+            var m = PhysicallyBasedMaterial()
+            m.baseColor = .init(tint: night ? p.glass : UIColor(hub: 0xA4CBEE))
+            m.roughness = .init(floatLiteral: 0.15)
+            m.metallic = .init(floatLiteral: 0.05)
+            m.blending = .transparent(opacity: .init(floatLiteral: night ? 0.7 : 0.5))
+            if night {
+                m.emissiveColor = .init(color: UIColor(hub: 0xFFE6C4))
+                m.emissiveIntensity = 0.35
+            }
+            return m
         case .glass:
             var m = PhysicallyBasedMaterial()
             m.baseColor = .init(tint: p.glass)
@@ -134,8 +147,11 @@ final class HubMaterials {
             m.baseColor = .init(tint: p.building, texture: .init(tex))
             m.roughness = .init(floatLiteral: 0.8)
             if night {
-                m.emissiveColor = .init(color: .white, texture: .init(tex))
-                m.emissiveIntensity = 0.9
+                // Only the lit windows glow; the façade between them stays
+                // in the night palette.
+                let glow = texture("officeGlow\(floors)") { Self.officeImage(floors: floors, night: true, glowOnly: true) }
+                m.emissiveColor = .init(color: .white, texture: .init(glow))
+                m.emissiveIntensity = 1.2
             }
             return m
         case .screen: return glow(UIColor(hub: 0x1F3A7A), intensity: 0.8)
@@ -192,10 +208,10 @@ final class HubMaterials {
             ctx.drawRadialGradient(g, startCenter: CGPoint(x: 128, y: 128), startRadius: 0,
                                    endCenter: CGPoint(x: 128, y: 128), endRadius: 128, options: [])
             ctx.setStrokeColor(UIColor.white.cgColor)
-            ctx.setLineWidth(7)
-            ctx.strokeEllipse(in: CGRect(x: 36, y: 36, width: 184, height: 184))
-            ctx.setLineWidth(4)
-            ctx.strokeEllipse(in: CGRect(x: 72, y: 72, width: 112, height: 112))
+            ctx.setLineWidth(14)
+            ctx.strokeEllipse(in: CGRect(x: 30, y: 30, width: 196, height: 196))
+            ctx.setLineWidth(9)
+            ctx.strokeEllipse(in: CGRect(x: 70, y: 70, width: 116, height: 116))
         }
     }
 
@@ -209,17 +225,20 @@ final class HubMaterials {
         }
     }
 
-    /// Window bands for an office façade, one per floor.
-    nonisolated static func officeImage(floors: Int, night: Bool) -> CGImage? {
+    /// Window bands for an office façade, one per floor. `glowOnly` is the
+    /// night emission map: black façade, lit windows warm.
+    nonisolated static func officeImage(floors: Int, night: Bool, glowOnly: Bool = false) -> CGImage? {
         let h = 32 * max(1, floors)
         return render(CGSize(width: 128, height: h)) { ctx in
-            ctx.setFillColor(UIColor.white.cgColor)
+            ctx.setFillColor((glowOnly ? UIColor.black : UIColor.white).cgColor)
             ctx.fill(CGRect(x: 0, y: 0, width: 128, height: h))
             for f in 0..<floors {
                 let y = CGFloat(f * 32) + 9
                 for c in 0..<6 {
                     let lit = night && ((f * 7 + c * 3) % 5 != 0)
-                    let color = night
+                    let color = glowOnly
+                        ? (lit ? UIColor(hub: 0xFFD9A0) : UIColor.black)
+                        : night
                         ? (lit ? UIColor(hub: 0xFFE0A8) : UIColor(hub: 0x343866))
                         : UIColor(hub: 0x8A97C8)
                     ctx.setFillColor(color.cgColor)
@@ -240,7 +259,9 @@ final class HubMaterials {
         let pxPerMetreX = CGFloat(w) / max(floorWidth, 1), pxPerMetreY = CGFloat(h) / max(floorDepth, 1)
         var field = [CGFloat](repeating: 0, count: w * h)
         for spot in hotspots {
-            let sx = spot.x * CGFloat(w), sy = spot.y * CGFloat(h)
+            // The floor plane's texture runs street-side first: row 0 is
+            // the hall's front edge, so hotspot depth maps flipped.
+            let sx = spot.x * CGFloat(w), sy = (1 - spot.y) * CGFloat(h)
             // 4–9 m pools.
             let metres = 4 + 5 * spot.weight * (0.6 + 0.6 * load)
             let x0 = max(0, Int(sx - metres * pxPerMetreX)), x1 = min(w - 1, Int(sx + metres * pxPerMetreX))

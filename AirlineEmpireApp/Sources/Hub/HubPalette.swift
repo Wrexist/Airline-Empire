@@ -74,10 +74,13 @@ struct HubPalette: Equatable {
         trunk: UIColor(hub: 0x575B82), marking: UIColor(hub: 0xC8CCEA), taxiLine: UIColor(hub: 0xF2C94C),
         houseRoof: UIColor(hub: 0x3A4680), houseWood: UIColor(hub: 0x8A6650),
         windowDark: UIColor(hub: 0xFFD9A0), windowLit: UIColor(hub: 0xFFD9A0), windowGlow: 2.1,
-        water: UIColor(hub: 0x3A8FE0), background: UIColor(hub: 0x3B4080),
-        skyTop: UIColor(hub: 0x6D73BE), skyHorizon: UIColor(hub: 0x4A4F94),
-        blob: UIColor(hub: 0x161842), lampGlow: 2.6, keyIntensity: 1_400,
-        keyColor: UIColor(hub: 0x9AA6FF), iblExponent: 1.5)
+        water: UIColor(hub: 0x3A8FE0), background: UIColor(hub: 0x40457E),
+        // Lights near-neutral lavender: a blue key and a blue sky multiplied
+        // into blue albedos read saturated navy, not the reference's
+        // luminous blue-grey.
+        skyTop: UIColor(hub: 0x8D93C2), skyHorizon: UIColor(hub: 0x676C9C),
+        blob: UIColor(hub: 0x161842), lampGlow: 2.6, keyIntensity: 1_300,
+        keyColor: UIColor(hub: 0xC6CBF0), iblExponent: 1.3)
 
     static func livery(_ livery: Livery) -> UIColor {
         switch livery {
