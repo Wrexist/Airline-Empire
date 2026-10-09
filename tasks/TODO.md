@@ -12,6 +12,8 @@ PR #42 (`feature/hub-view-3d`). Handoff, gap list and the step-by-step plan: [HU
 - [ ] Step 5: bloom + SSAO post-process.
 - [ ] Step 6: physical-device performance pass.
 - [ ] Step 7: owner approves the comparison sheet; enable for 1.1.
+- [x] Upgrades step 1: lounge and ground services bought, built and seen inside the hub (`HUB_HANDOFF.md` §0c).
+- [ ] Upgrades step 2: new hub buildings and hub status — plan in [HUB_PROGRESSION_PLAN.md](../docs/HUB_PROGRESSION_PLAN.md); waiting on the owner's decisions (§9).
 
 ## Whole-game audit - 25 September 2026
 

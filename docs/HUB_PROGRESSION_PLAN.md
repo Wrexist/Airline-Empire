@@ -36,7 +36,7 @@ The plan's effects plug into these mechanics:
 - **Maintenance:** every check takes 3 days at any airport (`FleetSystem.swift:41-53`), and the aircraft's location is never read.
   - A check that starts during the day leaves that day's flights scheduled. They cannot board, so they are cancelled and reliability reputation suffers.
 - **Turnaround:** comes from the aircraft type alone.
-  - The scheduler counts rotations from the spec turnaround (`FlightSchedulingSystem.swift:28`). So the *Efficient Turnarounds* programme only adds slack; it never adds a rotation. This is a gap against `PROGRESSION.md:129`.
+  - The scheduler counts rotations from the spec turnaround (`FlightSchedulingSystem.swift:28`). So the *Efficient Turnarounds* programme only adds slack; it never adds a rotation. This is a gap against its own description (`Progression.swift:129`).
 - **Operating day:** 06:00 + 18 h for everyone. There is no crew base and no per-airport crew or fuel factor.
 - **Slots:** a shared first-come pool per airport. There is no purchase, trade or expansion.
 - **Terminal capacity:** has **no** simulation effect today. It only drives the hub KPI and alert.
@@ -78,7 +78,7 @@ Every building:
 - shows the **same card** as step 1, plus a payoff estimate
 - has a **level-specific look**
 
-Prices are proposals scaled to the economy: starting cash is $35–90M and a good narrowbody route makes $0.5–1.8M a month. The balance battery tunes them before shipping (§8).
+Prices are proposals scaled to the economy: starting cash is $35–90M, and a narrowbody route's direct profit runs from about $0.06M to $1.8M a month. The balance battery tunes them before shipping (§8).
 
 | # | Building | Era | Rule change (the decision it creates) | Hooks into | Look in the hub | Proposed price · upkeep · build time |
 |---|---|---|---|---|---|---|

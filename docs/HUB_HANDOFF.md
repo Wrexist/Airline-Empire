@@ -153,9 +153,9 @@ player would, and orders the next level. Verified green on both devices
 | ![](design/hub-view/hub-09-upgrade.jpg) | ![](design/hub-view/hub-10-construction.jpg) | ![](design/hub-view/hub-11-built.jpg) |
 | | ![](design/hub-view/iphone-10-construction.jpg) | ![](design/hub-view/iphone-11-built.jpg) |
 
-**Next (steps 2 and 3 of the plan):** new facility types need the owner's
-calls on which, their prices and effects, and whether building takes game
-time. Authored models for each level go in as per-level slots
+**Next (steps 2 and 3 of the plan):** new facility types — the full plan,
+priorities and the owner's open decisions are in
+[`HUB_PROGRESSION_PLAN.md`](HUB_PROGRESSION_PLAN.md). Authored models for each level go in as per-level slots
 (`Hub_lounge_l1/l2`, `Hub_gseDepot_l0/l1/l2`), falling back to these
 procedural buildings until they exist.
 
