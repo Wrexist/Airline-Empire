@@ -609,9 +609,14 @@ final class HubDynamics {
                 p.scale = [2.0, 2.0, 2.0]
                 interiorCrowd.addChild(p)
             } else {
-                batch.add(models.rawPerson(crew: false),
-                          matrix: HubMeshBatch.translation(at) * HubMeshBatch.yaw(yaw) * HubMeshBatch.scale([2, 2, 2]),
-                          remap: remap)
+                let placed = HubMeshBatch.translation(at) * HubMeshBatch.yaw(yaw) * HubMeshBatch.scale([2, 2, 2])
+                batch.add(models.rawPerson(crew: false), matrix: placed, remap: remap)
+                // Every third traveller pulls a suitcase.
+                if k % 3 == 0 {
+                    batch.add(models.rawLuggage(), matrix: placed * HubMeshBatch.translation([0.05, 0, 0.45])) { key in
+                        key == .cloth(1) ? .cloth([1, 4, 6, 3][k % 4]) : key
+                    }
+                }
             }
         }
         if !authored {

@@ -88,6 +88,18 @@ final class HubModels {
         raw("blob") { Self.buildBlob() }
     }
 
+    /// A wheeled suitcase with its handle up, for the hall's travellers.
+    func rawLuggage() -> [(HubMaterialKey, HubMeshBatch)] {
+        raw("luggage") {
+            var bag = HubMeshBatch(), handle = HubMeshBatch()
+            bag.roundedBox(center: [0, 0.06, 0], size: [0.42, 0.62, 0.26], bevel: 0.05)
+            handle.box(center: [-0.12, 0.68, 0], size: [0.03, 0.42, 0.03])
+            handle.box(center: [0.12, 0.68, 0], size: [0.03, 0.42, 0.03])
+            handle.box(center: [0, 1.08, 0], size: [0.28, 0.04, 0.05])
+            return [(.cloth(1), bag), (.darkMetal, handle)]
+        }
+    }
+
     /// Whether any of `slots` has an authored model (which then has to be
     /// placed as its own entity rather than merged).
     func hasAuthored(_ slots: [String]) -> Bool {

@@ -726,10 +726,18 @@ struct HubPin: View {
                 .padding(.vertical, 4)
                 .background(.white.opacity(0.9), in: Capsule())
                 .shadow(color: HubChromeStyle.panelShadow, radius: 4, y: 2)
-            Image(systemName: "mappin.circle.fill")
-                .font(.system(size: 30))
-                .foregroundStyle(.white, HubChromeStyle.accent)
-                .shadow(color: HubChromeStyle.accent.opacity(0.4), radius: 6, y: 3)
+            // The reference's blue teardrop with a white eye.
+            ZStack {
+                Image(systemName: "drop.fill")
+                    .font(.system(size: 34, weight: .semibold))
+                    .rotationEffect(.degrees(180))
+                    .foregroundStyle(HubChromeStyle.accent)
+                Circle()
+                    .fill(.white)
+                    .frame(width: 11, height: 11)
+                    .offset(y: -4)
+            }
+            .shadow(color: HubChromeStyle.accent.opacity(0.45), radius: 7, y: 3)
         }
     }
 }

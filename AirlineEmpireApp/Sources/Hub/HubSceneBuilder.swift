@@ -126,7 +126,10 @@ struct HubSceneBuilder {
     private var hasAuthoredInterior: Bool { library?.has("terminal_hall_interior") ?? false }
 
     private mutating func with(_ layer: HubLayer, _ key: HubMaterialKey, _ body: (inout HubMeshBatch) -> Void) {
-        var batch = batches[layer]?[key] ?? HubMeshBatch()
+        // Take the batch out while it grows: with the dictionary still
+        // holding it, every append would copy the whole mesh (copy on
+        // write), and the scene build would go quadratic.
+        var batch = batches[layer]?.removeValue(forKey: key) ?? HubMeshBatch()
         body(&batch)
         batches[layer, default: [:]][key] = batch
     }
@@ -935,14 +938,23 @@ struct HubSceneBuilder {
             with(.interior, .houseWood) {
                 $0.box(center: base, size: [w, h, d], yaw: yaw)
             }
-            // Rows of stock in mixed colours, on the front face.
-            let colours = [2, 3, 4, 6, 0]
+            // Rows of stock on the front face: small boxes in mixed colours
+            // and heights, so the shelves read stocked (reference shot C).
+            let colours = [2, 3, 4, 6, 0, 1, 5]
+            let face = SIMD3<Float>(sin(yaw), 0, cos(yaw)) * (d / 2 + 0.02)
+            let along = SIMD3<Float>(cos(yaw), 0, -sin(yaw))
+            let perRow = max(3, Int(w * 0.9 / 0.5))
+            let rowH = (h - 0.5) / 4
             for k in 0..<4 {
-                let key = HubMaterialKey.cloth(colours[(k + p.variant) % colours.count])
-                let face = SIMD3<Float>(sin(yaw), 0, cos(yaw)) * (d / 2 + 0.02)
-                with(.interior, key) {
-                    $0.box(center: base + face + [0, 0.35 + Float(k) * (h - 0.5) / 4, 0],
-                           size: [w * 0.9, (h - 0.5) / 4 * 0.6, 0.18], yaw: yaw)
+                for i in 0..<perRow {
+                    let n = i * 7 + k * 3 + p.variant
+                    let key = HubMaterialKey.cloth(colours[n % colours.count])
+                    let x = -w * 0.45 + (Float(i) + 0.5) * (w * 0.9 / Float(perRow))
+                    let tall = rowH * (0.45 + 0.25 * Float(n % 3))
+                    with(.interior, key) {
+                        $0.box(center: base + face + along * x + [0, 0.3 + Float(k) * rowH, 0],
+                               size: [w * 0.9 / Float(perRow) * 0.8, tall, 0.2], yaw: yaw)
+                    }
                 }
             }
             if let label = p.label { sign(label, at: base + [0, h + 0.5, d / 2 + 0.1], width: w) }

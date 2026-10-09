@@ -125,8 +125,10 @@ private struct HubDashboard: View {
 
                     if wide {
                         HStack(alignment: .bottom, spacing: 12) {
+                            // The reference's timeline runs most of the way
+                            // across a wide screen.
                             HubTimeline(model: model, compact: geo.size.width < 1_000)
-                                .frame(maxWidth: 640)
+                                .frame(maxWidth: max(640, geo.size.width * 0.58))
                             Spacer(minLength: 0)
                             HubBoard(model: model)
                         }
