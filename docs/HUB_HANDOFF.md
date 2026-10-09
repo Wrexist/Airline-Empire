@@ -16,6 +16,8 @@ Read in this order:
    shows, palette, camera, lighting, data mapping, platform.
 3. [`HUB_MODEL_LIST.md`](HUB_MODEL_LIST.md) — every 3D model the reference
    contains, with sizes, materials, slot names and priorities.
+4. [`HUB_MODEL_PIPELINE.md`](HUB_MODEL_PIPELINE.md) — how those models get
+   made: Meshy + Blender MCP + the repo's cleanup and check scripts.
 
 ---
 
@@ -137,7 +139,7 @@ because no model or shader fixes a wrong framing.
 | **1. Composition** | A1, A2, B1, B5, C1 (camera + walls), D1. Tighter apron; new rigs; callout clamped; doll's-house walls. | `HubLayout.swift`, `HubScene.swift`, `HubSceneBuilder.swift`, `HubScreen.swift`, `HubViewTests.swift` | Each of the five comparison rows has the same **subject in the same place** at the same size (±10 % of frame), checked by laying a 3 × 3 grid over both halves. |
 | **2. Density** | A4, A5, B2, B6 placement, C2, C4, C5, D2, D3, D4. More vehicles, queues, kiosks, FIDS, saturated heatmap, glowing route, curved roads, pills. | `HubDynamics.swift`, `HubSceneBuilder.swift`, `HubMaterials.swift`, `HubLayout.swift` | Counting objects in each comparison row gives within ±25 % of the reference (vehicles, people, kiosks, pins/pills). |
 | **3. Glass and night** | A3, B4 procedural glass; E1, E2, E4 palette and windows. | `HubSceneBuilder.swift`, `HubPalette.swift`, `HubMaterials.swift` | Night row: ground/road/window colours within ΔE ≈ 10 of the reference's sampled values (sample with PIL on both halves). |
-| **4. Authored models** | Model list §9 priority order: narrowbody → people → jet bridge/concourse/gate sign → turnaround vehicles → terminal hall + interior props → villa/trees/cart → the rest. Commission or build them (Blender) to the rules in model list §0; drop into `AirlineEmpireApp/Resources/HubModels/`. | No code (that is the point); tune `HubSceneBuilder.authored()` fits only if a model is off. | Each model, once dropped in, shows in all captures with correct scale, facing and repaint (day and night). |
+| **4. Authored models** | Pipeline: [`HUB_MODEL_PIPELINE.md`](HUB_MODEL_PIPELINE.md) (Meshy → Blender via MCP → `scripts/hub-models/` → checker). Model list §9 priority order: narrowbody → people → jet bridge/concourse/gate sign → turnaround vehicles → terminal hall + interior props → villa/trees/cart → the rest. Commission or build them (Blender) to the rules in model list §0; drop into `AirlineEmpireApp/Resources/HubModels/`. | No code (that is the point); tune `HubSceneBuilder.authored()` fits only if a model is off. | Each model, once dropped in, shows in all captures with correct scale, facing and repaint (day and night). |
 | **5. Post-processing** | Bloom (cyan overlays, windows, lamps, pulse rings) and soft ambient occlusion — the "pre-rendered" softness of the reference. `ARView.renderCallbacks.postProcess` gives the colour **and depth** textures; write a Metal compute pass: threshold + Gaussian (`MPSImageGaussianBlur`) + add for bloom; a 8–12-tap SSAO on depth, half resolution, blurred, multiplied in. Gate it on device class (A15+). | new `HubPostProcess.swift` (+ `.metal`), `HubScene.swift` | Glows halo like the reference; corners darken softly; frame time stays inside budget (step 6). |
 | **6. Device pass** | Instruments on a physical A15 iPhone and an M-series iPad: ≤ 16.7 ms frame at overview, ≤ 2 500 entities, ≤ 250 k triangles; pause rendering when hidden; thermal state ok after 5 min. | `HubScene.swift`, model LODs | Numbers recorded in `HUB_VIEW_3D.md` §10. |
 | **7. Ship** | Turn on `AEFeature.hubView3D` for 1.1; add the hub to store screenshots if it earns it. | `HubScreen.swift` (`AEFeature`), release docs | Owner approves the comparison sheet. |
@@ -231,9 +233,9 @@ aspect in `HubScene.rig(..., aspect:)` and breaks differently.
 
 ## 7. Open questions for the owner
 
-1. Who makes the USDZ models — commissioned artist, an AI 3D generator
-   cleaned up in Blender, or a purchased low-poly kit restyled to the clay
-   look? (Model list is written to brief any of the three.)
+1. ~~Who makes the models~~ — decided 2026-10-09: Meshy + Blender via
+   Claude ([`HUB_MODEL_PIPELINE.md`](HUB_MODEL_PIPELINE.md)). Needs the
+   owner's Meshy API key and Blender set up on his PC.
 2. Is the shot picker (our UX) fine, or should shots change only by camera
    moves as in the reference?
 3. Should the hub go in the 1.1 store screenshots?

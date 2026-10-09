@@ -8,7 +8,7 @@ PR #42 (`feature/hub-view-3d`). Handoff, gap list and the step-by-step plan: [HU
 - [ ] Step 1: composition (cameras, tighter apron, doll's-house walls, callout placement).
 - [ ] Step 2: density (vehicles, queues, kiosks, FIDS, heatmap, route line, curved roads).
 - [ ] Step 3: procedural glass and night palette.
-- [ ] Step 4: authored USDZ models in model-list priority order (owner decides who makes them).
+- [ ] Step 4: authored USDZ models in model-list priority order, made with Meshy + Blender via [HUB_MODEL_PIPELINE.md](../docs/HUB_MODEL_PIPELINE.md) (needs the owner's Meshy key and Blender MCP on his PC).
 - [ ] Step 5: bloom + SSAO post-process.
 - [ ] Step 6: physical-device performance pass.
 - [ ] Step 7: owner approves the comparison sheet; enable for 1.1.

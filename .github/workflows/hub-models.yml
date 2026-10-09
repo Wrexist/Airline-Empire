@@ -1,0 +1,28 @@
+name: Hub models
+# Validates authored Hub View models (docs/HUB_MODEL_PIPELINE.md) against
+# scripts/hub-models/manifest.json: size, pivot, facing, triangle budget,
+# ae_ material-slot prims, texture sizes.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/hub-models.yml'
+      - 'AirlineEmpireApp/Resources/HubModels/**'
+      - 'scripts/hub-models/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install USD
+        run: pip install usd-core pillow
+      - name: Check models
+        run: python scripts/hub-models/check_usdz.py

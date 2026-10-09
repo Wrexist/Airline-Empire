@@ -47,3 +47,6 @@ AuthKey_*.p8
 # The reference clip is third-party work and must never be committed.
 .hub-review/
 __pycache__/
+
+# Raw generator output (Meshy GLBs, working .blend files): keep out of the repo.
+art/hub-models/raw/
