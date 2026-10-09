@@ -9,6 +9,12 @@
 > clip** — the same isometric clay world, the same light glass dashboard, the
 > same five shots. This file is the shortest path from what exists to that.
 
+> **Update, 2026-10-09 (second session, branch `claude/kind-bardeen-ajulsw`
+> on top of `feature/hub-view-3d`):** work-plan steps 1–3 are done and step
+> 5 (bloom) is in code, waiting for a device. See §0 for what changed,
+> gap by gap; the rendering research and the audit of the first build are
+> in [`HUB_RENDERING_RESEARCH.md`](HUB_RENDERING_RESEARCH.md).
+
 Read in this order:
 
 1. This file — state, gaps, the work plan, how to check yourself.
@@ -21,7 +27,57 @@ Read in this order:
 
 ---
 
-## 1. Where things stand
+## 0. Second session — what changed (2026-10-09)
+
+Captures: `docs/design/hub-view/` now holds the second session's iPad
+renders (`hub-0*.jpg`). Checks on Linux: the full Core suite (651 tests)
+and the warnings-as-errors release build are green; the app compiles and
+captures on the `Hub view review` workflow (iPad Pro 13", iPhone 17 Pro Max).
+
+| Gap | Status | How |
+|---|---|---|
+| A1 framing | **Done** | `HubFraming.swift` (Core): every shot names a *subject*; the solver places target + distance so it fills the screen area the dashboard leaves free (`HubSafeArea.wide` / `.tall`). Overview subject: terminal, piers, parked envelopes, kerb. Tested for every airport, iPad and iPhone (`shotsFrameTheirSubjectInTheSafeArea`). |
+| A2 apron | **Done** | Apron = parked envelopes + piers + pushbacks + one taxilane; stands spread over every pier face, inner faces first. |
+| A3 glass | **Done** | Glazed barrel vaults with white ribs on the piers and three on the terminal roof (`.skylight` glass). |
+| A4 vehicles | **Done** | `serviceLanes` in Core; tugs, baggage trains, vans, bowsers, buses shuttle on them; kerb buses and taxis; every occupied stand dressed. |
+| A5 queue in every shot | **Done** | Focus overlays are shot-independent; captures hold the focus stand at boarding (`-AEUITestHubStage boarding`, `HubSnapshot.holding`). |
+| B1 gate camera | **Done** | Behind the tail on the side away from the terminal, subject = the jet's own extremities + bridge. Nose points at the concourse (left on screen at ARN gate 1, not right as in the reference — a camera on the reference's side would look across the terminal roof at the stands nearest the building). |
+| B2 queue | **Done** | 20 walkers on the focused queue while boarding. |
+| B3 pulse rings | **Partial** | Four tilted rings at the camera-side engine. Additive blending (iOS 18 `Program.Descriptor.blendMode = .add`) not yet used. |
+| B4 glass bridge | **Done** | Glass tube with white rib rings, white floor, rotunda, cab at door height. |
+| B5 callout | **Done** | Clamped between the KPI row and the timeline, clear of the inspector. |
+| B6 / B7 models | Open | Procedural jets now have cabin windows and a four-pane windscreen; authored models still the real fix (step 4). |
+| C1 doll's house | **Done** | Each 70–90 m bay is a room: end wall, mezzanine + back wall, glazed partition to the next bay, roof frame that stays when the roof lifts; camera solved onto the first bay. |
+| C2 FIDS | **Done** | Two boards per bay at the mezzanine's front edge. |
+| C3 shops | **Partial** | Shelves carry rows of small product boxes; fascia signs unchanged. |
+| C4 kiosks | **Done** | 4–7 per row, lit blue screens (`.kioskScreen`). |
+| C5 heatmap | **Done** | One 4–9 m pool per hotspot (five per bay), red→orange→yellow→clear, in metres on both axes. |
+| C6 people | **Partial** | Crowd batched into one mesh per material (so it can grow); every third traveller has a suitcase. Figures are still capsules. |
+| C7 pins | **Done** | Blue teardrop with a white eye. |
+| D1 district | **Done** | Four 4–6 floor apartment blocks on the district's airport side behind the villas, a crescent road; a departure turns out over the district. |
+| D2 route | **Done** | Raised rounded cyan ribbon with a halo, on the streets past each stop's gate. |
+| D3 curved roads | **Partial** | Roundabouts at the two terminal junctions; other corners still square. |
+| D4 cart | **Done** | Cart + tank trailer loop the streets by the first stop. |
+| D5 villa | **Done** (procedural) | Two storeys, flat roofs with a navy fascia, dark-framed glazing, wood cladding, terrace, hedges. |
+| E1 night palette | **Re-tuned** | Blue-grey albedos under a near-neutral lavender key and greyer sky. |
+| E2 windows | **Done** | Lit windows only (office emission map), window light spilling onto terraces, kerb and apron. |
+| E3 bloom | **In code, device-only** | `HubPostProcess.swift`; the Simulator cannot write the sRGB target, so captures never show it. |
+| E4 trees / lamps | **Done** | Teal trees; lamp heads emissive with warm pools. |
+| F2 timeline | **Done** | 58 % of the width on iPad. |
+| F1 inspector render | Open | |
+
+Also fixed: depth range and shadow range now follow the camera; shot
+changes turn the short way; scene build no longer copies every mesh batch
+on each append (it was quadratic). Details in
+[`HUB_RENDERING_RESEARCH.md`](HUB_RENDERING_RESEARCH.md) §6.
+
+**Next:** judge bloom on a device; authored models (step 4); SSAO once
+depth is confirmed in `.nonAR`; additive glows; device performance pass
+(step 6).
+
+---
+
+## 1. Where things stood after the first build
 
 ### What exists and works
 

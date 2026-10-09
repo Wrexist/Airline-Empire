@@ -24,6 +24,7 @@ Read `docs/HUB_HANDOFF.md` first. It holds the current state, the shot-by-shot
 gap list against the owner's reference clip, the ordered work plan, and the
 render-and-compare loop in `scripts/hub-review/`. 3D models are made with Meshy +
 Blender MCP following `docs/HUB_MODEL_PIPELINE.md`; validate every model with
-`scripts/hub-models/check_usdz.py`. The reference clip is
+`scripts/hub-models/check_usdz.py`. What RealityKit can do for the look (bloom, shadows,
+materials, performance) is in `docs/HUB_RENDERING_RESEARCH.md`. The reference clip is
 third-party work: never commit it or frames cut from it (`.hub-review/` is
 git-ignored).
