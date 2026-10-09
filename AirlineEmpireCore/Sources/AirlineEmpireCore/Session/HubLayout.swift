@@ -158,6 +158,79 @@ public struct HubPath: Equatable, Codable, Sendable {
     }
 }
 
+extension HubPath {
+    /// Every interior corner replaced by a curve of up to `radius` metres
+    /// (less where the neighbouring legs are short), so anything following
+    /// the path turns through an arc instead of pivoting on a point. The
+    /// curve never strays more than `radius` from the corner, unlike corner
+    /// cutting by fractions of a leg, which would cut across lawns on long
+    /// streets. End points are kept.
+    public func rounded(radius: Double, steps: Int = 6) -> HubPath {
+        guard points.count > 2, radius > 0 else { return self }
+        var out: [HubVec] = [points[0]]
+        for i in 1..<(points.count - 1) {
+            let a = points[i - 1], b = points[i], c = points[i + 1]
+            let inLen = (b - a).groundLength, outLen = (c - b).groundLength
+            guard inLen > 0.01, outLen > 0.01 else { out.append(b); continue }
+            let d = min(radius, inLen / 2, outLen / 2)
+            let p0 = b + (a - b) * (d / inLen)
+            let p2 = b + (c - b) * (d / outLen)
+            for k in 0...steps {
+                let t = Double(k) / Double(steps)
+                // Quadratic Bézier with the corner as its control point.
+                let u = 1 - t
+                out.append(p0 * (u * u) + b * (2 * u * t) + p2 * (t * t))
+            }
+        }
+        out.append(points[points.count - 1])
+        return HubPath(out)
+    }
+
+    /// This path offset `lane` metres to its right (on the ground).
+    public func offset(_ lane: Double) -> HubPath {
+        guard points.count > 1 else { return self }
+        func right(_ d: HubVec) -> HubVec {
+            let l = d.groundLength
+            return l < 1e-9 ? HubVec(0, 0, 0) : HubVec(-d.z / l, 0, d.x / l)
+        }
+        let shifted = points.indices.map { i -> HubVec in
+            let back = i > 0 ? right(points[i] - points[i - 1]) : nil
+            let ahead = i < points.count - 1 ? right(points[i + 1] - points[i]) : nil
+            let a = ahead ?? back!, b = back ?? ahead!
+            let sum = a + b
+            let l = sum.groundLength
+            guard l > 1e-9 else { return points[i] + a * lane }
+            let n = sum * (1 / l)
+            // Keep the lane width through a corner (mitre), within reason.
+            let cosHalf = max(0.5, a.x * n.x + a.z * n.z)
+            return points[i] + n * (lane / cosHalf)
+        }
+        return HubPath(shifted)
+    }
+
+    /// A closed loop out along this path and back again, each way keeping
+    /// `lane` metres to the driver's right, joined by half-circle U-turns
+    /// at both ends — two-way traffic that never reverses or teleports.
+    public func roundTrip(lane: Double, steps: Int = 8) -> HubPath {
+        guard points.count > 1, lane > 0 else { return self }
+        let out = offset(lane).points
+        let back = HubPath(points.reversed()).offset(lane).points
+        func uTurn(at end: HubVec, heading d: HubVec) -> [HubVec] {
+            let l = d.groundLength
+            guard l > 1e-9 else { return [] }
+            let f = HubVec(d.x / l, 0, d.z / l), r = HubVec(-f.z, 0, f.x)
+            return (1..<steps).map { k in
+                let t = Double(k) / Double(steps) * .pi
+                return end + r * (lane * cos(t)) + f * (lane * sin(t))
+            }
+        }
+        let n = points.count
+        let turnFar = uTurn(at: points[n - 1], heading: points[n - 1] - points[n - 2])
+        let turnNear = uTurn(at: points[0], heading: points[0] - points[1])
+        return HubPath(out + turnFar + back + turnNear + [out[0]])
+    }
+}
+
 /// A runway: centreline from `thresholdA` to `thresholdB`.
 public struct HubRunway: Equatable, Codable, Sendable {
     public let thresholdA: HubVec

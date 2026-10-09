@@ -85,15 +85,53 @@ extension HubTurnaroundStage {
 
 // MARK: - Top bar
 
+/// How the dashboard is arranged for the shape of the view.
+enum HubChromeMode: Equatable {
+    /// iPad and wide windows: the reference's layout.
+    case regular
+    /// iPhone on its side: one slim bar, chips, a slim timeline.
+    case landscape
+    /// A narrow window (iPad split view): stacked.
+    case portrait
+
+    init(size: CGSize) {
+        if size.width > size.height && size.height < 520 {
+            self = .landscape
+        } else {
+            self = size.width >= 760 ? .regular : .portrait
+        }
+    }
+
+    var topBarHeight: CGFloat { self == .landscape ? 46 : 54 }
+}
+
+/// The springs every panel moves on: quick to answer, settled without a
+/// wobble.
+enum HubMotion {
+    static let panel = Animation.spring(response: 0.42, dampingFraction: 0.86)
+    static let snap = Animation.spring(response: 0.32, dampingFraction: 0.82)
+    static let data = Animation.smooth(duration: 0.6)
+}
+
+/// A press that sinks a little, for every chrome button.
+struct HubPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .opacity(configuration.isPressed ? 0.85 : 1)
+            .animation(.spring(response: 0.22, dampingFraction: 0.7), value: configuration.isPressed)
+    }
+}
+
 @available(iOS 18.0, *)
 struct HubTopBar: View {
-    let model: HubScreenModel
-    let wide: Bool
+    @Bindable var model: HubScreenModel
+    let mode: HubChromeMode
     let dismiss: () -> Void
-    @State private var query = ""
+    @FocusState private var searching: Bool
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: mode == .regular ? 12 : 8) {
             Button(action: dismiss) {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 15, weight: .semibold))
@@ -101,6 +139,7 @@ struct HubTopBar: View {
                     .frame(width: 32, height: 32)
                     .background(Color.white.opacity(0.7), in: Circle())
             }
+            .buttonStyle(HubPressStyle())
             .accessibilityLabel("Close hub view")
             .accessibilityIdentifier("ae-hub-close")
 
@@ -109,87 +148,33 @@ struct HubTopBar: View {
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(LinearGradient(colors: [Color(red: 0.36, green: 0.42, blue: 1), HubChromeStyle.accent],
                                                     startPoint: .topLeading, endPoint: .bottomTrailing))
-                Text(model.snapshot?.airlineName ?? "Airline")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(HubChromeStyle.ink)
-                    .lineLimit(1)
+                if mode == .regular {
+                    Text(model.snapshot?.airlineName ?? "Airline")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(HubChromeStyle.ink)
+                        .lineLimit(1)
+                }
             }
 
-            if wide {
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass").foregroundStyle(HubChromeStyle.tertiary)
-                    TextField("Search stands, flights, gates, aircraft…", text: $query)
-                        .font(.system(size: 13))
-                        .foregroundStyle(HubChromeStyle.ink)
-                    Text("⌘K").font(.system(size: 11, weight: .medium)).foregroundStyle(HubChromeStyle.tertiary)
-                }
-                .padding(.horizontal, 12)
-                .frame(height: 34)
-                .background(Color.white.opacity(0.65), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .frame(maxWidth: 420)
+            if mode == .regular {
+                searchField.frame(maxWidth: 420)
+            }
+            if mode == .landscape {
+                HubShotPicker(model: model, compact: true)
             }
 
             Spacer(minLength: 4)
 
-            HStack(spacing: 8) {
-                Image(systemName: "airplane.circle.fill")
-                    .font(.system(size: 22))
-                    .foregroundStyle(.white, HubChromeStyle.accent)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(wide ? "\(model.snapshot?.city ?? model.airport.raw) Hub" : "\(model.airport.raw) Hub")
-                        .font(.system(size: 13, weight: .semibold)).foregroundStyle(HubChromeStyle.ink)
-                        .lineLimit(1).fixedSize()
-                    if wide {
-                        Text("\(model.airport.raw) · \(model.layout.stands.count) stands")
-                            .font(.system(size: 11)).foregroundStyle(HubChromeStyle.secondary)
-                    }
-                }
-                if wide {
-                    Image(systemName: "chevron.down").font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(HubChromeStyle.tertiary)
-                }
+            if mode != .regular {
+                iconButton("magnifyingglass", "Search", panel: .search)
             }
-            .padding(.horizontal, 10)
-            .frame(height: 38)
-            .background(Color.white.opacity(0.55), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
-
-            HStack(spacing: 5) {
-                Circle().fill(HubChromeStyle.good).frame(width: 7, height: 7)
-                Text("Live").font(.system(size: 12, weight: .semibold)).foregroundStyle(HubChromeStyle.good)
-                Text(model.snapshot?.localTime ?? "--:--")
-                    .font(.system(size: 12, weight: .semibold).monospacedDigit())
-                    .foregroundStyle(HubChromeStyle.ink)
-            }
-            .padding(.horizontal, 10)
-            .frame(height: 30)
-            .background(HubChromeStyle.goodSoft, in: Capsule())
-            .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("ae-hub-clock")
-
-            if wide {
-                Image(systemName: "bell")
-                    .font(.system(size: 15))
-                    .foregroundStyle(HubChromeStyle.ink)
-                    .overlay(alignment: .topTrailing) {
-                        Circle().fill(HubChromeStyle.bad).frame(width: 7, height: 7).offset(x: 2, y: -2)
-                    }
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(LinearGradient(colors: [Color(red: 0.98, green: 0.78, blue: 0.62), Color(red: 0.82, green: 0.55, blue: 0.42)],
-                                             startPoint: .top, endPoint: .bottom))
-                        .frame(width: 30, height: 30)
-                        .overlay(Image(systemName: "person.fill").font(.system(size: 14)).foregroundStyle(.white))
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text("You").font(.system(size: 13, weight: .semibold)).foregroundStyle(HubChromeStyle.ink)
-                        Text("Chief Executive").font(.system(size: 11)).foregroundStyle(HubChromeStyle.secondary)
-                    }
-                    Image(systemName: "chevron.down").font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(HubChromeStyle.tertiary)
-                }
-            }
+            hubChip
+            clock
+            bell
+            profile
         }
         .padding(.horizontal, 14)
-        .frame(height: 54)
+        .frame(height: mode.topBarHeight)
         .background {
             Rectangle().fill(.ultraThinMaterial)
                 .overlay(Rectangle().fill(Color.white.opacity(0.66)))
@@ -197,6 +182,169 @@ struct HubTopBar: View {
                 .shadow(color: HubChromeStyle.panelShadow, radius: 12, y: 4)
                 .ignoresSafeArea(edges: .top)
         }
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass").foregroundStyle(HubChromeStyle.tertiary)
+            TextField("Search stands, flights, gates, aircraft…", text: $model.searchQuery)
+                .font(.system(size: 13))
+                .foregroundStyle(HubChromeStyle.ink)
+                .focused($searching)
+                .submitLabel(.search)
+                .onSubmit {
+                    if let first = model.searchResults.first { withAnimation(HubMotion.panel) { model.choose(first) } }
+                }
+                .accessibilityIdentifier("ae-hub-search")
+            if model.searchQuery.isEmpty {
+                Text("⌘K").font(.system(size: 11, weight: .medium)).foregroundStyle(HubChromeStyle.tertiary)
+            } else {
+                Button {
+                    model.searchQuery = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(HubChromeStyle.tertiary)
+                }
+                .accessibilityLabel("Clear search")
+            }
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 34)
+        .background(Color.white.opacity(searching ? 0.9 : 0.65), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
+            .strokeBorder(HubChromeStyle.accent.opacity(searching ? 0.5 : 0), lineWidth: 1.5))
+        .animation(HubMotion.snap, value: searching)
+        .onChange(of: model.searchQuery) { _, query in
+            withAnimation(HubMotion.snap) {
+                if !query.isEmpty { model.panel = .search } else if model.panel == .search { model.panel = nil }
+            }
+        }
+        .background {
+            // ⌘K focuses the field, as the reference's hint says.
+            Button("") { searching = true }
+                .keyboardShortcut("k", modifiers: .command)
+                .opacity(0)
+                .accessibilityHidden(true)
+        }
+    }
+
+    private var hubChip: some View {
+        Button {
+            withAnimation(HubMotion.snap) { model.toggle(.hubs) }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "airplane.circle.fill")
+                    .font(.system(size: 22))
+                    .foregroundStyle(.white, HubChromeStyle.accent)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(mode == .regular ? "\(model.snapshot?.city ?? model.airport.raw) Hub" : "\(model.airport.raw) Hub")
+                        .font(.system(size: 13, weight: .semibold)).foregroundStyle(HubChromeStyle.ink)
+                        .lineLimit(1).fixedSize()
+                    if mode == .regular {
+                        Text("\(model.airport.raw) · \(model.layout.stands.count) stands")
+                            .font(.system(size: 11)).foregroundStyle(HubChromeStyle.secondary)
+                    }
+                }
+                Image(systemName: "chevron.down").font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(HubChromeStyle.tertiary)
+                    .rotationEffect(.degrees(model.panel == .hubs ? 180 : 0))
+            }
+            .padding(.horizontal, 10)
+            .frame(height: mode == .landscape ? 34 : 38)
+            .background(Color.white.opacity(model.panel == .hubs ? 0.9 : 0.55),
+                        in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+        }
+        .buttonStyle(HubPressStyle())
+        .accessibilityLabel("Switch hub")
+        .accessibilityIdentifier("ae-hub-switcher")
+    }
+
+    private var clock: some View {
+        HStack(spacing: 5) {
+            Circle().fill(HubChromeStyle.good).frame(width: 7, height: 7)
+            if mode == .regular {
+                Text("Live").font(.system(size: 12, weight: .semibold)).foregroundStyle(HubChromeStyle.good)
+            }
+            Text(model.snapshot?.localTime ?? "--:--")
+                .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                .foregroundStyle(HubChromeStyle.ink)
+                .contentTransition(.numericText())
+                .animation(.smooth, value: model.snapshot?.localTime)
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 30)
+        .background(HubChromeStyle.goodSoft, in: Capsule())
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("ae-hub-clock")
+    }
+
+    private var alertCount: Int { model.snapshot?.insights.alerts.count ?? 0 }
+
+    private var bell: some View {
+        Button {
+            withAnimation(HubMotion.snap) { model.toggle(.alerts) }
+        } label: {
+            Image(systemName: alertCount > 0 ? "bell.badge" : "bell")
+                .font(.system(size: 15))
+                .foregroundStyle(HubChromeStyle.ink)
+                .symbolEffect(.bounce, value: alertCount)
+                .frame(width: 32, height: 32)
+                .overlay(alignment: .topTrailing) {
+                    if alertCount > 0 {
+                        Text("\(alertCount)")
+                            .font(.system(size: 9, weight: .bold).monospacedDigit())
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 4)
+                            .frame(minWidth: 15, minHeight: 15)
+                            .background(HubChromeStyle.bad, in: Capsule())
+                            .offset(x: 2, y: 1)
+                            .transition(.scale.combined(with: .opacity))
+                    }
+                }
+        }
+        .buttonStyle(HubPressStyle())
+        .accessibilityLabel(alertCount > 0 ? "\(alertCount) alerts" : "No alerts")
+        .accessibilityIdentifier("ae-hub-alerts")
+    }
+
+    private var profile: some View {
+        Button {
+            withAnimation(HubMotion.snap) { model.toggle(.profile) }
+        } label: {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(LinearGradient(colors: [Color(red: 0.98, green: 0.78, blue: 0.62), Color(red: 0.82, green: 0.55, blue: 0.42)],
+                                         startPoint: .top, endPoint: .bottom))
+                    .frame(width: 30, height: 30)
+                    .overlay(Image(systemName: "person.fill").font(.system(size: 14)).foregroundStyle(.white))
+                if mode == .regular {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("You").font(.system(size: 13, weight: .semibold)).foregroundStyle(HubChromeStyle.ink)
+                        Text("Chief Executive").font(.system(size: 11)).foregroundStyle(HubChromeStyle.secondary)
+                    }
+                    Image(systemName: "chevron.down").font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(HubChromeStyle.tertiary)
+                        .rotationEffect(.degrees(model.panel == .profile ? 180 : 0))
+                }
+            }
+        }
+        .buttonStyle(HubPressStyle())
+        .accessibilityLabel("Airline summary")
+        .accessibilityIdentifier("ae-hub-profile")
+    }
+
+    private func iconButton(_ icon: String, _ label: String, panel: HubPanel) -> some View {
+        Button {
+            withAnimation(HubMotion.snap) { model.toggle(panel) }
+        } label: {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(model.panel == panel ? HubChromeStyle.accent : HubChromeStyle.ink)
+                .frame(width: 32, height: 32)
+                .background(model.panel == panel ? HubChromeStyle.accentSoft : Color.white.opacity(0.55), in: Circle())
+        }
+        .buttonStyle(HubPressStyle())
+        .accessibilityLabel(label)
+        .accessibilityIdentifier("ae-hub-\(label.lowercased())")
     }
 }
 
@@ -209,53 +357,70 @@ struct HubKPICard: View {
     let detail: String
     var delta: String?
     var deltaGood = true
+    var compact = false
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            HubIconTile(systemName: icon, size: 34)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 11, weight: .medium)).foregroundStyle(HubChromeStyle.secondary)
+        HStack(alignment: compact ? .center : .top, spacing: compact ? 7 : 10) {
+            HubIconTile(systemName: icon, size: compact ? 26 : 34)
+            VStack(alignment: .leading, spacing: compact ? 0 : 2) {
+                Text(title).font(.system(size: compact ? 10 : 11, weight: .medium)).foregroundStyle(HubChromeStyle.secondary)
                     .lineLimit(1)
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(value).font(.system(size: 22, weight: .bold).monospacedDigit())
+                    Text(value).font(.system(size: compact ? 15 : 22, weight: .bold).monospacedDigit())
                         .foregroundStyle(HubChromeStyle.ink)
                         .contentTransition(.numericText())
-                    if let delta {
+                        .animation(HubMotion.data, value: value)
+                    if let delta, !compact {
                         Text(delta).font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(deltaGood ? HubChromeStyle.good : HubChromeStyle.bad)
                     }
                 }
-                Text(detail).font(.system(size: 11)).foregroundStyle(HubChromeStyle.tertiary).lineLimit(1)
+                if !compact {
+                    Text(detail).font(.system(size: 11)).foregroundStyle(HubChromeStyle.tertiary).lineLimit(1)
+                }
             }
             Spacer(minLength: 0)
         }
-        .frame(minWidth: 150, maxWidth: 210, alignment: .leading)
-        .hubGlass(padding: 11)
+        .frame(minWidth: compact ? 104 : 150, maxWidth: compact ? 150 : 210, alignment: .leading)
+        .hubGlass(radius: compact ? 13 : HubChromeStyle.radius, padding: compact ? 7 : 11)
         .accessibilityElement(children: .combine)
     }
 }
 
+@available(iOS 18.0, *)
 struct HubKPIRow: View {
-    let snapshot: HubSnapshot?
+    let model: HubScreenModel
+    var compact = false
 
     var body: some View {
-        let k = snapshot?.kpis
-        HStack(spacing: 10) {
-            HubKPICard(icon: "clock.badge.checkmark", title: "On-time performance",
-                       value: k?.onTimeRate.map { String(format: "%.1f%%", $0 * 100) } ?? "—",
-                       detail: k?.onTimeRate == nil ? "No flights yet" : "avg delay \(k?.averageDelayMinutes ?? 0)m",
-                       delta: k?.onTimeRate.map { $0 >= 0.85 ? "▲ on target" : "▼ below 85%" },
-                       deltaGood: (k?.onTimeRate ?? 1) >= 0.85)
-            HubKPICard(icon: "airplane", title: "Active flights",
-                       value: "\(k?.activeFlights ?? 0)",
-                       detail: "\(k?.aircraftOnGround ?? 0) of yours on the ground")
-            HubKPICard(icon: "timer", title: "Avg turnaround",
-                       value: "\(k?.averageTurnaroundMinutes ?? 0)m",
-                       detail: "\(k?.passengersToday ?? 0) passengers today",
-                       delta: k.map { String(format: "%.0f%% slots", $0.slotUse * 100) },
-                       deltaGood: (k?.slotUse ?? 0) < 0.9)
+        let k = model.snapshot?.kpis
+        HStack(spacing: compact ? 8 : 10) {
+            card(.overview, HubKPICard(icon: "clock.badge.checkmark", title: compact ? "On time" : "On-time performance",
+                                       value: k?.onTimeRate.map { String(format: "%.1f%%", $0 * 100) } ?? "—",
+                                       detail: k?.onTimeRate == nil ? "No flights yet" : "avg delay \(k?.averageDelayMinutes ?? 0)m",
+                                       delta: k?.onTimeRate.map { $0 >= 0.85 ? "▲ on target" : "▼ below 85%" },
+                                       deltaGood: (k?.onTimeRate ?? 1) >= 0.85, compact: compact))
+            card(.routes, HubKPICard(icon: "airplane", title: compact ? "Active" : "Active flights",
+                                     value: "\(k?.activeFlights ?? 0)",
+                                     detail: "\(k?.aircraftOnGround ?? 0) of yours on the ground", compact: compact))
+            card(.slots, HubKPICard(icon: "timer", title: compact ? "Turnaround" : "Avg turnaround",
+                                    value: "\(k?.averageTurnaroundMinutes ?? 0)m",
+                                    detail: "\(k?.passengersToday ?? 0) passengers today",
+                                    delta: k.map { String(format: "%.0f%% slots", $0.slotUse * 100) },
+                                    deltaGood: (k?.slotUse ?? 0) < 0.9, compact: compact))
         }
         .accessibilityIdentifier("ae-hub-kpis")
+    }
+
+    /// Every card opens the insights behind it.
+    private func card(_ tab: HubInsightsTab, _ content: HubKPICard) -> some View {
+        Button {
+            withAnimation(HubMotion.panel) {
+                model.insightsTab = tab
+                model.panel = .insights
+            }
+        } label: { content }
+        .buttonStyle(HubPressStyle())
     }
 }
 
@@ -264,6 +429,7 @@ struct HubKPIRow: View {
 @available(iOS 18.0, *)
 struct HubControls: View {
     let model: HubScreenModel
+    var compact = false
 
     var body: some View {
         VStack(spacing: 2) {
@@ -278,9 +444,17 @@ struct HubControls: View {
             control(model.isNight ? "sun.max" : "moon.stars", model.isNight ? "Daylight" : "Night") {
                 model.setLighting(model.isNight ? .day : .night)
             }
+            divider
+            control("square.3.layers.3d", "Layers", active: model.panel == .layers) {
+                withAnimation(HubMotion.snap) { model.toggle(.layers) }
+            }
+            divider
+            control("chart.bar.xaxis", "Insights", active: model.panel == .insights) {
+                withAnimation(HubMotion.panel) { model.toggle(.insights) }
+            }
         }
         .padding(.vertical, 4)
-        .frame(width: 40)
+        .frame(width: compact ? 36 : 40)
         .background {
             Capsule(style: .continuous).fill(.ultraThinMaterial)
                 .overlay(Capsule(style: .continuous).fill(HubChromeStyle.panelFill))
@@ -293,13 +467,17 @@ struct HubControls: View {
         Rectangle().fill(HubChromeStyle.track).frame(width: 18, height: 1)
     }
 
-    private func control(_ icon: String, _ label: String, action: @escaping () -> Void) -> some View {
+    private func control(_ icon: String, _ label: String, active: Bool = false,
+                         action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(HubChromeStyle.ink)
-                .frame(width: 36, height: 36)
+                .foregroundStyle(active ? HubChromeStyle.accent : HubChromeStyle.ink)
+                .contentTransition(.symbolEffect(.replace))
+                .frame(width: compact ? 32 : 36, height: compact ? 30 : 36)
+                .background(active ? HubChromeStyle.accentSoft : .clear, in: Circle())
         }
+        .buttonStyle(HubPressStyle())
         .accessibilityLabel(label)
         .accessibilityIdentifier("ae-hub-\(label.lowercased().replacingOccurrences(of: " ", with: "-"))")
     }
@@ -309,13 +487,14 @@ struct HubControls: View {
 struct HubShotPicker: View {
     let model: HubScreenModel
     var compact = false
+    @Namespace private var selection
 
     var body: some View {
         HStack(spacing: 2) {
             ForEach(HubShot.allCases) { shot in
                 let selected = model.shot == shot
                 Button {
-                    withAnimation(.snappy(duration: 0.25)) { model.select(shot) }
+                    withAnimation(HubMotion.snap) { model.select(shot) }
                 } label: {
                     Label(shot.title, systemImage: shot.systemImage)
                         .font(.system(size: 12, weight: .semibold))
@@ -324,14 +503,17 @@ struct HubShotPicker: View {
                         .fixedSize()
                         .foregroundStyle(selected ? Color.white : HubChromeStyle.ink)
                         .padding(.horizontal, compact ? 8 : 11)
-                        .frame(height: 30)
+                        .frame(height: compact ? 28 : 30)
                         .background {
                             if selected {
+                                // The pill slides from shot to shot.
                                 Capsule().fill(HubChromeStyle.accent)
                                     .shadow(color: HubChromeStyle.accent.opacity(0.35), radius: 6, y: 3)
+                                    .matchedGeometryEffect(id: "selected", in: selection)
                             }
                         }
                 }
+                .buttonStyle(HubPressStyle())
                 .accessibilityIdentifier("ae-hub-shot-\(shot.rawValue)")
                 .accessibilityAddTraits(selected ? .isSelected : [])
             }
@@ -419,11 +601,12 @@ struct HubAircraftProfile: View {
 
 @available(iOS 18.0, *)
 struct HubInspector: View {
-    let model: HubScreenModel
+    @Bindable var model: HubScreenModel
     let occupant: HubStandOccupant
+    var compact = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: compact ? 8 : 10) {
             HStack(spacing: 10) {
                 HubIconTile(systemName: "airplane", size: 30)
                 VStack(alignment: .leading, spacing: 1) {
@@ -431,50 +614,133 @@ struct HubInspector: View {
                         .lineLimit(1)
                     Text(occupant.registration.isEmpty ? "Gate \(occupant.gate)" : occupant.registration)
                         .font(.system(size: 17, weight: .bold)).foregroundStyle(HubChromeStyle.ink)
+                        .contentTransition(.opacity)
                 }
                 Spacer()
-                Button { model.focusNext() } label: {
+                Button {
+                    withAnimation(HubMotion.snap) { model.focusNext() }
+                } label: {
                     Image(systemName: "arrow.right.circle").font(.system(size: 16))
                 }
+                .buttonStyle(HubPressStyle())
                 .accessibilityLabel("Next aircraft")
                 .accessibilityIdentifier("ae-hub-next-aircraft")
-                Button { model.showsInspector = false } label: {
+                Button {
+                    withAnimation(HubMotion.panel) { model.showsInspector = false }
+                } label: {
                     Image(systemName: "xmark").font(.system(size: 12, weight: .bold))
                 }
+                .buttonStyle(HubPressStyle())
                 .accessibilityLabel("Close inspector")
             }
             .foregroundStyle(HubChromeStyle.secondary)
 
             HubAircraftProfile(category: occupant.category, livery: occupant.livery)
-                .frame(height: 92)
+                .frame(height: compact ? 58 : 92)
                 .background(LinearGradient(colors: [Color(red: 0.93, green: 0.95, blue: 1), Color(red: 0.86, green: 0.89, blue: 0.98)],
                                            startPoint: .top, endPoint: .bottom),
                             in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .id(occupant.standIndex)
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+
+            // Page tabs: the active one widens to show its name.
             HStack(spacing: 5) {
-                ForEach(0..<4) { i in
-                    Circle().fill(i == 0 ? HubChromeStyle.accent : HubChromeStyle.track).frame(width: 5, height: 5)
+                ForEach(HubInspectorPage.allCases) { page in
+                    let active = model.inspectorPage == page
+                    Button {
+                        withAnimation(HubMotion.snap) { model.inspectorPage = page }
+                    } label: {
+                        Text(active ? page.title : "")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .fixedSize()
+                            .padding(.horizontal, active ? 7 : 0)
+                            .frame(minWidth: active ? 0 : 6, minHeight: active ? 15 : 6)
+                            .background(active ? HubChromeStyle.accent : HubChromeStyle.track, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(page.title)
+                    .accessibilityAddTraits(active ? .isSelected : [])
                 }
             }
             .frame(maxWidth: .infinity)
 
-            VStack(spacing: 7) {
-                if let flight = occupant.flight {
-                    row("Flight", flight.code)
-                    row(flight.from == model.airport ? "Destination" : "From", flight.destinationCity)
-                    row("Departs", flight.time)
-                    row("Passengers", flight.seats > 0 ? "\(flight.passengers) / \(flight.seats)" : "\(flight.passengers)")
-                    row("Status", flight.delayMinutes > 0 ? "Delayed \(flight.delayMinutes)m" : flight.status.title,
-                        tint: flight.status.tint)
-                } else {
-                    row("Status", occupant.stage?.title ?? "Parked")
+            TabView(selection: $model.inspectorPage) {
+                ForEach(HubInspectorPage.allCases) { page in
+                    VStack(spacing: 7) { rows(page) }
+                        .frame(maxHeight: .infinity, alignment: .top)
+                        .tag(page)
                 }
-                row("Stand", "Gate \(occupant.gate)")
-                row("Operator", operatorName)
             }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .frame(height: compact ? 116 : 136)
         }
-        .frame(width: 250)
+        .frame(width: compact ? 240 : 250)
         .hubGlass()
         .accessibilityIdentifier("ae-hub-inspector")
+    }
+
+    @ViewBuilder
+    private func rows(_ page: HubInspectorPage) -> some View {
+        switch page {
+        case .flight:
+            if let flight = occupant.flight {
+                row("Flight", flight.code)
+                row(flight.from == model.airport ? "Destination" : "From", flight.destinationCity)
+                row("Departs", flight.time)
+                loadRow(flight)
+                row("Status", flight.delayMinutes > 0 ? "Delayed \(flight.delayMinutes)m" : flight.status.title,
+                    tint: flight.status.tint)
+            } else {
+                row("Status", occupant.stage?.title ?? "Parked")
+                row("Stand", "Gate \(occupant.gate)")
+                row("Next flight", "Not scheduled")
+            }
+        case .aircraft:
+            row("Type", occupant.typeName)
+            row("Registration", occupant.registration.isEmpty ? "—" : occupant.registration)
+            row("Class", categoryTitle)
+            row("Operator", operatorName)
+            row("Stand", "Gate \(occupant.gate)")
+        case .route:
+            if let link = model.focusedRoute {
+                row("Route", "\(model.airport.raw)–\(link.other.raw) \(link.city)")
+                row("Distance", "\(link.distanceKm.formatted()) km")
+                row("Round trips", "\(link.dailyRoundTrips) a day · \(link.aircraftAssigned) aircraft")
+                row("Load factor", link.loadFactor.map { Format.percent($0) } ?? "No flights yet",
+                    tint: HubRouteStyle.tint(link.loadFactor))
+                row("Profit this month", Format.money(Money(cents: link.profitThisMonthCents)),
+                    tint: link.profitThisMonthCents >= 0 ? HubChromeStyle.good : HubChromeStyle.bad)
+            } else {
+                Text(occupant.operatorKind == .player ? "Not assigned to a route." : "Another carrier's aircraft.")
+                    .font(.system(size: 12)).foregroundStyle(HubChromeStyle.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        case .turnaround:
+            row("Stage", occupant.stage?.title ?? "Parked")
+            row("Progress", Format.percent(overallProgress))
+            ProgressView(value: overallProgress)
+                .tint(HubChromeStyle.accent)
+                .animation(HubMotion.data, value: overallProgress)
+            row("Ground crew", ["Basic", "Standard", "Premium"][min(2, max(0, model.snapshot?.insights.groundServices ?? 0))])
+        }
+    }
+
+    private var overallProgress: Double {
+        guard let stage = occupant.stage else { return 0 }
+        return min(1, (Double(stage.rawValue) + occupant.stageProgress) / Double(HubTurnaroundStage.allCases.count - 1))
+    }
+
+    private var categoryTitle: String {
+        switch occupant.category {
+        case .turboprop: "Turboprop"
+        case .regionalJet: "Regional jet"
+        case .narrowbody: "Narrowbody"
+        case .largeNarrowbody: "Large narrowbody"
+        case .widebody: "Widebody"
+        case .largeWidebody: "Large widebody"
+        }
     }
 
     private var operatorName: String {
@@ -485,11 +751,27 @@ struct HubInspector: View {
         }
     }
 
+    private func loadRow(_ flight: HubFlightCard) -> some View {
+        HStack(spacing: 8) {
+            Text("Passengers").font(.system(size: 12)).foregroundStyle(HubChromeStyle.secondary)
+            Spacer()
+            if flight.seats > 0 {
+                Capsule().fill(HubChromeStyle.track).frame(width: 44, height: 4)
+                    .overlay(alignment: .leading) {
+                        Capsule().fill(HubRouteStyle.tint(flight.loadFactor)).frame(width: 44 * min(1, flight.loadFactor), height: 4)
+                    }
+            }
+            Text(flight.seats > 0 ? "\(flight.passengers) / \(flight.seats)" : "\(flight.passengers)")
+                .font(.system(size: 12, weight: .semibold).monospacedDigit()).foregroundStyle(HubChromeStyle.ink)
+        }
+    }
+
     private func row(_ label: String, _ value: String, tint: Color = HubChromeStyle.ink) -> some View {
         HStack {
             Text(label).font(.system(size: 12)).foregroundStyle(HubChromeStyle.secondary)
             Spacer()
             Text(value).font(.system(size: 12, weight: .semibold)).foregroundStyle(tint).lineLimit(1)
+                .contentTransition(.numericText())
         }
     }
 }
@@ -500,12 +782,14 @@ struct HubInspector: View {
 struct HubTimeline: View {
     let model: HubScreenModel
     let compact: Bool
+    /// iPhone on its side: tighter, so the airport keeps the screen.
+    var slim = false
 
     var body: some View {
         let occupant = model.focusedOccupant
         let stage = occupant?.stage
         HStack(alignment: .top, spacing: 14) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: slim ? 6 : 12) {
                 HStack(spacing: 8) {
                     HubIconTile(systemName: "arrow.triangle.2.circlepath", size: 26)
                     Text("Turnaround" + (occupant?.flight.map { " · \($0.code)" } ?? ""))
@@ -523,7 +807,7 @@ struct HubTimeline: View {
                     .frame(width: 190)
             }
         }
-        .hubGlass(padding: 14)
+        .hubGlass(padding: slim ? 10 : 14)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("ae-hub-timeline")
     }
@@ -538,6 +822,7 @@ struct HubTimeline: View {
             ZStack(alignment: .topLeading) {
                 Capsule().fill(HubChromeStyle.track).frame(height: 4).offset(y: 9)
                 Capsule().fill(HubChromeStyle.accent).frame(width: filled, height: 4).offset(y: 9)
+                    .animation(HubMotion.data, value: filled)
                 ForEach(stages, id: \.rawValue) { s in
                     let done = s.rawValue < current
                     let active = s.rawValue == current
@@ -547,6 +832,8 @@ struct HubTimeline: View {
                                 .frame(width: 22, height: 22)
                                 .overlay(Circle().strokeBorder(done || active ? Color.white : HubChromeStyle.track, lineWidth: 2))
                                 .shadow(color: active ? HubChromeStyle.accent.opacity(0.45) : .clear, radius: 6)
+                                .scaleEffect(active ? 1.12 : 1)
+                                .animation(HubMotion.snap, value: active)
                             Image(systemName: done ? "checkmark" : s.systemImage)
                                 .font(.system(size: 9, weight: .bold))
                                 .foregroundStyle(done || active ? Color.white : HubChromeStyle.tertiary)
@@ -566,10 +853,11 @@ struct HubTimeline: View {
                         .background(Color.white, in: Capsule())
                         .shadow(color: HubChromeStyle.panelShadow, radius: 4)
                         .position(x: filled, y: -6)
+                        .animation(HubMotion.data, value: filled)
                 }
             }
         }
-        .frame(height: 50)
+        .frame(height: slim ? 44 : 50)
         .padding(.horizontal, 22)
         .accessibilityElement()
         .accessibilityLabel("Turnaround stage")
@@ -610,59 +898,104 @@ struct HubTimeline: View {
 
 // MARK: - Departures board
 
+extension HubBoardRow {
+    /// Stable across refreshes, so rows slide rather than blink.
+    var boardID: String { "\(code)-\(time)-\(isDeparture)" }
+}
+
 @available(iOS 18.0, *)
 struct HubBoard: View {
     @Bindable var model: HubScreenModel
+    var rows = 5
+    var width: CGFloat = 340
+    /// Inside another panel: no glass of its own.
+    var bare = false
 
     var body: some View {
+        if bare {
+            card
+        } else {
+            card.hubGlass(padding: 12)
+        }
+    }
+
+    private var card: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
+            HStack(spacing: 4) {
                 HubIconTile(systemName: "list.bullet.rectangle", size: 24)
                 ForEach(HubScreenModel.BoardTab.allCases, id: \.self) { tab in
                     let selected = model.boardTab == tab
-                    Button { model.boardTab = tab } label: {
-                        Text("\(tab.rawValue) \(model.count(tab))")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(selected ? HubChromeStyle.accent : HubChromeStyle.secondary)
-                            .padding(.horizontal, 8)
-                            .frame(height: 24)
-                            .background(selected ? HubChromeStyle.accentSoft : .clear, in: RoundedRectangle(cornerRadius: 7))
+                    Button {
+                        withAnimation(HubMotion.snap) { model.boardTab = tab }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(tab.rawValue)
+                                .font(.system(size: 11, weight: .semibold))
+                                .lineLimit(1)
+                                .fixedSize()
+                            Text("\(model.count(tab))")
+                                .font(.system(size: 9, weight: .bold).monospacedDigit())
+                                .foregroundStyle(selected ? Color.white : HubChromeStyle.secondary)
+                                .padding(.horizontal, 4)
+                                .frame(minWidth: 16, minHeight: 14)
+                                .background(selected ? (tab == .delays ? HubChromeStyle.warn : HubChromeStyle.accent)
+                                                     : HubChromeStyle.track, in: Capsule())
+                                .contentTransition(.numericText())
+                        }
+                        .foregroundStyle(selected ? HubChromeStyle.accent : HubChromeStyle.secondary)
+                        .padding(.horizontal, 7)
+                        .frame(height: 24)
+                        .background(selected ? HubChromeStyle.accentSoft : .clear, in: RoundedRectangle(cornerRadius: 7))
                     }
+                    .buttonStyle(HubPressStyle())
+                    .accessibilityAddTraits(selected ? .isSelected : [])
                 }
-                Spacer()
-                Text(model.snapshot?.airportName ?? "")
-                    .font(.system(size: 10)).foregroundStyle(HubChromeStyle.tertiary).lineLimit(1)
+                Spacer(minLength: 0)
             }
             if model.boardRows.isEmpty {
                 Text(model.boardTab == .delays ? "No delays." : "Nothing scheduled through this hub yet.")
                     .font(.system(size: 12)).foregroundStyle(HubChromeStyle.secondary)
                     .frame(maxWidth: .infinity, minHeight: 60)
             } else {
-                VStack(spacing: 6) {
-                    ForEach(Array(model.boardRows.prefix(4).enumerated()), id: \.offset) { _, row in
-                        HStack(spacing: 8) {
-                            VStack(alignment: .leading, spacing: 0) {
-                                Text(row.gate.map { "Gate \($0)" } ?? "—").font(.system(size: 11, weight: .semibold))
-                                    .foregroundStyle(HubChromeStyle.ink)
-                                Text(row.time).font(.system(size: 10).monospacedDigit()).foregroundStyle(HubChromeStyle.tertiary)
-                            }
-                            .frame(width: 52, alignment: .leading)
-                            Circle().fill(row.status.tint).frame(width: 6, height: 6)
-                            Text("\(row.code) · \(row.city)").font(.system(size: 12))
-                                .foregroundStyle(HubChromeStyle.ink).lineLimit(1)
-                            Spacer(minLength: 4)
-                            HubStatusChip(text: row.delayMinutes > 0 ? "+\(row.delayMinutes)m" : row.status.title,
-                                          tint: row.status.tint)
-                            Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold))
-                                .foregroundStyle(HubChromeStyle.tertiary)
+                VStack(spacing: 4) {
+                    ForEach(Array(model.boardRows.prefix(rows)), id: \.boardID) { row in
+                        Button {
+                            withAnimation(HubMotion.panel) { model.open(row) }
+                        } label: {
+                            line(row)
                         }
+                        .buttonStyle(HubPressStyle())
+                        .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity),
+                                                removal: .opacity))
                     }
                 }
+                .animation(HubMotion.panel, value: model.boardRows.prefix(rows).map(\.boardID))
             }
         }
-        .frame(width: 330)
-        .hubGlass(padding: 12)
+        .frame(width: width)
         .accessibilityIdentifier("ae-hub-board")
+    }
+
+    private func line(_ row: HubBoardRow) -> some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(row.gate.map { "Gate \($0)" } ?? "—").font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(HubChromeStyle.ink)
+                Text(row.time).font(.system(size: 10).monospacedDigit()).foregroundStyle(HubChromeStyle.tertiary)
+            }
+            .frame(width: 52, alignment: .leading)
+            Circle().fill(row.status.tint).frame(width: 6, height: 6)
+            Text("\(row.code) · \(row.city)").font(.system(size: 12))
+                .foregroundStyle(HubChromeStyle.ink).lineLimit(1)
+            Spacer(minLength: 4)
+            HubStatusChip(text: row.delayMinutes > 0 ? "+\(row.delayMinutes)m" : row.status.title,
+                          tint: row.status.tint)
+            Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold))
+                .foregroundStyle(HubChromeStyle.tertiary)
+        }
+        .padding(.vertical, 3)
+        .padding(.horizontal, 4)
+        .contentShape(Rectangle())
     }
 }
 

@@ -3,8 +3,8 @@ import UIKit
 
 /// Captures the 3D Hub View in each of the reference clip's shots
 /// (docs/HUB_VIEW_3D.md §1) from an earned campaign, so the render can be
-/// compared frame for frame with the reference. iPad in landscape (the
-/// reference's aspect), iPhone in portrait.
+/// compared frame for frame with the reference. Both in landscape: the
+/// reference's aspect on iPad, and the hub holds an iPhone on its side.
 final class HubViewUITests: AEUITestCase {
     override var wantsSunriseWeek: Bool { false }
 
@@ -15,7 +15,7 @@ final class HubViewUITests: AEUITestCase {
         // (queue, tug at the nose, passengers on the walkway).
         app.launchArguments.append(contentsOf: ["-AEUITestLoadSave", url.path, "-AEUITestProbes",
                                                 "-AEUITestOpenHub", "-AEUITestHubStage", "boarding"] + extra)
-        XCUIDevice.shared.orientation = UIDevice.current.userInterfaceIdiom == .pad ? .landscapeLeft : .portrait
+        XCUIDevice.shared.orientation = .landscapeLeft
         app.launch()
         app.activate()
         require(app.descendants(matching: .any)["ae-hub-scene"], "hub scene", timeout: 45)
@@ -54,6 +54,21 @@ final class HubViewUITests: AEUITestCase {
         Thread.sleep(forTimeInterval: 3)
         frame("HUB-05-district-night")
         shot("HUB-06-overview-night", "overview")
+        // The insights panel over the night overview: movements, alerts.
+        let insights = app.buttons["ae-hub-insights"]
+        require(insights, "insights button")
+        insights.tap()
+        Thread.sleep(forTimeInterval: 2)
+        frame("HUB-07-insights")
+        XCTAssertTrue(app.descendants(matching: .any)["ae-hub-insights-panel"].exists)
+        // The routes page: each route's load factor, trips and profit.
+        let routes = app.buttons["Routes"]
+        if routes.exists {
+            routes.tap()
+            Thread.sleep(forTimeInterval: 1.5)
+            frame("HUB-08-insights-routes")
+        }
+        insights.tap()
         XCUIDevice.shared.orientation = .portrait
     }
 

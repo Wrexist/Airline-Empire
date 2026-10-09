@@ -74,6 +74,8 @@ public struct HubStandOccupant: Equatable, Codable, Sendable {
     public let stage: HubTurnaroundStage?
     /// Progress through `stage`, 0…1.
     public let stageProgress: Double
+    /// The route the aircraft flies, for the inspector's route page.
+    public var routeID: RouteID? = nil
 }
 
 public struct HubBoardRow: Equatable, Codable, Sendable {
@@ -122,6 +124,8 @@ public struct HubSnapshot: Equatable, Codable, Sendable {
     public let movementsPerHour: Double
     /// The stand the dashboard opens on: the player's busiest turnaround.
     public let focusStand: Int?
+    /// Routes, slots, money, reputation and alerts (`HubInsights`).
+    public var insights: HubInsights = .empty
 
     public var delays: [HubBoardRow] { (departures + arrivals).filter { $0.status == .delayed } }
 
@@ -280,7 +284,7 @@ extension GameState {
                 typeName: type.map { "\($0.manufacturer) \($0.model)" } ?? plane.typeCode.raw,
                 registration: HubFormat.registration(airline: ownerCode, aircraft: plane.id),
                 flight: flight.map { card($0, seats: plane.configuration?.totalSeats ?? type?.seats ?? 0) },
-                stage: st, stageProgress: progress))
+                stage: st, stageProgress: progress, routeID: plane.assignedRoute ?? flight?.route))
         }
 
         // Background traffic for the slots other carriers hold, so a busy
@@ -364,13 +368,16 @@ extension GameState {
             .max { ($0.stage.map(stagePriority) ?? -1) < ($1.stage.map(stagePriority) ?? -1) }
             ?? occupants.first
 
+        let insights = hubInsights(airport: code, catalog: catalog, occupants: occupants, kpis: kpis,
+                                   departures: Array(departures))
         return HubSnapshot(
             airport: code, airportName: spec.name, city: spec.city, airlineName: airlineName,
             airlineCode: designator, livery: player?.livery ?? .default,
             localMinuteOfDay: localMinute, localTime: HubFormat.clock(localMinute),
             nightFactor: HubFormat.nightFactor(localMinute: localMinute),
             occupants: occupants, departures: Array(departures), arrivals: Array(arrivals),
-            kpis: kpis, movementsPerHour: movementsPerHour, focusStand: focus?.standIndex)
+            kpis: kpis, movementsPerHour: movementsPerHour, focusStand: focus?.standIndex,
+            insights: insights)
     }
 }
 
@@ -413,12 +420,12 @@ extension HubSnapshot {
             return HubStandOccupant(standIndex: o.standIndex, gate: o.gate, aircraftID: o.aircraftID,
                                     operatorKind: o.operatorKind, livery: o.livery, category: o.category,
                                     typeName: o.typeName, registration: o.registration, flight: flight,
-                                    stage: stage, stageProgress: min(1, max(0, progress)))
+                                    stage: stage, stageProgress: min(1, max(0, progress)), routeID: o.routeID)
         }
         return HubSnapshot(airport: airport, airportName: airportName, city: city, airlineName: airlineName,
                            airlineCode: airlineCode, livery: livery, localMinuteOfDay: localMinuteOfDay,
                            localTime: localTime, nightFactor: nightFactor, occupants: occupants,
                            departures: departures, arrivals: arrivals, kpis: kpis,
-                           movementsPerHour: movementsPerHour, focusStand: focusStand)
+                           movementsPerHour: movementsPerHour, focusStand: focusStand, insights: insights)
     }
 }

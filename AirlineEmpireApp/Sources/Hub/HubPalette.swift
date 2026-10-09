@@ -35,6 +35,9 @@ struct HubPalette: Equatable {
     var keyIntensity: Float
     var keyColor: UIColor
     var iblExponent: Float
+    /// 0 by day, 1 at night; in between while the world crossfades. The
+    /// materials scale every glow by it (`HubMaterials.make`).
+    var dusk: Float = 0
 
     static let safety = UIColor(hub: 0xE8517A)
     static let pulse = UIColor(hub: 0x2F8BFF)
@@ -81,7 +84,33 @@ struct HubPalette: Equatable {
         // to give them back at about 1x.
         skyTop: UIColor(hub: 0xB4B6C8), skyHorizon: UIColor(hub: 0x8E90A8),
         blob: UIColor(hub: 0x161842), lampGlow: 2.6, keyIntensity: 1_100,
-        keyColor: UIColor(hub: 0xD8DCF5), iblExponent: 1.45)
+        keyColor: UIColor(hub: 0xD8DCF5), iblExponent: 1.45, dusk: 1)
+
+    /// `a` crossfaded towards `b`, `t` 0…1: the dusk transition's frames.
+    static func mix(_ a: HubPalette, _ b: HubPalette, _ t: Float) -> HubPalette {
+        let t = max(0, min(1, t))
+        if t == 0 { return a }
+        if t == 1 { return b }
+        let c = CGFloat(t)
+        func m(_ x: UIColor, _ y: UIColor) -> UIColor { x.mixed(with: y, c) }
+        func f(_ x: Float, _ y: Float) -> Float { x + (y - x) * t }
+        return HubPalette(
+            concrete: m(a.concrete, b.concrete), concreteLight: m(a.concreteLight, b.concreteLight),
+            asphalt: m(a.asphalt, b.asphalt), asphaltDark: m(a.asphaltDark, b.asphaltDark),
+            building: m(a.building, b.building), buildingShade: m(a.buildingShade, b.buildingShade),
+            roof: m(a.roof, b.roof), glass: m(a.glass, b.glass), glassOpacity: f(a.glassOpacity, b.glassOpacity),
+            grass: m(a.grass, b.grass), grassBright: m(a.grassBright, b.grassBright),
+            tree: zip(a.tree, b.tree).map { m($0, $1) },
+            trunk: m(a.trunk, b.trunk), marking: m(a.marking, b.marking), taxiLine: m(a.taxiLine, b.taxiLine),
+            houseRoof: m(a.houseRoof, b.houseRoof), houseWood: m(a.houseWood, b.houseWood),
+            windowDark: m(a.windowDark, b.windowDark), windowLit: m(a.windowLit, b.windowLit),
+            windowGlow: f(a.windowGlow, b.windowGlow),
+            water: m(a.water, b.water), background: m(a.background, b.background),
+            skyTop: m(a.skyTop, b.skyTop), skyHorizon: m(a.skyHorizon, b.skyHorizon),
+            blob: m(a.blob, b.blob), lampGlow: f(a.lampGlow, b.lampGlow), keyIntensity: f(a.keyIntensity, b.keyIntensity),
+            keyColor: m(a.keyColor, b.keyColor), iblExponent: f(a.iblExponent, b.iblExponent),
+            dusk: f(a.dusk, b.dusk))
+    }
 
     static func livery(_ livery: Livery) -> UIColor {
         switch livery {

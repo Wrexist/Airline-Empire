@@ -250,7 +250,7 @@ struct HubLayoutTests {
     /// dashboard leaves free, on iPad and iPhone, and the overview's jets
     /// stay big enough to read.
     @Test func shotsFrameTheirSubjectInTheSafeArea() {
-        let shapes: [(aspect: Double, safe: HubSafeArea)] = [(1.333, .wide), (0.46, .tall)]
+        let shapes: [(aspect: Double, safe: HubSafeArea)] = [(1.333, .wide), (0.46, .tall), (2.17, .landscape)]
         for spec in Self.allAirports.prefix(30) {
             let layout = HubLayout.make(airport: spec)
             for (aspect, safe) in shapes {
@@ -282,6 +282,59 @@ struct HubLayoutTests {
                 inside(layout.serviceStops[0], district, "first stop")
             }
         }
+    }
+
+    @Test func safeAreaFollowsTheShapeOfTheView() {
+        #expect(HubFraming.safeArea(width: 1_376, height: 1_032) == .wide)
+        #expect(HubFraming.safeArea(width: 1_032, height: 1_376) == .wide)
+        #expect(HubFraming.safeArea(width: 430, height: 932) == .tall)
+        // An iPhone on its side: the short height wins over the width.
+        #expect(HubFraming.safeArea(width: 932, height: 430) == .landscape)
+        #expect(HubFraming.safeArea(width: 852, height: 393) == .landscape)
+    }
+
+    @Test func roundedPathsTurnThroughArcsNearTheirCorners() {
+        let path = HubPath([HubVec(0, 0, 0), HubVec(100, 0, 0), HubVec(100, 0, 80)])
+        let round = path.rounded(radius: 12)
+        #expect(round.points.first == path.points.first)
+        #expect(round.points.last == path.points.last)
+        #expect(round.points.count > path.points.count)
+        // Nothing strays further than the radius from the corner it rounds.
+        for p in round.points where p.distance(to: HubVec(100, 0, 0)) < 20 {
+            #expect(p.distance(to: HubVec(100, 0, 0)) <= 12 + 1e-9)
+        }
+        // The heading changes gradually: no single step turns by more than 20°.
+        var last: Double?
+        var d = 0.0
+        while d <= round.length {
+            let yaw = round.sample(at: d).yaw
+            if let last {
+                var turn = abs(yaw - last).truncatingRemainder(dividingBy: 2 * .pi)
+                if turn > .pi { turn = 2 * .pi - turn }
+                #expect(turn < 20 * .pi / 180, "sharp turn at \(d)")
+            }
+            last = yaw
+            d += 1
+        }
+    }
+
+    @Test func roundTripIsAClosedTwoWayLoop() {
+        let path = HubPath([HubVec(0, 0, 0), HubVec(100, 0, 0)])
+        let loop = path.roundTrip(lane: 2)
+        #expect(loop.points.first == loop.points.last)
+        // Out keeping right (south when heading east), back on the other side.
+        #expect(abs(loop.points[0].z - 2) < 1e-9)
+        #expect(loop.points.contains { abs($0.z + 2) < 1e-9 && $0.x > 50 })
+        // Two straight legs and two half-circle U-turns of radius 2.
+        #expect(abs(loop.length - (200 + 2 * .pi * 2)) < 1.5)
+    }
+
+    @Test func bearingsPointTheWayTheRouteLeaves() {
+        let here = Coordinate(latitude: 0, longitude: 0)
+        #expect(abs(Geo.bearing(from: here, to: Coordinate(latitude: 10, longitude: 0)) - 0) < 1e-6)
+        #expect(abs(Geo.bearing(from: here, to: Coordinate(latitude: 0, longitude: 10)) - 90) < 1e-6)
+        #expect(abs(Geo.bearing(from: here, to: Coordinate(latitude: -10, longitude: 0)) - 180) < 1e-6)
+        #expect(abs(Geo.bearing(from: here, to: Coordinate(latitude: 0, longitude: -10)) - 270) < 1e-6)
     }
 
     @Test func layoutRoundTripsThroughCodable() throws {
@@ -350,6 +403,67 @@ struct HubSnapshotTests {
         #expect(snapshot.kpis.loadFactor != nil)
         #expect(snapshot.kpis.averageTurnaroundMinutes > 0)
         #expect(snapshot.kpis.slotUse > 0)
+    }
+
+    @Test func insightsReadTheRoutesSlotsAndMoney() throws {
+        let (engine, airline, route) = try DemandFixtures.market(fare: Money.dollars(129))
+        engine.advance(ticks: Fixtures.ticksPerDay * 3)
+        let layout = HubLayout.make(airport: engine.catalog.airport("MET")!)
+        let snapshot = try #require(engine.state.hubSnapshot(airport: "MET", catalog: engine.catalog, layout: layout))
+        let insights = snapshot.insights
+        let link = try #require(insights.routes.first { $0.routeID == route })
+        #expect(link.bearing >= 0 && link.bearing < 360)
+        #expect(link.dailyRoundTrips == engine.state.routes[route]!.dailyRoundTrips)
+        #expect(link.loadFactor != nil)
+        #expect(insights.carriers.first?.isPlayer == true)
+        #expect(insights.carriers.first?.slots == engine.state.world.slotsHeld(by: airline, at: "MET"))
+        #expect(insights.carriers.reduce(0) { $0 + $1.slots } == insights.slotsUsed)
+        #expect(insights.movementsByHour.count == 24)
+        #expect(insights.cashCents == engine.state.ledger.balance(of: airline).cents)
+        #expect(insights.routesTotal >= insights.routes.count)
+        #expect((0...1).contains(insights.reputation))
+        // A player occupant carries its route for the inspector.
+        if let mine = snapshot.occupants.first(where: { $0.operatorKind == .player }) {
+            #expect(mine.routeID != nil)
+        }
+    }
+
+    @Test func networkListsHomeFirstThenTheBusiestAirports() throws {
+        let (engine, airline, route) = try DemandFixtures.market(fare: Money.dollars(129))
+        let layout = HubLayout.make(airport: engine.catalog.airport("MET")!)
+        let snapshot = try #require(engine.state.hubSnapshot(airport: "MET", catalog: engine.catalog, layout: layout))
+        let network = snapshot.insights.network
+        let home = try #require(engine.state.airlines[airline]?.homeAirport)
+        #expect(network.first?.code == home)
+        #expect(network.first?.isHome == true)
+        let r = try #require(engine.state.routes[route])
+        for end in [r.origin, r.destination] {
+            #expect(network.contains { $0.code == end && $0.routes >= 1 })
+        }
+        #expect(Set(network.map(\.code)).count == network.count)
+    }
+
+    @Test func searchFindsGatesFlightsRoutesAndPlaces() throws {
+        let (engine, _, route) = try DemandFixtures.market(fare: Money.dollars(129))
+        engine.advance(ticks: Fixtures.ticksPerDay)
+        let layout = HubLayout.make(airport: engine.catalog.airport("MET")!)
+        let snapshot = try #require(engine.state.hubSnapshot(airport: "MET", catalog: engine.catalog, layout: layout))
+        #expect(snapshot.search("   ", layout: layout).isEmpty)
+        // A gate number comes back as that gate, first.
+        let gate = layout.stands[0].gate
+        let byNumber = snapshot.search("\(gate)", layout: layout)
+        #expect(byNumber.first?.target == .stand(0))
+        #expect(byNumber.first?.kind == .gate)
+        // Places, case-insensitively.
+        #expect(snapshot.search("SECURITY", layout: layout).first?.target == .shot(.terminal))
+        #expect(snapshot.search("maint", layout: layout).first?.target == .shot(.district))
+        // The route by its far end's code.
+        let link = try #require(snapshot.insights.routes.first { $0.routeID == route })
+        #expect(snapshot.search(link.other.raw, layout: layout).contains { $0.target == .route(route) })
+        // Every result once, and never more than asked for.
+        let many = snapshot.search("a", layout: layout, limit: 5)
+        #expect(many.count <= 5)
+        #expect(Set(many.map(\.id)).count == many.count)
     }
 
     @Test func holdingAStageRewritesOnlyThatStand() throws {

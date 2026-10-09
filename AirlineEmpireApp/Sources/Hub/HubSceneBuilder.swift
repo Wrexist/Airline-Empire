@@ -142,6 +142,11 @@ struct HubSceneBuilder {
         placeAuthoredInterior()
         runwayMarkings()
         standMarkings()
+        airfieldLights()
+        apronMasts()
+        windsocks()
+        perimeterFence()
+        standNumbers()
 
         var roots: [HubLayer: Entity] = [:]
         for layer in HubLayer.allCases {
@@ -868,6 +873,179 @@ struct HubSceneBuilder {
                 let tail = nose - fwd * (len + 6)
                 b.box(center: [tail.x, 0.1, tail.z], size: [0.4, 0.012, Float(HubAircraftEnvelope.span(stand.maxCategory))], yaw: yaw)
             }
+        }
+    }
+
+    // MARK: Airfield furniture
+
+    /// Edge, threshold and approach lights on every runway, blue edge
+    /// lights on the taxiways. Matte fittings by day; after dusk they glow
+    /// and the bloom pass turns them into the reference's strings of light.
+    /// A little over scale, as everything in the diorama is.
+    private mutating func airfieldLights() {
+        for runway in layout.runways {
+            let a = Self.f(runway.thresholdA), b = Self.f(runway.thresholdB)
+            let length = simd_distance(a, b)
+            guard length > 1 else { continue }
+            let dir = simd_normalize(b - a)
+            let yaw = atan2(-dir.z, dir.x)
+            let half = Float(runway.width) / 2
+            let frame = HubMeshBatch.translation(a) * HubMeshBatch.yaw(yaw)
+            with(.lamps, .runwayLight) { batch in
+                batch.transform = frame
+                var t: Float = 20
+                while t < length - 20 {
+                    for side: Float in [-1, 1] {
+                        batch.box(center: [t, 0, side * (half + 2.5)], size: [1.4, 0.7, 1.4])
+                    }
+                    t += 60
+                }
+                // Approach lights: a centreline of bars out from each end,
+                // with a crossbar 150 m out.
+                for end: Float in [0, 1] {
+                    let out: Float = end == 0 ? -1 : 1
+                    let base: Float = end == 0 ? 0 : length
+                    var d: Float = 30
+                    while d <= 300 {
+                        batch.box(center: [base + out * d, 0, 0], size: [1.2, 0.9, d == 150 ? 30 : 6])
+                        d += 30
+                    }
+                }
+                batch.transform = matrix_identity_float4x4
+            }
+            with(.lamps, .thresholdLight) { batch in
+                batch.transform = frame
+                for x: Float in [-3, length + 3] {
+                    var z = -half
+                    while z <= half + 0.01 {
+                        batch.box(center: [x, 0, z], size: [1.2, 0.7, 1.2])
+                        z += 4.5
+                    }
+                }
+                batch.transform = matrix_identity_float4x4
+            }
+        }
+        for p in layout.pieces where p.kind == .taxiway {
+            let c = Self.f(p.center)
+            let alongX = p.size.x >= p.size.z
+            let length = Float(alongX ? p.size.x : p.size.z), width = Float(alongX ? p.size.z : p.size.x)
+            with(.lamps, .taxiEdgeLight) { batch in
+                var t = -length / 2 + 15
+                while t < length / 2 - 15 {
+                    for side: Float in [-1, 1] {
+                        let off = side * (width / 2 + 1.5)
+                        let at: SIMD3<Float> = alongX ? [c.x + t, 0, c.z + off] : [c.x + off, 0, c.z + t]
+                        batch.box(center: at, size: [1.0, 0.6, 1.0])
+                    }
+                    t += 45
+                }
+            }
+        }
+    }
+
+    /// Floodlight masts along the apron's open edge: tall poles with a lamp
+    /// head, and a wide pool of light on the concrete at night.
+    private mutating func apronMasts() {
+        let terminalZ = Float(layout.terminal.minZ)
+        for p in layout.pieces where p.kind == .apron && p.variant == 0 {
+            let r = p.groundBounds
+            // The edge away from the terminal faces the taxiway.
+            let farZ = Float(abs(r.minZ - Double(terminalZ)) > abs(r.maxZ - Double(terminalZ)) ? r.minZ : r.maxZ)
+            let inward: Float = farZ < Float(r.center.z) ? 1 : -1
+            let count = max(2, Int(r.width / 170) + 1)
+            for i in 0..<count {
+                let x = Float(r.minX) + 20 + (Float(r.width) - 40) * Float(i) / Float(max(1, count - 1))
+                let base = SIMD3<Float>(x, 0, farZ + inward * 6)
+                with(.airside, .darkMetal) {
+                    $0.cylinder(base: base, radius: 0.55, topRadius: 0.35, height: 32, segments: 8)
+                    $0.box(center: base + [0, 31.4, 0], size: [5.4, 0.4, 0.6])
+                }
+                with(.lamps, .lamp) { $0.box(center: base + [0, 31.8, inward * 0.5], size: [5.0, 1.0, 1.0]) }
+                with(.lamps, .lampPool) {
+                    $0.plane(center: base + [0, 0.26, inward * 26], width: 64, depth: 56)
+                }
+                blob(base, w: 3, d: 3)
+            }
+        }
+    }
+
+    /// A striped windsock beside each runway's first threshold.
+    private mutating func windsocks() {
+        for runway in layout.runways {
+            let a = Self.f(runway.thresholdA), b = Self.f(runway.thresholdB)
+            guard simd_distance(a, b) > 1 else { continue }
+            let dir = simd_normalize(b - a)
+            let side = SIMD3<Float>(-dir.z, 0, dir.x)
+            let base = a + dir * 260 + side * (Float(runway.width) / 2 + 55)
+            with(.airside, .darkMetal) { $0.cylinder(base: base, radius: 0.2, height: 9, segments: 6) }
+            // The sock streams downwind: four bands narrowing away from the
+            // mast, alternating orange and white.
+            let wind = simd_normalize(dir * 0.7 + side * 0.7)
+            let yaw = atan2(-wind.z, wind.x)
+            for k in 0..<4 {
+                let along = 0.9 + Float(k) * 1.3
+                let size = 1.25 - Float(k) * 0.18
+                let key: HubMaterialKey = k % 2 == 0 ? .cone : .white
+                with(.airside, key) {
+                    $0.box(center: base + wind * along + [0, 8.2 - Float(k) * 0.12 - size / 2, 0],
+                           size: [1.3, size, size], yaw: yaw)
+                }
+            }
+            with(.markings, .marking) { $0.cylinder(base: base + [0, 0.1, 0], radius: 7, height: 0.05, segments: 20) }
+        }
+    }
+
+    /// The airside fence: posts and two rails round the far three sides of
+    /// the airfield, the terminal and its kerb closing the fourth.
+    private mutating func perimeterFence() {
+        let airside = layout.pieces.filter { [.runway, .taxiway, .apron].contains($0.kind) }.map(\.groundBounds)
+        guard var r = airside.first else { return }
+        for b in airside.dropFirst() { r = r.union(b) }
+        let minX = Float(r.minX) - 60, maxX = Float(r.maxX) + 60, minZ = Float(r.minZ) - 60
+        let maxZ = Float(layout.terminal.minZ) - 5
+        guard maxZ > minZ + 20 else { return }
+        let runs: [(SIMD3<Float>, SIMD3<Float>)] = [
+            ([minX, 0, maxZ], [minX, 0, minZ]), ([minX, 0, minZ], [maxX, 0, minZ]), ([maxX, 0, minZ], [maxX, 0, maxZ]),
+        ]
+        with(.airside, .darkMetal) { batch in
+            for (a, b) in runs {
+                let length = simd_distance(a, b)
+                let d = simd_normalize(b - a)
+                let yaw = atan2(-d.z, d.x)
+                let mid = (a + b) / 2
+                for y: Float in [1.2, 2.6] {
+                    batch.box(center: mid + [0, y, 0], size: [length, 0.14, 0.14], yaw: yaw)
+                }
+                var t: Float = 0
+                while t <= length {
+                    batch.box(center: a + d * t, size: [0.22, 3, 0.22])
+                    t += 14
+                }
+            }
+        }
+    }
+
+    /// Stand numbers painted at the head of each lead-in line, reading from
+    /// the taxilane towards the gate.
+    private mutating func standNumbers() {
+        for stand in layout.stands {
+            let fwd = SIMD3<Float>(Float(cos(stand.heading)), 0, Float(-sin(stand.heading)))
+            let len = Float(HubAircraftEnvelope.length(stand.maxCategory))
+            let at = Self.f(stand.nose) - fwd * (len + 20)
+            let mesh = MeshResource.generateText("\(stand.gate)", extrusionDepth: 0.02,
+                                                 font: .systemFont(ofSize: 6, weight: .heavy))
+            let text = ModelEntity(mesh: mesh, materials: [materials[.marking]])
+            text.components.set(HubMaterialTag(key: .marking))
+            let b = mesh.bounds
+            text.position = [-b.center.x, -b.center.y, 0]
+            let holder = Entity()
+            holder.addChild(text)
+            // Lay the text flat (its up becomes −z), then turn it so its up
+            // points along the lead-in towards the nose.
+            holder.orientation = simd_quatf(angle: Float(stand.heading) - .pi / 2, axis: [0, 1, 0])
+                * simd_quatf(angle: -.pi / 2, axis: [1, 0, 0])
+            holder.position = [at.x, 0.13, at.z]
+            extras.append((.markings, holder))
         }
     }
 

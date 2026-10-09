@@ -54,6 +54,10 @@ public struct HubSafeArea: Equatable, Sendable {
     /// Slightly wider than the screen: a tall frame crops a wide airport's
     /// ends rather than shrinking the jets to specks.
     public static let tall = HubSafeArea(minX: -1.0, maxX: 1.0, minY: -0.62, maxY: 0.44)
+    /// iPhone in landscape: a slim bar across the top with the KPI chips
+    /// under it, the camera controls down the right, a slim timeline
+    /// along the bottom. The inspector slides over when asked for.
+    public static let landscape = HubSafeArea(minX: -0.9, maxX: 0.78, minY: -0.5, maxY: 0.5)
 }
 
 /// The shots a hub camera can be asked for.
@@ -141,7 +145,8 @@ public enum HubFraming {
     /// The safe area for a view of this shape: the dashboard puts the
     /// inspector beside the scene once the view is wide enough.
     public static func safeArea(width: Double, height: Double) -> HubSafeArea {
-        width >= 760 && width >= height * 0.7 ? .wide : .tall
+        if width > height && height < 520 { return .landscape }
+        return width >= 760 && width >= height * 0.7 ? .wide : .tall
     }
 }
 

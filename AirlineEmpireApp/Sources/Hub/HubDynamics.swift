@@ -3,62 +3,185 @@ import UIKit
 import simd
 import AirlineEmpireCore
 
-/// Something that moves along a path forever: ambient air traffic, cars,
-/// the service cart. Speeds are per segment so a jet can float down the
-/// approach, brake on the runway and crawl along the taxiway.
+/// Something that moves along a path forever: ambient air traffic, apron
+/// vehicles, cars, the service cart.
+///
+/// Motion is what makes the diorama feel alive or cheap, so it is modelled
+/// rather than interpolated: paths have their corners rounded; speed eases
+/// towards each leg's target within an acceleration limit (a jet floats
+/// down the approach, brakes on the runway, crawls along the taxiway);
+/// heading steers towards a point a little ahead instead of snapping at
+/// corners; jets pitch with the climb and bank into turns; back-and-forth
+/// movers brake, pause and turn at the ends; one-way movers fade in and out
+/// at the ends of their path instead of popping.
 @available(iOS 18.0, *)
 @MainActor
 final class HubMover {
+    enum Style { case ground, air }
+
     let entity: Entity
     let path: HubPath
-    let speeds: [Float]
-    var distance: Float
+    let style: Style
     let pingPong: Bool
-    var direction: Float = 1
     let height: Float
+    private let speeds: [Float]
+    /// Where each original leg ends, measured along the rounded path.
+    private let legEnds: [Float]
+    private let length: Float
+    private let closed: Bool
+    private let accel: Float
+    private var distance: Float
+    private var direction: Float = 1
+    private var speed: Float
+    private var heading: Float?
+    private var bank: Float = 0
+    private var pitch: Float = 0
+    private var dwell: Float = 0
+    private var faded = false
 
-    init(entity: Entity, path: HubPath, speeds: [Float], start: Float = 0, pingPong: Bool = false, height: Float = 0) {
+    init(entity: Entity, path original: HubPath, speeds: [Float], start: Float = 0, pingPong: Bool = false,
+         height: Float = 0, style: Style = .ground, corner: Double? = nil) {
+        let path = original.rounded(radius: corner ?? (style == .air ? 70 : 9))
         self.entity = entity
         self.path = path
-        self.speeds = speeds
-        self.distance = start
+        self.style = style
         self.pingPong = pingPong
         self.height = height
+        let resolved = speeds.isEmpty ? [Float(6)] : speeds
+        self.speeds = resolved
+        let total = Float(path.length)
+        length = total
+        closed = path.points.count > 2 && path.points.first == path.points.last
+        accel = style == .air ? 3.5 : 2.4
+        // Leg boundaries of the original path, scaled onto the rounded one
+        // (rounding shortens corners only slightly).
+        var marks: [Float] = []
+        var run: Float = 0
+        let originalLength = Float(max(original.length, 0.001))
+        for (a, b) in zip(original.points, original.points.dropFirst()) {
+            let d = b - a
+            run += Float((d.x * d.x + d.y * d.y + d.z * d.z).squareRoot())
+            marks.append(run / originalLength * total)
+        }
+        legEnds = marks
+        distance = total > 0 ? start.truncatingRemainder(dividingBy: total) : 0
+        if distance < 0 { distance += total }
+        speed = resolved[0]
     }
 
-    private lazy var cumulative: [Float] = {
-        var out: [Float] = [0]
-        for (a, b) in zip(path.points, path.points.dropFirst()) {
-            let d = b - a
-            out.append(out.last! + Float((d.x * d.x + d.y * d.y + d.z * d.z).squareRoot()))
-        }
-        return out
-    }()
+    private func targetSpeed() -> Float {
+        let leg = legEnds.firstIndex { $0 >= distance } ?? (legEnds.count - 1)
+        return speeds[min(max(0, leg), speeds.count - 1)]
+    }
 
-    var length: Float { cumulative.last ?? 0 }
+    private static func wrap(_ a: Float) -> Float {
+        var x = a.truncatingRemainder(dividingBy: 2 * .pi)
+        if x > .pi { x -= 2 * .pi }
+        if x < -.pi { x += 2 * .pi }
+        return x
+    }
 
     func step(_ dt: Float) {
         guard length > 0 else { return }
-        let segment = max(0, min(speeds.count - 1, (cumulative.firstIndex { $0 > distance } ?? cumulative.count) - 1))
-        distance += speeds[segment] * dt * direction
-        if pingPong {
-            if distance > length { distance = length; direction = -1 }
-            if distance < 0 { distance = 0; direction = 1 }
-        } else if distance > length {
-            distance -= length
+        if dwell > 0 {
+            dwell -= dt
+            if dwell <= 0 { direction = -direction }
+            pose(dt)
+            return
         }
-        let s = path.sample(at: Double(distance))
-        let yaw = Float(s.yaw) + (direction < 0 ? .pi : 0)
-        // Bank into turns and pitch on climbs would be nice; a level attitude
-        // reads cleaner at the dashboard's distance.
-        entity.position = [Float(s.position.x), Float(s.position.y) + height, Float(s.position.z)]
+        var target = targetSpeed()
+        if pingPong {
+            // Brake to a stop at the end of the line.
+            let remaining = direction > 0 ? length - distance : distance
+            target = min(target, (2 * accel * max(0, remaining)).squareRoot() + 0.25)
+        }
+        speed += max(-accel * dt, min(accel * dt, target - speed))
+        distance += speed * dt * direction
+        if pingPong {
+            if distance >= length { distance = length; speed = 0; dwell = 1.8 }
+            if distance <= 0 { distance = 0; speed = 0; dwell = 1.8 }
+        } else if distance >= length {
+            distance -= length
+        } else if distance < 0 {
+            distance += length
+        }
+        pose(dt)
+    }
+
+    private func at(_ d: Float) -> HubVec {
+        var x = d
+        if closed {
+            x = x.truncatingRemainder(dividingBy: length)
+            if x < 0 { x += length }
+        } else {
+            x = max(0, min(length, x))
+        }
+        return path.sample(at: Double(x)).position
+    }
+
+    private func pose(_ dt: Float) {
+        let here = at(distance)
+        let lookahead: Float = style == .air ? 30 + speed * 0.8 : 3 + speed * 0.45
+        let ahead = at(distance + lookahead * (dwell > 0 ? -direction : direction))
+        let dx = Float(ahead.x - here.x), dz = Float(ahead.z - here.z)
+        let flat = (dx * dx + dz * dz).squareRoot()
+        let wanted = flat > 0.05 ? atan2(-dz, dx) : (heading ?? 0)
+        let previous = heading ?? wanted
+        let turnRate: Float = style == .air ? 1.4 : 4.5
+        let yaw = previous + Self.wrap(wanted - previous) * min(1, dt * turnRate)
+        heading = yaw
+        if style == .air {
+            // Bank into the turn, pitch with the climb or descent.
+            let yawRate = dt > 0 ? Self.wrap(yaw - previous) / dt : 0
+            let wantBank = max(-0.5, min(0.5, -yawRate * 1.6))
+            bank += (wantBank - bank) * min(1, dt * 2)
+            let climb = flat > 0.5 ? Float(ahead.y - here.y) / flat : 0
+            let wantPitch = here.y > 0.5 || climb > 0.01 ? max(-0.1, min(0.24, atan(climb))) : 0
+            pitch += (wantPitch - pitch) * min(1, dt * 2.5)
+        }
+        entity.position = [Float(here.x), Float(here.y) + height, Float(here.z)]
         entity.orientation = simd_quatf(angle: yaw, axis: [0, 1, 0])
-        if s.position.y > 1 {
-            // Nose-up on the climb, nose-down on the approach.
-            let climbing = distance > length * 0.5
-            entity.orientation *= simd_quatf(angle: climbing ? 0.14 : -0.04, axis: [0, 0, 1])
+            * simd_quatf(angle: pitch, axis: [0, 0, 1])
+            * simd_quatf(angle: bank, axis: [1, 0, 0])
+        // One-way paths fade in and out at their ends rather than pop.
+        if !closed && !pingPong {
+            let edge = min(distance, length - distance)
+            let fade: Float = style == .air ? 120 : 25
+            let opacity = max(0, min(1, edge / fade))
+            if opacity < 0.999 {
+                entity.components.set(OpacityComponent(opacity: opacity * opacity * (3 - 2 * opacity)))
+                faded = true
+            } else if faded {
+                entity.components.remove(OpacityComponent.self)
+                faded = false
+            }
         }
     }
+}
+
+/// How a world label is tinted.
+enum HubTone: Equatable {
+    case good, accent, warn, neutral
+}
+
+/// A player's stand, labelled over its jet in the overview.
+struct HubStandTag: Equatable {
+    let standIndex: Int
+    let gate: Int
+    let code: String
+    let stage: String
+    let systemImage: String
+    let tone: HubTone
+}
+
+/// A route of the fan, labelled part-way along its arc.
+struct HubRouteTag: Equatable {
+    let routeID: RouteID
+    let code: String
+    let detail: String
+    /// Load-factor band, as `HubMaterialKey.routeArc`.
+    let band: Int
+    let highlighted: Bool
 }
 
 /// Anchors the SwiftUI overlay pins to the 3D world.
@@ -67,6 +190,8 @@ struct HubAnchor: Identifiable, Equatable {
         case callout
         case pin(String)
         case pill(String, systemImage: String)
+        case tag(HubStandTag)
+        case route(HubRouteTag)
     }
 
     let id: String
@@ -120,6 +245,14 @@ final class HubDynamics {
     /// The focused jet's engine on the camera side, in the jet's own frame.
     private var pulseEngine: SIMD3<Float> = .zero
     private var routeLine = Entity()
+    /// Everything that circulates on its own: the circuit, apron and
+    /// street traffic. One switch for the layers menu.
+    private var traffic = Entity()
+    /// The player's routes out of the hub (`updateRouteFan`).
+    private var routeFan = Entity()
+    private var routeArcs: [(link: HubRouteLink, points: [SIMD3<Float>])] = []
+    private var routePulses: [(entity: Entity, arc: Int, offset: Float, speed: Float, outbound: Bool)] = []
+    private var routeSignature = ""
     private var time: Float = 0
     private(set) var focusStand: Int?
     private(set) var anchors: [HubAnchor] = []
@@ -133,14 +266,34 @@ final class HubDynamics {
         didSet { routeLine.isEnabled = showsRoute }
     }
 
+    var showsRouteFan = false {
+        didSet { routeFan.isEnabled = showsRouteFan }
+    }
+
+    var showsTraffic = true {
+        didSet { traffic.isEnabled = showsTraffic }
+    }
+
+    /// The route drawn bright and thick, chosen in the insights panel or
+    /// from search.
+    var highlightedRoute: RouteID? {
+        didSet {
+            guard highlightedRoute != oldValue else { return }
+            routeSignature = ""
+            if let last = lastLinks { updateRouteFan(last) }
+        }
+    }
+    private var lastLinks: [HubRouteLink]?
+
     init(layout: HubLayout, models: HubModels, materials: HubMaterials) {
         self.layout = layout
         self.models = models
         self.materials = materials
         root.name = "dynamics"
-        for e in [crowd, interiorCrowd, overlays, routeLine] { root.addChild(e) }
+        for e in [crowd, interiorCrowd, overlays, routeLine, traffic, routeFan] { root.addChild(e) }
         interiorCrowd.isEnabled = false
         routeLine.isEnabled = false
+        routeFan.isEnabled = false
         buildRouteLine()
         buildAmbientTraffic()
         buildApronTraffic()
@@ -190,6 +343,7 @@ final class HubDynamics {
             standDressing[index]?.removeFromParent()
             standDressing[index] = nil
             parked[index] = nil
+            parkTargets[index] = nil
         }
         for (index, occupant) in wanted {
             let stand = layout.stands[index]
@@ -221,6 +375,7 @@ final class HubDynamics {
             focusStand = focus
             rebuildFocusOverlays()
         }
+        updateRouteFan(snapshot.insights.routes)
         rebuildAnchors(snapshot)
     }
 
@@ -233,9 +388,14 @@ final class HubDynamics {
         if occupant.stage == .pushback {
             center -= fwd * Float(occupant.stageProgress) * 24
         }
-        e.position = center
+        // The snapshot moves a pushback in steps; the jet glides to each
+        // new spot instead (`update`). A new arrival is placed outright.
+        if parkTargets[stand.index] == nil { e.position = center }
+        parkTargets[stand.index] = center
         e.orientation = simd_quatf(angle: Float(stand.heading), axis: [0, 1, 0])
     }
+
+    private var parkTargets: [Int: SIMD3<Float>] = [:]
 
     /// Turnaround vehicles, crew and passengers around one stand. The
     /// static ones are merged into one batch per material; walking
@@ -415,7 +575,142 @@ final class HubDynamics {
             list.append(HubAnchor(id: "stop\(k)", position: Self.f(stop) + [0, 12, 0],
                                   kind: .pill(stops[k % stops.count].0, systemImage: stops[k % stops.count].1)))
         }
+        // The player's stands, tagged over their jets.
+        for occupant in snapshot.occupants where occupant.operatorKind == .player {
+            guard let current = parked[occupant.standIndex] else { continue }
+            let m = HubModels.metrics(occupant.category)
+            let stage = occupant.stage
+            let delayed = (occupant.flight?.delayMinutes ?? 0) > 0
+            let tone: HubTone = delayed ? .warn : stage == .boarding || stage == .pushback ? .accent : .good
+            let tag = HubStandTag(standIndex: occupant.standIndex, gate: occupant.gate,
+                                  code: occupant.flight?.code ?? occupant.registration,
+                                  stage: delayed ? "+\(occupant.flight?.delayMinutes ?? 0)m" : stage?.title ?? "Parked",
+                                  systemImage: Self.symbol(stage), tone: tone)
+            let above = parkTargets[occupant.standIndex] ?? current.entity.position
+            list.append(HubAnchor(id: "tag\(occupant.standIndex)", position: above + [0, m.axisY + m.radius * 2 + 12, 0],
+                                  kind: .tag(tag)))
+        }
+        // The busiest routes, and the highlighted one, labelled part-way out.
+        let ranked = routeArcs.enumerated().sorted {
+            $0.element.link.dailyRoundTrips != $1.element.link.dailyRoundTrips
+                ? $0.element.link.dailyRoundTrips > $1.element.link.dailyRoundTrips : $0.offset < $1.offset
+        }
+        for (rank, item) in ranked.enumerated() {
+            let link = item.element.link
+            let highlighted = link.routeID == highlightedRoute
+            guard rank < 8 || highlighted else { continue }
+            let load = link.loadFactor.map { "\(Int(($0 * 100).rounded()))%" } ?? "new"
+            let tag = HubRouteTag(routeID: link.routeID, code: link.other.raw,
+                                  detail: "\(load) · \(link.dailyRoundTrips)/day", band: Self.band(link.loadFactor),
+                                  highlighted: highlighted)
+            let points = item.element.points
+            list.append(HubAnchor(id: "route\(link.routeID.raw)", position: points[points.count * 9 / 20] + [0, 8, 0],
+                                  kind: .route(tag)))
+        }
         anchors = list
+    }
+
+    private static func symbol(_ stage: HubTurnaroundStage?) -> String {
+        switch stage {
+        case .deboarding: "figure.walk.departure"
+        case .servicing: "fuelpump.fill"
+        case .boarding: "figure.walk.arrival"
+        case .pushback: "arrow.uturn.backward"
+        case .departed: "airplane.departure"
+        case nil: "parkingsign"
+        }
+    }
+
+    /// Load-factor band: 0 no flights yet, 1 full (≥ 75 %), 2 fair, 3 thin
+    /// (below 55 %, where the alerts start).
+    static func band(_ loadFactor: Double?) -> Int {
+        guard let lf = loadFactor else { return 0 }
+        return lf >= 0.75 ? 1 : lf >= 0.55 ? 2 : 3
+    }
+
+    // MARK: Route fan
+
+    /// The player's routes as arcs leaving the terminal on their real
+    /// bearings (north up the screen), coloured by how full they fly, with
+    /// a light for each daily round trip running out and back along them.
+    private func updateRouteFan(_ links: [HubRouteLink]) {
+        lastLinks = links
+        let signature = links.map { "\($0.routeID.raw):\(Self.band($0.loadFactor)):\($0.dailyRoundTrips)" }
+            .joined(separator: ",") + "|\(highlightedRoute?.raw ?? -1)"
+        guard signature != routeSignature else { return }
+        routeSignature = signature
+        routeFan.children.removeAll()
+        routePulses.removeAll()
+        routeArcs.removeAll()
+        guard !links.isEmpty else { return }
+        let t = layout.terminal
+        let start = SIMD3<Float>(Float(t.center.x), 26, Float(t.center.z))
+        let reach = Float(min(1_800, max(900, max(layout.bounds.width, layout.bounds.depth) * 0.45)))
+        var batches: [HubMaterialKey: HubMeshBatch] = [:]
+        for link in links {
+            let bearing = Float(link.bearing * .pi / 180)
+            let dir = SIMD3<Float>(sin(bearing), 0, -cos(bearing))
+            // Longer routes reach a little further out and climb higher.
+            let length = reach * (0.75 + 0.25 * min(1, Float(link.distanceKm) / 6_000))
+            let end = start + dir * length + [0, -24, 0]
+            let control = start + dir * (length * 0.5) + [0, length * 0.3, 0]
+            var points: [SIMD3<Float>] = []
+            for i in 0...32 {
+                let u = Float(i) / 32
+                let a = (1 - u) * (1 - u), b = 2 * (1 - u) * u, c = u * u
+                points.append(start * a + control * b + end * c)
+            }
+            let highlighted = link.routeID == highlightedRoute
+            let key: HubMaterialKey = highlighted ? .routePulse : .routeArc(Self.band(link.loadFactor))
+            var batch = batches.removeValue(forKey: key) ?? HubMeshBatch()
+            Self.tube(&batch, points, thickness: highlighted ? 4.2 : 2.4)
+            batches[key] = batch
+            let arc = routeArcs.count
+            routeArcs.append((link, points))
+            let count = max(1, min(4, link.dailyRoundTrips))
+            for k in 0..<count {
+                guard let mesh = pulseMesh else { break }
+                let e = ModelEntity(mesh: mesh, materials: [materials[.routePulse]])
+                e.components.set(HubMaterialTag(key: .routePulse))
+                e.scale = SIMD3<Float>(repeating: highlighted ? 5 : 3.6)
+                routeFan.addChild(e)
+                routePulses.append((e, arc, Float(k) / Float(count) + Float(arc) * 0.137,
+                                    1 / (7 + length / 300), k % 2 == 0))
+            }
+        }
+        for (key, batch) in batches {
+            guard let mesh = batch.resource(name: "routeFan") else { continue }
+            let e = ModelEntity(mesh: mesh, materials: [materials[key]])
+            e.components.set(HubMaterialTag(key: key))
+            routeFan.addChild(e)
+        }
+    }
+
+    private lazy var pulseMesh: MeshResource? = {
+        var b = HubMeshBatch()
+        b.sphere(center: .zero, radius: 1, segments: 12, rings: 8)
+        return b.resource(name: "routePulse")
+    }()
+
+    /// A square tube through `points`, one box per segment, each turned
+    /// to its segment.
+    private static func tube(_ batch: inout HubMeshBatch, _ points: [SIMD3<Float>], thickness t: Float) {
+        for (a, b) in zip(points, points.dropFirst()) {
+            let d = b - a
+            let length = simd_length(d)
+            guard length > 0.01 else { continue }
+            let turn = simd_quatf(from: [1, 0, 0], to: d / length)
+            batch.transform = HubMeshBatch.translation((a + b) / 2) * simd_float4x4(turn)
+            batch.box(center: [0, -t / 2, 0], size: [length + t * 0.5, t, t], bottom: true)
+        }
+        batch.transform = matrix_identity_float4x4
+    }
+
+    private static func sample(_ points: [SIMD3<Float>], _ u: Float) -> SIMD3<Float> {
+        let x = max(0, min(1, u)) * Float(points.count - 1)
+        let i = min(points.count - 2, Int(x))
+        let f = x - Float(i)
+        return points[i] + (points[i + 1] - points[i]) * f
     }
 
     // MARK: Ambient traffic
@@ -425,30 +720,27 @@ final class HubDynamics {
               let taxi = layout.pieces.first(where: { $0.kind == .taxiway && $0.variant == 0 }) else { return }
         let rwZ = runway.thresholdA.z, taxiZ = taxi.center.z
         let west = runway.thresholdA.x, east = runway.thresholdB.x
-        let loop = HubPath([
-            HubVec(west - 1_400, 420, rwZ), HubVec(west + 140, 0, rwZ), HubVec(east - 140, 0, rwZ),
-            HubVec(east - 60, 0, taxiZ), HubVec(west + 60, 0, taxiZ), HubVec(west + 60, 0, rwZ),
-            HubVec(east - 200, 0, rwZ), HubVec(east + 600, 260, rwZ), HubVec(east + 2_400, 900, rwZ),
+        // The airfield circuit: approach from the west, touch down, roll
+        // out, turn off onto the taxiway, taxi back west, line up and take
+        // off east. Three jets spaced round it; they fade in and out far
+        // out in the sky where the loop restarts.
+        let circuit = HubPath([
+            HubVec(west - 1_600, 460, rwZ), HubVec(west - 500, 150, rwZ), HubVec(west + 140, 0, rwZ),
+            HubVec(east - 160, 0, rwZ), HubVec(east - 60, 0, (rwZ + taxiZ) / 2), HubVec(east - 60, 0, taxiZ),
+            HubVec(west + 60, 0, taxiZ), HubVec(west + 60, 0, (rwZ + taxiZ) / 2), HubVec(west + 90, 0, rwZ),
+            HubVec(east - 260, 0, rwZ), HubVec(east + 500, 160, rwZ), HubVec(east + 2_600, 900, rwZ),
         ])
-        let speeds: [Float] = [75, 42, 12, 18, 8, 55, 75, 90]
+        // Approach, flare, roll-out braking, turn off, taxi, line up,
+        // take-off roll, rotate, climb.
+        let speeds: [Float] = [78, 64, 30, 9, 9, 10, 9, 7, 58, 82, 92]
         let categories: [AircraftCategory] = [.narrowbody, .widebody, .regionalJet]
         let liveries: [Livery] = [.slate, .crimson, .teal]
-        for k in 0..<2 {
-            let e = aircraftEntity(categories[k % 3], livery: liveries[k % 3])
-            root.addChild(e)
-            let mover = HubMover(entity: e, path: loop, speeds: speeds, start: Float(k) * 2_600)
-            movers.append(mover)
-        }
-        // Jets taxiing between the stands and the taxiway, so the apron
-        // is never still.
-        for (k, stand) in layout.stands.enumerated() where k % 4 == 1 {
-            let pts = stand.departure.points
-            guard pts.count > 3 else { continue }
-            // From the pushback point out to the taxiway and back.
-            let lane = HubPath(Array(pts[1...3]))
-            let e = aircraftEntity(k % 8 == 1 ? .narrowbody : .regionalJet, livery: k % 8 == 1 ? .violet : .jade)
-            root.addChild(e)
-            movers.append(HubMover(entity: e, path: lane, speeds: [7, 9], start: Float(k * 31 % 120), pingPong: true))
+        let lap = Float(circuit.length)
+        for k in 0..<3 {
+            let e = aircraftEntity(categories[k], livery: liveries[k])
+            traffic.addChild(e)
+            movers.append(HubMover(entity: e, path: circuit, speeds: speeds, start: Float(k) * lap / 3,
+                                   style: .air, corner: 45))
         }
         // Second runway gets departures only.
         if layout.runways.count > 1 {
@@ -457,8 +749,8 @@ final class HubDynamics {
                                HubVec(r2.thresholdB.x + 600, 260, r2.thresholdA.z),
                                HubVec(r2.thresholdB.x + 2_600, 900, r2.thresholdA.z)])
             let e = aircraftEntity(.largeWidebody, livery: .gold)
-            root.addChild(e)
-            movers.append(HubMover(entity: e, path: dep, speeds: [50, 75, 90], start: 400))
+            traffic.addChild(e)
+            movers.append(HubMover(entity: e, path: dep, speeds: [55, 80, 92], start: 400, style: .air))
         }
         // A departure that turns out over the district, so the residential
         // shot has a jet crossing its airside edge (reference shot D).
@@ -469,31 +761,31 @@ final class HubDynamics {
                 HubVec(stop.x + 1_600, 760, stop.z + 1_400),
             ])
             let e = aircraftEntity(.narrowbody, livery: .azure)
-            root.addChild(e)
-            movers.append(HubMover(entity: e, path: out, speeds: [40, 66, 74, 78, 90], start: Float(out.length) * 0.55))
+            traffic.addChild(e)
+            movers.append(HubMover(entity: e, path: out, speeds: [45, 70, 78, 82, 92], start: Float(out.length) * 0.55,
+                                   style: .air, corner: 120))
         }
     }
 
-    /// Tugs, baggage trains, vans, fuel bowsers and buses shuttling along
-    /// the apron's service roads (reference shot A: ~25 vehicles moving).
+    /// Tugs, baggage trains, vans, bowsers and buses circulating on the
+    /// apron's service roads — two-way loops with U-turns at the ends, so
+    /// nothing ever reverses or pops (reference shot A: ~25 vehicles).
     private func buildApronTraffic() {
         let kinds: [HubModels.Vehicle] = [.baggageTrain, .serviceVan, .fuelTruck, .tug, .cateringTruck, .bus]
         let liveries: [Livery] = [.azure, .teal, .slate]
         var k = 0
         for lane in layout.serviceLanes {
-            let count = max(2, min(5, Int(lane.length / 60)))
+            let loop = lane.roundTrip(lane: 2.4)
+            let count = max(2, min(6, Int(lane.length / 45)))
             for i in 0..<count {
                 let v = kinds[k % kinds.count]
                 let e = vehicleEntity(v) { key in
                     key == .livery(.azure) ? .livery(liveries[k % 3]) : key
                 }
-                root.addChild(e)
-                // Two-way traffic: alternate vehicles keep to either side.
-                let side: Double = i % 2 == 0 ? 2.2 : -2.2
-                let path = HubPath(lane.points.map { HubVec($0.x, 0, $0.z + side) })
-                movers.append(HubMover(entity: e, path: path, speeds: [5.5 + Float(k % 3) * 1.5],
-                                       start: Float(i) / Float(count) * Float(lane.length) + Float(k * 13 % 40),
-                                       pingPong: true))
+                traffic.addChild(e)
+                let cruise: Float = v == .baggageTrain || v == .tug ? 5 : 7
+                movers.append(HubMover(entity: e, path: loop, speeds: [cruise + Float(k % 3) * 0.6],
+                                       start: Float(i) / Float(count) * Float(loop.length) + Float(k * 13 % 40)))
                 k += 1
             }
         }
@@ -505,42 +797,39 @@ final class HubDynamics {
         var k = 0
         for road in roads {
             let alongX = road.size.x >= road.size.z
-            let half = (alongX ? road.size.x : road.size.z) / 2 - 10
+            let half = (alongX ? road.size.x : road.size.z) / 2 - 12
             let atKerb = alongX && abs(road.center.z - kerbZ) < 1
-            for lane in [-1.0, 1.0] {
-                let off = lane * 3.2
-                let a = alongX ? HubVec(road.center.x - half, 0.12, road.center.z + off)
-                    : HubVec(road.center.x + off, 0.12, road.center.z - half)
-                let b = alongX ? HubVec(road.center.x + half, 0.12, road.center.z + off)
-                    : HubVec(road.center.x + off, 0.12, road.center.z + half)
-                let path = lane > 0 ? HubPath([a, b]) : HubPath([b, a])
-                let count = atKerb ? 3 : Int(half / 220) + 1
-                for i in 0..<count {
-                    let colour = k
-                    // The kerb gets buses and taxis; streets get cars and vans.
-                    let kind: HubModels.Vehicle = atKerb ? (i == 0 ? .bus : .car) : (i % 5 == 0 ? .serviceVan : .car)
-                    let car = vehicleEntity(kind) { key in
-                        key == .cloth(0) ? .cloth(atKerb ? 3 : [0, 1, 5, 6, 7, 3][colour % 6]) : key
-                    }
-                    root.addChild(car)
-                    let mover = HubMover(entity: car, path: path, speeds: [atKerb ? 6 : 14 + Float(k % 4) * 2],
-                                         start: Float(i) * Float(path.length) / Float(count) + Float(k * 37 % 90))
-                    movers.append(mover)
-                    k += 1
+            let a = alongX ? HubVec(road.center.x - half, 0.12, road.center.z) : HubVec(road.center.x, 0.12, road.center.z - half)
+            let b = alongX ? HubVec(road.center.x + half, 0.12, road.center.z) : HubVec(road.center.x, 0.12, road.center.z + half)
+            // Both directions as one loop, keeping right.
+            let loop = HubPath([a, b]).roundTrip(lane: 3.2)
+            let count = atKerb ? 5 : 2 * (Int(half / 220) + 1)
+            for i in 0..<count {
+                let colour = k
+                // The kerb gets buses and taxis; streets get cars and vans.
+                let kind: HubModels.Vehicle = atKerb ? (i % 3 == 0 ? .bus : .car) : (i % 5 == 0 ? .serviceVan : .car)
+                let car = vehicleEntity(kind) { key in
+                    key == .cloth(0) ? .cloth(atKerb ? 3 : [0, 1, 5, 6, 7, 3][colour % 6]) : key
                 }
+                traffic.addChild(car)
+                let cruise: Float = atKerb ? 6 : 13 + Float(k % 4) * 1.5
+                movers.append(HubMover(entity: car, path: loop, speeds: [cruise],
+                                       start: Float(i) * Float(loop.length) / Float(count) + Float(k * 37 % 90)))
+                k += 1
             }
         }
         // The service cart towing its tank trailer round the district's
-        // streets past the first stop's gate, so it is in the district shot
-        // (reference shot D).
+        // streets past the first stop's gate (reference shot D): one loop,
+        // the trailer a few metres behind on the same path.
         let stop = layout.serviceStops.first ?? layout.focus.district
-        let near = layout.serviceRoute.points.filter { $0.distance(to: stop) < 160 }
-        let loop = near.count >= 2 ? HubPath(near) : layout.serviceRoute
+        let near = layout.serviceRoute.points.filter { $0.distance(to: stop) < 160 }.map { HubVec($0.x, 0, $0.z) }
+        let street = near.count >= 2 ? HubPath(near) : layout.serviceRoute
+        let loop = street.rounded(radius: 6).roundTrip(lane: 1.6)
         for (i, v) in [HubModels.Vehicle.golfCart, .tanker].enumerated() {
             let e = vehicleEntity(v)
-            root.addChild(e)
-            movers.append(HubMover(entity: e, path: loop, speeds: [4.5], start: Float(loop.length) * 0.35 - Float(i) * 6,
-                                   pingPong: true))
+            traffic.addChild(e)
+            movers.append(HubMover(entity: e, path: loop, speeds: [4.5],
+                                   start: Float(loop.length) * 0.2 - Float(i) * 6.5, corner: 4))
         }
     }
 
@@ -629,27 +918,55 @@ final class HubDynamics {
     func update(_ dt: Float) {
         time += dt
         for mover in movers { mover.step(dt) }
-        // Walkers along queues.
-        for (entity, path, offset, speed) in walkers where entity.scene != nil {
-            var t = (offset + time * speed).truncatingRemainder(dividingBy: 1)
+        // Parked jets glide to where the snapshot puts them (pushback).
+        for (index, target) in parkTargets {
+            guard let e = parked[index]?.entity else { continue }
+            let gap = target - e.position
+            if simd_length_squared(gap) > 0.0001 {
+                e.position += gap * min(1, dt * 1.8)
+            }
+        }
+        // Walkers along queues: a gentle step bob, turned the way they
+        // walk, fading in at the back of the queue and out at the door.
+        for (k, walker) in walkers.enumerated() where walker.entity.scene != nil {
+            var t = (walker.offset + time * walker.speed).truncatingRemainder(dividingBy: 1)
             if t < 0 { t += 1 }
-            let s = path.sample(fraction: Double(t))
-            entity.position = [Float(s.position.x), Float(s.position.y), Float(s.position.z)]
-            entity.orientation = simd_quatf(angle: Float(s.yaw) + (speed < 0 ? .pi : 0), axis: [0, 1, 0])
+            let s = walker.path.sample(fraction: Double(t))
+            let bob = abs(sin(time * 7.5 + Float(k) * 1.7)) * 0.09
+            walker.entity.position = [Float(s.position.x), Float(s.position.y) + bob, Float(s.position.z)]
+            walker.entity.orientation = simd_quatf(angle: Float(s.yaw) + (walker.speed < 0 ? .pi : 0), axis: [0, 1, 0])
+            let edge = min(t, 1 - t)
+            let opacity = min(1, edge / 0.07)
+            walker.entity.components.set(OpacityComponent(opacity: opacity * opacity * (3 - 2 * opacity)))
         }
         walkers.removeAll { $0.entity.parent?.parent == nil }
+        // Route lights run out along their arcs and back, easing in and
+        // out of the terminal and fading at both ends.
+        if showsRouteFan {
+            for pulse in routePulses {
+                let points = routeArcs[pulse.arc].points
+                var u = (pulse.offset + time * pulse.speed).truncatingRemainder(dividingBy: 1)
+                if u < 0 { u += 1 }
+                let eased = u * u * (3 - 2 * u) * 0.35 + u * 0.65
+                pulse.entity.position = Self.sample(points, pulse.outbound ? eased : 1 - eased)
+                let edge = min(u, 1 - u)
+                pulse.entity.components.set(OpacityComponent(opacity: min(1, edge / 0.08)))
+            }
+        }
         // Pulse rings round the focused jet's engine: stacked, tilted,
-        // growing and fading out in turn (reference shot B).
+        // growing with an ease-out and fading as they go (reference shot B).
         if let index = focusStand, let current = parked[index] {
             let engine = current.entity.convert(position: pulseEngine, to: nil)
             let tilt = current.entity.orientation * simd_quatf(angle: 0.16, axis: [1, 0, 0])
             for (k, ring) in pulse.enumerated() {
-                let phase = (time * 0.42 + Float(k) / Float(pulse.count)).truncatingRemainder(dividingBy: 1)
-                let size = 3 + 9 * phase
+                let phase = (time * 0.4 + Float(k) / Float(pulse.count)).truncatingRemainder(dividingBy: 1)
+                let eased = 1 - (1 - phase) * (1 - phase) * (1 - phase)
+                let size = 3 + 9 * eased
                 ring.position = engine + [0, Float(k) * 0.5 - 0.3, 0]
                 ring.orientation = tilt
                 ring.scale = [size, 1, size]
-                ring.components.set(OpacityComponent(opacity: min(1, (1 - phase) * 1.5)))
+                let fadeIn = min(1, phase / 0.12)
+                ring.components.set(OpacityComponent(opacity: fadeIn * (1 - phase) * (1 - phase) * 1.4))
             }
         }
     }

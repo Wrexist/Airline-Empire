@@ -11,6 +11,11 @@ enum HubMaterialKey: Hashable {
     case safety, pulse, queueGlow, routeGlow, pinGlow, lamp, lampPool, heat
     case livery(Livery), liveryAccent(Livery), cloth(Int), skin(Int)
     case office(floors: Int), screen, kioskScreen, skylight, windowUnlit
+    // Airfield lighting: matte fittings by day, glowing after dusk.
+    case runwayLight, thresholdLight, taxiEdgeLight
+    /// A route of the fan, by load-factor band (0 unknown, 1 ≥ 75 %,
+    /// 2 ≥ 55 %, 3 below), and the light running along it.
+    case routeArc(Int), routePulse
 }
 
 @available(iOS 18.0, *)
@@ -72,7 +77,11 @@ final class HubMaterials {
 
     private func make(_ key: HubMaterialKey) -> RealityKit.Material {
         let p = palette
-        let night = p.windowGlow > 0
+        // 0 by day, 1 at night, in between during the dusk crossfade:
+        // every glow scales with it so the change is gradual.
+        let dusk = max(0, min(1, p.dusk))
+        let night = dusk > 0.5
+        let lit = dusk > 0.01
         switch key {
         case .concrete: return matte(p.concrete)
         case .concreteLight: return matte(p.concreteLight)
@@ -85,13 +94,13 @@ final class HubMaterials {
             // Glazed roofs: paler than the curtain walls by day, a soft warm
             // glow at night rather than a lantern.
             var m = PhysicallyBasedMaterial()
-            m.baseColor = .init(tint: night ? p.glass : UIColor(hub: 0xA4CBEE))
+            m.baseColor = .init(tint: UIColor(hub: 0xA4CBEE).mixed(with: p.glass, CGFloat(dusk)))
             m.roughness = .init(floatLiteral: 0.15)
             m.metallic = .init(floatLiteral: 0.05)
-            m.blending = .transparent(opacity: .init(floatLiteral: night ? 0.7 : 0.5))
-            if night {
+            m.blending = .transparent(opacity: .init(floatLiteral: 0.5 + 0.2 * dusk))
+            if lit {
                 m.emissiveColor = .init(color: UIColor(hub: 0xFFE6C4))
-                m.emissiveIntensity = 0.35
+                m.emissiveIntensity = 0.35 * dusk
             }
             return m
         case .glass:
@@ -100,10 +109,10 @@ final class HubMaterials {
             m.roughness = .init(floatLiteral: 0.12)
             m.metallic = .init(floatLiteral: 0.1)
             m.blending = .transparent(opacity: .init(floatLiteral: p.glassOpacity))
-            if night {
+            if lit {
                 // Lit interiors: the reference's night is warm windows.
                 m.emissiveColor = .init(color: p.windowLit)
-                m.emissiveIntensity = 1.1
+                m.emissiveIntensity = 1.1 * dusk
             }
             return m
         case .grass: return matte(p.grass, roughness: 1)
@@ -111,28 +120,40 @@ final class HubMaterials {
         case .tree(let i): return matte(p.tree[i % p.tree.count], roughness: 0.95)
         case .trunk: return matte(p.trunk)
         case .marking: return matte(p.marking, roughness: 0.8)
-        case .taxiLine: return night ? glow(p.taxiLine, intensity: 0.6) : matte(p.taxiLine, roughness: 0.7)
+        case .taxiLine: return lit ? glow(p.taxiLine, intensity: 0.6 * dusk) : matte(p.taxiLine, roughness: 0.7)
         case .houseRoof: return matte(p.houseRoof, roughness: 0.7)
         case .houseWood: return matte(p.houseWood, roughness: 0.85)
-        case .windowDark: return night ? glow(p.windowLit, intensity: p.windowGlow) : matte(p.windowDark, roughness: 0.2)
+        case .windowDark:
+            return lit ? glow(p.windowDark, intensity: p.windowGlow) : matte(p.windowDark, roughness: 0.2)
         // A window nobody is behind at night: dark by day like the rest,
         // still dark after dusk.
-        case .windowUnlit: return matte(night ? UIColor(hub: 0x2E3262) : p.windowDark, roughness: 0.2)
-        case .water: return night ? glow(p.water, intensity: 1.4) : matte(p.water, roughness: 0.15)
-        case .blob: return unlit(p.blob, opacity: night ? 0.55 : 0.32, texture: texture("blob", Self.blobImage))
+        case .windowUnlit:
+            return matte(HubPalette.day.windowDark.mixed(with: UIColor(hub: 0x2E3262), CGFloat(dusk)), roughness: 0.2)
+        case .water: return lit ? glow(p.water, intensity: 1.4 * dusk) : matte(p.water, roughness: 0.15)
+        case .blob: return unlit(p.blob, opacity: 0.32 + 0.23 * dusk, texture: texture("blob", Self.blobImage))
         case .tyre: return matte(HubPalette.tyre)
         case .darkMetal: return matte(HubPalette.darkMetal, roughness: 0.5)
         case .hiVis: return matte(HubPalette.hiVis, roughness: 0.7)
         case .cone: return matte(HubPalette.cone, roughness: 0.7)
-        case .white: return matte(night ? p.building : UIColor(hub: 0xF1F3FA), roughness: 0.55)
+        case .white: return matte(UIColor(hub: 0xF1F3FA).mixed(with: HubPalette.night.building, CGFloat(dusk)), roughness: 0.55)
         case .safety: return unlit(HubPalette.safety)
         case .pulse: return unlit(HubPalette.queueGlow.mixed(with: HubPalette.pulse, 0.45), opacity: 1,
                                   texture: texture("ring", Self.ringImage))
         case .queueGlow: return unlit(HubPalette.queueGlow, opacity: 0.85, texture: texture("strip", Self.stripImage))
         case .routeGlow: return unlit(HubPalette.queueGlow, opacity: 0.95)
         case .pinGlow: return unlit(HubPalette.pin, opacity: 0.4, texture: texture("blob", Self.blobImage))
-        case .lamp: return night ? glow(p.windowLit, intensity: 3) : matte(p.building)
-        case .lampPool: return unlit(p.windowLit, opacity: night ? 0.5 : 0, texture: texture("blob", Self.blobImage))
+        case .lamp: return lit ? glow(p.windowLit, intensity: 3 * dusk) : matte(p.building)
+        case .lampPool: return unlit(p.windowLit, opacity: 0.5 * dusk, texture: texture("blob", Self.blobImage))
+        case .runwayLight:
+            return lit ? glow(UIColor(hub: 0xFFF1D2), intensity: 2.8 * dusk) : matte(UIColor(hub: 0xE6E9F6), roughness: 0.4)
+        case .thresholdLight:
+            return lit ? glow(UIColor(hub: 0x5CF59A), intensity: 2.6 * dusk) : matte(UIColor(hub: 0x86D6A2), roughness: 0.4)
+        case .taxiEdgeLight:
+            return lit ? glow(UIColor(hub: 0x4D7DFF), intensity: 2.6 * dusk) : matte(UIColor(hub: 0x7D93D8), roughness: 0.4)
+        case .routeArc(let band):
+            let colours: [UInt32] = [0x3FE0E8, 0x3FE0B4, 0xF5B84D, 0xF06A8A]
+            return unlit(UIColor(hub: colours[max(0, min(3, band))]), opacity: 0.82)
+        case .routePulse: return unlit(UIColor(hub: 0xF2FFFF))
         case .heat:
             if let heatmap { return unlit(.white, opacity: 0.85, texture: heatmap) }
             return unlit(.clear, opacity: 0)
