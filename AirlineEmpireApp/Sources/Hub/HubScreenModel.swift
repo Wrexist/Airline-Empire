@@ -156,6 +156,15 @@ final class HubScreenModel {
         }
     }
 
+    /// A panel down the right side (insights, an upgrade card) is open:
+    /// the inspector steps aside for it.
+    var sidePanelOpen: Bool {
+        switch panel {
+        case .insights, .upgrade: true
+        default: false
+        }
+    }
+
     /// Opens `panel`, or closes it if it is already open.
     func toggle(_ panel: HubPanel) {
         self.panel = self.panel == panel ? nil : panel

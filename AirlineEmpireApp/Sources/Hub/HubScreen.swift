@@ -181,7 +181,7 @@ private struct HubDashboard: View {
                 }
                 Spacer(minLength: 0)
                 HubControls(model: model)
-                if model.showsInspector, model.panel != .insights, let occupant = model.focusedOccupant {
+                if model.showsInspector, !model.sidePanelOpen, let occupant = model.focusedOccupant {
                     HubInspector(model: model, occupant: occupant)
                         .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
@@ -215,7 +215,7 @@ private struct HubDashboard: View {
             HStack(alignment: .top, spacing: 8) {
                 HubKPIRow(model: model, compact: true)
                 Spacer(minLength: 0)
-                if model.showsInspector, model.panel != .insights, let occupant = model.focusedOccupant {
+                if model.showsInspector, !model.sidePanelOpen, let occupant = model.focusedOccupant {
                     ScrollView(.vertical, showsIndicators: false) {
                         HubInspector(model: model, occupant: occupant, compact: true)
                     }
@@ -263,7 +263,7 @@ private struct HubDashboard: View {
             Spacer(minLength: 0)
 
             VStack(spacing: 10) {
-                if model.showsInspector, model.panel != .insights, let occupant = model.focusedOccupant {
+                if model.showsInspector, !model.sidePanelOpen, let occupant = model.focusedOccupant {
                     HubInspector(model: model, occupant: occupant)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                         .transition(.move(edge: .bottom).combined(with: .opacity))

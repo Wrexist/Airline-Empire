@@ -52,7 +52,6 @@ struct HubUpgradeCard: View {
         .frame(width: mode == .regular ? 340 : 320)
         .hubGlass(padding: 14)
         .onChange(of: model.offer(kind)?.level) { _, _ in armed = false }
-        .accessibilityIdentifier("ae-hub-upgrade-card")
     }
 
     private func header(_ offer: HubUpgradeOffer) -> some View {
@@ -62,6 +61,9 @@ struct HubUpgradeCard: View {
                 Text(offer.title).font(.system(size: 11)).foregroundStyle(HubChromeStyle.secondary)
                 Text(offer.buildingName).font(.system(size: 16, weight: .bold)).foregroundStyle(HubChromeStyle.ink)
                     .contentTransition(.opacity)
+                    // On the title, not the card: an identifier on the card
+                    // would be inherited by its build button.
+                    .accessibilityIdentifier("ae-hub-upgrade-card")
             }
             Spacer()
             Button {

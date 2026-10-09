@@ -87,7 +87,10 @@ final class HubViewUITests: AEUITestCase {
         frame("HUB-09-upgrade")
         XCTAssertTrue(app.descendants(matching: .any)["ae-hub-upgrade-card"].exists)
         // Order it (two taps: arm, confirm) and watch it go up.
-        let build = app.buttons["ae-hub-upgrade-build"]
+        var build = app.buttons["ae-hub-upgrade-build"]
+        if !build.exists {
+            build = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Build'")).firstMatch
+        }
         if build.exists && build.isEnabled {
             build.tap()
             Thread.sleep(forTimeInterval: 0.6)
