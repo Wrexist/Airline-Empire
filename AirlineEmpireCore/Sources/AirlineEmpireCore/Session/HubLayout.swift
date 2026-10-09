@@ -42,16 +42,18 @@ public struct HubVec: Equatable, Hashable, Codable, Sendable {
 /// (`HubAssetSlot` in the app).
 public enum HubPieceKind: String, CaseIterable, Codable, Sendable {
     // Ground
-    case apron, runway, taxiway, road, sidewalk, crosswalk, parking, lawn, plaza
+    case apron, runway, taxiway, road, sidewalk, crosswalk, parking, lawn, plaza, roundabout
     // Airside
     case terminalHall, pier, jetBridge, gateSign, controlTower, hangar, cargoShed, fuelTank
     case standMarking, blastFence
     // Landside
-    case officeBlock, house, gardenWall, pool, tree, lampPost, parkedCar
+    case officeBlock, apartmentBlock, house, gardenWall, pool, tree, lampPost, parkedCar
     // Terminal interior (cutaway only)
     case floorSlab, mezzanine, checkInDesk, kiosk, securityLane, queueBarrier
     case shopShelf, seatRow, flightBoard, escalator, loungeBlock
     case shopFront, gondola, cafeCounter, metalDetector, luggageTrolley, electricCart, wayfindingSign
+    /// Glazed partition between two bays of the hall.
+    case bayPartition
 }
 
 /// One placed piece: an oriented box footprint with a height, plus a variant
@@ -190,6 +192,14 @@ public struct HubStand: Equatable, Codable, Sendable {
     public let safetyOutline: [HubVec]
     /// Where ground vehicles park during a turnaround.
     public let servicePoints: [HubVec]
+
+    /// Ground bounds of the largest aircraft the stand takes, parked.
+    public var parkedEnvelope: HubRect {
+        let length = HubAircraftEnvelope.length(maxCategory)
+        let fwd = HubVec(cos(heading), 0, -sin(heading))
+        return HubPiece(.apron, center: nose - fwd * (length / 2),
+                        size: HubVec(length, 1, HubAircraftEnvelope.span(maxCategory)), yaw: heading).groundBounds
+    }
 }
 
 /// The doll's-house interior revealed by the terminal cutaway.
@@ -197,20 +207,34 @@ public struct HubTerminalInterior: Equatable, Codable, Sendable {
     public let bounds: HubRect
     public let pieces: [HubPiece]
     /// Where queues pool (the heatmap's seeds), with relative weight 0…1.
+    /// `hotspotsPerBay` per bay, bay by bay from the west end; each bay's
+    /// list opens with security, check-in and retail.
     public let hotspots: [(position: HubVec, weight: Double)]
+    /// The hall is built of repeating bays, each a doll's-house room.
+    public let bays: Int
+
+    public static let hotspotsPerBay = 5
 
     public static func == (a: Self, b: Self) -> Bool {
-        a.bounds == b.bounds && a.pieces == b.pieces &&
+        a.bounds == b.bounds && a.pieces == b.pieces && a.bays == b.bays &&
             a.hotspots.map(\.position) == b.hotspots.map(\.position) &&
             a.hotspots.map(\.weight) == b.hotspots.map(\.weight)
     }
 
-    enum CodingKeys: String, CodingKey { case bounds, pieces, hotspotPositions, hotspotWeights }
+    enum CodingKeys: String, CodingKey { case bounds, pieces, hotspotPositions, hotspotWeights, bays }
 
-    public init(bounds: HubRect, pieces: [HubPiece], hotspots: [(position: HubVec, weight: Double)]) {
+    public init(bounds: HubRect, pieces: [HubPiece], hotspots: [(position: HubVec, weight: Double)], bays: Int) {
         self.bounds = bounds
         self.pieces = pieces
         self.hotspots = hotspots
+        self.bays = bays
+    }
+
+    /// The x-extent of one bay of the hall.
+    public func bay(_ index: Int) -> HubRect {
+        let w = bounds.width / Double(max(1, bays))
+        let i = Double(min(max(0, index), max(0, bays - 1)))
+        return HubRect(minX: bounds.minX + w * i, minZ: bounds.minZ, maxX: bounds.minX + w * (i + 1), maxZ: bounds.maxZ)
     }
 
     public init(from decoder: Decoder) throws {
@@ -220,6 +244,7 @@ public struct HubTerminalInterior: Equatable, Codable, Sendable {
         let p = try c.decode([HubVec].self, forKey: .hotspotPositions)
         let w = try c.decode([Double].self, forKey: .hotspotWeights)
         hotspots = Array(zip(p, w)).map { (position: $0.0, weight: $0.1) }
+        bays = try c.decodeIfPresent(Int.self, forKey: .bays) ?? 1
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -228,6 +253,7 @@ public struct HubTerminalInterior: Equatable, Codable, Sendable {
         try c.encode(pieces, forKey: .pieces)
         try c.encode(hotspots.map(\.position), forKey: .hotspotPositions)
         try c.encode(hotspots.map(\.weight), forKey: .hotspotWeights)
+        try c.encode(bays, forKey: .bays)
     }
 }
 
@@ -252,6 +278,9 @@ public struct HubLayout: Equatable, Codable, Sendable {
     public let serviceRoute: HubPath
     /// Landmarks along the service route that carry pins.
     public let serviceStops: [HubVec]
+    /// Apron service roads clear of stands and buildings, where tugs, vans
+    /// and baggage trains shuttle between the turnarounds (shot A).
+    public let serviceLanes: [HubPath]
     public let focus: HubFocusPoints
     /// Union of every footprint.
     public let bounds: HubRect
@@ -406,14 +435,22 @@ struct HubPlanner {
         add(.terminalHall, terminal, height: 19, label: spec.city)
 
         let stands = planStands(terminal: terminal)
-        let apronNorth = (stands.map(\.nose.z).min() ?? -60) - standDepth - 70
-        let apronHalf = max(L / 2 + 30,
-                            (stands.map { abs($0.nose.x) }.max() ?? 0) + standDepth + 45)
+        // The apron hugs what stands on it — parked envelopes, piers and
+        // pushback points — plus one taxilane, as in the reference's
+        // overview, rather than a fixed margin of empty concrete.
+        let span = HubAircraftEnvelope.span(largestCategory)
+        let taxilane = span + 12
+        let reach = (stands.map(\.parkedEnvelope) + pieces.filter { $0.kind == .pier }.map(\.groundBounds))
+            .reduce(terminal) { $0.union($1) }
+        let pushReach = stands.map { abs($0.departure.points.last!.x) }.max() ?? 0
+        let apronNorth = reach.minZ - taxilane
+        let apronHalf = max(L / 2 + 24, max(reach.maxX, -reach.minX) + taxilane * 0.6, pushReach + span / 2 + 8)
         let apron = HubRect(minX: -apronHalf, minZ: apronNorth, maxX: apronHalf, maxZ: 0)
         add(.apron, apron, height: 0.06)
+        let serviceLanes = planServiceLanes(apronHalf: apronHalf, headZ: reach.minZ - 10)
 
-        // Taxiway and runways north of the apron.
-        let taxiZ = apronNorth - 45
+        // Taxiway along the apron's north edge, runways beyond.
+        let taxiZ = apronNorth - 12
         let runwayHalf = max(runwayLength / 2, apronHalf + 260)
         add(.taxiway, HubRect(minX: -runwayHalf, minZ: taxiZ - 12, maxX: runwayHalf, maxZ: taxiZ + 12), height: 0.07)
         var runways: [HubRunway] = []
@@ -451,14 +488,18 @@ struct HubPlanner {
             }
         }
 
-        // Hangars east of the apron, cargo west, tower beside the terminal.
+        // Hangars off the apron's north-east corner (top right of the
+        // overview), cargo west, tower beside the terminal.
         let hangarW: Double = spec.runwayClass >= .large ? 95 : 70
         for i in 0..<(spec.runwayClass >= .large ? 2 : 1) {
-            let x = apronHalf + 70 + Double(i) * (hangarW + 18)
-            let z = apronNorth + 70
+            let x = apronHalf + 62 + Double(i) * (hangarW + 18)
+            let z = apronNorth + 64
             add(.hangar, HubRect(minX: x - hangarW / 2, minZ: z - 40, maxX: x + hangarW / 2, maxZ: z + 40),
                 height: 30, variant: i)
-            add(.apron, HubRect(minX: x - hangarW / 2 - 6, minZ: z - 80, maxX: x + hangarW / 2 + 6, maxZ: z - 40),
+            // Each hangar's own apron runs back to the taxiway; the first
+            // joins the main apron.
+            add(.apron, HubRect(minX: i == 0 ? apronHalf - 2 : x - hangarW / 2 - 6, minZ: apronNorth,
+                                maxX: x + hangarW / 2 + 6, maxZ: z - 40),
                 height: 0.06, variant: 1)
         }
         if spec.runwayClass >= .medium {
@@ -477,6 +518,10 @@ struct HubPlanner {
         let kerbZ = terminalDepth + 16
         add(.road, HubRect(minX: -L / 2 - 30, minZ: kerbZ - 10, maxX: L / 2 + 30, maxZ: kerbZ + 10), height: 0.07)
         add(.sidewalk, HubRect(minX: -L / 2, minZ: terminalDepth, maxX: L / 2, maxZ: kerbZ - 10), height: 0.18)
+        // Zebra crossings from the terminal doors to the car parks.
+        for x in [-L * 0.3, 0, L * 0.3] {
+            crosswalk(at: HubVec(x, 0, kerbZ), alongX: false)
+        }
         let parkingZ0 = kerbZ + 22, parkingZ1 = kerbZ + 120
         for side in [-1.0, 1.0] {
             let r = HubRect(minX: side < 0 ? -L / 2 : 12, minZ: parkingZ0,
@@ -502,18 +547,27 @@ struct HubPlanner {
         }
         let avenueZ = parkingZ1 + 40
         let landsideHalf = runwayHalf + 200
+        // City blocks between the avenue and the second road: offices west,
+        // the residential district east (shot D).
+        let blockEnd = avenueZ + 300
         road(HubRect(minX: -landsideHalf, minZ: avenueZ - 13, maxX: landsideHalf, maxZ: avenueZ + 13))
-        // Connector from the kerb loop to the avenue at both ends of the terminal.
+        // Connector from the kerb loop to the avenue at both ends of the
+        // terminal, where roundabouts take the turn (reference shot A).
         let streetXs = [-L / 2 - 60, L / 2 + 60, -L / 2 - 330, L / 2 + 330]
         for x in streetXs {
-            let fromZ = abs(x) < L / 2 + 100 ? kerbZ - 10 : avenueZ
-            road(HubRect(minX: x - 11, minZ: fromZ, maxX: x + 11, maxZ: avenueZ + 640))
-            crosswalk(at: HubVec(x, 0, avenueZ - 20), alongX: true)
-            crosswalk(at: HubVec(x, 0, avenueZ + 20), alongX: true)
-            crosswalk(at: HubVec(x - 19, 0, avenueZ), alongX: false)
-            crosswalk(at: HubVec(x + 19, 0, avenueZ), alongX: false)
+            let nearTerminal = abs(x) < L / 2 + 100
+            let fromZ = nearTerminal ? kerbZ - 10 : avenueZ
+            road(HubRect(minX: x - 11, minZ: fromZ, maxX: x + 11, maxZ: blockEnd + 352))
+            if nearTerminal {
+                pieces.append(HubPiece(.roundabout, center: HubVec(x, 0, avenueZ), size: HubVec(48, 0.14, 48)))
+            }
+            let reach = nearTerminal ? 33.0 : 20.0
+            crosswalk(at: HubVec(x, 0, avenueZ - reach), alongX: true)
+            crosswalk(at: HubVec(x, 0, avenueZ + reach), alongX: true)
+            crosswalk(at: HubVec(x - reach + 1, 0, avenueZ), alongX: false)
+            crosswalk(at: HubVec(x + reach - 1, 0, avenueZ), alongX: false)
         }
-        road(HubRect(minX: -landsideHalf, minZ: avenueZ + 300, maxX: landsideHalf, maxZ: avenueZ + 322))
+        road(HubRect(minX: -landsideHalf, minZ: blockEnd + 12, maxX: landsideHalf, maxZ: blockEnd + 34))
         // Avenue trees and lamps.
         var ax = -landsideHalf + 20
         while ax < landsideHalf {
@@ -529,14 +583,21 @@ struct HubPlanner {
         }
         // West blocks: offices between the outer streets, beyond the avenue.
         for (x0, x1) in [(-landsideHalf, -L / 2 - 341), (-L / 2 - 319, -L / 2 - 71)] where x1 - x0 > 60 {
-            officeRow(x0: x0 + 14, x1: x1 - 14, z0: avenueZ + 26, z1: avenueZ + 288)
+            officeRow(x0: x0 + 14, x1: x1 - 14, z0: avenueZ + 26, z1: blockEnd)
         }
-        // The district east of the airport (shot D): houses in walled gardens.
-        let district = HubRect(minX: L / 2 + 71, minZ: avenueZ + 26, maxX: L / 2 + 319, maxZ: avenueZ + 288)
-        let serviceStops = houses(in: district)
-        officeRow(x0: L / 2 + 341 + 14, x1: landsideHalf - 14, z0: avenueZ + 26, z1: avenueZ + 288)
+        // The district east of the airport (shot D): a row of mid-rise
+        // apartments on its airport side — behind the villas from the
+        // camera — a crescent road, then villas in walled gardens.
+        let district = HubRect(minX: L / 2 + 71, minZ: avenueZ + 26, maxX: L / 2 + 319, maxZ: blockEnd)
+        apartmentRow(x0: district.minX + 6, x1: district.maxX - 6, z0: district.minZ + 4, z1: district.minZ + 50)
+        road(HubRect(minX: district.minX - 1, minZ: district.minZ + 54, maxX: district.maxX + 1, maxZ: district.minZ + 66))
+        let villas = houses(in: HubRect(minX: district.minX, minZ: district.minZ + 66,
+                                        maxX: district.maxX, maxZ: district.maxZ),
+                            entry: L / 2 + 60)
+        let serviceStops = villas.stops
+        officeRow(x0: L / 2 + 341 + 14, x1: landsideHalf - 14, z0: avenueZ + 26, z1: blockEnd)
         // A band of offices south of the second street too, to fill the frame.
-        officeRow(x0: -landsideHalf + 14, x1: landsideHalf - 14, z0: avenueZ + 336, z1: avenueZ + 600,
+        officeRow(x0: -landsideHalf + 14, x1: landsideHalf - 14, z0: blockEnd + 48, z1: blockEnd + 312,
                   skipping: streetXs)
         // Lawns and tree clumps around the airfield edge.
         for _ in 0..<(18 + standCount) {
@@ -557,28 +618,52 @@ struct HubPlanner {
                                    size: HubVec(26, 14, 26), variant: i))
         }
 
-        // The service route: from the fuel farm gate along the avenue into the district.
-        let gate = HubVec(apronHalf + 80, 0, avenueZ)
-        let east = L / 2 + 60
+        // The service route: from the terminal's west kerb along the
+        // avenue, round the roundabout, into the district and along its
+        // streets past each stop's garden gate — on the road, as in the
+        // reference, never across a lawn.
+        // Turns follow the roundabouts' ring rather than crossing islands.
+        let westX = -L / 2 - 60, eastX = L / 2 + 60
+        let ring = 17.0, cut = 12.0
         let route = HubPath([
-            HubVec(-L / 2 - 60, 0.4, kerbZ),
-            HubVec(-L / 2 - 60, 0.4, avenueZ),
-            HubVec(east, 0.4, avenueZ),
-            HubVec(east, 0.4, district.minZ + 100),
-            serviceStops.first.map { HubVec($0.x, 0.4, district.minZ + 100) } ?? gate,
-        ] + serviceStops.map { HubVec($0.x, 0.4, $0.z) })
+            HubVec(westX, 0.4, kerbZ),
+            HubVec(westX, 0.4, avenueZ - ring), HubVec(westX + cut, 0.4, avenueZ - cut),
+            HubVec(westX + ring, 0.4, avenueZ),
+            HubVec(eastX - ring, 0.4, avenueZ), HubVec(eastX - cut, 0.4, avenueZ + cut),
+            HubVec(eastX, 0.4, avenueZ + ring),
+        ] + villas.route.map { HubVec($0.x, 0.4, $0.z) })
 
         let interior = planInterior(terminal: terminal)
         let bounds = pieces.map(\.groundBounds).reduce(terminal) { $0.union($1) }
         return HubLayout(
             airport: spec.code, runwayClass: spec.runwayClass, pieces: pieces, runways: runways,
             stands: stands, terminal: terminal, interior: interior, serviceRoute: route,
-            serviceStops: serviceStops,
-            focus: HubFocusPoints(overview: HubVec(0, 0, apronNorth / 2),
+            serviceStops: serviceStops, serviceLanes: serviceLanes,
+            focus: HubFocusPoints(overview: HubVec(0, 0, terminalDepth / 2 - 20),
                                   terminal: HubVec(0, 0, terminalDepth / 2),
                                   district: district.center,
-                                  hangars: HubVec(apronHalf + 70, 0, apronNorth + 70)),
+                                  hangars: HubVec(apronHalf + 62, 0, apronNorth + 64)),
             bounds: bounds)
+    }
+
+    /// Apron service roads: one along the terminal face in each gap between
+    /// the piers (clear of the first row of wingtips), one across the heads
+    /// of the stands.
+    func planServiceLanes(apronHalf: Double, headZ: Double) -> [HubPath] {
+        let faceZ = pierCount > 0 ? -11.0 : -3.5
+        let piers = pieces.filter { $0.kind == .pier }.map(\.groundBounds).sorted { $0.minX < $1.minX }
+        var spans: [(Double, Double)] = []
+        var from = -apronHalf + 8
+        for pier in piers {
+            spans.append((from, pier.minX - 4))
+            from = pier.maxX + 4
+        }
+        spans.append((from, apronHalf - 8))
+        var lanes = spans.filter { $0.1 - $0.0 > 30 }.map {
+            HubPath([HubVec($0.0, 0, faceZ), HubVec($0.1, 0, faceZ)])
+        }
+        lanes.append(HubPath([HubVec(-apronHalf + 10, 0, headZ), HubVec(apronHalf - 10, 0, headZ)]))
+        return lanes
     }
 
     // Stands ---------------------------------------------------------------
@@ -590,17 +675,27 @@ struct HubPlanner {
         // Runway geometry is not planned yet; departures are completed by
         // `routeStands` once the apron edge is known.
         let piers = pierCount
-        var perPierSide: Int {
-            piers == 0 ? 0 : Int((Double(n) / Double(piers * 2)).rounded(.up))
+        func pierX(_ p: Int) -> Double { (Double(p) - Double(piers - 1) / 2) * pierSpacing }
+        // Spread the stands over every pier face — the faces looking into
+        // the apron's middle first — so every pier carries jets and none
+        // is a bare wall (reference shot A: two piers, both lined).
+        let faces = (0..<piers).flatMap { p in [(pier: p, side: -1.0), (pier: p, side: 1.0)] }
+        let inward = faces.indices.sorted { a, b in
+            let fa = abs(pierX(faces[a].pier) + faces[a].side * pierWidth / 2)
+            let fb = abs(pierX(faces[b].pier) + faces[b].side * pierWidth / 2)
+            return fa != fb ? fa < fb : a < b
         }
-        let pierLength = Double(max(1, perPierSide)) * standPitch + 30
+        var perFace = [Int](repeating: faces.isEmpty ? 0 : n / faces.count, count: faces.count)
+        for k in 0..<(faces.isEmpty ? 0 : n % faces.count) { perFace[inward[k]] += 1 }
+        let pierLength = Double(max(1, perFace.max() ?? 0)) * standPitch + 30
         var placed = 0
         for p in 0..<piers {
-            let px = (Double(p) - Double(piers - 1) / 2) * pierSpacing
+            let px = pierX(p)
             let pier = HubRect(minX: px - pierWidth / 2, minZ: -pierLength, maxX: px + pierWidth / 2, maxZ: 0)
             add(.pier, pier, height: 12, variant: p)
-            for side in [-1.0, 1.0] {
-                for j in 0..<perPierSide where placed < n {
+            for (f, face) in faces.enumerated() where face.pier == p {
+                let side = face.side
+                for j in 0..<perFace[f] {
                     let z = -24 - Double(j) * standPitch - standPitch / 2 + 10
                     let nose = HubVec(px + side * (pierWidth / 2 + 7), 0, z)
                     // Nose points back at the pier: towards -side on x.
@@ -661,7 +756,7 @@ struct HubPlanner {
         let queue = HubPath([queueStart, queueStart + HubVec(0, 0, 18), queueStart + HubVec(-fwd.x * 2, 0, 34)])
         // Departure and arrival are finished once the taxi network exists;
         // the stand alone knows the first and last legs.
-        let push = tail - fwd * 30
+        let push = tail - fwd * 22
         return HubStand(index: index, gate: gate, nose: nose, heading: heading, maxCategory: largestCategory,
                         hasBridge: bridge, bridgeRoot: root,
                         departure: HubPath([nose - fwd * (len / 2), push]),
@@ -710,25 +805,51 @@ struct HubPlanner {
         }
     }
 
+    /// A row of mid-rise apartment blocks (5–7 floors) on lawns, trees
+    /// between them.
+    mutating func apartmentRow(x0: Double, x1: Double, z0: Double, z1: Double) {
+        let count = 3
+        let gap: Double = 18
+        let w = (x1 - x0 - gap * Double(count - 1)) / Double(count)
+        let d = z1 - z0 - 8
+        for i in 0..<count {
+            let cx = x0 + w / 2 + Double(i) * (w + gap)
+            let floors = 5 + jitter.int(3)
+            let center = HubVec(cx, 0, (z0 + z1) / 2)
+            pieces.append(HubPiece(.lawn, center: center, size: HubVec(w + gap - 2, 0.2, z1 - z0)))
+            pieces.append(HubPiece(.apartmentBlock, center: center, size: HubVec(w - 4, Double(floors) * 3.4, d),
+                                   variant: floors))
+            if i < count - 1 {
+                tree(at: HubVec(cx + w / 2 + gap / 2, 0, center.z - d * 0.25), scale: 1.1)
+                tree(at: HubVec(cx + w / 2 + gap / 2, 0, center.z + d * 0.25), scale: 0.9)
+            }
+        }
+    }
+
     /// Lays out walled houses on a grid with streets between the lots, and
-    /// returns the service-route stops.
-    mutating func houses(in r: HubRect) -> [HubVec] {
-        var stops: [HubVec] = []
+    /// returns the service-route stops (lot centres) and the route from the
+    /// `entry` street along the row streets past each stop's garden gate
+    /// (gates open south, onto the next row street).
+    mutating func houses(in r: HubRect, entry: Double) -> (stops: [HubVec], route: [HubVec]) {
+        var stops: [(row: Int, col: Int, center: HubVec)] = []
         let lot: Double = 56
         let street: Double = 14
         let pitch = lot + street
         let cols = max(1, Int((r.width - street) / pitch))
-        let rows = max(1, Int((r.depth - street) / pitch))
+        let rows = max(1, Int((r.depth - 2 + street) / pitch))
         let x0 = r.minX + (r.width - Double(cols) * pitch + street) / 2
-        let z0 = r.minZ + (r.depth - Double(rows) * pitch + street) / 2
-        // Streets between the lots.
+        let z0 = r.minZ + 2
+        func colStreetX(_ c: Int) -> Double { x0 + Double(c) * pitch - street / 2 }
+        func rowStreetZ(_ row: Int) -> Double { z0 + Double(row) * pitch - street / 2 }
+        // Streets between the lots; row streets run out to the district's
+        // edge streets so the route never crosses a lawn.
         for c in 1..<max(2, cols) where c < cols {
-            let x = x0 + Double(c) * pitch - street / 2
+            let x = colStreetX(c)
             road(HubRect(minX: x - street / 2 + 1, minZ: z0, maxX: x + street / 2 - 1, maxZ: z0 + Double(rows) * pitch - street))
         }
         for row in 1..<max(2, rows) where row < rows {
-            let z = z0 + Double(row) * pitch - street / 2
-            road(HubRect(minX: x0, minZ: z - street / 2 + 1, maxX: x0 + Double(cols) * pitch - street, maxZ: z + street / 2 - 1))
+            let z = rowStreetZ(row)
+            road(HubRect(minX: r.minX - 1, minZ: z - street / 2 + 1, maxX: r.maxX + 1, maxZ: z + street / 2 - 1))
         }
         for row in 0..<rows {
             for col in 0..<cols {
@@ -744,10 +865,29 @@ struct HubPlanner {
                 tree(at: center + HubVec(lot / 2 - 8, 0, lot / 2 - 8), scale: 1.1)
                 tree(at: center + HubVec(-lot / 2 + 7, 0, lot / 2 - 7), scale: 0.9)
                 tree(at: center + HubVec(-lot / 2 + 7, 0, -lot / 2 + 8), scale: 1)
-                if stops.count < 3 && (row + col) % 2 == 0 { stops.append(center) }
+                // A stop needs a street at its gate.
+                if stops.count < 3 && (row + col) % 2 == 0 && row < rows - 1 {
+                    stops.append((row, col, center))
+                }
             }
         }
-        return stops
+        guard rows > 1 else { return (stops.map(\.center), []) }
+        var z = rowStreetZ(1)
+        var x = entry
+        var route = [HubVec(entry, 0, z)]
+        for stop in stops {
+            let gateZ = rowStreetZ(stop.row + 1)
+            if gateZ != z {
+                // Down the column street nearest to where the route is.
+                let c = (1..<max(2, cols)).filter { $0 < cols }.min { abs(colStreetX($0) - x) < abs(colStreetX($1) - x) }
+                let cx = c.map(colStreetX) ?? entry
+                route += [HubVec(cx, 0, z), HubVec(cx, 0, gateZ)]
+                z = gateZ
+            }
+            x = stop.center.x
+            route.append(HubVec(x, 0, z))
+        }
+        return (stops.map(\.center), route)
     }
 
     // Interior ---------------------------------------------------------------
@@ -770,8 +910,9 @@ struct HubPlanner {
         let bayWidth: Double = 70
         let bays = max(1, Int(floor.width / bayWidth))
         let bayW = floor.width / Double(bays)
-        // Kiosks scale with throughput: two rows per bay, 3–5 per row.
-        let perRow = max(3, min(5, spec.terminalCapacityPerDay / (40_000 * bays) + 3))
+        // Kiosks scale with throughput: two rows per bay, 4–7 per row.
+        let perRow = max(4, min(7, spec.terminalCapacityPerDay / (30_000 * bays) + 4))
+        let kioskPitch = 3.4
         let back = floor.minZ, front = floor.maxZ
         let depth = floor.depth
         func z(_ fraction: Double) -> Double { back + depth * fraction }
@@ -798,8 +939,17 @@ struct HubPlanner {
                 inside.append(HubPiece(.securityLane, center: HubVec(x(0.52) + Double(g) * 2.4, 0, z(0.36)),
                                        size: HubVec(1, 1.3, 2.6), variant: g))
             }
-            inside.append(HubPiece(.flightBoard, center: HubVec(x(0.62), 8.4, back + 0.6),
-                                   size: HubVec(12, 3.4, 0.4)))
+            // The departure boards hang at the mezzanine's front edge, over
+            // the e-gates, facing the hall (reference shot C).
+            inside.append(HubPiece(.flightBoard, center: HubVec(x(0.62), 6.4, back + mezzDepth + 0.4),
+                                   size: HubVec(13, 3.2, 0.4)))
+            // Glazed partition to the previous bay, open at the front so the
+            // concourse runs through: each bay reads as its own room.
+            if b > 0 {
+                let open = z(0.76)
+                inside.append(HubPiece(.bayPartition, center: HubVec(x0, 0, (back + open) / 2),
+                                       size: HubVec(0.5, 11, open - back), variant: b))
+            }
             inside.append(HubPiece(.wayfindingSign, center: HubVec(x(0.43), 5.2, back + mezzDepth + 1.5),
                                    size: HubVec(4.5, 0.9, 0.2)))
             inside.append(HubPiece(.wayfindingSign, center: HubVec(x(0.6), 5.2, z(0.3)),
@@ -824,12 +974,14 @@ struct HubPlanner {
             // Kiosks at the front left, with their queue maze in front.
             for row in 0..<2 {
                 for k in 0..<perRow {
-                    inside.append(HubPiece(.kiosk, center: HubVec(x(0.1) + Double(k) * 4.2, 0, z(0.55 + Double(row) * 0.12)),
+                    inside.append(HubPiece(.kiosk, center: HubVec(x(0.08) + Double(k) * kioskPitch, 0,
+                                                                  z(0.55 + Double(row) * 0.12)),
                                            size: HubVec(0.7, 1.7, 0.6), variant: k))
                 }
             }
-            inside.append(HubPiece(.queueBarrier, center: HubVec(x(0.2), 0, z(0.86)),
-                                   size: HubVec(Double(perRow) * 4, 1, depth * 0.14)))
+            inside.append(HubPiece(.queueBarrier,
+                                   center: HubVec(x(0.08) + Double(perRow - 1) * kioskPitch / 2, 0, z(0.86)),
+                                   size: HubVec(Double(perRow) * kioskPitch + 2, 1, depth * 0.14)))
             // Security arches, trolleys and carts.
             for a in 0..<2 {
                 inside.append(HubPiece(.metalDetector, center: HubVec(x(0.66) + Double(a) * 4, 0, z(0.6)),
@@ -845,10 +997,14 @@ struct HubPlanner {
                 inside.append(HubPiece(.seatRow, center: HubVec(x(0.66), 0, z(0.82 + Double(i) * 0.08)),
                                        size: HubVec(6, 0.9, 1.2)))
             }
+            // Where people cluster: e-gates, kiosks, the shop, the security
+            // arches and the café (`HubTerminalInterior.hotspotsPerBay`).
             hotspots += [
                 (HubVec(x(0.58), 0, z(0.42)), 1.0),
                 (HubVec(x(0.2), 0, z(0.68)), 0.75),
                 (HubVec(x(0.86), 0, z(0.55)), 0.4),
+                (HubVec(x(0.68), 0, z(0.66)), 0.6),
+                (HubVec(x(0.86), 0, z(0.8)), 0.35),
             ]
         }
         if facilities.lounge > 0 {
@@ -856,7 +1012,7 @@ struct HubPlanner {
                                    size: HubVec(30 + Double(facilities.lounge) * 10, 3, mezzDepth - 2),
                                    variant: facilities.lounge))
         }
-        return HubTerminalInterior(bounds: floor, pieces: inside, hotspots: hotspots)
+        return HubTerminalInterior(bounds: floor, pieces: inside, hotspots: hotspots, bays: bays)
     }
 }
 
@@ -893,6 +1049,6 @@ extension HubLayout {
         }
         return HubLayout(airport: airport, runwayClass: runwayClass, pieces: pieces, runways: runways,
                          stands: routed, terminal: terminal, interior: interior, serviceRoute: serviceRoute,
-                         serviceStops: serviceStops, focus: focus, bounds: bounds)
+                         serviceStops: serviceStops, serviceLanes: serviceLanes, focus: focus, bounds: bounds)
     }
 }

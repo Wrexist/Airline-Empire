@@ -42,6 +42,19 @@ struct HubCameraRig: Equatable {
         return target + [sin(yaw) * flat, sin(pitch) * distance, cos(yaw) * flat]
     }
 
+    init(target: SIMD3<Float>, distance: Float, pitch: Float, yaw: Float) {
+        self.target = target
+        self.distance = distance
+        self.pitch = pitch
+        self.yaw = yaw
+    }
+
+    /// The Core solver's frame (`HubFraming`), in RealityKit's types.
+    init(_ frame: HubFrame) {
+        self.init(target: [Float(frame.target.x), 0, Float(frame.target.z)], distance: Float(frame.distance),
+                  pitch: Float(frame.pitch), yaw: Float(frame.yaw))
+    }
+
     func lerp(to b: HubCameraRig, _ t: Float) -> HubCameraRig {
         HubCameraRig(target: target + (b.target - target) * t,
                      distance: distance + (b.distance - distance) * t,
@@ -69,6 +82,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
     private let anchor = AnchorEntity(world: .zero)
     private let camera = PerspectiveCamera()
     private let sun = DirectionalLight()
+    private let post = HubPostProcess()
     private var layers: [HubLayer: Entity] = [:]
     private(set) var dynamics: HubDynamics!
     private var updates: Cancellable?
@@ -87,7 +101,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         self.layout = layout
         self.idleDrift = idleDrift
         arView = ARView(frame: .zero, cameraMode: .nonAR, automaticallyConfigureSession: false)
-        rig = HubSceneController.rig(for: .overview, layout: layout, focus: nil, aspect: 1.33)
+        rig = HubSceneController.rig(for: .overview, layout: layout, focus: nil, size: CGSize(width: 1_376, height: 1_032))
         goal = rig
         super.init()
         HubMaterialTag.registerComponent()
@@ -106,6 +120,9 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
                                 .disablePersonOcclusion, .disableGroundingShadows]
         arView.environment.background = .color(HubPalette.day.background)
         applyLighting(.day)
+        if !ProcessInfo.processInfo.arguments.contains("-AEHubNoBloom") {
+            post.install(on: arView)
+        }
         arView.isAccessibilityElement = true
         arView.accessibilityIdentifier = "ae-hub-scene"
         arView.accessibilityLabel = "3D view of your hub airport"
@@ -132,7 +149,9 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         dynamics = HubDynamics(layout: layout, models: models, materials: materials)
         anchor.addChild(dynamics.root)
 
-        // Key light: elevation 52°, azimuth 140°, soft shadows.
+        // Key light: elevation 52°, azimuth 140°, soft shadows. The shadow
+        // range follows the camera (`fitShadows`), so the close shots get
+        // crisp shadows instead of sharing one map with the whole airfield.
         sun.shadow = DirectionalLightComponent.Shadow(maximumDistance: 2_400, depthBias: 4)
         let center = SIMD3<Float>(Float(layout.bounds.center.x), 0, Float(layout.bounds.center.z))
         let elevation: Float = 52 * .pi / 180, azimuth: Float = 140 * .pi / 180
@@ -140,7 +159,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         sun.look(at: center, from: center + dir * 1_500, relativeTo: nil)
         anchor.addChild(sun)
 
-        camera.camera.fieldOfViewInDegrees = 24
+        camera.camera.fieldOfViewInDegrees = Float(HubFraming.fieldOfView)
         camera.camera.near = 2
         camera.camera.far = 12_000
         anchor.addChild(camera)
@@ -149,42 +168,19 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
 
     // MARK: Shots
 
-    /// Default framing per shot. `aspect` is width ÷ height: portrait
-    /// phones need the camera further back to fit the same subject.
-    static func rig(for shot: HubShot, layout: HubLayout, focus: HubStand?, aspect: Float = 1.33) -> HubCameraRig {
-        let f: (HubVec) -> SIMD3<Float> = { SIMD3(Float($0.x), 0, Float($0.z)) }
-        let yaw: Float = 35 * .pi / 180
-        // Horizontal fit: wider subjects need more distance on narrow screens.
-        let fit = max(1, 1.33 / max(aspect, 0.3))
+    /// Default framing per shot, solved in Core (`HubLayout.frame`) so the
+    /// subject fills the part of a `size` view the dashboard leaves free.
+    static func rig(for shot: HubShot, layout: HubLayout, focus: HubStand?, size: CGSize) -> HubCameraRig {
+        let w = Double(max(size.width, 1)), h = Double(max(size.height, 1))
+        let safe = HubFraming.safeArea(width: w, height: h)
+        let cameraShot: HubCameraShot
         switch shot {
-        case .overview:
-            let apron = layout.pieces.first { $0.kind == .apron }?.groundBounds ?? layout.terminal
-            let span = Float(max(apron.width, apron.depth * 1.4))
-            // Close enough that the jets read as jets (reference shot A):
-            // the apron fills the frame and the runway is the horizon.
-            return HubCameraRig(target: f(apron.center) + [0, 0, 20], distance: max(420, span * 1.25) * min(fit, 1.9),
-                                pitch: 32 * .pi / 180, yaw: yaw)
-        case .gate:
-            guard let stand = focus else { return rig(for: .overview, layout: layout, focus: nil, aspect: aspect) }
-            let h = Float(stand.heading)
-            let fwd = SIMD3<Float>(cos(h), 0, -sin(h))
-            let left = SIMD3<Float>(-sin(h), 0, -cos(h))
-            let length = Float(HubAircraftEnvelope.length(stand.maxCategory))
-            // Look at the aircraft's door side, a little from behind the
-            // wing, with the bridge and building beyond — shot B.
-            let view = simd_normalize(left * 0.82 - fwd * 0.57)
-            return HubCameraRig(target: f(stand.nose) - fwd * (length * 0.42) + left * 4,
-                                distance: length * 2.5 * min(fit, 1.7), pitch: 24 * .pi / 180,
-                                yaw: atan2(view.x, view.z))
-        case .terminal:
-            // Close on the security hall, the busiest pool of the heatmap.
-            let hot = layout.interior.hotspots.first.map { f($0.position) } ?? f(layout.interior.bounds.center)
-            return HubCameraRig(target: hot + [4, 0, 2], distance: 125 * min(fit, 1.6), pitch: 47 * .pi / 180, yaw: yaw)
-        case .district:
-            let stop = layout.serviceStops.first.map(f) ?? f(layout.focus.district)
-            return HubCameraRig(target: stop + [6, 0, 8], distance: 175 * min(fit, 1.7), pitch: 33 * .pi / 180,
-                                yaw: yaw)
+        case .overview: cameraShot = .overview
+        case .gate: cameraShot = focus.map { HubCameraShot.gate(stand: $0.index) } ?? .overview
+        case .terminal: cameraShot = .terminal
+        case .district: cameraShot = .district
         }
+        return HubCameraRig(layout.frame(cameraShot, aspect: w / h, safe: safe))
     }
 
     private var aspect: Float {
@@ -202,7 +198,10 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         framedAspect = aspect
         framedForRealBounds = arView.bounds.height > 0
         let stand = focus.flatMap { $0 < layout.stands.count ? layout.stands[$0] : nil }
-        goal = Self.rig(for: shot, layout: layout, focus: stand, aspect: framedAspect)
+        let size = arView.bounds.height > 0 ? arView.bounds.size : CGSize(width: 1_376, height: 1_032)
+        goal = Self.rig(for: shot, layout: layout, focus: stand, size: size)
+        // Turn the short way round to the new shot.
+        goal.yaw = rig.yaw + (goal.yaw - rig.yaw).remainder(dividingBy: 2 * .pi)
         if !animated { rig = goal; applyRig() }
         let cutaway = shot == .terminal
         layers[.terminalRoof]?.isEnabled = !cutaway
@@ -223,6 +222,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         guard night != appliedNight else { return }
         appliedNight = night
         let palette: HubPalette = night ? .night : .day
+        post.setNight(night ? 1 : 0)
         materials.setPalette(palette)
         applyLighting(palette)
         repaint(anchor)
@@ -250,7 +250,8 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         }
         if materials.heatmap == nil || abs(lastLoad - terminalLoad) > 0.05 {
             lastLoad = terminalLoad
-            materials.makeHeatmap(hotspots: hotspots, load: CGFloat(terminalLoad), floorWidth: CGFloat(bounds.width))
+            materials.makeHeatmap(hotspots: hotspots, load: CGFloat(terminalLoad), floorWidth: CGFloat(bounds.width),
+                                  floorDepth: CGFloat(bounds.depth))
             installHeatmap()
             dynamics.populateInterior(load: terminalLoad)
         }
@@ -297,6 +298,23 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
 
     private func applyRig() {
         camera.look(at: rig.target, from: rig.position, relativeTo: nil)
+        // Depth range scaled to the shot: a fixed 2 m near plane against a
+        // 12 km far plane z-fights the stacked ground layers (apron, lines,
+        // markings) at overview distance.
+        camera.camera.near = max(1, rig.distance * 0.04)
+        camera.camera.far = rig.distance * 8 + 3_000
+        fitShadows()
+    }
+
+    private var shadowRange: Float = 0
+
+    /// Re-fits the sun's shadow map to what the camera can see, when the
+    /// distance has moved enough to matter.
+    private func fitShadows() {
+        let wanted = rig.distance * 2.4 + 120
+        guard shadowRange == 0 || abs(wanted - shadowRange) / shadowRange > 0.2 else { return }
+        shadowRange = wanted
+        sun.shadow = DirectionalLightComponent.Shadow(maximumDistance: wanted, depthBias: 3)
     }
 
     private func publishProjections() {

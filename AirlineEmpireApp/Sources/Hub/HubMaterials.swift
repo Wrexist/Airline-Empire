@@ -10,7 +10,7 @@ enum HubMaterialKey: Hashable {
     case houseRoof, houseWood, windowDark, water, blob, tyre, darkMetal, hiVis, cone, white
     case safety, pulse, queueGlow, routeGlow, pinGlow, lamp, lampPool, heat
     case livery(Livery), liveryAccent(Livery), cloth(Int), skin(Int)
-    case office(floors: Int), screen
+    case office(floors: Int), screen, kioskScreen
 }
 
 @available(iOS 18.0, *)
@@ -139,6 +139,7 @@ final class HubMaterials {
             }
             return m
         case .screen: return glow(UIColor(hub: 0x1F3A7A), intensity: 0.8)
+        case .kioskScreen: return glow(UIColor(hub: 0x4C8DFF), intensity: 1.4)
         }
     }
 
@@ -150,8 +151,9 @@ final class HubMaterials {
         return t
     }
 
-    func makeHeatmap(hotspots: [(x: CGFloat, y: CGFloat, weight: CGFloat)], load: CGFloat, floorWidth: CGFloat) {
-        heatmap = Self.heatImage(hotspots: hotspots, load: load, floorWidth: floorWidth)
+    func makeHeatmap(hotspots: [(x: CGFloat, y: CGFloat, weight: CGFloat)], load: CGFloat, floorWidth: CGFloat,
+                     floorDepth: CGFloat) {
+        heatmap = Self.heatImage(hotspots: hotspots, load: load, floorWidth: floorWidth, floorDepth: floorDepth)
             .flatMap { try? TextureResource(image: $0, options: .init(semantic: .color)) }
         cache[.heat] = nil
     }
@@ -227,30 +229,38 @@ final class HubMaterials {
         }
     }
 
-    /// The terminal crowding heatmap: blue → green → yellow → red pools.
+    /// The terminal crowding heatmap: one small, saturated pool per hotspot
+    /// — red core, orange, yellow, then clear — where people bunch at the
+    /// e-gates, kiosks and shops (reference shot C), sized in metres on
+    /// both axes of the hall.
     nonisolated static func heatImage(hotspots: [(x: CGFloat, y: CGFloat, weight: CGFloat)], load: CGFloat,
-                                      floorWidth: CGFloat) -> CGImage? {
-        // Resolution follows the hall so a pool is metres across, as in the
-        // reference, however long the terminal is.
-        let w = min(1_024, max(256, Int(floorWidth * 2))), h = 128
+                                      floorWidth: CGFloat, floorDepth: CGFloat) -> CGImage? {
+        let w = min(1_024, max(256, Int(floorWidth * 2.5)))
+        let h = min(256, max(64, Int(floorDepth * 2.5)))
+        let pxPerMetreX = CGFloat(w) / max(floorWidth, 1), pxPerMetreY = CGFloat(h) / max(floorDepth, 1)
         var field = [CGFloat](repeating: 0, count: w * h)
         for spot in hotspots {
             let sx = spot.x * CGFloat(w), sy = spot.y * CGFloat(h)
-            // 8–20 m pools, in pixels of this texture.
-            let metres = 8 + 12 * spot.weight * (0.5 + load)
-            let radius = metres / max(floorWidth, 1) * CGFloat(w)
-            for y in 0..<h {
-                for x in 0..<w {
-                    let d = hypot(CGFloat(x) - sx, (CGFloat(y) - sy) * 0.85) / radius
-                    if d < 1 { field[y * w + x] += (1 - d * d) * spot.weight * (0.95 + load) }
+            // 4–9 m pools.
+            let metres = 4 + 5 * spot.weight * (0.6 + 0.6 * load)
+            let x0 = max(0, Int(sx - metres * pxPerMetreX)), x1 = min(w - 1, Int(sx + metres * pxPerMetreX))
+            let y0 = max(0, Int(sy - metres * pxPerMetreY)), y1 = min(h - 1, Int(sy + metres * pxPerMetreY))
+            guard x0 <= x1, y0 <= y1 else { continue }
+            for y in y0...y1 {
+                for x in x0...x1 {
+                    let d = hypot((CGFloat(x) - sx) / pxPerMetreX, (CGFloat(y) - sy) / pxPerMetreY) / metres
+                    if d < 1 {
+                        let falloff = (1 - d * d) * (1 - d * d)
+                        field[y * w + x] += falloff * (0.55 + 0.45 * spot.weight) * (0.8 + 0.4 * load)
+                    }
                 }
             }
         }
-        let stops: [(CGFloat, UInt32)] = [(0.0, 0x2F8BFF), (0.35, 0x3FD7A0), (0.6, 0xF5D547), (0.8, 0xF59A3D), (1.0, 0xE8445A)]
+        let stops: [(CGFloat, UInt32)] = [(0.0, 0xF7DC5A), (0.45, 0xF5A13D), (0.75, 0xEE6A45), (1.0, 0xE23D5C)]
         var pixels = [UInt8](repeating: 0, count: w * h * 4)
         for i in 0..<(w * h) {
             let v = min(1, field[i])
-            guard v > 0.02 else { continue }
+            guard v > 0.04 else { continue }
             var c0 = stops[0], c1 = stops[stops.count - 1]
             for k in 0..<(stops.count - 1) where v >= stops[k].0 && v <= stops[k + 1].0 {
                 c0 = stops[k]; c1 = stops[k + 1]
@@ -260,7 +270,9 @@ final class HubMaterials {
                 let a = CGFloat((c0.1 >> shift) & 0xFF), b = CGFloat((c1.1 >> shift) & 0xFF)
                 return a + (b - a) * t
             }
-            let alpha = min(1, v * 2.2) * 0.9
+            // Clear at the rim, 0.85 at the core.
+            let e = min(1, max(0, (v - 0.04) / 0.4))
+            let alpha = e * e * (3 - 2 * e) * 0.85
             pixels[i * 4] = UInt8(ch(16) * alpha)
             pixels[i * 4 + 1] = UInt8(ch(8) * alpha)
             pixels[i * 4 + 2] = UInt8(ch(0) * alpha)

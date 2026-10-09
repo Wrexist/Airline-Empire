@@ -89,8 +89,10 @@ private struct HubDashboard: View {
 
                 // World-anchored callouts, pins and pills.
                 ForEach(model.projected) { item in
+                    let point = item.anchor.kind == .callout ? calloutCenter(item.point, size: geo.size, wide: wide)
+                        : item.point
                     anchored(item)
-                        .position(x: item.point.x, y: item.point.y)
+                        .position(x: point.x, y: point.y)
                         .allowsHitTesting(item.anchor.kind == .callout)
                 }
 
@@ -146,13 +148,26 @@ private struct HubDashboard: View {
         }
     }
 
+    /// The callout floats over its aircraft but never under the chrome:
+    /// held between the KPI row and the timeline, and clear of the inspector
+    /// (reference shot B shows it whole, over the jet).
+    private func calloutCenter(_ anchor: CGPoint, size: CGSize, wide: Bool) -> CGPoint {
+        let half = CGSize(width: 118, height: 80)
+        let top = (wide ? 214 : 250) + half.height
+        let bottom = size.height - (wide ? 170 : 190) - half.height
+        let left = 12 + half.width
+        let right = (wide && model.showsInspector ? size.width - 330 : size.width - 12) - half.width
+        let x = min(max(anchor.x, left), max(left, right))
+        let y = min(max(anchor.y - 60 - half.height, top), max(top, bottom))
+        return CGPoint(x: x, y: y)
+    }
+
     @ViewBuilder
     private func anchored(_ item: HubProjectedAnchor) -> some View {
         switch item.anchor.kind {
         case .callout:
             if let occupant = model.focusedOccupant {
                 HubCallout(occupant: occupant)
-                    .offset(y: -60)
                     .onTapGesture { model.showsInspector = true }
             }
         case .pin(let label):

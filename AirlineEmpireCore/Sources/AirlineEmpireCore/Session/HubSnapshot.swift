@@ -394,3 +394,31 @@ func categoryRank(_ c: AircraftCategory) -> Int {
     case .largeWidebody: 5
     }
 }
+
+extension HubSnapshot {
+    /// A copy with one stand's turnaround held at `stage`, the flight card's
+    /// status following it. For the Hub View captures, which must show the
+    /// reference's boarding moment (queue, tug, passengers) whatever the
+    /// campaign fixture's clock says.
+    public func holding(_ stage: HubTurnaroundStage, progress: Double = 0.5, atStand index: Int) -> HubSnapshot {
+        let occupants = self.occupants.map { o -> HubStandOccupant in
+            guard o.standIndex == index else { return o }
+            let flight = o.flight.map { f in
+                HubFlightCard(flightID: f.flightID, code: f.code, from: f.from, to: f.to,
+                              destinationCity: f.destinationCity, time: f.time,
+                              passengers: stage >= .boarding ? Int(Double(f.seats) * progress) : f.passengers,
+                              seats: f.seats, delayMinutes: f.delayMinutes,
+                              status: stage == .boarding ? .boarding : f.status)
+            }
+            return HubStandOccupant(standIndex: o.standIndex, gate: o.gate, aircraftID: o.aircraftID,
+                                    operatorKind: o.operatorKind, livery: o.livery, category: o.category,
+                                    typeName: o.typeName, registration: o.registration, flight: flight,
+                                    stage: stage, stageProgress: min(1, max(0, progress)))
+        }
+        return HubSnapshot(airport: airport, airportName: airportName, city: city, airlineName: airlineName,
+                           airlineCode: airlineCode, livery: livery, localMinuteOfDay: localMinuteOfDay,
+                           localTime: localTime, nightFactor: nightFactor, occupants: occupants,
+                           departures: departures, arrivals: arrivals, kpis: kpis,
+                           movementsPerHour: movementsPerHour, focusStand: focusStand)
+    }
+}

@@ -61,8 +61,19 @@ final class HubScreenModel {
         }
     }
 
+    /// `-AEUITestHubStage boarding` holds the focused turnaround at one
+    /// stage, so the captures show the reference's boarding moment.
+    private static let heldStage: HubTurnaroundStage? = {
+        let args = ProcessInfo.processInfo.arguments
+        guard let i = args.firstIndex(of: "-AEUITestHubStage"), i + 1 < args.count else { return nil }
+        return HubTurnaroundStage.allCases.first { $0.title.lowercased() == args[i + 1].lowercased() }
+    }()
+
     func refresh(state: GameState, catalog: ContentCatalog) {
-        guard let next = state.hubSnapshot(airport: airport, catalog: catalog, layout: layout) else { return }
+        guard var next = state.hubSnapshot(airport: airport, catalog: catalog, layout: layout) else { return }
+        if let held = Self.heldStage, let stand = focus ?? next.focusStand {
+            next = next.holding(held, progress: 0.45, atStand: stand)
+        }
         let first = snapshot == nil
         if let facilities = state.playerAirline?.airportFacilities?[airport] {
             groundServices = facilities.groundServices

@@ -74,6 +74,33 @@ struct HubAnchor: Identifiable, Equatable {
     let kind: Kind
 }
 
+/// Merges static copies of models into one mesh per material: a parked
+/// turnaround's vehicles, cones and crew, or a hall full of people, become
+/// a dozen draws instead of hundreds of entities (docs/HUB_VIEW_3D.md §7).
+@available(iOS 18.0, *)
+@MainActor
+struct HubStaticBatcher {
+    private(set) var batches: [HubMaterialKey: HubMeshBatch] = [:]
+
+    mutating func add(_ parts: [(HubMaterialKey, HubMeshBatch)], matrix: float4x4,
+                      remap: (HubMaterialKey) -> HubMaterialKey = { $0 }) {
+        for (key, batch) in parts {
+            batches[remap(key), default: HubMeshBatch()].append(batch, matrix: matrix)
+        }
+    }
+
+    func entity(materials: HubMaterials, name: String) -> Entity {
+        let root = Entity()
+        for (key, batch) in batches {
+            guard let mesh = batch.resource(name: name) else { continue }
+            let model = ModelEntity(mesh: mesh, materials: [materials[key]])
+            model.components.set(HubMaterialTag(key: key))
+            root.addChild(model)
+        }
+        return root
+    }
+}
+
 /// Everything in the scene that follows the simulation or moves.
 @available(iOS 18.0, *)
 @MainActor
@@ -90,6 +117,8 @@ final class HubDynamics {
     private var interiorCrowd = Entity()
     private var overlays = Entity()
     private var pulse: [Entity] = []
+    /// The focused jet's engine on the camera side, in the jet's own frame.
+    private var pulseEngine: SIMD3<Float> = .zero
     private var routeLine = Entity()
     private var time: Float = 0
     private(set) var focusStand: Int?
@@ -114,6 +143,7 @@ final class HubDynamics {
         routeLine.isEnabled = false
         buildRouteLine()
         buildAmbientTraffic()
+        buildApronTraffic()
         buildLandsideTraffic()
     }
 
@@ -121,6 +151,16 @@ final class HubDynamics {
 
     private func entity(_ parts: [HubPart], remap: @escaping (HubMaterialKey) -> HubMaterialKey = { $0 }) -> Entity {
         models.entity(parts, materials: materials, remap: remap)
+    }
+
+    /// A moving vehicle with its contact shadow.
+    private func vehicleEntity(_ v: HubModels.Vehicle, remap: (HubMaterialKey) -> HubMaterialKey = { $0 }) -> Entity {
+        let e = models.make(HubModels.slot(v), models.vehicle(v), materials: materials, remap: remap)
+        let shadow = entity(models.blob())
+        let shadowLength: Float = (v == .bus || v == .baggageTrain) ? 13 : 8
+        shadow.scale = SIMD3<Float>(shadowLength, 1, 3.6)
+        e.addChild(shadow)
+        return e
     }
 
     private func aircraftEntity(_ category: AircraftCategory, livery: Livery) -> Entity {
@@ -177,12 +217,14 @@ final class HubDynamics {
                 standDressing[index] = dressing
             }
         }
-        if focus != focusStand {
+        if focus != focusStand || (focus.map { parked[$0]?.occupant.category } ?? nil) != pulseCategory {
             focusStand = focus
             rebuildFocusOverlays()
         }
         rebuildAnchors(snapshot)
     }
+
+    private var pulseCategory: AircraftCategory?
 
     private func place(_ e: Entity, at stand: HubStand, occupant: HubStandOccupant) {
         let m = HubModels.metrics(occupant.category)
@@ -195,22 +237,30 @@ final class HubDynamics {
         e.orientation = simd_quatf(angle: Float(stand.heading), axis: [0, 1, 0])
     }
 
-    /// Turnaround vehicles, crew and passengers around one stand.
+    /// Turnaround vehicles, crew and passengers around one stand. The
+    /// static ones are merged into one batch per material; walking
+    /// passengers stay entities so they can move.
     private func dress(_ stand: HubStand, occupant: HubStandOccupant, level: Int, focused: Bool) -> Entity {
         let group = Entity()
+        var batch = HubStaticBatcher()
         let m = HubModels.metrics(occupant.category)
         let fwd = SIMD3<Float>(Float(cos(stand.heading)), 0, Float(-sin(stand.heading)))
         let right = SIMD3<Float>(Float(cos(stand.heading - .pi / 2)), 0, Float(-sin(stand.heading - .pi / 2)))
         let nose = Self.f(stand.nose)
         let yaw = Float(stand.heading)
         func put(_ v: HubModels.Vehicle, _ p: SIMD3<Float>, _ angle: Float) {
-            let e = models.make(HubModels.slot(v), models.vehicle(v), materials: materials)
-            e.position = p
-            e.orientation = simd_quatf(angle: angle, axis: [0, 1, 0])
-            let shadow = entity(models.blob())
-            shadow.scale = [9, 1, 4]
-            e.addChild(shadow)
-            group.addChild(e)
+            let slots = HubModels.slot(v)
+            let at = HubMeshBatch.translation(p) * HubMeshBatch.yaw(angle)
+            if models.hasAuthored(slots) {
+                let e = models.make(slots, models.vehicle(v), materials: materials)
+                e.position = p
+                e.orientation = simd_quatf(angle: angle, axis: [0, 1, 0])
+                group.addChild(e)
+            } else {
+                batch.add(models.rawVehicle(v), matrix: at)
+            }
+            let shadowLength: Float = (v == .bus || v == .baggageTrain) ? 13 : 8
+            batch.add(models.rawBlob(), matrix: at * HubMeshBatch.scale(SIMD3<Float>(shadowLength, 1, 3.6)))
         }
         let stage = occupant.stage
         let busy = stage != nil && stage != .departed
@@ -218,6 +268,10 @@ final class HubDynamics {
             // Belt loader at the forward hold, baggage train behind it.
             put(.beltLoader, nose - fwd * (m.length * 0.22) + right * (m.radius + 3.2), yaw + .pi / 2 + 0.25)
             put(.baggageTrain, nose - fwd * (m.length * 0.38) + right * (m.radius + 10), yaw)
+        } else if stage == nil {
+            // Parked between rotations: tug at the nose, a van by the wing.
+            put(.tug, nose + fwd * 5, yaw + .pi)
+            put(.serviceVan, nose - fwd * (m.length * 0.5) + right * (m.span * 0.3 + 3), yaw)
         }
         if stage == .servicing || (stage == .boarding && level > 0) {
             put(.fuelTruck, nose - fwd * (m.length * 0.48) + right * (m.span * 0.28 + 2), yaw + .pi)
@@ -225,7 +279,7 @@ final class HubDynamics {
         if stage == .servicing || stage == .deboarding {
             put(.cateringTruck, nose - fwd * (m.length * 0.78) + right * (m.radius + 4), yaw + .pi / 2)
         }
-        if level > 0 && busy {
+        if busy && (level > 0 || focused) {
             put(.serviceVan, nose - fwd * (m.length * 0.6) - right * (m.span * 0.45 + 4), yaw)
         }
         if level > 1 && busy {
@@ -237,36 +291,50 @@ final class HubDynamics {
         if !stand.hasBridge && busy {
             put(.bus, nose - fwd * (m.length * 0.3) - right * (m.radius + 12), yaw)
         }
-        // Cones at the nose and engines.
         if busy {
+            // Cones at the nose, the wingtips and the tail.
             let engineLine: SIMD3<Float> = nose - fwd * (m.length * 0.35)
-            let engineOffset: SIMD3<Float> = right * (m.span * 0.34)
-            let noseCone: SIMD3<Float> = nose + fwd * 2
-            let tailCone: SIMD3<Float> = nose - fwd * (m.length + 2)
-            let conePositions: [SIMD3<Float>] = [noseCone, engineLine + engineOffset, engineLine - engineOffset, tailCone]
+            let conePositions: [SIMD3<Float>] = [nose + fwd * 2, engineLine + right * (m.span * 0.5 + 1),
+                                                 engineLine - right * (m.span * 0.5 + 1), nose - fwd * (m.length + 2)]
             for p in conePositions {
-                let c = models.make(["cone"], models.cone(), materials: materials)
-                c.position = p + [0, 0.1, 0]
-                group.addChild(c)
+                let at = HubMeshBatch.translation(p + [0, 0.1, 0])
+                if models.hasAuthored(["cone"]) {
+                    let c = models.make(["cone"], models.cone(), materials: materials)
+                    c.position = p + [0, 0.1, 0]
+                    group.addChild(c)
+                } else {
+                    batch.add(models.rawCone(), matrix: at)
+                }
             }
-            // Ground crew.
-            for k in 0..<(focused ? 5 : 2) {
-                let p = models.make(HubModels.personSlots(k, crew: true), models.person(k, crew: true),
-                                    materials: materials) { key in key == .skin(0) ? .skin(k) : key }
-                p.position = nose - fwd * (m.length * (0.18 + 0.12 * Float(k))) + right * (m.radius + 2 + Float(k % 2) * 3)
-                p.scale = [1.8, 1.8, 1.8]
-                group.addChild(p)
+            // Ground crew in hi-vis.
+            for k in 0..<(focused ? 6 : 3) {
+                let p = nose - fwd * (m.length * (0.18 + 0.12 * Float(k))) + right * (m.radius + 2 + Float(k % 2) * 3)
+                let face = yaw + (k % 2 == 0 ? .pi / 2 : -.pi / 2)
+                let slots = HubModels.personSlots(k, crew: true)
+                if models.hasAuthored(slots) {
+                    let e = models.make(slots, models.person(k, crew: true), materials: materials) { key in
+                        key == .skin(0) ? .skin(k % 4) : key
+                    }
+                    e.position = p
+                    e.scale = [1.8, 1.8, 1.8]
+                    group.addChild(e)
+                } else {
+                    batch.add(models.rawPerson(crew: true),
+                              matrix: HubMeshBatch.translation(p) * HubMeshBatch.yaw(face) * HubMeshBatch.scale([1.8, 1.8, 1.8])) { key in
+                        key == .skin(0) ? .skin(k % 4) : key
+                    }
+                }
             }
         }
         // Passengers on the walkway while boarding or deboarding.
         if stage == .boarding || stage == .deboarding {
-            let count = focused ? 16 : 7
+            let count = focused ? 20 : 8
             for k in 0..<count {
                 let person = models.make(HubModels.personSlots(k, crew: false), models.person(k, crew: false),
                                          materials: materials) { key in
                     switch key {
-                    case .cloth: .cloth(k * 3 + stand.index)
-                    case .skin: .skin(k + stand.index)
+                    case .cloth: .cloth((k * 3 + stand.index) % 8)
+                    case .skin: .skin((k + stand.index) % 4)
                     default: key
                     }
                 }
@@ -276,6 +344,7 @@ final class HubDynamics {
                 group.addChild(person)
             }
         }
+        group.addChild(batch.entity(materials: materials, name: "stand\(stand.index)"))
         return group
     }
 
@@ -284,6 +353,7 @@ final class HubDynamics {
     private func rebuildFocusOverlays() {
         overlays.children.removeAll()
         pulse.removeAll()
+        pulseCategory = nil
         guard let index = focusStand, index < layout.stands.count else { return }
         let stand = layout.stands[index]
         // Pink safety outline.
@@ -298,20 +368,25 @@ final class HubDynamics {
             e.components.set(HubMaterialTag(key: .safety))
             overlays.addChild(e)
         }
-        // Cyan queue glow under the walkway.
+        // Cyan queue glow under the walkway, in every shot.
         var strip = HubMeshBatch()
         let q = stand.queue.points.map(Self.f)
         for (a, b) in zip(q, q.dropFirst()) {
             let mid = (a + b) / 2, d = b - a
-            strip.plane(center: [mid.x, 0.3, mid.z], width: simd_length(d) + 2, depth: 3.2, yaw: atan2(-d.z, d.x))
+            strip.plane(center: [mid.x, 0.3, mid.z], width: simd_length(d) + 2, depth: 3.6, yaw: atan2(-d.z, d.x))
         }
         if let mesh = strip.resource(name: "queue") {
             let e = ModelEntity(mesh: mesh, materials: [materials[.queueGlow]])
             e.components.set(HubMaterialTag(key: .queueGlow))
             overlays.addChild(e)
         }
-        // Two pulse rings at the wing root.
-        for _ in 0..<3 {
+        // Pulse rings round the engine on the camera's side (reference
+        // shot B): the side away from the terminal, as `HubLayout.frame`.
+        let right = HubVec(cos(stand.heading - .pi / 2), 0, -sin(stand.heading - .pi / 2))
+        let category = parked[index]?.occupant.category ?? stand.maxCategory
+        pulseCategory = parked[index]?.occupant.category
+        pulseEngine = HubModels.enginePosition(category, right: right.z < -1e-6)
+        for _ in 0..<4 {
             let ring = entity(models.ring())
             ring.components.set(OpacityComponent(opacity: 0))
             overlays.addChild(ring)
@@ -385,14 +460,53 @@ final class HubDynamics {
             root.addChild(e)
             movers.append(HubMover(entity: e, path: dep, speeds: [50, 75, 90], start: 400))
         }
+        // A departure that turns out over the district, so the residential
+        // shot has a jet crossing its airside edge (reference shot D).
+        if let stop = layout.serviceStops.first {
+            let out = HubPath([
+                HubVec(west + 60, 0, rwZ), HubVec(east - 420, 0, rwZ), HubVec(east - 120, 70, rwZ),
+                HubVec(east + 260, 190, rwZ + 260), HubVec(stop.x + 260, 260, stop.z - 220),
+                HubVec(stop.x + 1_600, 760, stop.z + 1_400),
+            ])
+            let e = aircraftEntity(.narrowbody, livery: .azure)
+            root.addChild(e)
+            movers.append(HubMover(entity: e, path: out, speeds: [40, 66, 74, 78, 90], start: Float(out.length) * 0.55))
+        }
+    }
+
+    /// Tugs, baggage trains, vans, fuel bowsers and buses shuttling along
+    /// the apron's service roads (reference shot A: ~25 vehicles moving).
+    private func buildApronTraffic() {
+        let kinds: [HubModels.Vehicle] = [.baggageTrain, .serviceVan, .fuelTruck, .tug, .cateringTruck, .bus]
+        let liveries: [Livery] = [.azure, .teal, .slate]
+        var k = 0
+        for lane in layout.serviceLanes {
+            let count = max(2, min(5, Int(lane.length / 60)))
+            for i in 0..<count {
+                let v = kinds[k % kinds.count]
+                let e = vehicleEntity(v) { key in
+                    key == .livery(.azure) ? .livery(liveries[k % 3]) : key
+                }
+                root.addChild(e)
+                // Two-way traffic: alternate vehicles keep to either side.
+                let side: Double = i % 2 == 0 ? 2.2 : -2.2
+                let path = HubPath(lane.points.map { HubVec($0.x, 0, $0.z + side) })
+                movers.append(HubMover(entity: e, path: path, speeds: [5.5 + Float(k % 3) * 1.5],
+                                       start: Float(i) / Float(count) * Float(lane.length) + Float(k * 13 % 40),
+                                       pingPong: true))
+                k += 1
+            }
+        }
     }
 
     private func buildLandsideTraffic() {
-        let roads = layout.pieces.filter { $0.kind == .road && max($0.size.x, $0.size.z) > 400 }
+        let kerbZ = layout.terminal.maxZ + 16
+        let roads = layout.pieces.filter { $0.kind == .road && max($0.size.x, $0.size.z) > 300 }
         var k = 0
         for road in roads {
             let alongX = road.size.x >= road.size.z
             let half = (alongX ? road.size.x : road.size.z) / 2 - 10
+            let atKerb = alongX && abs(road.center.z - kerbZ) < 1
             for lane in [-1.0, 1.0] {
                 let off = lane * 3.2
                 let a = alongX ? HubVec(road.center.x - half, 0.12, road.center.z + off)
@@ -400,41 +514,57 @@ final class HubDynamics {
                 let b = alongX ? HubVec(road.center.x + half, 0.12, road.center.z + off)
                     : HubVec(road.center.x + off, 0.12, road.center.z + half)
                 let path = lane > 0 ? HubPath([a, b]) : HubPath([b, a])
-                let count = Int(half / 220) + 1
+                let count = atKerb ? 3 : Int(half / 220) + 1
                 for i in 0..<count {
                     let colour = k
-                    let kind: HubModels.Vehicle = i % 5 == 0 ? .serviceVan : .car
-                    let car = models.make(HubModels.slot(kind), models.vehicle(kind), materials: materials) { key in
-                        key == .cloth(0) ? .cloth([0, 1, 5, 6, 7, 3][colour % 6]) : key
+                    // The kerb gets buses and taxis; streets get cars and vans.
+                    let kind: HubModels.Vehicle = atKerb ? (i == 0 ? .bus : .car) : (i % 5 == 0 ? .serviceVan : .car)
+                    let car = vehicleEntity(kind) { key in
+                        key == .cloth(0) ? .cloth(atKerb ? 3 : [0, 1, 5, 6, 7, 3][colour % 6]) : key
                     }
                     root.addChild(car)
-                    let mover = HubMover(entity: car, path: path, speeds: [14 + Float(k % 4) * 2],
+                    let mover = HubMover(entity: car, path: path, speeds: [atKerb ? 6 : 14 + Float(k % 4) * 2],
                                          start: Float(i) * Float(path.length) / Float(count) + Float(k * 37 % 90))
                     movers.append(mover)
                     k += 1
                 }
             }
         }
-        // The service cart and tanker on the district route (shot D).
+        // The service cart towing its tank trailer round the district's
+        // streets past the first stop's gate, so it is in the district shot
+        // (reference shot D).
+        let stop = layout.serviceStops.first ?? layout.focus.district
+        let near = layout.serviceRoute.points.filter { $0.distance(to: stop) < 160 }
+        let loop = near.count >= 2 ? HubPath(near) : layout.serviceRoute
         for (i, v) in [HubModels.Vehicle.golfCart, .tanker].enumerated() {
-            let e = models.make(HubModels.slot(v), models.vehicle(v), materials: materials)
+            let e = vehicleEntity(v)
             root.addChild(e)
-            // The cart tows the tank trailer: the trailer runs 6 m behind.
-            movers.append(HubMover(entity: e, path: layout.serviceRoute, speeds: [7], start: 140 - Float(i) * 6,
+            movers.append(HubMover(entity: e, path: loop, speeds: [4.5], start: Float(loop.length) * 0.35 - Float(i) * 6,
                                    pingPong: true))
         }
     }
 
+    /// The district's service route: a raised glowing ribbon with rounded
+    /// joints and a soft halo on the road (reference shot D).
     private func buildRouteLine() {
-        var line = HubMeshBatch()
+        var core = HubMeshBatch(), halo = HubMeshBatch()
         let points = layout.serviceRoute.points.map(Self.f)
         for (a, b) in zip(points, points.dropFirst()) {
             let mid = (a + b) / 2, d = b - a
-            line.box(center: [mid.x, 0.34, mid.z], size: [simd_length(d) + 1.2, 0.06, 1.2], yaw: atan2(-d.z, d.x))
+            let length = simd_length(SIMD3(d.x, 0, d.z))
+            guard length > 0.01 else { continue }
+            let yaw = atan2(-d.z, d.x)
+            core.roundedBox(center: [mid.x, 0.16, mid.z], size: [length, 0.22, 0.8], yaw: yaw, bevel: 0.1)
+            halo.plane(center: [mid.x, 0.3, mid.z], width: length + 1.5, depth: 4.6, yaw: yaw)
         }
-        if let mesh = line.resource(name: "route") {
-            let e = ModelEntity(mesh: mesh, materials: [materials[.routeGlow]])
-            e.components.set(HubMaterialTag(key: .routeGlow))
+        for p in points {
+            core.cylinder(base: [p.x, 0.16, p.z], radius: 0.4, height: 0.22, segments: 12)
+        }
+        for (mesh, key) in [(core.resource(name: "route"), HubMaterialKey.routeGlow),
+                            (halo.resource(name: "routeHalo"), HubMaterialKey.queueGlow)] {
+            guard let mesh else { continue }
+            let e = ModelEntity(mesh: mesh, materials: [materials[key]])
+            e.components.set(HubMaterialTag(key: key))
             routeLine.addChild(e)
         }
     }
@@ -446,10 +576,13 @@ final class HubDynamics {
         var jitter = SplitMix(seed: 7)
         // ~34 people per bay of the hall at a quiet hour, ~84 when full —
         // the reference's hall holds about 28 in one bay's worth of floor.
-        let bays = max(1, layout.interior.hotspots.count / 3)
-        let count = min(240, bays * (34 + Int(50 * load)))
+        let bays = max(1, layout.interior.bays)
+        let count = min(300, bays * (34 + Int(50 * load)))
         let hotspots = layout.interior.hotspots
+        guard !hotspots.isEmpty else { return }
         let total = hotspots.reduce(0) { $0 + $1.weight }
+        var batch = HubStaticBatcher()
+        let authored = models.hasAuthored(HubModels.personSlots(0, crew: false))
         for k in 0..<count {
             var pick = jitter.unit() * total
             var spot = hotspots[0]
@@ -457,20 +590,32 @@ final class HubDynamics {
                 pick -= h.weight
                 if pick <= 0 { spot = h; break }
             }
-            let p = models.make(HubModels.personSlots(k, crew: false), models.person(k, crew: false),
-                                materials: materials) { key in
+            let spread = 5 + 8 * spot.weight
+            let at = SIMD3<Float>(Float(spot.position.x + (jitter.unit() - 0.5) * spread * 2), 1.7,
+                                  Float(spot.position.z + (jitter.unit() - 0.5) * spread))
+            let yaw = Float(jitter.unit() * 6.28)
+            let remap: (HubMaterialKey) -> HubMaterialKey = { key in
                 switch key {
-                case .cloth: .cloth(k)
-                case .skin: .skin(k)
+                case .cloth: .cloth(k % 8)
+                case .skin: .skin(k % 4)
                 default: key
                 }
             }
-            let spread = 6 + 10 * spot.weight
-            p.position = [Float(spot.position.x + (jitter.unit() - 0.5) * spread * 2), 1.7,
-                          Float(spot.position.z + (jitter.unit() - 0.5) * spread)]
-            p.orientation = simd_quatf(angle: Float(jitter.unit() * 6.28), axis: [0, 1, 0])
-            p.scale = [2.0, 2.0, 2.0]
-            interiorCrowd.addChild(p)
+            if authored {
+                let p = models.make(HubModels.personSlots(k, crew: false), models.person(k, crew: false),
+                                    materials: materials, remap: remap)
+                p.position = at
+                p.orientation = simd_quatf(angle: yaw, axis: [0, 1, 0])
+                p.scale = [2.0, 2.0, 2.0]
+                interiorCrowd.addChild(p)
+            } else {
+                batch.add(models.rawPerson(crew: false),
+                          matrix: HubMeshBatch.translation(at) * HubMeshBatch.yaw(yaw) * HubMeshBatch.scale([2, 2, 2]),
+                          remap: remap)
+            }
+        }
+        if !authored {
+            interiorCrowd.addChild(batch.entity(materials: materials, name: "crowd"))
         }
     }
 
@@ -488,19 +633,18 @@ final class HubDynamics {
             entity.orientation = simd_quatf(angle: Float(s.yaw) + (speed < 0 ? .pi : 0), axis: [0, 1, 0])
         }
         walkers.removeAll { $0.entity.parent?.parent == nil }
-        // Pulse rings around the focused aircraft.
+        // Pulse rings round the focused jet's engine: stacked, tilted,
+        // growing and fading out in turn (reference shot B).
         if let index = focusStand, let current = parked[index] {
-            let m = HubModels.metrics(current.occupant.category)
-            let fwd = current.entity.transform.matrix.columns.0
-            let base = current.entity.position - SIMD3(fwd.x, 0, fwd.z) * (m.length * 0.08)
+            let engine = current.entity.convert(position: pulseEngine, to: nil)
+            let tilt = current.entity.orientation * simd_quatf(angle: 0.16, axis: [1, 0, 0])
             for (k, ring) in pulse.enumerated() {
-                let phase = (time * 0.45 + Float(k) / 3).truncatingRemainder(dividingBy: 1)
-                let size = m.span * (0.3 + 0.5 * phase)
-                // Stacked slightly so the rings read as a halo around the
-                // wing root and engine, as in reference shot B.
-                ring.position = base + [0, 0.05 + Float(k) * 0.9 + m.axisY * 0.3, 0]
+                let phase = (time * 0.42 + Float(k) / Float(pulse.count)).truncatingRemainder(dividingBy: 1)
+                let size = 3 + 9 * phase
+                ring.position = engine + [0, Float(k) * 0.5 - 0.3, 0]
+                ring.orientation = tilt
                 ring.scale = [size, 1, size]
-                ring.components.set(OpacityComponent(opacity: min(1, (1 - phase) * 1.3)))
+                ring.components.set(OpacityComponent(opacity: min(1, (1 - phase) * 1.5)))
             }
         }
     }

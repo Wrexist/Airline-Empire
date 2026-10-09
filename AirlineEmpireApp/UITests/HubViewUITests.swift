@@ -11,8 +11,10 @@ final class HubViewUITests: AEUITestCase {
     private func open(extra: [String] = []) throws {
         let bundle = Bundle(for: HubViewUITests.self)
         let url = try XCTUnwrap(bundle.url(forResource: "store-campaign", withExtension: "json"))
+        // Held at boarding: the reference's gate shot is the boarding moment
+        // (queue, tug at the nose, passengers on the walkway).
         app.launchArguments.append(contentsOf: ["-AEUITestLoadSave", url.path, "-AEUITestProbes",
-                                                "-AEUITestOpenHub"] + extra)
+                                                "-AEUITestOpenHub", "-AEUITestHubStage", "boarding"] + extra)
         XCUIDevice.shared.orientation = UIDevice.current.userInterfaceIdiom == .pad ? .landscapeLeft : .portrait
         app.launch()
         app.activate()
