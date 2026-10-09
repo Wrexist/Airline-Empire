@@ -280,6 +280,37 @@ struct HubLayoutTests {
                 inside(layout.interior.hotspots[0].position, terminal, "security hotspot")
                 let district = layout.frame(.district, aspect: aspect, safe: safe)
                 inside(layout.serviceStops[0], district, "first stop")
+                for kind in HubFacilityKind.allCases {
+                    guard let site = layout.site(kind) else { continue }
+                    let frame = layout.frame(.facility(kind), aspect: aspect, safe: safe)
+                    inside(site.center, frame, "\(kind) site")
+                    #expect(frame.distance < overview.distance, "\(kind) shot no closer than the overview at \(spec.code)")
+                }
+            }
+        }
+    }
+
+    @Test func facilitySitesStandClearOfEverything() throws {
+        for spec in Self.allAirports {
+            let layout = HubLayout.make(airport: spec)
+            #expect(Set(layout.facilitySites.map(\.kind)) == Set(HubFacilityKind.allCases), "\(spec.code)")
+            // The lounge sits on the terminal roof, inside its footprint.
+            let lounge = try #require(layout.site(.lounge))
+            #expect(lounge.elevation == HubLayout.terminalRoofTop)
+            #expect(layout.terminal.contains(HubVec(lounge.footprint.minX, 0, lounge.footprint.minZ))
+                    && layout.terminal.contains(HubVec(lounge.footprint.maxX, 0, lounge.footprint.maxZ)), "\(spec.code)")
+            // The depot's lot is on the ground and clear of every piece,
+            // the stands' parked jets, and the service lanes.
+            let depot = try #require(layout.site(.groundServices))
+            #expect(depot.elevation == 0)
+            for piece in layout.pieces where piece.groundBounds.overlaps(depot.footprint, margin: 2) {
+                Issue.record("\(piece.kind) on the depot lot at \(spec.code)")
+            }
+            for stand in layout.stands where stand.parkedEnvelope.overlaps(depot.footprint) {
+                Issue.record("stand \(stand.gate) on the depot lot at \(spec.code)")
+            }
+            for lane in layout.serviceLanes where lane.points.contains(where: { depot.footprint.contains($0) }) {
+                Issue.record("service lane through the depot lot at \(spec.code)")
             }
         }
     }
@@ -464,6 +495,49 @@ struct HubSnapshotTests {
         let many = snapshot.search("a", layout: layout, limit: 5)
         #expect(many.count <= 5)
         #expect(Set(many.map(\.id)).count == many.count)
+    }
+
+    @Test func upgradeOffersQuoteTheNextLevelAndTheCommandAgrees() throws {
+        let (engine, airline, _) = try DemandFixtures.market(fare: Money.dollars(129))
+        let layout = HubLayout.make(airport: engine.catalog.airport("MET")!)
+        let snapshot = try #require(engine.state.hubSnapshot(airport: "MET", catalog: engine.catalog, layout: layout))
+        #expect(snapshot.upgrades.map(\.kind) == HubFacilityKind.allCases)
+        let tuning = engine.catalog.tuning.airportServices
+        let lounge = try #require(snapshot.upgrades.first { $0.kind == .lounge })
+        let installed = engine.state.airlines[airline]!.facilities(at: "MET")
+        #expect(lounge.level == installed.lounge)
+        let next = try #require(lounge.next)
+        #expect(next.level == lounge.level + 1)
+        let proposed = AirportService.lounge.setting(next.level, in: installed)
+        #expect(next.installationCents == proposed.installationCost(from: installed, tuning: tuning).cents)
+        // The card's verdict is the command's.
+        let command = ConfigureAirportFacilitiesCommand(airline: airline, airport: "MET", facilities: proposed)
+        #expect((lounge.blocked == nil) == (command.validate(state: engine.state, catalog: engine.catalog) == nil))
+
+        // Bought, the offer moves up a level; at the top there is no next.
+        var state = engine.state
+        let top = AirportFacilities(lounge: 2, groundServices: 2)
+        var owner = state.airlines[airline]!
+        owner.airportFacilities = ["MET": top]
+        state.airlines[airline] = owner
+        let maxed = state.hubUpgradeOffers(airport: "MET", catalog: engine.catalog)
+        #expect(maxed.allSatisfy { $0.level == 2 && $0.next == nil && !$0.canUpgrade })
+        #expect(maxed.allSatisfy { $0.monthlyCents > 0 })
+    }
+
+    @Test func upgradeOffersExplainWhyTheyAreBlocked() throws {
+        let (engine, airline, _) = try DemandFixtures.market(fare: Money.dollars(129))
+        // No cash: every next level is refused, with the command's reason.
+        var state = engine.state
+        let balance = state.ledger.balance(of: airline)
+        state.ledger.post(airline: airline, category: .overhead, amount: .zero - balance - Money.dollars(1),
+                          at: state.clock.now, memo: "test")
+        let offers = state.hubUpgradeOffers(airport: "MET", catalog: engine.catalog)
+        #expect(!offers.isEmpty)
+        for offer in offers where offer.next != nil {
+            #expect(!offer.canUpgrade)
+            #expect(offer.blocked?.contains("cash") == true, "\(offer.kind): \(offer.blocked ?? "nil")")
+        }
     }
 
     @Test func holdingAStageRewritesOnlyThatStand() throws {

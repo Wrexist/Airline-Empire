@@ -308,8 +308,9 @@ struct HubInsightsPanel: View {
             HubMeter(title: "Comfort", value: insights.comfort, tint: HubChromeStyle.warn)
         }
         section("Facilities here") {
-            facility("sofa.fill", "Lounge", insights.lounge, ["None", "Lounge", "Flagship lounge"])
-            facility("figure.wave", "Ground services", insights.groundServices, ["Basic", "Standard", "Premium"])
+            facility(.lounge, "sofa.fill", "Lounge", insights.lounge, ["None", "Lounge", "Flagship lounge"])
+            facility(.groundServices, "box.truck.fill", "Ground services", insights.groundServices,
+                     ["Shared", "Own depot", "Electric fleet"])
         }
         section("Network") {
             HStack {
@@ -321,7 +322,19 @@ struct HubInsightsPanel: View {
         }
     }
 
-    private func facility(_ icon: String, _ title: String, _ level: Int, _ names: [String]) -> some View {
+    /// A facility row; tapping it opens the upgrade card at its site.
+    private func facility(_ kind: HubFacilityKind, _ icon: String, _ title: String, _ level: Int,
+                          _ names: [String]) -> some View {
+        Button {
+            withAnimation(HubMotion.panel) { model.openUpgrade(kind) }
+        } label: {
+            facilityRow(icon, title, level, names)
+        }
+        .buttonStyle(HubPressStyle())
+        .accessibilityIdentifier("ae-hub-facility-\(kind.rawValue)")
+    }
+
+    private func facilityRow(_ icon: String, _ title: String, _ level: Int, _ names: [String]) -> some View {
         HStack(spacing: 8) {
             Image(systemName: icon).font(.system(size: 12)).foregroundStyle(HubChromeStyle.accent).frame(width: 18)
             Text(title).font(.system(size: 12)).foregroundStyle(HubChromeStyle.secondary)
@@ -422,7 +435,7 @@ struct HubDropdown: View {
             case .layers: layers
             case .search: search
             case .board: HubBoard(model: model, rows: 6, width: 316, bare: true)
-            case .insights: EmptyView()
+            case .insights, .upgrade: EmptyView()
             }
         }
         .frame(width: panel == .search && mode == .regular ? 420 : 316)

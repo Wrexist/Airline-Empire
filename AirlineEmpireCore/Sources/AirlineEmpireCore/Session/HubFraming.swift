@@ -66,6 +66,8 @@ public enum HubCameraShot: Equatable, Sendable {
     case gate(stand: Int)
     case terminal
     case district
+    /// One of the player's facility sites, close enough to watch it built.
+    case facility(HubFacilityKind)
 }
 
 public enum HubFraming {
@@ -227,6 +229,17 @@ extension HubLayout {
             }
             return HubFraming.solve(subject: subject, pitch: 28 * deg, yaw: 35 * deg,
                                     aspect: aspect, safe: safe, minDistance: 60)
+        case .facility(let kind):
+            // The site with room round it and the height of the finished
+            // building, so the construction plays out in frame.
+            guard let site = site(kind) else { return frame(.overview, aspect: aspect, safe: safe) }
+            let r = site.footprint
+            let margin = kind == .lounge ? 36.0 : 24.0
+            let around = HubRect(minX: r.minX - margin, minZ: r.minZ - margin, maxX: r.maxX + margin, maxZ: r.maxZ + margin)
+            var subject = HubLayout.corners(around, height: 0).map { HubVec($0.x, site.elevation, $0.z) }
+            subject += HubLayout.corners(r, height: 0).map { HubVec($0.x, site.elevation + 16, $0.z) }
+            return HubFraming.solve(subject: subject, pitch: 30 * deg, yaw: 35 * deg,
+                                    aspect: aspect, safe: safe, minDistance: 70)
         }
     }
 

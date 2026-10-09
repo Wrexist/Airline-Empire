@@ -32,7 +32,7 @@ enum HubShot: String, CaseIterable, Identifiable {
 
 /// What the layers menu can switch on and off over the world.
 enum HubOverlay: String, CaseIterable, Identifiable {
-    case routes, standTags, traffic, labels
+    case routes, standTags, upgrades, traffic, labels
 
     var id: String { rawValue }
 
@@ -40,6 +40,7 @@ enum HubOverlay: String, CaseIterable, Identifiable {
         switch self {
         case .routes: "Route fan"
         case .standTags: "Stand tags"
+        case .upgrades: "Upgrade sites"
         case .traffic: "Traffic"
         case .labels: "Place labels"
         }
@@ -49,6 +50,7 @@ enum HubOverlay: String, CaseIterable, Identifiable {
         switch self {
         case .routes: "point.3.connected.trianglepath.dotted"
         case .standTags: "tag.fill"
+        case .upgrades: "building.2.crop.circle"
         case .traffic: "car.2.fill"
         case .labels: "mappin.and.ellipse"
         }
@@ -58,6 +60,7 @@ enum HubOverlay: String, CaseIterable, Identifiable {
         switch self {
         case .routes: "Your routes on their bearings, coloured by load"
         case .standTags: "Flight and stage over your jets"
+        case .upgrades: "Your lounge and ground-crew depot, and what is next"
         case .traffic: "Circuit, apron and street traffic"
         case .labels: "Terminal hotspots and district stops"
         }
@@ -204,6 +207,9 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
 
     var onProjected: (([HubProjectedAnchor]) -> Void)?
     var onTapAircraft: ((Int) -> Void)?
+    var onTapFacility: ((HubFacilityKind) -> Void)?
+    /// The facility site the camera has flown to, if any.
+    private(set) var siteFocus: HubFacilityKind?
     private(set) var shot: HubShot = .overview
 
     init(layout: HubLayout, idleDrift: Bool = true) {
@@ -304,6 +310,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
 
     func show(_ shot: HubShot, focus: Int?, animated: Bool = true) {
         self.shot = shot
+        siteFocus = nil
         focusIndex = focus
         framedAspect = aspect
         framedForRealBounds = arView.bounds.height > 0
@@ -328,10 +335,33 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         layers[.terminalRoof]?.isEnabled = !cutaway
         layers[.terminalShell]?.isEnabled = !cutaway
         layers[.interior]?.isEnabled = cutaway
+        dynamics.yard.roofRoot.isEnabled = !cutaway
         dynamics.showsInterior = cutaway
         dynamics.showsRoute = shot == .district || nightValue > 0.5
         applyOverlays()
         lastInteraction = Date()
+    }
+
+    /// Flies to a facility site, close enough to watch it built.
+    func showFacility(_ kind: HubFacilityKind) {
+        if shot != .overview { show(.overview, focus: focusIndex) }
+        siteFocus = kind
+        let size = arView.bounds.height > 0 ? arView.bounds.size : CGSize(width: 1_376, height: 1_032)
+        let w = Double(max(size.width, 1)), h = Double(max(size.height, 1))
+        goal = HubCameraRig(layout.frame(.facility(kind), aspect: w / h, safe: HubFraming.safeArea(width: w, height: h)))
+        goal.yaw = rig.yaw + (goal.yaw - rig.yaw).remainder(dividingBy: 2 * .pi)
+        panVelocity = .zero
+        yawVelocity = 0
+        driftRate = 0
+        smoothTime = 0.6
+        applyOverlays()
+        lastInteraction = Date()
+    }
+
+    func leaveFacility() {
+        guard siteFocus != nil else { return }
+        siteFocus = nil
+        applyOverlays()
     }
 
     // MARK: Overlays
@@ -350,7 +380,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
     private func applyOverlays() {
         // The fan radiates from the terminal roof: it belongs to the
         // airfield overview, and would cut across every close shot.
-        dynamics.showsRouteFan = overlays.contains(.routes) && shot == .overview
+        dynamics.showsRouteFan = overlays.contains(.routes) && shot == .overview && siteFocus == nil
         dynamics.showsTraffic = overlays.contains(.traffic)
     }
 
@@ -529,7 +559,9 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
             case .pill: guard shot == .district, overlays.contains(.labels) else { return nil }
             case .callout: guard shot == .gate else { return nil }
             case .tag: guard shot == .overview, overlays.contains(.standTags) else { return nil }
-            case .route: guard shot == .overview, overlays.contains(.routes) else { return nil }
+            case .route: guard shot == .overview, overlays.contains(.routes), siteFocus == nil else { return nil }
+            case .facility(let tag):
+                guard shot == .overview, overlays.contains(.upgrades) || siteFocus == tag.kind else { return nil }
             }
             guard let p = arView.project(anchor.position),
                   p.x > -40, p.y > -40, p.x < size.width + 40, p.y < size.height + 40 else { return nil }
@@ -538,7 +570,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
             let forward = rig.target - rig.position
             guard simd_dot(toPoint, forward) > 0 else { return nil }
             switch anchor.kind {
-            case .tag, .route:
+            case .tag, .route, .facility:
                 let box = CGRect(x: p.x - 70, y: p.y - 26, width: 140, height: 26)
                 guard free.contains(CGPoint(x: p.x, y: p.y)),
                       !placed.contains(where: { $0.intersects(box) }) else { return nil }
@@ -554,6 +586,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         switch anchor.kind {
         case .tag(let tag): tag.standIndex == dynamics.focusStand ? 0 : 1
         case .route(let tag): tag.highlighted ? 0 : 2
+        case .facility(let tag): tag.kind == siteFocus ? 0 : 1
         default: 0
         }
     }
@@ -635,6 +668,10 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         while let e = hit {
             if e.name.hasPrefix("aircraft-"), let index = Int(e.name.dropFirst("aircraft-".count)) {
                 onTapAircraft?(index)
+                return
+            }
+            if e.name.hasPrefix("facility-"), let kind = HubFacilityKind(rawValue: String(e.name.dropFirst("facility-".count))) {
+                onTapFacility?(kind)
                 return
             }
             hit = e.parent

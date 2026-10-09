@@ -184,6 +184,18 @@ struct HubRouteTag: Equatable {
     let highlighted: Bool
 }
 
+/// A facility site, labelled with its building and what comes next.
+struct HubFacilityTag: Equatable {
+    let kind: HubFacilityKind
+    let title: String
+    let levelName: String
+    /// "Build · $2.4M", "Fully built", or why it is blocked.
+    let next: String
+    let canUpgrade: Bool
+    let maxed: Bool
+    let building: Bool
+}
+
 /// Anchors the SwiftUI overlay pins to the 3D world.
 struct HubAnchor: Identifiable, Equatable {
     enum Kind: Equatable {
@@ -192,6 +204,7 @@ struct HubAnchor: Identifiable, Equatable {
         case pill(String, systemImage: String)
         case tag(HubStandTag)
         case route(HubRouteTag)
+        case facility(HubFacilityTag)
     }
 
     let id: String
@@ -253,6 +266,8 @@ final class HubDynamics {
     private var routeArcs: [(link: HubRouteLink, points: [SIMD3<Float>])] = []
     private var routePulses: [(entity: Entity, arc: Int, offset: Float, speed: Float, outbound: Bool)] = []
     private var routeSignature = ""
+    /// The player's facility buildings and their construction.
+    let yard: HubFacilityYard
     private var time: Float = 0
     private(set) var focusStand: Int?
     private(set) var anchors: [HubAnchor] = []
@@ -289,7 +304,9 @@ final class HubDynamics {
         self.layout = layout
         self.models = models
         self.materials = materials
+        yard = HubFacilityYard(layout: layout, models: models, materials: materials)
         root.name = "dynamics"
+        root.addChild(yard.root)
         for e in [crowd, interiorCrowd, overlays, routeLine, traffic, routeFan] { root.addChild(e) }
         interiorCrowd.isEnabled = false
         routeLine.isEnabled = false
@@ -376,6 +393,10 @@ final class HubDynamics {
             rebuildFocusOverlays()
         }
         updateRouteFan(snapshot.insights.routes)
+        if !snapshot.upgrades.isEmpty {
+            yard.apply(levels: Dictionary(snapshot.upgrades.map { ($0.kind, $0.level) }, uniquingKeysWith: { a, _ in a }),
+                       livery: snapshot.livery)
+        }
         rebuildAnchors(snapshot)
     }
 
@@ -589,6 +610,23 @@ final class HubDynamics {
             let above = parkTargets[occupant.standIndex] ?? current.entity.position
             list.append(HubAnchor(id: "tag\(occupant.standIndex)", position: above + [0, m.axisY + m.radius * 2 + 12, 0],
                                   kind: .tag(tag)))
+        }
+        // The player's facility sites: what stands there and what is next.
+        for offer in snapshot.upgrades {
+            guard let site = layout.site(offer.kind) else { continue }
+            let next: String
+            if let n = offer.next {
+                next = offer.blocked == nil ? "\(n.levelName) · \(Format.money(Money(cents: n.installationCents)))"
+                                            : "\(n.levelName) · locked"
+            } else {
+                next = "Fully built"
+            }
+            let tag = HubFacilityTag(kind: offer.kind, title: offer.buildingName, levelName: offer.levelName, next: next,
+                                     canUpgrade: offer.canUpgrade, maxed: offer.next == nil,
+                                     building: yard.isBuilding(offer.kind))
+            let top = HubFacilityYard.height(offer.kind, level: offer.level) + 9
+            list.append(HubAnchor(id: "site-\(offer.kind.rawValue)", position: Self.f(site.center) + [0, top, 0],
+                                  kind: .facility(tag)))
         }
         // The busiest routes, and the highlighted one, labelled part-way out.
         let ranked = routeArcs.enumerated().sorted {
@@ -919,6 +957,7 @@ final class HubDynamics {
 
     func update(_ dt: Float) {
         time += dt
+        yard.update(dt)
         for mover in movers { mover.step(dt) }
         // Parked jets glide to where the snapshot puts them (pushback).
         for (index, target) in parkTargets {

@@ -55,6 +55,9 @@ struct HubScreen: View {
         }
         .onChange(of: controller.snapshotReceivedAt) { refresh() }
         .onChange(of: controller.mapRevision) { refresh() }
+        .onChange(of: controller.lastRejection) { _, rejection in
+            if let rejection { model?.upgradeRejected(rejection.message) }
+        }
         .onDisappear {
             model?.scene.pause(true)
             AEOrientation.unlock()
@@ -74,6 +77,17 @@ struct HubScreen: View {
         // on a phone it waits to be asked for (tap a jet or its callout).
         made.showsInspector = !AEOrientation.isPhone && UIScreen.main.bounds.width >= 760
         made.switchHub = { next in switchTo(next) }
+        // Upgrades from the hub are the Airport Services screen's command,
+        // with the one facility moved up a level.
+        let game = controller, hub = code
+        made.requestUpgrade = { kind, level in
+            guard let player = game.snapshot?.playerAirline else {
+                return CommandRejection(code: "airport.unavailable", message: "Start an airline first.")
+            }
+            let facilities = kind.service.setting(level, in: player.facilities(at: hub))
+            return game.submit(ConfigureAirportFacilitiesCommand(airline: player.id, airport: hub,
+                                                                 facilities: facilities))
+        }
         model = made
         made.refresh(state: state, catalog: catalog)
         if let shot = Self.launchShot { made.select(shot) }
@@ -136,10 +150,20 @@ private struct HubDashboard: View {
                 }
 
                 panels(mode)
+
+                // Confirmation that something was built.
+                if let toast = model.toast {
+                    HubToastView(toast: toast)
+                        .padding(.top, mode.topBarHeight + 12)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .allowsHitTesting(false)
+                }
             }
             .animation(HubMotion.panel, value: model.showsInspector)
             .animation(HubMotion.panel, value: model.focus)
             .animation(HubMotion.panel, value: model.panel)
+            .animation(HubMotion.panel, value: model.toast)
         }
     }
 
@@ -286,7 +310,15 @@ private struct HubDashboard: View {
     @ViewBuilder
     private func panels(_ mode: HubChromeMode) -> some View {
         if let panel = model.panel {
-            if panel == .insights {
+            if case .upgrade(let kind) = panel {
+                // The upgrade card beside its site: the scene stays live so
+                // the construction can be watched.
+                HubUpgradeCard(model: model, kind: kind, mode: mode)
+                    .padding(.top, mode.topBarHeight + 10)
+                    .padding(.trailing, mode == .landscape ? 60 : 64)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            } else if panel == .insights {
                 // A side panel: the scene stays live and touchable beside it.
                 HubInsightsPanel(model: model, mode: mode)
                     .padding(.top, mode.topBarHeight + 10)
@@ -352,7 +384,7 @@ private struct HubDashboard: View {
 
     private func isTappable(_ kind: HubAnchor.Kind) -> Bool {
         switch kind {
-        case .callout, .tag, .route: true
+        case .callout, .tag, .route, .facility: true
         case .pin, .pill: false
         }
     }
@@ -386,6 +418,14 @@ private struct HubDashboard: View {
                 .onTapGesture { withAnimation(HubMotion.panel) { model.highlight(tag.routeID) } }
                 .accessibilityAddTraits(.isButton)
                 .accessibilityLabel("Route to \(tag.code), \(tag.detail)")
+        case .facility(let tag):
+            HubFacilityTagView(tag: tag)
+                .offset(y: -14)
+                .onTapGesture { withAnimation(HubMotion.panel) { model.openUpgrade(tag.kind) } }
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityLabel("\(tag.title), \(tag.levelName). \(tag.next)")
+                .accessibilityIdentifier("ae-hub-site-\(tag.kind.rawValue)")
         }
     }
 }

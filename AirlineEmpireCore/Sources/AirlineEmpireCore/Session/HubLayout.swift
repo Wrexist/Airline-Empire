@@ -357,6 +357,8 @@ public struct HubLayout: Equatable, Codable, Sendable {
     public let focus: HubFocusPoints
     /// Union of every footprint.
     public let bounds: HubRect
+    /// Where the player's facilities stand (`HubUpgrades.swift`).
+    public var facilitySites: [HubFacilitySite] = []
 
     public func pieces(_ kind: HubPieceKind) -> [HubPiece] { pieces.filter { $0.kind == kind } }
 }
@@ -706,6 +708,7 @@ struct HubPlanner {
             HubVec(eastX, 0.4, avenueZ + ring),
         ] + villas.route.map { HubVec($0.x, 0.4, $0.z) })
 
+        let sites = planFacilitySites(terminal: terminal, apronHalf: apronHalf)
         let interior = planInterior(terminal: terminal)
         let bounds = pieces.map(\.groundBounds).reduce(terminal) { $0.union($1) }
         return HubLayout(
@@ -716,7 +719,33 @@ struct HubPlanner {
                                   terminal: HubVec(0, 0, terminalDepth / 2),
                                   district: district.center,
                                   hangars: HubVec(apronHalf + 62, 0, apronNorth + 64)),
-            bounds: bounds)
+            bounds: bounds, facilitySites: sites)
+    }
+
+    /// Where the player's facilities stand: the lounge as a pavilion on the
+    /// east end of the terminal roof, the ground-services depot on its own
+    /// lot beside the apron — the first candidate lot clear of everything
+    /// but lawns and trees, which are cleared from it.
+    mutating func planFacilitySites(terminal: HubRect, apronHalf: Double) -> [HubFacilitySite] {
+        let loungeW = min(46, max(26, terminal.width * 0.14))
+        let lounge = HubFacilitySite(
+            kind: .lounge,
+            footprint: HubRect(minX: terminal.maxX - loungeW - 4, minZ: terminal.minZ + terminalDepth * 0.18,
+                               maxX: terminal.maxX - 4, maxZ: terminal.minZ + terminalDepth * 0.82),
+            elevation: HubLayout.terminalRoofTop)
+        let w = 90.0, d = 72.0
+        let candidates = [
+            HubRect(minX: apronHalf + 14, minZ: -14 - d, maxX: apronHalf + 14 + w, maxZ: -14),
+            HubRect(minX: -apronHalf - 14 - w, minZ: -14 - d, maxX: -apronHalf - 14, maxZ: -14),
+            HubRect(minX: apronHalf + 260, minZ: -14 - d, maxX: apronHalf + 260 + w, maxZ: -14),
+            HubRect(minX: -apronHalf - 260 - w, minZ: -14 - d, maxX: -apronHalf - 260, maxZ: -14),
+        ]
+        let soft: Set<HubPieceKind> = [.lawn, .tree]
+        let lot = candidates.first { c in
+            !pieces.contains { !soft.contains($0.kind) && $0.groundBounds.overlaps(c, margin: 4) }
+        } ?? candidates[0]
+        pieces.removeAll { soft.contains($0.kind) && $0.groundBounds.overlaps(lot, margin: 2) }
+        return [lounge, HubFacilitySite(kind: .groundServices, footprint: lot, elevation: 0)]
     }
 
     /// Apron service roads: one along the terminal face in each gap between
@@ -1122,6 +1151,7 @@ extension HubLayout {
         }
         return HubLayout(airport: airport, runwayClass: runwayClass, pieces: pieces, runways: runways,
                          stands: routed, terminal: terminal, interior: interior, serviceRoute: serviceRoute,
-                         serviceStops: serviceStops, serviceLanes: serviceLanes, focus: focus, bounds: bounds)
+                         serviceStops: serviceStops, serviceLanes: serviceLanes, focus: focus, bounds: bounds,
+                         facilitySites: facilitySites)
     }
 }

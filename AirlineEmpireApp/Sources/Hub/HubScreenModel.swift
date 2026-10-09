@@ -5,6 +5,16 @@ import AirlineEmpireCore
 /// The dashboard's floating panels: one open at a time.
 enum HubPanel: Equatable {
     case insights, alerts, profile, hubs, layers, search, board
+    /// The upgrade card for one facility site.
+    case upgrade(HubFacilityKind)
+}
+
+/// A short confirmation that slides in under the top bar.
+struct HubToast: Equatable, Identifiable {
+    let id = UUID()
+    let systemImage: String
+    let title: String
+    let detail: String
 }
 
 enum HubInsightsTab: String, CaseIterable, Identifiable {
@@ -34,6 +44,7 @@ extension HubShot {
         case .gate: self = .gate
         case .terminal: self = .terminal
         case .district: self = .district
+        case .facility: self = .overview
         }
     }
 }
@@ -75,7 +86,12 @@ final class HubScreenModel {
     }
     var boardTab: BoardTab = .departures
     var showsInspector = true
-    var panel: HubPanel?
+    var panel: HubPanel? {
+        didSet {
+            // Leaving an upgrade card lets the overview's overlays back.
+            if case .upgrade = oldValue, panel != oldValue { scene.leaveFacility() }
+        }
+    }
     var insightsTab: HubInsightsTab = .overview
     var inspectorPage: HubInspectorPage = .flight
     var searchQuery = ""
@@ -83,6 +99,62 @@ final class HubScreenModel {
     private(set) var highlightedRoute: RouteID?
     /// Set by the screen: opens another airport of the network.
     var switchHub: ((AirportCode) -> Void)?
+    /// Set by the screen: sends the facility change to the simulation (the
+    /// same command the Airport Services screen sends); nil when accepted
+    /// for now, or why it was refused.
+    var requestUpgrade: ((HubFacilityKind, Int) -> CommandRejection?)?
+    /// The facility whose next level has been ordered and not yet seen in a
+    /// snapshot.
+    private(set) var pendingUpgrade: HubFacilityKind?
+    private(set) var upgradeError: String?
+    private(set) var toast: HubToast?
+
+    var upgradeOffers: [HubUpgradeOffer] { snapshot?.upgrades ?? [] }
+
+    func offer(_ kind: HubFacilityKind) -> HubUpgradeOffer? {
+        upgradeOffers.first { $0.kind == kind }
+    }
+
+    /// Opens a facility's upgrade card and flies the camera to its site.
+    func openUpgrade(_ kind: HubFacilityKind) {
+        upgradeError = nil
+        panel = .upgrade(kind)
+        shot = .overview
+        scene.showFacility(kind)
+    }
+
+    /// Orders the next level of `kind`. The building goes up when the
+    /// simulation has applied it (`refresh`).
+    func build(_ kind: HubFacilityKind) {
+        guard let offer = offer(kind), let next = offer.next, offer.canUpgrade, pendingUpgrade == nil else { return }
+        upgradeError = nil
+        if let rejection = requestUpgrade?(kind, next.level) {
+            upgradeError = rejection.message
+        } else {
+            pendingUpgrade = kind
+            scene.showFacility(kind)
+        }
+    }
+
+    /// The simulation refused the pending order after accepting it for now.
+    func upgradeRejected(_ message: String) {
+        guard pendingUpgrade != nil else { return }
+        pendingUpgrade = nil
+        upgradeError = message
+    }
+
+    private func announce(_ offer: HubUpgradeOffer) {
+        let toast = HubToast(systemImage: offer.kind == .lounge ? "sofa.fill" : "box.truck.fill",
+                             title: "\(offer.buildingName) open at \(airport.raw)",
+                             detail: offer.effect)
+        self.toast = toast
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(5))
+            if self?.toast?.id == toast.id {
+                withAnimation(HubMotion.panel) { self?.toast = nil }
+            }
+        }
+    }
 
     /// Opens `panel`, or closes it if it is already open.
     func toggle(_ panel: HubPanel) {
@@ -176,6 +248,9 @@ final class HubScreenModel {
             self?.setFocus(index)
             self?.showsInspector = true
         }
+        scene.onTapFacility = { [weak self] kind in
+            withAnimation(HubMotion.panel) { self?.openUpgrade(kind) }
+        }
     }
 
     /// `-AEUITestHubStage boarding` holds the focused turnaround at one
@@ -192,8 +267,16 @@ final class HubScreenModel {
             next = next.holding(held, progress: 0.45, atStand: stand)
         }
         let first = snapshot == nil
-        if let facilities = state.playerAirline?.airportFacilities?[airport] {
-            groundServices = facilities.groundServices
+        groundServices = state.playerAirline?.facilities(at: airport).groundServices ?? groundServices
+        // A level that went up since the last read: the building is going
+        // up in the world now; say so, and settle the pending order.
+        if let previous = snapshot {
+            for offer in next.upgrades {
+                guard let before = previous.upgrades.first(where: { $0.kind == offer.kind }),
+                      offer.level > before.level else { continue }
+                if pendingUpgrade == offer.kind { pendingUpgrade = nil }
+                withAnimation(HubMotion.panel) { announce(offer) }
+            }
         }
         if first {
             focus = next.focusStand

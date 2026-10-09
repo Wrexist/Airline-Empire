@@ -126,6 +126,32 @@ labels are capped at eight); consider a second camera preset that frames
 the whole fan; and the narrow iPad split-view top bar can still crowd
 below ~360 pt.
 
+## 0c. Upgrading from inside the hub (step 1 of the upgrade plan)
+
+The two airport services the game already sells — the passenger lounge and
+ground services, levels 0–2 — are now bought, seen and celebrated in the
+Hub View. No new economy: prices, effects and the refusal rules are the
+existing ones, and buying sends the same `ConfigureAirportFacilitiesCommand`
+the Airport Services screen sends.
+
+| Piece | Where | What |
+|---|---|---|
+| Sites | `HubLayout.facilitySites` (Core) | The lounge on the east end of the terminal roof (the roof's skylight vaults stop short of it); the depot on a lot beside the apron, the first of four candidates clear of every piece, stand and lane (lawns and trees on it are cleared). Tested for every airport. |
+| Offers | `HubUpgrades.swift` (Core), `HubSnapshot.upgrades` | Per facility: level, building name, current effect and monthly cost, the next level's effect, build cost and monthly cost, and — from the command's own `validate` — why it is blocked (no presence, airport closed, not enough cash). |
+| Camera | `HubCameraShot.facility` | Frames the site with room for the finished building; the route fan steps aside while a site is in focus. |
+| Buildings | `HubFacilities.swift` | Lounge: 0 a marked-out site among planters; 1 a glass pavilion with an airline fascia, seating and a railed deck; 2 a two-tier flagship with a timber terrace, parasols and a string of lights that glows after dusk. Depot: 0 the shared handler's cabin and two grey vehicles; 1 your shed in your colours with six liveried vehicles in painted bays; 2 a bigger shed with solar panels, chargers, a wash bay and ten vehicles. |
+| Construction | `HubFacilityYard.update` | 4.4 s: scaffold and crane rise, the jib slews, the old building fades, the new one grows with a little overshoot, the rig comes down, a pulse spreads on the ground. Plays whenever a level goes up, from the hub or from the Airport Services screen. |
+| Interaction | `HubUpgradeCard`, `HubFacilityTagView`, `HubToastView` | Tap the building, its floating tag, or its row in Insights › Airline: the camera flies to the site and the card opens (level steps, now / next, build and monthly cost, a two-tap Build · Confirm). A toast announces the opening. "Upgrade sites" is a layer. |
+
+Captures: `HUB-09-upgrade` (card at the lounge site), `HUB-10-construction`
+and `HUB-11-built`.
+
+**Next (steps 2 and 3 of the plan):** new facility types need the owner's
+calls on which, their prices and effects, and whether building takes game
+time. Authored models for each level go in as per-level slots
+(`Hub_lounge_l1/l2`, `Hub_gseDepot_l0/l1/l2`), falling back to these
+procedural buildings until they exist.
+
 ---
 
 ## 1. Where things stood after the first build

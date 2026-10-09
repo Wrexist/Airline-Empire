@@ -412,10 +412,15 @@ struct HubSceneBuilder {
         with(.terminalRoof, .roof) {
             $0.roundedBox(center: [c.x, glassTop, c.z], size: [w + 3, 1.6, d + 5], bevel: 0.6, bottom: true)
         }
-        let vaultLength = w * 0.86
+        // The vaults stop short of the lounge site on the roof's east end
+        // (`HubLayout.facilitySites`), where the player's lounge is built.
+        let west = c.x - w * 0.43
+        let east = layout.site(.lounge).map { Float($0.footprint.minX) - 4 } ?? c.x + w * 0.43
+        let vaultLength = max(w * 0.4, east - west)
+        let vaultX = west + vaultLength / 2
         let lanes: [Float] = [-d * 0.28, 0, d * 0.28]
         for dz in lanes {
-            let frame = HubMeshBatch.translation([c.x, glassTop + 1.6, c.z + dz]) * HubMeshBatch.yaw(.pi / 2)
+            let frame = HubMeshBatch.translation([vaultX, glassTop + 1.6, c.z + dz]) * HubMeshBatch.yaw(.pi / 2)
             with(.terminalRoof, .skylight) { b in
                 b.transform = frame
                 b.vault(center: .zero, width: d * 0.2, depth: vaultLength, rise: 3.2, segments: 12, caps: false)

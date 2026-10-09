@@ -68,7 +68,35 @@ final class HubViewUITests: AEUITestCase {
             Thread.sleep(forTimeInterval: 1.5)
             frame("HUB-08-insights-routes")
         }
-        insights.tap()
+        // Upgrading from the hub, in daylight: the Airline page's lounge
+        // row opens the upgrade card and flies to the site on the roof.
+        let daylight = app.buttons["ae-hub-daylight"]
+        if daylight.exists {
+            daylight.tap()
+            Thread.sleep(forTimeInterval: 2)
+        }
+        let airline = app.buttons["Airline"]
+        if airline.exists {
+            airline.tap()
+            Thread.sleep(forTimeInterval: 1)
+        }
+        let lounge = app.buttons["ae-hub-facility-lounge"]
+        require(lounge, "lounge row")
+        lounge.tap()
+        Thread.sleep(forTimeInterval: 3)
+        frame("HUB-09-upgrade")
+        XCTAssertTrue(app.descendants(matching: .any)["ae-hub-upgrade-card"].exists)
+        // Order it (two taps: arm, confirm) and watch it go up.
+        let build = app.buttons["ae-hub-upgrade-build"]
+        if build.exists && build.isEnabled {
+            build.tap()
+            Thread.sleep(forTimeInterval: 0.6)
+            build.tap()
+            Thread.sleep(forTimeInterval: 2.2)
+            frame("HUB-10-construction")
+            Thread.sleep(forTimeInterval: 5)
+            frame("HUB-11-built")
+        }
         XCUIDevice.shared.orientation = .portrait
     }
 
