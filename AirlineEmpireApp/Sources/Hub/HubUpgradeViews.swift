@@ -25,8 +25,12 @@ struct HubUpgradeCard: View {
     let mode: HubChromeMode
     @State private var armed = false
 
+    /// A phone on its side has about 380 pt under the top bar: the card
+    /// drops the fine print to fit.
+    private var compact: Bool { mode == .landscape }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: compact ? 8 : 12) {
             if let offer = model.offer(kind) {
                 header(offer)
                 levels(offer)
@@ -49,8 +53,8 @@ struct HubUpgradeCard: View {
                     .font(.system(size: 12)).foregroundStyle(HubChromeStyle.secondary)
             }
         }
-        .frame(width: mode == .regular ? 340 : 320)
-        .hubGlass(padding: 14)
+        .frame(width: mode == .regular ? 340 : 300)
+        .hubGlass(padding: compact ? 11 : 14)
         .onChange(of: model.offer(kind)?.level) { _, _ in armed = false }
     }
 
@@ -107,7 +111,7 @@ struct HubUpgradeCard: View {
         VStack(alignment: .leading, spacing: 3) {
             Text("NOW").font(.system(size: 10, weight: .bold)).kerning(0.6).foregroundStyle(HubChromeStyle.tertiary)
             Text(offer.effect).font(.system(size: 12)).foregroundStyle(HubChromeStyle.ink)
-            if offer.level > 0 {
+            if offer.level > 0 && !compact {
                 Text("\(Format.money(Money(cents: offer.monthlyCents))) a month")
                     .font(.system(size: 11)).foregroundStyle(HubChromeStyle.secondary)
             }
@@ -123,14 +127,16 @@ struct HubUpgradeCard: View {
             }
             Label(next.effect, systemImage: "arrow.up.right.circle.fill")
                 .font(.system(size: 12)).foregroundStyle(HubChromeStyle.good)
-            Text(offer.scope).font(.system(size: 10)).foregroundStyle(HubChromeStyle.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            if !compact {
+                Text(offer.scope).font(.system(size: 10)).foregroundStyle(HubChromeStyle.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             HStack(spacing: 8) {
                 cost("Build, once", Format.money(Money(cents: next.installationCents)))
                 cost("Monthly", "\(Format.money(Money(cents: offer.monthlyCents))) → \(Format.money(Money(cents: next.monthlyCents)))")
             }
         }
-        .padding(10)
+        .padding(compact ? 8 : 10)
         .background(Color.white.opacity(0.55), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 

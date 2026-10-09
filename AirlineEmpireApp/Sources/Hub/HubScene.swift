@@ -348,7 +348,17 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         siteFocus = kind
         let size = arView.bounds.height > 0 ? arView.bounds.size : CGSize(width: 1_376, height: 1_032)
         let w = Double(max(size.width, 1)), h = Double(max(size.height, 1))
-        goal = HubCameraRig(layout.frame(.facility(kind), aspect: w / h, safe: HubFraming.safeArea(width: w, height: h)))
+        // The upgrade card takes the right of the screen: frame the site in
+        // what is left of it, so the construction is never under the card.
+        var safe = HubFraming.safeArea(width: w, height: h)
+        let card: Double
+        switch HubChromeMode(size: size) {
+        case .regular: card = 340 + 64 + 28
+        case .landscape: card = 300 + 60 + 24
+        case .portrait: card = 0
+        }
+        if card > 0 { safe.maxX = min(safe.maxX, 1 - 2 * card / w) }
+        goal = HubCameraRig(layout.frame(.facility(kind), aspect: w / h, safe: safe))
         goal.yaw = rig.yaw + (goal.yaw - rig.yaw).remainder(dividingBy: 2 * .pi)
         panVelocity = .zero
         yawVelocity = 0
