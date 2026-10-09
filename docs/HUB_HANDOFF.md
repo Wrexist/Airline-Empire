@@ -144,7 +144,14 @@ the Airport Services screen sends.
 | Interaction | `HubUpgradeCard`, `HubFacilityTagView`, `HubToastView` | Tap the building, its floating tag, or its row in Insights › Airline: the camera flies to the site and the card opens (level steps, now / next, build and monthly cost, a two-tap Build · Confirm). A toast announces the opening. "Upgrade sites" is a layer. |
 
 Captures: `HUB-09-upgrade` (card at the lounge site), `HUB-10-construction`
-and `HUB-11-built`.
+and `HUB-11-built`; the UI test taps the site's tag in the world, as a
+player would, and orders the next level. Verified green on both devices
+(runs 37992305861 and 37994141895, iPhone; iPad on 37992305861).
+
+| Upgrade card at the site | Construction | Built |
+|---|---|---|
+| ![](design/hub-view/hub-09-upgrade.jpg) | ![](design/hub-view/hub-10-construction.jpg) | ![](design/hub-view/hub-11-built.jpg) |
+| | ![](design/hub-view/iphone-10-construction.jpg) | ![](design/hub-view/iphone-11-built.jpg) |
 
 **Next (steps 2 and 3 of the plan):** new facility types need the owner's
 calls on which, their prices and effects, and whether building takes game

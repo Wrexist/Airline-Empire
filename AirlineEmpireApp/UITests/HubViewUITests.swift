@@ -68,21 +68,29 @@ final class HubViewUITests: AEUITestCase {
             Thread.sleep(forTimeInterval: 1.5)
             frame("HUB-08-insights-routes")
         }
-        // Upgrading from the hub, in daylight: the Airline page's lounge
-        // row opens the upgrade card and flies to the site on the roof.
+        // Upgrading from the hub, in daylight: the lounge site's tag on the
+        // terminal roof opens the upgrade card and flies to the site. One
+        // tap on the world, as a player would; the Insights › Airline row
+        // is the fallback.
+        insights.tap()
+        Thread.sleep(forTimeInterval: 1)
         let daylight = app.buttons["ae-hub-daylight"]
         if daylight.exists {
             daylight.tap()
             Thread.sleep(forTimeInterval: 2)
         }
-        let airline = app.buttons["Airline"]
-        if airline.exists {
-            airline.tap()
+        let site = app.descendants(matching: .any)["ae-hub-site-lounge"]
+        if site.waitForExistence(timeout: 5) {
+            site.tap()
+        } else {
+            insights.tap()
             Thread.sleep(forTimeInterval: 1)
+            app.buttons["Airline"].tap()
+            Thread.sleep(forTimeInterval: 1)
+            let lounge = app.buttons["ae-hub-facility-lounge"]
+            require(lounge, "lounge row")
+            lounge.tap()
         }
-        let lounge = app.buttons["ae-hub-facility-lounge"]
-        require(lounge, "lounge row")
-        lounge.tap()
         Thread.sleep(forTimeInterval: 3)
         frame("HUB-09-upgrade")
         XCTAssertTrue(app.descendants(matching: .any)["ae-hub-upgrade-card"].exists)
