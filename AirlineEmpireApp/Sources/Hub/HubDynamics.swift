@@ -577,7 +577,10 @@ final class HubDynamics {
 
     // MARK: Anchors
 
+    private var lastSnapshot: HubSnapshot?
+
     private func rebuildAnchors(_ snapshot: HubSnapshot) {
+        lastSnapshot = snapshot
         var list: [HubAnchor] = []
         if let index = focusStand, let current = parked[index] {
             let m = HubModels.metrics(current.occupant.category)
@@ -957,7 +960,9 @@ final class HubDynamics {
 
     func update(_ dt: Float) {
         time += dt
-        yard.update(dt)
+        // A finished construction changes its site's tag at once, not at
+        // the next snapshot (which, paused, may be a long way off).
+        if yard.update(dt), let snapshot = lastSnapshot { rebuildAnchors(snapshot) }
         for mover in movers { mover.step(dt) }
         // Parked jets glide to where the snapshot puts them (pushback).
         for (index, target) in parkTargets {

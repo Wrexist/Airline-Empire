@@ -163,8 +163,10 @@ final class HubFacilityYard {
         job.new.components.remove(OpacityComponent.self)
     }
 
-    func update(_ dt: Float) {
-        guard !jobs.isEmpty else { return }
+    /// Advances the constructions; true when one finished this frame.
+    @discardableResult
+    func update(_ dt: Float) -> Bool {
+        guard !jobs.isEmpty else { return false }
         for i in jobs.indices {
             jobs[i].t += dt
             let job = jobs[i], t = job.t
@@ -189,8 +191,10 @@ final class HubFacilityYard {
             job.ring.scale = [s, 1, s]
             job.ring.components.set(OpacityComponent(opacity: p > 0 && p < 1 ? (1 - p) * (1 - p) * 1.2 : 0))
         }
-        for job in jobs where job.t >= Self.buildTime { finish(job) }
+        let done = jobs.filter { $0.t >= Self.buildTime }
+        for job in done { finish(job) }
         jobs.removeAll { $0.t >= Self.buildTime }
+        return !done.isEmpty
     }
 
     private static func phase(_ t: Float, _ a: Float, _ b: Float) -> Float { max(0, min(1, (t - a) / (b - a))) }

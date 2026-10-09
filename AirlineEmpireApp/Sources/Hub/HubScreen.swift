@@ -153,8 +153,9 @@ private struct HubDashboard: View {
 
                 // Confirmation that something was built.
                 if let toast = model.toast {
+                    // Below the KPI row, in the scene's free band.
                     HubToastView(toast: toast)
-                        .padding(.top, mode.topBarHeight + 12)
+                        .padding(.top, mode.topBarHeight + (mode == .regular ? 132 : mode == .landscape ? 58 : 150))
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                         .transition(.move(edge: .top).combined(with: .opacity))
                         .allowsHitTesting(false)
