@@ -24,6 +24,7 @@ See the [release plan](docs/RELEASE_PLAN.md),
 | Where | What |
 |-------|------|
 | `/docs/PROJECT_AUDIT.md` | Phase 0 baseline audit — start here |
+| `/docs/HUB_HANDOFF.md` | **3D Hub View (1.1)** — state, gap list vs the reference, work plan, review loop |
 | `/docs/ARCHITECTURE.md` | Architecture (baseline constraints; authored fully in Phase 1) |
 | `/tasks/MASTER_PLAN.md` | The 25-phase roadmap, agent roles, rules, Definition of Done |
 | `/tasks/CURRENT_PHASE.md` | Single source of truth for the active phase |

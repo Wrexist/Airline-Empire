@@ -199,3 +199,6 @@ matching reference frame.
 - No baked global illumination: corners are lit evenly where the reference
   pools soft occlusion.
 - Not yet measured on a physical device (Phase H5).
+
+**Next:** the shot-by-shot gap list and the ordered work plan to close it
+are in [`HUB_HANDOFF.md`](HUB_HANDOFF.md).
