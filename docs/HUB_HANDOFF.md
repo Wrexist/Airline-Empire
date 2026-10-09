@@ -107,7 +107,24 @@ where it serves the game. What changed:
 | UI motion | `HubMotion`, `HubPressStyle` | One set of springs for every panel; buttons sink on press; the shot picker's pill slides between shots; numbers roll; the timeline's fill and tug glide; anchored labels scale in and out. |
 
 Captures now include the insights panel (`HUB-07`, `HUB-08`), and the
-iPhone captures are landscape.
+iPhone captures are landscape. Verified on `Hub view review` run
+37945570337 (`9d04f4b`): both devices green, every shot captured. The
+first run's iPhone failure was the UI-test auto-open giving up after 20 s
+on a cold first launch; it now waits a minute. Core: the full suite (655
+tests) and the warnings-as-errors release build are green; the 29 hub
+tests include the new search, network and landscape-framing tests.
+
+| Insights (iPad, night) | iPhone, landscape |
+|---|---|
+| ![](design/hub-view/hub-07-insights.jpg) | ![](design/hub-view/iphone-01-overview.jpg) ![](design/hub-view/iphone-02-gate.jpg) ![](design/hub-view/iphone-07-insights.jpg) |
+
+**Next:** everything in §0's "Next" still stands (device bloom, authored
+models, SSAO, additive glows, performance on a device). New from this
+session: profile the route fan and stand tags on a device with a large
+network (the fan rebuilds only when a route's band or frequency changes,
+labels are capped at eight); consider a second camera preset that frames
+the whole fan; and the narrow iPad split-view top bar can still crowd
+below ~360 pt.
 
 ---
 
@@ -127,7 +144,7 @@ iPhone captures are landscape.
 | Capture workflow | `.github/workflows/hub-view-review.yml` + `UITests/HubViewUITests.swift` | Renders all six shots on iPad Pro 13" and iPhone 17 Pro Max simulators on every PR that touches the hub. |
 | Review loop | `scripts/hub-review/` | Fetch captures, cut reference frames, build side-by-side sheets (§4). |
 
-### How it looks today (iPad, second session, `aa76094`)
+### How it looks today (iPad, third session, `9d04f4b`)
 
 `docs/design/hub-view/hub-0*.jpg` are the latest renders (the first
 build's are in git history at `b5624e1`). The gap list below was written
