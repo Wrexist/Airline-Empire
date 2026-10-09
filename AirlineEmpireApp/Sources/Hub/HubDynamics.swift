@@ -604,7 +604,7 @@ final class HubDynamics {
                                   detail: "\(load) · \(link.dailyRoundTrips)/day", band: Self.band(link.loadFactor),
                                   highlighted: highlighted)
             let points = item.element.points
-            list.append(HubAnchor(id: "route\(link.routeID.raw)", position: points[points.count * 9 / 20] + [0, 8, 0],
+            list.append(HubAnchor(id: "route\(link.routeID.raw)", position: points[points.count * 3 / 10] + [0, 8, 0],
                                   kind: .route(tag)))
         }
         anchors = list
@@ -652,8 +652,10 @@ final class HubDynamics {
             let dir = SIMD3<Float>(sin(bearing), 0, -cos(bearing))
             // Longer routes reach a little further out and climb higher.
             let length = reach * (0.75 + 0.25 * min(1, Float(link.distanceKm) / 6_000))
-            let end = start + dir * length + [0, -24, 0]
-            let control = start + dir * (length * 0.5) + [0, length * 0.3, 0]
+            // High and light: the arcs climb away like departures and end
+            // in the air, so they never lie across the landside.
+            let end = start + dir * length + [0, length * 0.1, 0]
+            let control = start + dir * (length * 0.45) + [0, length * 0.55, 0]
             var points: [SIMD3<Float>] = []
             for i in 0...32 {
                 let u = Float(i) / 32
@@ -663,7 +665,7 @@ final class HubDynamics {
             let highlighted = link.routeID == highlightedRoute
             let key: HubMaterialKey = highlighted ? .routePulse : .routeArc(Self.band(link.loadFactor))
             var batch = batches.removeValue(forKey: key) ?? HubMeshBatch()
-            Self.tube(&batch, points, thickness: highlighted ? 4.2 : 2.4)
+            Self.tube(&batch, points, thickness: highlighted ? 3.2 : 1.5)
             batches[key] = batch
             let arc = routeArcs.count
             routeArcs.append((link, points))
@@ -672,7 +674,7 @@ final class HubDynamics {
                 guard let mesh = pulseMesh else { break }
                 let e = ModelEntity(mesh: mesh, materials: [materials[.routePulse]])
                 e.components.set(HubMaterialTag(key: .routePulse))
-                e.scale = SIMD3<Float>(repeating: highlighted ? 5 : 3.6)
+                e.scale = SIMD3<Float>(repeating: highlighted ? 3.4 : 2.3)
                 routeFan.addChild(e)
                 routePulses.append((e, arc, Float(k) / Float(count) + Float(arc) * 0.137,
                                     1 / (7 + length / 300), k % 2 == 0))

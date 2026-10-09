@@ -182,7 +182,7 @@ struct HubTopBar: View {
                 .overlay(Rectangle().fill(Color.white.opacity(0.66)))
                 .overlay(alignment: .bottom) { Rectangle().fill(Color.white).frame(height: 1) }
                 .shadow(color: HubChromeStyle.panelShadow, radius: 12, y: 4)
-                .ignoresSafeArea(edges: .top)
+                .ignoresSafeArea(edges: [.top, .horizontal])
         }
     }
 
@@ -667,7 +667,7 @@ struct HubInspector: View {
                             .fixedSize()
                             .padding(.horizontal, active ? 7 : 0)
                             .frame(minWidth: active ? 0 : 6, minHeight: active ? 15 : 6)
-                            .background(active ? HubChromeStyle.accent : HubChromeStyle.track, in: Capsule())
+                            .background(active ? HubChromeStyle.accent : HubChromeStyle.tertiary.opacity(0.6), in: Capsule())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(page.title)
@@ -684,7 +684,7 @@ struct HubInspector: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
-            .frame(height: compact ? 116 : 136)
+            .frame(height: compact ? 112 : 118)
         }
         .frame(width: compact ? 240 : 250)
         .hubGlass()
@@ -1022,9 +1022,11 @@ struct HubBoard: View {
 
 struct HubCallout: View {
     let occupant: HubStandOccupant
+    /// iPhone on its side: the header and the bar, so the jet stays visible.
+    var compact = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: compact ? 6 : 8) {
             HStack(spacing: 6) {
                 Image(systemName: "airplane").font(.system(size: 11, weight: .bold)).foregroundStyle(HubChromeStyle.accent)
                 Text("Flight \(occupant.flight?.code ?? "Gate \(occupant.gate)")")
@@ -1040,13 +1042,16 @@ struct HubCallout: View {
                 }
             }
             .frame(height: 4)
-            line("person.2.fill", "Passengers",
-                 occupant.flight.map { $0.seats > 0 ? "\($0.passengers)/\($0.seats)" : "\($0.passengers)" } ?? "—")
-            line("fuelpump.fill", "Fuel", (occupant.stage ?? .deboarding) >= .boarding ? "Loaded" : "Fuelling")
-            line("bolt.fill", "Ground power", occupant.stage == .pushback ? "Off" : "On")
+            .animation(HubMotion.data, value: overall)
+            if !compact {
+                line("person.2.fill", "Passengers",
+                     occupant.flight.map { $0.seats > 0 ? "\($0.passengers)/\($0.seats)" : "\($0.passengers)" } ?? "—")
+                line("fuelpump.fill", "Fuel", (occupant.stage ?? .deboarding) >= .boarding ? "Loaded" : "Fuelling")
+                line("bolt.fill", "Ground power", occupant.stage == .pushback ? "Off" : "On")
+            }
         }
-        .frame(width: 210)
-        .hubGlass(radius: 14, padding: 11)
+        .frame(width: compact ? 200 : 210)
+        .hubGlass(radius: 14, padding: compact ? 9 : 11)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("ae-hub-callout")
     }

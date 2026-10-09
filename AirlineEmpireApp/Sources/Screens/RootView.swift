@@ -261,7 +261,9 @@ struct GameShell: View {
             guard ProcessInfo.processInfo.arguments.contains("-AEUITestOpenHub"),
                   !GameShell.didAutoOpenHub else { return }
             GameShell.didAutoOpenHub = true
-            for _ in 0..<100 {
+            // A minute: a cold first launch on a fresh simulator can take
+            // longer than 20 s to load the save.
+            for _ in 0..<300 {
                 if #available(iOS 18.0, *), let home = controller.snapshot?.playerAirline?.homeAirport {
                     controller.openHub(home)
                     return

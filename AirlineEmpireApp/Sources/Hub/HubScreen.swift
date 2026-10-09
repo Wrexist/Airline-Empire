@@ -120,7 +120,7 @@ private struct HubDashboard: View {
                         let point = item.anchor.kind == .callout
                             ? calloutCenter(item.point, size: full.size, insets: geo.safeAreaInsets, mode: mode)
                             : item.point
-                        anchored(item)
+                        anchored(item, mode: mode)
                             .position(x: point.x, y: point.y)
                             .allowsHitTesting(isTappable(item.anchor.kind))
                             .transition(.scale(scale: 0.7).combined(with: .opacity))
@@ -173,7 +173,10 @@ private struct HubDashboard: View {
                 HubTimeline(model: model, compact: size.width < 1_000)
                     .frame(maxWidth: max(640, size.width * 0.58))
                 Spacer(minLength: 0)
-                HubBoard(model: model)
+                if model.panel != .insights {
+                    HubBoard(model: model)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
             }
             .padding(14)
         }
@@ -330,7 +333,8 @@ private struct HubDashboard: View {
     /// held between the KPI row and the timeline, and clear of the inspector
     /// (reference shot B shows it whole, over the jet). Full-screen points.
     private func calloutCenter(_ anchor: CGPoint, size: CGSize, insets: EdgeInsets, mode: HubChromeMode) -> CGPoint {
-        let half = CGSize(width: 118, height: 80)
+        // The compact callout on a phone is one line and a bar.
+        let half = mode == .landscape ? CGSize(width: 110, height: 30) : CGSize(width: 118, height: 80)
         let chromeTop: CGFloat = mode == .regular ? 214 : mode == .landscape ? 104 : 250
         let chromeBottom: CGFloat = mode == .regular ? 170 : mode == .landscape ? 110 : 190
         let chromeRight: CGFloat = mode == .regular && model.showsInspector ? 330
@@ -352,11 +356,11 @@ private struct HubDashboard: View {
     }
 
     @ViewBuilder
-    private func anchored(_ item: HubProjectedAnchor) -> some View {
+    private func anchored(_ item: HubProjectedAnchor, mode: HubChromeMode) -> some View {
         switch item.anchor.kind {
         case .callout:
             if let occupant = model.focusedOccupant {
-                HubCallout(occupant: occupant)
+                HubCallout(occupant: occupant, compact: mode == .landscape)
                     .onTapGesture { withAnimation(HubMotion.panel) { model.showsInspector = true } }
             }
         case .pin(let label):

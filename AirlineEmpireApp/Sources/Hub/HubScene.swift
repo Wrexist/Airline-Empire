@@ -515,7 +515,15 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
     private func publishProjections() {
         guard let onProjected else { return }
         let size = arView.bounds.size
-        let visible: [HubProjectedAnchor] = dynamics.anchors.compactMap { anchor in
+        // Labels stay in the part of the screen the dashboard leaves free
+        // and never stack: the focused stand first, then stands, then routes.
+        let safe = HubFraming.safeArea(width: Double(size.width), height: Double(size.height))
+        let free = CGRect(x: (safe.minX + 1) / 2 * size.width, y: (1 - safe.maxY) / 2 * size.height,
+                          width: (safe.maxX - safe.minX) / 2 * size.width,
+                          height: (safe.maxY - safe.minY) / 2 * size.height).insetBy(dx: -10, dy: -24)
+        var placed: [CGRect] = []
+        let ordered = dynamics.anchors.sorted { rank($0) < rank($1) }
+        let visible: [HubProjectedAnchor] = ordered.compactMap { anchor in
             switch anchor.kind {
             case .pin: guard shot == .terminal, overlays.contains(.labels) else { return nil }
             case .pill: guard shot == .district, overlays.contains(.labels) else { return nil }
@@ -529,9 +537,25 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
             let toPoint = anchor.position - rig.position
             let forward = rig.target - rig.position
             guard simd_dot(toPoint, forward) > 0 else { return nil }
+            switch anchor.kind {
+            case .tag, .route:
+                let box = CGRect(x: p.x - 70, y: p.y - 26, width: 140, height: 26)
+                guard free.contains(CGPoint(x: p.x, y: p.y)),
+                      !placed.contains(where: { $0.intersects(box) }) else { return nil }
+                placed.append(box)
+            default: break
+            }
             return HubProjectedAnchor(anchor: anchor, point: p)
         }
         onProjected(visible)
+    }
+
+    private func rank(_ anchor: HubAnchor) -> Int {
+        switch anchor.kind {
+        case .tag(let tag): tag.standIndex == dynamics.focusStand ? 0 : 1
+        case .route(let tag): tag.highlighted ? 0 : 2
+        default: 0
+        }
     }
 
     // MARK: Gestures

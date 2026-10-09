@@ -149,7 +149,7 @@ struct HubInsightsPanel: View {
         section("Your movements today") {
             let now = (model.snapshot?.localMinuteOfDay ?? 0) / 60
             Chart(Array(insights.movementsByHour.enumerated()), id: \.offset) { hour, count in
-                BarMark(x: .value("Hour", hour), y: .value("Movements", count), width: .ratio(0.7))
+                BarMark(x: .value("Hour", hour), y: .value("Movements", count), width: .fixed(8))
                     .foregroundStyle(hour == now ? HubChromeStyle.accent : HubChromeStyle.accent.opacity(0.35))
                     .cornerRadius(2)
             }

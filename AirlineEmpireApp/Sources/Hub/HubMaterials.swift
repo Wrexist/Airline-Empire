@@ -152,7 +152,7 @@ final class HubMaterials {
             return lit ? glow(UIColor(hub: 0x4D7DFF), intensity: 2.6 * dusk) : matte(UIColor(hub: 0x7D93D8), roughness: 0.4)
         case .routeArc(let band):
             let colours: [UInt32] = [0x3FE0E8, 0x3FE0B4, 0xF5B84D, 0xF06A8A]
-            return unlit(UIColor(hub: colours[max(0, min(3, band))]), opacity: 0.82)
+            return unlit(UIColor(hub: colours[max(0, min(3, band))]), opacity: 0.72)
         case .routePulse: return unlit(UIColor(hub: 0xF2FFFF))
         case .heat:
             if let heatmap { return unlit(.white, opacity: 0.85, texture: heatmap) }

@@ -18,7 +18,7 @@ final class HubViewUITests: AEUITestCase {
         XCUIDevice.shared.orientation = .landscapeLeft
         app.launch()
         app.activate()
-        require(app.descendants(matching: .any)["ae-hub-scene"], "hub scene", timeout: 45)
+        require(app.descendants(matching: .any)["ae-hub-scene"], "hub scene", timeout: 90)
         require(app.descendants(matching: .any)["ae-hub-timeline"], "turnaround timeline", timeout: 20)
         // Let geometry upload and the camera settle.
         Thread.sleep(forTimeInterval: 6)
