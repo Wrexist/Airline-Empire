@@ -600,11 +600,41 @@ struct HubSceneBuilder {
 
     // MARK: Landside buildings
 
+    /// Window bands on every face of a block, one row per floor, split
+    /// into panes so the night lights some and not others: the lit ones use
+    /// the window material that glows warm after dusk, the rest stay dark
+    /// (reference night: grids of lit windows on every building).
+    private mutating func windowBands(_ c: SIMD3<Float>, w: Float, d: Float, base: Float, floors: Int, storey: Float,
+                                      seed: Int) {
+        let faces: [(normal: SIMD3<Float>, along: SIMD3<Float>, length: Float, offset: Float)] = [
+            (SIMD3<Float>(0, 0, 1), SIMD3<Float>(1, 0, 0), w, d / 2),
+            (SIMD3<Float>(0, 0, -1), SIMD3<Float>(1, 0, 0), w, d / 2),
+            (SIMD3<Float>(1, 0, 0), SIMD3<Float>(0, 0, 1), d, w / 2),
+            (SIMD3<Float>(-1, 0, 0), SIMD3<Float>(0, 0, 1), d, w / 2),
+        ]
+        for f in 0..<floors {
+            let y = base + Float(f) * storey + storey * 0.3
+            for (k, face) in faces.enumerated() {
+                let panes = max(2, Int(face.length / 9))
+                let pitch = (face.length - 2) / Float(panes)
+                for i in 0..<panes {
+                    let lit = (seed &+ f &* 7 &+ k &* 13 &+ i &* 5) % 5 != 0
+                    let along = -face.length / 2 + 1 + (Float(i) + 0.5) * pitch
+                    let at = c + face.normal * (face.offset + 0.06) + face.along * along + SIMD3<Float>(0, y, 0)
+                    let size: SIMD3<Float> = face.normal.x != 0 ? [0.12, storey * 0.45, pitch - 1.4]
+                                                                : [pitch - 1.4, storey * 0.45, 0.12]
+                    with(.landside, lit ? .windowDark : .windowUnlit) { $0.box(center: at, size: size) }
+                }
+            }
+        }
+    }
+
     private mutating func office(_ p: HubPiece) {
         let c = Self.f(p.center)
         let w = Float(p.size.x), h = Float(p.size.y), d = Float(p.size.z)
         let floors = max(1, min(8, p.variant))
-        with(.landside, .office(floors: floors)) { $0.box(center: c + [0, 0.6, 0], size: [w, h, d], top: false) }
+        with(.landside, .building) { $0.box(center: c + [0, 0.6, 0], size: [w, h, d], top: false) }
+        windowBands(c, w: w, d: d, base: 0.6, floors: floors, storey: h / Float(floors), seed: Int(abs(c.x * 3 + c.z)))
         with(.landside, .roof) {
             $0.roundedBox(center: c + [0, h + 0.6, 0], size: [w + 0.8, 0.9, d + 0.8], bevel: 0.3)
             $0.roundedBox(center: c + [w * 0.15, h + 1.5, -d * 0.1], size: [w * 0.3, 2.2, d * 0.3], bevel: 0.3)
@@ -621,7 +651,8 @@ struct HubSceneBuilder {
         let w = Float(p.size.x), h = Float(p.size.y), d = Float(p.size.z)
         let floors = max(1, min(8, p.variant))
         let storey = h / Float(floors)
-        with(.landside, .office(floors: floors)) { $0.box(center: c + [0, 0.6, 0], size: [w, h, d], top: false) }
+        with(.landside, .building) { $0.box(center: c + [0, 0.6, 0], size: [w, h, d], top: false) }
+        windowBands(c, w: w, d: d, base: 0.6, floors: floors, storey: storey, seed: Int(abs(c.x * 5 + c.z)))
         with(.landside, .white) {
             for f in 1..<floors {
                 let y = 0.6 + Float(f) * storey - 0.2

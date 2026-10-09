@@ -10,7 +10,7 @@ enum HubMaterialKey: Hashable {
     case houseRoof, houseWood, windowDark, water, blob, tyre, darkMetal, hiVis, cone, white
     case safety, pulse, queueGlow, routeGlow, pinGlow, lamp, lampPool, heat
     case livery(Livery), liveryAccent(Livery), cloth(Int), skin(Int)
-    case office(floors: Int), screen, kioskScreen, skylight
+    case office(floors: Int), screen, kioskScreen, skylight, windowUnlit
 }
 
 @available(iOS 18.0, *)
@@ -115,6 +115,9 @@ final class HubMaterials {
         case .houseRoof: return matte(p.houseRoof, roughness: 0.7)
         case .houseWood: return matte(p.houseWood, roughness: 0.85)
         case .windowDark: return night ? glow(p.windowLit, intensity: p.windowGlow) : matte(p.windowDark, roughness: 0.2)
+        // A window nobody is behind at night: dark by day like the rest,
+        // still dark after dusk.
+        case .windowUnlit: return matte(night ? UIColor(hub: 0x2E3262) : p.windowDark, roughness: 0.2)
         case .water: return night ? glow(p.water, intensity: 1.4) : matte(p.water, roughness: 0.15)
         case .blob: return unlit(p.blob, opacity: night ? 0.55 : 0.32, texture: texture("blob", Self.blobImage))
         case .tyre: return matte(HubPalette.tyre)
@@ -262,8 +265,8 @@ final class HubMaterials {
             // The floor plane's texture runs street-side first: row 0 is
             // the hall's front edge, so hotspot depth maps flipped.
             let sx = spot.x * CGFloat(w), sy = (1 - spot.y) * CGFloat(h)
-            // 4–9 m pools.
-            let metres = 4 + 5 * spot.weight * (0.6 + 0.6 * load)
+            // 5–11 m pools.
+            let metres = 5 + 6 * spot.weight * (0.6 + 0.6 * load)
             let x0 = max(0, Int(sx - metres * pxPerMetreX)), x1 = min(w - 1, Int(sx + metres * pxPerMetreX))
             let y0 = max(0, Int(sy - metres * pxPerMetreY)), y1 = min(h - 1, Int(sy + metres * pxPerMetreY))
             guard x0 <= x1, y0 <= y1 else { continue }
@@ -271,7 +274,7 @@ final class HubMaterials {
                 for x in x0...x1 {
                     let d = hypot((CGFloat(x) - sx) / pxPerMetreX, (CGFloat(y) - sy) / pxPerMetreY) / metres
                     if d < 1 {
-                        let falloff = (1 - d * d) * (1 - d * d)
+                        let falloff = 1 - d * d
                         field[y * w + x] += falloff * (0.55 + 0.45 * spot.weight) * (0.8 + 0.4 * load)
                     }
                 }

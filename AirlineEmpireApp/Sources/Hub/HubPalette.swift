@@ -75,12 +75,13 @@ struct HubPalette: Equatable {
         houseRoof: UIColor(hub: 0x3A4680), houseWood: UIColor(hub: 0x8A6650),
         windowDark: UIColor(hub: 0xFFD9A0), windowLit: UIColor(hub: 0xFFD9A0), windowGlow: 2.1,
         water: UIColor(hub: 0x3A8FE0), background: UIColor(hub: 0x40457E),
-        // Lights near-neutral lavender: a blue key and a blue sky multiplied
-        // into blue albedos read saturated navy, not the reference's
-        // luminous blue-grey.
-        skyTop: UIColor(hub: 0x8D93C2), skyHorizon: UIColor(hub: 0x676C9C),
-        blob: UIColor(hub: 0x161842), lampGlow: 2.6, keyIntensity: 1_300,
-        keyColor: UIColor(hub: 0xC6CBF0), iblExponent: 1.3)
+        // Measured on the first captures: a blue-tinted fill rendered roads
+        // at 0.7x red and green but 1.0x blue. The albedos already carry the
+        // reference's blue-grey, so the fill is a cool grey, bright enough
+        // to give them back at about 1x.
+        skyTop: UIColor(hub: 0xB4B6C8), skyHorizon: UIColor(hub: 0x8E90A8),
+        blob: UIColor(hub: 0x161842), lampGlow: 2.6, keyIntensity: 1_100,
+        keyColor: UIColor(hub: 0xD8DCF5), iblExponent: 1.45)
 
     static func livery(_ livery: Livery) -> UIColor {
         switch livery {
