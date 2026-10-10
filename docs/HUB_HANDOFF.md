@@ -181,7 +181,19 @@ later game day and its upkeep starts then.
 Captures (`testHubBuildingsGoUpOverTime`, a Regional-era fixture mid-build):
 `HUB-12-ceremony`, `HUB-13-opened`, `HUB-14-works`, `HUB-15-status`,
 `HUB-16-hangar-works`. The first flow's order frames are now
-`HUB-10-ordered` and `HUB-11-works`: ordering starts the works.
+`HUB-10-ordered` and `HUB-11-works`: ordering starts the works. Verified
+green on both devices, every UI test passing (run 38044744398).
+
+| Opening ceremony | Every stage of the works | Hangar groundworks |
+|---|---|---|
+| ![](design/hub-view/hub-12-ceremony.jpg) | ![](design/hub-view/hub-14-works.jpg) | ![](design/hub-view/hub-16-hangar-works.jpg) |
+| **Hub status and story** | **Ordered: hoarding goes up** | **iPhone, mid-build** |
+| ![](design/hub-view/hub-15-status.jpg) | ![](design/hub-view/hub-11-works.jpg) | ![](design/hub-view/iphone-13-opened.jpg) |
+
+**Not yet seen in a render:** the finished hangar with a jet in its bay,
+the finished crew hotel, a locked plot and the blueprint ghost — the
+fixture is mid-build and in the Regional era. A second fixture (hangar
+open, an aircraft in check, an era-locked plot) is the next capture to add.
 
 ## 1. Where things stood after the first build
 
