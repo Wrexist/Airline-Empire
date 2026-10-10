@@ -382,9 +382,9 @@ struct HubStatusSection: View {
                     Text("STORY").font(.system(size: 10, weight: .bold)).kerning(0.6).foregroundStyle(HubChromeStyle.tertiary)
                     ForEach(Array(timeline.suffix(6).enumerated()), id: \.offset) { _, entry in
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text(Format.shortDate(entry.date) + " \(entry.date.year % 100)")
+                            Text(Format.longDate(entry.date))
                                 .font(.system(size: 10).monospacedDigit()).foregroundStyle(HubChromeStyle.secondary)
-                                .frame(width: 58, alignment: .leading)
+                                .frame(width: 74, alignment: .leading)
                             Text(entry.title).font(.system(size: 11)).foregroundStyle(HubChromeStyle.ink)
                         }
                     }

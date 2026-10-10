@@ -179,8 +179,9 @@ later game day and its upkeep starts then.
 | Airport Services | `AirportServiceEditor.swift` | Four cards; tiers per building; under-construction and era-lock notes; build time in the quote. |
 
 Captures (`testHubBuildingsGoUpOverTime`, a Regional-era fixture mid-build):
-`HUB-12-ceremony`, `HUB-13-opened`, `HUB-14-works`, `HUB-15-hangar-works`,
-`HUB-16-status`.
+`HUB-12-ceremony`, `HUB-13-opened`, `HUB-14-works`, `HUB-15-status`,
+`HUB-16-hangar-works`. The first flow's order frames are now
+`HUB-10-ordered` and `HUB-11-works`: ordering starts the works.
 
 ## 1. Where things stood after the first build
 

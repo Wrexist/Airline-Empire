@@ -345,8 +345,10 @@ final class HubScreenModel {
         if first {
             let forced = Self.forcedCeremony.flatMap { kind in next.upgrades.first { $0.kind == kind } }
             if let offer = forced ?? missed.first {
+                // Once the scene has settled; the captures wait for it.
+                let delay = forced == nil ? 1.2 : 8
                 Task { @MainActor [weak self] in
-                    try? await Task.sleep(for: .seconds(1.2))
+                    try? await Task.sleep(for: .seconds(delay))
                     self?.celebrate(offer, replay: true)
                 }
             }

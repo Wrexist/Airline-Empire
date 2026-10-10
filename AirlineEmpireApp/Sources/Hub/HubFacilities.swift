@@ -373,16 +373,37 @@ final class HubFacilityYard {
             // The lot itself, scraped to earth.
             Self.with(&p, .houseWood) { $0.box(center: .zero, size: [hw - 1, 0.1, hd - 1]) }
         }
-        if stage >= .groundworks && !roof {
-            // Spoil heaps and a site cabin.
+        // From the first day: the site cabin by the gate and pallets of
+        // materials waiting.
+        let cabin: SIMD3<Float> = roof ? [hw / 2 - 3.5, 0, -hd / 2 + 2.5] : [hw / 2 - 6, 0, -hd / 2 + 4]
+        let cabinSize: SIMD3<Float> = roof ? [5, 2.4, 2.2] : [8, 2.8, 3]
+        Self.with(&p, .white) { $0.roundedBox(center: cabin, size: cabinSize, bevel: 0.2) }
+        Self.with(&p, .windowDark) { $0.box(center: cabin + [0, 1.0, -cabinSize.z / 2 - 0.05], size: [cabinSize.x * 0.6, 0.9, 0.1]) }
+        Self.with(&p, .houseWood) { b in
+            for k in 0..<(roof ? 3 : 5) {
+                let x = -hw / 2 + 3 + Float(k) * 2.6
+                b.box(center: [x, 0, -hd / 2 + 3], size: [2, 0.25, 2])
+                b.box(center: [x, 0.25, -hd / 2 + 3], size: [1.8, 0.8 + Float(k % 2) * 0.5, 1.8])
+            }
+        }
+        if stage >= .groundworks && !roof && standing == 0 {
+            // Spoil heaps where the foundations go in.
             Self.with(&p, .houseWood) { b in
                 b.sphere(center: [-hw * 0.3, 0, hd * 0.3], radius: 4, scale: [1.4, 0.45, 1], segments: 10, rings: 5)
                 b.sphere(center: [hw * 0.32, 0, hd * 0.28], radius: 3, scale: [1.2, 0.5, 1.1], segments: 10, rings: 5)
             }
-            Self.with(&p, .white) { $0.roundedBox(center: [hw / 2 - 6, 0, -hd / 2 + 4], size: [8, 2.8, 3], bevel: 0.2) }
-            Self.with(&p, .windowDark) { $0.box(center: [hw / 2 - 6, 1.1, -hd / 2 + 2.45], size: [5, 0.9, 0.1]) }
         }
-        if stage >= .frame {
+        if stage >= .frame && standing > 0 {
+            // An upgrade goes up round the building that keeps working:
+            // scaffold rising with the works, nothing over its roof.
+            let reach: Float = stage == .frame ? 0.6 : 1.0
+            for (key, batch) in Self.scaffold(sw: sw + 1.5, sd: sd + 1.5, h: h * reach) {
+                var merged = p.removeValue(forKey: key) ?? HubMeshBatch()
+                merged.append(batch, matrix: matrix_identity_float4x4)
+                p[key] = merged
+            }
+        }
+        if stage >= .frame && standing == 0 {
             // The frame: columns on a grid up to the height reached, and a
             // slab every floor.
             let reach: Float = stage == .frame ? 0.6 : 1.0
@@ -404,7 +425,7 @@ final class HubFacilityYard {
                 }
             }
         }
-        if stage == .cladding {
+        if stage == .cladding && standing == 0 {
             // Walls going on from the bottom, under scaffold.
             Self.with(&p, kind == .lounge ? .glass : .building) { b in
                 b.box(center: [0, 0, -sd / 2], size: [sw, h * 0.7, 0.3])
@@ -439,8 +460,17 @@ final class HubFacilityYard {
             craneList.append(jib)
         }
         if stage < .frame && !roof {
-            // Survey pegs and a parked van before the steel arrives.
+            // A parked van before the steel arrives.
             batcher.add(models.rawVehicle(.serviceVan), matrix: HubMeshBatch.translation([-hw * 0.3, 0, -hd / 2 + 6]))
+        }
+        // The crew in hi-vis and white hard hats.
+        let hardHat: (HubMaterialKey) -> HubMaterialKey = { $0 == .tyre ? .white : $0 }
+        let spots: [SIMD3<Float>] = [[-0.28, 0, -0.36], [0.05, 0, -0.4], [0.3, 0, -0.1], [-0.12, 0, 0.18],
+                                     [0.22, 0, 0.3], [-0.34, 0, 0.05], [0.1, 0, 0.05], [-0.05, 0, -0.2]]
+        for (k, spot) in spots.prefix(roof ? 4 : 8).enumerated() {
+            let at = SIMD3<Float>(spot.x * hw, 0, spot.z * hd)
+            batcher.add(models.rawPerson(crew: true),
+                        matrix: HubMeshBatch.translation(at) * HubMeshBatch.yaw(Float(k) * 1.3), remap: hardHat)
         }
         site.addChild(batcher.entity(materials: materials, name: "worksVehicles"))
         cranes[kind] = craneList.isEmpty ? nil : craneList

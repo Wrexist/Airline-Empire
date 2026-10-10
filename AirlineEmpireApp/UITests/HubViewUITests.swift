@@ -151,7 +151,8 @@ final class HubViewUITests: AEUITestCase {
         app.activate()
         require(app.descendants(matching: .any)["ae-hub-scene"], "hub scene", timeout: 90)
         // The lounge's opening: the camera flies to it, it rises, the toast.
-        Thread.sleep(forTimeInterval: 3.2)
+        require(app.descendants(matching: .any)["ae-hub-toast"], "opening toast", timeout: 40)
+        Thread.sleep(forTimeInterval: 1.4)
         frame("HUB-12-ceremony")
         Thread.sleep(forTimeInterval: 5)
         frame("HUB-13-opened")
@@ -161,26 +162,25 @@ final class HubViewUITests: AEUITestCase {
         if close.exists { close.tap() }
         Thread.sleep(forTimeInterval: 1)
         shot("HUB-14-works", "overview")
-        // The hangar's card: its stage, progress and opening day.
-        let hangar = app.descendants(matching: .any)["ae-hub-site-hangar"]
+        // The status and the hub's story in Insights › Airline, then the
+        // hangar's card from its row: its stage, progress and opening day.
+        let insights = app.buttons["ae-hub-insights"]
+        require(insights, "insights button")
+        insights.tap()
+        Thread.sleep(forTimeInterval: 1)
+        let airline = app.buttons["Airline"]
+        require(airline, "Airline tab")
+        airline.tap()
+        Thread.sleep(forTimeInterval: 1.5)
+        frame("HUB-15-status")
+        XCTAssertTrue(app.descendants(matching: .any)["ae-hub-status"].exists)
+        let hangar = app.buttons["ae-hub-facility-hangar"]
+        for _ in 0..<3 where !hangar.isHittable { app.descendants(matching: .any)["ae-hub-insights-panel"].swipeUp() }
         if hangar.waitForExistence(timeout: 5) {
             hangar.tap()
             Thread.sleep(forTimeInterval: 3)
-            frame("HUB-15-hangar-works")
+            frame("HUB-16-hangar-works")
             XCTAssertTrue(app.descendants(matching: .any)["ae-hub-upgrade-progress"].exists)
-        }
-        // The status and the hub's story in Insights › Airline.
-        let insights = app.buttons["ae-hub-insights"]
-        if insights.exists {
-            insights.tap()
-            Thread.sleep(forTimeInterval: 1)
-            let airline = app.buttons["Airline"]
-            if airline.exists {
-                airline.tap()
-                Thread.sleep(forTimeInterval: 1.5)
-                frame("HUB-16-status")
-                XCTAssertTrue(app.descendants(matching: .any)["ae-hub-status"].exists)
-            }
         }
         XCUIDevice.shared.orientation = .portrait
     }
