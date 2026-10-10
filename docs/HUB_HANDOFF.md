@@ -195,6 +195,26 @@ the finished crew hotel, a locked plot and the blueprint ghost — the
 fixture is mid-build and in the Regional era. A second fixture (hangar
 open, an aircraft in check, an era-locked plot) is the next capture to add.
 
+## 0e. Authored models, built from code (step 4, first model) — 2026-10-11
+
+Step 4 no longer waits for Meshy: models are Blender scripts
+(`scripts/hub-models/procedural/`, see the update at the top of
+[`HUB_MODEL_PIPELINE.md`](HUB_MODEL_PIPELINE.md)). First one in:
+**`Hub_aircraft_narrowbody.usdz`**, the hero jet — 7 960 triangles,
+38.2 × 35.9 × 11.8 m, slots white / livery / liveryAccent / windowDark /
+darkMetal / tyre; four-pane windscreen, 28 windows a side, door and
+over-wing exit outlines, sharklets, nacelles with lip, fan face and plug,
+flap-track fairings, belly fairing, swept fin with the diagonal accent
+flash, twin-wheel gear. It keeps the procedural jet's metrics that other
+code reads (radius 2 m, axis 3.5 m, forward left door 4.94 m behind the
+nose, engines within 0.5 m of `HubModels.enginePosition`). `check_usdz.py`
+passes. The `Hub view review` workflow now also runs when only
+`Resources/HubModels/` changes.
+
+**Next:** check the jet in the captures (size, facing, livery repaint, lit
+windows at night), then the rest of the gate batch in model-list priority:
+jet bridge, concourse, gate sign, turnaround vehicles (fuel truck first).
+
 ## 1. Where things stood after the first build
 
 ### What exists and works

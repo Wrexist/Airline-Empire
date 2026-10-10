@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/hub-view-review.yml'
       - 'AirlineEmpireApp/Sources/Hub/**'
+      - 'AirlineEmpireApp/Resources/HubModels/**'
       - 'AirlineEmpireApp/UITests/HubViewUITests.swift'
       - 'AirlineEmpireCore/Sources/AirlineEmpireCore/Session/Hub*.swift'
       - 'AirlineEmpireApp/Sources/App/AEOrientation.swift'
