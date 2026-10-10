@@ -28,6 +28,11 @@ public struct Airline: Equatable, Codable, Sendable {
     public var opsToday: DailyOps
     public var airportFacilities: [AirportCode: AirportFacilities]?
     public var airportFacilityHistory: [AirportFacilityChange]?
+    /// Buildings ordered and not yet open (docs/HUB_PROGRESSION_PLAN.md).
+    public var facilityConstructions: [FacilityConstruction]?
+    /// The status earned at each station above `.station`, the home airport
+    /// included. Nil until first assessed; earned statuses are never lost.
+    public var hubStatuses: [AirportCode: HubStatus]?
 
     public init(id: AirlineID, name: String, kind: AirlineKind,
                 homeAirport: AirportCode, foundedAt: SimTime) {

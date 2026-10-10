@@ -189,11 +189,17 @@ struct HubFacilityTag: Equatable {
     let kind: HubFacilityKind
     let title: String
     let levelName: String
-    /// "Build · $2.4M", "Fully built", or why it is blocked.
+    /// "Standard · $2.4M", "Fully built", "Crane up · 40% · 18 days", or
+    /// the era it waits for.
     let next: String
     let canUpgrade: Bool
     let maxed: Bool
+    /// Under construction (or its reveal is playing).
     let building: Bool
+    /// Construction progress, 0–1, while building.
+    var progress: Double? = nil
+    /// Waiting for a later era.
+    var locked: Bool = false
 }
 
 /// Anchors the SwiftUI overlay pins to the 3D world.
@@ -394,8 +400,7 @@ final class HubDynamics {
         }
         updateRouteFan(snapshot.insights.routes)
         if !snapshot.upgrades.isEmpty {
-            yard.apply(levels: Dictionary(snapshot.upgrades.map { ($0.kind, $0.level) }, uniquingKeysWith: { a, _ in a }),
-                       livery: snapshot.livery)
+            yard.apply(offers: snapshot.upgrades, livery: snapshot.livery)
         }
         rebuildAnchors(snapshot)
     }
@@ -618,16 +623,23 @@ final class HubDynamics {
         for offer in snapshot.upgrades {
             guard let site = layout.site(offer.kind) else { continue }
             let next: String
-            if let n = offer.next {
+            if let build = offer.construction {
+                let days = build.daysLeft == 1 ? "1 day" : "\(build.daysLeft) days"
+                next = "\(build.stage.title) · \(Int((build.progress * 100).rounded()))% · \(days)"
+            } else if let era = offer.lockedUntil {
+                next = "\(EraNames.title(era)) era"
+            } else if let n = offer.next {
                 next = offer.blocked == nil ? "\(n.levelName) · \(Format.money(Money(cents: n.installationCents)))"
                                             : "\(n.levelName) · locked"
             } else {
                 next = "Fully built"
             }
-            let tag = HubFacilityTag(kind: offer.kind, title: offer.buildingName, levelName: offer.levelName, next: next,
-                                     canUpgrade: offer.canUpgrade, maxed: offer.next == nil,
-                                     building: yard.isBuilding(offer.kind))
-            let top = HubFacilityYard.height(offer.kind, level: offer.level) + 9
+            let title = offer.construction?.buildingName ?? (offer.level == 0 ? offer.title : offer.buildingName)
+            let tag = HubFacilityTag(kind: offer.kind, title: title, levelName: offer.levelName, next: next,
+                                     canUpgrade: offer.canUpgrade, maxed: offer.next == nil && offer.construction == nil,
+                                     building: offer.isBuilding || yard.isRevealing(offer.kind),
+                                     progress: offer.construction?.progress, locked: offer.isLocked)
+            let top = HubFacilityYard.tagHeight(offer) + 9
             list.append(HubAnchor(id: "site-\(offer.kind.rawValue)", position: Self.f(site.center) + [0, top, 0],
                                   kind: .facility(tag)))
         }

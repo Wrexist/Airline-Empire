@@ -374,6 +374,16 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         applyOverlays()
     }
 
+    /// The next level of a building as a blueprint on its site; nil hides it.
+    func showBlueprint(_ target: (kind: HubFacilityKind, level: Int)?) {
+        dynamics?.yard.showBlueprint(target)
+    }
+
+    /// Plays a building's opening again: one that opened while away.
+    func replayFacility(_ kind: HubFacilityKind) {
+        dynamics?.yard.replay(kind)
+    }
+
     // MARK: Overlays
 
     private(set) var overlays: Set<HubOverlay> = Set(HubOverlay.allCases)

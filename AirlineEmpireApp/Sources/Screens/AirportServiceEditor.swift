@@ -38,7 +38,9 @@ struct AirportFacilityEditor: View {
     @State private var pending: AirportFacilities?
     @State private var confirming = false
     @State private var saved = false
-    private var installed: AirportFacilities { player.facilities(at: airport) }
+    /// The station as it will stand once everything ordered has opened: the
+    /// baseline a proposal is priced and confirmed against.
+    private var installed: AirportFacilities { player.plannedFacilities(at: airport) }
     private var proposed: AirportFacilities { draft ?? installed }
     private var quoteRequest: AirportQuoteRequest {
         AirportQuoteRequest(airport: airport, proposed: proposed, installed: installed,
@@ -51,7 +53,7 @@ struct AirportFacilityEditor: View {
     }
     private var changes: String {
         AirportService.allCases.filter { $0.level(in: installed) != $0.level(in: proposed) }
-            .map { "\($0.title): \(AirportService.levelName($0.level(in: installed))) → \(AirportService.levelName($0.level(in: proposed)))" }
+            .map { "\($0.title): \($0.levelName($0.level(in: installed))) → \($0.levelName($0.level(in: proposed)))" }
             .joined(separator: "\n")
     }
 
@@ -93,14 +95,22 @@ struct AirportFacilityEditor: View {
             }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("\(changes)\n\nInstallation: \(Format.money(cost)), non-refundable. New monthly cost: \(Format.money(proposed.monthlyCost(tuning: tuning))).")
+            Text("\(changes)\n\nInstallation: \(Format.money(cost)), non-refundable.\(buildNote) New monthly cost once open: \(Format.money(proposed.monthlyCost(tuning: tuning))).")
         }
+    }
+
+    /// "Opens in 30 days." for the longest build in the proposal.
+    private var buildNote: String {
+        let days = AirportService.allCases.map {
+            $0.buildDays(from: $0.level(in: installed), to: $0.level(in: proposed), tuning: tuning)
+        }.max() ?? 0
+        return days > 0 ? " Building takes up to \(days) days." : ""
     }
 
     private var introduction: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Invest in a better airport experience").font(.headline).accessibilityAddTraits(.isHeader)
-            Text("Improve route comfort and departure reliability with services for your airline at \(airport.raw).")
+            Text("Build lounges, ground crews, hangars and crew bases for your airline at \(airport.raw). Each takes game days to build and costs upkeep once open.")
                 .font(.subheadline).foregroundStyle(AETheme.mutedText)
             if let spec = catalog.airport(airport) {
                 ViewThatFits(in: .horizontal) {
@@ -119,8 +129,11 @@ struct AirportFacilityEditor: View {
     }
 
     private func serviceCard(_ service: AirportService) -> some View {
-        let model = AirportServiceReadModel(service: service, installed: installed, proposed: proposed, tuning: tuning)
+        let model = AirportServiceReadModel(service: service, installed: installed, proposed: proposed, tuning: tuning,
+                                            ops: catalog.tuning.ops)
         let color = service == .lounge ? AETheme.fare : AETheme.accent
+        let building = player.construction(at: airport, of: service)
+        let locked = snapshot.progression.era < service.unlockEra
         let wide = sizeClass == .regular && !typeSize.isAccessibilitySize
         let layout = wide ? AnyLayout(HStackLayout(alignment: .top, spacing: 20))
             : AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
@@ -130,18 +143,28 @@ struct AirportFacilityEditor: View {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack(alignment: .top, spacing: 10) {
                             if !typeSize.isAccessibilitySize {
-                                Image(systemName: service == .lounge ? "cup.and.saucer.fill" : "wrench.fill")
+                                Image(systemName: Self.icon(service))
                                     .font(.title2).foregroundStyle(color).padding(10)
                                     .background(color.opacity(0.12), in: .rect(cornerRadius: AETheme.cornerRadiusSmall))
                                     .accessibilityHidden(true)
                             }
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(service.title).font(.headline).accessibilityAddTraits(.isHeader)
-                                Text(service == .lounge ? "A quieter space to wait, work and recharge." : "Dedicated support for more reliable departures.")
+                                Text(Self.blurb(service))
                                     .font(.caption).foregroundStyle(AETheme.mutedText)
                             }
                         }
-                        tiers(service, model: model, color: color)
+                        if let building {
+                            Label("Under construction: \(service.levelName(building.level)) opens in \(building.daysLeft(at: snapshot.clock.now)) days",
+                                  systemImage: "hammer.fill")
+                                .font(.caption.weight(.semibold)).foregroundStyle(AETheme.caution)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier("ae-airport-\(service.rawValue)-building")
+                        } else if locked {
+                            Label("Unlocks in the \(EraNames.title(service.unlockEra)) era", systemImage: "lock.fill")
+                                .font(.caption.weight(.semibold)).foregroundStyle(AETheme.mutedText)
+                        }
+                        tiers(service, model: model, color: color, frozen: building != nil, locked: locked)
                     }.frame(maxWidth: .infinity, alignment: .leading)
                     VStack(alignment: .leading, spacing: 7) {
                         Label(model.effect, systemImage: service == .lounge ? "star" : "checkmark.shield")
@@ -153,38 +176,61 @@ struct AirportFacilityEditor: View {
                 }
                 Divider()
                 AirportFact(title: "Installation now", value: Format.money(model.installation))
-                AirportFact(title: "Monthly cost", value: Format.money(model.monthly))
+                AirportFact(title: "Monthly cost once open", value: Format.money(model.monthly))
+                if model.buildDays > 0 {
+                    AirportFact(title: "Build time", value: "\(model.buildDays) days")
+                }
                 ViewThatFits(in: .horizontal) {
                     HStack {
-                        Text("Current: \(AirportService.levelName(model.current))")
+                        Text("Current: \(service.levelName(model.current))")
                         Spacer()
-                        Text(model.current == model.proposed ? "No change" : "Proposed: \(AirportService.levelName(model.proposed)) →")
+                        Text(model.current == model.proposed ? "No change" : "Proposed: \(service.levelName(model.proposed)) →")
                             .foregroundStyle(color)
                     }
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("Current: \(AirportService.levelName(model.current))")
-                        Text("Proposed: \(AirportService.levelName(model.proposed))").foregroundStyle(color)
+                        Text("Current: \(service.levelName(model.current))")
+                        Text("Proposed: \(service.levelName(model.proposed))").foregroundStyle(color)
                     }
                 }.font(.caption).accessibilityElement(children: .combine)
             }
         }
     }
 
-    private func tiers(_ service: AirportService, model: AirportServiceReadModel, color: Color) -> some View {
+    private static func icon(_ service: AirportService) -> String {
+        switch service {
+        case .lounge: "cup.and.saucer.fill"
+        case .ground: "wrench.fill"
+        case .hangar: "wrench.and.screwdriver.fill"
+        case .crewBase: "person.2.badge.gearshape.fill"
+        }
+    }
+
+    private static func blurb(_ service: AirportService) -> String {
+        switch service {
+        case .lounge: "A quieter space to wait, work and recharge."
+        case .ground: "Dedicated support for more reliable departures."
+        case .hangar: "Your own maintenance: shorter, cheaper checks for aircraft flying here."
+        case .crewBase: "Crews based here: a longer operating day and lower crew costs."
+        }
+    }
+
+    private func tiers(_ service: AirportService, model: AirportServiceReadModel, color: Color,
+                       frozen: Bool, locked: Bool) -> some View {
         let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 6)) : AnyLayout(HStackLayout(spacing: 6))
         return layout {
-            ForEach(0...2, id: \.self) { level in
+            ForEach(0...service.maxLevel, id: \.self) { level in
                 Button {
                     draft = service.setting(level, in: proposed); saved = false
                 } label: {
                     VStack(spacing: 3) {
-                        Text(AirportService.levelName(level)).font(.caption.weight(.semibold))
+                        Text(service.levelName(level)).font(.caption.weight(.semibold))
+                            .multilineTextAlignment(.center)
                         Text("Level \(level)").font(.caption2)
                     }.frame(maxWidth: .infinity, minHeight: 52)
                         .background(model.proposed == level ? color.opacity(0.18) : .clear, in: .rect(cornerRadius: AETheme.cornerRadiusSmall))
                         .overlay { RoundedRectangle(cornerRadius: AETheme.cornerRadiusSmall).strokeBorder(model.proposed == level ? color : AETheme.surfaceRim, lineWidth: model.proposed == level ? 2 : 1) }
-                }.buttonStyle(.plain).disabled(pending != nil)
-                    .accessibilityLabel("\(service.title), \(AirportService.levelName(level)), level \(level)")
+                }.buttonStyle(.plain).disabled(pending != nil || frozen || (locked && level > 0))
+                    .accessibilityLabel("\(service.title), \(service.levelName(level)), level \(level)")
                     .accessibilityValue(model.current == level ? "Currently installed" : "")
                     .accessibilityHint("Preview this tier before applying upgrades")
                     .accessibilityAddTraits(model.proposed == level ? .isSelected : [])
@@ -217,8 +263,8 @@ struct AirportFacilityEditor: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Demand means allocated bookings before seat limits, over a 30-day reference month. Fares, aircraft and market conditions are held constant. Revenue includes seat limits; net change includes route costs and the change in monthly services, excluding installation.")
                             Text("Ground-service benefits appear in actual operations over time. Future disruption savings and reputation changes are not priced into this estimate.")
-                            Text("Installation is non-refundable. Monthly charges use your installed levels at the next month boundary, without proration, even if routes close. Removing services stops future charges. Reopening pays installation again.")
-                            Text("Lounge demand changes take effect at the next daily update. Ground-service changes apply to future departures.")
+                            Text("Installation is non-refundable and paid when you order. Each building opens after its build time; monthly charges start with the first month boundary after it opens, without proration, even if routes close. Removing a building stops future charges. Rebuilding pays installation again.")
+                            Text("A lounge changes demand from the daily update after it opens. Ground services, hangars and crew bases apply to flights and checks from opening day.")
                         }.font(.caption).foregroundStyle(AETheme.mutedText).padding(.top, 8)
                     }.font(.subheadline)
                 } else {
@@ -238,7 +284,7 @@ struct AirportFacilityEditor: View {
     private var actions: some View {
         VStack(spacing: 10) {
             if proposed != installed {
-                Text("Installation is non-refundable. New monthly charges apply at the next month boundary.")
+                Text("Installation is non-refundable.\(buildNote) Monthly charges start once open.")
                     .font(.caption).foregroundStyle(AETheme.mutedText)
             }
             Button { confirming = true } label: {

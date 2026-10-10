@@ -299,18 +299,24 @@ struct HubLayoutTests {
             #expect(lounge.elevation == HubLayout.terminalRoofTop)
             #expect(layout.terminal.contains(HubVec(lounge.footprint.minX, 0, lounge.footprint.minZ))
                     && layout.terminal.contains(HubVec(lounge.footprint.maxX, 0, lounge.footprint.maxZ)), "\(spec.code)")
-            // The depot's lot is on the ground and clear of every piece,
-            // the stands' parked jets, and the service lanes.
-            let depot = try #require(layout.site(.groundServices))
-            #expect(depot.elevation == 0)
-            for piece in layout.pieces where piece.groundBounds.overlaps(depot.footprint, margin: 2) {
-                Issue.record("\(piece.kind) on the depot lot at \(spec.code)")
-            }
-            for stand in layout.stands where stand.parkedEnvelope.overlaps(depot.footprint) {
-                Issue.record("stand \(stand.gate) on the depot lot at \(spec.code)")
-            }
-            for lane in layout.serviceLanes where lane.points.contains(where: { depot.footprint.contains($0) }) {
-                Issue.record("service lane through the depot lot at \(spec.code)")
+            // The depot's, hangar's and crew base's lots are on the ground
+            // and clear of every piece, the stands' parked jets, the service
+            // lanes and each other.
+            let lots = try [HubFacilityKind.groundServices, .hangar, .crewBase].map { try #require(layout.site($0)) }
+            for (index, lot) in lots.enumerated() {
+                #expect(lot.elevation == 0)
+                for piece in layout.pieces where piece.groundBounds.overlaps(lot.footprint, margin: 2) {
+                    Issue.record("\(piece.kind) on the \(lot.kind) lot at \(spec.code)")
+                }
+                for stand in layout.stands where stand.parkedEnvelope.overlaps(lot.footprint) {
+                    Issue.record("stand \(stand.gate) on the \(lot.kind) lot at \(spec.code)")
+                }
+                for lane in layout.serviceLanes where lane.points.contains(where: { lot.footprint.contains($0) }) {
+                    Issue.record("service lane through the \(lot.kind) lot at \(spec.code)")
+                }
+                for other in lots[(index + 1)...] where other.footprint.overlaps(lot.footprint, margin: 6) {
+                    Issue.record("\(lot.kind) and \(other.kind) lots overlap at \(spec.code)")
+                }
             }
         }
     }
@@ -516,12 +522,12 @@ struct HubSnapshotTests {
 
         // Bought, the offer moves up a level; at the top there is no next.
         var state = engine.state
-        let top = AirportFacilities(lounge: 2, groundServices: 2)
+        let top = AirportFacilities(lounge: 2, groundServices: 2, hangar: 2, crewBase: 1)
         var owner = state.airlines[airline]!
         owner.airportFacilities = ["MET": top]
         state.airlines[airline] = owner
         let maxed = state.hubUpgradeOffers(airport: "MET", catalog: engine.catalog)
-        #expect(maxed.allSatisfy { $0.level == 2 && $0.next == nil && !$0.canUpgrade })
+        #expect(maxed.allSatisfy { $0.level == $0.maxLevel && $0.next == nil && !$0.canUpgrade })
         #expect(maxed.allSatisfy { $0.monthlyCents > 0 })
     }
 
@@ -536,7 +542,9 @@ struct HubSnapshotTests {
         #expect(!offers.isEmpty)
         for offer in offers where offer.next != nil {
             #expect(!offer.canUpgrade)
-            #expect(offer.blocked?.contains("cash") == true, "\(offer.kind): \(offer.blocked ?? "nil")")
+            // A building of a later era says so before it talks money.
+            let reason = offer.isLocked ? "era" : "cash"
+            #expect(offer.blocked?.contains(reason) == true, "\(offer.kind): \(offer.blocked ?? "nil")")
         }
     }
 

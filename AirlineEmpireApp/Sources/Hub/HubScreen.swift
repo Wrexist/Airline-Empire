@@ -84,7 +84,8 @@ struct HubScreen: View {
             guard let player = game.snapshot?.playerAirline else {
                 return CommandRejection(code: "airport.unavailable", message: "Start an airline first.")
             }
-            let facilities = kind.service.setting(level, in: player.facilities(at: hub))
+            // Against the plan, so a building already going up stays ordered.
+            let facilities = kind.service.setting(level, in: player.plannedFacilities(at: hub))
             return game.submit(ConfigureAirportFacilitiesCommand(airline: player.id, airport: hub,
                                                                  facilities: facilities))
         }

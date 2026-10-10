@@ -161,6 +161,27 @@ procedural buildings until they exist.
 
 ---
 
+## 0d. Buildings that take time, the hangar and the crew base (step 2, first wave)
+
+The plan's Phase A, B and C ([`HUB_PROGRESSION_PLAN.md`](HUB_PROGRESSION_PLAN.md),
+decision D-017). Ordering pays now; the building opens at the start of a
+later game day and its upkeep starts then.
+
+| Piece | Where | What |
+|---|---|---|
+| Rules | `AirportFacilities.swift`, `AirportFacilityTuning.swift` (Core) | Four buildings: lounge, ground services, **maintenance hangar** (Regional era, 2 levels) and **crew base** (Regional era). Build days, prices and effects in `tuning.json`. `ConfigureAirportFacilitiesCommand` orders against the plan (built + under construction): one build per building, era gate for the player, scaling back immediate. |
+| Construction | `FacilityConstructionSystem` (Core, before the scheduler) | Opens due buildings at midnight, emits `facilityOpened`, records it in the campaign record, assesses **hub status** (Station → Base → Main base, never lost) and emits `hubStatusRaised`. |
+| Effects | `FleetSystem`, `FlightSchedulingSystem`, `FlightOpsSystem` | Hangar where the aircraft flies: checks 2 / 1 days, 20 % / 35 % cheaper. Crew base on a route: 05:00–01:00 and crews 10 % cheaper. Fixed with it: the scheduler plans the turnaround flight ops uses; aircraft due for a check get no flights and ones leaving the hangar fly. |
+| Read model | `HubUpgrades.swift` | Offers carry the era lock, construction (progress, stage, days left, opening date), build days, a payoff line from the simulation's own arithmetic, and the jets in the hangar; `HubSnapshot.status` and `.timeline` give the hub status, its requirements and the hub's story. |
+| Sites | `HubLayout.planFacilitySites` | The hangar in line with the airfield's hangars with its own apron to the taxiway; the crew base on the lawn beside the terminal's east end. Tested clear of every piece, stand, lane and each other at every airport. |
+| World | `HubFacilities.swift` | Plots with a board (grey behind a barrier when locked); works by stage — hoarding in your livery, then diggers and spoil, then a crane over a rising frame, then cladding under scaffold — with the jib slewing and the digger working; the hangar (glazed gable so **your jet in for its check** shows from the overview) and the crew hotel with its liveried bus; a pulsing **blueprint** of the next level while its card is open; the reveal on opening, replayed on the next visit for openings that happened while away. |
+| Chrome | `HubUpgradeViews.swift`, `HubPanels.swift`, `HubScreenModel.swift` | Tags show stage, % and days left, or the era. The card shows build time and payoff, then the works' progress bar and opening date, or the lock. Insights › Airline shows hub status with ticks, the hub's story and all four buildings. Toasts for "under construction" and openings; the game celebrates openings and status. |
+| Airport Services | `AirportServiceEditor.swift` | Four cards; tiers per building; under-construction and era-lock notes; build time in the quote. |
+
+Captures (`testHubBuildingsGoUpOverTime`, a Regional-era fixture mid-build):
+`HUB-12-ceremony`, `HUB-13-opened`, `HUB-14-works`, `HUB-15-hangar-works`,
+`HUB-16-status`.
+
 ## 1. Where things stood after the first build
 
 ### What exists and works

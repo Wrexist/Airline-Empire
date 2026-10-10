@@ -5,7 +5,14 @@
 > `claude/kind-bardeen-ajulsw`. This is the plan for **new hub buildings**:
 > what to build, in what order, and how to make the player *feel* their
 > airline grow at each airport. Decisions the owner must take are collected
-> in §9. Nothing here is built yet.
+> in §9.
+>
+> **Status 2026-10-10:** the owner took the recommendations. Phase A (the
+> progression frame), the maintenance hangar and the crew base are built
+> (`HUB_HANDOFF.md` §0d, decision D-017). Two changes from this text, both
+> from measurement: prices are re-tuned to the §8 payback bar (the §4 figures
+> never paid back), and hub status gains a free-tier step, **Main base**
+> (hangar and crew base open), between Base and Hub.
 
 ---
 

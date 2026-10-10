@@ -307,10 +307,15 @@ struct HubInsightsPanel: View {
             HubMeter(title: "Service", value: insights.service, tint: HubChromeStyle.warn)
             HubMeter(title: "Comfort", value: insights.comfort, tint: HubChromeStyle.warn)
         }
-        section("Facilities here") {
-            facility(.lounge, "sofa.fill", "Lounge", insights.lounge, ["None", "Lounge", "Flagship lounge"])
-            facility(.groundServices, "box.truck.fill", "Ground services", insights.groundServices,
-                     ["Shared", "Own depot", "Electric fleet"])
+        if let snapshot = model.snapshot, model.upgradeOffers.isEmpty == false {
+            section("Hub status") {
+                HubStatusSection(status: snapshot.status, timeline: snapshot.timeline)
+            }
+        }
+        section("Buildings here") {
+            ForEach(model.upgradeOffers) { offer in
+                facility(offer)
+            }
         }
         section("Network") {
             HStack {
@@ -323,29 +328,35 @@ struct HubInsightsPanel: View {
     }
 
     /// A facility row; tapping it opens the upgrade card at its site.
-    private func facility(_ kind: HubFacilityKind, _ icon: String, _ title: String, _ level: Int,
-                          _ names: [String]) -> some View {
+    private func facility(_ offer: HubUpgradeOffer) -> some View {
         Button {
-            withAnimation(HubMotion.panel) { model.openUpgrade(kind) }
+            withAnimation(HubMotion.panel) { model.openUpgrade(offer.kind) }
         } label: {
-            facilityRow(icon, title, level, names)
+            facilityRow(offer)
         }
         .buttonStyle(HubPressStyle())
-        .accessibilityIdentifier("ae-hub-facility-\(kind.rawValue)")
+        .accessibilityIdentifier("ae-hub-facility-\(offer.kind.rawValue)")
     }
 
-    private func facilityRow(_ icon: String, _ title: String, _ level: Int, _ names: [String]) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon).font(.system(size: 12)).foregroundStyle(HubChromeStyle.accent).frame(width: 18)
-            Text(title).font(.system(size: 12)).foregroundStyle(HubChromeStyle.secondary)
-            Spacer()
+    private func facilityRow(_ offer: HubUpgradeOffer) -> some View {
+        let state: String = offer.construction.map { "Building · \($0.daysLeft)d" }
+            ?? offer.lockedUntil.map { "\(EraNames.title($0)) era" }
+            ?? (offer.level == 0 ? "None" : offer.buildingName)
+        return HStack(spacing: 8) {
+            Image(systemName: offer.isLocked ? "lock.fill" : offer.kind.systemImage).font(.system(size: 12))
+                .foregroundStyle(offer.isLocked ? HubChromeStyle.tertiary : HubChromeStyle.accent).frame(width: 18)
+            Text(offer.title).font(.system(size: 12)).foregroundStyle(HubChromeStyle.secondary).lineLimit(1)
+            Spacer(minLength: 4)
             HStack(spacing: 3) {
-                ForEach(0..<2) { i in
-                    Capsule().fill(i < level ? HubChromeStyle.accent : HubChromeStyle.track).frame(width: 14, height: 5)
+                ForEach(0..<offer.maxLevel, id: \.self) { i in
+                    Capsule().fill(i < offer.level ? HubChromeStyle.accent
+                                   : i < (offer.construction?.level ?? 0) ? HubChromeStyle.warn : HubChromeStyle.track)
+                        .frame(width: 14, height: 5)
                 }
             }
-            Text(names[min(names.count - 1, max(0, level))]).font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(HubChromeStyle.ink)
+            Text(state).font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(offer.isBuilding ? HubChromeStyle.warn : HubChromeStyle.ink)
+                .lineLimit(1).minimumScaleFactor(0.75)
             Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold))
                 .foregroundStyle(HubChromeStyle.tertiary)
         }

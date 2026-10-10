@@ -224,7 +224,8 @@ extension GameState {
                 var blockHours = 0.0
                 if let routeID = card.assignedRoute, let route = routes[routeID],
                    let hours = FlightSchedulingSystem.blockHoursPerDay(
-                    route: route, aircraftID: card.id, state: self, spec: spec, ops: ops) {
+                    route: route, aircraftID: card.id, state: self, spec: spec, ops: ops,
+                    facilities: catalog.tuning.airportServices) {
                     blockHours = hours
                 }
                 let decayPerDay = FleetEconomics.conditionPerDay(

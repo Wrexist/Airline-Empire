@@ -42,7 +42,8 @@ public struct AirportInvestmentPreview: Equatable, Sendable {
             }
             return (revenue, profit, demand * 30)
         }
-        let old = owner.facilities(at: airport)
+        // Against the plan: what is already ordered is priced as built.
+        let old = owner.plannedFacilities(at: airport)
         let before = totals(old), after = totals(proposed)
         return Self(installationCost: proposed.installationCost(from: old, tuning: catalog.tuning.airportServices),
             monthlyServiceCost: proposed.monthlyCost(tuning: catalog.tuning.airportServices),

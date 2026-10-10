@@ -622,6 +622,10 @@ extension AudioCue {
         case .milestoneReached: return .milestoneReached
         case .achievementUnlocked: return .achievementUnlocked
         case .capabilityCompleted: return .capabilityCompleted
+        // A building opening is a completion; a station rising in status is
+        // a milestone of the campaign.
+        case .facilityOpened: return .capabilityCompleted
+        case .hubStatusRaised: return .milestoneReached
         case .missionOffered: return .missionOffered
         case .missionCompleted: return .missionCompleted
         case .missionExpired: return .missionExpired

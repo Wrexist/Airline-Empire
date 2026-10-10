@@ -1080,6 +1080,20 @@ final class GameController {
                 id: celebrationCounter, title: "Mission complete",
                 detail: "\(Format.money(reward)) paid into your account.",
                 icon: "target")
+        // A building that took weeks to put up opens; a station earns a
+        // status. Both are the player's own (the feed filter has decided).
+        case .facilityOpened(let airline, let airport, let service, let level)
+            where airline == snapshot?.playerAirline?.id:
+            celebration = Celebration(
+                id: celebrationCounter,
+                title: "\(HubFacilityKind(service: service).buildingName(level)) open",
+                detail: "At \(airport.raw). \(Vocab.momentDetail(.facilityOpened(airport, service, level: level)))",
+                icon: "building.2.fill")
+        case .hubStatusRaised(let airline, let airport, let status)
+            where airline == snapshot?.playerAirline?.id:
+            celebration = Celebration(
+                id: celebrationCounter, title: "\(airport.raw) is now a \(status.title.lowercased())",
+                detail: Vocab.hubStatusDetail(status), icon: "flag.fill")
         default:
             celebrationCounter -= 1
         }

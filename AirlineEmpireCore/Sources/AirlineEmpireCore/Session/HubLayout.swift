@@ -566,7 +566,9 @@ struct HubPlanner {
         // Hangars off the apron's north-east corner (top right of the
         // overview), cargo west, tower beside the terminal.
         let hangarW: Double = spec.runwayClass >= .large ? 95 : 70
-        for i in 0..<(spec.runwayClass >= .large ? 2 : 1) {
+        let hangarCount = spec.runwayClass >= .large ? 2 : 1
+        let hangarRowEnd = apronHalf + 62 + Double(hangarCount - 1) * (hangarW + 18) + hangarW / 2
+        for i in 0..<hangarCount {
             let x = apronHalf + 62 + Double(i) * (hangarW + 18)
             let z = apronNorth + 64
             add(.hangar, HubRect(minX: x - hangarW / 2, minZ: z - 40, maxX: x + hangarW / 2, maxZ: z + 40),
@@ -708,7 +710,8 @@ struct HubPlanner {
             HubVec(eastX, 0.4, avenueZ + ring),
         ] + villas.route.map { HubVec($0.x, 0.4, $0.z) })
 
-        let sites = planFacilitySites(terminal: terminal, apronHalf: apronHalf)
+        let sites = planFacilitySites(terminal: terminal, apronHalf: apronHalf, apronNorth: apronNorth,
+                                      hangarRowEnd: hangarRowEnd)
         let interior = planInterior(terminal: terminal)
         let bounds = pieces.map(\.groundBounds).reduce(terminal) { $0.union($1) }
         return HubLayout(
@@ -723,29 +726,64 @@ struct HubPlanner {
     }
 
     /// Where the player's facilities stand: the lounge as a pavilion on the
-    /// east end of the terminal roof, the ground-services depot on its own
-    /// lot beside the apron — the first candidate lot clear of everything
-    /// but lawns and trees, which are cleared from it.
-    mutating func planFacilitySites(terminal: HubRect, apronHalf: Double) -> [HubFacilitySite] {
+    /// east end of the terminal roof; the ground-services depot, the
+    /// maintenance hangar and the crew base each on the first of their
+    /// candidate lots clear of everything but lawns and trees, which are
+    /// cleared from it. The depot sits beside the apron, the hangar beyond
+    /// the airfield's own hangars with an apron back to the taxiway, the
+    /// crew base on a lawn beside the terminal.
+    mutating func planFacilitySites(terminal: HubRect, apronHalf: Double, apronNorth: Double,
+                                    hangarRowEnd: Double) -> [HubFacilitySite] {
         let loungeW = min(46, max(26, terminal.width * 0.14))
         let lounge = HubFacilitySite(
             kind: .lounge,
             footprint: HubRect(minX: terminal.maxX - loungeW - 4, minZ: terminal.minZ + terminalDepth * 0.18,
                                maxX: terminal.maxX - 4, maxZ: terminal.minZ + terminalDepth * 0.82),
             elevation: HubLayout.terminalRoofTop)
+        let soft: Set<HubPieceKind> = [.lawn, .tree]
+        var taken: [HubRect] = []
+        func claim(_ candidates: [HubRect]) -> HubRect {
+            let lot = candidates.first { c in
+                !pieces.contains { !soft.contains($0.kind) && $0.groundBounds.overlaps(c, margin: 4) }
+                    && !taken.contains { $0.overlaps(c, margin: 6) }
+            } ?? candidates[0]
+            pieces.removeAll { soft.contains($0.kind) && $0.groundBounds.overlaps(lot, margin: 2) }
+            taken.append(lot)
+            return lot
+        }
         let w = 90.0, d = 72.0
-        let candidates = [
+        let depot = claim([
             HubRect(minX: apronHalf + 14, minZ: -14 - d, maxX: apronHalf + 14 + w, maxZ: -14),
             HubRect(minX: -apronHalf - 14 - w, minZ: -14 - d, maxX: -apronHalf - 14, maxZ: -14),
             HubRect(minX: apronHalf + 260, minZ: -14 - d, maxX: apronHalf + 260 + w, maxZ: -14),
             HubRect(minX: -apronHalf - 260 - w, minZ: -14 - d, maxX: -apronHalf - 260, maxZ: -14),
-        ]
-        let soft: Set<HubPieceKind> = [.lawn, .tree]
-        let lot = candidates.first { c in
-            !pieces.contains { !soft.contains($0.kind) && $0.groundBounds.overlaps(c, margin: 4) }
-        } ?? candidates[0]
-        pieces.removeAll { soft.contains($0.kind) && $0.groundBounds.overlaps(lot, margin: 2) }
-        return [lounge, HubFacilitySite(kind: .groundServices, footprint: lot, elevation: 0)]
+        ])
+        // The hangar: in line with the airfield's hangars, doors to the
+        // taxiway, then further along the row or across the field.
+        let hw = 104.0, hd = 84.0, hz = apronNorth + 64
+        let hangar = claim([
+            HubRect(minX: hangarRowEnd + 22, minZ: hz - hd / 2, maxX: hangarRowEnd + 22 + hw, maxZ: hz + hd / 2),
+            HubRect(minX: hangarRowEnd + 150, minZ: hz - hd / 2, maxX: hangarRowEnd + 150 + hw, maxZ: hz + hd / 2),
+            HubRect(minX: -apronHalf - 190 - hw, minZ: hz - hd / 2, maxX: -apronHalf - 190, maxZ: hz + hd / 2),
+            HubRect(minX: hangarRowEnd + 22, minZ: hz + 70, maxX: hangarRowEnd + 22 + hw, maxZ: hz + 70 + hd),
+        ])
+        // Its apron, back to the taxiway the airfield hangars use.
+        add(.apron, HubRect(minX: hangar.minX - 6, minZ: apronNorth, maxX: hangar.maxX + 6, maxZ: hangar.minZ - 4),
+            height: 0.06, variant: 1)
+        // The crew base: a hotel on the lawn beside the terminal's east end,
+        // else the west one, else out by the fuel farm.
+        let L = terminal.width
+        let cw = 50.0, cd = 56.0
+        let crew = claim([
+            HubRect(minX: L / 2 + 80, minZ: 12, maxX: L / 2 + 80 + cw, maxZ: 12 + cd),
+            HubRect(minX: -L / 2 - 80 - cw, minZ: 12, maxX: -L / 2 - 80, maxZ: 12 + cd),
+            HubRect(minX: L / 2 + 160, minZ: 12, maxX: L / 2 + 160 + cw, maxZ: 12 + cd),
+            HubRect(minX: -L / 2 - 160 - cw, minZ: 12, maxX: -L / 2 - 160, maxZ: 12 + cd),
+        ])
+        return [lounge,
+                HubFacilitySite(kind: .groundServices, footprint: depot, elevation: 0),
+                HubFacilitySite(kind: .hangar, footprint: hangar, elevation: 0),
+                HubFacilitySite(kind: .crewBase, footprint: crew, elevation: 0)]
     }
 
     /// Apron service roads: one along the terminal face in each gap between

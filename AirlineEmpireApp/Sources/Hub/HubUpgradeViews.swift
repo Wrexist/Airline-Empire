@@ -10,14 +10,17 @@ extension HubFacilityKind {
         switch self {
         case .lounge: "sofa.fill"
         case .groundServices: "box.truck.fill"
+        case .hangar: "wrench.and.screwdriver.fill"
+        case .crewBase: "person.2.fill"
         }
     }
 }
 
 /// The upgrade card: what stands on the site, what the next level builds,
-/// what it does and costs, and the button that orders it. Ordering takes
-/// two taps — the first arms the button with the price — because the
-/// installation is not refundable.
+/// what it does, costs and takes, and the button that orders it. Ordering
+/// takes two taps — the first arms the button with the price — because the
+/// installation is not refundable. While a level is going up the card
+/// follows the works; a building of a later era says when it comes.
 @available(iOS 18.0, *)
 struct HubUpgradeCard: View {
     @Bindable var model: HubScreenModel
@@ -35,9 +38,15 @@ struct HubUpgradeCard: View {
                 header(offer)
                 levels(offer)
                 now(offer)
-                if let next = offer.next {
+                if let build = offer.construction {
+                    construction(build)
+                } else if let next = offer.next {
                     nextLevel(offer, next)
-                    action(offer, next)
+                    if let era = offer.lockedUntil {
+                        locked(era)
+                    } else {
+                        action(offer, next)
+                    }
                 } else {
                     HStack(spacing: 8) {
                         Image(systemName: "checkmark.seal.fill").foregroundStyle(HubChromeStyle.good)
@@ -95,8 +104,9 @@ struct HubUpgradeCard: View {
                         .overlay(Capsule().strokeBorder(next ? HubChromeStyle.accent : .clear,
                                                         style: StrokeStyle(lineWidth: 1.5, dash: [3, 2])))
                         .frame(height: 6)
-                    Text(AirportService.levelName(level))
+                    Text(kind.service.levelName(level))
                         .font(.system(size: 10, weight: level == offer.level ? .semibold : .regular))
+                        .lineLimit(1).minimumScaleFactor(0.7)
                         .foregroundStyle(level == offer.level ? HubChromeStyle.ink : HubChromeStyle.secondary)
                 }
                 .frame(maxWidth: .infinity)
@@ -124,9 +134,16 @@ struct HubUpgradeCard: View {
             HStack(spacing: 6) {
                 Text("NEXT").font(.system(size: 10, weight: .bold)).kerning(0.6).foregroundStyle(HubChromeStyle.accent)
                 Text(next.buildingName).font(.system(size: 13, weight: .semibold)).foregroundStyle(HubChromeStyle.ink)
+                    .lineLimit(1).minimumScaleFactor(0.8)
             }
             Label(next.effect, systemImage: "arrow.up.right.circle.fill")
                 .font(.system(size: 12)).foregroundStyle(HubChromeStyle.good)
+                .fixedSize(horizontal: false, vertical: true)
+            if let payoff = next.payoff {
+                Label(payoff, systemImage: "chart.line.uptrend.xyaxis")
+                    .font(.system(size: 11)).foregroundStyle(HubChromeStyle.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if !compact {
                 Text(offer.scope).font(.system(size: 10)).foregroundStyle(HubChromeStyle.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -134,10 +151,69 @@ struct HubUpgradeCard: View {
             HStack(spacing: 8) {
                 cost("Build, once", Format.money(Money(cents: next.installationCents)))
                 cost("Monthly", "\(Format.money(Money(cents: offer.monthlyCents))) → \(Format.money(Money(cents: next.monthlyCents)))")
+                if next.buildDays > 0 { cost("Opens in", "\(next.buildDays) days") }
             }
         }
         .padding(compact ? 8 : 10)
         .background(Color.white.opacity(0.55), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    /// The works on the site: stage, progress and opening day.
+    private func construction(_ build: HubUpgradeOffer.Construction) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "hammer.fill").font(.system(size: 11, weight: .bold)).foregroundStyle(HubChromeStyle.warn)
+                Text("BUILDING").font(.system(size: 10, weight: .bold)).kerning(0.6).foregroundStyle(HubChromeStyle.warn)
+                Text(build.buildingName).font(.system(size: 13, weight: .semibold)).foregroundStyle(HubChromeStyle.ink)
+                    .lineLimit(1).minimumScaleFactor(0.8)
+            }
+            // Four stages, the reached ones filled, the current one filling.
+            HStack(spacing: 4) {
+                ForEach(HubConstructionStage.allCases, id: \.self) { stage in
+                    GeometryReader { geo in
+                        let span = 1.0 / Double(HubConstructionStage.allCases.count)
+                        let start = Double(stage.rawValue) * span
+                        let fill = min(1, max(0, (build.progress - start) / span))
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(HubChromeStyle.track)
+                            Capsule().fill(HubChromeStyle.warn).frame(width: geo.size.width * fill)
+                        }
+                    }
+                    .frame(height: 6)
+                }
+            }
+            .animation(HubMotion.data, value: build.progress)
+            HStack {
+                Text("\(build.stage.title) · \(Int((build.progress * 100).rounded()))%")
+                    .font(.system(size: 12, weight: .semibold)).foregroundStyle(HubChromeStyle.ink)
+                Spacer()
+                Text(build.daysLeft == 0 ? "Opens today" : "Opens in \(build.daysLeft) day\(build.daysLeft == 1 ? "" : "s") · \(Format.shortDate(build.opensOn))")
+                    .font(.system(size: 11)).foregroundStyle(HubChromeStyle.secondary)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("ae-hub-upgrade-progress")
+        }
+        .padding(compact ? 8 : 10)
+        .background(HubChromeStyle.warn.opacity(0.1), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    /// A building of a later era: what it will do is above; when it comes
+    /// is here.
+    private func locked(_ era: Era) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "lock.fill").foregroundStyle(HubChromeStyle.secondary)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Unlocks in the \(EraNames.title(era)) era")
+                    .font(.system(size: 13, weight: .semibold)).foregroundStyle(HubChromeStyle.ink)
+                Text("Grow the airline to get there; the plot is kept for you.")
+                    .font(.system(size: 11)).foregroundStyle(HubChromeStyle.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 42, alignment: .leading)
+        .padding(.horizontal, 10)
+        .background(HubChromeStyle.track.opacity(0.6), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("ae-hub-upgrade-locked")
     }
 
     private func cost(_ title: String, _ value: String) -> some View {
@@ -154,7 +230,7 @@ struct HubUpgradeCard: View {
         if model.pendingUpgrade == kind {
             HStack(spacing: 8) {
                 ProgressView().tint(HubChromeStyle.accent)
-                Text("Building \(next.buildingName.lowercased())…")
+                Text("Ordering \(next.buildingName.lowercased())…")
                     .font(.system(size: 13, weight: .semibold)).foregroundStyle(HubChromeStyle.ink)
             }
             .frame(maxWidth: .infinity, minHeight: 42)
@@ -190,7 +266,7 @@ struct HubUpgradeCard: View {
                         .font(.system(size: 11)).foregroundStyle(HubChromeStyle.warn)
                         .fixedSize(horizontal: false, vertical: true)
                 } else if armed {
-                    Text("Installation is not refundable.")
+                    Text(next.buildDays > 0 ? "Paid now, not refundable. Opens in \(next.buildDays) days." : "Installation is not refundable.")
                         .font(.system(size: 10)).foregroundStyle(HubChromeStyle.secondary)
                 }
             }
@@ -204,16 +280,26 @@ struct HubFacilityTagView: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: tag.building ? "hammer.fill" : tag.kind.systemImage)
+            Image(systemName: tag.building ? "hammer.fill" : tag.locked ? "lock.fill" : tag.kind.systemImage)
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(.white)
                 .frame(width: 20, height: 20)
                 .background(tint, in: Circle())
             VStack(alignment: .leading, spacing: 0) {
                 Text(tag.title).font(.system(size: 11, weight: .semibold)).foregroundStyle(HubChromeStyle.ink)
-                Text(tag.building ? "Under construction" : tag.next)
+                Text(tag.progress == nil && tag.building ? "Opening" : tag.next)
                     .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(tag.canUpgrade ? HubChromeStyle.accent : HubChromeStyle.secondary)
+                    .foregroundStyle(tag.building ? HubChromeStyle.warn : tag.canUpgrade ? HubChromeStyle.accent : HubChromeStyle.secondary)
+                if let progress = tag.progress {
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(HubChromeStyle.track)
+                            Capsule().fill(HubChromeStyle.warn).frame(width: geo.size.width * progress)
+                        }
+                    }
+                    .frame(height: 3)
+                    .padding(.top, 2)
+                }
             }
             if tag.canUpgrade && !tag.building {
                 Image(systemName: "arrow.up.circle.fill").font(.system(size: 13)).foregroundStyle(HubChromeStyle.accent)
@@ -223,7 +309,7 @@ struct HubFacilityTagView: View {
         .fixedSize()
         .padding(.leading, 4)
         .padding(.trailing, 9)
-        .frame(height: 32)
+        .frame(height: tag.progress == nil ? 32 : 38)
         .background(Color.white.opacity(0.94), in: Capsule())
         .overlay(Capsule().strokeBorder(tint.opacity(tag.canUpgrade ? 0.7 : 0.3), lineWidth: 1.5))
         .shadow(color: HubChromeStyle.panelShadow, radius: 6, y: 2)
@@ -233,7 +319,8 @@ struct HubFacilityTagView: View {
     }
 
     private var tint: Color {
-        tag.building ? HubChromeStyle.warn : tag.maxed ? HubChromeStyle.good : HubChromeStyle.accent
+        tag.building ? HubChromeStyle.warn : tag.locked ? HubChromeStyle.tertiary
+            : tag.maxed ? HubChromeStyle.good : HubChromeStyle.accent
     }
 }
 
@@ -254,5 +341,57 @@ struct HubToastView: View {
         .hubGlass(radius: 18, padding: 10)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("ae-hub-toast")
+    }
+}
+
+/// The station's status, what the next one takes, and the hub's own story
+/// (docs/HUB_PROGRESSION_PLAN.md §3, §6.7–8).
+struct HubStatusSection: View {
+    let status: HubStatusProgress
+    let timeline: [HubTimelineEntry]
+    var compact = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                HubIconTile(systemName: "flag.fill", tint: HubChromeStyle.good, size: 30)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Hub status").font(.system(size: 11)).foregroundStyle(HubChromeStyle.secondary)
+                    Text(status.status.title).font(.system(size: 16, weight: .bold)).foregroundStyle(HubChromeStyle.ink)
+                        .accessibilityIdentifier("ae-hub-status")
+                }
+                Spacer()
+            }
+            if let next = status.next {
+                VStack(alignment: .leading, spacing: 5) {
+                    let met = status.requirements.filter(\.isMet).count
+                    Text("Next: \(next.title) · \(met) of \(status.requirements.count)")
+                        .font(.system(size: 12, weight: .semibold)).foregroundStyle(HubChromeStyle.ink)
+                    ForEach(status.requirements, id: \.title) { requirement in
+                        Label(requirement.title, systemImage: requirement.isMet ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 11))
+                            .foregroundStyle(requirement.isMet ? HubChromeStyle.good : HubChromeStyle.secondary)
+                    }
+                }
+            } else {
+                Text("The highest status open to you here today.")
+                    .font(.system(size: 11)).foregroundStyle(HubChromeStyle.secondary)
+            }
+            if !timeline.isEmpty && !compact {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("STORY").font(.system(size: 10, weight: .bold)).kerning(0.6).foregroundStyle(HubChromeStyle.tertiary)
+                    ForEach(Array(timeline.suffix(6).enumerated()), id: \.offset) { _, entry in
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(Format.shortDate(entry.date) + " \(entry.date.year % 100)")
+                                .font(.system(size: 10).monospacedDigit()).foregroundStyle(HubChromeStyle.secondary)
+                                .frame(width: 58, alignment: .leading)
+                            Text(entry.title).font(.system(size: 11)).foregroundStyle(HubChromeStyle.ink)
+                        }
+                    }
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("ae-hub-timeline-story")
+            }
+        }
     }
 }

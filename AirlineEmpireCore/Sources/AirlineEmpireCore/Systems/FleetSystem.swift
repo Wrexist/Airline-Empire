@@ -42,9 +42,19 @@ public struct FleetSystem: SimulationSystem {
                 aircraft.condition = max(0, aircraft.condition - tuning.dailyConditionDecay)
                 if aircraft.condition < tuning.maintenanceConditionThreshold {
                     let spec = context.catalog.aircraftType(aircraft.typeCode)!
-                    let cost = FleetEconomics.maintenanceCheckCost(
+                    var cost = FleetEconomics.maintenanceCheckCost(
                         type: spec, ageYears: aircraft.ageYears, tuning: tuning)
-                    let until = context.current + .days(Int64(tuning.maintenanceCheckDays))
+                    var days = tuning.maintenanceCheckDays
+                    // The owner's hangar where the aircraft flies shortens
+                    // the check, and at the top level makes it cheaper.
+                    let hangar = state.hangarLevel(serving: aircraft)
+                    if hangar > 0 {
+                        let facilities = context.catalog.tuning.airportServices
+                        days = min(days, facilities.hangarCheckDays[safe: hangar - 1] ?? days)
+                        let factor = facilities.hangarCheckCostFactor[safe: hangar - 1] ?? 1
+                        if factor < 1 { cost = Money(rounding: cost.asDouble * factor) }
+                    }
+                    let until = context.current + .days(Int64(days))
                     state.ledger.post(airline: aircraft.owner, category: .maintenance,
                                       amount: -cost, at: context.current,
                                       memo: "Check, \(spec.model)")
@@ -106,6 +116,7 @@ public enum GamePipeline {
             StatementRollupSystem(),    // closes the previous month BEFORE new billings
             DemandSystem(),             // #2
             CompetitorAISystem(),       // #3
+            FacilityConstructionSystem(), // buildings open before today's plan
             FlightSchedulingSystem(),   // #4
             FlightOpsSystem(),          // #5 (+ passenger allocation at boarding, #6)
             FleetSystem(),              // #7 (maintenance/aging/deliveries)

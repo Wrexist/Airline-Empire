@@ -1,5 +1,6 @@
 import XCTest
 import UIKit
+import AirlineEmpireCore
 
 /// Captures the 3D Hub View in each of the reference clip's shots
 /// (docs/HUB_VIEW_3D.md §1) from an earned campaign, so the render can be
@@ -94,7 +95,8 @@ final class HubViewUITests: AEUITestCase {
         Thread.sleep(forTimeInterval: 3)
         frame("HUB-09-upgrade")
         XCTAssertTrue(app.descendants(matching: .any)["ae-hub-upgrade-card"].exists)
-        // Order it (two taps: arm, confirm) and watch it go up.
+        // Order it (two taps: arm, confirm): the works go up on the site and
+        // the card follows them until it opens, days later.
         var build = app.buttons["ae-hub-upgrade-build"]
         if !build.exists {
             build = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Build'")).firstMatch
@@ -104,9 +106,81 @@ final class HubViewUITests: AEUITestCase {
             Thread.sleep(forTimeInterval: 0.6)
             build.tap()
             Thread.sleep(forTimeInterval: 2.2)
-            frame("HUB-10-construction")
+            frame("HUB-10-ordered")
             Thread.sleep(forTimeInterval: 5)
-            frame("HUB-11-built")
+            frame("HUB-11-works")
+        }
+        XCUIDevice.shared.orientation = .portrait
+    }
+
+    /// Buildings take game days (docs/HUB_PROGRESSION_PLAN.md): a Regional
+    /// era hub mid-build shows every stage of the works at once, the lounge's
+    /// opening plays as a ceremony, and the hangar's card follows its build.
+    func testHubBuildingsGoUpOverTime() throws {
+        let bundle = Bundle(for: HubViewUITests.self)
+        let url = try XCTUnwrap(bundle.url(forResource: "store-campaign", withExtension: "json"))
+        let codec = JSONSaveCodec()
+        var state = try codec.decode(Data(contentsOf: url))
+        var player = try XCTUnwrap(state.playerAirline)
+        let home = player.homeAirport
+        let day = state.clock.now.dayIndex * GameCalendar.minutesPerDay
+        func works(_ service: AirportService, to level: Int, progress: Double, days: Int64) -> FacilityConstruction {
+            let started = day - Int64(Double(days) * progress) * GameCalendar.minutesPerDay
+            return FacilityConstruction(airport: home, service: service, level: level, fromLevel: level - 1,
+                                        startedAt: SimTime(rawMinutes: started),
+                                        completesAt: SimTime(rawMinutes: started + days * GameCalendar.minutesPerDay),
+                                        cost: .zero)
+        }
+        state.progression.era = .regional
+        player.airportFacilities = [home: AirportFacilities(lounge: 1, groundServices: 0)]
+        player.facilityConstructions = [
+            works(.lounge, to: 2, progress: 0.6, days: 14),      // crane over the roof
+            works(.ground, to: 1, progress: 0.1, days: 7),       // hoarding
+            works(.hangar, to: 1, progress: 0.35, days: 30),     // groundworks
+            works(.crewBase, to: 1, progress: 0.85, days: 21),   // cladding
+        ]
+        state.airlines[player.id] = player
+        let fixture = FileManager.default.temporaryDirectory.appendingPathComponent("hub-buildings.aesave")
+        try codec.encode(state).write(to: fixture)
+        defer { try? FileManager.default.removeItem(at: fixture) }
+
+        app.launchArguments.append(contentsOf: ["-AEUITestLoadSave", fixture.path, "-AEUITestProbes",
+                                                "-AEUITestOpenHub", "-AEUITestHubCeremony", "lounge"])
+        XCUIDevice.shared.orientation = .landscapeLeft
+        app.launch()
+        app.activate()
+        require(app.descendants(matching: .any)["ae-hub-scene"], "hub scene", timeout: 90)
+        // The lounge's opening: the camera flies to it, it rises, the toast.
+        Thread.sleep(forTimeInterval: 3.2)
+        frame("HUB-12-ceremony")
+        Thread.sleep(forTimeInterval: 5)
+        frame("HUB-13-opened")
+        XCTAssertTrue(app.descendants(matching: .any)["ae-hub-upgrade-progress"].exists)
+        // Every stage of the works from the overview.
+        let close = app.buttons["Close upgrade"]
+        if close.exists { close.tap() }
+        Thread.sleep(forTimeInterval: 1)
+        shot("HUB-14-works", "overview")
+        // The hangar's card: its stage, progress and opening day.
+        let hangar = app.descendants(matching: .any)["ae-hub-site-hangar"]
+        if hangar.waitForExistence(timeout: 5) {
+            hangar.tap()
+            Thread.sleep(forTimeInterval: 3)
+            frame("HUB-15-hangar-works")
+            XCTAssertTrue(app.descendants(matching: .any)["ae-hub-upgrade-progress"].exists)
+        }
+        // The status and the hub's story in Insights › Airline.
+        let insights = app.buttons["ae-hub-insights"]
+        if insights.exists {
+            insights.tap()
+            Thread.sleep(forTimeInterval: 1)
+            let airline = app.buttons["Airline"]
+            if airline.exists {
+                airline.tap()
+                Thread.sleep(forTimeInterval: 1.5)
+                frame("HUB-16-status")
+                XCTAssertTrue(app.descendants(matching: .any)["ae-hub-status"].exists)
+            }
         }
         XCUIDevice.shared.orientation = .portrait
     }

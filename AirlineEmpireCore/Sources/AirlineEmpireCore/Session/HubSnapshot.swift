@@ -128,6 +128,10 @@ public struct HubSnapshot: Equatable, Codable, Sendable {
     public var insights: HubInsights = .empty
     /// The player's facilities here and their next levels.
     public var upgrades: [HubUpgradeOffer] = []
+    /// The station's status and what the next one takes.
+    public var status: HubStatusProgress = .empty
+    /// The hub's own story: founding, openings, statuses.
+    public var timeline: [HubTimelineEntry] = []
 
     public var delays: [HubBoardRow] { (departures + arrivals).filter { $0.status == .delayed } }
 
@@ -379,7 +383,8 @@ extension GameState {
             nightFactor: HubFormat.nightFactor(localMinute: localMinute),
             occupants: occupants, departures: Array(departures), arrivals: Array(arrivals),
             kpis: kpis, movementsPerHour: movementsPerHour, focusStand: focus?.standIndex,
-            insights: insights, upgrades: hubUpgradeOffers(airport: code, catalog: catalog))
+            insights: insights, upgrades: hubUpgradeOffers(airport: code, catalog: catalog),
+            status: hubStatusProgress(airport: code), timeline: hubTimeline(airport: code))
     }
 }
 
@@ -429,6 +434,6 @@ extension HubSnapshot {
                            localTime: localTime, nightFactor: nightFactor, occupants: occupants,
                            departures: departures, arrivals: arrivals, kpis: kpis,
                            movementsPerHour: movementsPerHour, focusStand: focusStand, insights: insights,
-                           upgrades: upgrades)
+                           upgrades: upgrades, status: status, timeline: timeline)
     }
 }

@@ -222,11 +222,24 @@
   }
  },
  "airportFacilities": {
-  "loungeInstallation": {"cents": 15000000},
-  "groundInstallation": {"cents": 10000000},
+  "loungeInstallation": {"cents": 75000000},
+  "groundInstallation": {"cents": 50000000},
   "loungeMonthly": {"cents": 1500000},
   "groundMonthly": {"cents": 1000000},
   "loungeComfortPerLevel": 0.04,
-  "groundRiskReductionPerLevel": 0.1
+  "groundRiskReductionPerLevel": 0.1,
+  "loungeBuildDays": [7, 14],
+  "groundBuildDays": [7, 14],
+  "hangarInstallation": [{"cents": 250000000}, {"cents": 250000000}],
+  "hangarMonthly": [{"cents": 4000000}, {"cents": 7000000}],
+  "hangarBuildDays": [30, 60],
+  "hangarCheckDays": [2, 1],
+  "hangarCheckCostFactor": [0.8, 0.65],
+  "crewBaseInstallation": {"cents": 250000000},
+  "crewBaseMonthly": {"cents": 6000000},
+  "crewBaseBuildDays": 21,
+  "crewBaseEarlierStartMinutes": 60,
+  "crewBaseExtraMinutes": 120,
+  "crewBaseCrewCostFactor": 0.9
  }
 }

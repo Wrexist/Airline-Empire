@@ -1185,6 +1185,10 @@ struct EventRow: View {
             "A new era: \(Vocab.era(era))"
         case .capabilityCompleted(let code):
             "\(Vocab.capability(code)) is now in place"
+        case .facilityOpened(_, let airport, let service, let level):
+            "\(HubFacilityKind(service: service).buildingName(level)) open at \(airport.raw)"
+        case .hubStatusRaised(_, let airport, let status):
+            "\(airport.raw) is now your \(status.title.lowercased())"
         case .worldEventStarted(_, let kind):
             Vocab.worldEvent(kind, state: snapshot)
         case .worldEventForecast(let kind, _):
@@ -1233,6 +1237,8 @@ struct EventRow: View {
         case .marketEntered, .marketLeft: "person.2.fill"
         case .milestoneReached, .achievementUnlocked, .eraAdvanced,
              .capabilityCompleted: "star"
+        case .facilityOpened: "building.2.fill"
+        case .hubStatusRaised: "flag.fill"
         case .missionOffered, .missionCompleted, .missionExpired: "target"
         case .worldEventStarted(_, let kind), .worldEventEnded(_, let kind):
             Vocab.worldEventIcon(kind)
