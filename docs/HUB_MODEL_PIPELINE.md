@@ -28,7 +28,7 @@ workflow and changes every step that doesn't fit this project:
 >
 > ```bash
 > blender --background --factory-startup \
->     --python scripts/hub-models/procedural/aircraft_narrowbody.py -- --preview .hub-review/models
+>     --python scripts/hub-models/procedural/aircraft.py -- --preview .hub-review/models
 > python scripts/hub-models/check_usdz.py
 > ```
 >

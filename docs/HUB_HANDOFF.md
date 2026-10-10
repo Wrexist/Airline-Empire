@@ -249,6 +249,18 @@ terminal crowd (up to 300), the crew and parked vehicles stay one draw
 per material. A model with an un-prefixed material (the fuel truck's
 tank) can't be batched and is still placed as an entity.
 
+The whole fleet: `procedural/aircraft.py` (replacing the narrowbody-only
+script) builds **all six categories** from one parametric airliner —
+turboprop (high wing, prop discs, T-tail, gear sponsons), regional jet
+(winglets), narrowbody, large narrowbody (four doors a side), widebody
+(four doors, four-wheel bogies) and large widebody (raked tips, six-wheel
+bogies); 6 116–9 176 triangles. Every nacelle is centred exactly on
+`HubModels.enginePosition`, so the focused jet's pulse rings sit on the
+engine (the first narrowbody was 0.53 m off, PR review). Fixed: the
+regional slot is `aircraft_regionalJet` (the app's category raw value);
+it was `aircraft_regional` in the model list and manifest, so that model
+would never have loaded.
+
 **Next:** check everything in the captures (size, facing, livery repaint,
 lit windows at night, the bridge meeting the door, crowds), then the
 concourse, the gate sign and the terminal hall.

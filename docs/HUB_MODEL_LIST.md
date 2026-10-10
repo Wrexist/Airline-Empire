@@ -122,7 +122,7 @@ A320-class single-aisle twin. 38 m long, 35.8 m span, 11.8 m tall at the fin.
 | Slots | `ae_white`, `ae_livery`, `ae_liveryAccent`, `ae_windowDark`, `ae_tyre`, `ae_darkMetal` |
 | Pivot | centre of fuselage length, on the ground; nose towards +X |
 
-### 1.2 `Hub_aircraft_regional.usdz` — E-Jet class
+### 1.2 `Hub_aircraft_regionalJet.usdz` — E-Jet class
 33 m long, 28 m span. Same treatment as 1.1, smaller; under-wing engines;
 T-tail **no** (conventional tail like the E-Jet). Not in the reference;
 match 1.1's style exactly.

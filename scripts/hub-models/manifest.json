@@ -698,8 +698,8 @@
       ],
       "priority": 7
     },
-    "aircraft_regional": {
-      "file": "Hub_aircraft_regional.usdz",
+    "aircraft_regionalJet": {
+      "file": "Hub_aircraft_regionalJet.usdz",
       "class": "aircraft",
       "triangles": [
         8000,
