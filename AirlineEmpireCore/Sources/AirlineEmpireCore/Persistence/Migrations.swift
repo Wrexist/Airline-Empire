@@ -38,6 +38,7 @@ public struct MigrationChain: Sendable {
         MigrationV11AddMarketMoves(),
         MigrationV12AddRescueDecision(),
         MigrationV13AddProgressionRecord(),
+        MigrationV14AddHubBuildings(),
     ])
 
     public func migrate(payload: [String: Any], from version: Int) throws -> [String: Any] {
@@ -55,6 +56,16 @@ public struct MigrationChain: Sendable {
         }
         return current
     }
+}
+
+/// v14 → v15: airlines gained hub buildings (docs/HUB_PROGRESSION_PLAN.md).
+/// Every new field decodes as absent — no hangar, no crew base, nothing
+/// under construction, statuses assessed from the next day — so the step
+/// only moves the version.
+public struct MigrationV14AddHubBuildings: SaveMigration {
+    public let fromVersion = 14
+    public init() {}
+    public func migrate(_ payload: inout [String: Any]) throws {}
 }
 
 /// v13 → v14: progression gained `record`, the bounded dated log of completed

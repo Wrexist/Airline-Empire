@@ -217,7 +217,8 @@ public struct FlightOpsSystem: SimulationSystem {
         state.ledger.post(airline: owner, category: .airportFees, amount: -fees,
                           at: context.current, memo: "Fees \(flight.from)-\(flight.to)")
 
-        let crewCost = Money(rounding: blockHours
+        let crewFactor = state.routes[flight.route].map { state.crewCostFactor(on: $0, catalog: catalog) } ?? 1
+        let crewCost = Money(rounding: blockHours * crewFactor
             * (Double(spec.crewCockpit) * ops.crewCostPerBlockHourCockpit.asDouble
                + Double(spec.crewCabin) * ops.crewCostPerBlockHourCabin.asDouble))
         state.ledger.post(airline: owner, category: .crewCosts, amount: -crewCost,
@@ -241,11 +242,7 @@ public struct FlightOpsSystem: SimulationSystem {
             state.routes[flight.route] = route
         }
 
-        var turnaroundMinutes = Int64(spec.turnaroundMinutes)
-        if state.isPlayer(owner), state.playerHasCapability(.efficientTurnarounds) {
-            turnaroundMinutes = Int64((Double(turnaroundMinutes) * 0.85).rounded())
-        }
-        let until = context.current + .minutes(turnaroundMinutes)
+        let until = context.current + .minutes(state.turnaroundMinutes(spec: spec, airline: owner))
         flight.phase = .turnaround(until: until)
         context.emit(.flightArrived(id: flightID, route: flight.route,
                                     delayMinutes: flight.delayMinutes))

@@ -8,8 +8,8 @@ on:
       - '.github/workflows/hub-view-review.yml'
       - 'AirlineEmpireApp/Sources/Hub/**'
       - 'AirlineEmpireApp/UITests/HubViewUITests.swift'
-      - 'AirlineEmpireCore/Sources/AirlineEmpireCore/Session/HubLayout.swift'
-      - 'AirlineEmpireCore/Sources/AirlineEmpireCore/Session/HubSnapshot.swift'
+      - 'AirlineEmpireCore/Sources/AirlineEmpireCore/Session/Hub*.swift'
+      - 'AirlineEmpireApp/Sources/App/AEOrientation.swift'
   workflow_dispatch:
 permissions:
   contents: read

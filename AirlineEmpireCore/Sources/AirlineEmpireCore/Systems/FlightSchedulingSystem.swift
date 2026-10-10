@@ -25,12 +25,17 @@ public struct FlightSchedulingSystem: SimulationSystem {
             let flightMinutes = Self.flightMinutes(distanceKm: route.distanceKm,
                                                    cruiseSpeedKmh: spec.cruiseSpeedKmh,
                                                    overheadMinutes: ops.flightOverheadMinutes)
-            let roundTripBlock = 2 * (flightMinutes + Int64(spec.turnaroundMinutes))
+            // The turnaround flight operations will hold the aircraft for,
+            // and the day its crews work: a crew base stretches it.
+            let turnaround = state.turnaroundMinutes(spec: spec, airline: route.airline)
+            let window = state.operatingWindow(for: route, catalog: context.catalog)
+            let roundTripBlock = 2 * (flightMinutes + turnaround)
 
             // Aircraft able to fly today, in deterministic order.
             var usable: [AircraftID] = []
             for aircraftID in route.assignedAircraft.sorted() {
-                guard let aircraft = state.aircraft[aircraftID], aircraft.isOperational
+                guard let aircraft = state.aircraft[aircraftID],
+                      Self.fliesToday(aircraft, fleet: context.catalog.tuning.fleet, now: state.clock.now)
                 else { continue }
                 if aircraft.location == route.origin || aircraft.location == route.destination {
                     usable.append(aircraftID)
@@ -45,7 +50,8 @@ public struct FlightSchedulingSystem: SimulationSystem {
             guard !usable.isEmpty else { continue }
 
             let capacityPerAircraft = Self.roundTripsPerAircraftPerDay(
-                distanceKm: route.distanceKm, spec: spec, ops: ops)
+                distanceKm: route.distanceKm, spec: spec, ops: ops,
+                operatingMinutes: window.minutes, turnaroundMinutes: turnaround)
             let totalTrips = min(route.dailyRoundTrips, capacityPerAircraft * usable.count)
             guard totalTrips > 0 else { continue }
 
@@ -71,7 +77,7 @@ public struct FlightSchedulingSystem: SimulationSystem {
                 let startsAtOrigin = startsAt == route.origin
                 for tripIndex in 0..<trips {
                     let base = dayStart + .minutes(
-                        ops.operatingDayStartMinute + Int64(tripIndex) * roundTripBlock)
+                        window.startMinute + Int64(tripIndex) * roundTripBlock)
                     let (firstFrom, firstTo) = startsAtOrigin
                         ? (route.origin, route.destination)
                         : (route.destination, route.origin)
@@ -80,7 +86,7 @@ public struct FlightSchedulingSystem: SimulationSystem {
                                flightMinutes: flightMinutes, state: &state)
                     makeFlight(route: route, aircraft: aircraftID, from: firstTo,
                                to: firstFrom,
-                               departure: base + .minutes(flightMinutes + Int64(spec.turnaroundMinutes)),
+                               departure: base + .minutes(flightMinutes + turnaround),
                                flightMinutes: flightMinutes, state: &state)
                 }
             }
@@ -92,13 +98,35 @@ public struct FlightSchedulingSystem: SimulationSystem {
     /// caps a route's frequency with. Public so that a planner (the AI, a
     /// screen) can ask "can this route use another aircraft?" with the
     /// scheduler's own arithmetic rather than a second copy of it.
+    ///
+    /// `operatingMinutes` and `turnaroundMinutes` default to the standard day
+    /// and the type's turnaround; a crew base and the turnaround programme
+    /// change them for one airline (see `rotationsPerDay`).
     public static func roundTripsPerAircraftPerDay(distanceKm: Int, spec: AircraftTypeSpec,
-                                                   ops: OpsTuning) -> Int {
+                                                   ops: OpsTuning,
+                                                   operatingMinutes: Int64? = nil,
+                                                   turnaroundMinutes: Int64? = nil) -> Int {
         let flightMinutes = flightMinutes(distanceKm: distanceKm,
                                           cruiseSpeedKmh: spec.cruiseSpeedKmh,
                                           overheadMinutes: ops.flightOverheadMinutes)
-        let roundTripBlock = 2 * (flightMinutes + Int64(spec.turnaroundMinutes))
-        return max(0, Int(ops.operatingDayMinutes / roundTripBlock))
+        let roundTripBlock = 2 * (flightMinutes + (turnaroundMinutes ?? Int64(spec.turnaroundMinutes)))
+        return max(0, Int((operatingMinutes ?? ops.operatingDayMinutes) / roundTripBlock))
+    }
+
+    /// Whether the aircraft will be airworthy when today's flying starts.
+    /// `FleetSystem` runs after the scheduler on the same tick: an aircraft
+    /// whose check finishes today flies today, and one whose wear will send
+    /// it to the hangar today gets no flights — scheduling it left a day of
+    /// legs that could not board and expired as cancellations.
+    public static func fliesToday(_ aircraft: Aircraft, fleet: FleetTuning, now: SimTime) -> Bool {
+        switch aircraft.status {
+        case .active:
+            return max(0, aircraft.condition - fleet.dailyConditionDecay) >= fleet.maintenanceConditionThreshold
+        case .inMaintenance(let until):
+            return until <= now
+        case .ordered:
+            return false
+        }
     }
 
     /// Round trips the scheduler allots one airframe on a route: the type's
@@ -108,21 +136,27 @@ public struct FlightSchedulingSystem: SimulationSystem {
     /// second copy of it.
     public static func rotationsPerDay(route: Route, aircraftID: AircraftID,
                                        state: GameState, spec: AircraftTypeSpec,
-                                       ops: OpsTuning) -> Int? {
+                                       ops: OpsTuning,
+                                       facilities: AirportFacilityTuning = .standard) -> Int? {
         let active = route.assignedAircraft.sorted()
             .compactMap { state.aircraft[$0] }.filter(\.isOperational)
         guard let index = active.firstIndex(where: { $0.id == aircraftID }) else { return nil }
-        let maximum = roundTripsPerAircraftPerDay(distanceKm: route.distanceKm,
-                                                  spec: spec, ops: ops)
+        let maximum = roundTripsPerAircraftPerDay(
+            distanceKm: route.distanceKm, spec: spec, ops: ops,
+            operatingMinutes: state.hasCrewBase(on: route)
+                ? OperatingWindow.withCrewBase(ops, tuning: facilities).minutes : nil,
+            turnaroundMinutes: state.turnaroundMinutes(spec: spec, airline: route.airline))
         return min(maximum, max(0, (route.dailyRoundTrips + active.count - 1 - index) / active.count))
     }
 
     /// Block hours that airframe flies per day at those rotations.
     public static func blockHoursPerDay(route: Route, aircraftID: AircraftID,
                                         state: GameState, spec: AircraftTypeSpec,
-                                        ops: OpsTuning) -> Double? {
+                                        ops: OpsTuning,
+                                        facilities: AirportFacilityTuning = .standard) -> Double? {
         guard let rotations = rotationsPerDay(route: route, aircraftID: aircraftID,
-                                              state: state, spec: spec, ops: ops)
+                                              state: state, spec: spec, ops: ops,
+                                              facilities: facilities)
         else { return nil }
         let minutes = flightMinutes(distanceKm: route.distanceKm,
                                     cruiseSpeedKmh: spec.cruiseSpeedKmh,

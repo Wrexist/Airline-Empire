@@ -219,7 +219,10 @@ struct AirportDetailView: View {
                         // the player never sees anywhere else.
                         AirportFact(title: Format.longDate(GameCalendar.date(at: item.at, startYear: startYear)),
                                     value: Format.money(item.cost))
-                        Text("Lounge: \(item.previous.lounge) → \(item.updated.lounge) · Ground services: \(item.previous.groundServices) → \(item.updated.groundServices)")
+                        Text(AirportService.allCases
+                            .filter { $0.level(in: item.previous) != $0.level(in: item.updated) || $0 == .lounge || $0 == .ground }
+                            .map { "\($0.title): \($0.level(in: item.previous)) → \($0.level(in: item.updated))" }
+                            .joined(separator: " · "))
                             .font(.caption).foregroundStyle(AETheme.mutedText)
                     }
                     Divider()

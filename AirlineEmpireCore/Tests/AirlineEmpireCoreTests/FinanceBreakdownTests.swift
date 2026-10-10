@@ -80,12 +80,15 @@ struct FinanceBreakdownTests {
                                                 termMonths: 48)) == .applied)
         _ = engine.applyNow(ConfigureAirportFacilitiesCommand(
             airline: airline, airport: "MET", facilities: .init(lounge: 1)))
+        // Upkeep is owed from opening day.
+        #expect(engine.state.financeBreakdown(for: airline, catalog: catalog).recurring.stations == .zero)
+        let opened = openingFacilities(engine)
 
         let tuning = catalog.tuning.finance
         let airport = catalog.tuning.airportServices
         let spec = try #require(catalog.aircraftType("MR180"))
-        let loan = try #require(engine.state.airlines[airline]?.loans.first)
-        let recurring = engine.state.financeBreakdown(for: airline, catalog: catalog).recurring
+        let loan = try #require(opened.state.airlines[airline]?.loans.first)
+        let recurring = opened.state.financeBreakdown(for: airline, catalog: catalog).recurring
 
         #expect(recurring.leases == spec.leaseMonthly)
         #expect(recurring.loanPayments == loan.monthlyPayment)

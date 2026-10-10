@@ -19,7 +19,9 @@ public struct AirportSpec: Equatable, Codable, Sendable {
     public let terminalCapacityPerDay: Int
     /// Per-movement fee (landing + handling), before per-passenger fees.
     public let movementFee: Money
-    /// Per-departing-passenger fee.
+    /// Per-passenger fee, charged on each flight that lands here. Over a
+    /// round trip that is the same as charging each departing passenger at
+    /// the airport they leave from.
     public let passengerFee: Money
     public let demographics: Demographics
     public let seasonality: SeasonalityCode

@@ -25,7 +25,11 @@ public enum SaveFormat {
     /// v14 adds `progression.record`: the bounded, dated log of completed
     /// work (milestones, achievements, capability programs, missions, era
     /// advances) an older save never kept.
-    public static let currentVersion = 14
+    /// v15 adds hub buildings: the hangar and crew base levels, buildings
+    /// under construction, earned hub statuses, and the events and record
+    /// entries for openings — all optional, so v14 needs no rewriting, but an
+    /// older build must refuse a save that may hold them.
+    public static let currentVersion = 15
 }
 
 public struct SaveEnvelope: Codable, Sendable {

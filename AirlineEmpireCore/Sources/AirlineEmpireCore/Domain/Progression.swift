@@ -51,7 +51,8 @@ public struct ProgressionState: Equatable, Codable, Sendable {
 
     /// Notes a completed thing, dropping the oldest when the bound is
     /// reached. The only writer; every recording site is in
-    /// `ProgressionSystem`.
+    /// `ProgressionSystem`, bar the buildings `FacilityConstructionSystem`
+    /// opens.
     public mutating func note(_ kind: ProgressionMoment.Kind, at time: SimTime) {
         record.append(ProgressionMoment(at: time, kind: kind))
         if record.count > Self.recordLimit {
@@ -77,6 +78,8 @@ public struct ProgressionMoment: Equatable, Codable, Sendable {
         case achievement(String)
         case capability(CapabilityCode)
         case mission(MissionKind, reward: Money)
+        case facilityOpened(AirportCode, AirportService, level: Int)
+        case hubStatus(AirportCode, HubStatus)
     }
 
     public let at: SimTime

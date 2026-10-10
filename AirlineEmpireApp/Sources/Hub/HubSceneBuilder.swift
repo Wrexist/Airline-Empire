@@ -126,7 +126,10 @@ struct HubSceneBuilder {
     private var hasAuthoredInterior: Bool { library?.has("terminal_hall_interior") ?? false }
 
     private mutating func with(_ layer: HubLayer, _ key: HubMaterialKey, _ body: (inout HubMeshBatch) -> Void) {
-        var batch = batches[layer]?[key] ?? HubMeshBatch()
+        // Take the batch out while it grows: with the dictionary still
+        // holding it, every append would copy the whole mesh (copy on
+        // write), and the scene build would go quadratic.
+        var batch = batches[layer]?.removeValue(forKey: key) ?? HubMeshBatch()
         body(&batch)
         batches[layer, default: [:]][key] = batch
     }
@@ -139,6 +142,11 @@ struct HubSceneBuilder {
         placeAuthoredInterior()
         runwayMarkings()
         standMarkings()
+        airfieldLights()
+        apronMasts()
+        windsocks()
+        perimeterFence()
+        standNumbers()
 
         var roots: [HubLayer: Entity] = [:]
         for layer in HubLayer.allCases {
@@ -240,6 +248,8 @@ struct HubSceneBuilder {
         case .lawn:
             flat(.ground, .grassBright, p, top: max(0.18, h))
         case .plaza: flat(.ground, .concreteLight, p, top: 0.15)
+        case .roundabout: roundabout(p)
+        case .apartmentBlock: apartments(p)
         case .crosswalk: crosswalk(p)
         case .standMarking: break // drawn from the stands themselves
         case .terminalHall: terminal(p)
@@ -249,8 +259,8 @@ struct HubSceneBuilder {
         case .controlTower: tower(p)
         case .hangar: hangar(p)
         case .cargoShed:
-            with(.airside, .buildingShade) { $0.box(center: c, size: [w, h, d]) }
-            with(.airside, .roof) { $0.box(center: c + [0, h, 0], size: [w + 1.5, 0.8, d + 1.5]) }
+            with(.airside, .buildingShade) { $0.roundedBox(center: c, size: [w, h, d], bevel: 0.5) }
+            with(.airside, .roof) { $0.roundedBox(center: c + [0, h, 0], size: [w + 1.5, 0.8, d + 1.5], bevel: 0.3) }
             for i in 0..<4 {
                 let x = c.x - w / 2 + w * (Float(i) + 0.5) / 4
                 with(.airside, .darkMetal) { $0.box(center: [x, 0, c.z - d / 2 - 0.1], size: [w / 6, h * 0.6, 0.3]) }
@@ -366,12 +376,12 @@ struct HubSceneBuilder {
         let w = Float(p.size.x), d = Float(p.size.z), h = Float(p.size.y)
         let glassTop = h - 4
         // Plinth and floors.
-        with(.airside, .buildingShade) { $0.box(center: c, size: [w, 1.6, d]) }
+        with(.airside, .buildingShade) { $0.roundedBox(center: c, size: [w, 1.6, d], bevel: 0.3) }
         // Side walls (solid, white) stay up in the cutaway: the doll's-house
         // frame of reference shot C.
         with(.airside, .building) {
-            $0.box(center: [c.x - w / 2 + 2, 1.6, c.z], size: [4, glassTop - 1.6, d])
-            $0.box(center: [c.x + w / 2 - 2, 1.6, c.z], size: [4, glassTop - 1.6, d])
+            $0.roundedBox(center: [c.x - w / 2 + 2, 1.6, c.z], size: [4, glassTop - 1.6, d], bevel: 0.5)
+            $0.roundedBox(center: [c.x + w / 2 - 2, 1.6, c.z], size: [4, glassTop - 1.6, d], bevel: 0.5)
         }
         with(.terminalShell, .building) {
             // Floor band between levels on the landside face.
@@ -379,6 +389,12 @@ struct HubSceneBuilder {
         }
         with(.airside, .building) {
             $0.box(center: [c.x, 9.5, c.z - d / 2 + 0.4], size: [w, 1.0, 1.0])
+            // The roof's edge on the back and the ends: it stays when the
+            // roof lifts off, framing the cutaway like the reference's.
+            // Kept just inside the roof slab, so it never shows through it.
+            $0.roundedBox(center: [c.x, glassTop, c.z - d / 2 + 0.8], size: [w + 2, 1.4, 1.6], bevel: 0.4)
+            $0.roundedBox(center: [c.x - w / 2 + 0.8, glassTop, c.z], size: [1.6, 1.4, d + 3], bevel: 0.4)
+            $0.roundedBox(center: [c.x + w / 2 - 0.8, glassTop, c.z], size: [1.6, 1.4, d + 3], bevel: 0.4)
         }
         // Curtain walls.
         with(.airside, .glass) { $0.box(center: [c.x, 1.6, c.z - d / 2 + 0.5], size: [w - 8, glassTop - 1.6, 0.4]) }
@@ -391,20 +407,45 @@ struct HubSceneBuilder {
             with(.terminalShell, .white) { $0.box(center: [mx, 1.6, c.z + d / 2 - 0.2], size: [0.6, glassTop - 1.6, 0.6]) }
             x += 8
         }
-        // Roof: overhanging slab, glass skylight ridge, plant.
+        // Roof: a white slab carrying three glazed barrel vaults along the
+        // hall, white ribs across them, and plant boxes (reference shot A).
         with(.terminalRoof, .roof) {
-            $0.box(center: [c.x, glassTop, c.z], size: [w + 3, 1.6, d + 5], bottom: true)
-            $0.box(center: [c.x, glassTop + 1.8, c.z], size: [w * 0.86, 0.6, d * 0.7])
+            $0.roundedBox(center: [c.x, glassTop, c.z], size: [w + 3, 1.6, d + 5], bevel: 0.6, bottom: true)
         }
-        with(.terminalRoof, .glass) { $0.box(center: [c.x, glassTop + 2.4, c.z], size: [w * 0.8, 2.6, 9]) }
-        with(.terminalRoof, .buildingShade) {
-            for i in 0..<4 {
-                $0.box(center: [c.x - w * 0.3 + Float(i) * w * 0.2, glassTop + 2.4, c.z + d * 0.25], size: [7, 2.2, 5])
+        // The vaults stop short of the lounge site on the roof's east end
+        // (`HubLayout.facilitySites`), where the player's lounge is built.
+        let west = c.x - w * 0.43
+        let east = layout.site(.lounge).map { Float($0.footprint.minX) - 4 } ?? c.x + w * 0.43
+        let vaultLength = max(w * 0.4, east - west)
+        let vaultX = west + vaultLength / 2
+        let lanes: [Float] = [-d * 0.28, 0, d * 0.28]
+        for dz in lanes {
+            let frame = HubMeshBatch.translation([vaultX, glassTop + 1.6, c.z + dz]) * HubMeshBatch.yaw(.pi / 2)
+            with(.terminalRoof, .skylight) { b in
+                b.transform = frame
+                b.vault(center: .zero, width: d * 0.2, depth: vaultLength, rise: 3.2, segments: 12, caps: false)
+                b.transform = matrix_identity_float4x4
+            }
+            with(.terminalRoof, .white) { b in
+                b.transform = frame
+                var t = -vaultLength / 2
+                while t <= vaultLength / 2 {
+                    b.vault(center: [0, 0, t], width: d * 0.2 + 0.5, depth: 0.45, rise: 3.45, segments: 12, caps: false)
+                    t += 9
+                }
+                b.transform = matrix_identity_float4x4
             }
         }
-        // Landside canopy on columns over the kerb.
-        with(.airside, .roof) { $0.box(center: [c.x, 9, c.z + d / 2 + 6], size: [w * 0.6, 0.7, 12]) }
-        with(.airside, .white) {
+        with(.terminalRoof, .buildingShade) {
+            for i in 0..<4 {
+                $0.roundedBox(center: [c.x - w * 0.3 + Float(i) * w * 0.2, glassTop + 1.6, c.z + d * 0.42],
+                              size: [7, 2.2, 3], bevel: 0.3)
+            }
+        }
+        // Landside canopy on columns over the kerb; it lifts with the roof
+        // so the cutaway sees the whole hall.
+        with(.terminalShell, .roof) { $0.roundedBox(center: [c.x, 9, c.z + d / 2 + 6], size: [w * 0.6, 0.7, 12], bevel: 0.25) }
+        with(.terminalShell, .white) {
             var cx = c.x - w * 0.28
             while cx <= c.x + w * 0.28 {
                 $0.cylinder(base: [cx, 0, c.z + d / 2 + 11], radius: 0.4, height: 9, segments: 8, caps: false)
@@ -421,13 +462,19 @@ struct HubSceneBuilder {
             text.position = [c.x - bounds.extents.x / 2, glassTop + 0.1, c.z + d / 2 + 2.55]
             extras.append((.terminalRoof, text))
         }
+        // Light from the glazed faces pooling on the kerb and the apron at
+        // night.
+        with(.lamps, .lampPool) {
+            $0.plane(center: [c.x, 0.3, c.z + d / 2 + 9], width: w * 0.95, depth: 16)
+            $0.plane(center: [c.x, 0.3, c.z - d / 2 - 7], width: w * 0.95, depth: 12)
+        }
         blob(c, w: w * 1.2, d: d * 1.6, y: 0.24)
     }
 
     private mutating func pier(_ p: HubPiece) {
         let c = Self.f(p.center)
         let w = Float(p.size.x), d = Float(p.size.z)
-        with(.airside, .building) { $0.box(center: c, size: [w, 4, d]) }
+        with(.airside, .building) { $0.roundedBox(center: c, size: [w, 4, d], bevel: 0.4) }
         with(.airside, .glass) { $0.box(center: c + [0, 4, 0], size: [w - 0.6, 5.2, d - 0.6]) }
         with(.airside, .white) {
             var z = c.z - d / 2 + 6
@@ -436,10 +483,23 @@ struct HubSceneBuilder {
                 $0.box(center: [c.x + w / 2 - 0.2, 4, z], size: [0.5, 5.2, 0.5])
                 z += 7
             }
+            // Eave beams the vault springs from.
+            $0.roundedBox(center: [c.x - w / 2 - 0.2, 9.2, c.z], size: [1.4, 0.9, d + 1.4], bevel: 0.25)
+            $0.roundedBox(center: [c.x + w / 2 + 0.2, 9.2, c.z], size: [1.4, 0.9, d + 1.4], bevel: 0.25)
         }
-        with(.airside, .roof) {
-            $0.box(center: c + [0, 9.2, 0], size: [w + 2.4, 1.2, d + 2.4], bottom: true)
-            $0.box(center: c + [0, 10.4, 0], size: [w * 0.5, 0.8, d * 0.9])
+        // The glazed barrel vault along the pier, white ribs every 7 m
+        // (reference shot A: the piers are glass, not boxes).
+        with(.airside, .skylight) {
+            $0.vault(center: c + [0, 10.1, 0], width: w + 0.6, depth: d + 1.2, rise: 5.2, segments: 16, caps: false)
+        }
+        with(.airside, .white) {
+            var z = c.z - d / 2 - 0.4
+            while z <= c.z + d / 2 + 0.5 {
+                $0.vault(center: [c.x, 10.1, z], width: w + 1.0, depth: 0.5, rise: 5.45, segments: 16, caps: false)
+                z += 7
+            }
+            // Gable ends of the vault, filled.
+            $0.vault(center: [c.x, 10.1, c.z - d / 2 - 0.6], width: w + 0.6, depth: 0.3, rise: 5.2, segments: 16)
         }
         blob(c, w: w * 2.2, d: d * 1.1, y: 0.12)
     }
@@ -448,27 +508,34 @@ struct HubSceneBuilder {
         let c = Self.f(p.center)
         let len = Float(p.size.x), yaw = Float(p.yaw)
         let frame = HubMeshBatch.translation(c) * HubMeshBatch.yaw(yaw)
+        let tubeY: Float = 4.4, r: Float = 1.55
+        // A glazed tube with white rib rings every 3 m and a white floor —
+        // the reference's glass bridge, not a box (shot B).
         with(.airside, .glass) { b in
             b.transform = frame
-            b.box(center: [0, 4.6, 0], size: [len - 2, 2.6, 3.0])
+            b.lathe([(-len / 2 + 1.6, r, tubeY), (len / 2 - 1.6, r, tubeY)], segments: 16, squash: 0.95)
             b.transform = matrix_identity_float4x4
         }
         with(.airside, .white) { b in
             b.transform = frame
-            b.box(center: [0, 4.2, 0], size: [len - 2, 0.45, 3.4])
-            b.box(center: [0, 7.2, 0], size: [len - 2, 0.4, 3.4])
+            var t = -len / 2 + 2
+            while t < len / 2 - 2 {
+                b.lathe([(t, r + 0.12, tubeY), (t + 0.35, r + 0.12, tubeY)], segments: 16, squash: 0.95)
+                t += 3
+            }
+            b.roundedBox(center: [0, tubeY - r - 0.1, 0], size: [len - 2.4, 0.5, 3.0], bevel: 0.15)
             // Rotunda at the root, cab at the tip.
-            b.cylinder(base: [-len / 2, 3.9, 0], radius: 2.3, height: 3.8, segments: 14)
-            b.box(center: [len / 2 - 1.2, 3.9, 0], size: [3.4, 3.8, 4.0])
+            b.cylinder(base: [-len / 2, 2.6, 0], radius: 2.3, height: 3.9, segments: 16)
+            b.roundedBox(center: [len / 2 - 1.2, 2.7, 0], size: [3.4, 3.5, 4.0], bevel: 0.3)
             b.transform = matrix_identity_float4x4
         }
         with(.airside, .darkMetal) { b in
             b.transform = frame
-            // Drive column and bogie near the tip; root column.
-            b.box(center: [len * 0.3, 0, 0], size: [0.6, 4.2, 2.4])
-            b.box(center: [len * 0.3, 0.3, 0], size: [1.4, 0.7, 3.6])
-            b.cylinder(base: [-len / 2, 0, 0], radius: 0.8, height: 3.9, segments: 8, caps: false)
-            b.box(center: [len / 2 - 0.2, 4.2, 0], size: [0.5, 3.2, 3.0])
+            // Drive column and bogie near the tip; root column; cab canopy.
+            b.box(center: [len * 0.3, 0, 0], size: [0.6, tubeY - r, 2.4])
+            b.roundedBox(center: [len * 0.3, 0.3, 0], size: [1.4, 0.7, 3.6], bevel: 0.15)
+            b.cylinder(base: [-len / 2, 0, 0], radius: 0.8, height: 2.6, segments: 8, caps: false)
+            b.box(center: [len / 2 - 0.2, 2.8, 0], size: [0.5, 3.2, 3.0])
             b.transform = matrix_identity_float4x4
         }
         blob(c, w: len * 1.1, d: 6, y: 0.12, yaw: yaw)
@@ -514,9 +581,17 @@ struct HubSceneBuilder {
         let w = Float(p.size.x), d = Float(p.size.z)
         let wall: Float = 15
         with(.airside, .building) {
-            $0.box(center: c, size: [w, wall, d])
+            $0.roundedBox(center: c, size: [w, wall, d], bevel: 0.6)
         }
-        with(.airside, .roof) { $0.vault(center: c + [0, wall, 0], width: w + 1, depth: d + 1, rise: 11) }
+        with(.airside, .roof) { $0.vault(center: c + [0, wall, 0], width: w + 1, depth: d + 1, rise: 11, segments: 18) }
+        // Ribs over the vault, as on the reference's barrel-roofed pair.
+        with(.airside, .white) {
+            var z = c.z - d / 2
+            while z <= c.z + d / 2 {
+                $0.vault(center: [c.x, wall, z], width: w + 1.6, depth: 0.6, rise: 11.35, segments: 18, caps: false)
+                z += d / 6
+            }
+        }
         // Big doors on the apron (north) face, window band above.
         with(.airside, .darkMetal) {
             for i in 0..<4 {
@@ -535,72 +610,148 @@ struct HubSceneBuilder {
 
     // MARK: Landside buildings
 
+    /// Window bands on every face of a block, one row per floor, split
+    /// into panes so the night lights some and not others: the lit ones use
+    /// the window material that glows warm after dusk, the rest stay dark
+    /// (reference night: grids of lit windows on every building).
+    private mutating func windowBands(_ c: SIMD3<Float>, w: Float, d: Float, base: Float, floors: Int, storey: Float,
+                                      seed: Int) {
+        let faces: [(normal: SIMD3<Float>, along: SIMD3<Float>, length: Float, offset: Float)] = [
+            (SIMD3<Float>(0, 0, 1), SIMD3<Float>(1, 0, 0), w, d / 2),
+            (SIMD3<Float>(0, 0, -1), SIMD3<Float>(1, 0, 0), w, d / 2),
+            (SIMD3<Float>(1, 0, 0), SIMD3<Float>(0, 0, 1), d, w / 2),
+            (SIMD3<Float>(-1, 0, 0), SIMD3<Float>(0, 0, 1), d, w / 2),
+        ]
+        for f in 0..<floors {
+            let y = base + Float(f) * storey + storey * 0.3
+            for (k, face) in faces.enumerated() {
+                let panes = max(2, Int(face.length / 9))
+                let pitch = (face.length - 2) / Float(panes)
+                for i in 0..<panes {
+                    let lit = (seed &+ f &* 7 &+ k &* 13 &+ i &* 5) % 5 != 0
+                    let along = -face.length / 2 + 1 + (Float(i) + 0.5) * pitch
+                    let at = c + face.normal * (face.offset + 0.06) + face.along * along + SIMD3<Float>(0, y, 0)
+                    let size: SIMD3<Float> = face.normal.x != 0 ? [0.12, storey * 0.45, pitch - 1.4]
+                                                                : [pitch - 1.4, storey * 0.45, 0.12]
+                    with(.landside, lit ? .windowDark : .windowUnlit) { $0.box(center: at, size: size) }
+                }
+            }
+        }
+    }
+
     private mutating func office(_ p: HubPiece) {
         let c = Self.f(p.center)
         let w = Float(p.size.x), h = Float(p.size.y), d = Float(p.size.z)
         let floors = max(1, min(8, p.variant))
-        with(.landside, .office(floors: floors)) { $0.box(center: c + [0, 0.6, 0], size: [w, h, d], top: false) }
+        with(.landside, .building) { $0.box(center: c + [0, 0.6, 0], size: [w, h, d], top: false) }
+        windowBands(c, w: w, d: d, base: 0.6, floors: floors, storey: h / Float(floors), seed: Int(abs(c.x * 3 + c.z)))
         with(.landside, .roof) {
-            $0.box(center: c + [0, h + 0.6, 0], size: [w + 0.8, 0.9, d + 0.8])
-            $0.box(center: c + [w * 0.15, h + 1.5, -d * 0.1], size: [w * 0.3, 2.2, d * 0.3])
+            $0.roundedBox(center: c + [0, h + 0.6, 0], size: [w + 0.8, 0.9, d + 0.8], bevel: 0.3)
+            $0.roundedBox(center: c + [w * 0.15, h + 1.5, -d * 0.1], size: [w * 0.3, 2.2, d * 0.3], bevel: 0.3)
         }
         with(.landside, .buildingShade) { $0.box(center: c, size: [w + 1, 0.6, d + 1]) }
         blob(c, w: w + 14, d: d + 14)
     }
 
+    /// Mid-rise apartments behind the villas (reference shot D): window
+    /// bands, a white balcony slab per floor on the street face, a roof
+    /// with plant.
+    private mutating func apartments(_ p: HubPiece) {
+        let c = Self.f(p.center)
+        let w = Float(p.size.x), h = Float(p.size.y), d = Float(p.size.z)
+        let floors = max(1, min(8, p.variant))
+        let storey = h / Float(floors)
+        with(.landside, .building) { $0.box(center: c + [0, 0.6, 0], size: [w, h, d], top: false) }
+        windowBands(c, w: w, d: d, base: 0.6, floors: floors, storey: storey, seed: Int(abs(c.x * 5 + c.z)))
+        with(.landside, .white) {
+            for f in 1..<floors {
+                let y = 0.6 + Float(f) * storey - 0.2
+                $0.roundedBox(center: c + [0, y, d / 2 + 0.9], size: [w * 0.92, 0.3, 1.8], bevel: 0.1)
+                $0.box(center: c + [0, y + 0.3, d / 2 + 1.75], size: [w * 0.92, 0.9, 0.1])
+            }
+        }
+        with(.landside, .houseWood) {
+            // Wood-clad end bays.
+            $0.box(center: c + [-w / 2 - 0.05, 0.6, 0], size: [0.2, h, d * 0.5])
+        }
+        with(.landside, .roof) {
+            $0.roundedBox(center: c + [0, h + 0.6, 0], size: [w + 1, 0.8, d + 1], bevel: 0.3)
+            $0.roundedBox(center: c + [-w * 0.2, h + 1.4, 0], size: [w * 0.25, 2.4, d * 0.4], bevel: 0.3)
+        }
+        with(.landside, .buildingShade) { $0.box(center: c, size: [w + 1, 0.6, d + 1]) }
+        with(.lamps, .lampPool) { $0.plane(center: c + [0, 0.32, d / 2 + 6], width: w + 8, depth: 12) }
+        blob(c, w: w + 16, d: d + 16)
+    }
+
+    /// The reference's modern villa: two storeys, flat roofs with a navy
+    /// fascia, big dark-framed glazing, wood cladding, a terrace by the
+    /// pool. Three variants mirror and shuffle the volumes.
     private mutating func house(_ p: HubPiece) {
         let c = Self.f(p.center)
         let w = Float(p.size.x), d = Float(p.size.z)
         let storey: Float = 3.6
         let v = p.variant
-        // Ground floor: a white box glazed on the garden (south) and east
-        // faces; upper floor set back, under a pitched navy roof with a flat
-        // canopy wing — the reference's modern villa.
-        let upper = c + [-w * 0.12, storey, -d * 0.08]
-        let upperW = w * 0.62, upperD = d * 0.78
+        let m: Float = v == 1 ? -1 : 1 // mirror
+        // Ground floor: a solid white volume at the back, a glazed living
+        // wing to the front.
+        let back = c + [0, 0, -d * 0.22]
+        let wing = c + [m * w * 0.18, 0, d * 0.24]
+        let wingW = w * 0.62, wingD = d * 0.48
+        // Upper floor cantilevers over the wing.
+        let upper = c + [-m * w * 0.08, storey, v == 2 ? d * 0.02 : -d * 0.08]
+        let upperW = w * 0.7, upperD = d * 0.6
         with(.landside, .building) {
-            $0.box(center: c + [0, 0, -d * 0.25], size: [w, storey, d * 0.5])
-            $0.box(center: c + [-w * 0.35, 0, d * 0.25], size: [w * 0.3, storey, d * 0.5])
-            $0.box(center: upper, size: [upperW, storey, upperD])
-            // Balcony slab.
-            $0.box(center: upper + [0, -0.3, upperD / 2 + 1.2], size: [upperW * 0.9, 0.35, 2.4])
+            $0.roundedBox(center: back, size: [w, storey, d * 0.56], bevel: 0.18)
+            $0.roundedBox(center: upper, size: [upperW, storey, upperD], bevel: 0.18)
         }
         with(.landside, .glass) {
-            $0.box(center: c + [w * 0.15, 0.1, d * 0.25], size: [w * 0.7 - 0.4, storey - 0.4, d * 0.5 - 0.4])
-            $0.box(center: upper + [upperW * 0.1, 0.5, upperD / 2], size: [upperW * 0.55, storey * 0.7, 0.2])
+            $0.box(center: wing, size: [wingW - 0.3, storey - 0.3, wingD - 0.3])
+            // The upper floor's long window band on the garden face.
+            $0.box(center: upper + [m * upperW * 0.08, 0.7, upperD / 2 + 0.02], size: [upperW * 0.7, storey * 0.55, 0.12])
         }
-        with(.landside, .white) {
-            // Window frames: mullions on the glass box.
-            for k in 0..<4 {
-                let x = c.x - w * 0.2 + Float(k) * w * 0.233
-                $0.box(center: [x, c.y, c.z + d / 2 - 0.1], size: [0.25, storey, 0.3])
+        with(.landside, .darkMetal) {
+            // Window frames: posts around the glazed wing and the band.
+            for k in 0...4 {
+                let x = wing.x - wingW / 2 + Float(k) * wingW / 4
+                $0.box(center: [x, 0, wing.z + wingD / 2 - 0.1], size: [0.16, storey - 0.3, 0.16])
             }
-            $0.box(center: c + [w * 0.15, storey - 0.35, d * 0.25], size: [w * 0.7, 0.35, d * 0.5])
-            // Balcony rail.
-            $0.box(center: upper + [0, 0.05, upperD / 2 + 2.3], size: [upperW * 0.9, 1.0, 0.12])
+            for side: Float in [-1, 1] {
+                $0.box(center: [wing.x + side * (wingW / 2 - 0.1), 0, wing.z], size: [0.16, storey - 0.3, wingD])
+            }
+            $0.box(center: upper + [m * upperW * 0.08, 0.6, upperD / 2 + 0.05], size: [upperW * 0.72, 0.12, 0.16])
+            $0.box(center: upper + [m * upperW * 0.08, 0.7 + storey * 0.55, upperD / 2 + 0.05], size: [upperW * 0.72, 0.12, 0.16])
         }
         with(.landside, .houseWood) {
-            // Vertical slats beside the entrance.
-            for k in 0..<7 {
-                $0.box(center: c + [-w * 0.48 + Float(k) * 0.45, 0, d / 2 + 0.05], size: [0.2, storey * 0.92, 0.2])
+            // Wood cladding on one end of the upper floor and beside the door.
+            $0.box(center: upper + [-m * (upperW / 2 + 0.06), 0, 0], size: [0.18, storey, upperD * 0.96])
+            for k in 0..<8 {
+                $0.box(center: back + [-m * (w * 0.45 - Float(k) * 0.42), 0, d * 0.28 + 0.06], size: [0.2, storey * 0.92, 0.2])
             }
-            $0.box(center: upper + [-upperW / 2 - 0.05, 0, 0], size: [0.2, storey * 0.9, upperD * 0.6])
-            if v == 1 { $0.box(center: upper + [upperW * 0.3, 0, upperD / 2 + 0.05], size: [upperW * 0.3, storey * 0.9, 0.25]) }
+            // Terrace deck in front of the wing, towards the pool.
+            $0.box(center: wing + [0, 0, wingD / 2 + 2.2], size: [wingW * 0.9, 0.25, 4.4])
         }
+        // Flat roofs: a white slab over a navy fascia, overhanging.
         with(.landside, .houseRoof) {
-            $0.gable(center: upper + [0, storey, 0], width: upperW + 1.6, depth: upperD + 1.6,
-                     height: 3.2, yaw: v == 2 ? .pi / 2 : 0)
-            $0.box(center: c + [w * 0.15, storey, d * 0.2], size: [w * 0.75, 0.45, d * 0.62])
+            $0.box(center: wing + [0, storey - 0.05, 0], size: [wingW + 1.2, 0.35, wingD + 1.4])
+            $0.box(center: upper + [0, storey - 0.05, 0], size: [upperW + 1.2, 0.35, upperD + 1.2])
+        }
+        with(.landside, .roof) {
+            $0.roundedBox(center: wing + [0, storey + 0.3, 0], size: [wingW + 1.1, 0.2, wingD + 1.3], bevel: 0.08)
+            $0.roundedBox(center: upper + [0, storey + 0.3, 0], size: [upperW + 1.1, 0.2, upperD + 1.1], bevel: 0.08)
         }
         with(.landside, .windowDark) {
-            $0.box(center: upper + [-upperW * 0.3, 0.6, upperD / 2 + 0.02], size: [upperW * 0.25, storey * 0.55, 0.2])
-            $0.box(center: c + [-w / 2 - 0.02, 0.7, -d * 0.2], size: [0.2, storey * 0.55, d * 0.3])
+            $0.box(center: back + [m * w * 0.3, 0.8, -d * 0.28 - 0.02], size: [w * 0.25, storey * 0.5, 0.15])
+            $0.box(center: upper + [0, 0.8, -upperD / 2 - 0.02], size: [upperW * 0.4, storey * 0.5, 0.15])
+        }
+        // Window light spilling onto the terrace and lawn at night.
+        with(.lamps, .lampPool) {
+            $0.plane(center: wing + [0, 0.42, wingD / 2 + 3], width: wingW + 6, depth: 9)
         }
         // A car on the drive.
         let car = c + [w * 0.25, 0.3, d / 2 + 6]
         with(.landside, .cloth(v * 3)) {
-            $0.box(center: car, size: [1.9, 0.75, 4.4])
-            $0.box(center: car + [0, 0.75, -0.3], size: [1.7, 0.6, 2.4])
+            $0.roundedBox(center: car, size: [1.9, 0.75, 4.4], bevel: 0.2)
+            $0.roundedBox(center: car + [0, 0.75, -0.3], size: [1.7, 0.6, 2.4], bevel: 0.2)
         }
         with(.landside, .windowDark) { $0.box(center: car + [0, 0.8, -0.3], size: [1.74, 0.42, 2.44], top: false) }
         blob(c, w: w * 1.5, d: d * 1.5, y: 0.34)
@@ -619,6 +770,37 @@ struct HubSceneBuilder {
             $0.box(center: c + [w * 0.3, 0, d / 2], size: [w * 0.4, h, t])
         }
         with(.landside, .concreteLight) { $0.box(center: c + [0, 0, d / 2 - 6], size: [6, 0.32, 12]) }
+        // Clipped hedges inside the side walls.
+        with(.landside, .tree(1)) {
+            $0.roundedBox(center: c + [-w / 2 + 1.4, 0, 2], size: [1.6, 1.5, d * 0.7], bevel: 0.5)
+            $0.roundedBox(center: c + [w / 2 - 1.4, 0, -4], size: [1.6, 1.5, d * 0.5], bevel: 0.5)
+        }
+    }
+
+    /// A roundabout at the avenue's terminal junctions: an asphalt ring,
+    /// a white kerb, a planted island with a tree.
+    private mutating func roundabout(_ p: HubPiece) {
+        let c = Self.f(p.center)
+        let r = Float(p.size.x) / 2
+        // Above the crossing roads' lane dashes (0.13), so none show through.
+        with(.ground, .asphalt) { $0.cylinder(base: c, radius: r, height: 0.16, segments: 40) }
+        with(.markings, .marking) {
+            // Dashed lane line round the ring.
+            for k in 0..<18 {
+                let a = Float(k) / 18 * 2 * .pi
+                let mid = (r + 11) / 2
+                $0.box(center: c + [cos(a) * mid, 0.16, -sin(a) * mid], size: [0.35, 0.012, 2.6], yaw: a)
+            }
+        }
+        with(.landside, .white) { $0.cylinder(base: c, radius: 11, height: 0.42, segments: 32) }
+        with(.landside, .grassBright) { $0.cylinder(base: c, radius: 10.3, height: 0.5, segments: 32) }
+        tree(HubPiece(.tree, center: p.center, size: HubVec(9, 12, 9), variant: 1))
+        with(.landside, .tree(2)) {
+            for k in 0..<6 {
+                let a = Float(k) / 6 * 2 * .pi
+                $0.sphere(center: c + [cos(a) * 6.5, 0.9, -sin(a) * 6.5], radius: 1.3, segments: 8, rings: 5)
+            }
+        }
     }
 
     private mutating func tree(_ p: HubPiece) {
@@ -699,6 +881,181 @@ struct HubSceneBuilder {
         }
     }
 
+    // MARK: Airfield furniture
+
+    /// Edge, threshold and approach lights on every runway, blue edge
+    /// lights on the taxiways. Matte fittings by day; after dusk they glow
+    /// and the bloom pass turns them into the reference's strings of light.
+    /// A little over scale, as everything in the diorama is.
+    private mutating func airfieldLights() {
+        for runway in layout.runways {
+            let a = Self.f(runway.thresholdA), b = Self.f(runway.thresholdB)
+            let length = simd_distance(a, b)
+            guard length > 1 else { continue }
+            let dir = simd_normalize(b - a)
+            let yaw = atan2(-dir.z, dir.x)
+            let half = Float(runway.width) / 2
+            let frame = HubMeshBatch.translation(a) * HubMeshBatch.yaw(yaw)
+            with(.lamps, .runwayLight) { batch in
+                batch.transform = frame
+                var t: Float = 20
+                while t < length - 20 {
+                    for side: Float in [-1, 1] {
+                        batch.box(center: [t, 0, side * (half + 2.5)], size: [1.4, 0.7, 1.4])
+                    }
+                    t += 60
+                }
+                // Approach lights: a centreline of bars out from each end,
+                // with a crossbar 150 m out.
+                for end: Float in [0, 1] {
+                    let out: Float = end == 0 ? -1 : 1
+                    let base: Float = end == 0 ? 0 : length
+                    var d: Float = 30
+                    while d <= 300 {
+                        batch.box(center: [base + out * d, 0, 0], size: [1.2, 0.9, d == 150 ? 30 : 6])
+                        d += 30
+                    }
+                }
+                batch.transform = matrix_identity_float4x4
+            }
+            with(.lamps, .thresholdLight) { batch in
+                batch.transform = frame
+                for x: Float in [-3, length + 3] {
+                    var z = -half
+                    while z <= half + 0.01 {
+                        batch.box(center: [x, 0, z], size: [1.2, 0.7, 1.2])
+                        z += 4.5
+                    }
+                }
+                batch.transform = matrix_identity_float4x4
+            }
+        }
+        for p in layout.pieces where p.kind == .taxiway {
+            let c = Self.f(p.center)
+            let alongX = p.size.x >= p.size.z
+            let length = Float(alongX ? p.size.x : p.size.z), width = Float(alongX ? p.size.z : p.size.x)
+            with(.lamps, .taxiEdgeLight) { batch in
+                var t = -length / 2 + 15
+                while t < length / 2 - 15 {
+                    for side: Float in [-1, 1] {
+                        let off = side * (width / 2 + 1.5)
+                        let at: SIMD3<Float> = alongX ? [c.x + t, 0, c.z + off] : [c.x + off, 0, c.z + t]
+                        batch.box(center: at, size: [1.0, 0.6, 1.0])
+                    }
+                    t += 45
+                }
+            }
+        }
+    }
+
+    /// Floodlight masts along the apron's open edge: tall poles with a lamp
+    /// head, and a wide pool of light on the concrete at night.
+    private mutating func apronMasts() {
+        let terminalZ = Float(layout.terminal.minZ)
+        for p in layout.pieces where p.kind == .apron && p.variant == 0 {
+            let r = p.groundBounds
+            // The edge away from the terminal faces the taxiway.
+            let farZ = Float(abs(r.minZ - Double(terminalZ)) > abs(r.maxZ - Double(terminalZ)) ? r.minZ : r.maxZ)
+            let inward: Float = farZ < Float(r.center.z) ? 1 : -1
+            let count = max(2, Int(r.width / 170) + 1)
+            for i in 0..<count {
+                let x = Float(r.minX) + 20 + (Float(r.width) - 40) * Float(i) / Float(max(1, count - 1))
+                let base = SIMD3<Float>(x, 0, farZ + inward * 6)
+                with(.airside, .darkMetal) {
+                    $0.cylinder(base: base, radius: 0.55, topRadius: 0.35, height: 32, segments: 8)
+                    $0.box(center: base + [0, 31.4, 0], size: [5.4, 0.4, 0.6])
+                }
+                with(.lamps, .lamp) { $0.box(center: base + [0, 31.8, inward * 0.5], size: [5.0, 1.0, 1.0]) }
+                with(.lamps, .lampPool) {
+                    $0.plane(center: base + [0, 0.26, inward * 26], width: 64, depth: 56)
+                }
+                blob(base, w: 3, d: 3)
+            }
+        }
+    }
+
+    /// A striped windsock beside each runway's first threshold.
+    private mutating func windsocks() {
+        for runway in layout.runways {
+            let a = Self.f(runway.thresholdA), b = Self.f(runway.thresholdB)
+            guard simd_distance(a, b) > 1 else { continue }
+            let dir = simd_normalize(b - a)
+            let side = SIMD3<Float>(-dir.z, 0, dir.x)
+            let base = a + dir * 260 + side * (Float(runway.width) / 2 + 55)
+            with(.airside, .darkMetal) { $0.cylinder(base: base, radius: 0.2, height: 9, segments: 6) }
+            // The sock streams downwind: four bands narrowing away from the
+            // mast, alternating orange and white.
+            let wind = simd_normalize(dir * 0.7 + side * 0.7)
+            let yaw = atan2(-wind.z, wind.x)
+            for k in 0..<4 {
+                let along = 0.9 + Float(k) * 1.3
+                let size = 1.25 - Float(k) * 0.18
+                let key: HubMaterialKey = k % 2 == 0 ? .cone : .white
+                with(.airside, key) {
+                    $0.box(center: base + wind * along + [0, 8.2 - Float(k) * 0.12 - size / 2, 0],
+                           size: [1.3, size, size], yaw: yaw)
+                }
+            }
+            with(.markings, .marking) { $0.cylinder(base: base + [0, 0.1, 0], radius: 7, height: 0.05, segments: 20) }
+        }
+    }
+
+    /// The airside fence: posts and two rails round the far three sides of
+    /// the airfield, the terminal and its kerb closing the fourth.
+    private mutating func perimeterFence() {
+        let airside = layout.pieces.filter { [.runway, .taxiway, .apron].contains($0.kind) }.map(\.groundBounds)
+        guard var r = airside.first else { return }
+        for b in airside.dropFirst() { r = r.union(b) }
+        let minX = Float(r.minX) - 60, maxX = Float(r.maxX) + 60, minZ = Float(r.minZ) - 60
+        let maxZ = Float(layout.terminal.minZ) - 5
+        guard maxZ > minZ + 20 else { return }
+        let runs: [(SIMD3<Float>, SIMD3<Float>)] = [
+            ([minX, 0, maxZ], [minX, 0, minZ]), ([minX, 0, minZ], [maxX, 0, minZ]), ([maxX, 0, minZ], [maxX, 0, maxZ]),
+        ]
+        with(.airside, .darkMetal) { batch in
+            for (a, b) in runs {
+                let length = simd_distance(a, b)
+                let d = simd_normalize(b - a)
+                let yaw = atan2(-d.z, d.x)
+                let mid = (a + b) / 2
+                for y: Float in [1.2, 2.6] {
+                    batch.box(center: mid + [0, y, 0], size: [length, 0.14, 0.14], yaw: yaw)
+                }
+                var t: Float = 0
+                while t <= length {
+                    batch.box(center: a + d * t, size: [0.22, 3, 0.22])
+                    t += 14
+                }
+            }
+        }
+    }
+
+    /// Stand numbers painted at the head of each lead-in line, reading from
+    /// the taxilane towards the gate.
+    private mutating func standNumbers() {
+        for stand in layout.stands {
+            let fwd = SIMD3<Float>(Float(cos(stand.heading)), 0, Float(-sin(stand.heading)))
+            let len = Float(HubAircraftEnvelope.length(stand.maxCategory))
+            // Beside the lead-in line, not on it.
+            let right = SIMD3<Float>(fwd.z * -1, 0, fwd.x)
+            let at = Self.f(stand.nose) - fwd * (len + 18) + right * 7
+            let mesh = MeshResource.generateText("\(stand.gate)", extrusionDepth: 0.02,
+                                                 font: .systemFont(ofSize: 6, weight: .heavy))
+            let text = ModelEntity(mesh: mesh, materials: [materials[.marking]])
+            text.components.set(HubMaterialTag(key: .marking))
+            let b = mesh.bounds
+            text.position = [-b.center.x, -b.center.y, 0]
+            let holder = Entity()
+            holder.addChild(text)
+            // Lay the text flat (its up becomes −z), then turn it so its up
+            // points along the lead-in towards the nose.
+            holder.orientation = simd_quatf(angle: Float(stand.heading) - .pi / 2, axis: [0, 1, 0])
+                * simd_quatf(angle: -.pi / 2, axis: [1, 0, 0])
+            holder.position = [at.x, 0.13, at.z]
+            extras.append((.markings, holder))
+        }
+    }
+
     // MARK: Interior (cutaway)
 
     private mutating func placeInterior(_ p: HubPiece) {
@@ -761,7 +1118,7 @@ struct HubSceneBuilder {
                 $0.box(center: base, size: [0.55, 1.1, 0.45])
                 $0.box(center: base + [0, 1.1, -0.05], size: [0.7, 0.55, 0.3])
             }
-            with(.interior, .screen) { b in
+            with(.interior, .kioskScreen) { b in
                 b.transform = HubMeshBatch.translation(base + [0, 1.38, 0.12]) * HubMeshBatch.roll(-0.45)
                 b.box(center: [0, -0.22, 0], size: [0.6, 0.44, 0.04])
                 b.transform = matrix_identity_float4x4
@@ -797,14 +1154,23 @@ struct HubSceneBuilder {
             with(.interior, .houseWood) {
                 $0.box(center: base, size: [w, h, d], yaw: yaw)
             }
-            // Rows of stock in mixed colours, on the front face.
-            let colours = [2, 3, 4, 6, 0]
+            // Rows of stock on the front face: small boxes in mixed colours
+            // and heights, so the shelves read stocked (reference shot C).
+            let colours = [2, 3, 4, 6, 0, 1, 5]
+            let face = SIMD3<Float>(sin(yaw), 0, cos(yaw)) * (d / 2 + 0.02)
+            let along = SIMD3<Float>(cos(yaw), 0, -sin(yaw))
+            let perRow = max(3, Int(w * 0.9 / 0.5))
+            let rowH = (h - 0.5) / 4
             for k in 0..<4 {
-                let key = HubMaterialKey.cloth(colours[(k + p.variant) % colours.count])
-                let face = SIMD3<Float>(sin(yaw), 0, cos(yaw)) * (d / 2 + 0.02)
-                with(.interior, key) {
-                    $0.box(center: base + face + [0, 0.35 + Float(k) * (h - 0.5) / 4, 0],
-                           size: [w * 0.9, (h - 0.5) / 4 * 0.6, 0.18], yaw: yaw)
+                for i in 0..<perRow {
+                    let n = i * 7 + k * 3 + p.variant
+                    let key = HubMaterialKey.cloth(colours[n % colours.count])
+                    let x = -w * 0.45 + (Float(i) + 0.5) * (w * 0.9 / Float(perRow))
+                    let tall = rowH * (0.45 + 0.25 * Float(n % 3))
+                    with(.interior, key) {
+                        $0.box(center: base + face + along * x + [0, 0.3 + Float(k) * rowH, 0],
+                               size: [w * 0.9 / Float(perRow) * 0.8, tall, 0.2], yaw: yaw)
+                    }
                 }
             }
             if let label = p.label { sign(label, at: base + [0, h + 0.5, d / 2 + 0.1], width: w) }
@@ -878,6 +1244,19 @@ struct HubSceneBuilder {
                 for r in 0..<5 {
                     let y = fl + 0.6 + Float(r) * h / 5.5
                     $0.box(center: c + [w / 4 + 0.1, y, d / 2 + 0.03], size: [w / 2 - 0.9, 0.12, 0.02])
+                }
+            }
+        case .bayPartition:
+            // Glazed partition between bays: glass panes in a white frame,
+            // so the next bay shows through (doll's-house rooms, shot C).
+            with(.interior, .glass) { $0.box(center: base, size: [w * 0.4, h, d]) }
+            with(.interior, .white) {
+                $0.box(center: base + [0, h - 0.4, 0], size: [w, 0.4, d])
+                $0.box(center: base, size: [w, 0.5, d])
+                var z = c.z - d / 2
+                while z <= c.z + d / 2 + 0.01 {
+                    $0.box(center: [c.x, fl, z], size: [w, h, 0.3])
+                    z += 6
                 }
             }
         case .loungeBlock:

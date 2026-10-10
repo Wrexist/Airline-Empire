@@ -2,14 +2,26 @@ import Foundation
 import Testing
 @testable import AirlineEmpireCore
 
+/// The same engine with every building under construction open. For tests
+/// about what a building costs and does rather than how long it takes.
+func openingFacilities(_ engine: SimulationEngine) -> SimulationEngine {
+    var state = engine.state
+    FacilityConstructionSystem.openAll(&state)
+    let opened = SimulationEngine(state: state, systems: engine.systems, catalog: engine.catalog)
+    opened.progressionCeiling = engine.progressionCeiling
+    return opened
+}
+
 @Suite("Airport facilities")
 struct AirportFacilitiesTests {
     @Test func realMonthBoundariesAndRestoreDoNotDoubleCharge() throws {
-        let (catalog, source, airline) = try FleetFixtures.catalogAndEngine(systems: [EconomySystem()])
+        let systems: [any SimulationSystem] = [FacilityConstructionSystem(), EconomySystem()]
+        let (catalog, source, airline) = try FleetFixtures.catalogAndEngine(systems: systems)
         let levels = AirportFacilities(lounge: 1, groundServices: 2)
         #expect(source.applyNow(ConfigureAirportFacilitiesCommand(airline: airline, airport: "ARN", facilities: levels)) == .applied)
-        // Advance to the first real billing boundary, then save on that boundary.
-        for _ in 0..<3_100 {
+        // Advance to the first real billing boundary after the buildings
+        // open, then save on that boundary.
+        for _ in 0..<8_000 {
             if source.state.ledger.recent.contains(where: { $0.memo == "ARN airport services" }) { break }
             source.advance(ticks: 1)
         }
@@ -18,22 +30,25 @@ struct AirportFacilitiesTests {
         }
         #expect(bills(source.state) == 1)
         #expect(source.state.ledger.recent.first(where: { $0.memo == "ARN airport services" })?.amount == -levels.monthlyCost(tuning: catalog.tuning.airportServices))
+        #expect(source.state.airlines[airline]?.facilities(at: "ARN") == levels)
         let restored = SimulationEngine(state: try JSONSaveCodec().decode(JSONSaveCodec().encode(source.state)),
-            systems: [EconomySystem()], catalog: catalog)
+            systems: systems, catalog: catalog)
         source.advance(ticks: 1); restored.advance(ticks: 1)
         #expect(bills(restored.state) == 1)
         #expect(restored.state == source.state)
         #expect(restored.applyNow(ConfigureAirportFacilitiesCommand(airline: airline, airport: "ARN", facilities: .init())) == .applied)
-        restored.advance(ticks: 3_100)
+        restored.advance(ticks: 3_200)
         #expect(bills(restored.state) == 1)
         #expect(restored.state.airlines[airline]?.airportServiceCommitments(tuning: catalog.tuning.airportServices).isEmpty == true)
     }
 
     @Test func downgradesNeverRefundAndReinstallChargesAgain() throws {
-        let (catalog, engine, airline) = try FleetFixtures.catalogAndEngine()
+        let (catalog, built, airline) = try FleetFixtures.catalogAndEngine()
+        var engine = built
         func apply(_ lounge: Int, _ ground: Int) {
             #expect(engine.applyNow(ConfigureAirportFacilitiesCommand(airline: airline, airport: "ARN",
                 facilities: .init(lounge: lounge, groundServices: ground))) == .applied)
+            engine = openingFacilities(engine)
         }
         apply(2, 2)
         let cash = engine.state.ledger.balance(of: airline)
@@ -83,16 +98,25 @@ struct AirportFacilitiesTests {
     @Test func cardQuotesShowIncrementalInstallationAndFullMonthlyCost() {
         let quote = AirportServiceReadModel(service: .lounge, installed: .init(lounge: 1),
             proposed: .init(lounge: 2, groundServices: 2), tuning: .standard)
-        #expect(quote.installation == .dollars(150_000))
+        #expect(quote.installation == .dollars(750_000))
         #expect(quote.monthly == .dollars(30_000))
+        #expect(quote.buildDays == 14)
         #expect(quote.current == 1 && quote.proposed == 2)
+        let hangar = AirportServiceReadModel(service: .hangar, installed: .init(),
+            proposed: .init(hangar: 2), tuning: .standard)
+        #expect(hangar.installation == .dollars(5_000_000))
+        #expect(hangar.monthly == .dollars(70_000))
+        #expect(hangar.buildDays == 90)
         let downgrade = AirportServiceReadModel(service: .ground, installed: .init(groundServices: 2),
             proposed: .init(), tuning: .standard)
         #expect(downgrade.installation == .zero && downgrade.monthly == .zero)
         for level in [-1, 3, Int.max] {
             #expect(!AirportFacilities(lounge: level).isValid)
             #expect(!AirportFacilities(groundServices: level).isValid)
+            #expect(!AirportFacilities(hangar: level).isValid)
         }
+        #expect(!AirportFacilities(crewBase: 2).isValid)
+        #expect(AirportFacilities(lounge: 2, groundServices: 2, hangar: 2, crewBase: 1).isValid)
     }
 
     @Test func economyScaleBaseline() throws {
@@ -125,13 +149,16 @@ struct AirportFacilitiesTests {
         .init(previous: state.clock.now, current: state.clock.now, tick: .minutes(0),
               catalog: catalog, events: EventCollector(), progressionCeiling: .empire)
     }
-    @Test func installsAtomicallyAndPostsOnlyOnce() throws {
+    @Test func ordersAtomicallyAndPostsOnlyOnce() throws {
         let (catalog, engine, airline, _) = try RouteFixtures.withAircraft()
         let old = engine.state
         let next = AirportFacilities(lounge: 1, groundServices: 2)
         let command = ConfigureAirportFacilitiesCommand(airline: airline, airport: "ARN", facilities: next)
         #expect(engine.applyNow(command) == .applied)
-        #expect(engine.state.airlines[airline]?.facilities(at: "ARN") == next)
+        // Ordered, paid, and building: nothing stands yet.
+        #expect(engine.state.airlines[airline]?.facilities(at: "ARN") == AirportFacilities())
+        #expect(engine.state.airlines[airline]?.plannedFacilities(at: "ARN") == next)
+        #expect(engine.state.airlines[airline]?.facilityConstructions?.count == 2)
         #expect(engine.state.ledger.balance(of: airline) == old.ledger.balance(of: airline) - next.installationCost(from: .init(), tuning: catalog.tuning.airportServices))
         let count = engine.state.ledger.totalTransactionCount
         #expect(engine.applyNow(command) == .applied)
@@ -153,9 +180,9 @@ struct AirportFacilitiesTests {
         #expect(engine.state.ledger == old.ledger)
     }
     @Test func cannotSpendUnavailableFundsButCanCloseServicesInDebt() throws {
-        let (catalog, engine, airline, _) = try RouteFixtures.withAircraft()
-        #expect(engine.applyNow(ConfigureAirportFacilitiesCommand(airline: airline, airport: "ARN", facilities: .init(lounge: 1))) == .applied)
-        var state = engine.state
+        let (catalog, ordered, airline, _) = try RouteFixtures.withAircraft()
+        #expect(ordered.applyNow(ConfigureAirportFacilitiesCommand(airline: airline, airport: "ARN", facilities: .init(lounge: 1))) == .applied)
+        var state = openingFacilities(ordered).state
         state.ledger.post(airline: airline, category: .overhead, amount: -state.ledger.balance(of: airline) - .dollars(1), at: state.clock.now)
         let upgrade = ConfigureAirportFacilitiesCommand(airline: airline, airport: "ARN", facilities: .init(lounge: 2))
         #expect(upgrade.validate(state: state, catalog: catalog)?.code == "airport.insufficientFunds")
@@ -168,9 +195,12 @@ struct AirportFacilitiesTests {
     }
     @Test func monthlyServicesAreBilledAndClosureStopsFutureCharges() throws {
         let (catalog, engine, airline, _) = try RouteFixtures.withAircraft()
-        let facilities = AirportFacilities(lounge: 2, groundServices: 1)
-        #expect(engine.applyNow(ConfigureAirportFacilitiesCommand(airline: airline, airport: "ARN", facilities: facilities)) == .applied)
-        var with = engine.state, without = engine.state
+        let facilities = AirportFacilities(lounge: 2, groundServices: 1, hangar: 1, crewBase: 1)
+        var state = engine.state
+        state.progression.era = .regional
+        let regional = SimulationEngine(state: state, systems: engine.systems, catalog: catalog)
+        #expect(regional.applyNow(ConfigureAirportFacilitiesCommand(airline: airline, airport: "ARN", facilities: facilities)) == .applied)
+        var with = openingFacilities(regional).state, without = with
         without.airlines[airline]?.airportFacilities = nil
         EconomySystem().update(state: &with, context: context(with, catalog))
         EconomySystem().update(state: &without, context: context(without, catalog))
@@ -188,9 +218,13 @@ struct AirportFacilitiesTests {
         #expect(try JSONDecoder().decode(Tuning.self, from: JSONSerialization.data(withJSONObject: tuning)).airportServices == .standard)
     }
     @Test func loungeChangesAuthoritativeDemandWithoutRefillingSoldSeats() throws {
-        let (catalog, engine, airline, _, id) = try FlightOpsTests.operating()
-        let before = engine.state
-        #expect(engine.applyNow(ConfigureAirportFacilitiesCommand(airline: airline, airport: "ARN", facilities: .init(lounge: 2))) == .applied)
+        let (catalog, ordered, airline, _, id) = try FlightOpsTests.operating()
+        let before = ordered.state
+        #expect(ordered.applyNow(ConfigureAirportFacilitiesCommand(airline: airline, airport: "ARN", facilities: .init(lounge: 2))) == .applied)
+        // Nothing changes until it opens.
+        #expect(DemandSystem.offerQualityTerms(route: before.routes[id]!, state: ordered.state, catalog: catalog)
+            == DemandSystem.offerQualityTerms(route: before.routes[id]!, state: before, catalog: catalog))
+        let engine = openingFacilities(ordered)
         #expect(engine.state.routes[id] == before.routes[id])
         let route = try #require(before.routes[id])
         let old = try #require(DemandSystem.offerQualityTerms(route: route, state: before, catalog: catalog))

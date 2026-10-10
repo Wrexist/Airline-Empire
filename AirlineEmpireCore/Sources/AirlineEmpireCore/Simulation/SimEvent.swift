@@ -74,6 +74,10 @@ public enum SimEventKind: Equatable, Codable, Sendable {
     case missionCompleted(id: Int64, reward: Money)
     case missionExpired(id: Int64)
     case gameOver
+
+    // Hub buildings (docs/HUB_PROGRESSION_PLAN.md)
+    case facilityOpened(airline: AirlineID, airport: AirportCode, service: AirportService, level: Int)
+    case hubStatusRaised(airline: AirlineID, airport: AirportCode, status: HubStatus)
 }
 
 /// Fixed-capacity ring of recent events plus a lifetime counter.

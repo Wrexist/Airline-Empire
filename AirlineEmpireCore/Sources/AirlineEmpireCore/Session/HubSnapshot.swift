@@ -74,6 +74,8 @@ public struct HubStandOccupant: Equatable, Codable, Sendable {
     public let stage: HubTurnaroundStage?
     /// Progress through `stage`, 0…1.
     public let stageProgress: Double
+    /// The route the aircraft flies, for the inspector's route page.
+    public var routeID: RouteID? = nil
 }
 
 public struct HubBoardRow: Equatable, Codable, Sendable {
@@ -122,6 +124,14 @@ public struct HubSnapshot: Equatable, Codable, Sendable {
     public let movementsPerHour: Double
     /// The stand the dashboard opens on: the player's busiest turnaround.
     public let focusStand: Int?
+    /// Routes, slots, money, reputation and alerts (`HubInsights`).
+    public var insights: HubInsights = .empty
+    /// The player's facilities here and their next levels.
+    public var upgrades: [HubUpgradeOffer] = []
+    /// The station's status and what the next one takes.
+    public var status: HubStatusProgress = .empty
+    /// The hub's own story: founding, openings, statuses.
+    public var timeline: [HubTimelineEntry] = []
 
     public var delays: [HubBoardRow] { (departures + arrivals).filter { $0.status == .delayed } }
 
@@ -280,7 +290,7 @@ extension GameState {
                 typeName: type.map { "\($0.manufacturer) \($0.model)" } ?? plane.typeCode.raw,
                 registration: HubFormat.registration(airline: ownerCode, aircraft: plane.id),
                 flight: flight.map { card($0, seats: plane.configuration?.totalSeats ?? type?.seats ?? 0) },
-                stage: st, stageProgress: progress))
+                stage: st, stageProgress: progress, routeID: plane.assignedRoute ?? flight?.route))
         }
 
         // Background traffic for the slots other carriers hold, so a busy
@@ -364,13 +374,17 @@ extension GameState {
             .max { ($0.stage.map(stagePriority) ?? -1) < ($1.stage.map(stagePriority) ?? -1) }
             ?? occupants.first
 
+        let insights = hubInsights(airport: code, catalog: catalog, occupants: occupants, kpis: kpis,
+                                   departures: Array(departures))
         return HubSnapshot(
             airport: code, airportName: spec.name, city: spec.city, airlineName: airlineName,
             airlineCode: designator, livery: player?.livery ?? .default,
             localMinuteOfDay: localMinute, localTime: HubFormat.clock(localMinute),
             nightFactor: HubFormat.nightFactor(localMinute: localMinute),
             occupants: occupants, departures: Array(departures), arrivals: Array(arrivals),
-            kpis: kpis, movementsPerHour: movementsPerHour, focusStand: focus?.standIndex)
+            kpis: kpis, movementsPerHour: movementsPerHour, focusStand: focus?.standIndex,
+            insights: insights, upgrades: hubUpgradeOffers(airport: code, catalog: catalog),
+            status: hubStatusProgress(airport: code), timeline: hubTimeline(airport: code))
     }
 }
 
@@ -392,5 +406,34 @@ func categoryRank(_ c: AircraftCategory) -> Int {
     case .largeNarrowbody: 3
     case .widebody: 4
     case .largeWidebody: 5
+    }
+}
+
+extension HubSnapshot {
+    /// A copy with one stand's turnaround held at `stage`, the flight card's
+    /// status following it. For the Hub View captures, which must show the
+    /// reference's boarding moment (queue, tug, passengers) whatever the
+    /// campaign fixture's clock says.
+    public func holding(_ stage: HubTurnaroundStage, progress: Double = 0.5, atStand index: Int) -> HubSnapshot {
+        let occupants = self.occupants.map { o -> HubStandOccupant in
+            guard o.standIndex == index else { return o }
+            let flight = o.flight.map { f in
+                HubFlightCard(flightID: f.flightID, code: f.code, from: f.from, to: f.to,
+                              destinationCity: f.destinationCity, time: f.time,
+                              passengers: stage >= .boarding ? Int(Double(f.seats) * progress) : f.passengers,
+                              seats: f.seats, delayMinutes: f.delayMinutes,
+                              status: stage == .boarding ? .boarding : f.status)
+            }
+            return HubStandOccupant(standIndex: o.standIndex, gate: o.gate, aircraftID: o.aircraftID,
+                                    operatorKind: o.operatorKind, livery: o.livery, category: o.category,
+                                    typeName: o.typeName, registration: o.registration, flight: flight,
+                                    stage: stage, stageProgress: min(1, max(0, progress)), routeID: o.routeID)
+        }
+        return HubSnapshot(airport: airport, airportName: airportName, city: city, airlineName: airlineName,
+                           airlineCode: airlineCode, livery: livery, localMinuteOfDay: localMinuteOfDay,
+                           localTime: localTime, nightFactor: nightFactor, occupants: occupants,
+                           departures: departures, arrivals: arrivals, kpis: kpis,
+                           movementsPerHour: movementsPerHour, focusStand: focusStand, insights: insights,
+                           upgrades: upgrades, status: status, timeline: timeline)
     }
 }

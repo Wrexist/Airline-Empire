@@ -31,6 +31,24 @@ struct HubMeshBatch {
         return try? MeshResource.generate(from: [d])
     }
 
+    /// Appends another batch's geometry, moved by `matrix` (rigid or
+    /// uniformly scaled), on top of this batch's own transform: how static
+    /// vehicles and crowds become one draw per material.
+    mutating func append(_ other: HubMeshBatch, matrix: float4x4) {
+        let m = transform * matrix
+        let base = UInt32(positions.count)
+        for p in other.positions {
+            let w = m * SIMD4<Float>(p, 1)
+            positions.append(SIMD3(w.x, w.y, w.z))
+        }
+        for n in other.normals {
+            let w = m * SIMD4<Float>(n, 0)
+            normals.append(simd_normalize(SIMD3(w.x, w.y, w.z)))
+        }
+        uvs += other.uvs
+        indices += other.indices.map { $0 + base }
+    }
+
     // MARK: Primitive emitters
 
     private mutating func vertex(_ p: SIMD3<Float>, _ n: SIMD3<Float>, _ uv: SIMD2<Float>) -> UInt32 {
@@ -68,6 +86,77 @@ struct HubMeshBatch {
         quad(p100, p000, p010, p110, normal: [0, 0, -1])
         quad(p101, p100, p110, p111, normal: [1, 0, 0])
         quad(p000, p001, p011, p010, normal: [-1, 0, 0])
+        transform = saved
+    }
+
+    /// A quad with its own normal at each corner, wound to face `outward`
+    /// whatever order the corners come in. Normals that differ across a
+    /// bevel interpolate, so the bevel shades like a rounded edge.
+    mutating func smoothQuad(_ p: [SIMD3<Float>], _ n: [SIMD3<Float>], outward: SIMD3<Float>,
+                             uv: [SIMD2<Float>] = [[0, 0], [1, 0], [1, 1], [0, 1]]) {
+        let flip = simd_dot(simd_cross(p[1] - p[0], p[2] - p[0]), outward) < 0
+        let order = flip ? [0, 3, 2, 1] : [0, 1, 2, 3]
+        let i = order.map { vertex(p[$0], n[$0], uv[$0]) }
+        indices += [i[0], i[1], i[2], i[0], i[2], i[3]]
+    }
+
+    private mutating func smoothTriangle(_ p: [SIMD3<Float>], _ n: [SIMD3<Float>], outward: SIMD3<Float>) {
+        let flip = simd_dot(simd_cross(p[1] - p[0], p[2] - p[0]), outward) < 0
+        let order = flip ? [0, 2, 1] : [0, 1, 2]
+        let i = order.map { vertex(p[$0], n[$0], [0.5, 0.5]) }
+        indices += i
+    }
+
+    /// A box whose top and vertical edges are chamfered, with the normals
+    /// blended across each chamfer: the edges catch the light like the
+    /// reference's rounded clay (docs/HUB_VIEW_3D.md §4). The bottom edge
+    /// stays square, sitting on the ground. `bevel` defaults to 6 % of the
+    /// smallest side.
+    mutating func roundedBox(center c: SIMD3<Float>, size s: SIMD3<Float>, yaw: Float = 0, bevel: Float? = nil,
+                             bottom: Bool = false) {
+        let smallest: Float = min(s.x, s.y, s.z)
+        let wanted: Float = bevel ?? max(Float(0.02), min(Float(1.5), smallest * 0.06))
+        let b: Float = min(wanted, min(s.x, s.z) * 0.45, s.y * 0.45)
+        guard b > 0.005 else { box(center: c, size: s, yaw: yaw, bottom: bottom); return }
+        let saved = transform
+        transform = transform * Self.translation(c) * Self.yaw(yaw)
+        let X: Float = s.x / 2, Z: Float = s.z / 2, H: Float = s.y
+        let up = SIMD3<Float>(0, 1, 0)
+        let lift = SIMD3<Float>(0, H - b, 0)
+        let roofLift = SIMD3<Float>(0, H, 0)
+        // The four sides, anticlockwise from +z: outward normal, and the
+        // two ends of the face along it.
+        let normals: [SIMD3<Float>] = [SIMD3<Float>(0, 0, 1), SIMD3<Float>(1, 0, 0),
+                                       SIMD3<Float>(0, 0, -1), SIMD3<Float>(-1, 0, 0)]
+        let starts: [SIMD3<Float>] = [SIMD3<Float>(-X + b, 0, Z), SIMD3<Float>(X, 0, Z - b),
+                                      SIMD3<Float>(X - b, 0, -Z), SIMD3<Float>(-X, 0, -Z + b)]
+        let ends: [SIMD3<Float>] = [SIMD3<Float>(X - b, 0, Z), SIMD3<Float>(X, 0, -Z + b),
+                                    SIMD3<Float>(-X + b, 0, -Z), SIMD3<Float>(-X, 0, Z - b)]
+        for k in 0..<4 {
+            let n = normals[k], a = starts[k], e = ends[k]
+            let next = (k + 1) % 4
+            let nn = normals[next], na = starts[next]
+            // Face.
+            smoothQuad([a, e, e + lift, a + lift], [n, n, n, n], outward: n)
+            // Top chamfer: from the face's top edge in to the roof.
+            let inA: SIMD3<Float> = a - n * b + roofLift
+            let inE: SIMD3<Float> = e - n * b + roofLift
+            smoothQuad([a + lift, e + lift, inE, inA], [n, n, up, up], outward: simd_normalize(n + up),
+                       uv: [SIMD2<Float>(0, 0.9), SIMD2<Float>(1, 0.9), SIMD2<Float>(1, 1), SIMD2<Float>(0, 1)])
+            // Vertical chamfer to the next face.
+            let cornerOut = simd_normalize(n + nn)
+            smoothQuad([e, na, na + lift, e + lift], [n, nn, nn, n], outward: cornerOut)
+            // Corner where the three chamfers meet.
+            smoothTriangle([e + lift, na + lift, inE], [n, nn, up], outward: simd_normalize(cornerOut + up))
+        }
+        // Roof.
+        smoothQuad([SIMD3<Float>(-X + b, H, Z - b), SIMD3<Float>(X - b, H, Z - b),
+                    SIMD3<Float>(X - b, H, -Z + b), SIMD3<Float>(-X + b, H, -Z + b)],
+                   [up, up, up, up], outward: up)
+        if bottom {
+            quad(SIMD3<Float>(-X, 0, -Z), SIMD3<Float>(X, 0, -Z), SIMD3<Float>(X, 0, Z), SIMD3<Float>(-X, 0, Z),
+                 normal: SIMD3<Float>(0, -1, 0))
+        }
         transform = saved
     }
 
@@ -220,7 +309,9 @@ struct HubMeshBatch {
     }
 
     /// A half cylinder along z (a barrel-vault roof) on y = `center.y`.
-    mutating func vault(center c: SIMD3<Float>, width w: Float, depth d: Float, rise: Float, segments n: Int = 14) {
+    /// Without caps it is an open shell — a glazed vault, or a thin rib.
+    mutating func vault(center c: SIMD3<Float>, width w: Float, depth d: Float, rise: Float, segments n: Int = 14,
+                        caps: Bool = true) {
         let r = w / 2
         var front: [UInt32] = [], back: [UInt32] = []
         var ringF: [SIMD3<Float>] = [], ringB: [SIMD3<Float>] = []
@@ -236,6 +327,7 @@ struct HubMeshBatch {
         for i in 0..<n {
             indices += [front[i], back[i], back[i + 1], front[i], back[i + 1], front[i + 1]]
         }
+        guard caps else { return }
         // End caps (fans).
         let cf = vertex(c + [0, 0, d / 2], [0, 0, 1], [0.5, 0.5])
         let cb = vertex(c - [0, 0, d / 2], [0, 0, -1], [0.5, 0.5])

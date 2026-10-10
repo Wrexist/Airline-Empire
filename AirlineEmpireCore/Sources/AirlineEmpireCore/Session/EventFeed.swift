@@ -33,7 +33,9 @@ extension GameState {
              .loanRepaidEarly(let airline, _),
              .statementClosed(let airline, _, _, _),
              .marketEntered(let airline, _, _),
-             .marketLeft(let airline, _, _):
+             .marketLeft(let airline, _, _),
+             .facilityOpened(let airline, _, _, _),
+             .hubStatusRaised(let airline, _, _):
             return airline
 
         // Fleet events name an aircraft; its owner is the subject.

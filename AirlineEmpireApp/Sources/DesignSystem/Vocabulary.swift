@@ -256,6 +256,8 @@ enum Vocab {
         case .achievement: "rosette"
         case .capability(let code): capabilityIcon(code)
         case .mission: "target"
+        case .facilityOpened: "building.2.fill"
+        case .hubStatus: "flag.fill"
         }
     }
 
@@ -267,6 +269,9 @@ enum Vocab {
         case .achievement(let code): achievement(code)
         case .capability(let code): capability(code)
         case .mission(let mission, _): missionTitle(mission)
+        case .facilityOpened(let airport, let service, let level):
+            "\(HubFacilityKind(service: service).buildingName(level)) opened at \(airport.raw)"
+        case .hubStatus(let airport, let status): "\(airport.raw) became a \(status.title.lowercased())"
         }
     }
 
@@ -277,6 +282,17 @@ enum Vocab {
         case .achievement(let code): achievementDetail(code)
         case .capability(let code): "Programme complete. \(capabilityDetail(code))"
         case .mission(_, let reward): "Completed and paid \(Format.money(reward))."
+        case .facilityOpened(_, let service, let level):
+            AirportServiceReadModel.describe(service, level: level, tuning: .standard).effect + "."
+        case .hubStatus(_, let status): hubStatusDetail(status)
+        }
+    }
+
+    static func hubStatusDetail(_ status: HubStatus) -> String {
+        switch status {
+        case .station: "You fly here."
+        case .base: "A base of your airline: aircraft and buildings of your own."
+        case .mainBase: "Your main base: your own hangar and crews."
         }
     }
 

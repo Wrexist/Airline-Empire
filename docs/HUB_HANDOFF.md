@@ -9,6 +9,12 @@
 > clip** — the same isometric clay world, the same light glass dashboard, the
 > same five shots. This file is the shortest path from what exists to that.
 
+> **Update, 2026-10-09 (second session, branch `claude/kind-bardeen-ajulsw`
+> on top of `feature/hub-view-3d`):** work-plan steps 1–3 are done and step
+> 5 (bloom) is in code, waiting for a device. See §0 for what changed,
+> gap by gap; the rendering research and the audit of the first build are
+> in [`HUB_RENDERING_RESEARCH.md`](HUB_RENDERING_RESEARCH.md).
+
 Read in this order:
 
 1. This file — state, gaps, the work plan, how to check yourself.
@@ -21,7 +27,175 @@ Read in this order:
 
 ---
 
-## 1. Where things stand
+## 0. Second session — what changed (2026-10-09)
+
+Captures: `docs/design/hub-view/` now holds the second session's iPad
+renders (`hub-0*.jpg`). Checks on Linux: the full Core suite (651 tests)
+and the warnings-as-errors release build are green; the app compiles and
+captures on the `Hub view review` workflow (iPad Pro 13", iPhone 17 Pro Max).
+
+| Gap | Status | How |
+|---|---|---|
+| A1 framing | **Done** | `HubFraming.swift` (Core): every shot names a *subject*; the solver places target + distance so it fills the screen area the dashboard leaves free (`HubSafeArea.wide` / `.tall`). Overview subject: terminal, piers, parked envelopes, kerb. Tested for every airport, iPad and iPhone (`shotsFrameTheirSubjectInTheSafeArea`). |
+| A2 apron | **Done** | Apron = parked envelopes + piers + pushbacks + one taxilane; stands spread over every pier face, inner faces first. |
+| A3 glass | **Done** | Glazed barrel vaults with white ribs on the piers and three on the terminal roof (`.skylight` glass). |
+| A4 vehicles | **Done** | `serviceLanes` in Core; tugs, baggage trains, vans, bowsers, buses shuttle on them; kerb buses and taxis; every occupied stand dressed. |
+| A5 queue in every shot | **Done** | Focus overlays are shot-independent; captures hold the focus stand at boarding (`-AEUITestHubStage boarding`, `HubSnapshot.holding`). |
+| B1 gate camera | **Done** | Behind the tail on the side away from the terminal, subject = the jet's own extremities + bridge. Nose points at the concourse (left on screen at ARN gate 1, not right as in the reference — a camera on the reference's side would look across the terminal roof at the stands nearest the building). |
+| B2 queue | **Done** | 20 walkers on the focused queue while boarding. |
+| B3 pulse rings | **Partial** | Four tilted rings at the camera-side engine. Additive blending (iOS 18 `Program.Descriptor.blendMode = .add`) not yet used. |
+| B4 glass bridge | **Done** | Glass tube with white rib rings, white floor, rotunda, cab at door height. |
+| B5 callout | **Done** | Clamped between the KPI row and the timeline, clear of the inspector. |
+| B6 / B7 models | Open | Procedural jets now have cabin windows and a four-pane windscreen; authored models still the real fix (step 4). |
+| C1 doll's house | **Done** | Each 70–90 m bay is a room: end wall, mezzanine + back wall, glazed partition to the next bay, roof frame that stays when the roof lifts; camera solved onto the first bay. |
+| C2 FIDS | **Done** | Two boards per bay at the mezzanine's front edge. |
+| C3 shops | **Partial** | Shelves carry rows of small product boxes; fascia signs unchanged. |
+| C4 kiosks | **Done** | 4–7 per row, lit blue screens (`.kioskScreen`). |
+| C5 heatmap | **Done** | One 4–9 m pool per hotspot (five per bay), red→orange→yellow→clear, in metres on both axes. |
+| C6 people | **Partial** | Crowd batched into one mesh per material (so it can grow); every third traveller has a suitcase. Figures are still capsules. |
+| C7 pins | **Done** | Blue teardrop with a white eye. |
+| D1 district | **Done** | Four 4–6 floor apartment blocks on the district's airport side behind the villas, a crescent road; a departure turns out over the district. |
+| D2 route | **Done** | Raised rounded cyan ribbon with a halo, on the streets past each stop's gate. |
+| D3 curved roads | **Partial** | Roundabouts at the two terminal junctions; other corners still square. |
+| D4 cart | **Done** | Cart + tank trailer loop the streets by the first stop. |
+| D5 villa | **Done** (procedural) | Two storeys, flat roofs with a navy fascia, dark-framed glazing, wood cladding, terrace, hedges. |
+| E1 night palette | **Re-tuned** | Blue-grey albedos under a near-neutral lavender key and greyer sky. |
+| E2 windows | **Done** | Lit windows only (office emission map), window light spilling onto terraces, kerb and apron. |
+| E3 bloom | **In code, device-only** | `HubPostProcess.swift`; the Simulator cannot write the sRGB target, so captures never show it. |
+| E4 trees / lamps | **Done** | Teal trees; lamp heads emissive with warm pools. |
+| F2 timeline | **Done** | 58 % of the width on iPad. |
+| F1 inspector render | Open | |
+
+Also fixed: depth range and shadow range now follow the camera; shot
+changes turn the short way; scene build no longer copies every mesh batch
+on each append (it was quadratic). Details in
+[`HUB_RENDERING_RESEARCH.md`](HUB_RENDERING_RESEARCH.md) §6.
+
+**Verdict after the second session:** composition, density, glass,
+palette and night now read as the reference's product in all five shots
+(night roads sample at (70, 74, 126) against the reference's `#4A4C78`).
+What still separates them is micro-detail — procedural jets, capsule
+people, plain vehicles — which is step 4's authored models, and the soft
+glow and occlusion of a pre-rendered frame, which is step 5 on a device.
+
+**Next:** judge bloom on a device; authored models (step 4); SSAO once
+depth is confirmed in `.nonAR`; additive glows; device performance pass
+(step 6).
+
+## 0b. Third session — motion, stats, dashboard, landscape (2026-10-09)
+
+The owner asked for more detail, for every control to work, for every stat
+to be visible, for motion that feels professional, and allowed landscape
+where it serves the game. What changed:
+
+| Area | Where | What |
+|---|---|---|
+| Camera motion | `HubScene.swift` (`HubSpring`, `HubRigSpring`) | Critically damped springs instead of a fixed lerp: starts from rest, never overshoots, keeps velocity when retargeted. Zoom runs in log space; the target leads on the way in, the zoom leads on the way out. Shot changes take 0.42–0.68 s smooth time by travel. Pans and twists coast after release (capped fling); the idle orbit eases in over ~4 s. |
+| Day ↔ night | `HubPalette.mix`, `HubMaterials.make` (`dusk`) | A 1.5 s eased crossfade, repainted in 12 steps; every glow scales with a continuous `dusk` value; the sky probe regenerates once, at the midpoint. |
+| Traffic motion | `HubMover`, `HubPath.rounded/offset/roundTrip` (Core) | Paths rounded through Bézier corners; acceleration and braking limits; look-ahead steering; jets bank into turns and pitch on climb-out; two-way loops with U-turns so nothing reverses; fades where open paths restart. Parked jets glide during pushback. |
+| Route fan | `HubDynamics.updateRouteFan` | The player's routes leave the terminal roof as arcs on their real great-circle bearings (north up the screen), coloured by load factor (cyan new, green ≥ 75 %, amber 55–75 %, rose < 55 %), with a light per daily round trip running out and back. Labels on the eight busiest; a highlighted route draws bright and thick. Overview only. |
+| Stand tags | `HubDynamics.rebuildAnchors`, `HubStandTagView` | Gate, flight and stage over each of the player's jets in the overview, tinted by state; tap to focus and cut to the gate. |
+| Layers | `HubOverlay`, layers dropdown | Route fan, stand tags, traffic, place labels — each switchable. |
+| Insights | `HubInsights.swift` (Core), `HubPanels.swift` | Side panel with four tabs: Overview (KPI tiles, terminal and slot gauges, movements by hour chart, alerts), Routes (load, trips, profit and trend; tap to light the route), Slots (stacked share by carrier), Airline (cash, hub money, reputation bars, facilities, fleet). Every KPI card opens it. |
+| Search | `HubSearch.swift` (Core) | Gates, flights, aircraft, routes and places, ranked; results take the camera there. ⌘K focuses it on iPad. |
+| Alerts | `HubInsights.alerts` | Delays, maintenance, slot and terminal pressure, thin routes; the bell shows the count; an alert about a stand focuses it. |
+| Hub switcher | `HubInsights.network`, `HubScreen.switchTo` | Every airport in the network, home first; swaps the airport in place with a crossfade. |
+| Inspector | `HubInspector` | Pages for Flight, Aircraft, Route and Turnaround, swiped or picked from tabs that widen to name the active page. |
+| Board | `HubBoard` | Rows slide in and out, open their stand or their route; counts as badges. |
+| Airfield | `HubSceneBuilder.airfieldLights` etc. | Runway edge, threshold and approach lights; blue taxiway edge lights; apron floodlight masts with light pools; windsocks; a perimeter fence; painted stand numbers. All glow after dusk. |
+| Landscape iPhone | `AEOrientation.swift`, `HubChromeMode`, `HubSafeArea.landscape` | The hub opens in landscape on iPhone and turns back on close (iPad keeps every orientation). Its own compact layout: shots in the top bar, KPI chips, controls down the right, a slim timeline, the board behind a Flights button. The framing solver has a landscape safe area. |
+| UI motion | `HubMotion`, `HubPressStyle` | One set of springs for every panel; buttons sink on press; the shot picker's pill slides between shots; numbers roll; the timeline's fill and tug glide; anchored labels scale in and out. |
+
+Captures now include the insights panel (`HUB-07`, `HUB-08`), and the
+iPhone captures are landscape. Verified on `Hub view review` run
+37945570337 (`9d04f4b`): both devices green, every shot captured. The
+first run's iPhone failure was the UI-test auto-open giving up after 20 s
+on a cold first launch; it now waits a minute. Core: the full suite (655
+tests) and the warnings-as-errors release build are green; the 29 hub
+tests include the new search, network and landscape-framing tests.
+
+| Insights (iPad, night) | iPhone, landscape |
+|---|---|
+| ![](design/hub-view/hub-07-insights.jpg) | ![](design/hub-view/iphone-01-overview.jpg) ![](design/hub-view/iphone-02-gate.jpg) ![](design/hub-view/iphone-07-insights.jpg) |
+
+**Next:** everything in §0's "Next" still stands (device bloom, authored
+models, SSAO, additive glows, performance on a device). New from this
+session: profile the route fan and stand tags on a device with a large
+network (the fan rebuilds only when a route's band or frequency changes,
+labels are capped at eight); consider a second camera preset that frames
+the whole fan; and the narrow iPad split-view top bar can still crowd
+below ~360 pt.
+
+## 0c. Upgrading from inside the hub (step 1 of the upgrade plan)
+
+The two airport services the game already sells — the passenger lounge and
+ground services, levels 0–2 — are now bought, seen and celebrated in the
+Hub View. No new economy: prices, effects and the refusal rules are the
+existing ones, and buying sends the same `ConfigureAirportFacilitiesCommand`
+the Airport Services screen sends.
+
+| Piece | Where | What |
+|---|---|---|
+| Sites | `HubLayout.facilitySites` (Core) | The lounge on the east end of the terminal roof (the roof's skylight vaults stop short of it); the depot on a lot beside the apron, the first of four candidates clear of every piece, stand and lane (lawns and trees on it are cleared). Tested for every airport. |
+| Offers | `HubUpgrades.swift` (Core), `HubSnapshot.upgrades` | Per facility: level, building name, current effect and monthly cost, the next level's effect, build cost and monthly cost, and — from the command's own `validate` — why it is blocked (no presence, airport closed, not enough cash). |
+| Camera | `HubCameraShot.facility` | Frames the site with room for the finished building; the route fan steps aside while a site is in focus. |
+| Buildings | `HubFacilities.swift` | Lounge: 0 a marked-out site among planters; 1 a glass pavilion with an airline fascia, seating and a railed deck; 2 a two-tier flagship with a timber terrace, parasols and a string of lights that glows after dusk. Depot: 0 the shared handler's cabin and two grey vehicles; 1 your shed in your colours with six liveried vehicles in painted bays; 2 a bigger shed with solar panels, chargers, a wash bay and ten vehicles. |
+| Construction | `HubFacilityYard.update` | 4.4 s: scaffold and crane rise, the jib slews, the old building fades, the new one grows with a little overshoot, the rig comes down, a pulse spreads on the ground. Plays whenever a level goes up, from the hub or from the Airport Services screen. |
+| Interaction | `HubUpgradeCard`, `HubFacilityTagView`, `HubToastView` | Tap the building, its floating tag, or its row in Insights › Airline: the camera flies to the site and the card opens (level steps, now / next, build and monthly cost, a two-tap Build · Confirm). A toast announces the opening. "Upgrade sites" is a layer. |
+
+Captures: `HUB-09-upgrade` (card at the lounge site), `HUB-10-construction`
+and `HUB-11-built`; the UI test taps the site's tag in the world, as a
+player would, and orders the next level. Verified green on both devices
+(runs 37992305861 and 37994141895, iPhone; iPad on 37992305861).
+
+| Upgrade card at the site | Construction | Built |
+|---|---|---|
+| ![](design/hub-view/hub-09-upgrade.jpg) | ![](design/hub-view/hub-10-construction.jpg) | ![](design/hub-view/hub-11-built.jpg) |
+| | ![](design/hub-view/iphone-10-construction.jpg) | ![](design/hub-view/iphone-11-built.jpg) |
+
+**Next (steps 2 and 3 of the plan):** new facility types — the full plan,
+priorities and the owner's open decisions are in
+[`HUB_PROGRESSION_PLAN.md`](HUB_PROGRESSION_PLAN.md). Authored models for each level go in as per-level slots
+(`Hub_lounge_l1/l2`, `Hub_gseDepot_l0/l1/l2`), falling back to these
+procedural buildings until they exist.
+
+---
+
+## 0d. Buildings that take time, the hangar and the crew base (step 2, first wave)
+
+The plan's Phase A, B and C ([`HUB_PROGRESSION_PLAN.md`](HUB_PROGRESSION_PLAN.md),
+decision D-017). Ordering pays now; the building opens at the start of a
+later game day and its upkeep starts then.
+
+| Piece | Where | What |
+|---|---|---|
+| Rules | `AirportFacilities.swift`, `AirportFacilityTuning.swift` (Core) | Four buildings: lounge, ground services, **maintenance hangar** (Regional era, 2 levels) and **crew base** (Regional era). Build days, prices and effects in `tuning.json`. `ConfigureAirportFacilitiesCommand` orders against the plan (built + under construction): one build per building, era gate for the player, scaling back immediate. |
+| Construction | `FacilityConstructionSystem` (Core, before the scheduler) | Opens due buildings at midnight, emits `facilityOpened`, records it in the campaign record, assesses **hub status** (Station → Base → Main base, never lost) and emits `hubStatusRaised`. |
+| Effects | `FleetSystem`, `FlightSchedulingSystem`, `FlightOpsSystem` | Hangar where the aircraft flies: checks 2 / 1 days, 20 % / 35 % cheaper. Crew base on a route: 05:00–01:00 and crews 10 % cheaper. Fixed with it: the scheduler plans the turnaround flight ops uses; aircraft due for a check get no flights and ones leaving the hangar fly. |
+| Read model | `HubUpgrades.swift` | Offers carry the era lock, construction (progress, stage, days left, opening date), build days, a payoff line from the simulation's own arithmetic, and the jets in the hangar; `HubSnapshot.status` and `.timeline` give the hub status, its requirements and the hub's story. |
+| Sites | `HubLayout.planFacilitySites` | The hangar in line with the airfield's hangars with its own apron to the taxiway; the crew base on the lawn beside the terminal's east end. Tested clear of every piece, stand, lane and each other at every airport. |
+| World | `HubFacilities.swift` | Plots with a board (grey behind a barrier when locked); works by stage — hoarding in your livery, then diggers and spoil, then a crane over a rising frame, then cladding under scaffold — with the jib slewing and the digger working; the hangar (glazed gable so **your jet in for its check** shows from the overview) and the crew hotel with its liveried bus; a pulsing **blueprint** of the next level while its card is open; the reveal on opening, replayed on the next visit for openings that happened while away. |
+| Chrome | `HubUpgradeViews.swift`, `HubPanels.swift`, `HubScreenModel.swift` | Tags show stage, % and days left, or the era. The card shows build time and payoff, then the works' progress bar and opening date, or the lock. Insights › Airline shows hub status with ticks, the hub's story and all four buildings. Toasts for "under construction" and openings; the game celebrates openings and status. |
+| Airport Services | `AirportServiceEditor.swift` | Four cards; tiers per building; under-construction and era-lock notes; build time in the quote. |
+
+Captures (`testHubBuildingsGoUpOverTime`, a Regional-era fixture mid-build):
+`HUB-12-ceremony`, `HUB-13-opened`, `HUB-14-works`, `HUB-15-status`,
+`HUB-16-hangar-works`. The first flow's order frames are now
+`HUB-10-ordered` and `HUB-11-works`: ordering starts the works. Verified
+green on both devices, every UI test passing (run 38044744398).
+
+| Opening ceremony | Every stage of the works | Hangar groundworks |
+|---|---|---|
+| ![](design/hub-view/hub-12-ceremony.jpg) | ![](design/hub-view/hub-14-works.jpg) | ![](design/hub-view/hub-16-hangar-works.jpg) |
+| **Hub status and story** | **Ordered: hoarding goes up** | **iPhone, mid-build** |
+| ![](design/hub-view/hub-15-status.jpg) | ![](design/hub-view/hub-11-works.jpg) | ![](design/hub-view/iphone-13-opened.jpg) |
+
+**Not yet seen in a render:** the finished hangar with a jet in its bay,
+the finished crew hotel, a locked plot and the blueprint ghost — the
+fixture is mid-build and in the Regional era. A second fixture (hangar
+open, an aircraft in check, an era-locked plot) is the next capture to add.
+
+## 1. Where things stood after the first build
 
 ### What exists and works
 
@@ -37,9 +211,11 @@ Read in this order:
 | Capture workflow | `.github/workflows/hub-view-review.yml` + `UITests/HubViewUITests.swift` | Renders all six shots on iPad Pro 13" and iPhone 17 Pro Max simulators on every PR that touches the hub. |
 | Review loop | `scripts/hub-review/` | Fetch captures, cut reference frames, build side-by-side sheets (§4). |
 
-### How it looks today (iPad, `b5624e1`)
+### How it looks today (iPad, third session, `9d04f4b`)
 
-`docs/design/hub-view/hub-0*.jpg` are the latest renders.
+`docs/design/hub-view/hub-0*.jpg` are the latest renders (the first
+build's are in git history at `b5624e1`). The gap list below was written
+against the first build; §0 says what is closed.
 
 | Overview | Gate |
 |---|---|

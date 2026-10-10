@@ -1,22 +1,3 @@
-/// The service catalogue and deterministic per-card quote. No UI-owned effects.
-public enum AirportService: String, CaseIterable, Sendable {
-    case lounge, ground
-    public func level(in configuration: AirportFacilities) -> Int {
-        switch self { case .lounge: configuration.lounge; case .ground: configuration.groundServices }
-    }
-    public func setting(_ level: Int, in configuration: AirportFacilities) -> AirportFacilities {
-        var result = configuration
-        switch self { case .lounge: result.lounge = level; case .ground: result.groundServices = level }
-        return result
-    }
-    public var title: String {
-        switch self { case .lounge: "Passenger lounge"; case .ground: "Ground services" }
-    }
-    public static func levelName(_ level: Int) -> String {
-        switch level { case 0: "None"; case 1: "Standard"; default: "Premium" }
-    }
-}
-
 public struct AirportServiceReadModel: Equatable, Sendable {
     public let current: Int
     public let proposed: Int
@@ -24,22 +5,53 @@ public struct AirportServiceReadModel: Equatable, Sendable {
     public let monthly: Money
     public let effect: String
     public let scope: String
+    /// Game days until the proposed level opens; 0 when nothing is built.
+    public let buildDays: Int
     public init(service: AirportService, installed: AirportFacilities,
-                proposed: AirportFacilities, tuning: AirportFacilityTuning) {
+                proposed: AirportFacilities, tuning: AirportFacilityTuning, ops: OpsTuning = .standard) {
         current = service.level(in: installed)
         self.proposed = service.level(in: proposed)
-        let next = service.setting(self.proposed, in: AirportFacilities())
-        let old = service.setting(current, in: AirportFacilities())
-        installation = next.installationCost(from: old, tuning: tuning)
-        monthly = next.monthlyCost(tuning: tuning)
+        installation = service.installation(from: current, to: self.proposed, tuning: tuning)
+        monthly = service.monthly(atLevel: self.proposed, tuning: tuning)
+        buildDays = service.buildDays(from: current, to: self.proposed, tuning: tuning)
+        (effect, scope) = Self.describe(service, level: self.proposed, tuning: tuning, ops: ops)
+    }
+
+    /// What a building does at a level, and where it applies.
+    public static func describe(_ service: AirportService, level: Int, tuning: AirportFacilityTuning,
+                                ops: OpsTuning = .standard) -> (effect: String, scope: String) {
         switch service {
         case .lounge:
-            effect = "Up to +\(Int((Double(self.proposed) * tuning.loungeComfortPerLevel * 100).rounded())) comfort points here"
-            scope = "Route comfort averages both airports and shares the aircraft comfort cap."
+            return ("Up to +\(Int((Double(level) * tuning.loungeComfortPerLevel * 100).rounded())) comfort points here",
+                    "Route comfort averages both airports and shares the aircraft comfort cap.")
         case .ground:
-            effect = "\(Int(((1 - next.technicalDisruptionMultiplier(tuning: tuning)) * 100).rounded()))% lower technical disruption risk"
-            scope = "Your departures here. Weather risk and turnaround time are unchanged."
+            let cut = Int((Double(level) * tuning.groundRiskReductionPerLevel * 100).rounded())
+            return ("\(cut)% lower technical disruption risk",
+                    "Your departures here. Weather risk and turnaround time are unchanged.")
+        case .hangar:
+            guard level > 0 else { return ("Checks take 3 days, wherever the aircraft is", "Aircraft on your routes through this airport.") }
+            let days = tuning.hangarCheckDays[safe: level - 1] ?? 3
+            let factor = tuning.hangarCheckCostFactor[safe: level - 1] ?? 1
+            let saving = Int(((1 - factor) * 100).rounded())
+            return ("Checks take \(days) day\(days == 1 ? "" : "s")\(saving > 0 ? " and cost \(saving)% less" : "")",
+                    "Aircraft on your routes through this airport.")
+        case .crewBase:
+            let standard = OperatingWindow.standard(ops)
+            guard level > 0 else {
+                return ("Operating day \(clock(standard.startMinute))–\(clock(standard.endMinute))", "Routes from this airport.")
+            }
+            let window = OperatingWindow.withCrewBase(ops, tuning: tuning)
+            let start = window.startMinute, end = window.endMinute
+            let saving = Int(((1 - tuning.crewBaseCrewCostFactor) * 100).rounded())
+            return ("Operating day \(clock(start))–\(clock(end)), crews \(saving)% cheaper",
+                    "Routes from this airport: more rotations fit in a day.")
         }
+    }
+
+    private static func clock(_ minutes: Int64) -> String {
+        let m = minutes % (24 * 60)
+        let h = m / 60, mm = m % 60
+        return (h < 10 ? "0" : "") + "\(h):" + (mm < 10 ? "0" : "") + "\(mm)"
     }
 }
 

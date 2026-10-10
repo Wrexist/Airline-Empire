@@ -52,13 +52,58 @@ final class HubModels {
         return ["person_passenger_\(first)"] + letters.filter { $0 != first }.map { "person_passenger_\($0)" }
     }
 
+    private var rawCache: [String: [(HubMaterialKey, HubMeshBatch)]] = [:]
+
     private func parts(_ key: String, _ build: () -> [(HubMaterialKey, HubMeshBatch)]) -> [HubPart] {
         if let hit = cache[key] { return hit }
-        let made = build().compactMap { material, batch in
+        let made = raw(key, build).compactMap { material, batch in
             batch.resource(name: key).map { HubPart(mesh: $0, material: material) }
         }
         cache[key] = made
         return made
+    }
+
+    /// The CPU geometry behind a model, per material, for merging many
+    /// static copies into one batch.
+    private func raw(_ key: String, _ build: () -> [(HubMaterialKey, HubMeshBatch)]) -> [(HubMaterialKey, HubMeshBatch)] {
+        if let hit = rawCache[key] { return hit }
+        let made = build()
+        rawCache[key] = made
+        return made
+    }
+
+    func rawVehicle(_ v: Vehicle) -> [(HubMaterialKey, HubMeshBatch)] {
+        raw("vehicle.\(v.rawValue)") { Self.buildVehicle(v) }
+    }
+
+    func rawPerson(crew: Bool) -> [(HubMaterialKey, HubMeshBatch)] {
+        raw("person.\(crew)") { Self.buildPerson(crew: crew) }
+    }
+
+    func rawCone() -> [(HubMaterialKey, HubMeshBatch)] {
+        raw("cone") { Self.buildCone() }
+    }
+
+    func rawBlob() -> [(HubMaterialKey, HubMeshBatch)] {
+        raw("blob") { Self.buildBlob() }
+    }
+
+    /// A wheeled suitcase with its handle up, for the hall's travellers.
+    func rawLuggage() -> [(HubMaterialKey, HubMeshBatch)] {
+        raw("luggage") {
+            var bag = HubMeshBatch(), handle = HubMeshBatch()
+            bag.roundedBox(center: [0, 0.06, 0], size: [0.42, 0.62, 0.26], bevel: 0.05)
+            handle.box(center: [-0.12, 0.68, 0], size: [0.03, 0.42, 0.03])
+            handle.box(center: [0.12, 0.68, 0], size: [0.03, 0.42, 0.03])
+            handle.box(center: [0, 1.08, 0], size: [0.28, 0.04, 0.05])
+            return [(.cloth(1), bag), (.darkMetal, handle)]
+        }
+    }
+
+    /// Whether any of `slots` has an authored model (which then has to be
+    /// placed as its own entity rather than merged).
+    func hasAuthored(_ slots: [String]) -> Bool {
+        slots.contains { library.has($0) }
     }
 
     /// Builds an entity from parts, remapping material keys (for liveries).
@@ -127,13 +172,37 @@ final class HubModels {
         ]
         body.lathe(profile, segments: 22, squash: 1.05)
 
-        // Window line and cheat line: thin bands just proud of the skin.
-        dark.box(center: [-L * 0.02, cy + r * 0.22, 0], size: [L * 0.62, 0.32, 2 * r + 0.06], top: false)
-        accent.box(center: [-L * 0.02, cy - r * 0.22, 0], size: [L * 0.66, 0.18, 2 * r + 0.08], top: false)
-        // Cockpit glazing.
-        dark.transform = HubMeshBatch.translation([noseX - L * 0.055, cy + r * 0.38, 0])
-        dark.box(center: .zero, size: [L * 0.03, r * 0.22, r * 1.15], yaw: 0)
-        dark.transform = matrix_identity_float4x4
+        // A row of cabin windows each side, just above mid-height — single
+        // panes, as on the reference's jets, not a painted band.
+        let firstWindow = noseX - L * 0.2, lastWindow = tailX + L * 0.24
+        let windows = max(8, Int((firstWindow - lastWindow) / 1.05))
+        for side: Float in [-1, 1] {
+            for k in 0..<windows {
+                let x = firstWindow - Float(k) * (firstWindow - lastWindow) / Float(windows - 1)
+                dark.box(center: [x, cy + r * 0.18, side * (r * 0.985)], size: [0.42, 0.5, 0.1])
+            }
+        }
+        // Cockpit: a four-pane windscreen wrapping round the nose — two
+        // front panes, a side pane each side — laid on the skin: each pane
+        // sits at the profile's radius at its station, turned to face out.
+        func skin(_ x: Float) -> (r: Float, y: Float) {
+            for (a, b) in zip(profile, profile.dropFirst()) where x >= a.x && x <= b.x {
+                let t = (x - a.x) / max(0.001, b.x - a.x)
+                return (a.r + (b.r - a.r) * t, a.y + (b.y - a.y) * t)
+            }
+            return (r, cy)
+        }
+        func pane(_ x: Float, _ theta: Float, length: Float, height: Float) {
+            let st = skin(x)
+            let at = SIMD3<Float>(x, st.y + cos(theta) * st.r * 1.05, sin(theta) * st.r)
+            dark.transform = HubMeshBatch.translation(at) * HubMeshBatch.roll(theta)
+            dark.box(center: [0, -0.07, 0], size: [length, 0.14, height])
+            dark.transform = matrix_identity_float4x4
+        }
+        for side: Float in [-1, 1] {
+            pane(noseX - L * 0.03, side * 0.36, length: L * 0.022, height: r * 0.34)
+            pane(noseX - L * 0.058, side * 0.98, length: L * 0.03, height: r * 0.3)
+        }
         // Doors (forward left, rear left): darker outlines.
         dark.box(center: [noseX - m.doorFromNose, cy - r * 0.35, -r * 0.98], size: [0.9, r * 0.95, 0.12])
 
@@ -265,7 +334,7 @@ final class HubModels {
         var hi = HubMeshBatch(), glass = HubMeshBatch(), accent = HubMeshBatch()
         switch v {
         case .fuelTruck, .tanker:
-            white.box(center: [3.2, 0.9, 0], size: [2.2, 2.3, 2.4])                 // cab
+            white.roundedBox(center: [3.2, 0.9, 0], size: [2.2, 2.3, 2.4])                 // cab
             glass.box(center: [4.31, 2.0, 0], size: [0.05, 0.9, 2.1])
             dark.box(center: [-0.6, 0.7, 0], size: [7.6, 0.4, 2.2])                   // chassis
             white.transform = HubMeshBatch.translation([-4.2, 2.35, 0])
@@ -276,30 +345,30 @@ final class HubModels {
             return [(.white, white), (.windowDark, glass), (.darkMetal, dark), (.tyre, tyre),
                     (v == .tanker ? .liveryAccent(.ember) : .hiVis, accent)]
         case .tug:
-            white.box(center: [0, 0.5, 0], size: [4.2, 1.0, 2.4])
-            hi.box(center: [-0.9, 1.5, 0], size: [1.4, 1.0, 1.8])
+            white.roundedBox(center: [0, 0.5, 0], size: [4.2, 1.0, 2.4])
+            hi.roundedBox(center: [-0.9, 1.5, 0], size: [1.4, 1.0, 1.8])
             glass.box(center: [-0.9, 2.05, 0], size: [1.2, 0.08, 1.6])
             wheels(&tyre, xs: [1.4, -1.4], halfTrack: 1.0, radius: 0.45)
             return [(.white, white), (.hiVis, hi), (.windowDark, glass), (.tyre, tyre)]
         case .beltLoader:
-            white.box(center: [0, 0.5, 0], size: [5.0, 0.8, 1.9])
-            white.box(center: [-1.6, 1.3, 0], size: [1.2, 1.0, 1.5])
+            white.roundedBox(center: [0, 0.5, 0], size: [5.0, 0.8, 1.9])
+            white.roundedBox(center: [-1.6, 1.3, 0], size: [1.2, 1.0, 1.5])
             dark.transform = HubMeshBatch.translation([0.4, 1.6, 0]) * HubMeshBatch.pitch(0.42)
             dark.box(center: .zero, size: [7.4, 0.25, 1.1])
             dark.transform = matrix_identity_float4x4
             wheels(&tyre, xs: [1.6, -1.6], halfTrack: 0.9, radius: 0.4)
             return [(.white, white), (.darkMetal, dark), (.tyre, tyre)]
         case .cateringTruck:
-            white.box(center: [2.9, 0.8, 0], size: [1.8, 2.0, 2.3])
+            white.roundedBox(center: [2.9, 0.8, 0], size: [1.8, 2.0, 2.3])
             glass.box(center: [3.81, 1.9, 0], size: [0.05, 0.8, 2.0])
             dark.box(center: [-0.6, 0.7, 0], size: [6.8, 0.4, 2.2])
-            white.box(center: [-0.9, 2.4, 0], size: [4.8, 2.6, 2.4])
-            hi.box(center: [-0.9, 1.6, 0], size: [3.8, 0.8, 2.0])
+            white.roundedBox(center: [-0.9, 2.4, 0], size: [4.8, 2.6, 2.4])
+            hi.roundedBox(center: [-0.9, 1.6, 0], size: [3.8, 0.8, 2.0])
             wheels(&tyre, xs: [2.8, -2.4], halfTrack: 1.0)
             return [(.white, white), (.windowDark, glass), (.darkMetal, dark), (.hiVis, hi), (.tyre, tyre)]
         case .baggageTrain:
-            white.box(center: [4.4, 0.4, 0], size: [2.2, 1.0, 1.5])
-            hi.box(center: [4.0, 1.4, 0], size: [0.9, 0.9, 1.3])
+            white.roundedBox(center: [4.4, 0.4, 0], size: [2.2, 1.0, 1.5])
+            hi.roundedBox(center: [4.0, 1.4, 0], size: [0.9, 0.9, 1.3])
             for i in 0..<3 {
                 let x = 1.6 - Float(i) * 3.0
                 dark.box(center: [x, 0.45, 0], size: [2.6, 0.2, 1.5])
@@ -308,20 +377,20 @@ final class HubModels {
             wheels(&tyre, xs: [4.8, 4.0, 2.4, 0.8, -0.6, -2.2, -3.6, -5.2], halfTrack: 0.7, radius: 0.3)
             return [(.white, white), (.hiVis, hi), (.darkMetal, dark), (.cloth(6), accent), (.tyre, tyre)]
         case .bus:
-            white.box(center: [0, 0.5, 0], size: [12, 2.6, 2.6])
+            white.roundedBox(center: [0, 0.5, 0], size: [12, 2.6, 2.6])
             glass.box(center: [0, 1.6, 0], size: [11.2, 1.1, 2.66], top: false)
             accent.box(center: [0, 0.75, 0], size: [12.04, 0.25, 2.64], top: false)
             wheels(&tyre, xs: [4.2, -4.2], halfTrack: 1.15)
             return [(.white, white), (.windowDark, glass), (.livery(.azure), accent), (.tyre, tyre)]
         case .car:
-            white.box(center: [0, 0.45, 0], size: [4.4, 0.75, 1.8])
-            white.box(center: [-0.3, 1.2, 0], size: [2.4, 0.65, 1.6])
+            white.roundedBox(center: [0, 0.45, 0], size: [4.4, 0.75, 1.8])
+            white.roundedBox(center: [-0.3, 1.2, 0], size: [2.4, 0.65, 1.6])
             glass.box(center: [-0.3, 1.25, 0], size: [2.45, 0.45, 1.64], top: false)
             wheels(&tyre, xs: [1.4, -1.4], halfTrack: 0.8, radius: 0.35)
             return [(.cloth(0), white), (.windowDark, glass), (.tyre, tyre)]
         case .golfCart:
-            white.box(center: [0, 0.4, 0], size: [2.6, 0.6, 1.3])
-            white.box(center: [-0.2, 2.0, 0], size: [2.2, 0.12, 1.4])
+            white.roundedBox(center: [0, 0.4, 0], size: [2.6, 0.6, 1.3])
+            white.roundedBox(center: [-0.2, 2.0, 0], size: [2.2, 0.12, 1.4])
             dark.box(center: [0.9, 1.0, 0.6], size: [0.08, 1.1, 0.08])
             dark.box(center: [0.9, 1.0, -0.6], size: [0.08, 1.1, 0.08])
             dark.box(center: [-1.1, 1.0, 0.6], size: [0.08, 1.1, 0.08])
@@ -330,7 +399,7 @@ final class HubModels {
             wheels(&tyre, xs: [0.8, -0.8], halfTrack: 0.6, radius: 0.3)
             return [(.white, white), (.darkMetal, dark), (.cloth(5), accent), (.tyre, tyre)]
         case .serviceVan:
-            white.box(center: [0, 0.5, 0], size: [5.4, 2.2, 2.1])
+            white.roundedBox(center: [0, 0.5, 0], size: [5.4, 2.2, 2.1])
             glass.box(center: [2.71, 1.8, 0], size: [0.05, 0.8, 1.9])
             accent.box(center: [0, 1.2, 0], size: [5.44, 0.3, 2.14], top: false)
             wheels(&tyre, xs: [1.8, -1.8], halfTrack: 0.9, radius: 0.4)
@@ -341,35 +410,69 @@ final class HubModels {
     // MARK: People
 
     func person(_ variant: Int, crew: Bool) -> [HubPart] {
-        parts("person.\(crew)") {
-            var body = HubMeshBatch(), head = HubMeshBatch(), legs = HubMeshBatch()
-            legs.cylinder(base: [0, 0, 0], radius: 0.2, topRadius: 0.24, height: 0.85, segments: 8)
-            body.cylinder(base: [0, 0.85, 0], radius: 0.27, topRadius: 0.24, height: 0.7, segments: 8)
-            body.sphere(center: [0, 1.55, 0], radius: 0.24, scale: [1, 0.5, 1], segments: 8, rings: 4)
-            head.sphere(center: [0, 1.82, 0], radius: 0.2, segments: 8, rings: 6)
-            return [(crew ? .hiVis : .cloth(0), body), (.skin(0), head), (.darkMetal, legs)]
+        parts("person.\(crew)") { Self.buildPerson(crew: crew) }
+    }
+
+    /// A figurine rather than a capsule: two legs, a torso that widens to
+    /// the shoulders, arms with hands, a neck, a head and a cap of hair.
+    /// Facing +x; about 1.8 m tall.
+    private static func buildPerson(crew: Bool) -> [(HubMaterialKey, HubMeshBatch)] {
+        var body = HubMeshBatch(), skin = HubMeshBatch(), legs = HubMeshBatch(), hair = HubMeshBatch()
+        for side: Float in [-1, 1] {
+            legs.cylinder(base: [0, 0, side * 0.11], radius: 0.1, topRadius: 0.12, height: 0.84, segments: 7)
+            legs.sphere(center: [0.05, 0.04, side * 0.11], radius: 0.1, scale: [1.5, 0.6, 1], segments: 6, rings: 3)
+            body.cylinder(base: [0, 0.86, side * 0.33], radius: 0.075, topRadius: 0.085, height: 0.56, segments: 6)
+            skin.sphere(center: [0, 0.84, side * 0.33], radius: 0.075, segments: 6, rings: 4)
         }
+        body.cylinder(base: [0, 0.8, 0], radius: 0.24, topRadius: 0.28, height: 0.6, segments: 9)
+        body.sphere(center: [0, 1.4, 0], radius: 0.28, scale: [0.85, 0.32, 1.25], segments: 9, rings: 4)
+        skin.cylinder(base: [0, 1.42, 0], radius: 0.075, height: 0.12, segments: 6, caps: false)
+        skin.sphere(center: [0, 1.66, 0], radius: 0.165, scale: [0.95, 1.08, 0.92], segments: 9, rings: 6)
+        hair.sphere(center: [-0.02, 1.72, 0], radius: 0.172, scale: [1, 0.72, 0.96], segments: 9, rings: 5)
+        return [(crew ? .hiVis : .cloth(0), body), (.skin(0), skin), (.darkMetal, legs), (.tyre, hair)]
     }
 
     // MARK: Pieces used at a single position (for the gate shot)
 
     func cone() -> [HubPart] {
-        parts("cone") {
-            var c = HubMeshBatch(), w = HubMeshBatch()
-            c.cylinder(base: [0, 0.05, 0], radius: 0.3, topRadius: 0.04, height: 0.85, segments: 10)
-            c.box(center: [0, 0, 0], size: [0.6, 0.05, 0.6])
-            w.cylinder(base: [0, 0.4, 0], radius: 0.19, topRadius: 0.15, height: 0.16, segments: 10, caps: false)
-            return [(.cone, c), (.white, w)]
-        }
+        parts("cone") { Self.buildCone() }
+    }
+
+    private static func buildCone() -> [(HubMaterialKey, HubMeshBatch)] {
+        var c = HubMeshBatch(), w = HubMeshBatch()
+        c.cylinder(base: [0, 0.05, 0], radius: 0.3, topRadius: 0.04, height: 0.85, segments: 10)
+        c.box(center: [0, 0, 0], size: [0.6, 0.05, 0.6])
+        w.cylinder(base: [0, 0.4, 0], radius: 0.19, topRadius: 0.15, height: 0.16, segments: 10, caps: false)
+        return [(.cone, c), (.white, w)]
     }
 
     /// A flat blob shadow, 1 × 1 m, scaled per use.
     func blob() -> [HubPart] {
-        parts("blob") {
-            var b = HubMeshBatch()
-            b.plane(center: [0, 0.16, 0], width: 1, depth: 1)
-            return [(.blob, b)]
-        }
+        parts("blob") { Self.buildBlob() }
+    }
+
+    private static func buildBlob() -> [(HubMaterialKey, HubMeshBatch)] {
+        var b = HubMeshBatch()
+        b.plane(center: [0, 0.16, 0], width: 1, depth: 1)
+        return [(.blob, b)]
+    }
+
+    /// Where an engine's nacelle centre sits in the aircraft's own frame
+    /// (forward +x, right +z), for the pulse rings of the focused jet.
+    static func enginePosition(_ category: AircraftCategory, right: Bool) -> SIMD3<Float> {
+        let m = metrics(category)
+        let L = m.length, r = m.radius, cy = m.axisY
+        let high = category == .turboprop
+        let wingY = high ? cy + r * 0.85 : cy - r * 0.45
+        let rootLE = high ? L * 0.06 : L * 0.08
+        let semi = m.span / 2
+        let sweep: Float = high ? 0.06 : 0.55
+        let s: Float = HubAircraftEnvelope.engines(category) == 4 ? 0.36 : (high ? 0.3 : 0.34)
+        let er: Float = high ? r * 0.42 : r * (category.isWidebody ? 0.48 : 0.5)
+        let elen: Float = high ? L * 0.13 : L * (category.isWidebody ? 0.11 : 0.12)
+        let eLE = rootLE - (semi * s) * sweep + (high ? L * 0.05 : L * 0.06)
+        let ey = high ? wingY - er * 0.2 : wingY - er - 0.25
+        return [eLE - elen / 2, ey, (right ? 1 : -1) * semi * s]
     }
 
     func ring() -> [HubPart] {

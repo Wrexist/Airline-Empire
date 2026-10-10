@@ -12,6 +12,10 @@ PR #42 (`feature/hub-view-3d`). Handoff, gap list and the step-by-step plan: [HU
 - [ ] Step 5: bloom + SSAO post-process.
 - [ ] Step 6: physical-device performance pass.
 - [ ] Step 7: owner approves the comparison sheet; enable for 1.1.
+- [x] Upgrades step 1: lounge and ground services bought, built and seen inside the hub (`HUB_HANDOFF.md` §0c).
+- [x] Upgrades step 2, first wave: buildings take game days, maintenance hangar, crew base, hub status (Station/Base/Main base), locked plots, construction stages, blueprint preview, ceremonies, hub story (D-017, `HUB_HANDOFF.md` §0d).
+- [ ] Upgrades step 2, next: dedicated pier (Phase D), then hub designation and transfer centre (Phase E) — [HUB_PROGRESSION_PLAN.md](../docs/HUB_PROGRESSION_PLAN.md) §5.
+- [ ] Owner decisions still open: terminal congestion (§9.5), lounge → comfort reputation (§9.7), Game Center re-pointing (§9.8).
 
 ## Whole-game audit - 25 September 2026
 

@@ -26,7 +26,7 @@ public struct EconomySystem: SimulationSystem {
                               amount: -tuning.overheadBaseMonthly, at: context.current,
                               memo: "Company overhead")
 
-            // Loan service: interest + principal from the fixed annuity.
+            // Station upkeep: every building open at each airport.
             for airport in (airline.airportFacilities ?? [:]).keys.sorted() {
                 let cost = airline.facilities(at: airport).monthlyCost(tuning: context.catalog.tuning.airportServices)
                 if cost > .zero {
@@ -35,6 +35,7 @@ public struct EconomySystem: SimulationSystem {
                 }
             }
 
+            // Loan service: interest + principal from the fixed annuity.
             var remainingLoans: [Loan] = []
             for var loan in airline.loans {
                 let interest = Money(rounding: loan.principalRemaining.asDouble * loan.monthlyRate)

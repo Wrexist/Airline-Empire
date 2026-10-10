@@ -310,3 +310,50 @@ textbook rejection shape; the Lifetime non-consumable and complete disclosure
 are the mitigations, and `MONETIZATION.md` §5.2 records the fallback if App
 Review pushes back. 30 Core tests; nothing about the *screen* is proven yet
 (`APPLE_VALIDATION.md` §5).
+
+## D-017 — Hub buildings take game days; hangar and crew base; prices from payback
+**Date:** 2026-10-10 · **Status:** ACCEPTED · **Phase:** Hub 1.1, step 2 (`docs/HUB_PROGRESSION_PLAN.md`)
+**Context:** The owner accepted the plan's recommendations: Phase A (the
+progression frame), then the maintenance hangar and the crew base; every
+building takes game days, the lounge and depot included; everything up to the
+Regional era free; no paid speed-ups. The plan's prices were proposals "the
+balance battery tunes before shipping", against its own bar of an 18–36 month
+payback at a typical hub. Measured, the proposals miss that bar badly:
+`AirportFacilitiesTests.economyScaleBaseline` shows a lounge plus depot at the
+proposed ×5 upkeep losing $75k a month on its own forecast at an eight-route
+hub, and an $8M hangar returns about $0.7M a year for ten aircraft — less than
+its $1.4M upkeep, so it never pays back.
+**Decision:**
+- Ordering pays now and opens at the start of a later day: lounge and depot
+  7 then 14 days a level, hangar 30 then 60, crew base 21. One build at a time
+  per building; scaling back is immediate, never refunded, and waits while
+  that building is under construction. Upkeep starts on opening.
+- **Maintenance hangar** (Regional era, levels 1–2): aircraft on routes
+  through the airport check in 2 days, then 1 day, instead of 3, and pay 20 %
+  then 35 % less for the check. **Crew base** (Regional era, one level):
+  routes touching it fly 05:00–01:00 instead of 06:00–24:00 and pay 10 % less
+  for crews.
+- **Prices tuned to the payback bar:** lounge $750k a level, $15k a month;
+  depot $500k, $10k a month; hangar $2.5M a level, $40k then $70k a month;
+  crew base $2.5M, $60k a month. At ten aircraft the hangar pays back in about
+  32 months; at five it does not, and its card says so in aircraft-days and
+  check dollars. The crew base pays back on crew savings alone at about eight
+  aircraft, sooner wherever the longer day fits a rotation.
+- **Hub status** — Station, Base, Main base — is earned, recorded and never
+  lost. Base: the home airport, or three aircraft flying here and one building.
+  Main base: a hangar and a crew base open. Hub, Gateway and Flagship come with
+  the National-era buildings.
+- Fixed with it (plan §10): the scheduler plans with the turnaround flight
+  operations uses, so *Efficient Turnarounds* adds rotations; an aircraft whose
+  wear sends it for a check today gets no flights, and one whose check ends
+  today flies — checks no longer cancel a day of legs.
+- Save format v15: the new fields decode as absent from v14; the bump makes an
+  older build refuse a save that may hold the new events and record entries.
+**Alternatives rejected:** *Ship the plan's prices* — fails the plan's own
+payback test and teaches players the buildings are traps. *Keep instant
+building for the lounge and depot* — two feels of the same act.
+**Consequences:** Faster-than-planned payback is the risk to watch; the
+balance battery should run with buildings once AI investment exists. The
+terminal-congestion pressure, the lounge feeding comfort reputation and Game
+Center re-pointing stay undecided and unchanged.
+

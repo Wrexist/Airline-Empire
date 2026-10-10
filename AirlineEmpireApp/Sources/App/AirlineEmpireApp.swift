@@ -3,6 +3,9 @@ import AirlineEmpireCore
 
 @main
 struct AirlineEmpireApp: App {
+    /// Answers the orientation question (`AEOrientation`): the Hub View
+    /// holds an iPhone in landscape.
+    @UIApplicationDelegateAdaptor(AEAppDelegate.self) private var appDelegate
     @State private var controller = GameController()
     /// The other half of the composition root. Owned here for the same reason
     /// `controller` is: it must outlive every screen, and exactly one of it

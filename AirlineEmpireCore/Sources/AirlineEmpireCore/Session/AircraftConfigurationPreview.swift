@@ -40,7 +40,7 @@ public struct AircraftConfigurationPreview: Equatable, Sendable {
         // quote must not disagree about how often the airframe flies.
         guard let rotations = FlightSchedulingSystem.rotationsPerDay(
             route: route, aircraftID: aircraftID, state: state, spec: spec,
-            ops: catalog.tuning.ops) else { return nil }
+            ops: catalog.tuning.ops, facilities: catalog.tuning.airportServices) else { return nil }
         let capacity = Double(rotations * 2 * configuration.totalSeats)
         let routeCapacity = active.reduce(0.0) { sum, item in
             guard let type = catalog.aircraftType(item.typeCode) else { return sum }
