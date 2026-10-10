@@ -300,13 +300,6 @@ struct HubInsightsPanel: View {
             tile("dollarsign.circle.fill", "Hub revenue (month)", Format.money(Money(cents: insights.monthRevenueCents)))
             tile("airplane", "Fleet here", "\(insights.fleetAtHub) of \(insights.fleetTotal)")
         }
-        section("Reputation") {
-            HubMeter(title: "Overall", value: insights.reputation, tint: HubChromeStyle.accent)
-            HubMeter(title: "Punctuality", value: insights.punctuality, tint: HubChromeStyle.good)
-            HubMeter(title: "Reliability", value: insights.reliability, tint: HubChromeStyle.good)
-            HubMeter(title: "Service", value: insights.service, tint: HubChromeStyle.warn)
-            HubMeter(title: "Comfort", value: insights.comfort, tint: HubChromeStyle.warn)
-        }
         if let snapshot = model.snapshot, model.upgradeOffers.isEmpty == false {
             section("Hub status") {
                 HubStatusSection(status: snapshot.status, timeline: snapshot.timeline)
@@ -316,6 +309,13 @@ struct HubInsightsPanel: View {
             ForEach(model.upgradeOffers) { offer in
                 facility(offer)
             }
+        }
+        section("Reputation") {
+            HubMeter(title: "Overall", value: insights.reputation, tint: HubChromeStyle.accent)
+            HubMeter(title: "Punctuality", value: insights.punctuality, tint: HubChromeStyle.good)
+            HubMeter(title: "Reliability", value: insights.reliability, tint: HubChromeStyle.good)
+            HubMeter(title: "Service", value: insights.service, tint: HubChromeStyle.warn)
+            HubMeter(title: "Comfort", value: insights.comfort, tint: HubChromeStyle.warn)
         }
         section("Network") {
             HStack {
