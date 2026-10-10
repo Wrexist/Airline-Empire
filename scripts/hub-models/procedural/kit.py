@@ -80,6 +80,23 @@ class Piece:
                 self.face([ring[k], ring[(k + 1) % n], cv], slot)
         return self
 
+    def box(self, center, size, slot, bevel=0.0, segments=2):
+        """Box, optionally with rounded (bevelled) edges."""
+        c, (sx, sy, sz) = Vector(center), size
+        pts = [c + Vector((x * sx / 2, y * sy / 2, z * sz / 2))
+               for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)]
+        v = self.verts(pts)
+        for quad in [(0, 1, 3, 2), (4, 6, 7, 5), (0, 4, 5, 1), (2, 3, 7, 6), (0, 2, 6, 4), (1, 5, 7, 3)]:
+            self.face([v[i] for i in quad], slot)
+        if bevel > 0:
+            edges = [e for e in self.bm.edges if all(x in v for x in e.verts)]
+            out = bmesh.ops.bevel(self.bm, geom=edges + v, offset=bevel, segments=segments, profile=0.5,
+                                  affect="EDGES", clamp_overlap=True)
+            k = self._slot(slot)
+            for f in out["faces"]:
+                f[self.tag] = k
+        return self
+
     def grid(self, points, slot):
         """Open patch from a 2-D list of points (rows x cols)."""
         vs = [self.verts(row) for row in points]
@@ -89,8 +106,12 @@ class Piece:
         return self
 
     def fan(self, points, slot):
-        """Single n-gon (small, nearly flat decals such as cabin windows)."""
-        self.face(self.verts(points), slot)
+        """Disc-like decal: triangles from the centre to each edge (cabin windows,
+        logos). Never one n-gon: on a curved surface viewers triangulate it badly."""
+        ring = self.verts(points)
+        c = self.bm.verts.new(sum((Vector(p) for p in points), Vector()) / len(points))
+        for k in range(len(ring)):
+            self.face([ring[k], ring[(k + 1) % len(ring)], c], slot)
         return self
 
     def seal(self):
@@ -102,6 +123,7 @@ class Piece:
     def face_away_from(self, origin_of):
         """Open patches: flip faces whose normal points towards origin_of(centre)."""
         for f in self.bm.faces:
+            f.normal_update()  # new faces carry no normal until asked
             c = f.calc_center_median()
             if f.normal.dot(c - origin_of(c)) < 0:
                 f.normal_flip()
@@ -124,6 +146,9 @@ class Piece:
 class Kit:
     def __init__(self):
         self.parts = defaultdict(lambda: ([], []))  # slot -> (verts, faces)
+        # Authored materials the app leaves alone (no ae_ prefix):
+        # name -> (hex colour, metallic, roughness).
+        self.custom = {}
 
     def add(self, piece, mirror_y=False):
         """Collect a piece's faces per slot; `mirror_y` adds its starboard twin too."""
@@ -193,9 +218,11 @@ class Kit:
         allowed = MANIFEST["models"][slot_name]["slots"]
         objs = []
         for slot, (verts, faces) in self.parts.items():
-            if slot not in allowed:
+            custom = self.custom.get(slot)
+            if custom is None and slot not in allowed:
                 sys.exit(f"{slot_name}: slot {slot} is not allowed by manifest.json ({allowed})")
-            mesh = bpy.data.meshes.new(f"ae_{slot}")
+            name = slot if custom else f"ae_{slot}"
+            mesh = bpy.data.meshes.new(name)
             mesh.from_pydata(verts, [], faces)
             mesh.validate()
             bm = bmesh.new()
@@ -203,16 +230,17 @@ class Kit:
             bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
             bm.to_mesh(mesh)
             bm.free()
-            mat = bpy.data.materials.new(f"ae_{slot}")
+            mat = bpy.data.materials.new(name)
             mat.use_nodes = True
             bsdf = mat.node_tree.nodes["Principled BSDF"]
-            rgb = [clean_model.srgb_to_linear(c) for c in clean_model.hex_rgb(palette[slot])]
+            colour, metallic, rough = custom or (palette[slot], 0.0, 0.1 if slot == "glass" else 0.85)
+            rgb = [clean_model.srgb_to_linear(c) for c in clean_model.hex_rgb(colour)]
             bsdf.inputs["Base Color"].default_value = (*rgb, 1)
-            bsdf.inputs["Roughness"].default_value = 0.1 if slot == "glass" else 0.85
-            bsdf.inputs["Metallic"].default_value = 0.0
+            bsdf.inputs["Roughness"].default_value = rough
+            bsdf.inputs["Metallic"].default_value = metallic
             mat.diffuse_color = (*rgb, 1)  # workbench previews
             mesh.materials.append(mat)
-            obj = bpy.data.objects.new(f"ae_{slot}", mesh)
+            obj = bpy.data.objects.new(name, mesh)
             bpy.context.scene.collection.objects.link(obj)
             objs.append(obj)
         return objs

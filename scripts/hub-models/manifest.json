@@ -264,14 +264,16 @@
         "white",
         "windowDark",
         "tyre",
-        "darkMetal"
+        "darkMetal",
+        "hiVis",
+        "lamp"
       ],
       "required_slots": [
         "white",
         "tyre"
       ],
       "priority": 4,
-      "notes": "Tank is an un-prefixed polished-silver material."
+      "notes": "Tank is an un-prefixed polished-silver material; yellow side logo in hiVis, headlights in lamp."
     },
     "vehicle_beltLoader": {
       "file": "Hub_vehicle_beltLoader.usdz",

@@ -211,9 +211,17 @@ nose, engines within 0.5 m of `HubModels.enginePosition`). `check_usdz.py`
 passes. The `Hub view review` workflow now also runs when only
 `Resources/HubModels/` changes.
 
-**Next:** check the jet in the captures (size, facing, livery repaint, lit
+Second: **`Hub_vehicle_fuelTruck.usdz`** — 2 980 triangles, 9.6 × 2.5 ×
+3.35 m: white cab-over cab, polished-silver tank (`tank_silver`, an
+un-prefixed material the app leaves shiny) with three straps and an
+original yellow disc-and-drop logo (`ae_hiVis`), headlights in `ae_lamp`
+(the manifest now allows both), chassis, skirts, hose cabinet, ladder.
+Decals are concentric-ring fans laid on the curved surface: a single
+n-gon or a flat fan sinks into a curved body.
+
+**Next:** check both in the captures (size, facing, livery repaint, lit
 windows at night), then the rest of the gate batch in model-list priority:
-jet bridge, concourse, gate sign, turnaround vehicles (fuel truck first).
+jet bridge, concourse, gate sign, belt loader, tug, crew.
 
 ## 1. Where things stood after the first build
 
