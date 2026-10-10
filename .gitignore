@@ -42,3 +42,11 @@ AuthKey_*.p8
 .build-scan2/
 .build-old/
 .build-check/
+
+# Hub View review loop (scripts/hub-review): reference clip, captures, comparisons.
+# The reference clip is third-party work and must never be committed.
+.hub-review/
+__pycache__/
+
+# Raw generator output (Meshy GLBs, working .blend files): keep out of the repo.
+art/hub-models/raw/

@@ -1,5 +1,18 @@
 # Airline Empire — TODO
 
+## 3D Hub View (1.1) - 9 October 2026
+
+PR #42 (`feature/hub-view-3d`). Handoff, gap list and the step-by-step plan: [HUB_HANDOFF.md](../docs/HUB_HANDOFF.md). Each step is one PR, closed by a `Hub view review` comparison sheet.
+
+- [x] H1-H4: Core layout + snapshot, procedural RealityKit scene, glass dashboard, five shots, night, capture workflow, USDZ drop-in seam, model list.
+- [ ] Step 1: composition (cameras, tighter apron, doll's-house walls, callout placement).
+- [ ] Step 2: density (vehicles, queues, kiosks, FIDS, heatmap, route line, curved roads).
+- [ ] Step 3: procedural glass and night palette.
+- [ ] Step 4: authored USDZ models in model-list priority order, made with Meshy + Blender via [HUB_MODEL_PIPELINE.md](../docs/HUB_MODEL_PIPELINE.md) (needs the owner's Meshy key and Blender MCP on his PC).
+- [ ] Step 5: bloom + SSAO post-process.
+- [ ] Step 6: physical-device performance pass.
+- [ ] Step 7: owner approves the comparison sheet; enable for 1.1.
+
 ## Whole-game audit - 25 September 2026
 
 Branch `claude/game-audit-optimize-a28480` (development line `codex/ae049-aircraft-configuration` + `main`). Six audits and their fixes are recorded in [GAME_AUDIT_2026-09-25.md](../docs/GAME_AUDIT_2026-09-25.md). The approved 1.1.0 (13) binary is unchanged; these fixes ship in the next signed build.

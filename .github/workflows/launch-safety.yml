@@ -37,7 +37,10 @@ jobs:
     # the installed 26.2 runtime; normal CI still compiles with current Xcode.
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
-    timeout-minutes: 40
+    # 40 left no headroom once the 1.1 Hub View landed: its Release build
+    # step went from ~6 to ~10 minutes and the job finished at 39m14s, then
+    # timed out on an identical commit (run 37534434608).
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
         with:
