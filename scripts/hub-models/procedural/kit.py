@@ -149,6 +149,12 @@ class Kit:
         # Named sub-prim the next pieces go under (e.g. a jet bridge's
         # `tunnel` and `cab`, which the app moves separately); None = root.
         self.group = None
+        # Shift the finished model so its footprint is centred on the origin
+        # and it stands on the ground (people carrying a suitcase or a bag).
+        self.recentre = False
+        # Smooth-shading angle in degrees (clean_model uses 35; rounder,
+        # low-segment shapes such as people read better higher).
+        self.smooth = None
         # Authored materials the app leaves alone (no ae_ prefix):
         # name -> (hex colour, metallic, roughness).
         self.custom = {}
@@ -187,6 +193,26 @@ class Kit:
         a = Vector(axis).normalized()
         rings = [self.circle(Vector(center) + a * t, a, max(r, 0.0), n, start) for t, r in profile]
         return Piece().loft(rings, slots, cap0, cap1).seal()
+
+    def ellipsoid(self, center, radii, slot, n=10, rings=6):
+        """Closed ellipsoid (heads, hands, shoes)."""
+        c, (rx, ry, rz) = Vector(center), radii
+        loops = []
+        for i in range(rings + 1):
+            a = math.pi * i / rings  # from the bottom pole to the top
+            loops.append([c + Vector((rx * math.sin(a) * math.cos(t), ry * math.sin(a) * math.sin(t),
+                                      -rz * math.cos(a)))
+                          for t in (2 * math.pi * k / n for k in range(n))])
+        return Piece().loft(loops, slot).seal()
+
+    def limb(self, a, b, r0, r1, slot, n=8):
+        """Capsule from a to b, radius r0 tapering to r1, with rounded ends."""
+        a, b = Vector(a), Vector(b)
+        d = (b - a).normalized()
+        prof = [(-r0, 0.0), (-r0 * 0.7, r0 * 0.71), (0.0, r0), ((b - a).length, r1),
+                ((b - a).length + r1 * 0.7, r1 * 0.71), ((b - a).length + r1, 0.0)]
+        rings = [self.circle(a + d * t, d, r, n) for t, r in prof]
+        return Piece().loft(rings, slot).seal()
 
     def wheel(self, x, y, r, w, n=12, hub="white"):
         """Tyre with rounded shoulders and a light hub, axle along Y, on the ground."""
@@ -333,9 +359,22 @@ def run(slot, build, views=()):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     kit = Kit()
     build(kit)
+    if kit.recentre:
+        pts = [v for verts, _ in kit.parts.values() for v in verts]
+        lo = [min(p[i] for p in pts) for i in range(3)]
+        hi = [max(p[i] for p in pts) for i in range(3)]
+        dx, dy, dz = -(lo[0] + hi[0]) / 2, -(lo[1] + hi[1]) / 2, -lo[2]
+        for verts, _ in kit.parts.values():
+            verts[:] = [(x + dx, y + dy, z + dz) for x, y, z in verts]
     objs = kit.objects(slot)
     root = clean_model.finish(objs, slot)
     kit.regroup(objs, root)
+    if kit.smooth:
+        for o in objs:
+            bpy.context.view_layer.objects.active = o
+            for other in bpy.context.scene.objects:
+                other.select_set(other is o)
+            bpy.ops.object.shade_smooth_by_angle(angle=math.radians(kit.smooth), keep_sharp_edges=False)
     spec = MANIFEST["models"][slot]
     out = a.out or os.path.join(TOOLS, "..", "..", "AirlineEmpireApp", "Resources", "HubModels", spec["file"])
     if a.save_blend:

@@ -235,9 +235,23 @@ triangles; offset cab, beacon, tow hitch), **`Hub_vehicle_beltLoader.usdz`**
 and **`Hub_vehicle_serviceTruck.usdz`** (1 108; cab-over box truck, also
 the service van's fallback). The tug's manifest entry now allows `hiVis`.
 
-**Next:** check them all in the captures (size, facing, livery repaint,
-lit windows at night, the bridge meeting the door), then the rest of the
-gate batch: concourse, gate sign, crew; then people.
+People (gap C6): **`Hub_person_passenger_a`–`d`** and **`Hub_person_crew`**
+(920–1 136 triangles each, `procedural/people.py` writes all five): one
+soft clay body dressed per variant — jacket and rolling suitcase,
+long coat and bag, hoodie and backpack, reaching to a kiosk, overalls
+with a hi-vis vest and ear defenders. `ae_cloth` / `ae_skin` are
+recoloured per person by the app.
+
+Performance: authored people and vehicles no longer become one entity
+each. `HubAssetLibrary.raw` reads an authored model's triangles into
+palette batches, and `rawPerson` / `rawVehicle` prefer it, so the
+terminal crowd (up to 300), the crew and parked vehicles stay one draw
+per material. A model with an un-prefixed material (the fuel truck's
+tank) can't be batched and is still placed as an entity.
+
+**Next:** check everything in the captures (size, facing, livery repaint,
+lit windows at night, the bridge meeting the door, crowds), then the
+concourse, the gate sign and the terminal hall.
 
 ## 1. Where things stood after the first build
 

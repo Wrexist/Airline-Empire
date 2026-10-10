@@ -51,6 +51,54 @@ final class HubAssetLibrary {
         return copy
     }
 
+    private var rawCache: [String: [(HubMaterialKey, HubMeshBatch)]] = [:]
+    private var rawUnavailable: Set<String> = []
+
+    /// The slot's geometry as CPU batches per palette key, in the model's own
+    /// frame, so many static copies merge into one draw per material (crowds,
+    /// crew, parked vehicles) instead of one entity each. Nil when no file
+    /// ships, or when a part keeps its own authored material (the fuel
+    /// truck's polished tank), which a palette batch cannot carry.
+    func raw(_ slot: String) -> [(HubMaterialKey, HubMeshBatch)]? {
+        if let hit = rawCache[slot] { return hit }
+        if rawUnavailable.contains(slot) { return nil }
+        guard let proto = prototype(slot) else { return nil }
+        var complete = true
+        var batches: [HubMaterialKey: HubMeshBatch] = [:]
+        var order: [HubMaterialKey] = []
+        func walk(_ entity: Entity, inherited: HubMaterialKey?) {
+            let key = Self.key(forPrim: entity.name) ?? inherited
+            if key == nil, entity.components[ModelComponent.self] != nil { complete = false }
+            if let key, let model = entity.components[ModelComponent.self] {
+                let placed = entity.transformMatrix(relativeTo: proto)
+                if batches[key] == nil { order.append(key) }
+                var batch = batches[key] ?? HubMeshBatch()
+                for instance in model.mesh.contents.instances {
+                    guard let source = model.mesh.contents.models[instance.model] else { continue }
+                    batch.transform = placed * instance.transform
+                    for part in source.parts {
+                        guard let tris = part.triangleIndices?.elements else { continue }
+                        batch.triangles(positions: part.positions.elements, normals: part.normals?.elements,
+                                        indices: tris)
+                    }
+                }
+                batch.transform = matrix_identity_float4x4
+                batches[key] = batch
+            }
+            for child in entity.children {
+                walk(child, inherited: key)
+            }
+        }
+        walk(proto, inherited: nil)
+        let made = order.compactMap { key in batches[key].map { (key, $0) } }.filter { !$0.1.isEmpty }
+        guard complete, !made.isEmpty else {
+            rawUnavailable.insert(slot)
+            return nil
+        }
+        rawCache[slot] = made
+        return made
+    }
+
     /// First available slot from a list of alternatives (variants).
     func instance(anyOf slots: [String], materials: HubMaterials,
                   remap: (HubMaterialKey) -> HubMaterialKey = { $0 }) -> Entity? {

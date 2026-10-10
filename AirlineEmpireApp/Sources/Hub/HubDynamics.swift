@@ -437,7 +437,9 @@ final class HubDynamics {
         func put(_ v: HubModels.Vehicle, _ p: SIMD3<Float>, _ angle: Float) {
             let slots = HubModels.slot(v)
             let at = HubMeshBatch.translation(p) * HubMeshBatch.yaw(angle)
-            if models.hasAuthored(slots) {
+            // Authored vehicles batch like procedural ones, unless a part keeps
+            // its own material (then they stay an entity of their own).
+            if models.hasAuthored(slots), !slots.contains(where: { models.library.raw($0) != nil }) {
                 let e = models.make(slots, models.vehicle(v), materials: materials)
                 e.position = p
                 e.orientation = simd_quatf(angle: angle, axis: [0, 1, 0])
@@ -496,19 +498,10 @@ final class HubDynamics {
             for k in 0..<(focused ? 6 : 3) {
                 let p = nose - fwd * (m.length * (0.18 + 0.12 * Float(k))) + right * (m.radius + 2 + Float(k % 2) * 3)
                 let face = yaw + (k % 2 == 0 ? .pi / 2 : -.pi / 2)
-                let slots = HubModels.personSlots(k, crew: true)
-                if models.hasAuthored(slots) {
-                    let e = models.make(slots, models.person(k, crew: true), materials: materials) { key in
-                        key == .skin(0) ? .skin(k % 4) : key
-                    }
-                    e.position = p
-                    e.scale = [1.8, 1.8, 1.8]
-                    group.addChild(e)
-                } else {
-                    batch.add(models.rawPerson(crew: true),
-                              matrix: HubMeshBatch.translation(p) * HubMeshBatch.yaw(face) * HubMeshBatch.scale([1.8, 1.8, 1.8])) { key in
-                        key == .skin(0) ? .skin(k % 4) : key
-                    }
+                // Authored or procedural, the crew merge into the stand's batch.
+                batch.add(models.rawPerson(k, crew: true),
+                          matrix: HubMeshBatch.translation(p) * HubMeshBatch.yaw(face) * HubMeshBatch.scale([1.8, 1.8, 1.8])) { key in
+                    key == .skin(0) ? .skin(k % 4) : key
                 }
             }
         }
@@ -945,27 +938,18 @@ final class HubDynamics {
                 default: key
                 }
             }
-            if authored {
-                let p = models.make(HubModels.personSlots(k, crew: false), models.person(k, crew: false),
-                                    materials: materials, remap: remap)
-                p.position = at
-                p.orientation = simd_quatf(angle: yaw, axis: [0, 1, 0])
-                p.scale = [2.0, 2.0, 2.0]
-                interiorCrowd.addChild(p)
-            } else {
-                let placed = HubMeshBatch.translation(at) * HubMeshBatch.yaw(yaw) * HubMeshBatch.scale([2, 2, 2])
-                batch.add(models.rawPerson(crew: false), matrix: placed, remap: remap)
-                // Every third traveller pulls a suitcase.
-                if k % 3 == 0 {
-                    batch.add(models.rawLuggage(), matrix: placed * HubMeshBatch.translation([0.05, 0, 0.45])) { key in
-                        key == .cloth(1) ? .cloth([1, 4, 6, 3][k % 4]) : key
-                    }
+            // Authored figures merge into the batch too: up to 300 people stay
+            // one draw per material instead of 300 entities.
+            let placed = HubMeshBatch.translation(at) * HubMeshBatch.yaw(yaw) * HubMeshBatch.scale([2, 2, 2])
+            batch.add(models.rawPerson(k, crew: false), matrix: placed, remap: remap)
+            // Every third traveller pulls a suitcase (authored figures carry their own).
+            if k % 3 == 0 && !authored {
+                batch.add(models.rawLuggage(), matrix: placed * HubMeshBatch.translation([0.05, 0, 0.45])) { key in
+                    key == .cloth(1) ? .cloth([1, 4, 6, 3][k % 4]) : key
                 }
             }
         }
-        if !authored {
-            interiorCrowd.addChild(batch.entity(materials: materials, name: "crowd"))
-        }
+        interiorCrowd.addChild(batch.entity(materials: materials, name: "crowd"))
     }
 
     // MARK: Frame

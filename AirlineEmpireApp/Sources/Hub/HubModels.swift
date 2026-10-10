@@ -72,12 +72,22 @@ final class HubModels {
         return made
     }
 
+    /// A vehicle's CPU geometry for static batches: the authored model when
+    /// it can be batched, else the procedural one.
     func rawVehicle(_ v: Vehicle) -> [(HubMaterialKey, HubMeshBatch)] {
-        raw("vehicle.\(v.rawValue)") { Self.buildVehicle(v) }
+        for slot in Self.slot(v) {
+            if let authored = library.raw(slot) { return authored }
+        }
+        return raw("vehicle.\(v.rawValue)") { Self.buildVehicle(v) }
     }
 
-    func rawPerson(crew: Bool) -> [(HubMaterialKey, HubMeshBatch)] {
-        raw("person.\(crew)") { Self.buildPerson(crew: crew) }
+    /// A person's CPU geometry for crowd batches: the authored figure for
+    /// `variant` when one ships, else the procedural figurine.
+    func rawPerson(_ variant: Int = 0, crew: Bool) -> [(HubMaterialKey, HubMeshBatch)] {
+        for slot in Self.personSlots(variant, crew: crew) {
+            if let authored = library.raw(slot) { return authored }
+        }
+        return raw("person.\(crew)") { Self.buildPerson(crew: crew) }
     }
 
     func rawCone() -> [(HubMaterialKey, HubMeshBatch)] {
