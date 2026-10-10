@@ -370,8 +370,8 @@ final class HubFacilityYard {
             b.box(center: [0, fence, hd / 2], size: [hw, 0.3, 0.4])
         }
         if standing == 0 && !roof {
-            // The lot itself, scraped to earth.
-            Self.with(&p, .houseWood) { $0.box(center: .zero, size: [hw - 1, 0.1, hd - 1]) }
+            // The lot itself, scraped to earth — above the plot's pad.
+            Self.with(&p, .houseWood) { $0.box(center: .zero, size: [hw - 1, 0.24, hd - 1]) }
         }
         // From the first day: the site cabin by the gate and pallets of
         // materials waiting.

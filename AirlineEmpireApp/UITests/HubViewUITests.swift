@@ -175,7 +175,7 @@ final class HubViewUITests: AEUITestCase {
         frame("HUB-15-status")
         XCTAssertTrue(app.descendants(matching: .any)["ae-hub-status"].exists)
         let hangar = app.buttons["ae-hub-facility-hangar"]
-        for _ in 0..<3 where !hangar.isHittable { app.descendants(matching: .any)["ae-hub-insights-panel"].swipeUp() }
+        for _ in 0..<3 where !hangar.isHittable { app.descendants(matching: .any).matching(identifier: "ae-hub-insights-panel").firstMatch.swipeUp() }
         if hangar.waitForExistence(timeout: 5) {
             hangar.tap()
             Thread.sleep(forTimeInterval: 3)
