@@ -88,8 +88,10 @@ struct HubSceneBuilder {
         case .height:
             HubAssetLibrary.fit(e, footprint: [1, 1], height: Float(p.size.y) * 1.4)
         case .stretchX:
-            let ext = e.visualBounds(relativeTo: e).extents
-            if ext.x > 0.1 { e.scale = [Float(p.size.x) / ext.x, 1, 1] }
+            if !Self.extendBridge(e, to: Float(p.size.x)) {
+                let ext = e.visualBounds(relativeTo: e).extents
+                if ext.x > 0.1 { e.scale = [Float(p.size.x) / ext.x, 1, 1] }
+            }
         case .none:
             break
         }
@@ -118,6 +120,32 @@ struct HubSceneBuilder {
         if [.tree, .house, .hangar, .officeBlock, .terminalHall, .controlTower].contains(p.kind) {
             blob(c, w: Float(p.size.x) * 1.4, d: Float(p.size.z) * 1.4)
         }
+        return true
+    }
+
+    /// An authored jet bridge with `rotunda`, `tunnel` and `cab` prims
+    /// (docs/HUB_MODEL_LIST.md §4.3) keeps its ends at their modelled size:
+    /// the rotunda's centre sits on the root, the cab's face just past the
+    /// tip, and only the tunnel stretches between them. False for a model
+    /// without those prims, which is then stretched whole.
+    static func extendBridge(_ e: Entity, to length: Float) -> Bool {
+        guard let rotunda = e.findEntity(named: "rotunda"),
+              let tunnel = e.findEntity(named: "tunnel"),
+              let cab = e.findEntity(named: "cab") else { return false }
+        let r = rotunda.visualBounds(relativeTo: e)
+        let t = tunnel.visualBounds(relativeTo: e)
+        let c = cab.visualBounds(relativeTo: e)
+        let tunnelLength = t.max.x - t.min.x
+        guard tunnelLength > 0.1 else { return false }
+        // The prims' parents only turn the model about x (Z-up to Y-up), so
+        // x offsets in their frames equal x offsets in the model's.
+        let rootShift = -length / 2 - r.center.x
+        let tipShift = length / 2 + 0.5 - c.max.x
+        let k = max(0.2, (tunnelLength + tipShift - rootShift) / tunnelLength)
+        rotunda.position.x += rootShift
+        cab.position.x += tipShift
+        tunnel.position.x = t.min.x + rootShift - (t.min.x - tunnel.position.x) * k
+        tunnel.scale.x *= k
         return true
     }
 

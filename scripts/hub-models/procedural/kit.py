@@ -145,7 +145,10 @@ class Piece:
 
 class Kit:
     def __init__(self):
-        self.parts = defaultdict(lambda: ([], []))  # slot -> (verts, faces)
+        self.parts = defaultdict(lambda: ([], []))  # (group, slot) -> (verts, faces)
+        # Named sub-prim the next pieces go under (e.g. a jet bridge's
+        # `tunnel` and `cab`, which the app moves separately); None = root.
+        self.group = None
         # Authored materials the app leaves alone (no ae_ prefix):
         # name -> (hex colour, metallic, roughness).
         self.custom = {}
@@ -156,7 +159,7 @@ class Kit:
         copies = [False, True] if mirror_y else [False]
         for flip in copies:
             for f in piece.bm.faces:
-                verts, faces = self.parts[piece.slots[f[piece.tag]]]
+                verts, faces = self.parts[(self.group, piece.slots[f[piece.tag]])]
                 base = len(verts)
                 loop = list(f.verts)
                 if flip:
@@ -217,11 +220,13 @@ class Kit:
         palette = MANIFEST["palette"]
         allowed = MANIFEST["models"][slot_name]["slots"]
         objs = []
-        for slot, (verts, faces) in self.parts.items():
+        for (group, slot), (verts, faces) in self.parts.items():
             custom = self.custom.get(slot)
             if custom is None and slot not in allowed:
                 sys.exit(f"{slot_name}: slot {slot} is not allowed by manifest.json ({allowed})")
             name = slot if custom else f"ae_{slot}"
+            if group:
+                name += f"_{group}"  # the app reads the slot before the first underscore
             mesh = bpy.data.meshes.new(name)
             mesh.from_pydata(verts, [], faces)
             mesh.validate()
@@ -241,9 +246,24 @@ class Kit:
             mat.diffuse_color = (*rgb, 1)  # workbench previews
             mesh.materials.append(mat)
             obj = bpy.data.objects.new(name, mesh)
+            obj["ae_group"] = group or ""
             bpy.context.scene.collection.objects.link(obj)
             objs.append(obj)
         return objs
+
+    @staticmethod
+    def regroup(objs, root):
+        """Put grouped parts under an empty named after their group."""
+        groups = {}
+        for o in objs:
+            g = o.get("ae_group")
+            if not g:
+                continue
+            if g not in groups:
+                groups[g] = bpy.data.objects.new(g, None)
+                bpy.context.scene.collection.objects.link(groups[g])
+                groups[g].parent = root
+            o.parent = groups[g]
 
 
 def preview(directory, slot, views):
@@ -293,7 +313,8 @@ def run(slot, build, views=()):
     kit = Kit()
     build(kit)
     objs = kit.objects(slot)
-    clean_model.finish(objs, slot)
+    root = clean_model.finish(objs, slot)
+    kit.regroup(objs, root)
     spec = MANIFEST["models"][slot]
     out = a.out or os.path.join(TOOLS, "..", "..", "AirlineEmpireApp", "Resources", "HubModels", spec["file"])
     if a.save_blend:

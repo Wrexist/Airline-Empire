@@ -219,9 +219,20 @@ original yellow disc-and-drop logo (`ae_hiVis`), headlights in `ae_lamp`
 Decals are concentric-ring fans laid on the curved surface: a single
 n-gon or a flat fan sinks into a curved body.
 
-**Next:** check both in the captures (size, facing, livery repaint, lit
-windows at night), then the rest of the gate batch in model-list priority:
-jet bridge, concourse, gate sign, belt loader, tug, crew.
+Third: **`Hub_jetBridge.usdz`** — 3 516 triangles, 22 m at rest: a
+`rotunda` (column, drum with a glazed band, roof), a `tunnel` (two
+telescoping glass sections with white rib rings and a floor, sloping
+from 4.9 m at the concourse to 3.55 m at the door) and a `cab` (bellows,
+side windows, drive bogie). `HubSceneBuilder.extendBridge` keeps the
+rotunda on the root and the cab at the door and stretches only the
+tunnel; a bridge model without those prims is still stretched whole.
+The kit's `kit.group` puts parts under such named prims
+(`ae_<slot>_<group>`).
+
+**Next:** check all three in the captures (size, facing, livery repaint,
+lit windows at night, the bridge meeting the door), then the rest of the
+gate batch in model-list priority: concourse, gate sign, belt loader,
+tug, crew.
 
 ## 1. Where things stood after the first build
 
