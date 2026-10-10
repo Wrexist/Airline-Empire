@@ -21,10 +21,10 @@ SEG = 48  # fuselage segments round
 # Fuselage profile: (x, radius, centre height). Full section between the
 # nose taper and the tail cone; the cone sweeps the belly up to the APU.
 PROFILE = [
-    (19.00, 0.06, 3.30), (18.95, 0.30, 3.31), (18.85, 0.50, 3.32), (18.70, 0.70, 3.34),
-    (18.50, 0.88, 3.36), (18.25, 1.06, 3.38), (17.95, 1.24, 3.40), (17.60, 1.42, 3.43),
-    (17.20, 1.58, 3.45), (16.75, 1.72, 3.47), (16.25, 1.84, 3.48), (15.70, 1.93, 3.49),
-    (15.00, 1.99, 3.50), (14.00, 2.00, 3.50), (8.0, 2.00, 3.50), (2.0, 2.00, 3.50),
+    (19.00, 0.06, 2.95), (18.95, 0.45, 3.00), (18.85, 0.72, 3.05), (18.70, 0.98, 3.10),
+    (18.50, 1.22, 3.17), (18.25, 1.45, 3.25), (17.95, 1.63, 3.32), (17.60, 1.77, 3.38),
+    (17.20, 1.88, 3.43), (16.75, 1.95, 3.47), (16.25, 1.99, 3.49), (15.70, 2.00, 3.50),
+    (14.00, 2.00, 3.50), (8.0, 2.00, 3.50), (2.0, 2.00, 3.50),
     (-4.0, 2.00, 3.50), (-7.0, 2.00, 3.50), (-8.5, 1.96, 3.57), (-9.5, 1.88, 3.65),
     (-10.5, 1.76, 3.75), (-11.5, 1.63, 3.85), (-12.5, 1.49, 3.95), (-13.5, 1.34, 4.05),
     (-14.5, 1.19, 4.15), (-15.5, 1.03, 4.25), (-16.5, 0.86, 4.34), (-17.4, 0.67, 4.42),
@@ -69,6 +69,19 @@ def patch(kit, slot, x0, x1, p0, p1, nx=4, np_=4, shear=0.0):
     return K.Piece().grid(rows, slot).face_away_from(axis_point)
 
 
+def pane(slot, corners, n=4):
+    """Decal through four (x, phi) corners: fwd-inner, aft-inner, aft-outer, fwd-outer."""
+    (a, b, c, d) = corners
+    rows = []
+    for i in range(n + 1):
+        t = i / n
+        lo = (a[0] + (d[0] - a[0]) * t, a[1] + (d[1] - a[1]) * t)
+        hi = (b[0] + (c[0] - b[0]) * t, b[1] + (c[1] - b[1]) * t)
+        rows.append([on_skin(lo[0] + (hi[0] - lo[0]) * j / n, lo[1] + (hi[1] - lo[1]) * j / n)
+                     for j in range(n + 1)])
+    return K.Piece().grid(rows, slot).face_away_from(axis_point)
+
+
 def oval(slot, xc, pc, ax, az, n=12):
     r, _ = skin(xc)
     pts = [on_skin(xc + ax * math.cos(2 * math.pi * k / n), pc + (az / r) * math.sin(2 * math.pi * k / n))
@@ -96,13 +109,14 @@ def fuselage(kit):
 
 
 def windows(kit):
-    # Cockpit: four panes in one dark band, thin white posts between them.
-    for side in (1, -1):
-        s = side
-        kit.add(patch(kit, "windowDark", 17.0, 17.75, s * math.radians(1.6), s * math.radians(37),
-                      nx=4, np_=4, shear=-0.5 * s))
-        kit.add(patch(kit, "windowDark", 16.1, 16.95, s * math.radians(39.5), s * math.radians(68),
-                      nx=4, np_=3, shear=-0.9 * s))
+    # Cockpit: four panes in one dark band on the sloping crown of the
+    # nose, thin white posts between them; the side panes sweep back.
+    d = math.radians
+    for s in (1, -1):
+        kit.add(pane("windowDark", [(18.38, s * d(1.2)), (17.5, s * d(1.2)),
+                                    (17.38, s * d(34)), (18.22, s * d(37.5))]))
+        kit.add(pane("windowDark", [(18.15, s * d(40)), (17.33, s * d(36.5)),
+                                    (16.65, s * d(66)), (17.55, s * d(76))]))
     # Cabin windows: 28 a side, just above mid-height, gaps at the doors.
     p = phi_at(3.95)
     xs = [12.9 - k * 0.72 for k in range(28)]
@@ -242,6 +256,8 @@ VIEWS = [
     ("side", (0, 70, 5), (0, 0, 4.5)),
     ("top", (0, 0.01, 95), (0, 0, 0)),
     ("nose", (28, 10, 6), (16, 0, 3.6)),
+    ("cockpit", (30, 9, 7.5), (17.5, 0, 4.2)),
+    ("profile", (17, 22, 4.5), (17, 0, 3.9)),
     ("tail", (-30, 16, 12), (-15, 0, 7)),
 ]
 
