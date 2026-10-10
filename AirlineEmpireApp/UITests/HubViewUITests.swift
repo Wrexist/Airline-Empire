@@ -190,7 +190,15 @@ final class HubViewUITests: AEUITestCase {
         let close = app.buttons["ae-hub-close"]
         require(close, "close button")
         close.tap()
-        XCTAssertTrue(app.descendants(matching: .any)["ae-hub-scene"].waitForNonExistence(timeout: 10))
+        let scene = app.descendants(matching: .any)["ae-hub-scene"]
+        // A synthesized tap can be lost while the 3D view renders flat out
+        // on a slow simulator (seen on iPhone: the button and the whole hub
+        // still there, untouched). The button is unconditional, so a second
+        // tap is the same act; the hub must still go.
+        if !scene.waitForNonExistence(timeout: 8), close.exists {
+            close.tap()
+        }
+        XCTAssertTrue(scene.waitForNonExistence(timeout: 10))
         XCUIDevice.shared.orientation = .portrait
     }
 }
