@@ -188,6 +188,27 @@ class Kit:
         rings = [self.circle(Vector(center) + a * t, a, max(r, 0.0), n, start) for t, r in profile]
         return Piece().loft(rings, slots, cap0, cap1).seal()
 
+    def wheel(self, x, y, r, w, n=12, hub="white"):
+        """Tyre with rounded shoulders and a light hub, axle along Y, on the ground."""
+        prof = [(-w / 2, 0.0), (-w / 2, r * 0.55), (-w / 2, r * 0.82), (-w * 0.4, r * 0.97), (0, r),
+                (w * 0.4, r * 0.97), (w / 2, r * 0.82), (w / 2, r * 0.55), (w / 2, 0.0)]
+        slots = [hub, "tyre", "tyre", "tyre", "tyre", "tyre", "tyre", hub]
+        return self.lathe(prof, slots, center=(x, y, r), axis=(0, 1, 0), n=n)
+
+    @staticmethod
+    def beam(a, b, width, height, slot, side=(0, 1, 0)):
+        """Rectangular bar from a to b: `width` along `side`, `height` across both."""
+        a, b = Vector(a), Vector(b)
+        d = (b - a).normalized()
+        lat = Vector(side)
+        if abs(lat.normalized().dot(d)) > 0.95:
+            lat = Vector((1, 0, 0))
+        lat = (lat - d * lat.dot(d)).normalized()
+        n = d.cross(lat)
+        rings = [[p + lat * sy * width / 2 + n * sz * height / 2 for sy, sz in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+                 for p in (a, b)]
+        return Piece().loft(rings, slot, cap0=slot, cap1=slot).seal()
+
     @staticmethod
     def airfoil(n=16, thickness=1.0):
         """Closed symmetric section, (chord fraction 0 = leading edge, half-thickness)."""

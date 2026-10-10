@@ -229,10 +229,15 @@ tunnel; a bridge model without those prims is still stretched whole.
 The kit's `kit.group` puts parts under such named prims
 (`ae_<slot>_<group>`).
 
-**Next:** check all three in the captures (size, facing, livery repaint,
+Then the turnaround vehicles: **`Hub_vehicle_tug.usdz`** (1 324
+triangles; offset cab, beacon, tow hitch), **`Hub_vehicle_beltLoader.usdz`**
+(1 276; the ramp rises to 3.45 m at +X beside a narrow cab, yellow rails)
+and **`Hub_vehicle_serviceTruck.usdz`** (1 108; cab-over box truck, also
+the service van's fallback). The tug's manifest entry now allows `hiVis`.
+
+**Next:** check them all in the captures (size, facing, livery repaint,
 lit windows at night, the bridge meeting the door), then the rest of the
-gate batch in model-list priority: concourse, gate sign, belt loader,
-tug, crew.
+gate batch: concourse, gate sign, crew; then people.
 
 ## 1. Where things stood after the first build
 

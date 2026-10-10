@@ -316,7 +316,8 @@
         "white",
         "windowDark",
         "tyre",
-        "darkMetal"
+        "darkMetal",
+        "hiVis"
       ],
       "required_slots": [
         "white",
