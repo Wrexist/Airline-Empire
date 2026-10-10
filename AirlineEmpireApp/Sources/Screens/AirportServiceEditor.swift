@@ -134,6 +134,11 @@ struct AirportFacilityEditor: View {
         let color = service == .lounge ? AETheme.fare : AETheme.accent
         let building = player.construction(at: airport, of: service)
         let locked = snapshot.progression.era < service.unlockEra
+        // What stands and works today; `model.current` is the plan, the
+        // baseline a new order is priced from, which counts what is still
+        // being built.
+        let open = service.level(in: player.facilities(at: airport))
+        let unchanged = building.map { "Building \(service.levelName($0.level))" } ?? "No change"
         let wide = sizeClass == .regular && !typeSize.isAccessibilitySize
         let layout = wide ? AnyLayout(HStackLayout(alignment: .top, spacing: 20))
             : AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
@@ -164,7 +169,8 @@ struct AirportFacilityEditor: View {
                             Label("Unlocks in the \(EraNames.title(service.unlockEra)) era", systemImage: "lock.fill")
                                 .font(.caption.weight(.semibold)).foregroundStyle(AETheme.mutedText)
                         }
-                        tiers(service, model: model, color: color, frozen: building != nil, locked: locked)
+                        tiers(service, model: model, color: color, open: open, building: building?.level,
+                              locked: locked)
                     }.frame(maxWidth: .infinity, alignment: .leading)
                     VStack(alignment: .leading, spacing: 7) {
                         Label(model.effect, systemImage: service == .lounge ? "star" : "checkmark.shield")
@@ -182,14 +188,15 @@ struct AirportFacilityEditor: View {
                 }
                 ViewThatFits(in: .horizontal) {
                     HStack {
-                        Text("Current: \(service.levelName(model.current))")
+                        Text("Current: \(service.levelName(open))")
                         Spacer()
-                        Text(model.current == model.proposed ? "No change" : "Proposed: \(service.levelName(model.proposed)) →")
+                        Text(model.current == model.proposed ? unchanged : "Proposed: \(service.levelName(model.proposed)) →")
                             .foregroundStyle(color)
                     }
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("Current: \(service.levelName(model.current))")
-                        Text("Proposed: \(service.levelName(model.proposed))").foregroundStyle(color)
+                        Text("Current: \(service.levelName(open))")
+                        Text(model.current == model.proposed ? unchanged : "Proposed: \(service.levelName(model.proposed))")
+                            .foregroundStyle(color)
                     }
                 }.font(.caption).accessibilityElement(children: .combine)
             }
@@ -215,7 +222,7 @@ struct AirportFacilityEditor: View {
     }
 
     private func tiers(_ service: AirportService, model: AirportServiceReadModel, color: Color,
-                       frozen: Bool, locked: Bool) -> some View {
+                       open: Int, building: Int?, locked: Bool) -> some View {
         let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 6)) : AnyLayout(HStackLayout(spacing: 6))
         return layout {
             ForEach(0...service.maxLevel, id: \.self) { level in
@@ -229,9 +236,9 @@ struct AirportFacilityEditor: View {
                     }.frame(maxWidth: .infinity, minHeight: 52)
                         .background(model.proposed == level ? color.opacity(0.18) : .clear, in: .rect(cornerRadius: AETheme.cornerRadiusSmall))
                         .overlay { RoundedRectangle(cornerRadius: AETheme.cornerRadiusSmall).strokeBorder(model.proposed == level ? color : AETheme.surfaceRim, lineWidth: model.proposed == level ? 2 : 1) }
-                }.buttonStyle(.plain).disabled(pending != nil || frozen || (locked && level > 0))
+                }.buttonStyle(.plain).disabled(pending != nil || building != nil || (locked && level > 0))
                     .accessibilityLabel("\(service.title), \(service.levelName(level)), level \(level)")
-                    .accessibilityValue(model.current == level ? "Currently installed" : "")
+                    .accessibilityValue(open == level ? "Currently installed" : building == level ? "Under construction" : "")
                     .accessibilityHint("Preview this tier before applying upgrades")
                     .accessibilityAddTraits(model.proposed == level ? .isSelected : [])
                     .accessibilityIdentifier("ae-airport-\(service.rawValue)-\(level)")
