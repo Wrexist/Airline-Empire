@@ -6,26 +6,53 @@ enum RouteManagementSection: String, CaseIterable {
     case competition = "Competition", history = "History"
 }
 
+extension RouteManagementSection {
+    /// The tab's short label: all five fit one row on a phone. The full name
+    /// stays the accessibility label and the test identifier.
+    var shortTitle: String {
+        switch self {
+        case .overview: "Overview"
+        case .planning: "Plan"
+        case .aircraft: "Aircraft"
+        case .competition: "Rivals"
+        case .history: "History"
+        }
+    }
+}
+
 struct RouteManagementTabs: View {
     @Binding var selection: RouteManagementSection
     var body: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 4) {
-                ForEach(RouteManagementSection.allCases, id: \.self) { item in
-                    Button { selection = item } label: {
-                        Text(item.rawValue).font(.caption.weight(.semibold))
-                            .padding(.horizontal, 12).frame(minHeight: 44)
-                            .background(selection == item ? AETheme.accent.opacity(0.2) : .clear, in: .rect(cornerRadius: 12))
-                            .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(selection == item ? AETheme.accent : .clear) }
-                    }.buttonStyle(.plain)
-                        .foregroundStyle(selection == item ? .primary : AETheme.mutedText)
-                        .accessibilityAddTraits(selection == item ? .isSelected : [])
-                        .accessibilityIdentifier("ae-route-tab-\(item.rawValue)")
-                }
-            }.padding(4)
-        }.scrollIndicators(.hidden)
-            .background(AETheme.sky, in: .rect(cornerRadius: 16))
-            .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(AETheme.surfaceRim) }
+        // Five equal tabs in one row; at the largest text sizes a row that
+        // scrolls, rather than one that clips the last tab to a sliver.
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 4) { tabs(fill: true) }.padding(4)
+            ScrollView(.horizontal) {
+                HStack(spacing: 4) { tabs(fill: false) }.padding(4)
+            }.scrollIndicators(.hidden)
+        }
+        .background(AETheme.sky, in: .rect(cornerRadius: 16))
+        .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(AETheme.surfaceRim) }
+    }
+
+    @ViewBuilder
+    private func tabs(fill: Bool) -> some View {
+        ForEach(RouteManagementSection.allCases, id: \.self) { item in
+            Button { selection = item } label: {
+                Text(item.shortTitle).font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .padding(.horizontal, fill ? 4 : 12).frame(minHeight: 44)
+                    .frame(maxWidth: fill ? .infinity : nil)
+                    .background(selection == item ? AETheme.accent.opacity(0.2) : .clear, in: .rect(cornerRadius: 12))
+                    .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(selection == item ? AETheme.accent : .clear) }
+                    .contentShape(.rect)
+            }.buttonStyle(.plain)
+                .foregroundStyle(selection == item ? .primary : AETheme.mutedText)
+                .accessibilityLabel(item.rawValue)
+                .accessibilityAddTraits(selection == item ? .isSelected : [])
+                .accessibilityIdentifier("ae-route-tab-\(item.rawValue)")
+        }
     }
 }
 
@@ -69,48 +96,106 @@ struct RouteOverviewHero: View {
     }
 }
 
-/// Geographic airport diagram, centered on the endpoints, including date-line crossings.
+/// The route on real geography: the game map's own Natural Earth coastlines
+/// (`WorldGeometry`), framed on the two airports, with the great-circle path
+/// the aircraft fly rather than a straight line on an empty grid. Date-line
+/// crossings stay one continuous curve.
 private struct RouteAirportDiagram: View {
     let route: Route
     let catalog: ContentCatalog
     var body: some View {
         Canvas { context, size in
             guard let a = catalog.airport(route.origin), let b = catalog.airport(route.destination) else { return }
-            func longitude(_ value: Double) -> Double {
-                let delta = value - a.coordinate.longitude
-                return delta - floor((delta + 180) / 360) * 360
+            // The path, longitudes unwrapped from the origin.
+            var path: [(lat: Double, lon: Double)] = []
+            var previous = a.coordinate.longitude
+            for k in 0...48 {
+                let c = MapMath.greatCirclePoint(from: a.coordinate, to: b.coordinate, fraction: Double(k) / 48)
+                var lon = c.longitude
+                while lon - previous > 180 { lon -= 360 }
+                while lon - previous < -180 { lon += 360 }
+                previous = lon
+                path.append((c.latitude, lon))
             }
-            let dx = longitude(b.coordinate.longitude)
-            let west = min(0, dx) - 5, spanX = max(10, abs(dx) + 10)
-            let south = min(a.coordinate.latitude, b.coordinate.latitude) - 5
-            let spanY = max(10, abs(a.coordinate.latitude - b.coordinate.latitude) + 10)
-            func point(_ airport: AirportSpec) -> CGPoint {
-                CGPoint(x: (longitude(airport.coordinate.longitude) - west) / spanX * size.width,
-                        y: (1 - (airport.coordinate.latitude - south) / spanY) * size.height)
+            // Frame the path with a margin, scaled by the cosine of the middle
+            // latitude so northern routes aren't stretched sideways.
+            let lats = path.map(\.lat), lons = path.map(\.lon)
+            let latMin = lats.min() ?? 0, latMax = lats.max() ?? 0
+            let lonMin = lons.min() ?? 0, lonMax = lons.max() ?? 0
+            let latSpan = max(latMax - latMin, 2), lonSpan = max(lonMax - lonMin, 2)
+            let midLat = (latMax + latMin) / 2, midLon = (lonMax + lonMin) / 2
+            let cosine = max(0.25, cos(midLat * .pi / 180))
+            let scale = min(size.width / ((lonSpan * 1.6 + 6) * cosine), size.height / (latSpan * 1.6 + 6))
+            func point(_ lat: Double, _ lon: Double) -> CGPoint {
+                CGPoint(x: (lon - midLon) * cosine * scale + size.width / 2,
+                        y: (midLat - lat) * scale + size.height / 2)
             }
-            for index in 1..<6 {
-                var grid = Path()
-                let x = size.width * Double(index) / 6
-                grid.move(to: CGPoint(x: x, y: 0)); grid.addLine(to: CGPoint(x: x, y: size.height))
-                context.stroke(grid, with: .color(AETheme.surfaceRim.opacity(0.3)), lineWidth: 0.5)
-            }
-            for airport in catalog.airports.values {
-                let p = point(airport)
-                if p.x > 0 && p.x < size.width && p.y > 0 && p.y < size.height {
-                    context.fill(Path(ellipseIn: CGRect(x: p.x - 1.5, y: p.y - 1.5, width: 3, height: 3)), with: .color(AETheme.mutedText.opacity(0.4)))
+            let halfLon = size.width / 2 / (cosine * scale), halfLat = size.height / 2 / scale
+            let level: MapZoomLevel = max(lonSpan, latSpan) > 45 ? .world : .regional
+            // Sea, then land, coast and borders in every world copy the frame
+            // touches (a frame across the date line needs two).
+            context.fill(Path(CGRect(origin: .zero, size: size)),
+                         with: .linearGradient(Gradient(colors: [AETheme.mapBackground, AETheme.mapDeep]),
+                                               startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)))
+            func shape(_ polygon: WorldGeometry.Polygon, shift: Double, closed: Bool) -> Path {
+                Path { p in
+                    for (i, m) in polygon.points.enumerated() {
+                        let q = point(90 - m.y * 180, m.x * 360 - 180 + shift)
+                        if i == 0 { p.move(to: q) } else { p.addLine(to: q) }
+                    }
+                    if closed { p.closeSubpath() }
                 }
             }
-            let start = point(a), end = point(b)
-            var line = Path(); line.move(to: start); line.addLine(to: end)
-            context.stroke(line, with: .color(AETheme.accent.opacity(0.15)), lineWidth: 12)
-            context.stroke(line, with: .color(AETheme.accent), style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
-            for (airport, p) in [(a, start), (b, end)] {
-                context.fill(Path(ellipseIn: CGRect(x: p.x - 5, y: p.y - 5, width: 10, height: 10)), with: .color(AETheme.positive))
-                context.draw(Text(airport.code.raw).font(.caption.bold()).foregroundStyle(AETheme.mutedText), at: CGPoint(x: min(size.width - 20, max(20, p.x)), y: min(size.height - 10, max(10, p.y + 17))))
+            for shift in [-360.0, 0, 360] {
+                let west = midLon - halfLon - shift, east = midLon + halfLon - shift
+                let north = midLat + halfLat, south = midLat - halfLat
+                func visible(_ polygon: WorldGeometry.Polygon) -> Bool {
+                    polygon.maxX * 360 - 180 >= west && polygon.minX * 360 - 180 <= east
+                        && 90 - polygon.minY * 180 >= south && 90 - polygon.maxY * 180 <= north
+                }
+                for land in WorldGeometry.landmasses(for: level) where visible(land) {
+                    let outline = shape(land, shift: shift, closed: true)
+                    context.fill(outline, with: .color(AETheme.mapLand))
+                    context.stroke(outline, with: .color(AETheme.mapCoast.opacity(0.7)), lineWidth: 0.6)
+                }
+                for border in WorldGeometry.borders(for: level) where visible(border) {
+                    context.stroke(shape(border, shift: shift, closed: false),
+                                   with: .color(AETheme.mapBorder.opacity(0.35)), lineWidth: 0.4)
+                }
             }
-        }.frame(height: 140).clipped()
-            .background(AETheme.canvas.opacity(0.6), in: .rect(cornerRadius: 12))
-            .accessibilityLabel("Airport map, \(route.origin.raw) to \(route.destination.raw)")
+            // The route: a soft glow under the line itself.
+            let line = Path { p in
+                for (i, c) in path.enumerated() {
+                    let q = point(c.lat, c.lon)
+                    if i == 0 { p.move(to: q) } else { p.addLine(to: q) }
+                }
+            }
+            context.stroke(line, with: .color(AETheme.accent.opacity(0.18)), style: StrokeStyle(lineWidth: 9, lineCap: .round))
+            context.stroke(line, with: .color(AETheme.accent), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+            // An aircraft at the midpoint, nose along the path.
+            let mid = point(path[24].lat, path[24].lon), ahead = point(path[25].lat, path[25].lon)
+            var plane = context
+            plane.translateBy(x: mid.x, y: mid.y)
+            plane.rotate(by: .radians(atan2(ahead.y - mid.y, ahead.x - mid.x)))
+            plane.draw(Text(Image(systemName: "airplane")).font(.system(size: 13, weight: .bold))
+                .foregroundStyle(AETheme.accent), at: .zero)
+            // Airports: a ringed dot and the code, on the side away from the
+            // other end, kept inside the frame.
+            let start = point(path[0].lat, path[0].lon), end = point(path[48].lat, path[48].lon)
+            for (code, p, other) in [(a.code.raw, start, end), (b.code.raw, end, start)] {
+                context.fill(Path(ellipseIn: CGRect(x: p.x - 8, y: p.y - 8, width: 16, height: 16)),
+                             with: .color(AETheme.positive.opacity(0.22)))
+                context.fill(Path(ellipseIn: CGRect(x: p.x - 4.5, y: p.y - 4.5, width: 9, height: 9)),
+                             with: .color(AETheme.positive))
+                let below = p.y >= other.y - 4
+                context.draw(Text(code).font(.caption.bold()).foregroundStyle(.white.opacity(0.85)),
+                             at: CGPoint(x: min(size.width - 22, max(22, p.x)),
+                                         y: min(size.height - 10, max(10, p.y + (below ? 17 : -17)))))
+            }
+        }.frame(height: 150)
+            .clipShape(.rect(cornerRadius: 12))
+            .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(AETheme.surfaceRim.opacity(0.6)) }
+            .accessibilityLabel("Map of the route from \(route.origin.raw) to \(route.destination.raw)")
     }
 }
 

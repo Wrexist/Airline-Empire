@@ -81,7 +81,7 @@ struct RouteFlightStatus: View {
     }
 
     private func title(state: GameState, route: Route) -> String {
-        if controller.speed == .paused { return "Aircraft assigned - Paused" }
+        if controller.speed == .paused { return "Time is paused" }
         if state.flights.values.contains(where: { flight in
             guard flight.route == routeID else { return false }
             if case .enRoute = flight.phase { return true }
