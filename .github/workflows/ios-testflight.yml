@@ -452,6 +452,26 @@ jobs:
         run: |
           LOG="$RUNNER_TEMP/archive.log"
           [ -f "$LOG" ] || exit 0
+          # Checked first: Apple's text for this one also mentions program
+          # membership, and release run 38104614398 (1.2.0) was misreported
+          # as an ineligible membership when the cause was the certificate cap.
+          if grep -qiE 'maximum number of certificates|choose a certificate to revoke' "$LOG"; then
+            echo "::error::Apple will not issue another Apple Distribution certificate: the team already has the maximum (two). Automatic signing on a fresh runner asks for a new one every time."
+            cat <<'GUIDANCE'
+          Either, once (the Account Holder or an Admin):
+            A. Switch to manual signing (preferred - every run reuses one certificate):
+               export the Apple Distribution certificate as a .p12 and download the
+               App Store provisioning profile for com.airlineempire.game, then set the
+               repository secrets IOS_DISTRIBUTION_CERT_P12_BASE64,
+               IOS_DISTRIBUTION_CERT_PASSWORD and IOS_PROVISIONING_PROFILE_BASE64
+               (docs/APP_STORE_CONNECT.md section 4).
+            B. Or revoke one unused Apple Distribution certificate at
+               developer.apple.com/account/resources/certificates (apps already on
+               the App Store keep working), then re-run this job. It will fill the
+               slot again, so the next release hits the same wall: prefer A.
+          GUIDANCE
+            exit 0
+          fi
           if grep -qiE 'program membership|not eligible for this feature' "$LOG"; then
             echo "::error::Apple refused to issue signing assets: this team's Developer Program membership is not eligible. This is an account state, not a code or pipeline problem."
             cat <<'GUIDANCE'
