@@ -195,7 +195,7 @@ the finished crew hotel, a locked plot and the blueprint ghost — the
 fixture is mid-build and in the Regional era. A second fixture (hangar
 open, an aircraft in check, an era-locked plot) is the next capture to add.
 
-## 0e. Authored models, built from code (step 4, first model) — 2026-10-11
+## 0e. Authored models, built from code (step 4) — 2026-10-11
 
 Step 4 no longer waits for Meshy: models are Blender scripts
 (`scripts/hub-models/procedural/`, see the update at the top of
@@ -261,9 +261,37 @@ regional slot is `aircraft_regionalJet` (the app's category raw value);
 it was `aircraft_regional` in the model list and manifest, so that model
 would never have loaded.
 
-**Next:** check everything in the captures (size, facing, livery repaint,
-lit windows at night, the bridge meeting the door, crowds), then the
-concourse, the gate sign and the terminal hall.
+Then everything else the app can place, one script per group, each model
+sized to the **plot the layout gives it** (the app fits most pieces
+uniformly, so a model built to the model list's nominal size could come
+out 1.2–2.5× too big; the manifest's sizes and notes now follow the code):
+
+| Script | Models |
+|---|---|
+| `concourse.py` | `concourse_glass`, `concourse_glass_end` (glazed half dome at the pier tip) |
+| `props.py` | `gateSign` (faces the app's +Z; the number goes at x 0.4), `cone`, `tree_round` / `_tall` / `_small` |
+| `district.py` | `house_villa` / `_b` / `_c`, `house_garden`, `pool`, `vehicle_golfCart`, `vehicle_tankTrailer` |
+| `buildings.py` | `hangar`, `cargoShed`, `fuelTank`, `controlTower`, `office_low`, `midrise_apartment` |
+| `road_vehicles.py` | `vehicle_car_sedan` / `_suv` (~500 triangles each), `vehicle_serviceCar`, `vehicle_bus`, `vehicle_baggageTrain` |
+| `interior.py` | `kiosk_selfService`, `checkInDesk`, `eGate`, `shop_shelving`, `seatRow` |
+
+46 models, all passing `check_usdz.py`. App changes that came with them:
+
+- **Static pieces batch.** `placeAuthored` merges an authored model's
+  palette geometry into the scene batches (`batchAuthored`) instead of
+  one entity per piece — hundreds of trees and cars stay one draw per
+  material. The bridge, gate sign and terminal hall keep entities.
+- **Tower height.** The height fit multiplied every piece by the trees'
+  1.4; an authored 72 m tower would have been drawn 100 m tall. Trees only now.
+
+Not built yet: `terminal_hall` + `_interior` (they replace the tuned
+doll's-house terminal, so they need their own capture review), the
+optional §5–§7 props the layout doesn't place (stanchions, lamps,
+bushes…), and LODs.
+
+**Next:** review the captures of the full set (size, facing, livery and
+cloth repaint, lit windows at night, the bridge meeting the door, crowds,
+frame time), fix what reads wrong, then the terminal hall.
 
 ## 1. Where things stood after the first build
 
