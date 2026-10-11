@@ -43,6 +43,36 @@ final class HubMaterials {
         return m
     }
 
+    // MARK: Additive glow (gap B3)
+
+    /// The additive unlit program (iOS 18), built once and asynchronously;
+    /// nil until it is ready, and the pulse rings keep their alpha-blended
+    /// material until then.
+    private(set) var additive: UnlitMaterial.Program?
+
+    func prepareAdditive() async {
+        guard additive == nil else { return }
+        var descriptor = UnlitMaterial.Program.Descriptor()
+        descriptor.blendMode = .add
+        additive = await UnlitMaterial.Program(descriptor: descriptor)
+    }
+
+    /// A pulse ring drawn additively, so overlapping rings and the engine
+    /// behind them brighten like the reference's glow. Additive blending
+    /// ignores alpha: the ring fades by darkening (`brightness` 0…1) and its
+    /// texture is white on black, where black adds nothing.
+    func additivePulse(brightness: Float) -> RealityKit.Material? {
+        guard let additive else { return nil }
+        var m = UnlitMaterial(program: additive)
+        let k = CGFloat(max(0, min(1, brightness)))
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        HubPalette.queueGlow.mixed(with: HubPalette.pulse, 0.45).getRed(&r, green: &g, blue: &b, alpha: &a)
+        m.color = .init(tint: UIColor(red: r * k, green: g * k, blue: b * k, alpha: 1),
+                        texture: .init(texture("ringAdditive", Self.ringAdditiveImage)))
+        m.blending = .transparent(opacity: 1.0)
+        return m
+    }
+
     // MARK: Factory
 
     private func matte(_ color: UIColor, roughness: Float = 0.9) -> RealityKit.Material {
@@ -227,6 +257,26 @@ final class HubMaterials {
         render(CGSize(width: 256, height: 256)) { ctx in
             let colors = [UIColor.white.withAlphaComponent(0).cgColor, UIColor.white.withAlphaComponent(0.25).cgColor,
                           UIColor.white.cgColor, UIColor.white.withAlphaComponent(0).cgColor] as CFArray
+            let g = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors,
+                               locations: [0, 0.7, 0.9, 1])!
+            ctx.drawRadialGradient(g, startCenter: CGPoint(x: 128, y: 128), startRadius: 0,
+                                   endCenter: CGPoint(x: 128, y: 128), endRadius: 128, options: [])
+            ctx.setStrokeColor(UIColor.white.cgColor)
+            ctx.setLineWidth(14)
+            ctx.strokeEllipse(in: CGRect(x: 30, y: 30, width: 196, height: 196))
+            ctx.setLineWidth(9)
+            ctx.strokeEllipse(in: CGRect(x: 70, y: 70, width: 116, height: 116))
+        }
+    }
+
+    /// The pulse ring for additive drawing: the same rings, white on an
+    /// opaque black ground (additive blending ignores alpha).
+    nonisolated static func ringAdditiveImage() -> CGImage? {
+        render(CGSize(width: 256, height: 256)) { ctx in
+            ctx.setFillColor(UIColor.black.cgColor)
+            ctx.fill(CGRect(x: 0, y: 0, width: 256, height: 256))
+            let colors = [UIColor.black.cgColor, UIColor(white: 0.22, alpha: 1).cgColor,
+                          UIColor.white.cgColor, UIColor.black.cgColor] as CFArray
             let g = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors,
                                locations: [0, 0.7, 0.9, 1])!
             ctx.drawRadialGradient(g, startCenter: CGPoint(x: 128, y: 128), startRadius: 0,

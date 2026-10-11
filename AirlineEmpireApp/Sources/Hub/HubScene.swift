@@ -263,6 +263,9 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         layers = builder.build()
         for (_, e) in layers { anchor.addChild(e) }
         dynamics = HubDynamics(layout: layout, models: models, materials: materials)
+        // Build the additive glow program in the background; the pulse rings
+        // switch to it once it exists.
+        Task { [materials] in await materials.prepareAdditive() }
         anchor.addChild(dynamics.root)
 
         // Key light: elevation 52°, azimuth 140°, soft shadows. The shadow

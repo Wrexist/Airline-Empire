@@ -113,16 +113,33 @@ def villa(variant):
 
 
 def garden(kit):
-    h, t, half = 0.9, 0.3, 20.0
-    for y0, y1 in ((-half, -4.0), (-1.0, half)):  # front wall with the gate gap at y -4..-1
-        box(kit, "building", half - t, half, y0, y1, 0, h, 0.05)
-    box(kit, "building", -half, -half + t, -half, half, 0, h, 0.05)
-    box(kit, "building", -half, half, -half, -half + t, 0, h, 0.05)
-    box(kit, "building", -half, half, half - t, half, 0, h, 0.05)
+    # Boundary wall round the lot with rounded corners: the app rounds the
+    # streets' corners (HubSceneBuilder.streetCorners), and a square wall
+    # corner would stand on the curve. Gate gap at +X, y -4..-1.
+    h, half, rc = 0.9, 19.85, 6.0
+    path = []
+    for cx, cy, a0 in ((half - rc, half - rc, 0), (-half + rc, half - rc, 90),
+                       (-half + rc, -half + rc, 180), (half - rc, -half + rc, 270)):
+        for k in range(5):
+            a = math.radians(a0 + 22.5 * k)
+            path.append(Vector((cx + rc * math.cos(a), cy + rc * math.sin(a), h / 2)))
+    for a, b in zip(path, path[1:] + path[:1]):
+        m = (a + b) / 2
+        if m.x > half - 1 and -4.0 < m.y < -1.0:
+            continue
+        if abs(a.x - b.x) > 1 and abs(a.y - b.y) < 0.01 or abs(a.y - b.y) > 1 and abs(a.x - b.x) < 0.01:
+            # Long straight runs: split round the gate on the +X side.
+            if a.x > half - 1 and b.x > half - 1:
+                lo, hi = sorted((a.y, b.y))
+                for y0, y1 in ((lo, -4.0), (-1.0, hi)):
+                    if y1 > y0:
+                        kit.add(kit.beam((half, y0, h / 2), (half, y1, h / 2), 0.3, h, "building"))
+                continue
+        kit.add(kit.beam(a, b, 0.3, h, "building"))
     for k in range(7):  # dark gate bars
         y = -3.9 + k * 0.48
-        box(kit, "darkMetal", half - 0.2, half - 0.1, y - 0.03, y + 0.03, 0, 1.1)
-    box(kit, "darkMetal", half - 0.2, half - 0.1, -4.0, -1.0, 1.0, 1.1)
+        box(kit, "darkMetal", half - 0.1, half, y - 0.03, y + 0.03, 0, 1.1)
+    box(kit, "darkMetal", half - 0.1, half, -4.0, -1.0, 1.0, 1.1)
     # Rounded hedges along the back and one side.
     for cx, cy, lx, ly in ((-17.5, 0, 1.2, 14), (0, 17.5, 12, 1.2), (12, -17.5, 6, 1.1)):
         kit.add(kit.ellipsoid((cx, cy, 0.8), (lx, ly, 0.8), "grassBright", n=12, rings=5))

@@ -1010,7 +1010,18 @@ final class HubDynamics {
                 ring.orientation = tilt
                 ring.scale = [size, 1, size]
                 let fadeIn = min(1, phase / 0.12)
-                ring.components.set(OpacityComponent(opacity: fadeIn * (1 - phase) * (1 - phase) * 1.4))
+                let fade = fadeIn * (1 - phase) * (1 - phase) * 1.4
+                if let glow = materials.additivePulse(brightness: fade) {
+                    // Additive: brighten where rings overlap; fade by darkening.
+                    ring.components.set(OpacityComponent(opacity: 1))
+                    for part in ring.children {
+                        guard var model = part.components[ModelComponent.self] else { continue }
+                        model.materials = [glow]
+                        part.components.set(model)
+                    }
+                } else {
+                    ring.components.set(OpacityComponent(opacity: fade))
+                }
             }
         }
     }
