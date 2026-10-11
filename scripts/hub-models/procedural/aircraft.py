@@ -385,13 +385,14 @@ def views(p):
                                                                    (p.nose - 1.5 * p.k, 0, p.axis + 0.7 * p.k))]
 
 
-only = None
-if "--only" in sys.argv:
-    i = sys.argv.index("--only")
-    only = sys.argv[i + 1]
-    del sys.argv[i:i + 2]
-for name, spec in CATEGORIES.items():
-    if only and name != only:
-        continue
-    plane = Plane(name, **spec)
-    K.run(f"aircraft_{name}", builder(plane), views(plane))
+if __name__ == "__main__":  # importable by inspector_renders.py
+    only = None
+    if "--only" in sys.argv:
+        i = sys.argv.index("--only")
+        only = sys.argv[i + 1]
+        del sys.argv[i:i + 2]
+    for name, spec in CATEGORIES.items():
+        if only and name != only:
+            continue
+        plane = Plane(name, **spec)
+        K.run(f"aircraft_{name}", builder(plane), views(plane))

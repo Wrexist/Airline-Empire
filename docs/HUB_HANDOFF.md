@@ -64,7 +64,7 @@ captures on the `Hub view review` workflow (iPad Pro 13", iPhone 17 Pro Max).
 | E3 bloom | **In code, device-only** | `HubPostProcess.swift`; the Simulator cannot write the sRGB target, so captures never show it. |
 | E4 trees / lamps | **Done** | Teal trees; lamp heads emissive with warm pools. |
 | F2 timeline | **Done** | 58 % of the width on iPad. |
-| F1 inspector render | Open | |
+| F1 inspector render | **Done** (§0e) | Studio renders of the authored jets, livery tinted through masks. |
 
 Also fixed: depth range and shadow range now follow the camera; shot
 changes turn the short way; scene build no longer copies every mesh batch
@@ -283,6 +283,12 @@ out 1.2–2.5× too big; the manifest's sizes and notes now follow the code):
   material. The bridge, gate sign and terminal hall keep entities.
 - **Tower height.** The height fit multiplied every piece by the trees'
   1.4; an authored 72 m tower would have been drawn 100 m tall. Trees only now.
+
+**Inspector render (gap F1, done):** `procedural/inspector_renders.py`
+renders every category in Blender into `Assets.xcassets/HubJet_<category>`
+(+ `_livery` and `_accent` masks); `HubAircraftProfile` multiplies the
+airline's colours through the masks, so the card shows a soft render of
+the actual jet in its livery, falling back to the drawn profile.
 
 Not built yet: `terminal_hall` + `_interior` (they replace the tuned
 doll's-house terminal, so they need their own capture review), the
