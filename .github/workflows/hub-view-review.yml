@@ -76,12 +76,22 @@ jobs:
             xcrun xcresulttool export attachments --path AirlineEmpireApp/HubReview.xcresult --output-path captures
           fi
           grep -E "error:|warning: .*Hub" hub-review-log.txt | head -200 > hub-review-errors.txt || true
+          # Crash reports, so an app that dies mid-capture says where.
+          mkdir -p crashes
+          cp ~/Library/Logs/DiagnosticReports/*AirlineEmpire* crashes/ 2>/dev/null || true
+          if [ -d AirlineEmpireApp/HubReview.xcresult ]; then
+            xcrun xcresulttool export diagnostics --path AirlineEmpireApp/HubReview.xcresult \
+              --output-path crashes/diagnostics 2>/dev/null || true
+            find crashes/diagnostics -type f \( -name "*.ips" -o -name "*.crash" \) -exec cp {} crashes/ \; 2>/dev/null || true
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: hub-review-${{ matrix.device }}
           path: |
             captures/
+            crashes/*.ips
+            crashes/*.crash
             hub-review-log.txt
             hub-review-errors.txt
           retention-days: 30
