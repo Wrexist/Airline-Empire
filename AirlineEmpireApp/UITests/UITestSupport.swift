@@ -1304,6 +1304,12 @@ class AEUITestCase: XCTestCase {
         let found = app.buttons["Found Skyline Air"]
         if !found.waitForExistence(timeout: 15) {
             if waitForTab("Home", timeout: 3) != nil { return true }
+            // A cold simulator can drop the first tap (release run
+            // 38104614398: a 62 s launch, then the menu still showing): if
+            // the menu is still there, press the action once more.
+            if newAirline.exists, newAirline.isHittable {
+                newAirline.tap()
+            }
             guard require(found, "the Found button on the new-game screen") else {
                 return false
             }
