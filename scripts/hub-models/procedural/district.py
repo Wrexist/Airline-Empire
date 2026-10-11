@@ -129,14 +129,16 @@ def garden(kit):
 
 
 def pool(kit):
-    box(kit, "white", -5.5, 5.5, -3.5, -3.0, 0, 0.35, 0.05)
-    box(kit, "white", -5.5, 5.5, 3.0, 3.5, 0, 0.35, 0.05)
-    box(kit, "white", -5.5, -5.0, -3.0, 3.0, 0, 0.35, 0.05)
-    box(kit, "white", 5.0, 5.5, -3.0, 3.0, 0, 0.35, 0.05)
-    box(kit, "concrete", -5.0, 5.0, -3.0, 3.0, 0, 0.05)
-    box(kit, "water", -5.0, 5.0, -3.0, 3.0, 0.05, 0.27)
+    # The lot's lawn is 0.3 m thick, so the coping stands 0.55 m and the water
+    # surface sits at 0.48 m, above it (as the procedural pool does).
+    top, water = 0.55, 0.48
+    box(kit, "white", -5.5, 5.5, -3.5, -3.0, 0, top, 0.05)
+    box(kit, "white", -5.5, 5.5, 3.0, 3.5, 0, top, 0.05)
+    box(kit, "white", -5.5, -5.0, -3.0, 3.0, 0, top, 0.05)
+    box(kit, "white", 5.0, 5.5, -3.0, 3.0, 0, top, 0.05)
+    box(kit, "water", -5.0, 5.0, -3.0, 3.0, 0.05, water)
     for y in (-0.6, 0.6):  # steps rail
-        kit.add(kit.limb((4.6, y, 0.27), (4.6, y, 0.9), 0.03, 0.03, "darkMetal", n=6))
+        kit.add(kit.limb((4.6, y, water), (4.6, y, water + 0.65), 0.03, 0.03, "darkMetal", n=6))
 
 
 def golf_cart(kit):
