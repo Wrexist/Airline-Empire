@@ -49,6 +49,22 @@ struct HubMeshBatch {
         indices += other.indices.map { $0 + base }
     }
 
+    /// Raw triangles — an authored model's mesh part — moved by the current
+    /// transform (HubAssetLibrary.raw, for crowds of authored people).
+    mutating func triangles(positions ps: [SIMD3<Float>], normals ns: [SIMD3<Float>]?, indices ix: [UInt32]) {
+        let base = UInt32(positions.count)
+        for (k, p) in ps.enumerated() {
+            let wp = transform * SIMD4<Float>(p, 1)
+            positions.append(SIMD3(wp.x, wp.y, wp.z))
+            let n = ns.map { k < $0.count ? $0[k] : SIMD3<Float>(0, 1, 0) } ?? SIMD3<Float>(0, 1, 0)
+            let wn = transform * SIMD4<Float>(n, 0)
+            let v = SIMD3(wn.x, wn.y, wn.z)
+            normals.append(simd_length(v) > 1e-6 ? simd_normalize(v) : SIMD3<Float>(0, 1, 0))
+            uvs.append(.zero)
+        }
+        indices += ix.map { $0 + base }
+    }
+
     // MARK: Primitive emitters
 
     private mutating func vertex(_ p: SIMD3<Float>, _ n: SIMD3<Float>, _ uv: SIMD2<Float>) -> UInt32 {

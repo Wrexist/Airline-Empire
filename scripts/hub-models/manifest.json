@@ -233,9 +233,9 @@
         800
       ],
       "size_m": {
-        "x": null,
+        "x": 3,
         "y": 2.2,
-        "z": 3
+        "z": null
       },
       "slots": [
         "darkMetal",
@@ -246,7 +246,7 @@
         "darkMetal"
       ],
       "priority": 3,
-      "notes": "No gate number in the model."
+      "notes": "Panel faces +Z (the app writes the gate number at x 0.4, z 0.25), bottom on y = 0. No gate number in the model."
     },
     "vehicle_fuelTruck": {
       "file": "Hub_vehicle_fuelTruck.usdz",
@@ -264,14 +264,16 @@
         "white",
         "windowDark",
         "tyre",
-        "darkMetal"
+        "darkMetal",
+        "hiVis",
+        "lamp"
       ],
       "required_slots": [
         "white",
         "tyre"
       ],
       "priority": 4,
-      "notes": "Tank is an un-prefixed polished-silver material."
+      "notes": "Tank is an un-prefixed polished-silver material; yellow side logo in hiVis, headlights in lamp."
     },
     "vehicle_beltLoader": {
       "file": "Hub_vehicle_beltLoader.usdz",
@@ -314,7 +316,8 @@
         "white",
         "windowDark",
         "tyre",
-        "darkMetal"
+        "darkMetal",
+        "hiVis"
       ],
       "required_slots": [
         "white",
@@ -338,7 +341,8 @@
         "white",
         "windowDark",
         "tyre",
-        "darkMetal"
+        "darkMetal",
+        "livery"
       ],
       "required_slots": [
         "white",
@@ -394,7 +398,8 @@
         "white",
         "screen"
       ],
-      "priority": 5
+      "priority": 5,
+      "notes": "Screen faces +X (the app turns it to the hall's front)."
     },
     "checkInDesk": {
       "file": "Hub_checkInDesk.usdz",
@@ -404,9 +409,9 @@
         800
       ],
       "size_m": {
-        "x": 2,
+        "x": 0.9,
         "y": null,
-        "z": null
+        "z": 2.5
       },
       "slots": [
         "white",
@@ -416,7 +421,8 @@
       "required_slots": [
         "white"
       ],
-      "priority": 5
+      "priority": 5,
+      "notes": "Front +X; the counter and its bag belt run along z; monitor on top."
     },
     "eGate": {
       "file": "Hub_eGate.usdz",
@@ -426,19 +432,21 @@
         800
       ],
       "size_m": {
-        "x": null,
-        "y": null,
-        "z": null
+        "x": 1,
+        "y": 1.4,
+        "z": 2.5
       },
       "slots": [
         "white",
         "glass",
-        "screen"
+        "screen",
+        "darkMetal"
       ],
       "required_slots": [
         "white"
       ],
-      "priority": 5
+      "priority": 5,
+      "notes": "Pedestal along z, glass flap towards +X, placed unturned in rows."
     },
     "metalDetector": {
       "file": "Hub_metalDetector.usdz",
@@ -492,18 +500,24 @@
         800
       ],
       "size_m": {
-        "x": 4,
+        "x": 0.6,
         "y": 2.2,
-        "z": 0.6
+        "z": 4
       },
       "slots": [
         "houseWood",
-        "cloth"
+        "cloth",
+        "hiVis",
+        "cone",
+        "water",
+        "grassBright",
+        "white"
       ],
       "required_slots": [
         "houseWood"
       ],
-      "priority": 5
+      "priority": 5,
+      "notes": "Stocked face +X; the 4 m unit runs along z. Products in several palette slots."
     },
     "cafe_counter": {
       "file": "Hub_cafe_counter.usdz",
@@ -536,23 +550,26 @@
         15000
       ],
       "size_m": {
-        "x": 16,
+        "x": 18,
         "y": 8.5,
-        "z": 12
+        "z": 25
       },
       "slots": [
         "building",
         "houseWood",
         "windowDark",
         "roof",
+        "houseRoof",
         "glass",
-        "darkMetal"
+        "darkMetal",
+        "cone"
       ],
       "required_slots": [
         "building",
         "windowDark"
       ],
-      "priority": 6
+      "priority": 6,
+      "notes": "Front (+X) faces the street; sized to the lot the layout gives it (about 19 x 27 m), since the app fits it uniformly. Terracotta accent in ae_cone."
     },
     "tree_round": {
       "file": "Hub_tree_round.usdz",
@@ -632,9 +649,9 @@
         6000
       ],
       "size_m": {
-        "x": 24,
-        "y": 20,
-        "z": 16
+        "x": 50,
+        "y": 21,
+        "z": 56
       },
       "slots": [
         "building",
@@ -647,7 +664,8 @@
         "building",
         "windowDark"
       ],
-      "priority": 6
+      "priority": 6,
+      "notes": "Street front +X; plot-sized like office_low so the fit keeps 5 storeys."
     },
     "hangar": {
       "file": "Hub_hangar.usdz",
@@ -657,9 +675,9 @@
         6000
       ],
       "size_m": {
-        "x": 60,
-        "y": 22,
-        "z": 50
+        "x": 80,
+        "y": 25,
+        "z": 80
       },
       "slots": [
         "building",
@@ -670,7 +688,8 @@
       "required_slots": [
         "building"
       ],
-      "priority": 7
+      "priority": 7,
+      "notes": "Door (+X) faces the apron; sized to the layout's 80 x 70-95 m plot, fitted uniformly."
     },
     "office_low": {
       "file": "Hub_office_low.usdz",
@@ -680,9 +699,9 @@
         6000
       ],
       "size_m": {
-        "x": 60,
-        "y": 8,
-        "z": 40
+        "x": 50,
+        "y": 10,
+        "z": 56
       },
       "slots": [
         "building",
@@ -693,10 +712,11 @@
         "building",
         "windowDark"
       ],
-      "priority": 7
+      "priority": 7,
+      "notes": "Street front +X; sized to the 40-70 m office plots, fitted uniformly."
     },
-    "aircraft_regional": {
-      "file": "Hub_aircraft_regional.usdz",
+    "aircraft_regionalJet": {
+      "file": "Hub_aircraft_regionalJet.usdz",
       "class": "aircraft",
       "triangles": [
         8000,
@@ -829,6 +849,435 @@
         "windowDark"
       ],
       "priority": 7
+    },
+    "concourse_glass_end": {
+      "file": "Hub_concourse_glass_end.usdz",
+      "class": "building",
+      "triangles": [
+        1500,
+        6000
+      ],
+      "size_m": {
+        "x": 30,
+        "y": 11,
+        "z": 18
+      },
+      "slots": [
+        "glass",
+        "white",
+        "building",
+        "buildingShade"
+      ],
+      "required_slots": [
+        "glass",
+        "white"
+      ],
+      "priority": 3,
+      "notes": "Pier tip: the vault ends in a quarter dome at +X."
+    },
+    "cone": {
+      "file": "Hub_cone.usdz",
+      "class": "prop",
+      "triangles": [
+        80,
+        800
+      ],
+      "size_m": {
+        "x": null,
+        "y": 0.7,
+        "z": null
+      },
+      "slots": [
+        "cone",
+        "white"
+      ],
+      "required_slots": [
+        "cone"
+      ],
+      "priority": 6
+    },
+    "tree_tall": {
+      "file": "Hub_tree_tall.usdz",
+      "class": "tree",
+      "triangles": [
+        200,
+        500
+      ],
+      "size_m": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "slots": [
+        "tree",
+        "trunk"
+      ],
+      "required_slots": [
+        "tree",
+        "trunk"
+      ],
+      "priority": 6,
+      "notes": "Lollipop tree, ~12 m; the app scales trees to their height."
+    },
+    "tree_small": {
+      "file": "Hub_tree_small.usdz",
+      "class": "tree",
+      "triangles": [
+        200,
+        500
+      ],
+      "size_m": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "slots": [
+        "tree",
+        "trunk"
+      ],
+      "required_slots": [
+        "tree",
+        "trunk"
+      ],
+      "priority": 6,
+      "notes": "Lollipop tree, ~6 m; the app scales trees to their height."
+    },
+    "house_villa_b": {
+      "file": "Hub_house_villa_b.usdz",
+      "class": "hero_building",
+      "triangles": [
+        6000,
+        15000
+      ],
+      "size_m": {
+        "x": 18,
+        "y": 8.5,
+        "z": 25
+      },
+      "slots": [
+        "building",
+        "houseWood",
+        "windowDark",
+        "roof",
+        "houseRoof",
+        "glass",
+        "darkMetal",
+        "cone"
+      ],
+      "required_slots": [
+        "building",
+        "windowDark"
+      ],
+      "priority": 6,
+      "notes": "Variant: mirrored massing, more wood."
+    },
+    "house_villa_c": {
+      "file": "Hub_house_villa_c.usdz",
+      "class": "hero_building",
+      "triangles": [
+        6000,
+        15000
+      ],
+      "size_m": {
+        "x": 18,
+        "y": null,
+        "z": 25
+      },
+      "slots": [
+        "building",
+        "houseWood",
+        "windowDark",
+        "roof",
+        "houseRoof",
+        "glass",
+        "darkMetal",
+        "cone"
+      ],
+      "required_slots": [
+        "building",
+        "windowDark"
+      ],
+      "priority": 6,
+      "notes": "Variant: flat roofs only."
+    },
+    "house_garden": {
+      "file": "Hub_house_garden.usdz",
+      "class": "building",
+      "triangles": [
+        300,
+        6000
+      ],
+      "size_m": {
+        "x": 40,
+        "y": null,
+        "z": 40
+      },
+      "slots": [
+        "building",
+        "darkMetal",
+        "grass",
+        "grassBright",
+        "tree",
+        "trunk"
+      ],
+      "required_slots": [
+        "building"
+      ],
+      "priority": 6,
+      "notes": "Square boundary wall (0.9 m) round the lot with a dark gate at +X, hedges; fitted to the lot."
+    },
+    "pool": {
+      "file": "Hub_pool.usdz",
+      "class": "prop",
+      "triangles": [
+        80,
+        1500
+      ],
+      "size_m": {
+        "x": 11,
+        "y": null,
+        "z": 7
+      },
+      "slots": [
+        "white",
+        "water",
+        "concrete",
+        "darkMetal"
+      ],
+      "required_slots": [
+        "water"
+      ],
+      "priority": 6,
+      "notes": "Water surface is its own ae_water prim (glows at night)."
+    },
+    "controlTower": {
+      "file": "Hub_controlTower.usdz",
+      "class": "building",
+      "triangles": [
+        1500,
+        6000
+      ],
+      "size_m": {
+        "x": null,
+        "y": 60,
+        "z": null
+      },
+      "slots": [
+        "building",
+        "buildingShade",
+        "glass",
+        "roof",
+        "darkMetal",
+        "lamp"
+      ],
+      "required_slots": [
+        "building",
+        "glass"
+      ],
+      "priority": 7,
+      "notes": "Scaled to the layout's tower height (46 or 72 m)."
+    },
+    "cargoShed": {
+      "file": "Hub_cargoShed.usdz",
+      "class": "building",
+      "triangles": [
+        1500,
+        6000
+      ],
+      "size_m": {
+        "x": 50,
+        "y": 14,
+        "z": 90
+      },
+      "slots": [
+        "building",
+        "buildingShade",
+        "roof",
+        "darkMetal",
+        "windowDark"
+      ],
+      "required_slots": [
+        "building"
+      ],
+      "priority": 7,
+      "notes": "Doors (+X) face the apron; plot 90 x 50 m."
+    },
+    "fuelTank": {
+      "file": "Hub_fuelTank.usdz",
+      "class": "building",
+      "triangles": [
+        300,
+        3000
+      ],
+      "size_m": {
+        "x": 26,
+        "y": 14,
+        "z": 26
+      },
+      "slots": [
+        "white",
+        "building",
+        "darkMetal"
+      ],
+      "required_slots": [
+        "white"
+      ],
+      "priority": 7
+    },
+    "vehicle_bus": {
+      "file": "Hub_vehicle_bus.usdz",
+      "class": "vehicle",
+      "triangles": [
+        1200,
+        3000
+      ],
+      "size_m": {
+        "x": 12,
+        "y": 3,
+        "z": 2.6
+      },
+      "slots": [
+        "white",
+        "windowDark",
+        "tyre",
+        "darkMetal",
+        "livery"
+      ],
+      "required_slots": [
+        "white",
+        "tyre"
+      ],
+      "priority": 7,
+      "notes": "Apron bus: full-length windows, livery band."
+    },
+    "vehicle_baggageTrain": {
+      "file": "Hub_vehicle_baggageTrain.usdz",
+      "class": "vehicle",
+      "triangles": [
+        1200,
+        3000
+      ],
+      "size_m": {
+        "x": 12,
+        "y": null,
+        "z": null
+      },
+      "slots": [
+        "white",
+        "hiVis",
+        "darkMetal",
+        "cloth",
+        "tyre"
+      ],
+      "required_slots": [
+        "white",
+        "tyre"
+      ],
+      "priority": 7,
+      "notes": "Tractor and three dollies with bags."
+    },
+    "vehicle_serviceCar": {
+      "file": "Hub_vehicle_serviceCar.usdz",
+      "class": "vehicle",
+      "triangles": [
+        300,
+        1500
+      ],
+      "size_m": {
+        "x": 4.6,
+        "y": null,
+        "z": null
+      },
+      "slots": [
+        "white",
+        "windowDark",
+        "tyre",
+        "darkMetal",
+        "lamp",
+        "livery"
+      ],
+      "required_slots": [
+        "white",
+        "tyre"
+      ],
+      "priority": 7,
+      "notes": "White pick-up beside the belt loader."
+    },
+    "vehicle_car_sedan": {
+      "file": "Hub_vehicle_car_sedan.usdz",
+      "class": "vehicle",
+      "triangles": [
+        200,
+        800
+      ],
+      "size_m": {
+        "x": 4.6,
+        "y": null,
+        "z": null
+      },
+      "slots": [
+        "cloth",
+        "windowDark",
+        "tyre",
+        "darkMetal",
+        "lamp"
+      ],
+      "required_slots": [
+        "cloth",
+        "tyre"
+      ],
+      "priority": 7,
+      "notes": "Body in ae_cloth (the app picks colours); low budget, car parks hold hundreds."
+    },
+    "vehicle_car_suv": {
+      "file": "Hub_vehicle_car_suv.usdz",
+      "class": "vehicle",
+      "triangles": [
+        200,
+        800
+      ],
+      "size_m": {
+        "x": 4.8,
+        "y": null,
+        "z": null
+      },
+      "slots": [
+        "cloth",
+        "windowDark",
+        "tyre",
+        "darkMetal",
+        "lamp"
+      ],
+      "required_slots": [
+        "cloth",
+        "tyre"
+      ],
+      "priority": 7,
+      "notes": "Body in ae_cloth; low budget, car parks hold hundreds."
+    },
+    "seatRow": {
+      "file": "Hub_seatRow.usdz",
+      "class": "prop",
+      "triangles": [
+        80,
+        800
+      ],
+      "size_m": {
+        "x": 4,
+        "y": 0.9,
+        "z": 0.7
+      },
+      "slots": [
+        "darkMetal",
+        "cloth",
+        "white"
+      ],
+      "required_slots": [
+        "darkMetal",
+        "cloth"
+      ],
+      "priority": 5,
+      "notes": "Seats along x facing +Z (backrest at -Z); placed unturned."
     }
   }
 }
