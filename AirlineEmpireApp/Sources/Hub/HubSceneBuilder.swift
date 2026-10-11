@@ -75,8 +75,11 @@ struct HubSceneBuilder {
         guard let library, let spec = authored(p) else { return false }
         let colour = p.kind == .parkedCar ? HubMaterialKey.cloth([0, 1, 5, 6, 7, 5][p.variant % 6]) : nil
         let kiosk = p.kind == .kiosk
+        let treeShade = p.kind == .tree ? p.variant : nil
         let remap: (HubMaterialKey) -> HubMaterialKey = { key in
             if let colour, case .cloth = key { return colour }
+            // Trees vary their green per piece, as the procedural ones do.
+            if let treeShade, case .tree = key { return .tree(treeShade) }
             // Kiosk screens glow like the procedural kiosks' (gap C4).
             if kiosk, key == .screen { return .kioskScreen }
             return key
