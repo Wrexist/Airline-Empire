@@ -233,9 +233,9 @@
         800
       ],
       "size_m": {
-        "x": null,
+        "x": 3,
         "y": 2.2,
-        "z": 3
+        "z": null
       },
       "slots": [
         "darkMetal",
@@ -246,7 +246,7 @@
         "darkMetal"
       ],
       "priority": 3,
-      "notes": "No gate number in the model."
+      "notes": "Panel faces +Z (the app writes the gate number at x 0.4, z 0.25), bottom on y = 0. No gate number in the model."
     },
     "vehicle_fuelTruck": {
       "file": "Hub_vehicle_fuelTruck.usdz",
@@ -832,6 +832,98 @@
         "windowDark"
       ],
       "priority": 7
+    },
+    "concourse_glass_end": {
+      "file": "Hub_concourse_glass_end.usdz",
+      "class": "building",
+      "triangles": [
+        1500,
+        6000
+      ],
+      "size_m": {
+        "x": 30,
+        "y": 11,
+        "z": 18
+      },
+      "slots": [
+        "glass",
+        "white",
+        "building",
+        "buildingShade"
+      ],
+      "required_slots": [
+        "glass",
+        "white"
+      ],
+      "priority": 3,
+      "notes": "Pier tip: the vault ends in a quarter dome at +X."
+    },
+    "cone": {
+      "file": "Hub_cone.usdz",
+      "class": "prop",
+      "triangles": [
+        80,
+        800
+      ],
+      "size_m": {
+        "x": null,
+        "y": 0.7,
+        "z": null
+      },
+      "slots": [
+        "cone",
+        "white"
+      ],
+      "required_slots": [
+        "cone"
+      ],
+      "priority": 6
+    },
+    "tree_tall": {
+      "file": "Hub_tree_tall.usdz",
+      "class": "tree",
+      "triangles": [
+        200,
+        500
+      ],
+      "size_m": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "slots": [
+        "tree",
+        "trunk"
+      ],
+      "required_slots": [
+        "tree",
+        "trunk"
+      ],
+      "priority": 6,
+      "notes": "Lollipop tree, ~12 m; the app scales trees to their height."
+    },
+    "tree_small": {
+      "file": "Hub_tree_small.usdz",
+      "class": "tree",
+      "triangles": [
+        200,
+        500
+      ],
+      "size_m": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "slots": [
+        "tree",
+        "trunk"
+      ],
+      "required_slots": [
+        "tree",
+        "trunk"
+      ],
+      "priority": 6,
+      "notes": "Lollipop tree, ~6 m; the app scales trees to their height."
     }
   }
 }
