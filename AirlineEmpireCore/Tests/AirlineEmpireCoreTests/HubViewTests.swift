@@ -321,6 +321,45 @@ struct HubLayoutTests {
         }
     }
 
+    @Test func cameraRisesOverBuildingsAndLeavesOpenShotsAlone() {
+        for spec in Self.allAirports.prefix(16) {
+            let layout = HubLayout.make(airport: spec)
+            let clearance = HubCameraClearance(layout: layout)
+            // A pinched-in eye 12 m over the middle of the terminal is lifted
+            // clear of the roof.
+            let t = layout.terminal
+            let pitch = 0.2, distance = 60.0
+            let low = HubFrame(target: HubVec(t.center.x, 0, t.center.z - cos(pitch) * distance),
+                               distance: distance, pitch: pitch, yaw: 0)
+            #expect(low.position.y < HubLayout.terminalRoofTop, "\(spec.code)")
+            let lifted = clearance.clear(low)
+            let eye = lifted.position
+            #expect(lifted.pitch > pitch, "\(spec.code)")
+            #expect(eye.y >= clearance.minimumHeight(x: eye.x, z: eye.z) - 0.05, "\(spec.code)")
+            #expect(eye.y > HubLayout.terminalRoofTop || !t.contains(eye), "\(spec.code)")
+            // The tower, too, however close the pinch.
+            if let tower = layout.pieces(.controlTower).first {
+                let top = tower.center.y + tower.size.y
+                let near = HubFrame(target: HubVec(tower.center.x, 0, tower.center.z - cos(pitch) * distance),
+                                    distance: distance, pitch: pitch, yaw: 0)
+                let up = clearance.clear(near).position
+                #expect(up.y > top || !tower.groundBounds.contains(up), "tower at \(spec.code)")
+            }
+            // The solved shots already look down from above the roofs.
+            for shot in [HubCameraShot.overview, .terminal, .district] {
+                let frame = layout.frame(shot, aspect: 1.333, safe: .wide)
+                #expect(clearance.clear(frame) == frame, "\(shot) at \(spec.code)")
+            }
+            // The lift is continuous across a footprint's edge: no pops.
+            var previous = clearance.minimumHeight(x: t.minX - 80, z: t.center.z)
+            for step in 1...240 {
+                let h = clearance.minimumHeight(x: t.minX - 80 + Double(step) * 0.5, z: t.center.z)
+                #expect(abs(h - previous) < 1.2, "jump at \(spec.code)")
+                previous = h
+            }
+        }
+    }
+
     @Test func safeAreaFollowsTheShapeOfTheView() {
         #expect(HubFraming.safeArea(width: 1_376, height: 1_032) == .wide)
         #expect(HubFraming.safeArea(width: 1_032, height: 1_376) == .wide)

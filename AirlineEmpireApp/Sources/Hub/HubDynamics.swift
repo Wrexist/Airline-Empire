@@ -172,6 +172,34 @@ struct HubStandTag: Equatable {
     let stage: String
     let systemImage: String
     let tone: HubTone
+    /// Booked passengers and seats on the flight at the stand.
+    var passengers: Int? = nil
+    var seats: Int? = nil
+
+    var load: Double? {
+        guard let passengers, let seats, seats > 0 else { return nil }
+        return Double(passengers) / Double(seats)
+    }
+}
+
+/// A live figure pinned over a place in the overview.
+struct HubStatTag: Equatable {
+    let systemImage: String
+    let title: String
+    let value: String
+    let detail: String
+    /// A bar under the value, 0–1.
+    let progress: Double?
+    let tone: HubTone
+}
+
+/// What a departure carried and earned, floating up off its jet.
+struct HubPopupTag: Equatable {
+    let systemImage: String
+    let title: String
+    let detail: String?
+    /// 0 when it appears … 1 when it is gone.
+    let age: Double
 }
 
 /// A route of the fan, labelled part-way along its arc.
@@ -211,6 +239,8 @@ struct HubAnchor: Identifiable, Equatable {
         case tag(HubStandTag)
         case route(HubRouteTag)
         case facility(HubFacilityTag)
+        case stat(HubStatTag)
+        case popup(HubPopupTag)
     }
 
     let id: String
@@ -276,8 +306,33 @@ final class HubDynamics {
     let yard: HubFacilityYard
     private var time: Float = 0
     private(set) var focusStand: Int?
-    private(set) var anchors: [HubAnchor] = []
-    private var walkers: [(entity: Entity, path: HubPath, offset: Float, speed: Float)] = []
+    /// The labels built from the latest snapshot; `anchors` adds the
+    /// departures' pop-ups, which move every frame.
+    private var snapshotAnchors: [HubAnchor] = []
+    /// Passengers queueing and crew pacing at each stand, and the travellers
+    /// walking the hall.
+    private var standCrowds: [Int: HubCrowd] = [:]
+    private var hallCrowd: HubCrowd?
+    /// How finely the crowds animate: 1 every frame, more when the camera
+    /// is so far out that people are a few pixels tall.
+    var crowdDetail = 1
+    /// Departures floating up off their jets: what they carried and earned.
+    private var popups: [(id: Int, position: SIMD3<Float>, title: String, detail: String?, born: Float)] = []
+    private var popupSerial = 0
+    /// Each player stand's stage at the last snapshot, to see a pushback start.
+    private var lastStages: [Int: HubTurnaroundStage] = [:]
+
+    var anchors: [HubAnchor] {
+        guard !popups.isEmpty else { return snapshotAnchors }
+        let life: Float = 3.4
+        return snapshotAnchors + popups.map { popup in
+            let age = min(1, max(0, (time - popup.born) / life))
+            let rise = 8 + 22 * (1 - (1 - age) * (1 - age))
+            return HubAnchor(id: "popup\(popup.id)", position: popup.position + [0, rise, 0],
+                             kind: .popup(HubPopupTag(systemImage: "person.2.fill", title: popup.title,
+                                                      detail: popup.detail, age: Double(age))))
+        }
+    }
 
     var showsInterior = false {
         didSet { interiorCrowd.isEnabled = showsInterior }
@@ -314,6 +369,7 @@ final class HubDynamics {
         root.name = "dynamics"
         root.addChild(yard.root)
         for e in [crowd, interiorCrowd, overlays, routeLine, traffic, routeFan] { root.addChild(e) }
+        overlays.components.set(DynamicLightShadowComponent(castsShadow: false))
         interiorCrowd.isEnabled = false
         routeLine.isEnabled = false
         routeFan.isEnabled = false
@@ -337,6 +393,9 @@ final class HubDynamics {
         let shadowLength: Float = (v == .bus || v == .baggageTrain) ? 13 : 8
         shadow.scale = SIMD3<Float>(shadowLength, 1, 3.6)
         e.addChild(shadow)
+        // Moving vehicles carry their own soft blob: no second draw each in
+        // the sun's shadow pass.
+        e.setCastsShadows(false)
         return e
     }
 
@@ -366,9 +425,11 @@ final class HubDynamics {
             current.entity.removeFromParent()
             standDressing[index]?.removeFromParent()
             standDressing[index] = nil
+            standCrowds[index] = nil
             parked[index] = nil
             parkTargets[index] = nil
         }
+        noteDepartures(snapshot)
         for (index, occupant) in wanted {
             let stand = layout.stands[index]
             let e: Entity
@@ -408,6 +469,27 @@ final class HubDynamics {
 
     private var pulseCategory: AircraftCategory?
 
+    /// A player's jet that has just started its pushback floats up what it
+    /// carries and what the tickets were worth.
+    private func noteDepartures(_ snapshot: HubSnapshot) {
+        var stages: [Int: HubTurnaroundStage] = [:]
+        for occupant in snapshot.occupants where occupant.operatorKind == .player {
+            guard let stage = occupant.stage else { continue }
+            stages[occupant.standIndex] = stage
+            guard let before = lastStages[occupant.standIndex], before < .pushback, stage >= .pushback,
+                  let flight = occupant.flight, flight.passengers > 0 else { continue }
+            let stand = layout.stands[occupant.standIndex]
+            let m = HubModels.metrics(occupant.category)
+            let fwd = SIMD3<Float>(Float(cos(stand.heading)), 0, Float(-sin(stand.heading)))
+            let over = Self.f(stand.nose) - fwd * (m.length / 2 + 2) + [0, m.axisY + m.radius * 2, 0]
+            let fare = snapshot.insights.routes.first { $0.routeID == occupant.routeID }?.fareCents ?? 0
+            let revenue = fare > 0 ? "+" + Format.money(Money(cents: fare * Int64(flight.passengers))) : nil
+            popupSerial += 1
+            popups.append((popupSerial, over, "\(flight.passengers) pax", revenue, time))
+        }
+        lastStages = stages
+    }
+
     private func place(_ e: Entity, at stand: HubStand, occupant: HubStandOccupant) {
         let m = HubModels.metrics(occupant.category)
         let fwd = SIMD3<Float>(Float(cos(stand.heading)), 0, Float(-sin(stand.heading)))
@@ -425,11 +507,12 @@ final class HubDynamics {
     private var parkTargets: [Int: SIMD3<Float>] = [:]
 
     /// Turnaround vehicles, crew and passengers around one stand. The
-    /// static ones are merged into one batch per material; walking
-    /// passengers stay entities so they can move.
+    /// vehicles and cones are merged into one batch per material; the crew
+    /// and passengers walk, in one crowd per stand (`HubCrowd`).
     private func dress(_ stand: HubStand, occupant: HubStandOccupant, level: Int, focused: Bool) -> Entity {
         let group = Entity()
         var batch = HubStaticBatcher()
+        var walkers: [HubCrowd.Walker] = []
         let m = HubModels.metrics(occupant.category)
         let fwd = SIMD3<Float>(Float(cos(stand.heading)), 0, Float(-sin(stand.heading)))
         let right = SIMD3<Float>(Float(cos(stand.heading - .pi / 2)), 0, Float(-sin(stand.heading - .pi / 2)))
@@ -495,37 +578,47 @@ final class HubDynamics {
                     batch.add(models.rawCone(), matrix: at)
                 }
             }
-            // Ground crew in hi-vis.
+            // Ground crew in hi-vis, pacing between the jobs round the jet:
+            // the hold, the belt loader, the wing, the nose.
             for k in 0..<(focused ? 6 : 3) {
                 let p = nose - fwd * (m.length * (0.18 + 0.12 * Float(k))) + right * (m.radius + 2 + Float(k % 2) * 3)
-                let face = yaw + (k % 2 == 0 ? .pi / 2 : -.pi / 2)
-                // Authored or procedural, the crew merge into the stand's batch.
-                batch.add(models.rawPerson(k, crew: true),
-                          matrix: HubMeshBatch.translation(p) * HubMeshBatch.yaw(face) * HubMeshBatch.scale([1.8, 1.8, 1.8])) { key in
-                    key == .skin(0) ? .skin(k % 4) : key
-                }
+                let q = p - fwd * (4 + 2.5 * Float(k % 3)) + right * (k % 2 == 0 ? 1.5 : -1)
+                walkers.append(HubCrowd.Walker(figure: 4, scale: 1.8, cloth: k % 8, skin: k % 4,
+                                               motion: .pace(Self.path(p, q), offset: Float(k) * 0.37, speed: 2,
+                                                             pause: 1.5 + Float(k % 3))))
             }
         }
-        // Passengers on the walkway while boarding or deboarding.
+        // Passengers on the walkway while boarding or deboarding: as many as
+        // the flight has booked, in proportion — a full flight is a long queue.
         if stage == .boarding || stage == .deboarding {
-            let count = focused ? 20 : 8
+            let booked = occupant.flight?.passengers ?? (focused ? 140 : 80)
+            let count = focused ? min(26, max(6, booked / 7)) : min(10, max(3, booked / 16))
+            // The queue runs from the door end outwards: boarding walks in.
+            let speed: Float = stage == .boarding ? -2.4 : 2.4
             for k in 0..<count {
-                let person = models.make(HubModels.personSlots(k, crew: false), models.person(k, crew: false),
-                                         materials: materials) { key in
-                    switch key {
-                    case .cloth: .cloth((k * 3 + stand.index) % 8)
-                    case .skin: .skin((k + stand.index) % 4)
-                    default: key
-                    }
-                }
-                person.scale = [1.8, 1.8, 1.8]
-                let offset = Float(k) / Float(count)
-                walkers.append((person, stand.queue, offset, stage == .boarding ? 0.03 : -0.03))
-                group.addChild(person)
+                walkers.append(HubCrowd.Walker(figure: k % 3 == 1 ? 2 : 0, scale: 1.8, cloth: (k * 3 + stand.index) % 8,
+                                               skin: (k + stand.index) % 4,
+                                               motion: .loop(stand.queue, offset: Float(k) / Float(count), speed: speed)))
             }
         }
         group.addChild(batch.entity(materials: materials, name: "stand\(stand.index)"))
+        if !walkers.isEmpty {
+            let crowd = HubCrowd(figures: crowdFigures, walkers: walkers, materials: materials,
+                                 name: "standCrowd\(stand.index)")
+            group.addChild(crowd.entity)
+            standCrowds[stand.index] = crowd
+        } else {
+            standCrowds[stand.index] = nil
+        }
         return group
+    }
+
+    /// The figures every crowd draws from: passengers a–d, then the crew.
+    private lazy var crowdFigures: [[(HubMaterialKey, HubMeshBatch)]] =
+        (0..<4).map { self.models.rawPerson($0, crew: false) } + [self.models.rawPerson(0, crew: true)]
+
+    private static func path(_ a: SIMD3<Float>, _ b: SIMD3<Float>) -> HubPath {
+        HubPath([HubVec(Double(a.x), Double(a.y), Double(a.z)), HubVec(Double(b.x), Double(b.y), Double(b.z))])
     }
 
     // MARK: Focus overlays
@@ -600,7 +693,7 @@ final class HubDynamics {
         }
         // The player's stands, tagged over their jets.
         for occupant in snapshot.occupants where occupant.operatorKind == .player {
-            guard let current = parked[occupant.standIndex] else { continue }
+            guard parked[occupant.standIndex] != nil else { continue }
             let m = HubModels.metrics(occupant.category)
             let stage = occupant.stage
             let delayed = (occupant.flight?.delayMinutes ?? 0) > 0
@@ -608,10 +701,33 @@ final class HubDynamics {
             let tag = HubStandTag(standIndex: occupant.standIndex, gate: occupant.gate,
                                   code: occupant.flight?.code ?? occupant.registration,
                                   stage: delayed ? "+\(occupant.flight?.delayMinutes ?? 0)m" : stage?.title ?? "Parked",
-                                  systemImage: Self.symbol(stage), tone: tone)
-            let above = parkTargets[occupant.standIndex] ?? current.entity.position
+                                  systemImage: Self.symbol(stage), tone: tone,
+                                  passengers: occupant.flight?.passengers, seats: occupant.flight?.seats)
+            // Over the stand itself, not the jet: a pushback must not drag
+            // the label across the screen.
+            let stand = layout.stands[occupant.standIndex]
+            let fwd = SIMD3<Float>(Float(cos(stand.heading)), 0, Float(-sin(stand.heading)))
+            let above = Self.f(stand.nose) - fwd * (m.length / 2 + 2)
             list.append(HubAnchor(id: "tag\(occupant.standIndex)", position: above + [0, m.axisY + m.radius * 2 + 12, 0],
                                   kind: .tag(tag)))
+        }
+        // The terminal's passengers and how busy it is; the runways'
+        // movements and slot use.
+        let kpis = snapshot.kpis
+        let t = layout.terminal
+        let busy = Int((kpis.terminalLoad * 100).rounded())
+        list.append(HubAnchor(id: "stat-terminal", position: [Float(t.center.x), Float(HubLayout.terminalRoofTop) + 30, Float(t.center.z)],
+                              kind: .stat(HubStatTag(systemImage: "person.3.fill", title: "Terminal", value: "\(kpis.passengersToday.formatted()) pax today",
+                                                     detail: "\(busy)% busy", progress: kpis.terminalLoad,
+                                                     tone: kpis.terminalLoad > 0.85 ? .warn : .accent))))
+        if let runway = layout.runways.first {
+            let mid = (Self.f(runway.thresholdA) + Self.f(runway.thresholdB)) / 2
+            let use = Int((kpis.slotUse * 100).rounded())
+            list.append(HubAnchor(id: "stat-runway", position: mid + [0, 26, 0],
+                                  kind: .stat(HubStatTag(systemImage: "airplane", title: "Runway",
+                                                         value: "\(Int(snapshot.movementsPerHour.rounded())) movements/h",
+                                                         detail: "\(use)% of slots", progress: kpis.slotUse,
+                                                         tone: kpis.slotUse > 0.9 ? .warn : .good))))
         }
         // The player's facility sites: what stands there and what is next.
         for offer in snapshot.upgrades {
@@ -654,7 +770,7 @@ final class HubDynamics {
             list.append(HubAnchor(id: "route\(link.routeID.raw)", position: points[points.count * 3 / 10] + [0, 8, 0],
                                   kind: .route(tag)))
         }
-        anchors = list
+        snapshotAnchors = list
     }
 
     private static func symbol(_ stage: HubTurnaroundStage?) -> String {
@@ -733,6 +849,7 @@ final class HubDynamics {
             e.components.set(HubMaterialTag(key: key))
             routeFan.addChild(e)
         }
+        routeFan.setCastsShadows(false)
     }
 
     private lazy var pulseMesh: MeshResource? = {
@@ -912,6 +1029,7 @@ final class HubDynamics {
 
     func populateInterior(load: Double) {
         interiorCrowd.children.removeAll()
+        hallCrowd = nil
         var jitter = SplitMix(seed: 7)
         // ~34 people per bay of the hall at a quiet hour, ~84 when full —
         // the reference's hall holds about 28 in one bay's worth of floor.
@@ -922,7 +1040,24 @@ final class HubDynamics {
         let total = hotspots.reduce(0) { $0 + $1.weight }
         var batch = HubStaticBatcher()
         let authored = models.hasAuthored(HubModels.personSlots(0, crew: false))
-        for k in 0..<count {
+        // About two in five are on their way somewhere — kiosk to security,
+        // security to the shops, the shops to the gates — and the rest
+        // queue, browse and wait where they are.
+        let walking = min(110, count * 2 / 5)
+        let spots = hotspots.map { SIMD3<Float>(Float($0.position.x), 1.7, Float($0.position.z)) }
+        var walkers: [HubCrowd.Walker] = []
+        for k in 0..<walking {
+            walkers.append(HubCrowd.Walker(figure: k % 2 == 0 ? 0 : 2, scale: 2, cloth: (k * 5) % 8, skin: k % 4,
+                                           motion: .wander(spots, spread: 9, speed: 2.6 + Float(k % 5) * 0.15, seed: 11)))
+        }
+        if !walkers.isEmpty {
+            let crowd = HubCrowd(figures: crowdFigures, walkers: walkers, materials: materials, name: "hallCrowd")
+            interiorCrowd.addChild(crowd.entity)
+            hallCrowd = crowd
+        } else {
+            hallCrowd = nil
+        }
+        for k in walking..<count {
             var pick = jitter.unit() * total
             var spot = hotspots[0]
             for h in hotspots {
@@ -970,20 +1105,10 @@ final class HubDynamics {
                 e.position += gap * min(1, dt * 1.8)
             }
         }
-        // Walkers along queues: a gentle step bob, turned the way they
-        // walk, fading in at the back of the queue and out at the door.
-        for (k, walker) in walkers.enumerated() where walker.entity.scene != nil {
-            var t = (walker.offset + time * walker.speed).truncatingRemainder(dividingBy: 1)
-            if t < 0 { t += 1 }
-            let s = walker.path.sample(fraction: Double(t))
-            let bob = abs(sin(time * 7.5 + Float(k) * 1.7)) * 0.09
-            walker.entity.position = [Float(s.position.x), Float(s.position.y) + bob, Float(s.position.z)]
-            walker.entity.orientation = simd_quatf(angle: Float(s.yaw) + (walker.speed < 0 ? .pi : 0), axis: [0, 1, 0])
-            let edge = min(t, 1 - t)
-            let opacity = min(1, edge / 0.07)
-            walker.entity.components.set(OpacityComponent(opacity: opacity * opacity * (3 - 2 * opacity)))
-        }
-        walkers.removeAll { $0.entity.parent?.parent == nil }
+        // People walking: queues to the door, crew round the jets, the hall.
+        for crowd in standCrowds.values { crowd.update(dt, detail: crowdDetail) }
+        hallCrowd?.update(dt)
+        popups.removeAll { time - $0.born > 3.4 }
         // Route lights run out along their arcs and back, easing in and
         // out of the terminal and fading at both ends.
         if showsRouteFan {

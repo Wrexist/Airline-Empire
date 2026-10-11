@@ -130,19 +130,7 @@ private struct HubDashboard: View {
 
                 // World-anchored callouts, tags, labels, pins and pills, in
                 // the scene's own full-screen coordinates.
-                GeometryReader { full in
-                    ForEach(model.projected) { item in
-                        let point = item.anchor.kind == .callout
-                            ? calloutCenter(item.point, size: full.size, insets: geo.safeAreaInsets, mode: mode)
-                            : item.point
-                        anchored(item, mode: mode)
-                            .position(x: point.x, y: point.y)
-                            .allowsHitTesting(isTappable(item.anchor.kind))
-                            .transition(.scale(scale: 0.7).combined(with: .opacity))
-                    }
-                }
-                .ignoresSafeArea()
-                .animation(HubMotion.snap, value: model.projected.map(\.id))
+                HubAnchorOverlay(model: model, store: model.anchors, mode: mode, insets: geo.safeAreaInsets)
 
                 switch mode {
                 case .regular: regular(geo.size)
@@ -364,8 +352,37 @@ private struct HubDashboard: View {
         default: .topTrailing
         }
     }
+}
 
-    // MARK: World anchors
+/// The labels pinned to the world: callouts, stand tags, route labels,
+/// facility and stat tags, pins, pills and the figures that float up when a
+/// flight leaves. It reads only the anchor store, so the per-frame
+/// re-projection redraws these and none of the dashboard. Positions change
+/// without animation — a label that eased towards its anchor would trail
+/// the building it names — and each label fades in on its own when it
+/// first appears.
+@available(iOS 18.0, *)
+private struct HubAnchorOverlay: View {
+    let model: HubScreenModel
+    let store: HubAnchorStore
+    let mode: HubChromeMode
+    let insets: EdgeInsets
+
+    var body: some View {
+        GeometryReader { full in
+            ForEach(store.items) { item in
+                let point = item.anchor.kind == .callout
+                    ? calloutCenter(item.point, size: full.size, insets: insets, mode: mode)
+                    : item.point
+                HubAnchorAppear {
+                    anchored(item, mode: mode)
+                }
+                .position(x: point.x, y: point.y)
+                .allowsHitTesting(isTappable(item.anchor.kind))
+            }
+        }
+        .ignoresSafeArea()
+    }
 
     /// The callout floats over its aircraft but never under the chrome:
     /// held between the KPI row and the timeline, and clear of the inspector
@@ -388,8 +405,8 @@ private struct HubDashboard: View {
 
     private func isTappable(_ kind: HubAnchor.Kind) -> Bool {
         switch kind {
-        case .callout, .tag, .route, .facility: true
-        case .pin, .pill: false
+        case .callout, .tag, .route, .facility, .stat: true
+        case .pin, .pill, .popup: false
         }
     }
 
@@ -406,8 +423,9 @@ private struct HubDashboard: View {
         case .pill(let label, let image):
             HubPill(label: label, systemImage: image)
         case .tag(let tag):
+            // The stem's tip on the anchor, over the jet.
             HubStandTagView(tag: tag)
-                .offset(y: -12)
+                .offset(y: -(HubStandTagView.height / 2 + HubStandTagView.stem))
                 .onTapGesture {
                     withAnimation(HubMotion.panel) {
                         model.setFocus(tag.standIndex)
@@ -424,12 +442,41 @@ private struct HubDashboard: View {
                 .accessibilityLabel("Route to \(tag.code), \(tag.detail)")
         case .facility(let tag):
             HubFacilityTagView(tag: tag)
-                .offset(y: -14)
+                .offset(y: -(HubFacilityTagView.height(tag) / 2 + HubFacilityTagView.stem))
                 .onTapGesture { withAnimation(HubMotion.panel) { model.openUpgrade(tag.kind) } }
                 .accessibilityElement(children: .combine)
                 .accessibilityAddTraits(.isButton)
                 .accessibilityLabel("\(tag.title), \(tag.levelName). \(tag.next)")
                 .accessibilityIdentifier("ae-hub-site-\(tag.kind.rawValue)")
+        case .stat(let tag):
+            HubStatTagView(tag: tag)
+                .offset(y: -(HubStatTagView.height / 2 + HubStatTagView.stem))
+                .onTapGesture { withAnimation(HubMotion.panel) { model.toggle(.insights) } }
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityLabel("\(tag.title), \(tag.value), \(tag.detail)")
+        case .popup(let tag):
+            HubPopupView(tag: tag)
         }
+    }
+}
+
+/// Scales and fades a label in the first time it shows, leaving its
+/// position to follow the world frame by frame.
+private struct HubAnchorAppear<Content: View>: View {
+    let content: Content
+    @State private var shown = false
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        content
+            .scaleEffect(shown ? 1 : 0.7)
+            .opacity(shown ? 1 : 0)
+            .onAppear {
+                withAnimation(HubMotion.snap) { shown = true }
+            }
     }
 }

@@ -49,6 +49,7 @@ final class HubMaterials {
     /// nil until it is ready, and the pulse rings keep their alpha-blended
     /// material until then.
     private(set) var additive: UnlitMaterial.Program?
+    private var additiveCache: [Int: RealityKit.Material] = [:]
 
     func prepareAdditive() async {
         guard additive == nil else { return }
@@ -63,13 +64,18 @@ final class HubMaterials {
     /// texture is white on black, where black adds nothing.
     func additivePulse(brightness: Float) -> RealityKit.Material? {
         guard let additive else { return nil }
+        // Quantised and kept: four rings asked every frame would otherwise
+        // build four materials a frame.
+        let step = Int((max(0, min(1, brightness)) * 31).rounded())
+        if let hit = additiveCache[step] { return hit }
         var m = UnlitMaterial(program: additive)
-        let k = CGFloat(max(0, min(1, brightness)))
+        let k = CGFloat(step) / 31
         var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
         HubPalette.queueGlow.mixed(with: HubPalette.pulse, 0.45).getRed(&r, green: &g, blue: &b, alpha: &a)
         m.color = .init(tint: UIColor(red: r * k, green: g * k, blue: b * k, alpha: 1),
                         texture: .init(texture("ringAdditive", Self.ringAdditiveImage)))
         m.blending = .transparent(opacity: 1.0)
+        additiveCache[step] = m
         return m
     }
 
