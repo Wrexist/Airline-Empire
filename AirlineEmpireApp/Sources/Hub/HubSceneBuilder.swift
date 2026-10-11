@@ -74,6 +74,7 @@ struct HubSceneBuilder {
     private mutating func placeAuthored(_ p: HubPiece, floor: Float = 0) -> Bool {
         guard let library, let spec = authored(p) else { return false }
         let colour = p.kind == .parkedCar ? HubMaterialKey.cloth([0, 1, 5, 6, 7, 5][p.variant % 6]) : nil
+        if batchAuthored(p, spec: spec, library: library, colour: colour, floor: floor) { return true }
         guard let e = library.instance(anyOf: spec.slots, materials: materials, remap: { key in
             if let colour, case .cloth = key { return colour }
             return key
@@ -118,6 +119,62 @@ struct HubSceneBuilder {
         }
         extras.append((spec.layer, e))
         if [.tree, .house, .hangar, .officeBlock, .terminalHall, .controlTower].contains(p.kind) {
+            blob(c, w: Float(p.size.x) * 1.4, d: Float(p.size.z) * 1.4)
+        }
+        return true
+    }
+
+    /// Pieces whose authored model stays an entity: the app extends the
+    /// bridge, writes on the sign and lifts the terminal's cutaway prims.
+    private static let entityKinds: Set<HubPieceKind> = [.jetBridge, .gateSign, .terminalHall]
+
+    /// Places an authored model by merging its geometry into the scene's
+    /// batches — as the procedural pieces are — so hundreds of trees, cars
+    /// and houses stay one draw per material instead of one entity each.
+    /// False when the piece needs an entity or the model can't be batched
+    /// (a part with its own authored material).
+    private mutating func batchAuthored(_ p: HubPiece, spec: (slots: [String], yaw: Float, fit: Fit, layer: HubLayer),
+                                        library: HubAssetLibrary, colour: HubMaterialKey?, floor: Float) -> Bool {
+        guard !Self.entityKinds.contains(p.kind),
+              let slot = spec.slots.first(where: { library.has($0) }),
+              let raw = library.raw(slot) else { return false }
+        var lo = SIMD3<Float>(repeating: .greatestFiniteMagnitude), hi = -lo
+        for (_, batch) in raw {
+            for v in batch.positions {
+                lo = simd_min(lo, v)
+                hi = simd_max(hi, v)
+            }
+        }
+        let ext = hi - lo
+        var s = SIMD3<Float>(1, 1, 1)
+        switch spec.fit {
+        case .footprint:
+            // Same rule as HubAssetLibrary.fit: rotated a quarter turn the footprint's axes swap.
+            let quarter = abs(sin(spec.yaw)) > 0.5
+            let size: SIMD2<Float> = quarter ? [Float(p.size.z), Float(p.size.x)] : [Float(p.size.x), Float(p.size.z)]
+            if ext.x > 0.01, ext.z > 0.01 {
+                let k = min(size.x / ext.x, size.y / ext.z)
+                s = [k, k, k]
+            }
+        case .height:
+            if ext.y > 0.01 {
+                let k = Float(p.size.y) * 1.4 / ext.y
+                s = [k, k, k]
+            }
+        case .stretchX:
+            if ext.x > 0.1 { s = [Float(p.size.x) / ext.x, 1, 1] }
+        case .none:
+            break
+        }
+        let c = Self.f(p.center)
+        let matrix = HubMeshBatch.translation([c.x, c.y + floor, c.z]) * HubMeshBatch.yaw(Float(p.yaw) + spec.yaw)
+            * HubMeshBatch.scale(s)
+        for (key, batch) in raw {
+            var mapped = key
+            if let colour, case .cloth = key { mapped = colour }
+            with(spec.layer, mapped) { $0.append(batch, matrix: matrix) }
+        }
+        if [.tree, .house, .hangar, .officeBlock, .controlTower].contains(p.kind) {
             blob(c, w: Float(p.size.x) * 1.4, d: Float(p.size.z) * 1.4)
         }
         return true
