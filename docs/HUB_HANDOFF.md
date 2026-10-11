@@ -43,7 +43,7 @@ captures on the `Hub view review` workflow (iPad Pro 13", iPhone 17 Pro Max).
 | A5 queue in every shot | **Done** | Focus overlays are shot-independent; captures hold the focus stand at boarding (`-AEUITestHubStage boarding`, `HubSnapshot.holding`). |
 | B1 gate camera | **Done** | Behind the tail on the side away from the terminal, subject = the jet's own extremities + bridge. Nose points at the concourse (left on screen at ARN gate 1, not right as in the reference — a camera on the reference's side would look across the terminal roof at the stands nearest the building). |
 | B2 queue | **Done** | 20 walkers on the focused queue while boarding. |
-| B3 pulse rings | **Partial** | Four tilted rings at the camera-side engine. Additive blending (iOS 18 `Program.Descriptor.blendMode = .add`) not yet used. |
+| B3 pulse rings | **Done** (§0f) | Four tilted rings at the camera-side engine, drawn with an additive `UnlitMaterial.Program`. |
 | B4 glass bridge | **Done** | Glass tube with white rib rings, white floor, rotunda, cab at door height. |
 | B5 callout | **Done** | Clamped between the KPI row and the timeline, clear of the inspector. |
 | B6 / B7 models | Open | Procedural jets now have cabin windows and a four-pane windscreen; authored models still the real fix (step 4). |
@@ -56,7 +56,7 @@ captures on the `Hub view review` workflow (iPad Pro 13", iPhone 17 Pro Max).
 | C7 pins | **Done** | Blue teardrop with a white eye. |
 | D1 district | **Done** | Four 4–6 floor apartment blocks on the district's airport side behind the villas, a crescent road; a departure turns out over the district. |
 | D2 route | **Done** | Raised rounded cyan ribbon with a halo, on the streets past each stop's gate. |
-| D3 curved roads | **Partial** | Roundabouts at the two terminal junctions; other corners still square. |
+| D3 curved roads | **Done** (§0f) | Roundabouts at the terminal junctions; every other street corner filleted, lawns and garden walls rounded. |
 | D4 cart | **Done** | Cart + tank trailer loop the streets by the first stop. |
 | D5 villa | **Done** (procedural) | Two storeys, flat roofs with a navy fascia, dark-framed glazing, wood cladding, terrace, hedges. |
 | E1 night palette | **Re-tuned** | Blue-grey albedos under a near-neutral lavender key and greyer sky. |
@@ -298,6 +298,26 @@ bushes…), and LODs.
 **Next:** review the captures of the full set (size, facing, livery and
 cloth repaint, lit windows at night, the bridge meeting the door, crowds,
 frame time), fix what reads wrong, then the terminal hall.
+
+## 0f. Glow, curved streets, and the terminal decision — 2026-10-11
+
+- **Pulse rings glow additively (B3).** `HubMaterials.prepareAdditive()`
+  builds an iOS 18 `UnlitMaterial.Program` with `blendMode = .add` in the
+  background when the hub opens; `additivePulse(brightness:)` gives each
+  ring a white-on-black ring texture tinted by its fade (additive blending
+  ignores alpha, so rings fade by darkening). Until the program exists the
+  rings keep their alpha-blended material.
+- **Curved street corners (D3).** `HubSceneBuilder.streetCorners()` finds
+  every inner corner where two streets cross or meet (street on along both
+  edges, off-road on the diagonal) and fills it with a 7 m asphalt fillet;
+  lawn plinths round their corners by the same radius (`roundedLawn`), and
+  the authored garden wall rounds its corners so it never stands on a curve.
+- **Terminal hall stays procedural, by decision.** Its length follows each
+  airport, the roof vaults stop at the lounge site, the city name sits on the
+  roof edge, and roof and street wall lift as separate layers in the
+  cutaway; a fixed authored model fitted uniformly would lose all of that.
+  The authored interior props already cover the hall's furniture.
+- **Still needs a device:** bloom (E3) and the frame-time pass (step 6).
 
 ## 1. Where things stood after the first build
 

@@ -260,6 +260,7 @@ struct HubSceneBuilder {
     mutating func build() -> [HubLayer: Entity] {
         ground()
         for piece in layout.pieces { place(piece) }
+        streetCorners()
         for piece in layout.interior.pieces { placeInterior(piece) }
         placeAuthoredInterior()
         runwayMarkings()
@@ -343,6 +344,89 @@ struct HubSceneBuilder {
         with(layer, key) { $0.box(center: [c.x, 0, c.z], size: [w, top, d], yaw: Float(p.yaw)) }
     }
 
+    // MARK: Curved street corners (gap D3)
+
+    /// Corner radius where two streets meet; lawn plinths round by the same.
+    private static let streetCornerRadius: Float = 7
+
+    /// A lawn plinth with rounded corners, so the streets curve round it.
+    private mutating func roundedLawn(_ p: HubPiece, top: Float) {
+        let c = Self.f(p.center)
+        let w = Float(p.size.x), d = Float(p.size.z)
+        guard p.yaw == 0, min(w, d) > 4 else {
+            flat(.ground, .grassBright, p, top: top)
+            return
+        }
+        let r = min(Self.streetCornerRadius, min(w, d) * 0.2)
+        var outline: [SIMD2<Float>] = []
+        for (cx, cz, a0) in [(w / 2 - r, d / 2 - r, Float(0)), (-w / 2 + r, d / 2 - r, .pi / 2),
+                             (-w / 2 + r, -d / 2 + r, .pi), (w / 2 - r, -d / 2 + r, 3 * .pi / 2)] {
+            for k in 0...4 {
+                let a = a0 + Float(k) / 4 * .pi / 2
+                outline.append([c.x + cx + r * cos(a), c.z + cz + r * sin(a)])
+            }
+        }
+        with(.ground, .grassBright) { b in
+            b.transform = HubMeshBatch.translation([0, top / 2, 0])
+            b.slab(outline, thickness: top)
+            b.transform = matrix_identity_float4x4
+        }
+    }
+
+    /// Fills each inner corner where two streets cross or meet with a curve
+    /// of asphalt, so junctions read rounded like the reference's district
+    /// rather than square. A corner qualifies when the street runs on along
+    /// both edges and the diagonal outside it is off-road (a lawn).
+    private mutating func streetCorners() {
+        let roads = layout.pieces.filter { $0.kind == .road && $0.yaw == 0 }.map(\.groundBounds)
+        func onRoad(_ x: Double, _ z: Double) -> Bool {
+            roads.contains { x > $0.minX && x < $0.maxX && z > $0.minZ && z < $0.maxZ }
+        }
+        let r = Self.streetCornerRadius, e = 0.5
+        var done = Set<SIMD2<Int>>()
+        for (i, a) in roads.enumerated() {
+            for b in roads[(i + 1)...] {
+                let minX = max(a.minX, b.minX), maxX = min(a.maxX, b.maxX)
+                let minZ = max(a.minZ, b.minZ), maxZ = min(a.maxZ, b.maxZ)
+                guard maxX - minX > 1, maxZ - minZ > 1 else { continue }
+                for (px, sx) in [(minX, -1.0), (maxX, 1.0)] {
+                    for (pz, sz) in [(minZ, -1.0), (maxZ, 1.0)] {
+                        guard !onRoad(px + sx * e, pz + sz * e), onRoad(px + sx * e, pz - sz * e),
+                              onRoad(px - sx * e, pz + sz * e) else { continue }
+                        let key = SIMD2<Int>(Int((px * 2).rounded()), Int((pz * 2).rounded()))
+                        guard done.insert(key).inserted else { continue }
+                        fillet(at: [Float(px), Float(pz)], sx: Float(sx), sz: Float(sz), radius: r)
+                    }
+                }
+            }
+        }
+    }
+
+    /// The asphalt between two street edges meeting at `corner` and an arc
+    /// of `radius` tangent to both, on the lawn side (`sx`, `sz`).
+    private mutating func fillet(at corner: SIMD2<Float>, sx: Float, sz: Float, radius r: Float) {
+        let centre = corner + [sx * r, sz * r]
+        var arc: [SIMD2<Float>] = []
+        for k in 0...6 {
+            let t = Float(k) / 6 * .pi / 2
+            arc.append(centre + [-sx * r * sin(t), -sz * r * cos(t)])
+        }
+        // The corner leads, so the slab's fan fans out from it; keep the
+        // outline anticlockwise so the slab doesn't reverse it.
+        var outline = [corner] + arc
+        var area: Float = 0
+        for i in outline.indices {
+            let p = outline[i], q = outline[(i + 1) % outline.count]
+            area += p.x * q.y - q.x * p.y
+        }
+        if area < 0 { outline = [corner] + arc.reversed() }
+        with(.ground, .asphalt) { b in
+            b.transform = HubMeshBatch.translation([0, 0.06, 0])
+            b.slab(outline, thickness: 0.12)
+            b.transform = matrix_identity_float4x4
+        }
+    }
+
     private mutating func blob(_ c: SIMD3<Float>, w: Float, d: Float, y: Float = 0.33, yaw: Float = 0) {
         with(.shadows, .blob) { $0.plane(center: [c.x, y, c.z], width: w, depth: d, yaw: yaw) }
     }
@@ -368,7 +452,7 @@ struct HubSceneBuilder {
             flat(.ground, .asphaltDark, p, top: 0.13)
             parkingLines(p)
         case .lawn:
-            flat(.ground, .grassBright, p, top: max(0.18, h))
+            roundedLawn(p, top: max(0.18, h))
         case .plaza: flat(.ground, .concreteLight, p, top: 0.15)
         case .roundabout: roundabout(p)
         case .apartmentBlock: apartments(p)
