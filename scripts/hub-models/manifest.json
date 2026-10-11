@@ -539,23 +539,26 @@
         15000
       ],
       "size_m": {
-        "x": 16,
+        "x": 18,
         "y": 8.5,
-        "z": 12
+        "z": 25
       },
       "slots": [
         "building",
         "houseWood",
         "windowDark",
         "roof",
+        "houseRoof",
         "glass",
-        "darkMetal"
+        "darkMetal",
+        "cone"
       ],
       "required_slots": [
         "building",
         "windowDark"
       ],
-      "priority": 6
+      "priority": 6,
+      "notes": "Front (+X) faces the street; sized to the lot the layout gives it (about 19 x 27 m), since the app fits it uniformly. Terracotta accent in ae_cone."
     },
     "tree_round": {
       "file": "Hub_tree_round.usdz",
@@ -924,6 +927,114 @@
       ],
       "priority": 6,
       "notes": "Lollipop tree, ~6 m; the app scales trees to their height."
+    },
+    "house_villa_b": {
+      "file": "Hub_house_villa_b.usdz",
+      "class": "hero_building",
+      "triangles": [
+        6000,
+        15000
+      ],
+      "size_m": {
+        "x": 18,
+        "y": 8.5,
+        "z": 25
+      },
+      "slots": [
+        "building",
+        "houseWood",
+        "windowDark",
+        "roof",
+        "houseRoof",
+        "glass",
+        "darkMetal",
+        "cone"
+      ],
+      "required_slots": [
+        "building",
+        "windowDark"
+      ],
+      "priority": 6,
+      "notes": "Variant: mirrored massing, more wood."
+    },
+    "house_villa_c": {
+      "file": "Hub_house_villa_c.usdz",
+      "class": "hero_building",
+      "triangles": [
+        6000,
+        15000
+      ],
+      "size_m": {
+        "x": 18,
+        "y": null,
+        "z": 25
+      },
+      "slots": [
+        "building",
+        "houseWood",
+        "windowDark",
+        "roof",
+        "houseRoof",
+        "glass",
+        "darkMetal",
+        "cone"
+      ],
+      "required_slots": [
+        "building",
+        "windowDark"
+      ],
+      "priority": 6,
+      "notes": "Variant: flat roofs only."
+    },
+    "house_garden": {
+      "file": "Hub_house_garden.usdz",
+      "class": "building",
+      "triangles": [
+        300,
+        6000
+      ],
+      "size_m": {
+        "x": 40,
+        "y": null,
+        "z": 40
+      },
+      "slots": [
+        "building",
+        "darkMetal",
+        "grass",
+        "grassBright",
+        "tree",
+        "trunk"
+      ],
+      "required_slots": [
+        "building"
+      ],
+      "priority": 6,
+      "notes": "Square boundary wall (0.9 m) round the lot with a dark gate at +X, hedges; fitted to the lot."
+    },
+    "pool": {
+      "file": "Hub_pool.usdz",
+      "class": "prop",
+      "triangles": [
+        80,
+        1500
+      ],
+      "size_m": {
+        "x": 11,
+        "y": null,
+        "z": 7
+      },
+      "slots": [
+        "white",
+        "water",
+        "concrete",
+        "darkMetal"
+      ],
+      "required_slots": [
+        "water"
+      ],
+      "priority": 6,
+      "notes": "Water surface is its own ae_water prim (glows at night)."
     }
   }
 }
