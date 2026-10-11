@@ -64,7 +64,7 @@ captures on the `Hub view review` workflow (iPad Pro 13", iPhone 17 Pro Max).
 | E3 bloom | **In code, device-only** | `HubPostProcess.swift`; the Simulator cannot write the sRGB target, so captures never show it. |
 | E4 trees / lamps | **Done** | Teal trees; lamp heads emissive with warm pools. |
 | F2 timeline | **Done** | 58 % of the width on iPad. |
-| F1 inspector render | Open | |
+| F1 inspector render | **Done** (§0e) | Studio renders of the authored jets, livery tinted through masks. |
 
 Also fixed: depth range and shadow range now follow the camera; shot
 changes turn the short way; scene build no longer copies every mesh batch
@@ -194,6 +194,110 @@ green on both devices, every UI test passing (run 38044744398).
 the finished crew hotel, a locked plot and the blueprint ghost — the
 fixture is mid-build and in the Regional era. A second fixture (hangar
 open, an aircraft in check, an era-locked plot) is the next capture to add.
+
+## 0e. Authored models, built from code (step 4) — 2026-10-11
+
+Step 4 no longer waits for Meshy: models are Blender scripts
+(`scripts/hub-models/procedural/`, see the update at the top of
+[`HUB_MODEL_PIPELINE.md`](HUB_MODEL_PIPELINE.md)). First one in:
+**`Hub_aircraft_narrowbody.usdz`**, the hero jet — 7 960 triangles,
+38.2 × 35.9 × 11.8 m, slots white / livery / liveryAccent / windowDark /
+darkMetal / tyre; four-pane windscreen, 28 windows a side, door and
+over-wing exit outlines, sharklets, nacelles with lip, fan face and plug,
+flap-track fairings, belly fairing, swept fin with the diagonal accent
+flash, twin-wheel gear. It keeps the procedural jet's metrics that other
+code reads (radius 2 m, axis 3.5 m, forward left door 4.94 m behind the
+nose, engines within 0.5 m of `HubModels.enginePosition`). `check_usdz.py`
+passes. The `Hub view review` workflow now also runs when only
+`Resources/HubModels/` changes.
+
+Second: **`Hub_vehicle_fuelTruck.usdz`** — 2 980 triangles, 9.6 × 2.5 ×
+3.35 m: white cab-over cab, polished-silver tank (`tank_silver`, an
+un-prefixed material the app leaves shiny) with three straps and an
+original yellow disc-and-drop logo (`ae_hiVis`), headlights in `ae_lamp`
+(the manifest now allows both), chassis, skirts, hose cabinet, ladder.
+Decals are concentric-ring fans laid on the curved surface: a single
+n-gon or a flat fan sinks into a curved body.
+
+Third: **`Hub_jetBridge.usdz`** — 3 516 triangles, 22 m at rest: a
+`rotunda` (column, drum with a glazed band, roof), a `tunnel` (two
+telescoping glass sections with white rib rings and a floor, sloping
+from 4.9 m at the concourse to 3.55 m at the door) and a `cab` (bellows,
+side windows, drive bogie). `HubSceneBuilder.extendBridge` keeps the
+rotunda on the root and the cab at the door and stretches only the
+tunnel; a bridge model without those prims is still stretched whole.
+The kit's `kit.group` puts parts under such named prims
+(`ae_<slot>_<group>`).
+
+Then the turnaround vehicles: **`Hub_vehicle_tug.usdz`** (1 324
+triangles; offset cab, beacon, tow hitch), **`Hub_vehicle_beltLoader.usdz`**
+(1 276; the ramp rises to 3.45 m at +X beside a narrow cab, yellow rails)
+and **`Hub_vehicle_serviceTruck.usdz`** (1 108; cab-over box truck, also
+the service van's fallback). The tug's manifest entry now allows `hiVis`.
+
+People (gap C6): **`Hub_person_passenger_a`–`d`** and **`Hub_person_crew`**
+(920–1 136 triangles each, `procedural/people.py` writes all five): one
+soft clay body dressed per variant — jacket and rolling suitcase,
+long coat and bag, hoodie and backpack, reaching to a kiosk, overalls
+with a hi-vis vest and ear defenders. `ae_cloth` / `ae_skin` are
+recoloured per person by the app.
+
+Performance: authored people and vehicles no longer become one entity
+each. `HubAssetLibrary.raw` reads an authored model's triangles into
+palette batches, and `rawPerson` / `rawVehicle` prefer it, so the
+terminal crowd (up to 300), the crew and parked vehicles stay one draw
+per material. A model with an un-prefixed material (the fuel truck's
+tank) can't be batched and is still placed as an entity.
+
+The whole fleet: `procedural/aircraft.py` (replacing the narrowbody-only
+script) builds **all six categories** from one parametric airliner —
+turboprop (high wing, prop discs, T-tail, gear sponsons), regional jet
+(winglets), narrowbody, large narrowbody (four doors a side), widebody
+(four doors, four-wheel bogies) and large widebody (raked tips, six-wheel
+bogies); 6 116–9 176 triangles. Every nacelle is centred exactly on
+`HubModels.enginePosition`, so the focused jet's pulse rings sit on the
+engine (the first narrowbody was 0.53 m off, PR review). Fixed: the
+regional slot is `aircraft_regionalJet` (the app's category raw value);
+it was `aircraft_regional` in the model list and manifest, so that model
+would never have loaded.
+
+Then everything else the app can place, one script per group, each model
+sized to the **plot the layout gives it** (the app fits most pieces
+uniformly, so a model built to the model list's nominal size could come
+out 1.2–2.5× too big; the manifest's sizes and notes now follow the code):
+
+| Script | Models |
+|---|---|
+| `concourse.py` | `concourse_glass`, `concourse_glass_end` (glazed half dome at the pier tip) |
+| `props.py` | `gateSign` (faces the app's +Z; the number goes at x 0.4), `cone`, `tree_round` / `_tall` / `_small` |
+| `district.py` | `house_villa` / `_b` / `_c`, `house_garden`, `pool`, `vehicle_golfCart`, `vehicle_tankTrailer` |
+| `buildings.py` | `hangar`, `cargoShed`, `fuelTank`, `controlTower`, `office_low`, `midrise_apartment` |
+| `road_vehicles.py` | `vehicle_car_sedan` / `_suv` (~500 triangles each), `vehicle_serviceCar`, `vehicle_bus`, `vehicle_baggageTrain` |
+| `interior.py` | `kiosk_selfService`, `checkInDesk`, `eGate`, `shop_shelving`, `seatRow` |
+
+46 models, all passing `check_usdz.py`. App changes that came with them:
+
+- **Static pieces batch.** `placeAuthored` merges an authored model's
+  palette geometry into the scene batches (`batchAuthored`) instead of
+  one entity per piece — hundreds of trees and cars stay one draw per
+  material. The bridge, gate sign and terminal hall keep entities.
+- **Tower height.** The height fit multiplied every piece by the trees'
+  1.4; an authored 72 m tower would have been drawn 100 m tall. Trees only now.
+
+**Inspector render (gap F1, done):** `procedural/inspector_renders.py`
+renders every category in Blender into `Assets.xcassets/HubJet_<category>`
+(+ `_livery` and `_accent` masks); `HubAircraftProfile` multiplies the
+airline's colours through the masks, so the card shows a soft render of
+the actual jet in its livery, falling back to the drawn profile.
+
+Not built yet: `terminal_hall` + `_interior` (they replace the tuned
+doll's-house terminal, so they need their own capture review), the
+optional §5–§7 props the layout doesn't place (stanchions, lamps,
+bushes…), and LODs.
+
+**Next:** review the captures of the full set (size, facing, livery and
+cloth repaint, lit windows at night, the bridge meeting the door, crowds,
+frame time), fix what reads wrong, then the terminal hall.
 
 ## 1. Where things stood after the first build
 

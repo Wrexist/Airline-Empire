@@ -540,12 +540,41 @@ struct HubShotPicker: View {
 
 // MARK: - Inspector
 
-/// Side profile of a jet in the airline's colours, for the inspector card.
+/// The jet in the airline's colours, for the inspector card: a studio
+/// render of the authored model (gap F1), else a drawn side profile.
 struct HubAircraftProfile: View {
     let category: AircraftCategory
     let livery: Livery
 
+    @ViewBuilder
     var body: some View {
+        if UIImage(named: "HubJet_\(category.rawValue)") != nil {
+            rendered
+        } else {
+            drawn
+        }
+    }
+
+    /// Rendered by scripts/hub-models/procedural/inspector_renders.py: a
+    /// shaded jet with its livery parts in white, and masks of those parts
+    /// the airline's colours are multiplied through.
+    private var rendered: some View {
+        let name = "HubJet_\(category.rawValue)"
+        return ZStack {
+            Image(name).resizable().scaledToFit()
+            Color(uiColor: HubPalette.livery(livery))
+                .mask(Image(name + "_livery").resizable().scaledToFit())
+                .blendMode(.multiply)
+            Color(uiColor: HubPalette.liveryAccent(livery))
+                .mask(Image(name + "_accent").resizable().scaledToFit())
+                .blendMode(.multiply)
+        }
+        .compositingGroup()
+        .padding(.horizontal, 6)
+        .accessibilityHidden(true)
+    }
+
+    private var drawn: some View {
         Canvas { ctx, size in
             let w = size.width, h = size.height
             let tint = Color(uiColor: HubPalette.livery(livery))

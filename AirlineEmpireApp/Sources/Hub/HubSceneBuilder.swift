@@ -59,7 +59,8 @@ struct HubSceneBuilder {
         case .jetBridge: return (["jetBridge"], 0, .stretchX, .airside)
         case .gateSign: return (["gateSign"], 0.61, .none, .airside)
         case .terminalHall: return (["terminal_hall"], faceSouth, .footprint, .airside)
-        case .parkedCar: return (["vehicle_car_sedan", "vehicle_car_suv"], 0, .none, .landside)
+        // A bay is 4.6 m along z; the authored car is long along +X.
+        case .parkedCar: return (["vehicle_car_sedan", "vehicle_car_suv"], .pi / 2, .none, .landside)
         case .kiosk: return (["kiosk_selfService"], faceSouth, .none, .interior)
         case .checkInDesk: return (["checkInDesk"], faceSouth, .none, .interior)
         case .securityLane: return (["eGate"], 0, .none, .interior)
@@ -74,10 +75,24 @@ struct HubSceneBuilder {
     private mutating func placeAuthored(_ p: HubPiece, floor: Float = 0) -> Bool {
         guard let library, let spec = authored(p) else { return false }
         let colour = p.kind == .parkedCar ? HubMaterialKey.cloth([0, 1, 5, 6, 7, 5][p.variant % 6]) : nil
-        guard let e = library.instance(anyOf: spec.slots, materials: materials, remap: { key in
+        let kiosk = p.kind == .kiosk
+        // The tree's model comes from its variant (0–2), so its shade comes
+        // from where it stands: every shape in every green, not each shape
+        // always in the same one.
+        let treeShade = p.kind == .tree ? Int(abs(p.center.x * 0.37 + p.center.z * 0.61)) % 3 : nil
+        let remap: (HubMaterialKey) -> HubMaterialKey = { key in
             if let colour, case .cloth = key { return colour }
+            // Trees vary their green per piece, as the procedural ones do.
+            if let treeShade, case .tree = key { return .tree(treeShade) }
+            // Kiosk screens glow like the procedural kiosks' (gap C4).
+            if kiosk, key == .screen { return .kioskScreen }
             return key
-        }) else { return false }
+        }
+        if batchAuthored(p, spec: spec, library: library, remap: remap, floor: floor) {
+            labelAuthored(p, floor: floor)
+            return true
+        }
+        guard let e = library.instance(anyOf: spec.slots, materials: materials, remap: remap) else { return false }
         let c = Self.f(p.center)
         switch spec.fit {
         case .footprint:
@@ -86,19 +101,31 @@ struct HubSceneBuilder {
             HubAssetLibrary.fit(e, footprint: quarter ? [Float(p.size.z), Float(p.size.x)]
                                                       : [Float(p.size.x), Float(p.size.z)])
         case .height:
-            HubAssetLibrary.fit(e, footprint: [1, 1], height: Float(p.size.y) * 1.4)
+            HubAssetLibrary.fit(e, footprint: [1, 1], height: Float(p.size.y) * (p.kind == .tree ? 1.4 : 1))
         case .stretchX:
-            let ext = e.visualBounds(relativeTo: e).extents
-            if ext.x > 0.1 { e.scale = [Float(p.size.x) / ext.x, 1, 1] }
+            if !Self.extendBridge(e, to: Float(p.size.x)) {
+                let ext = e.visualBounds(relativeTo: e).extents
+                if ext.x > 0.1 { e.scale = [Float(p.size.x) / ext.x, 1, 1] }
+            }
         case .none:
             break
         }
         e.position = [c.x, c.y + floor, c.z]
-        e.orientation = simd_quatf(angle: Float(p.yaw) + spec.yaw, axis: [0, 1, 0])
+        // The gate sign faces the default camera, as the procedural one does,
+        // whatever the stand's heading; its panel is centred where that one was.
+        let yaw = p.kind == .gateSign ? spec.yaw : Float(p.yaw) + spec.yaw
+        e.orientation = simd_quatf(angle: yaw, axis: [0, 1, 0])
+        if p.kind == .gateSign { e.position.y -= 1.1 }
         if p.kind == .terminalHall {
             // Prims named `cutaway…` are the roof and street wall the
-            // terminal shot lifts off.
-            for child in Array(e.children) where child.name.lowercased().hasPrefix("cutaway") {
+            // terminal shot lifts off. A loaded USDZ nests them under the
+            // model's root prim, so look through every descendant.
+            func cutaways(_ entity: Entity) -> [Entity] {
+                entity.children.flatMap { child in
+                    child.name.lowercased().hasPrefix("cutaway") ? [child] : cutaways(child)
+                }
+            }
+            for child in cutaways(e) {
                 let world = child.transformMatrix(relativeTo: nil)
                 child.removeFromParent()
                 child.setTransformMatrix(world, relativeTo: nil)
@@ -118,6 +145,101 @@ struct HubSceneBuilder {
         if [.tree, .house, .hangar, .officeBlock, .terminalHall, .controlTower].contains(p.kind) {
             blob(c, w: Float(p.size.x) * 1.4, d: Float(p.size.z) * 1.4)
         }
+        labelAuthored(p, floor: floor)
+        return true
+    }
+
+    /// The shop name a procedural shelf paints over itself, kept when an
+    /// authored shelf stands in for it.
+    private mutating func labelAuthored(_ p: HubPiece, floor: Float) {
+        guard p.kind == .shopShelf, let label = p.label else { return }
+        let c = Self.f(p.center)
+        let yaw = Float(p.yaw)
+        let face = SIMD3<Float>(sin(yaw), 0, cos(yaw)) * (Float(p.size.z) / 2 + 0.1)
+        sign(label, at: [c.x, floor + Float(p.size.y) + 0.5, c.z] + face, width: Float(p.size.x))
+    }
+
+    /// Pieces whose authored model stays an entity: the app extends the
+    /// bridge, writes on the sign and lifts the terminal's cutaway prims.
+    private static let entityKinds: Set<HubPieceKind> = [.jetBridge, .gateSign, .terminalHall]
+
+    /// Places an authored model by merging its geometry into the scene's
+    /// batches — as the procedural pieces are — so hundreds of trees, cars
+    /// and houses stay one draw per material instead of one entity each.
+    /// False when the piece needs an entity or the model can't be batched
+    /// (a part with its own authored material).
+    private mutating func batchAuthored(_ p: HubPiece, spec: (slots: [String], yaw: Float, fit: Fit, layer: HubLayer),
+                                        library: HubAssetLibrary, remap: (HubMaterialKey) -> HubMaterialKey,
+                                        floor: Float) -> Bool {
+        guard !Self.entityKinds.contains(p.kind),
+              let slot = spec.slots.first(where: { library.has($0) }),
+              let raw = library.raw(slot) else { return false }
+        var lo = SIMD3<Float>(repeating: .greatestFiniteMagnitude), hi = -lo
+        for (_, batch) in raw {
+            for v in batch.positions {
+                lo = simd_min(lo, v)
+                hi = simd_max(hi, v)
+            }
+        }
+        let ext = hi - lo
+        var s = SIMD3<Float>(1, 1, 1)
+        switch spec.fit {
+        case .footprint:
+            // Same rule as HubAssetLibrary.fit: rotated a quarter turn the footprint's axes swap.
+            let quarter = abs(sin(spec.yaw)) > 0.5
+            let size: SIMD2<Float> = quarter ? [Float(p.size.z), Float(p.size.x)] : [Float(p.size.x), Float(p.size.z)]
+            if ext.x > 0.01, ext.z > 0.01 {
+                let k = min(size.x / ext.x, size.y / ext.z)
+                s = [k, k, k]
+            }
+        case .height:
+            if ext.y > 0.01 {
+                // Trees are drawn 1.4× their layout height, the 9 m round tree
+                // as the norm so tall and small ones keep their difference;
+                // towers at their own height.
+                let k = p.kind == .tree ? Float(p.size.y) * 1.4 / 9 : Float(p.size.y) / ext.y
+                s = [k, k, k]
+            }
+        case .stretchX:
+            if ext.x > 0.1 { s = [Float(p.size.x) / ext.x, 1, 1] }
+        case .none:
+            break
+        }
+        let c = Self.f(p.center)
+        let matrix = HubMeshBatch.translation([c.x, c.y + floor, c.z]) * HubMeshBatch.yaw(Float(p.yaw) + spec.yaw)
+            * HubMeshBatch.scale(s)
+        for (key, batch) in raw {
+            with(spec.layer, remap(key)) { $0.append(batch, matrix: matrix) }
+        }
+        if [.tree, .house, .hangar, .officeBlock, .controlTower].contains(p.kind) {
+            blob(c, w: Float(p.size.x) * 1.4, d: Float(p.size.z) * 1.4)
+        }
+        return true
+    }
+
+    /// An authored jet bridge with `rotunda`, `tunnel` and `cab` prims
+    /// (docs/HUB_MODEL_LIST.md §4.3) keeps its ends at their modelled size:
+    /// the rotunda's centre sits on the root, the cab's face just past the
+    /// tip, and only the tunnel stretches between them. False for a model
+    /// without those prims, which is then stretched whole.
+    static func extendBridge(_ e: Entity, to length: Float) -> Bool {
+        guard let rotunda = e.findEntity(named: "rotunda"),
+              let tunnel = e.findEntity(named: "tunnel"),
+              let cab = e.findEntity(named: "cab") else { return false }
+        let r = rotunda.visualBounds(relativeTo: e)
+        let t = tunnel.visualBounds(relativeTo: e)
+        let c = cab.visualBounds(relativeTo: e)
+        let tunnelLength = t.max.x - t.min.x
+        guard tunnelLength > 0.1 else { return false }
+        // The prims' parents only turn the model about x (Z-up to Y-up), so
+        // x offsets in their frames equal x offsets in the model's.
+        let rootShift = -length / 2 - r.center.x
+        let tipShift = length / 2 + 0.5 - c.max.x
+        let k = max(0.2, (tunnelLength + tipShift - rootShift) / tunnelLength)
+        rotunda.position.x += rootShift
+        cab.position.x += tipShift
+        tunnel.position.x = t.min.x + rootShift - (t.min.x - tunnel.position.x) * k
+        tunnel.scale.x *= k
         return true
     }
 

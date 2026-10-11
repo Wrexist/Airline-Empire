@@ -16,6 +16,26 @@ workflow and changes every step that doesn't fit this project:
 | Meshy makes props; Claude imports and cleans in Blender | **Kept, made exact** (§4–§5): concept image → image-to-3D → `clean_model.py` (orient, palette slots, decimate, scale, pivot, export) → hand fixes | Generated meshes come out the wrong size, facing, density and colours; the app needs `ae_<slot>` prims to apply liveries and night mode. |
 | Claude builds the level, lighting, HUD, minimap in Unreal | **Drop into the app** (§6): `Resources/HubModels/`, check, capture, compare | The game is native iOS on RealityKit. The level, lighting and HUD already exist in Swift and load these files with no code changes. |
 
+> **Update, 2026-10-11 — the free route the models now take.** The owner
+> has no paid Meshy plan, so models are **built from code in Blender**
+> instead: `scripts/hub-models/procedural/kit.py` (lofts, lathes, airfoil
+> surfaces, decals on curved skin, per-face slots) plus one script per
+> model. Each script writes `Hub_<slot>.usdz` straight into
+> `Resources/HubModels/` at real size, facing +X, on budget and split into
+> `ae_<slot>` prims, so stages 4–5 below (generate, colour-match, decimate)
+> are skipped; §6 (check, capture, compare) is unchanged. No licence or
+> credit line is needed. Run headless, with workbench previews to look at:
+>
+> ```bash
+> blender --background --factory-startup \
+>     --python scripts/hub-models/procedural/aircraft.py -- --preview .hub-review/models
+> python scripts/hub-models/check_usdz.py
+> ```
+>
+> Meshy's free plan (output under CC BY 4.0, commercial use with credit)
+> stays a fallback for organic shapes such as people. The rest of this file
+> describes the generator route.
+
 ---
 
 ## 1. Setup (once, on the PC that runs Blender)
