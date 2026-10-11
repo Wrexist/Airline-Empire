@@ -75,6 +75,8 @@ def service_car(kit):
     kit.add(K.Piece().box((-2.27, 0, 1.18), (0.08, 1.8, 0.38), "white", bevel=0.03, segments=1).seal())
     for y in (0.55, -0.55):
         kit.add(K.Piece().box((h - 0.02, y, 0.7), (0.06, 0.3, 0.1), "lamp").seal())
+    for y in (0.915, -0.915):  # livery stripe along the doors (the depot paints it)
+        kit.add(K.Piece().box((0.6, y, 0.72), (2.6, 0.02, 0.12), "livery").seal())
     for x in (1.45, -1.45):
         for y in (0.8, -0.8):
             wheel(kit, x, y, 0.36, 0.24)
@@ -88,7 +90,7 @@ def bus(kit):
     kit.add(K.Piece().box((6.01, 0, 2.0), (0.04, 2.1, 1.5), "windowDark").seal())
     kit.add(K.Piece().box((-6.01, 0, 2.2), (0.04, 1.9, 0.9), "windowDark").seal())
     for x in (3.6, 0.0, -3.6):  # doors on the kerb side
-        kit.add(K.Piece().box((x, -1.31, 1.45), (1.3, 0.02, 2.3), "darkMetal").seal())
+        kit.add(K.Piece().box((x, -1.335, 1.45), (1.3, 0.02, 2.3), "darkMetal").seal())  # clear of the bands
     for x in (3.9, -3.7):
         for y in (1.1, -1.1):
             wheel(kit, x, y, 0.5, 0.36)

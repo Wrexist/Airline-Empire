@@ -26,8 +26,8 @@ def build(kit):
     kit.add(K.Piece().box((2.98, 0, 0.82), (0.12, 2.1, 0.32), "darkMetal", bevel=0.04, segments=1).seal())
     # Box body, stripe each side, roller shutter at the back.
     kit.add(K.Piece().box((-0.62, 0, 1.68), (4.5, 2.2, 1.84), "white", bevel=0.12, segments=2).seal())
-    for y in (1.105, -1.105):
-        kit.add(K.Piece().box((-0.62, y, 1.25), (4.2, 0.02, 0.14), "darkMetal").seal())
+    for y in (1.11, -1.11):  # thin livery stripe (spec §2.4; the depot paints it)
+        kit.add(K.Piece().box((-0.62, y, 1.25), (4.2, 0.02, 0.16), "livery").seal())
     kit.add(K.Piece().box((-2.88, 0, 1.6), (0.04, 1.8, 1.5), "darkMetal").seal())
     for k in range(5):
         kit.add(K.Piece().box((-2.9, 0, 1.0 + k * 0.3), (0.03, 1.8, 0.03), "white").seal())

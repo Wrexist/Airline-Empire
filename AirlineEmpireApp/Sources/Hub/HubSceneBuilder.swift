@@ -59,7 +59,8 @@ struct HubSceneBuilder {
         case .jetBridge: return (["jetBridge"], 0, .stretchX, .airside)
         case .gateSign: return (["gateSign"], 0.61, .none, .airside)
         case .terminalHall: return (["terminal_hall"], faceSouth, .footprint, .airside)
-        case .parkedCar: return (["vehicle_car_sedan", "vehicle_car_suv"], 0, .none, .landside)
+        // A bay is 4.6 m along z; the authored car is long along +X.
+        case .parkedCar: return (["vehicle_car_sedan", "vehicle_car_suv"], .pi / 2, .none, .landside)
         case .kiosk: return (["kiosk_selfService"], faceSouth, .none, .interior)
         case .checkInDesk: return (["checkInDesk"], faceSouth, .none, .interior)
         case .securityLane: return (["eGate"], 0, .none, .interior)
@@ -75,7 +76,10 @@ struct HubSceneBuilder {
         guard let library, let spec = authored(p) else { return false }
         let colour = p.kind == .parkedCar ? HubMaterialKey.cloth([0, 1, 5, 6, 7, 5][p.variant % 6]) : nil
         let kiosk = p.kind == .kiosk
-        let treeShade = p.kind == .tree ? p.variant : nil
+        // The tree's model comes from its variant (0–2), so its shade comes
+        // from where it stands: every shape in every green, not each shape
+        // always in the same one.
+        let treeShade = p.kind == .tree ? Int(abs(p.center.x * 0.37 + p.center.z * 0.61)) % 3 : nil
         let remap: (HubMaterialKey) -> HubMaterialKey = { key in
             if let colour, case .cloth = key { return colour }
             // Trees vary their green per piece, as the procedural ones do.
@@ -190,8 +194,10 @@ struct HubSceneBuilder {
             }
         case .height:
             if ext.y > 0.01 {
-                // Trees are drawn 1.4× their layout height; towers at their own.
-                let k = Float(p.size.y) * (p.kind == .tree ? 1.4 : 1) / ext.y
+                // Trees are drawn 1.4× their layout height, the 9 m round tree
+                // as the norm so tall and small ones keep their difference;
+                // towers at their own height.
+                let k = p.kind == .tree ? Float(p.size.y) * 1.4 / 9 : Float(p.size.y) / ext.y
                 s = [k, k, k]
             }
         case .stretchX:

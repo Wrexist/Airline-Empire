@@ -176,7 +176,9 @@ def windows(kit, p):
     pitch = max(0.6, 0.36 * p.r)
     size = max(0.8, p.k)
     first, last = p.nose - 0.16 * p.L, p.tail + 0.32 * p.L
-    gaps = [(x - 0.75 * size, x + 0.75 * size) for x in main]
+    # No windows under the door outlines or the over-wing exits (their
+    # frames sit at the same height off the skin and would flicker).
+    gaps = [(x - 0.75 * size, x + 0.75 * size) for x in main] + [(x - 0.45, x + 0.45) for x in exits]
     phi = p.phi_at(p.axis + 0.45 * p.k)
     x = first
     while x >= last:

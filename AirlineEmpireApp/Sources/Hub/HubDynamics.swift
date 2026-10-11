@@ -330,8 +330,9 @@ final class HubDynamics {
     }
 
     /// A moving vehicle with its contact shadow.
-    private func vehicleEntity(_ v: HubModels.Vehicle, remap: (HubMaterialKey) -> HubMaterialKey = { $0 }) -> Entity {
-        let e = models.make(HubModels.slot(v), models.vehicle(v), materials: materials, remap: remap)
+    private func vehicleEntity(_ v: HubModels.Vehicle, slots: [String]? = nil,
+                               remap: (HubMaterialKey) -> HubMaterialKey = { $0 }) -> Entity {
+        let e = models.make(slots ?? HubModels.slot(v), models.vehicle(v), materials: materials, remap: remap)
         let shadow = entity(models.blob())
         let shadowLength: Float = (v == .bus || v == .baggageTrain) ? 13 : 8
         shadow.scale = SIMD3<Float>(shadowLength, 1, 3.6)
@@ -874,7 +875,8 @@ final class HubDynamics {
         let street = near.count >= 2 ? HubPath(near) : layout.serviceRoute
         let loop = street.rounded(radius: 6).roundTrip(lane: 1.6)
         for (i, v) in [HubModels.Vehicle.golfCart, .tanker].enumerated() {
-            let e = vehicleEntity(v)
+            // The cart tows the small tank trailer; elsewhere a tanker is a bowser.
+            let e = vehicleEntity(v, slots: v == .tanker ? ["vehicle_tankTrailer", "vehicle_fuelTruck"] : nil)
             traffic.addChild(e)
             movers.append(HubMover(entity: e, path: loop, speeds: [4.5],
                                    start: Float(loop.length) * 0.2 - Float(i) * 6.5, corner: 4))

@@ -40,7 +40,7 @@ final class HubModels {
         case .bus: ["vehicle_bus"]
         case .car: ["vehicle_car_sedan", "vehicle_car_suv"]
         case .golfCart: ["vehicle_golfCart"]
-        case .tanker: ["vehicle_tankTrailer", "vehicle_fuelTruck"]
+        case .tanker: ["vehicle_fuelTruck"]  // the district cart's trailer is chosen where it is placed
         case .serviceVan: ["vehicle_serviceCar", "vehicle_serviceTruck"]
         }
     }
@@ -75,8 +75,10 @@ final class HubModels {
     /// A vehicle's CPU geometry for static batches: the authored model when
     /// it can be batched, else the procedural one.
     func rawVehicle(_ v: Vehicle) -> [(HubMaterialKey, HubMeshBatch)] {
+        // A part with its own authored material (the fuel truck's polished
+        // tank) is painted white here, so fleets batch the same model.
         for slot in Self.slot(v) {
-            if let authored = library.raw(slot) { return authored }
+            if let authored = library.raw(slot, unkeyed: .white) { return authored }
         }
         return raw("vehicle.\(v.rawValue)") { Self.buildVehicle(v) }
     }

@@ -464,7 +464,12 @@ final class HubFacilityYard {
             batcher.add(models.rawVehicle(.serviceVan), matrix: HubMeshBatch.translation([-hw * 0.3, 0, -hd / 2 + 6]))
         }
         // The crew in hi-vis and white hard hats.
-        let hardHat: (HubMaterialKey) -> HubMaterialKey = { $0 == .tyre ? .white : $0 }
+        // Procedural crews' hair and authored crews' cloth caps become white hard hats.
+        let hardHat: (HubMaterialKey) -> HubMaterialKey = { key in
+            if key == .tyre { return .white }
+            if case .cloth = key { return .white }
+            return key
+        }
         let spots: [SIMD3<Float>] = [[-0.28, 0, -0.36], [0.05, 0, -0.4], [0.3, 0, -0.1], [-0.12, 0, 0.18],
                                      [0.22, 0, 0.3], [-0.34, 0, 0.05], [0.1, 0, 0.05], [-0.05, 0, -0.2]]
         for (k, spot) in spots.prefix(roof ? 4 : 8).enumerated() {

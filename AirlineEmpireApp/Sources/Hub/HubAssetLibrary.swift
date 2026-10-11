@@ -53,22 +53,40 @@ final class HubAssetLibrary {
 
     private var rawCache: [String: [(HubMaterialKey, HubMeshBatch)]] = [:]
     private var rawUnavailable: Set<String> = []
+    private var rawFallbackCache: [String: [(HubMaterialKey, HubMeshBatch)]] = [:]
 
     /// The slot's geometry as CPU batches per palette key, in the model's own
     /// frame, so many static copies merge into one draw per material (crowds,
     /// crew, parked vehicles) instead of one entity each. Nil when no file
     /// ships, or when a part keeps its own authored material (the fuel
-    /// truck's polished tank), which a palette batch cannot carry.
-    func raw(_ slot: String) -> [(HubMaterialKey, HubMeshBatch)]? {
+    /// truck's polished tank), which a palette batch cannot carry — unless
+    /// `unkeyed` names the palette key such parts take instead.
+    func raw(_ slot: String, unkeyed: HubMaterialKey? = nil) -> [(HubMaterialKey, HubMeshBatch)]? {
+        if let unkeyed {
+            if let hit = rawCache[slot] ?? rawFallbackCache[slot] { return hit }
+            guard let made = rawBatches(slot, unkeyed: unkeyed) else { return nil }
+            rawFallbackCache[slot] = made
+            return made
+        }
         if let hit = rawCache[slot] { return hit }
         if rawUnavailable.contains(slot) { return nil }
+        guard let made = rawBatches(slot, unkeyed: nil) else {
+            rawUnavailable.insert(slot)
+            return nil
+        }
+        rawCache[slot] = made
+        return made
+    }
+
+    private func rawBatches(_ slot: String, unkeyed: HubMaterialKey?) -> [(HubMaterialKey, HubMeshBatch)]? {
         guard let proto = prototype(slot) else { return nil }
         var complete = true
         var batches: [HubMaterialKey: HubMeshBatch] = [:]
         var order: [HubMaterialKey] = []
         func walk(_ entity: Entity, inherited: HubMaterialKey?) {
-            let key = Self.key(forPrim: entity.name) ?? inherited
-            if key == nil, entity.components[ModelComponent.self] != nil { complete = false }
+            let own = Self.key(forPrim: entity.name) ?? inherited
+            if own == nil, unkeyed == nil, entity.components[ModelComponent.self] != nil { complete = false }
+            let key = own ?? (entity.components[ModelComponent.self] != nil ? unkeyed : nil)
             if let key, let model = entity.components[ModelComponent.self] {
                 let placed = entity.transformMatrix(relativeTo: proto)
                 if batches[key] == nil { order.append(key) }
@@ -86,17 +104,12 @@ final class HubAssetLibrary {
                 batches[key] = batch
             }
             for child in entity.children {
-                walk(child, inherited: key)
+                walk(child, inherited: own)
             }
         }
         walk(proto, inherited: nil)
         let made = order.compactMap { key in batches[key].map { (key, $0) } }.filter { !$0.1.isEmpty }
-        guard complete, !made.isEmpty else {
-            rawUnavailable.insert(slot)
-            return nil
-        }
-        rawCache[slot] = made
-        return made
+        return complete && !made.isEmpty ? made : nil
     }
 
     /// First available slot from a list of alternatives (variants).

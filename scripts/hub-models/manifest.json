@@ -341,7 +341,8 @@
         "white",
         "windowDark",
         "tyre",
-        "darkMetal"
+        "darkMetal",
+        "livery"
       ],
       "required_slots": [
         "white",
@@ -1192,7 +1193,8 @@
         "windowDark",
         "tyre",
         "darkMetal",
-        "lamp"
+        "lamp",
+        "livery"
       ],
       "required_slots": [
         "white",
