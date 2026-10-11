@@ -74,11 +74,18 @@ struct HubSceneBuilder {
     private mutating func placeAuthored(_ p: HubPiece, floor: Float = 0) -> Bool {
         guard let library, let spec = authored(p) else { return false }
         let colour = p.kind == .parkedCar ? HubMaterialKey.cloth([0, 1, 5, 6, 7, 5][p.variant % 6]) : nil
-        if batchAuthored(p, spec: spec, library: library, colour: colour, floor: floor) { return true }
-        guard let e = library.instance(anyOf: spec.slots, materials: materials, remap: { key in
+        let kiosk = p.kind == .kiosk
+        let remap: (HubMaterialKey) -> HubMaterialKey = { key in
             if let colour, case .cloth = key { return colour }
+            // Kiosk screens glow like the procedural kiosks' (gap C4).
+            if kiosk, key == .screen { return .kioskScreen }
             return key
-        }) else { return false }
+        }
+        if batchAuthored(p, spec: spec, library: library, remap: remap, floor: floor) {
+            labelAuthored(p, floor: floor)
+            return true
+        }
+        guard let e = library.instance(anyOf: spec.slots, materials: materials, remap: remap) else { return false }
         let c = Self.f(p.center)
         switch spec.fit {
         case .footprint:
@@ -97,11 +104,21 @@ struct HubSceneBuilder {
             break
         }
         e.position = [c.x, c.y + floor, c.z]
-        e.orientation = simd_quatf(angle: Float(p.yaw) + spec.yaw, axis: [0, 1, 0])
+        // The gate sign faces the default camera, as the procedural one does,
+        // whatever the stand's heading; its panel is centred where that one was.
+        let yaw = p.kind == .gateSign ? spec.yaw : Float(p.yaw) + spec.yaw
+        e.orientation = simd_quatf(angle: yaw, axis: [0, 1, 0])
+        if p.kind == .gateSign { e.position.y -= 1.1 }
         if p.kind == .terminalHall {
             // Prims named `cutaway…` are the roof and street wall the
-            // terminal shot lifts off.
-            for child in Array(e.children) where child.name.lowercased().hasPrefix("cutaway") {
+            // terminal shot lifts off. A loaded USDZ nests them under the
+            // model's root prim, so look through every descendant.
+            func cutaways(_ entity: Entity) -> [Entity] {
+                entity.children.flatMap { child in
+                    child.name.lowercased().hasPrefix("cutaway") ? [child] : cutaways(child)
+                }
+            }
+            for child in cutaways(e) {
                 let world = child.transformMatrix(relativeTo: nil)
                 child.removeFromParent()
                 child.setTransformMatrix(world, relativeTo: nil)
@@ -121,7 +138,18 @@ struct HubSceneBuilder {
         if [.tree, .house, .hangar, .officeBlock, .terminalHall, .controlTower].contains(p.kind) {
             blob(c, w: Float(p.size.x) * 1.4, d: Float(p.size.z) * 1.4)
         }
+        labelAuthored(p, floor: floor)
         return true
+    }
+
+    /// The shop name a procedural shelf paints over itself, kept when an
+    /// authored shelf stands in for it.
+    private mutating func labelAuthored(_ p: HubPiece, floor: Float) {
+        guard p.kind == .shopShelf, let label = p.label else { return }
+        let c = Self.f(p.center)
+        let yaw = Float(p.yaw)
+        let face = SIMD3<Float>(sin(yaw), 0, cos(yaw)) * (Float(p.size.z) / 2 + 0.1)
+        sign(label, at: [c.x, floor + Float(p.size.y) + 0.5, c.z] + face, width: Float(p.size.x))
     }
 
     /// Pieces whose authored model stays an entity: the app extends the
@@ -134,7 +162,8 @@ struct HubSceneBuilder {
     /// False when the piece needs an entity or the model can't be batched
     /// (a part with its own authored material).
     private mutating func batchAuthored(_ p: HubPiece, spec: (slots: [String], yaw: Float, fit: Fit, layer: HubLayer),
-                                        library: HubAssetLibrary, colour: HubMaterialKey?, floor: Float) -> Bool {
+                                        library: HubAssetLibrary, remap: (HubMaterialKey) -> HubMaterialKey,
+                                        floor: Float) -> Bool {
         guard !Self.entityKinds.contains(p.kind),
               let slot = spec.slots.first(where: { library.has($0) }),
               let raw = library.raw(slot) else { return false }
@@ -171,9 +200,7 @@ struct HubSceneBuilder {
         let matrix = HubMeshBatch.translation([c.x, c.y + floor, c.z]) * HubMeshBatch.yaw(Float(p.yaw) + spec.yaw)
             * HubMeshBatch.scale(s)
         for (key, batch) in raw {
-            var mapped = key
-            if let colour, case .cloth = key { mapped = colour }
-            with(spec.layer, mapped) { $0.append(batch, matrix: matrix) }
+            with(spec.layer, remap(key)) { $0.append(batch, matrix: matrix) }
         }
         if [.tree, .house, .hangar, .officeBlock, .controlTower].contains(p.kind) {
             blob(c, w: Float(p.size.x) * 1.4, d: Float(p.size.z) * 1.4)
