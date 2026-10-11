@@ -443,6 +443,22 @@ struct MapScreen: View {
                             }
                             .accessibilityIdentifier("ae-follow-flight-menu")
                         }
+                        // The 3D hub, one tap from the world map: its only
+                        // other door was the home airport's selection card,
+                        // which players never found.
+                        if #available(iOS 18.0, *), AEFeature.hubView3D,
+                           let home = controller.snapshot?.playerAirline?.homeAirport {
+                            Button { controller.openHub(home) } label: {
+                                Label("3D hub", systemImage: "cube.transparent")
+                                    .font(.callout.weight(.semibold))
+                                    .padding(.horizontal, 12)
+                                    .frame(minHeight: 44)
+                                    .background(.regularMaterial, in: Capsule())
+                            }
+                            .buttonStyle(.aePress)
+                            .accessibilityLabel("View \(home.raw) hub in 3D")
+                            .accessibilityIdentifier("ae-map-open-hub")
+                        }
                     }
                     Spacer()
                     MapZoomControls(
