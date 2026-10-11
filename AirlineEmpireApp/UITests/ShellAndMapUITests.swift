@@ -653,7 +653,7 @@ final class ShellAndMapUITests: AEUITestCase {
             sweep()
             _ = follow.waitForExistence(timeout: 2)
         }
-        guard follow.exists, follow.isHittable else {
+        guard follow.exists else {
             checkpoint("76-NO-AIRCRAFT-SELECTED")
             throw XCTSkip("""
                 Thirty taps swept across the framed network on a paused map \
@@ -664,6 +664,13 @@ final class ShellAndMapUITests: AEUITestCase {
                 """)
         }
         checkpoint("76-map-flight-card")
+        // A card that is there but whose Follow control cannot be pressed
+        // (an overlay, a layout regression) is a product failure, not a
+        // tapping limitation.
+        guard follow.isHittable else {
+            XCTFail("The flight card shows a Follow control that cannot be pressed.")
+            return
+        }
 
         follow.tap()
         Thread.sleep(forTimeInterval: 1)
