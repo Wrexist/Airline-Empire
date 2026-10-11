@@ -45,12 +45,14 @@ name: iOS TestFlight
 #     IOS_DISTRIBUTION_CERT_PASSWORD
 #     IOS_PROVISIONING_PROFILE_BASE64
 #
-#   AUTOMATIC (fallback) — set none of those three and Xcode signs with
-#   `-allowProvisioningUpdates` using the API key, creating the certificate and
-#   profile itself. Convenient, and it has a real cost: an Apple Developer
-#   account holds at most two Apple Distribution certificates, and an
-#   ephemeral runner cannot reuse the one it made last time. Fine for the first
-#   build; move to manual before it becomes routine.
+#   AUTOMATIC (fallback) — set none of those three. The archive is built
+#   unsigned and ad-hoc signed with the app's entitlements; the export signs
+#   it with `-allowProvisioningUpdates` and the API key, which uses Apple's
+#   cloud-managed distribution certificate. No certificate is created on the
+#   runner, so the team's certificate cap (shared with its other apps) is
+#   never touched. Release run 38104614398 is why: signing the archive made
+#   Xcode mint a development certificate on every fresh runner, and the team
+#   was at the cap.
 #
 # Signed uploads have run successfully. The release now invokes full CI and
 # Launch safety itself, on the preflight candidate, before starting an archive.
@@ -416,13 +418,15 @@ jobs:
           mkdir -p "$(dirname "$ARCHIVE_PATH")"
           EXTRA=()
           if [ "${{ steps.signing.outputs.style }}" = "automatic" ]; then
-            # -allowProvisioningUpdates is the one path that CAN mint signing
-            # assets from CI (unlike EAS, which refuses in non-interactive
-            # mode). It needs the API key to do it.
-            EXTRA+=(-allowProvisioningUpdates
-                    -authenticationKeyPath "$ASC_KEY_PATH"
-                    -authenticationKeyID "${{ secrets.APP_STORE_CONNECT_KEY_ID }}"
-                    -authenticationKeyIssuerID "${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}")
+            # Archive unsigned. Signing the archive automatically makes Xcode
+            # mint a development certificate on every fresh runner, and the
+            # team is at Apple's certificate cap (release run 38104614398:
+            # "Your account has reached the maximum number of certificates").
+            # The App Store signature is applied at export instead, where
+            # automatic signing uses Apple's cloud-managed distribution
+            # certificate and creates nothing; the next step gives the
+            # archived app an ad-hoc signature so its entitlements survive.
+            EXTRA+=(CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=)
           else
             EXTRA+=(CODE_SIGN_STYLE=Manual
                     PROVISIONING_PROFILE_SPECIFIER="${{ steps.signing.outputs.profile-name }}"
@@ -440,6 +444,30 @@ jobs:
             CURRENT_PROJECT_VERSION="${{ steps.build-number.outputs.value }}" \
             "${EXTRA[@]}" 2>&1 | tee "$RUNNER_TEMP/archive.log"
 
+      # An unsigned archive carries no entitlements, and export re-signs with
+      # the entitlements it finds in the binary: without this, Game Center
+      # would silently drop out of the build. An ad-hoc signature ("-") needs
+      # no certificate; export replaces it with the App Store one and fills
+      # in the identifiers from the provisioning profile.
+      - name: Ad-hoc sign the archived app with its entitlements
+        if: steps.signing.outputs.style == 'automatic'
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          APP=$(find "$ARCHIVE_PATH/Products/Applications" -maxdepth 1 -name '*.app' | head -1)
+          [ -n "$APP" ] || { echo "::error::No .app in the archive."; exit 1; }
+          ENT="$RUNNER_TEMP/AirlineEmpire.entitlements"
+          cp AirlineEmpireApp/Resources/AirlineEmpire.entitlements "$ENT"
+          /usr/libexec/PlistBuddy -c "Add :application-identifier string $TEAM_ID.$BUNDLE_ID" "$ENT"
+          /usr/libexec/PlistBuddy -c "Add :com.apple.developer.team-identifier string $TEAM_ID" "$ENT"
+          # Inside out: embedded code first, the app last.
+          find "$APP" -depth \( -name '*.framework' -o -name '*.dylib' -o -name '*.appex' \) -print0 |
+            while IFS= read -r -d '' item; do codesign --force --sign - --timestamp=none "$item"; done
+          codesign --force --sign - --timestamp=none --entitlements "$ENT" "$APP"
+          codesign -d --entitlements - "$APP" 2>/dev/null | grep -q game-center             || { echo "::error::The Game Center entitlement is not on the archived app."; exit 1; }
+          echo "::notice::Archived app ad-hoc signed with its entitlements; export applies the App Store signature."
+
       # Apple's signing refusals name no action and read like a build error.
       # Run 6 (2026-09-05) failed with "The selected team does not have a
       # program membership that is eligible for this feature", followed by a
@@ -452,6 +480,26 @@ jobs:
         run: |
           LOG="$RUNNER_TEMP/archive.log"
           [ -f "$LOG" ] || exit 0
+          # Checked first: Apple's text for this one also mentions program
+          # membership, and release run 38104614398 (1.2.0) was misreported
+          # as an ineligible membership when the cause was the certificate cap.
+          if grep -qiE 'maximum number of certificates|choose a certificate to revoke' "$LOG"; then
+            echo "::error::Apple will not issue another Apple Distribution certificate: the team already has the maximum (two). Automatic signing on a fresh runner asks for a new one every time."
+            cat <<'GUIDANCE'
+          Either, once (the Account Holder or an Admin):
+            A. Switch to manual signing (preferred - every run reuses one certificate):
+               export the Apple Distribution certificate as a .p12 and download the
+               App Store provisioning profile for com.airlineempire.game, then set the
+               repository secrets IOS_DISTRIBUTION_CERT_P12_BASE64,
+               IOS_DISTRIBUTION_CERT_PASSWORD and IOS_PROVISIONING_PROFILE_BASE64
+               (docs/APP_STORE_CONNECT.md section 4).
+            B. Or revoke one unused Apple Distribution certificate at
+               developer.apple.com/account/resources/certificates (apps already on
+               the App Store keep working), then re-run this job. It will fill the
+               slot again, so the next release hits the same wall: prefer A.
+          GUIDANCE
+            exit 0
+          fi
           if grep -qiE 'program membership|not eligible for this feature' "$LOG"; then
             echo "::error::Apple refused to issue signing assets: this team's Developer Program membership is not eligible. This is an account state, not a code or pipeline problem."
             cat <<'GUIDANCE'

@@ -636,11 +636,22 @@ final class ShellAndMapUITests: AEUITestCase {
                                 0.28 + CGFloat(row) * 0.075))
             }
         }
-        for (x, y) in offsets {
-            map.coordinate(withNormalizedOffset: CGVector(dx: x, dy: y)).tap()
-            Thread.sleep(forTimeInterval: 0.25)
-            if aircraftSelected() { break }
-            if follow.exists { break }
+        func sweep() {
+            for (x, y) in offsets {
+                map.coordinate(withNormalizedOffset: CGVector(dx: x, dy: y)).tap()
+                Thread.sleep(forTimeInterval: 0.25)
+                if aircraftSelected() { break }
+                if follow.exists { break }
+            }
+        }
+        sweep()
+        // The flight card can close between finding the control and pressing
+        // it (release run 38104614398: present at 185.64 s, gone 10 ms later
+        // when the tap resolved it). Let the card settle, and sweep once more
+        // if it went, rather than failing a release on a synthetic-tap race.
+        if !follow.waitForExistence(timeout: 2) || !follow.isHittable {
+            sweep()
+            _ = follow.waitForExistence(timeout: 2)
         }
         guard follow.exists else {
             checkpoint("76-NO-AIRCRAFT-SELECTED")
@@ -653,6 +664,13 @@ final class ShellAndMapUITests: AEUITestCase {
                 """)
         }
         checkpoint("76-map-flight-card")
+        // A card that is there but whose Follow control cannot be pressed
+        // (an overlay, a layout regression) is a product failure, not a
+        // tapping limitation.
+        guard follow.isHittable else {
+            XCTFail("The flight card shows a Follow control that cannot be pressed.")
+            return
+        }
 
         follow.tap()
         Thread.sleep(forTimeInterval: 1)
