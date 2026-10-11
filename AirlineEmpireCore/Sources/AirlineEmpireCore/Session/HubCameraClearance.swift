@@ -25,7 +25,9 @@ public struct HubCameraClearance: Equatable, Sendable {
     public let obstacles: [HubCameraObstacle]
     /// Height above a roof the eye keeps.
     public let margin: Double
-    /// How far outside a footprint the lift fades to nothing.
+    /// How far outside a footprint the lift fades to nothing, at least; a
+    /// tall building's lift reaches further out (0.8 × its height), so the
+    /// climb past the tower is as gentle as past a low roof.
     public let falloff: Double
     /// The eye never goes lower than this, anywhere.
     public let floor: Double
@@ -67,8 +69,9 @@ public struct HubCameraClearance: Equatable, Sendable {
             let dx = max(b.minX - x, 0, x - b.maxX)
             let dz = max(b.minZ - z, 0, z - b.maxZ)
             let outside = (dx * dx + dz * dz).squareRoot()
-            guard outside < falloff else { continue }
-            let u = 1 - outside / falloff
+            let reach = max(falloff, wanted * 0.8)
+            guard outside < reach else { continue }
+            let u = 1 - outside / reach
             height = max(height, floor + (wanted - floor) * u * u * (3 - 2 * u))
         }
         return height
