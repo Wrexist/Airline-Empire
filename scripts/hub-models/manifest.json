@@ -638,9 +638,9 @@
         6000
       ],
       "size_m": {
-        "x": 24,
-        "y": 20,
-        "z": 16
+        "x": 50,
+        "y": 21,
+        "z": 56
       },
       "slots": [
         "building",
@@ -653,7 +653,8 @@
         "building",
         "windowDark"
       ],
-      "priority": 6
+      "priority": 6,
+      "notes": "Street front +X; plot-sized like office_low so the fit keeps 5 storeys."
     },
     "hangar": {
       "file": "Hub_hangar.usdz",
@@ -663,9 +664,9 @@
         6000
       ],
       "size_m": {
-        "x": 60,
-        "y": 22,
-        "z": 50
+        "x": 80,
+        "y": 25,
+        "z": 80
       },
       "slots": [
         "building",
@@ -676,7 +677,8 @@
       "required_slots": [
         "building"
       ],
-      "priority": 7
+      "priority": 7,
+      "notes": "Door (+X) faces the apron; sized to the layout's 80 x 70-95 m plot, fitted uniformly."
     },
     "office_low": {
       "file": "Hub_office_low.usdz",
@@ -686,9 +688,9 @@
         6000
       ],
       "size_m": {
-        "x": 60,
-        "y": 8,
-        "z": 40
+        "x": 50,
+        "y": 10,
+        "z": 56
       },
       "slots": [
         "building",
@@ -699,7 +701,8 @@
         "building",
         "windowDark"
       ],
-      "priority": 7
+      "priority": 7,
+      "notes": "Street front +X; sized to the 40-70 m office plots, fitted uniformly."
     },
     "aircraft_regionalJet": {
       "file": "Hub_aircraft_regionalJet.usdz",
@@ -1035,6 +1038,80 @@
       ],
       "priority": 6,
       "notes": "Water surface is its own ae_water prim (glows at night)."
+    },
+    "controlTower": {
+      "file": "Hub_controlTower.usdz",
+      "class": "building",
+      "triangles": [
+        1500,
+        6000
+      ],
+      "size_m": {
+        "x": null,
+        "y": 60,
+        "z": null
+      },
+      "slots": [
+        "building",
+        "buildingShade",
+        "glass",
+        "roof",
+        "darkMetal",
+        "lamp"
+      ],
+      "required_slots": [
+        "building",
+        "glass"
+      ],
+      "priority": 7,
+      "notes": "Scaled to the layout's tower height (46 or 72 m)."
+    },
+    "cargoShed": {
+      "file": "Hub_cargoShed.usdz",
+      "class": "building",
+      "triangles": [
+        1500,
+        6000
+      ],
+      "size_m": {
+        "x": 50,
+        "y": 14,
+        "z": 90
+      },
+      "slots": [
+        "building",
+        "buildingShade",
+        "roof",
+        "darkMetal",
+        "windowDark"
+      ],
+      "required_slots": [
+        "building"
+      ],
+      "priority": 7,
+      "notes": "Doors (+X) face the apron; plot 90 x 50 m."
+    },
+    "fuelTank": {
+      "file": "Hub_fuelTank.usdz",
+      "class": "building",
+      "triangles": [
+        300,
+        3000
+      ],
+      "size_m": {
+        "x": 26,
+        "y": 14,
+        "z": 26
+      },
+      "slots": [
+        "white",
+        "building",
+        "darkMetal"
+      ],
+      "required_slots": [
+        "white"
+      ],
+      "priority": 7
     }
   }
 }

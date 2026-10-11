@@ -87,7 +87,7 @@ struct HubSceneBuilder {
             HubAssetLibrary.fit(e, footprint: quarter ? [Float(p.size.z), Float(p.size.x)]
                                                       : [Float(p.size.x), Float(p.size.z)])
         case .height:
-            HubAssetLibrary.fit(e, footprint: [1, 1], height: Float(p.size.y) * 1.4)
+            HubAssetLibrary.fit(e, footprint: [1, 1], height: Float(p.size.y) * (p.kind == .tree ? 1.4 : 1))
         case .stretchX:
             if !Self.extendBridge(e, to: Float(p.size.x)) {
                 let ext = e.visualBounds(relativeTo: e).extents
@@ -158,7 +158,8 @@ struct HubSceneBuilder {
             }
         case .height:
             if ext.y > 0.01 {
-                let k = Float(p.size.y) * 1.4 / ext.y
+                // Trees are drawn 1.4× their layout height; towers at their own.
+                let k = Float(p.size.y) * (p.kind == .tree ? 1.4 : 1) / ext.y
                 s = [k, k, k]
             }
         case .stretchX:
