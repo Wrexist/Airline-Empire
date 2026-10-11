@@ -672,32 +672,113 @@ struct HubDropdown: View {
 
 // MARK: - World labels
 
-/// A player's stand, tagged over its jet in the overview.
+/// A player's stand, tagged over its jet in the overview: gate, flight,
+/// stage, and how many of its seats are sold, with a bar for the load.
 struct HubStandTagView: View {
     let tag: HubStandTag
 
+    static let height: CGFloat = 30
+    static let stem: CGFloat = 10
+
     var body: some View {
-        HStack(spacing: 5) {
-            Text("\(tag.gate)")
-                .font(.system(size: 10, weight: .heavy).monospacedDigit())
-                .foregroundStyle(.white)
-                .frame(minWidth: 18, minHeight: 18)
-                .background(tint, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
-            Image(systemName: tag.systemImage).font(.system(size: 9, weight: .bold)).foregroundStyle(tint)
-            Text(tag.code).font(.system(size: 10, weight: .semibold)).foregroundStyle(HubChromeStyle.ink)
-            Text(tag.stage).font(.system(size: 10)).foregroundStyle(HubChromeStyle.secondary)
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 5) {
+                Text("\(tag.gate)")
+                    .font(.system(size: 10, weight: .heavy).monospacedDigit())
+                    .foregroundStyle(.white)
+                    .frame(minWidth: 18, minHeight: 18)
+                    .background(tint, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                Image(systemName: tag.systemImage).font(.system(size: 9, weight: .bold)).foregroundStyle(tint)
+                Text(tag.code).font(.system(size: 10, weight: .semibold)).foregroundStyle(HubChromeStyle.ink)
+                Text(tag.stage).font(.system(size: 10)).foregroundStyle(HubChromeStyle.secondary)
+                if let passengers = tag.passengers {
+                    HStack(spacing: 2) {
+                        Image(systemName: "person.fill").font(.system(size: 8, weight: .bold))
+                        Text(seatsText(passengers)).font(.system(size: 10, weight: .semibold).monospacedDigit())
+                    }
+                    .foregroundStyle(HubChromeStyle.ink)
+                }
+            }
+            if let load = tag.load {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(HubChromeStyle.track)
+                        Capsule().fill(HubRouteStyle.tint(load)).frame(width: geo.size.width * min(1, max(0, load)))
+                    }
+                }
+                .frame(height: 2.5)
+                .padding(.leading, 23)
+            }
         }
         .lineLimit(1)
-        .fixedSize()
+        .fixedSize(horizontal: true, vertical: false)
         .padding(.leading, 3)
         .padding(.trailing, 7)
-        .frame(height: 24)
-        .background(Color.white.opacity(0.92), in: Capsule())
-        .overlay(Capsule().strokeBorder(tint.opacity(0.45), lineWidth: 1))
+        .frame(height: Self.height)
+        .background(Color.white.opacity(0.92), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(tint.opacity(0.45), lineWidth: 1))
         .shadow(color: HubChromeStyle.panelShadow, radius: 5, y: 2)
         .overlay(alignment: .bottom) {
             // The stem down to the jet.
-            Rectangle().fill(tint.opacity(0.6)).frame(width: 1.5, height: 10).offset(y: 10)
+            Rectangle().fill(tint.opacity(0.6)).frame(width: 1.5, height: Self.stem).offset(y: Self.stem)
+        }
+    }
+
+    private func seatsText(_ passengers: Int) -> String {
+        guard let seats = tag.seats, seats > 0 else { return "\(passengers)" }
+        return "\(passengers)/\(seats)"
+    }
+
+    private var tint: Color {
+        switch tag.tone {
+        case .good: HubChromeStyle.good
+        case .accent: HubChromeStyle.accent
+        case .warn: HubChromeStyle.warn
+        case .neutral: HubChromeStyle.secondary
+        }
+    }
+}
+
+/// A live figure pinned over a place: the terminal's passengers and how
+/// busy it is, the runway's movements and slot use.
+struct HubStatTagView: View {
+    let tag: HubStatTag
+
+    static let height: CGFloat = 40
+    static let stem: CGFloat = 14
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Image(systemName: tag.systemImage)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 24, height: 24)
+                .background(tint, in: Circle())
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 5) {
+                    Text(tag.title).font(.system(size: 9, weight: .semibold)).foregroundStyle(HubChromeStyle.secondary)
+                    Text(tag.detail).font(.system(size: 9, weight: .medium)).foregroundStyle(tint)
+                }
+                Text(tag.value).font(.system(size: 12, weight: .bold).monospacedDigit()).foregroundStyle(HubChromeStyle.ink)
+                if let progress = tag.progress {
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(HubChromeStyle.track).frame(width: 92)
+                        Capsule().fill(tint).frame(width: 92 * min(1, max(0, progress)))
+                    }
+                    .frame(width: 92, height: 3, alignment: .leading)
+                }
+            }
+        }
+        .lineLimit(1)
+        .fixedSize()
+        .padding(.leading, 6)
+        .padding(.trailing, 11)
+        .frame(height: Self.height)
+        .background(Color.white.opacity(0.94), in: Capsule())
+        .overlay(Capsule().strokeBorder(tint.opacity(0.4), lineWidth: 1.2))
+        .shadow(color: HubChromeStyle.panelShadow, radius: 6, y: 2)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(tint.opacity(0.6)).frame(width: 1.5, height: Self.stem).offset(y: Self.stem)
         }
     }
 
@@ -708,6 +789,36 @@ struct HubStandTagView: View {
         case .warn: HubChromeStyle.warn
         case .neutral: HubChromeStyle.secondary
         }
+    }
+}
+
+/// What a departure earned, floating up off the jet as it pushes back.
+struct HubPopupView: View {
+    let tag: HubPopupTag
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: tag.systemImage).font(.system(size: 10, weight: .bold))
+            Text(tag.title).font(.system(size: 12, weight: .bold).monospacedDigit())
+            if let detail = tag.detail {
+                Text(detail).font(.system(size: 11, weight: .semibold).monospacedDigit()).opacity(0.85)
+            }
+        }
+        .lineLimit(1)
+        .fixedSize()
+        .foregroundStyle(.white)
+        .padding(.horizontal, 10)
+        .frame(height: 26)
+        .background(HubChromeStyle.good, in: Capsule())
+        .shadow(color: HubChromeStyle.good.opacity(0.45), radius: 8, y: 3)
+        .opacity(opacity)
+        .scaleEffect(0.85 + 0.15 * min(1, tag.age / 0.12))
+    }
+
+    /// In fast, held, out over the last third.
+    private var opacity: Double {
+        let a = tag.age
+        return a < 0.1 ? a / 0.1 : a > 0.66 ? max(0, (1 - a) / 0.34) : 1
     }
 }
 

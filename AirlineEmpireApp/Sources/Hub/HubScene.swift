@@ -92,6 +92,15 @@ struct HubCameraRig: Equatable {
                   pitch: Float(frame.pitch), yaw: Float(frame.yaw))
     }
 
+    /// Lifted over whatever is under the eye (`HubCameraClearance`), so a
+    /// pinch or a pan never puts the camera inside a building.
+    func cleared(by clearance: HubCameraClearance) -> HubCameraRig {
+        let frame = HubFrame(target: HubVec(Double(target.x), 0, Double(target.z)), distance: Double(distance),
+                             pitch: Double(pitch), yaw: Double(yaw))
+        let clear = clearance.clear(frame)
+        return clear == frame ? self : HubCameraRig(clear)
+    }
+
     func lerp(to b: HubCameraRig, _ t: Float) -> HubCameraRig {
         HubCameraRig(target: target + (b.target - target) * t,
                      distance: distance + (b.distance - distance) * t,
@@ -202,8 +211,13 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
     private var driftRate: Float = 0
     private var nightValue: Double = 0
     private var lastInteraction = Date()
-    private var projectionClock: Float = 0
     private let idleDrift: Bool
+    /// Roofs the camera rises over.
+    private let clearance: HubCameraClearance
+    /// Labels on screen last frame: they keep their place against newcomers
+    /// and get a little slack at the edge of the free area, so they do not
+    /// flicker as the camera moves.
+    private var shownAnchors: Set<String> = []
 
     var onProjected: (([HubProjectedAnchor]) -> Void)?
     var onTapAircraft: ((Int) -> Void)?
@@ -215,6 +229,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
     init(layout: HubLayout, idleDrift: Bool = true) {
         self.layout = layout
         self.idleDrift = idleDrift
+        clearance = HubCameraClearance(layout: layout)
         arView = ARView(frame: .zero, cameraMode: .nonAR, automaticallyConfigureSession: false)
         rig = HubSceneController.rig(for: .overview, layout: layout, focus: nil, size: CGSize(width: 1_376, height: 1_032))
         goal = rig
@@ -238,6 +253,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         applyLighting(.day)
         if !ProcessInfo.processInfo.arguments.contains("-AEHubNoBloom") {
             post.install(on: arView)
+            bloomInstalled = true
         }
         arView.isAccessibilityElement = true
         arView.accessibilityIdentifier = "ae-hub-scene"
@@ -262,6 +278,10 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         var builder = HubSceneBuilder(layout: layout, materials: materials, library: models.library)
         layers = builder.build()
         for (_, e) in layers { anchor.addChild(e) }
+        // Flat things cast no shadow worth a second draw in the shadow pass.
+        for layer in [HubLayer.ground, .markings, .shadows, .lamps] {
+            layers[layer]?.setCastsShadows(false)
+        }
         dynamics = HubDynamics(layout: layout, models: models, materials: materials)
         // Build the additive glow program in the background; the pulse rings
         // switch to it once it exists.
@@ -503,8 +523,8 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
 
     // MARK: Frame
 
-    private func tick(_ dt: Float) {
-        let dt = min(dt, 0.1)
+    private func tick(_ rawDT: Float) {
+        let dt = min(rawDT, 0.1)
         dynamics.update(dt)
         // Reframe when the view changes shape (rotation, split view) unless
         // the player has just moved the camera.
@@ -535,13 +555,80 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         driftRate += ((idle ? 0.012 : 0) - driftRate) * min(1, dt * 0.6)
         if idle { goal.yaw += dt * driftRate }
         spring.step(to: goal, smoothTime: smoothTime, dt: dt)
-        rig = spring.rig
+        rig = spring.rig.cleared(by: clearance)
         applyRig()
-        projectionClock += dt
-        if projectionClock > 1.0 / 30 {
-            projectionClock = 0
-            publishProjections()
+        // People a few pixels tall need not be re-posed every frame.
+        dynamics.crowdDetail = rig.distance > 1_100 ? 3 : rig.distance > 600 ? 2 : 1
+        // Every frame, after the camera has moved: the labels are projected
+        // with the camera this frame renders with, so they stay pinned.
+        publishProjections()
+        adaptQuality(Float(rawDT))
+    }
+
+    // MARK: Quality
+
+    private var bloomInstalled = false
+    /// 0 full; 1 no bloom, a little less resolution; 2 no shadows, less again.
+    private var quality = 0
+    private var frameTime: Float = 1.0 / 60
+    private var slowFor: Float = 0
+    private var warmUp: Float = 2.5
+    private var thermalCheck = 0
+    private var appliedScale: CGFloat = 0
+
+    /// Steps quality down when frames run long for a few seconds, or the
+    /// device runs hot; never back up within a visit, so it cannot oscillate.
+    private func adaptQuality(_ dt: Float) {
+        // The Simulator renders in software at its own pace, and the review
+        // captures should show the full look: devices only.
+        #if !targetEnvironment(simulator)
+        updateRenderScale()
+        if warmUp > 0 {
+            warmUp -= dt
+            return
         }
+        frameTime += (min(dt, 0.2) - frameTime) * 0.05
+        slowFor = frameTime > 1.0 / 42 ? slowFor + dt : max(0, slowFor - dt * 0.5)
+        var wanted = quality
+        if slowFor > 2.5 && quality < 2 {
+            wanted = quality + 1
+            slowFor = 0
+        }
+        thermalCheck += 1
+        if thermalCheck >= 60 {
+            thermalCheck = 0
+            switch ProcessInfo.processInfo.thermalState {
+            case .serious: wanted = max(wanted, 1)
+            case .critical: wanted = 2
+            default: break
+            }
+        }
+        guard wanted > quality else { return }
+        quality = wanted
+        if quality >= 1, bloomInstalled {
+            arView.renderCallbacks.postProcess = nil
+            bloomInstalled = false
+        }
+        if quality >= 2 {
+            sun.shadow = nil
+        }
+        appliedScale = 0
+        #endif
+    }
+
+    /// Renders at most about 3.6 million pixels: an iPad Pro at its full 2×
+    /// is 5.7 million, most of them spent on soft clay that looks the same a
+    /// little under. The dashboard is SwiftUI and stays sharp.
+    private func updateRenderScale() {
+        let size = arView.bounds.size
+        guard size.width > 1, size.height > 1 else { return }
+        let native = arView.window?.windowScene?.screen.nativeScale ?? arView.traitCollection.displayScale
+        let fit = (3_600_000 / (size.width * size.height)).squareRoot()
+        let step: [CGFloat] = [1, 0.85, 0.72]
+        let scale = max(1, min(native, 2.5, fit) * step[min(quality, 2)])
+        guard abs(scale - appliedScale) > 0.01 else { return }
+        appliedScale = scale
+        arView.contentScaleFactor = scale
     }
 
     private func applyRig() {
@@ -559,6 +646,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
     /// Re-fits the sun's shadow map to what the camera can see, when the
     /// distance has moved enough to matter.
     private func fitShadows() {
+        guard quality < 2 else { return }
         let wanted = rig.distance * 2.4 + 120
         guard shadowRange == 0 || abs(wanted - shadowRange) / shadowRange > 0.2 else { return }
         shadowRange = wanted
@@ -568,14 +656,25 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
     private func publishProjections() {
         guard let onProjected else { return }
         let size = arView.bounds.size
+        guard size.width > 0, size.height > 0 else { return }
         // Labels stay in the part of the screen the dashboard leaves free
-        // and never stack: the focused stand first, then stands, then routes.
+        // and never stack: the focused stand first, then stands, then routes,
+        // then the live figures. A label already showing keeps its place.
         let safe = HubFraming.safeArea(width: Double(size.width), height: Double(size.height))
         let free = CGRect(x: (safe.minX + 1) / 2 * size.width, y: (1 - safe.maxY) / 2 * size.height,
                           width: (safe.maxX - safe.minX) / 2 * size.width,
                           height: (safe.maxY - safe.minY) / 2 * size.height).insetBy(dx: -10, dy: -24)
+        let roomy = free.insetBy(dx: -28, dy: -28)
         var placed: [CGRect] = []
-        let ordered = dynamics.anchors.sorted { rank($0) < rank($1) }
+        let all = dynamics.anchors
+        let ordered = all.enumerated().sorted { a, b in
+            let ra = rank(a.element), rb = rank(b.element)
+            if ra != rb { return ra < rb }
+            let sa = shownAnchors.contains(a.element.id), sb = shownAnchors.contains(b.element.id)
+            if sa != sb { return sa }
+            return a.offset < b.offset
+        }.map(\.element)
+        let forward = rig.target - rig.position
         let visible: [HubProjectedAnchor] = ordered.compactMap { anchor in
             switch anchor.kind {
             case .pin: guard shot == .terminal, overlays.contains(.labels) else { return nil }
@@ -585,23 +684,30 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
             case .route: guard shot == .overview, overlays.contains(.routes), siteFocus == nil else { return nil }
             case .facility(let tag):
                 guard shot == .overview, overlays.contains(.upgrades) || siteFocus == tag.kind else { return nil }
+            case .stat: guard shot == .overview, overlays.contains(.labels), siteFocus == nil else { return nil }
+            case .popup: guard shot == .overview || shot == .gate else { return nil }
             }
-            guard let p = arView.project(anchor.position),
-                  p.x > -40, p.y > -40, p.x < size.width + 40, p.y < size.height + 40 else { return nil }
             // Behind the camera.
-            let toPoint = anchor.position - rig.position
-            let forward = rig.target - rig.position
-            guard simd_dot(toPoint, forward) > 0 else { return nil }
+            guard simd_dot(anchor.position - rig.position, forward) > 0,
+                  let p = arView.project(anchor.position),
+                  p.x > -40, p.y > -40, p.x < size.width + 40, p.y < size.height + 40 else { return nil }
+            // Where the label is drawn: above its anchor, on its stem.
+            let box: CGRect?
             switch anchor.kind {
-            case .tag, .route, .facility:
-                let box = CGRect(x: p.x - 70, y: p.y - 26, width: 140, height: 26)
-                guard free.contains(CGPoint(x: p.x, y: p.y)),
-                      !placed.contains(where: { $0.intersects(box) }) else { return nil }
+            case .tag: box = CGRect(x: p.x - 85, y: p.y - 42, width: 170, height: 32)
+            case .facility: box = CGRect(x: p.x - 85, y: p.y - 52, width: 170, height: 40)
+            case .stat: box = CGRect(x: p.x - 90, y: p.y - 56, width: 180, height: 42)
+            case .route: box = CGRect(x: p.x - 70, y: p.y - 13, width: 140, height: 26)
+            default: box = nil
+            }
+            if let box {
+                let region = shownAnchors.contains(anchor.id) ? roomy : free
+                guard region.contains(p), !placed.contains(where: { $0.intersects(box) }) else { return nil }
                 placed.append(box)
-            default: break
             }
             return HubProjectedAnchor(anchor: anchor, point: p)
         }
+        shownAnchors = Set(visible.map(\.id))
         onProjected(visible)
     }
 
@@ -610,6 +716,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         case .tag(let tag): tag.standIndex == dynamics.focusStand ? 0 : 1
         case .route(let tag): tag.highlighted ? 0 : 2
         case .facility(let tag): tag.kind == siteFocus ? 0 : 1
+        case .stat: 3
         default: 0
         }
     }
@@ -739,5 +846,16 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
                 MainActor.assumeIsolated { self?.tick(Float(event.deltaTime)) }
             }
         }
+    }
+}
+
+@available(iOS 18.0, *)
+extension Entity {
+    /// Sets whether this entity and everything under it casts shadows from
+    /// the sun. Small and flat things are not worth a draw in the shadow pass.
+    @MainActor
+    func setCastsShadows(_ casts: Bool) {
+        components.set(DynamicLightShadowComponent(castsShadow: casts))
+        for child in children { child.setCastsShadows(casts) }
     }
 }

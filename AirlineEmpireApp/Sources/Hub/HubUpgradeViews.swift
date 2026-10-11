@@ -278,6 +278,9 @@ struct HubUpgradeCard: View {
 struct HubFacilityTagView: View {
     let tag: HubFacilityTag
 
+    static let stem: CGFloat = 12
+    static func height(_ tag: HubFacilityTag) -> CGFloat { tag.progress == nil ? 32 : 38 }
+
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: tag.building ? "hammer.fill" : tag.locked ? "lock.fill" : tag.kind.systemImage)
@@ -309,12 +312,12 @@ struct HubFacilityTagView: View {
         .fixedSize()
         .padding(.leading, 4)
         .padding(.trailing, 9)
-        .frame(height: tag.progress == nil ? 32 : 38)
+        .frame(height: Self.height(tag))
         .background(Color.white.opacity(0.94), in: Capsule())
         .overlay(Capsule().strokeBorder(tint.opacity(tag.canUpgrade ? 0.7 : 0.3), lineWidth: 1.5))
         .shadow(color: HubChromeStyle.panelShadow, radius: 6, y: 2)
         .overlay(alignment: .bottom) {
-            Rectangle().fill(tint.opacity(0.6)).frame(width: 1.5, height: 12).offset(y: 12)
+            Rectangle().fill(tint.opacity(0.6)).frame(width: 1.5, height: Self.stem).offset(y: Self.stem)
         }
     }
 

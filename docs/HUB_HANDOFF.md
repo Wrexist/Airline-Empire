@@ -319,6 +319,25 @@ frame time), fix what reads wrong, then the terminal hall.
   The authored interior props already cover the hall's furniture.
 - **Still needs a device:** bloom (E3) and the frame-time pass (step 6).
 
+## 0g. Feel: frame rate, pinned labels, the camera, people who walk — 2026-10-11
+
+The owner played it and asked for four things: less lag, labels that stay
+on their building, a camera that never goes inside one, and people who
+walk and show the numbers.
+
+| Area | Where | What |
+|---|---|---|
+| Pinned labels | `HubSceneController.publishProjections`, `HubAnchorStore`, `HubAnchorOverlay` | Re-projected **every frame** after the camera moves (was 30 Hz, a frame or two behind), with no animation on position (an id change used to spring every label towards its new spot). Stems end exactly on the anchor. A label already showing keeps its place against newcomers and gets slack at the free area's edge, so labels no longer flicker in and out. Stand tags sit over the stand, not the jet, so a pushback does not drag them. |
+| Less redraw | `HubAnchorStore` | The labels live in their own observable: a camera move redraws the labels and nothing else of the dashboard (it used to rebuild the whole dashboard 30 times a second). |
+| Camera | `HubCameraClearance` (Core, tested) | Every roofed piece, the facility sites (crane room) and the stands (tail height) are boxes; the eye rises over them, blended over 45 m so it never pops. Applied to the rendered rig, so the solved shots are untouched. |
+| Walking people | `HubCrowd` | `LowLevelMesh` crowds: one mesh per material per crowd, vertices rewritten each frame from the authored figures. Legs and arms swing by shearing the limbs about hip and shoulder (stance straightened first, luggage hands kept still), the body bobs per step. Queue passengers walk into the door while boarding and out while deboarding; crew pace between jobs round the jet; two in five travellers in the hall wander hotspot to hotspot. Far shots re-pose every 2nd–3rd frame. |
+| Numbers in the world | `HubDynamics.rebuildAnchors`, `HubStatTagView`, `HubPopupView` | Stand tags show booked/seats and a load bar; the queue's length follows the flight's bookings; terminal (passengers today, % busy) and runway (movements/h, slot use) stat tags in the overview; a pushback floats up "N pax" and the tickets' worth (`fare × passengers`). |
+| Frame time | `HubSceneController.adaptQuality` | Renders ≤ 3.6 M pixels (iPad Pro 13" at ~1.6× instead of 2×); flat layers, moving vehicles and the route fan cast no sun shadow; additive ring materials cached. On a device, sustained frames over 24 ms or a hot device step down: no bloom and 85 % resolution, then no shadows and 72 %. Never on the Simulator, so captures keep the full look. |
+
+**Next:** feel it on a device — the frame-time steps, the crowd's CPU cost
+with a full hall (≤ 110 walkers), and whether the leg swing reads at gate
+distance.
+
 ## 1. Where things stood after the first build
 
 ### What exists and works

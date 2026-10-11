@@ -49,6 +49,22 @@ extension HubShot {
     }
 }
 
+/// Where the world-anchored labels sit on screen this frame. Kept apart from
+/// `HubScreenModel` so a camera move redraws the labels and nothing else:
+/// they are re-projected every frame, in step with the render, so they stay
+/// pinned to their building instead of trailing behind it.
+@MainActor
+@Observable
+@available(iOS 18.0, *)
+final class HubAnchorStore {
+    private(set) var items: [HubProjectedAnchor] = []
+
+    func set(_ value: [HubProjectedAnchor]) {
+        guard value != items else { return }
+        items = value
+    }
+}
+
 /// The Hub View's state: which airport, which shot, which stand is in focus,
 /// and the latest read of the simulation. One per presentation.
 @MainActor
@@ -63,7 +79,7 @@ final class HubScreenModel {
     let layout: HubLayout
     let scene: HubSceneController
     private(set) var snapshot: HubSnapshot?
-    private(set) var projected: [HubProjectedAnchor] = []
+    let anchors = HubAnchorStore()
     private(set) var shot: HubShot = .overview
     private(set) var focus: Int?
     private(set) var lighting: Lighting = .auto
@@ -275,8 +291,7 @@ final class HubScreenModel {
         self.scene = HubSceneController(layout: layout, idleDrift: !uiTest)
         self.groundServices = facilities.groundServices
         scene.onProjected = { [weak self] anchors in
-            guard let self, anchors != self.projected else { return }
-            self.projected = anchors
+            self?.anchors.set(anchors)
         }
         scene.onTapAircraft = { [weak self] index in
             self?.setFocus(index)
