@@ -1112,6 +1112,136 @@
         "white"
       ],
       "priority": 7
+    },
+    "vehicle_bus": {
+      "file": "Hub_vehicle_bus.usdz",
+      "class": "vehicle",
+      "triangles": [
+        1200,
+        3000
+      ],
+      "size_m": {
+        "x": 12,
+        "y": 3,
+        "z": 2.6
+      },
+      "slots": [
+        "white",
+        "windowDark",
+        "tyre",
+        "darkMetal",
+        "livery"
+      ],
+      "required_slots": [
+        "white",
+        "tyre"
+      ],
+      "priority": 7,
+      "notes": "Apron bus: full-length windows, livery band."
+    },
+    "vehicle_baggageTrain": {
+      "file": "Hub_vehicle_baggageTrain.usdz",
+      "class": "vehicle",
+      "triangles": [
+        1200,
+        3000
+      ],
+      "size_m": {
+        "x": 12,
+        "y": null,
+        "z": null
+      },
+      "slots": [
+        "white",
+        "hiVis",
+        "darkMetal",
+        "cloth",
+        "tyre"
+      ],
+      "required_slots": [
+        "white",
+        "tyre"
+      ],
+      "priority": 7,
+      "notes": "Tractor and three dollies with bags."
+    },
+    "vehicle_serviceCar": {
+      "file": "Hub_vehicle_serviceCar.usdz",
+      "class": "vehicle",
+      "triangles": [
+        300,
+        1500
+      ],
+      "size_m": {
+        "x": 4.6,
+        "y": null,
+        "z": null
+      },
+      "slots": [
+        "white",
+        "windowDark",
+        "tyre",
+        "darkMetal",
+        "lamp"
+      ],
+      "required_slots": [
+        "white",
+        "tyre"
+      ],
+      "priority": 7,
+      "notes": "White pick-up beside the belt loader."
+    },
+    "vehicle_car_sedan": {
+      "file": "Hub_vehicle_car_sedan.usdz",
+      "class": "vehicle",
+      "triangles": [
+        200,
+        800
+      ],
+      "size_m": {
+        "x": 4.6,
+        "y": null,
+        "z": null
+      },
+      "slots": [
+        "cloth",
+        "windowDark",
+        "tyre",
+        "darkMetal",
+        "lamp"
+      ],
+      "required_slots": [
+        "cloth",
+        "tyre"
+      ],
+      "priority": 7,
+      "notes": "Body in ae_cloth (the app picks colours); low budget, car parks hold hundreds."
+    },
+    "vehicle_car_suv": {
+      "file": "Hub_vehicle_car_suv.usdz",
+      "class": "vehicle",
+      "triangles": [
+        200,
+        800
+      ],
+      "size_m": {
+        "x": 4.8,
+        "y": null,
+        "z": null
+      },
+      "slots": [
+        "cloth",
+        "windowDark",
+        "tyre",
+        "darkMetal",
+        "lamp"
+      ],
+      "required_slots": [
+        "cloth",
+        "tyre"
+      ],
+      "priority": 7,
+      "notes": "Body in ae_cloth; low budget, car parks hold hundreds."
     }
   }
 }
