@@ -397,7 +397,8 @@
         "white",
         "screen"
       ],
-      "priority": 5
+      "priority": 5,
+      "notes": "Screen faces +X (the app turns it to the hall's front)."
     },
     "checkInDesk": {
       "file": "Hub_checkInDesk.usdz",
@@ -407,9 +408,9 @@
         800
       ],
       "size_m": {
-        "x": 2,
+        "x": 0.9,
         "y": null,
-        "z": null
+        "z": 2.5
       },
       "slots": [
         "white",
@@ -419,7 +420,8 @@
       "required_slots": [
         "white"
       ],
-      "priority": 5
+      "priority": 5,
+      "notes": "Front +X; the counter and its bag belt run along z; monitor on top."
     },
     "eGate": {
       "file": "Hub_eGate.usdz",
@@ -429,19 +431,21 @@
         800
       ],
       "size_m": {
-        "x": null,
-        "y": null,
-        "z": null
+        "x": 1,
+        "y": 1.4,
+        "z": 2.5
       },
       "slots": [
         "white",
         "glass",
-        "screen"
+        "screen",
+        "darkMetal"
       ],
       "required_slots": [
         "white"
       ],
-      "priority": 5
+      "priority": 5,
+      "notes": "Pedestal along z, glass flap towards +X, placed unturned in rows."
     },
     "metalDetector": {
       "file": "Hub_metalDetector.usdz",
@@ -495,18 +499,24 @@
         800
       ],
       "size_m": {
-        "x": 4,
+        "x": 0.6,
         "y": 2.2,
-        "z": 0.6
+        "z": 4
       },
       "slots": [
         "houseWood",
-        "cloth"
+        "cloth",
+        "hiVis",
+        "cone",
+        "water",
+        "grassBright",
+        "white"
       ],
       "required_slots": [
         "houseWood"
       ],
-      "priority": 5
+      "priority": 5,
+      "notes": "Stocked face +X; the 4 m unit runs along z. Products in several palette slots."
     },
     "cafe_counter": {
       "file": "Hub_cafe_counter.usdz",
@@ -1242,6 +1252,30 @@
       ],
       "priority": 7,
       "notes": "Body in ae_cloth; low budget, car parks hold hundreds."
+    },
+    "seatRow": {
+      "file": "Hub_seatRow.usdz",
+      "class": "prop",
+      "triangles": [
+        80,
+        800
+      ],
+      "size_m": {
+        "x": 4,
+        "y": 0.9,
+        "z": 0.7
+      },
+      "slots": [
+        "darkMetal",
+        "cloth",
+        "white"
+      ],
+      "required_slots": [
+        "darkMetal",
+        "cloth"
+      ],
+      "priority": 5,
+      "notes": "Seats along x facing +Z (backrest at -Z); placed unturned."
     }
   }
 }
