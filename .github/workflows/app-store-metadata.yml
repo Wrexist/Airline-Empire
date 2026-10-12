@@ -60,8 +60,8 @@ on:
       submit_for_review:
         description: 'App Review submission: plan reads it, attach adds the app version to the open submission, submit also sends it, retarget moves to a new version with its purchases'
         type: choice
-        options: [off, plan, attach, submit, retarget-plan, retarget, retarget-submit]
-        default: off
+        options: ['off', plan, attach, submit, retarget-plan, retarget, retarget-submit]
+        default: 'off'
 
 concurrency:
   # One writer at a time. Two concurrent pushes to the same listing would
