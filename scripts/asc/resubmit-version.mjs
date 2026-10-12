@@ -270,6 +270,15 @@ if (target && report.build) {
           console.log(`  ${relationship} ${id} already in the submission`)
           return
         }
+        // A purchase Apple has already approved (with an earlier version) is
+        // not submittable again and needs no review: the version goes alone.
+        // Only purchases — a version that cannot be added is a real failure.
+        const everything = JSON.stringify(error.errors ?? [])
+        if (relationship !== 'appStoreVersion' && /NOT_SUBMITTABLE|cannot be submitted for review in its current state/i.test(everything)) {
+          console.log(`  ${relationship} ${id} is already approved; it stays out of the submission`)
+          report.actions.push(`skipped approved ${relationship} ${id}`)
+          return
+        }
         throw error
       }
       report.actions.push(`added ${relationship} ${id}`)
