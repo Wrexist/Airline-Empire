@@ -71,7 +71,6 @@ if (!detail) {
     client.post('/v1/gameCenterDetails', {
       data: {
         type: 'gameCenterDetails',
-        attributes: { challengeEnabled: false },
         relationships: { app: { data: { type: 'apps', id: app.id } } },
       },
     }))
