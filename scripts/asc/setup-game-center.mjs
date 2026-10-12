@@ -15,7 +15,6 @@
 import { readFileSync, statSync } from 'node:fs'
 import { join, resolve, dirname, basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import crypto from 'node:crypto'
 import { AppStoreConnect, findApp, listVersions } from './lib/asc.mjs'
 import { loadStore } from './lib/metadata.mjs'
 
@@ -78,8 +77,19 @@ if (!detail) {
 }
 
 // ---- Images ---------------------------------------------------------------
-function md5(buffer) {
-  return crypto.createHash('md5').update(buffer).digest('hex')
+/**
+ * An image already there, unless it is a reservation an interrupted run never
+ * committed: that one is ours, holds nothing, and is cleared for a fresh upload.
+ */
+async function existingImage(path, type) {
+  const image = await getOrNull(path)
+  if (!image) return null
+  const state = image.attributes?.assetDeliveryState?.state
+  if (state === 'AWAITING_UPLOAD' || state === 'FAILED') {
+    await change(`clear an unfinished ${type} upload (${state})`, () => client.delete(`/v1/${type}/${image.id}`))
+    return null
+  }
+  return image
 }
 
 /** Reserve, PUT the parts to Apple's storage, commit. */
@@ -104,7 +114,7 @@ async function upload(type, relationship, parentType, parentId, file) {
     if (!response.ok) throw new Error(`${basename(file)}: upload failed (HTTP ${response.status})`)
   }
   await client.patch(`/v1/${type}/${asset.id}`, {
-    data: { type, id: asset.id, attributes: { uploaded: true, sourceFileChecksum: md5(bytes) } },
+    data: { type, id: asset.id, attributes: { uploaded: true } },
   })
 }
 
@@ -148,7 +158,9 @@ for (const a of catalog.achievements) {
         }))
       loc = made?.data ?? null
     }
-    const image = loc?.id ? await getOrNull(`/v1/gameCenterAchievementLocalizations/${loc.id}/gameCenterAchievementImage`) : null
+    const image = loc?.id
+      ? await existingImage(`/v1/gameCenterAchievementLocalizations/${loc.id}/gameCenterAchievementImage`, 'gameCenterAchievementImages')
+      : null
     if (!image) {
       const file = join(gcRoot, images.get(id) ?? `achievements/${a.suffix}.png`)
       await change(`upload ${locale} image for ${a.suffix}`, () =>
@@ -203,7 +215,9 @@ for (const b of catalog.leaderboards) {
         }))
       loc = made?.data ?? null
     }
-    const image = loc?.id ? await getOrNull(`/v1/gameCenterLeaderboardLocalizations/${loc.id}/gameCenterLeaderboardImage`) : null
+    const image = loc?.id
+      ? await existingImage(`/v1/gameCenterLeaderboardLocalizations/${loc.id}/gameCenterLeaderboardImage`, 'gameCenterLeaderboardImages')
+      : null
     if (!image) {
       const file = join(gcRoot, images.get(id) ?? `leaderboards/${b.suffix}.png`)
       await change(`upload ${locale} image for leaderboard ${b.suffix}`, () =>
