@@ -1,5 +1,11 @@
-First release.
+New in 1.2
 
-The whole simulation, from a single turboprop on a single regional route to a widebody network across nine world regions: routes and fares, fleet buying and leasing, monthly statements and loans, reputation, competitor airlines, seasons, fuel markets and world events.
+3D Hub View: see your home airport as a living diorama. Your jets turn round at their gates while passengers board, ground crew work the apron and travellers fill the terminal. Every gate shows its bookings against the seats, and every departure shows what it carried. Build your lounge, ground services depot, maintenance hangar and crew base right on the airfield, and watch them go up. Requires iOS 18 or later.
 
-Free to play, offline, no adverts and no timers. Airline Empire Pro opens the later eras, the whole map and every scenario.
+Game Center: 17 achievements for the milestones you already chase, and three leaderboards ranking passengers flown, network size and fleet. Entirely optional.
+
+A warmer first session: watch your very first takeoff, on a map that responds instantly.
+
+Fixes for a crash, VoiceOver and Dynamic Type.
+
+Free to play, offline, no adverts and no timers.

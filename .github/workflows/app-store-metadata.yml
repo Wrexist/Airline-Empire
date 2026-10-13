@@ -57,11 +57,16 @@ on:
         description: 'Only plan or fill the three prepared purchase review images'
         type: boolean
         default: false
+      game_center:
+        description: 'Game Center in App Store Connect from store/game-center: plan reads it, apply creates what is missing and links the version'
+        type: choice
+        options: ['off', plan, apply]
+        default: 'off'
       submit_for_review:
         description: 'App Review submission: plan reads it, attach adds the app version to the open submission, submit also sends it, retarget moves to a new version with its purchases'
         type: choice
-        options: [off, plan, attach, submit, retarget-plan, retarget, retarget-submit]
-        default: off
+        options: ['off', plan, attach, submit, retarget-plan, retarget, retarget-submit]
+        default: 'off'
 
 concurrency:
   # One writer at a time. Two concurrent pushes to the same listing would
@@ -236,10 +241,11 @@ jobs:
   # images; what is missing is the app version in the same submission. This job
   # is off by default and refuses to be reached by accident.
   submit-review:
-    if: inputs.submit_for_review != 'off'
+    if: always() && inputs.submit_for_review != 'off' && needs.validate.result == 'success' && (needs.push.result == 'success' || needs.push.result == 'skipped') && (needs.game-center.result == 'success' || needs.game-center.result == 'skipped')
     # After `push`, deliberately: metadata must land before the version is
-    # submitted, because submitting locks it.
-    needs: [validate, push]
+    # submitted, because submitting locks it. After `game-center` too: the
+    # version needs its Game Center configuration before Apple will take it.
+    needs: [validate, push, game-center]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -289,6 +295,42 @@ jobs:
           name: review-submission-report
           path: apple-audit/submit-for-review.json
           retention-days: 45
+
+  # Game Center (docs/GAME_CENTER.md §3). A build with the game-center
+  # entitlement cannot be submitted until its version has a Game Center
+  # configuration, so this runs before submit-review when both are asked for.
+  game-center:
+    if: inputs.game_center != 'off'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Plan or apply Game Center
+        env:
+          GC_ACTION: ${{ inputs.game_center }}
+          RUN_MODE: ${{ inputs.mode }}
+          RUN_CONFIRM: ${{ inputs.confirm }}
+          STORE_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$GC_ACTION" = "apply" ]; then
+            if [ "$RUN_MODE" != "apply" ] || [ "$RUN_CONFIRM" != "APPLY" ]; then
+              echo "::error::game_center=apply writes to App Store Connect; it requires mode=apply and the confirm box to contain exactly APPLY."
+              exit 1
+            fi
+            node scripts/asc/setup-game-center.mjs --version "$STORE_VERSION" --apply
+          else
+            node scripts/asc/setup-game-center.mjs --version "$STORE_VERSION"
+          fi
 
   purchase-review-images:
     if: inputs.review_images

@@ -108,76 +108,89 @@ console.log(`App: ${app.attributes?.name} (${app.id}) — ${label}\n`)
 
 console.log('App information')
 const appInfos = await client.getAll(`/v1/apps/${app.id}/appInfos?limit=10`)
-const editableAppInfo =
-  appInfos.find((info) => (info.attributes?.state ?? info.attributes?.appStoreState) !== 'READY_FOR_DISTRIBUTION') ??
-  appInfos[0]
-if (!editableAppInfo) {
+if (!appInfos.length) {
   console.error('✗ The app has no appInfo record. That should be impossible; check the API response by hand.')
   process.exit(1)
 }
-
-const categories = store.config.categories ?? {}
-const categoryRelationships = {}
-const relate = (key, id) => {
-  if (id === undefined) return
-  categoryRelationships[key] = { data: id === null ? null : { type: 'appCategories', id } }
-}
-relate('primaryCategory', categories.primary)
-relate('primarySubcategoryOne', categories.primarySubcategoryOne)
-relate('primarySubcategoryTwo', categories.primarySubcategoryTwo)
-relate('secondaryCategory', categories.secondary)
-
-if (Object.keys(categoryRelationships).length) {
-  // Categories are relationships, not attributes, so there is nothing cheap to
-  // diff against without a second round trip per category; this is idempotent,
-  // so it is simply set every time.
-  await change('categories', Object.values(categories).filter(Boolean).join(' / '), () =>
-    client.patch(`/v1/appInfos/${editableAppInfo.id}`, {
-      data: { type: 'appInfos', id: editableAppInfo.id, relationships: categoryRelationships },
-    }),
-  )
+// Only an app info still being prepared takes writes. An approved version
+// waiting for its release (a pre-order: PENDING_RELEASE / ACCEPTED) holds its
+// app info locked too, and until the next version exists there is no other
+// one — so the section is skipped, not failed, and the next apply run (after
+// this one creates the version) writes it.
+const EDITABLE_APP_INFO = new Set([
+  'PREPARE_FOR_SUBMISSION', 'DEVELOPER_REJECTED', 'REJECTED', 'METADATA_REJECTED', 'READY_FOR_REVIEW',
+])
+const appInfoState = (info) => info.attributes?.state ?? info.attributes?.appStoreState
+const editableAppInfo = appInfos.find((info) => EDITABLE_APP_INFO.has(appInfoState(info))) ?? null
+if (!editableAppInfo) {
+  console.log(`  · skipped: no editable app info (${appInfos.map(appInfoState).join(', ')}); ` +
+    'it opens once the new version exists — re-run apply to write it.')
 }
 
-const appInfoLocalizations = await client.getAll(`/v1/appInfos/${editableAppInfo.id}/appInfoLocalizations?limit=50`)
-const appInfoByLocale = new Map(appInfoLocalizations.map((item) => [item.attributes?.locale, item]))
-
-for (const [locale, fields] of Object.entries(store.locales)) {
-  const desired = {
-    name: fields.name,
-    subtitle: fields.subtitle,
-    privacyPolicyUrl: fields.privacy_url,
+if (editableAppInfo) {
+  const categories = store.config.categories ?? {}
+  const categoryRelationships = {}
+  const relate = (key, id) => {
+    if (id === undefined) return
+    categoryRelationships[key] = { data: id === null ? null : { type: 'appCategories', id } }
   }
-  const existing = appInfoByLocale.get(locale)
+  relate('primaryCategory', categories.primary)
+  relate('primarySubcategoryOne', categories.primarySubcategoryOne)
+  relate('primarySubcategoryTwo', categories.primarySubcategoryTwo)
+  relate('secondaryCategory', categories.secondary)
 
-  if (!existing) {
-    await change(`${locale} app info`, `create (${summarize(desired.name)})`, () =>
-      client.post('/v1/appInfoLocalizations', {
-        data: {
-          type: 'appInfoLocalizations',
-          attributes: { locale, ...desired },
-          relationships: { appInfo: { data: { type: 'appInfos', id: editableAppInfo.id } } },
-        },
-      }),
-    )
-    continue
-  }
-
-  const delta = diffAttributes(existing.attributes, desired)
-  for (const [key, value] of Object.entries(delta)) {
-    console.log(`      ${key}: ${summarize(existing.attributes?.[key])} → ${summarize(value)}`)
-  }
-  if (Object.keys(delta).length) {
-    await change(`${locale} app info`, Object.keys(delta).join(', '), () =>
-      client.patch(`/v1/appInfoLocalizations/${existing.id}`, {
-        data: { type: 'appInfoLocalizations', id: existing.id, attributes: delta },
+  if (Object.keys(categoryRelationships).length) {
+    // Categories are relationships, not attributes, so there is nothing cheap to
+    // diff against without a second round trip per category; this is idempotent,
+    // so it is simply set every time.
+    await change('categories', Object.values(categories).filter(Boolean).join(' / '), () =>
+      client.patch(`/v1/appInfos/${editableAppInfo.id}`, {
+        data: { type: 'appInfos', id: editableAppInfo.id, relationships: categoryRelationships },
       }),
     )
   }
-}
 
-for (const locale of appInfoByLocale.keys()) {
-  if (locale && !store.locales[locale]) {
-    console.warn(`  ⚠︎ ${locale} exists in App Store Connect but not in store/. Left alone — nothing here deletes.`)
+  const appInfoLocalizations = await client.getAll(`/v1/appInfos/${editableAppInfo.id}/appInfoLocalizations?limit=50`)
+  const appInfoByLocale = new Map(appInfoLocalizations.map((item) => [item.attributes?.locale, item]))
+
+  for (const [locale, fields] of Object.entries(store.locales)) {
+    const desired = {
+      name: fields.name,
+      subtitle: fields.subtitle,
+      privacyPolicyUrl: fields.privacy_url,
+    }
+    const existing = appInfoByLocale.get(locale)
+
+    if (!existing) {
+      await change(`${locale} app info`, `create (${summarize(desired.name)})`, () =>
+        client.post('/v1/appInfoLocalizations', {
+          data: {
+            type: 'appInfoLocalizations',
+            attributes: { locale, ...desired },
+            relationships: { appInfo: { data: { type: 'appInfos', id: editableAppInfo.id } } },
+          },
+        }),
+      )
+      continue
+    }
+
+    const delta = diffAttributes(existing.attributes, desired)
+    for (const [key, value] of Object.entries(delta)) {
+      console.log(`      ${key}: ${summarize(existing.attributes?.[key])} → ${summarize(value)}`)
+    }
+    if (Object.keys(delta).length) {
+      await change(`${locale} app info`, Object.keys(delta).join(', '), () =>
+        client.patch(`/v1/appInfoLocalizations/${existing.id}`, {
+          data: { type: 'appInfoLocalizations', id: existing.id, attributes: delta },
+        }),
+      )
+    }
+  }
+
+  for (const locale of appInfoByLocale.keys()) {
+    if (locale && !store.locales[locale]) {
+      console.warn(`  ⚠︎ ${locale} exists in App Store Connect but not in store/. Left alone — nothing here deletes.`)
+    }
   }
 }
 

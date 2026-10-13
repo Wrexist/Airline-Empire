@@ -122,8 +122,15 @@ export function mintToken({ keyId, issuerId, privateKey }, { now = Date.now() } 
 export class AscError extends Error {
   constructor(status, method, path, body) {
     const errors = Array.isArray(body?.errors) ? body.errors : []
+    // Apple puts the real reason for a 409 on a submission in
+    // meta.associatedErrors (keyed by the resource at fault), nested past
+    // the depth Node prints for an uncaught error — so spell it out.
+    const associated = (e) => Object.entries(e.meta?.associatedErrors ?? {})
+      .flatMap(([resource, list]) => (Array.isArray(list) ? list : [list]).map((inner) =>
+        `\n    ↳ ${resource}: ${[inner?.code, inner?.title, inner?.detail].filter(Boolean).join(' — ') || JSON.stringify(inner)}`))
+      .join('')
     const detail = errors
-      .map((e) => [e.title, e.detail, e.source?.pointer ?? e.source?.parameter].filter(Boolean).join(' — '))
+      .map((e) => [e.title, e.detail, e.source?.pointer ?? e.source?.parameter].filter(Boolean).join(' — ') + associated(e))
       .join('\n  ')
     super(`${method} ${path} → HTTP ${status}${detail ? `\n  ${detail}` : ''}`)
     this.name = 'AscError'
