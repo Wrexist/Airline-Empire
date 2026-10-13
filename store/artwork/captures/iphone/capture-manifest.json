@@ -48,5 +48,25 @@
     "file": "01-network.png",
     "attachment": "STORE-01-network_0_14E1E463-8A02-482E-B90B-E33D2912EF56.png",
     "sha256": "fe2c2652bbe09e90a410671dbe57f3d5a3985193413fae8bad60b5ff4dbe9b44"
+  },
+  {
+    "file": "00a-hub-airport.png",
+    "attachment": "Hub view review run 38169128170 (PR #48, rotated to landscape; the hub runs landscape on iPhone)",
+    "sha256": "0b2009ab0fbce28ed635415b8231caccbc65eadad953a852a4d8d3164bd94125"
+  },
+  {
+    "file": "00b-hub-gate.png",
+    "attachment": "Hub view review run 38169128170 (PR #48, rotated to landscape; the hub runs landscape on iPhone)",
+    "sha256": "2110b2df666ab57ace94ff9fe76048829fb06a0a30a662d606388a14b600bec1"
+  },
+  {
+    "file": "00c-hub-terminal.png",
+    "attachment": "Hub view review run 38169128170 (PR #48, rotated to landscape; the hub runs landscape on iPhone)",
+    "sha256": "b09ac4811974cbad088553c4c89a08b82dba0aab7265b1ceef0308e565ed4aa8"
+  },
+  {
+    "file": "00d-hub-build.png",
+    "attachment": "Hub view review run 38169128170 (PR #48, rotated to landscape; the hub runs landscape on iPhone)",
+    "sha256": "412194d6522193470e0c8d6c9325b4fd522104e15a5438a4606641341cdfab20"
   }
 ]

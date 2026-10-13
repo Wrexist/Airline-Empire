@@ -12,31 +12,34 @@ const board = json('scripts/store-art/storyboard.json');
 const dimensions = { APP_IPHONE_67: [1320,2868], APP_IPHONE_65: [1242,2688], APP_IPAD_PRO_3GEN_129: [2064,2752] };
 
 (async () => {
-  assert.equal(board.shots.length, 6);
+  // Apple shows at most ten per display type.
+  assert(board.shots.length >= 1 && board.shots.length <= 10);
+  const shot = name => board.shots.find(s => s.id.endsWith('-'+name));
   const content = 'AirlineEmpireCore/Sources/AirlineEmpireCore/';
-  assert.equal(json(content+'Resources/airports.json').airports.length, Number(board.shots[0].proof));
-  assert.equal(json(content+'Resources/aircraft.json').types.length, Number(board.shots[1].proof));
-  for (const [file, enumName, shot] of [['Domain/AIProfile.swift','AIArchetype',4], ['Domain/Progression.swift','Era',5]]) {
+  assert.equal(json(content+'Resources/airports.json').airports.length, Number(shot('network').proof));
+  assert.equal(json(content+'Resources/aircraft.json').types.length, Number(shot('fleet').proof));
+  for (const [file, enumName, name] of [['Domain/AIProfile.swift','AIArchetype','rivals'], ['Domain/Progression.swift','Era','progression']]) {
     const code = fs.readFileSync(path.join(root,content,file),'utf8').split(`public enum ${enumName}:`)[1].split('public ')[0];
-    assert.equal((code.match(/^    case /gm)||[]).length, Number(board.shots[shot].proof));
+    assert.equal((code.match(/^    case /gm)||[]).length, Number(shot(name).proof));
   }
   for (const device of ['iphone','ipad']) {
-    const dir = path.join(root,'store/artwork/captures',device);
-    assert.equal(fs.readdirSync(dir).filter(f=>f.endsWith('.png')).length,10);
+    for (const s of board.shots) assert(fs.existsSync(path.join(root,'store/artwork/captures',device,s.source)), `${device}/${s.source}`);
   }
+  const canvases = board.shots.length * Object.keys(dimensions).length;
   for (const locale of ['en-US','en-GB']) {
     const dir = path.join(root,'store/screenshots',locale);
     const manifest = json(`store/screenshots/${locale}/export-manifest.json`);
-    assert.equal(manifest.exports.length,18);
+    assert.equal(manifest.exports.length,canvases);
     for (const [type, size] of Object.entries(dimensions)) {
-      assert.equal(fs.readdirSync(path.join(dir,type)).filter(f=>f.endsWith('.png')).length,6);
+      assert.equal(fs.readdirSync(path.join(dir,type)).filter(f=>f.endsWith('.png')).length,board.shots.length);
       for (const shot of board.shots) {
         const file = `${type}/${shot.id}.png`;
         const record = manifest.exports.find(r=>r.file===file);
         assert(record, `Missing manifest record: ${file}`);
         const buffer = fs.readFileSync(path.join(dir,file));
         const m = await sharp(buffer).metadata();
-        assert.deepEqual([m.width,m.height],size);
+        // A landscape shot (the 3D hub) turns the same display type's canvas.
+        assert.deepEqual([m.width,m.height],shot.orientation==='landscape'?[size[1],size[0]]:size);
         assert.equal(m.hasAlpha,false);
         assert.equal(m.channels,3);
         assert.equal(m.format,'png');
@@ -59,7 +62,7 @@ const dimensions = { APP_IPHONE_67: [1320,2868], APP_IPHONE_65: [1242,2688], APP
         if (locale==='en-GB') assert.equal(sha(buffer),sha(fs.readFileSync(path.join(root,'store/screenshots/en-US',file))));
       }
     }
-    console.log(`${locale}: 18 valid RGB exports; all original source hashes match.`);
+    console.log(`${locale}: ${canvases} valid RGB exports; all original source hashes match.`);
   }
-  console.log('Artwork verified: 6 stories, 3 canvases, 2 locales, 20 native captures, 4 content claims.');
+  console.log(`Artwork verified: ${board.shots.length} stories, 3 canvases, 2 locales, 4 content claims.`);
 })().catch(e=>{console.error(e);process.exit(1);});

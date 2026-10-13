@@ -35,10 +35,18 @@ before the first upload.
 Files upload in **filename order**, which is the order they appear on the
 product page, so the numeric prefix is the storyboard.
 
+**1.2 set (ten shots).** The first four are the 3D Hub View — airport, gate
+turnaround, terminal cutaway, a building going up — as **landscape** captures
+(2868×1320, 2688×1242, 2752×2064): the hub runs landscape on iPhone, and a
+landscape first shot fills the whole search-result row. They come from the
+`Hub view review` captures (the iPhone ones rotated upright); the six portrait
+shots after them are the 1.0 captures. The headline band was rebuilt too: the
+brand line used to run into the first headline line.
+
 ## Rules
 
 - PNG, **no alpha channel** (Apple rejects transparency; the validator catches it first).
-- At most ten per display type per locale.
+- At most ten per display type per locale (the 1.2 set uses all ten).
 - Captured from a **real mid-game world**, one seed, one airline, across all six.
 - Caption text legible at gallery-thumbnail size.
 - **The app is the majority of the image** (Guideline 2.3.3). No illustration,

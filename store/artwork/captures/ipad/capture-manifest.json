@@ -48,5 +48,25 @@
     "file": "01-network.png",
     "attachment": "STORE-01-network_0_95611724-6CC7-4670-991D-B35684D3ED66.png",
     "sha256": "1eedc6d5c189c4826cb9e9daa7f92f49fadbf79d46d4045816713a3c451eeee3"
+  },
+  {
+    "file": "00a-hub-airport.png",
+    "attachment": "Hub view review run 38169128170 (PR #48, iPad Pro 13-inch landscape)",
+    "sha256": "e92d403c62b1e671ba9e76fc4ed33cbe63fc4d99638170041f96273f311b1812"
+  },
+  {
+    "file": "00b-hub-gate.png",
+    "attachment": "Hub view review run 38169128170 (PR #48, iPad Pro 13-inch landscape)",
+    "sha256": "cf06d09c8d47472673fd11b989c73058ecfd7a76c5f1ca2fdfeb6b42de265396"
+  },
+  {
+    "file": "00c-hub-terminal.png",
+    "attachment": "Hub view review run 38169128170 (PR #48, iPad Pro 13-inch landscape)",
+    "sha256": "0e16bfefffb23636219cf21c16c8919d2b2bbda9dc5ad648db45337c5e7b4252"
+  },
+  {
+    "file": "00d-hub-build.png",
+    "attachment": "Hub view review run 38169128170 (PR #48, iPad Pro 13-inch landscape)",
+    "sha256": "8a3dc97fd9788aa337f2a11bd2daf6e8674b130dc9048c818ae1f907d211d469"
   }
 ]

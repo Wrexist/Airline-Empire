@@ -61,6 +61,35 @@ function compose(shot,index,f,source,art){
   </svg>`;
 }
 
+// Landscape shots — the 3D Hub View, which runs landscape on iPhone. The
+// capture fills the canvas edge to edge; one band across the top holds the
+// brand line and a single-line headline, at about a tenth of the height.
+function composeLandscape(shot,index,f,source){
+  const ipad=f.device==='ipad',W=ipad?2752:2868,H=ipad?2064:1320,m=ipad?88:76;
+  const gold='#F3C47A',t=ipad?88:72,band=ipad?190:154;
+  const scale=Math.max(W/source.meta.width,H/source.meta.height);
+  const w=source.meta.width*scale,h=source.meta.height*scale;
+  const x=(W-w)/2,y=(H-h)/2;
+  const brandY=ipad?66:52,headY=band-(ipad?34:28);
+  const [first,...rest]=shot.headline;
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${f.width}" height="${f.height}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice">
+    <defs>
+      <linearGradient id="gold"><stop stop-color="#F9DCAA"/><stop offset="1" stop-color="#D99A47"/></linearGradient>
+      <linearGradient id="seam" x2="0" y2="1"><stop stop-color="#040B17" stop-opacity=".55"/><stop offset="1" stop-color="#040B17" stop-opacity="0"/></linearGradient>
+    </defs>
+    <rect width="${W}" height="${H}" fill="#040B17"/>
+    <image x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="none" xlink:href="${source.uri}"/>
+    <rect width="${W}" height="${band}" fill="#040B17"/>
+    <rect y="${band}" width="${W}" height="${ipad?22:16}" fill="url(#seam)"/>
+    <g font-family="Arial,Helvetica,sans-serif">
+      <path d="M${m} ${brandY} L${m+24} ${brandY-16} L${m+15} ${brandY+2} L${m+12} ${brandY-7} Z" fill="${gold}"/>
+      <text x="${m+36}" y="${brandY+1}" font-size="${ipad?28:24}" font-weight="700" letter-spacing="5" fill="#DCE5EF">AIRLINE EMPIRE</text>
+      <text x="${W-m}" y="${brandY+1}" text-anchor="end" font-size="${ipad?26:22}" letter-spacing="3" fill="#B7C7D9">${shot.tag?`<tspan fill="${gold}" font-weight="700">${esc(shot.tag)}</tspan>  ·  `:''}ACTUAL GAMEPLAY · ${String(index+1).padStart(2,'0')} / ${String(board.shots.length).padStart(2,'0')}</text>
+      <text x="${m-4}" y="${headY}" font-size="${t}" font-weight="700" letter-spacing="-2"><tspan fill="white">${esc(first)}</tspan>${rest.length?` <tspan fill="url(#gold)">${esc(rest.join(' '))}</tspan>`:''}</text>
+    </g>
+  </svg>`;
+}
+
 // App-dominant composition for the App Store, required by Review Guideline
 // 2.3.3: the majority of every screenshot must be the app itself. Decorative
 // artwork is marketing material and is not appropriate here, so this renders
@@ -73,9 +102,17 @@ function composeNative(shot,index,f,source){
   const scale=Math.max(W/source.meta.width,H/source.meta.height);
   const w=source.meta.width*scale,h=source.meta.height*scale;
   const x=(W-w)/2,y=(H-h)/2;
-  const headTop=ipad?136:104,firstLine=headTop+62*t/96,band=ipad?430:380;
+  // The brand line sits on headTop; the headline's cap height (~0.72em) starts
+  // a clear gap below it. It used to start 62 px down, and the 96 px headline
+  // rose through "AIRLINE EMPIRE".
+  const headTop=ipad?136:104,firstLine=headTop+(ipad?52:46)+t*0.74;
   const lines=shot.headline.map((s,i)=>`<text x="${m-4}" y="${firstLine+i*t*1.02}" font-size="${t}" font-weight="700" letter-spacing="-4" fill="${i?'url(#gold)':'white'}">${esc(s)}</text>`).join('');
   const lastLine=firstLine+(shot.headline.length-1)*t*1.02;
+  // Just below the last headline's descenders, so the band stops short of the
+  // app's own controls at the top of the screen.
+  // and lands in a clear gap of the capture: on iPhone just above the map's
+  // Network button, on iPad where the 1.0 set cut.
+  const band=Math.max(Math.round(lastLine+t*0.3),ipad?430:374);
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${f.width}" height="${f.height}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMin meet">
     <defs>
       <linearGradient id="band" x2="0" y2="1"><stop stop-color="#040B17"/><stop offset="1" stop-color="#040B17"/></linearGradient>
@@ -87,9 +124,9 @@ function composeNative(shot,index,f,source){
     <g font-family="Arial,Helvetica,sans-serif">
       <path d="M${m} ${headTop} L${m+24} ${headTop-16} L${m+15} ${headTop+2} L${m+12} ${headTop-7} Z" fill="${gold}"/>
       <text x="${m+36}" y="${headTop+1}" font-size="26" font-weight="700" letter-spacing="5" fill="#DCE5EF">AIRLINE EMPIRE</text>
-      <text x="${W-m}" y="${headTop+1}" text-anchor="end" font-size="23" letter-spacing="3" fill="#B7C7D9">ACTUAL GAMEPLAY · 0${index+1} / 0${board.shots.length}</text>
+      <text x="${W-m}" y="${headTop+1}" text-anchor="end" font-size="23" letter-spacing="3" fill="#B7C7D9">ACTUAL GAMEPLAY · ${String(index+1).padStart(2,'0')} / ${String(board.shots.length).padStart(2,'0')}</text>
       ${lines}
-      <text x="${m-4}" y="${lastLine+46}" font-size="${ipad?26:23}" fill="#9FB2C6">Gameplay shown with Pro</text>
+      <text x="${W-m}" y="${headTop+(ipad?42:38)}" text-anchor="end" font-size="${ipad?26:23}" fill="#9FB2C6">Gameplay shown with Pro</text>
     </g>
   </svg>`;
 }
@@ -107,9 +144,13 @@ function composeNative(shot,index,f,source){
       const source={uri:uri(native),meta:await sharp(native).metadata()};
       if(source.meta.format!=='png'||source.meta.width<1200)throw Error('Native PNG required');
       const file=`${f.key}/${shot.id}.png`;
+      const landscape=shot.orientation==='landscape';
+      // Apple takes the same display type in either orientation; the canvas turns.
+      const canvas=landscape?{...f,width:f.height,height:f.width}:f;
       let svg,record;
+      if(landscape&&!nativeOnly)throw Error(`${shot.id}: landscape shots are native-only`);
       if(nativeOnly){
-        svg=composeNative(shot,i,f,source);
+        svg=landscape?composeLandscape(shot,i,canvas,source):composeNative(shot,i,f,source);
         record={file,nativeSource:`${f.device}/${shot.source}`,nativeSha256:sha(native),nativeWidth:source.meta.width,nativeHeight:source.meta.height,sourceCrop:[0,0,source.meta.width,source.meta.height],headline:shot.headline.join(' '),composition:'native-dominant'};
       }else{
         const artPath=`store/artwork/cinematic/${shot.id}.png`,artwork=fs.readFileSync(path.join(project,artPath));
@@ -119,7 +160,7 @@ function composeNative(shot,index,f,source){
       const encoded=await sharp(Buffer.from(svg)).flatten({background:'#071322'}).removeAlpha().png({compressionLevel:9}).toBuffer();
       await sharp(encoded).raw().toBuffer();fs.writeFileSync(path.join(outputRoot,file),encoded);
       const meta=await sharp(encoded).metadata();
-      if(meta.width!==f.width||meta.height!==f.height||meta.hasAlpha)throw Error('Invalid export');
+      if(meta.width!==canvas.width||meta.height!==canvas.height||meta.hasAlpha)throw Error('Invalid export');
       records.push({...record,width:meta.width,height:meta.height,bytes:encoded.length,sha256:sha(encoded)});
       console.log(`${file} ${meta.width}x${meta.height}`);
     }
