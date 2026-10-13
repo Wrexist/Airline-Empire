@@ -5,7 +5,7 @@
     {
       "file": "APP_IPHONE_67/01-hub-airport.png",
       "nativeSource": "iphone/00a-hub-airport.png",
-      "nativeSha256": "0b2009ab0fbce28ed635415b8231caccbc65eadad953a852a4d8d3164bd94125",
+      "nativeSha256": "6167cca84f84d6c20b95d264669f2f85929b2e90b833aac2faf745e370f22254",
       "nativeWidth": 2868,
       "nativeHeight": 1320,
       "sourceCrop": [
@@ -18,13 +18,13 @@
       "composition": "native-dominant",
       "width": 2868,
       "height": 1320,
-      "bytes": 2742403,
-      "sha256": "15aecefc481a62b15cf3f66476c9b266aacd0aa82634e723a043acbfa68f629d"
+      "bytes": 2741025,
+      "sha256": "5a23fd67381580d7bb59743a5c35aa388f40c36e72aa446d642f0cb6359b4546"
     },
     {
       "file": "APP_IPHONE_67/02-hub-gate.png",
       "nativeSource": "iphone/00b-hub-gate.png",
-      "nativeSha256": "2110b2df666ab57ace94ff9fe76048829fb06a0a30a662d606388a14b600bec1",
+      "nativeSha256": "52c539e114ba509bb26baa264002453b484c4c3215bd6b284b4ea75e47269290",
       "nativeWidth": 2868,
       "nativeHeight": 1320,
       "sourceCrop": [
@@ -37,13 +37,13 @@
       "composition": "native-dominant",
       "width": 2868,
       "height": 1320,
-      "bytes": 2750206,
-      "sha256": "afabe1e3e6b835d7877fbd75fb1767d9a2d8c32d8d31cd48e781787cae20976e"
+      "bytes": 2748786,
+      "sha256": "f95a81f1cc97f8a39d27edf854997f0f8301989cb4009094673a1ebceba9dab8"
     },
     {
       "file": "APP_IPHONE_67/03-hub-terminal.png",
       "nativeSource": "iphone/00c-hub-terminal.png",
-      "nativeSha256": "b09ac4811974cbad088553c4c89a08b82dba0aab7265b1ceef0308e565ed4aa8",
+      "nativeSha256": "1376acdcfbc058644c395bd6ee302d1947a03b174bd0a8982225316ee1257c90",
       "nativeWidth": 2868,
       "nativeHeight": 1320,
       "sourceCrop": [
@@ -56,13 +56,13 @@
       "composition": "native-dominant",
       "width": 2868,
       "height": 1320,
-      "bytes": 2940547,
-      "sha256": "31c8923dc65a4d11fe0db3ddcdbe85399daabdfd775c8b5768f2a49bddc5a990"
+      "bytes": 2915349,
+      "sha256": "6474868416da78fab70e82b612ed5ac6e78714e54041184732ef1a13a9966905"
     },
     {
       "file": "APP_IPHONE_67/04-hub-build.png",
       "nativeSource": "iphone/00d-hub-build.png",
-      "nativeSha256": "412194d6522193470e0c8d6c9325b4fd522104e15a5438a4606641341cdfab20",
+      "nativeSha256": "2d2df52ba702cdfa23bb146ad9f22636fe5ca070a44f848d4518de6dc8a3c08b",
       "nativeWidth": 2868,
       "nativeHeight": 1320,
       "sourceCrop": [
@@ -75,8 +75,8 @@
       "composition": "native-dominant",
       "width": 2868,
       "height": 1320,
-      "bytes": 3044586,
-      "sha256": "edf8fe6e068a93d4dce8f2355b2ecc7194ed49f7af5d57e3fb983768350188ff"
+      "bytes": 3050945,
+      "sha256": "22b4fa6ec811458ff3f69994fa43dbbc5ba1484249ccb7aeaec8d7a720a884f1"
     },
     {
       "file": "APP_IPHONE_67/05-network.png",
@@ -195,7 +195,7 @@
     {
       "file": "APP_IPHONE_65/01-hub-airport.png",
       "nativeSource": "iphone/00a-hub-airport.png",
-      "nativeSha256": "0b2009ab0fbce28ed635415b8231caccbc65eadad953a852a4d8d3164bd94125",
+      "nativeSha256": "6167cca84f84d6c20b95d264669f2f85929b2e90b833aac2faf745e370f22254",
       "nativeWidth": 2868,
       "nativeHeight": 1320,
       "sourceCrop": [
@@ -208,13 +208,13 @@
       "composition": "native-dominant",
       "width": 2688,
       "height": 1242,
-      "bytes": 2389167,
-      "sha256": "95063135a4f9760abafe0d1d3fba6e0ea6db0122a7153dee21eb0cd57bd25a15"
+      "bytes": 2388879,
+      "sha256": "a7b9cf4b79a7748fee8539bbb5ee3cf441596de3ed6b9f91c1acca98650c41c0"
     },
     {
       "file": "APP_IPHONE_65/02-hub-gate.png",
       "nativeSource": "iphone/00b-hub-gate.png",
-      "nativeSha256": "2110b2df666ab57ace94ff9fe76048829fb06a0a30a662d606388a14b600bec1",
+      "nativeSha256": "52c539e114ba509bb26baa264002453b484c4c3215bd6b284b4ea75e47269290",
       "nativeWidth": 2868,
       "nativeHeight": 1320,
       "sourceCrop": [
@@ -227,13 +227,13 @@
       "composition": "native-dominant",
       "width": 2688,
       "height": 1242,
-      "bytes": 2271740,
-      "sha256": "7bc0967e2874b12e8b8d2ab6db02ec1a4f5daea3d498645f06d6a2ed8db0a3bf"
+      "bytes": 2273633,
+      "sha256": "3ecb15e337805b64f271120c668b3ec6275bd46fcb4072667589cdafb7c48a8e"
     },
     {
       "file": "APP_IPHONE_65/03-hub-terminal.png",
       "nativeSource": "iphone/00c-hub-terminal.png",
-      "nativeSha256": "b09ac4811974cbad088553c4c89a08b82dba0aab7265b1ceef0308e565ed4aa8",
+      "nativeSha256": "1376acdcfbc058644c395bd6ee302d1947a03b174bd0a8982225316ee1257c90",
       "nativeWidth": 2868,
       "nativeHeight": 1320,
       "sourceCrop": [
@@ -246,13 +246,13 @@
       "composition": "native-dominant",
       "width": 2688,
       "height": 1242,
-      "bytes": 2477354,
-      "sha256": "cb39a8f63ee3b4fcd4dcdd8c6ba87e1495203b9e91d4fc4e279045a84f5caf82"
+      "bytes": 2451801,
+      "sha256": "99672e3191011c84d39dabad17c8ed130e38324c38eaa61061197f511a6f26b2"
     },
     {
       "file": "APP_IPHONE_65/04-hub-build.png",
       "nativeSource": "iphone/00d-hub-build.png",
-      "nativeSha256": "412194d6522193470e0c8d6c9325b4fd522104e15a5438a4606641341cdfab20",
+      "nativeSha256": "2d2df52ba702cdfa23bb146ad9f22636fe5ca070a44f848d4518de6dc8a3c08b",
       "nativeWidth": 2868,
       "nativeHeight": 1320,
       "sourceCrop": [
@@ -265,8 +265,8 @@
       "composition": "native-dominant",
       "width": 2688,
       "height": 1242,
-      "bytes": 2619671,
-      "sha256": "17b90eb5ade5460290c03bd60aefa7ea60a9c6d74aed761d27f639fde739630c"
+      "bytes": 2622858,
+      "sha256": "88bf69d5848234c7c3dfce3383470a9a3caae1955bde06c1bd88c0e7e5cff587"
     },
     {
       "file": "APP_IPHONE_65/05-network.png",
@@ -385,7 +385,7 @@
     {
       "file": "APP_IPAD_PRO_3GEN_129/01-hub-airport.png",
       "nativeSource": "ipad/00a-hub-airport.png",
-      "nativeSha256": "e92d403c62b1e671ba9e76fc4ed33cbe63fc4d99638170041f96273f311b1812",
+      "nativeSha256": "71eb5f8e6ecd73a17a6e9b8e8852ef42f346b5e0881c6009ba7240b37fd4bfdb",
       "nativeWidth": 2752,
       "nativeHeight": 2064,
       "sourceCrop": [
@@ -398,13 +398,13 @@
       "composition": "native-dominant",
       "width": 2752,
       "height": 2064,
-      "bytes": 3594456,
-      "sha256": "4a614bfaae45421d7f76407aa5b4874c5a850f9aa60455b025c4c25bf0ad5e97"
+      "bytes": 3595721,
+      "sha256": "f67430e0120e3ed70c4878397a90337d6c5ee17d45ebca1a1bea35ab6d577ae9"
     },
     {
       "file": "APP_IPAD_PRO_3GEN_129/02-hub-gate.png",
       "nativeSource": "ipad/00b-hub-gate.png",
-      "nativeSha256": "cf06d09c8d47472673fd11b989c73058ecfd7a76c5f1ca2fdfeb6b42de265396",
+      "nativeSha256": "b156c09f413371af02739a049374ed04b11338d203edc6ef141448dbce22c22a",
       "nativeWidth": 2752,
       "nativeHeight": 2064,
       "sourceCrop": [
@@ -417,13 +417,13 @@
       "composition": "native-dominant",
       "width": 2752,
       "height": 2064,
-      "bytes": 3420784,
-      "sha256": "007adf7310ef659954e36d080195606fc157548df26759c81b7560ec0d747a4a"
+      "bytes": 3424357,
+      "sha256": "b509b11fd6d220184c48d4941cd444e59bbdc5dd4256dcc46c700b067ae41103"
     },
     {
       "file": "APP_IPAD_PRO_3GEN_129/03-hub-terminal.png",
       "nativeSource": "ipad/00c-hub-terminal.png",
-      "nativeSha256": "0e16bfefffb23636219cf21c16c8919d2b2bbda9dc5ad648db45337c5e7b4252",
+      "nativeSha256": "672f33f4726ec4977bd28803e289fdc08c7ca0d2cb3cbea78b29991be64c3756",
       "nativeWidth": 2752,
       "nativeHeight": 2064,
       "sourceCrop": [
@@ -436,13 +436,13 @@
       "composition": "native-dominant",
       "width": 2752,
       "height": 2064,
-      "bytes": 3714501,
-      "sha256": "1cc6593196db7ee7b47fc386355cabe38a183859d307c1d65d23b708e50f7e37"
+      "bytes": 3697187,
+      "sha256": "ccc770e799e637db2751da830db953fce9c1cfad2646f8a82df6b5dab7707120"
     },
     {
       "file": "APP_IPAD_PRO_3GEN_129/04-hub-build.png",
       "nativeSource": "ipad/00d-hub-build.png",
-      "nativeSha256": "8a3dc97fd9788aa337f2a11bd2daf6e8674b130dc9048c818ae1f907d211d469",
+      "nativeSha256": "f89a3a3eb933be9e3708e74e01c987f2289fea274b627c71ba251cdf6b95a2bf",
       "nativeWidth": 2752,
       "nativeHeight": 2064,
       "sourceCrop": [
@@ -455,8 +455,8 @@
       "composition": "native-dominant",
       "width": 2752,
       "height": 2064,
-      "bytes": 3154784,
-      "sha256": "aecfb7db59ed473445a3e7ee15c3e655a3fa777d0c7bd91704c65473ce04b795"
+      "bytes": 3156459,
+      "sha256": "796cc1d6582315d84d1fc699d4b2601c7c5fbfebb7a22c2e06bc033a2c6da785"
     },
     {
       "file": "APP_IPAD_PRO_3GEN_129/05-network.png",

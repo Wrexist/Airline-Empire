@@ -51,22 +51,22 @@
   },
   {
     "file": "00a-hub-airport.png",
-    "attachment": "Hub view review run 38169128170 (PR #48, rotated to landscape; the hub runs landscape on iPhone)",
-    "sha256": "0b2009ab0fbce28ed635415b8231caccbc65eadad953a852a4d8d3164bd94125"
+    "attachment": "Hub view review run 38348801758 (PR #50, rotated to landscape; the hub runs landscape on iPhone)",
+    "sha256": "6167cca84f84d6c20b95d264669f2f85929b2e90b833aac2faf745e370f22254"
   },
   {
     "file": "00b-hub-gate.png",
-    "attachment": "Hub view review run 38169128170 (PR #48, rotated to landscape; the hub runs landscape on iPhone)",
-    "sha256": "2110b2df666ab57ace94ff9fe76048829fb06a0a30a662d606388a14b600bec1"
+    "attachment": "Hub view review run 38348801758 (PR #50, rotated to landscape; the hub runs landscape on iPhone)",
+    "sha256": "52c539e114ba509bb26baa264002453b484c4c3215bd6b284b4ea75e47269290"
   },
   {
     "file": "00c-hub-terminal.png",
-    "attachment": "Hub view review run 38169128170 (PR #48, rotated to landscape; the hub runs landscape on iPhone)",
-    "sha256": "b09ac4811974cbad088553c4c89a08b82dba0aab7265b1ceef0308e565ed4aa8"
+    "attachment": "Hub view review run 38348801758 (PR #50, rotated to landscape; the hub runs landscape on iPhone)",
+    "sha256": "1376acdcfbc058644c395bd6ee302d1947a03b174bd0a8982225316ee1257c90"
   },
   {
     "file": "00d-hub-build.png",
-    "attachment": "Hub view review run 38169128170 (PR #48, rotated to landscape; the hub runs landscape on iPhone)",
-    "sha256": "412194d6522193470e0c8d6c9325b4fd522104e15a5438a4606641341cdfab20"
+    "attachment": "Hub view review run 38348801758 (PR #50, rotated to landscape; the hub runs landscape on iPhone)",
+    "sha256": "2d2df52ba702cdfa23bb146ad9f22636fe5ca070a44f848d4518de6dc8a3c08b"
   }
 ]
