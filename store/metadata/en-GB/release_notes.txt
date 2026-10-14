@@ -1,3 +1,7 @@
+New in 1.2.1
+
+In the 3D Hub View, gate tags now show the full bookings-against-seats count instead of cutting it off.
+
 New in 1.2
 
 3D Hub View: see your home airport as a living diorama. Your jets turn round at their gates while passengers board, ground crew work the apron and travellers fill the terminal. Every gate shows its bookings against the seats, and every departure shows what it carried. Build your lounge, ground services depot, maintenance hangar and crew base right on the airfield, and watch them go up. Requires iOS 18 or later.
