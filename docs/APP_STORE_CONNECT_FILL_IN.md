@@ -278,10 +278,10 @@ pushes for you._
 
 ### English (U.S.)
 
-**Promotional Text** — 154/170 characters
+**Promotional Text** — 159/170 characters
 
 ```text
-Start free with one aircraft and one route, then build a global airline. 94 real airports, rivals that fight back, no ads, no timers. Plays fully offline.
+New: your hub airport in 3D. Passengers board, crews turn your jets around, your lounge rises. 94 real airports, rivals that fight back, no ads, fully offline.
 ```
 
 > The only field that can be changed **without submitting a new version**.
@@ -350,10 +350,10 @@ https://wrexist.github.io/Airline-Empire/
 
 ### English (U.K.)
 
-**Promotional Text** — 158/170 characters
+**Promotional Text** — 162/170 characters
 
 ```text
-Start free with one aircraft and one route, then build a global airline. 94 real airports, rivals that fight back, no adverts, no timers. Plays fully offline.
+New: your hub airport in 3D. Passengers board, crews turn your jets round, your lounge rises. 94 real airports, rivals that fight back, no adverts, fully offline.
 ```
 
 > The only field that can be changed **without submitting a new version**.

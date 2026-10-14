@@ -681,24 +681,33 @@ struct HubStandTagView: View {
     static let stem: CGFloat = 10
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 5) {
-                Text("\(tag.gate)")
-                    .font(.system(size: 10, weight: .heavy).monospacedDigit())
-                    .foregroundStyle(.white)
-                    .frame(minWidth: 18, minHeight: 18)
-                    .background(tint, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
-                Image(systemName: tag.systemImage).font(.system(size: 9, weight: .bold)).foregroundStyle(tint)
-                Text(tag.code).font(.system(size: 10, weight: .semibold)).foregroundStyle(HubChromeStyle.ink)
-                Text(tag.stage).font(.system(size: 10)).foregroundStyle(HubChromeStyle.secondary)
-                if let passengers = tag.passengers {
-                    HStack(spacing: 2) {
-                        Image(systemName: "person.fill").font(.system(size: 8, weight: .bold))
-                        Text(seatsText(passengers)).font(.system(size: 10, weight: .semibold).monospacedDigit())
-                    }
-                    .foregroundStyle(HubChromeStyle.ink)
+        // The row sizes the tag; the load bar is laid over its foot, so it
+        // can never squeeze the row (a GeometryReader stacked under the row
+        // cut the seat count off as "81/…").
+        HStack(spacing: 5) {
+            Text("\(tag.gate)")
+                .font(.system(size: 10, weight: .heavy).monospacedDigit())
+                .foregroundStyle(.white)
+                .frame(minWidth: 18, minHeight: 18)
+                .background(tint, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+            Image(systemName: tag.systemImage).font(.system(size: 9, weight: .bold)).foregroundStyle(tint)
+            Text(tag.code).font(.system(size: 10, weight: .semibold)).foregroundStyle(HubChromeStyle.ink)
+                .fixedSize()
+            Text(tag.stage).font(.system(size: 10)).foregroundStyle(HubChromeStyle.secondary)
+                .fixedSize()
+            if let passengers = tag.passengers {
+                HStack(spacing: 2) {
+                    Image(systemName: "person.fill").font(.system(size: 8, weight: .bold))
+                    Text(seatsText(passengers)).font(.system(size: 10, weight: .semibold).monospacedDigit())
+                        .fixedSize()
                 }
+                .foregroundStyle(HubChromeStyle.ink)
             }
+        }
+        .lineLimit(1)
+        .fixedSize()
+        .padding(.bottom, tag.load == nil ? 0 : 4)
+        .overlay(alignment: .bottomLeading) {
             if let load = tag.load {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
@@ -710,8 +719,6 @@ struct HubStandTagView: View {
                 .padding(.leading, 23)
             }
         }
-        .lineLimit(1)
-        .fixedSize(horizontal: true, vertical: false)
         .padding(.leading, 3)
         .padding(.trailing, 7)
         .frame(height: Self.height)

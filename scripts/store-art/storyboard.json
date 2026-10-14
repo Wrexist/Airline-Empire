@@ -1,9 +1,49 @@
 {
   "locale": "en-US",
-  "creativeDirection": "Cinematic midnight aviation: six original 3D-style key-art scenes, warm gold editorial headlines, reflective gameplay frames and genuine current iPhone/iPad captures.",
+  "creativeDirection": "The 3D Hub View first: four landscape captures of the live hub, then six portrait captures of the network, fleet, routes, money, rivals and eras. Native gameplay full-bleed under one compact headline band (Guideline 2.3.3).",
   "shots": [
     {
-      "id": "01-network",
+      "id": "01-hub-airport",
+      "source": "00a-hub-airport.png",
+      "orientation": "landscape",
+      "tag": "NEW IN 1.2",
+      "headline": [
+        "Your airport,",
+        "alive in 3D."
+      ]
+    },
+    {
+      "id": "02-hub-gate",
+      "source": "00b-hub-gate.png",
+      "orientation": "landscape",
+      "tag": "NEW IN 1.2",
+      "headline": [
+        "Every turnaround,",
+        "gate to pushback."
+      ]
+    },
+    {
+      "id": "03-hub-terminal",
+      "source": "00c-hub-terminal.png",
+      "orientation": "landscape",
+      "tag": "NEW IN 1.2",
+      "headline": [
+        "Step inside",
+        "your terminal."
+      ]
+    },
+    {
+      "id": "04-hub-build",
+      "source": "00d-hub-build.png",
+      "orientation": "landscape",
+      "tag": "NEW IN 1.2",
+      "headline": [
+        "Build it.",
+        "Watch it rise."
+      ]
+    },
+    {
+      "id": "05-network",
       "source": "01-network.png",
       "headline": [
         "One airline.",
@@ -51,7 +91,7 @@
       }
     },
     {
-      "id": "02-fleet",
+      "id": "06-fleet",
       "source": "02-fleet.png",
       "headline": [
         "Your fleet.",
@@ -85,7 +125,7 @@
       }
     },
     {
-      "id": "03-routes",
+      "id": "07-routes",
       "source": "03-route.png",
       "headline": [
         "Make every",
@@ -119,7 +159,7 @@
       }
     },
     {
-      "id": "04-finance",
+      "id": "08-finance",
       "source": "04-finance.png",
       "headline": [
         "Build more",
@@ -153,7 +193,7 @@
       }
     },
     {
-      "id": "05-rivals",
+      "id": "09-rivals",
       "source": "05-rivals.png",
       "headline": [
         "Give rivals",
@@ -187,7 +227,7 @@
       }
     },
     {
-      "id": "06-progression",
+      "id": "10-progression",
       "source": "06-progression.png",
       "headline": [
         "From startup.",

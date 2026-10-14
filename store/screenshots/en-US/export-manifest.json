@@ -1,9 +1,85 @@
 {
-  "direction": "Cinematic midnight aviation: six original 3D-style key-art scenes, warm gold editorial headlines, reflective gameplay frames and genuine current iPhone/iPad captures.",
+  "direction": "The 3D Hub View first: four landscape captures of the live hub, then six portrait captures of the network, fleet, routes, money, rivals and eras. Native gameplay full-bleed under one compact headline band (Guideline 2.3.3).",
   "composition": "native-dominant",
   "exports": [
     {
-      "file": "APP_IPHONE_67/01-network.png",
+      "file": "APP_IPHONE_67/01-hub-airport.png",
+      "nativeSource": "iphone/00a-hub-airport.png",
+      "nativeSha256": "6167cca84f84d6c20b95d264669f2f85929b2e90b833aac2faf745e370f22254",
+      "nativeWidth": 2868,
+      "nativeHeight": 1320,
+      "sourceCrop": [
+        0,
+        0,
+        2868,
+        1320
+      ],
+      "headline": "Your airport, alive in 3D.",
+      "composition": "native-dominant",
+      "width": 2868,
+      "height": 1320,
+      "bytes": 2741025,
+      "sha256": "5a23fd67381580d7bb59743a5c35aa388f40c36e72aa446d642f0cb6359b4546"
+    },
+    {
+      "file": "APP_IPHONE_67/02-hub-gate.png",
+      "nativeSource": "iphone/00b-hub-gate.png",
+      "nativeSha256": "52c539e114ba509bb26baa264002453b484c4c3215bd6b284b4ea75e47269290",
+      "nativeWidth": 2868,
+      "nativeHeight": 1320,
+      "sourceCrop": [
+        0,
+        0,
+        2868,
+        1320
+      ],
+      "headline": "Every turnaround, gate to pushback.",
+      "composition": "native-dominant",
+      "width": 2868,
+      "height": 1320,
+      "bytes": 2748786,
+      "sha256": "f95a81f1cc97f8a39d27edf854997f0f8301989cb4009094673a1ebceba9dab8"
+    },
+    {
+      "file": "APP_IPHONE_67/03-hub-terminal.png",
+      "nativeSource": "iphone/00c-hub-terminal.png",
+      "nativeSha256": "1376acdcfbc058644c395bd6ee302d1947a03b174bd0a8982225316ee1257c90",
+      "nativeWidth": 2868,
+      "nativeHeight": 1320,
+      "sourceCrop": [
+        0,
+        0,
+        2868,
+        1320
+      ],
+      "headline": "Step inside your terminal.",
+      "composition": "native-dominant",
+      "width": 2868,
+      "height": 1320,
+      "bytes": 2915349,
+      "sha256": "6474868416da78fab70e82b612ed5ac6e78714e54041184732ef1a13a9966905"
+    },
+    {
+      "file": "APP_IPHONE_67/04-hub-build.png",
+      "nativeSource": "iphone/00d-hub-build.png",
+      "nativeSha256": "2d2df52ba702cdfa23bb146ad9f22636fe5ca070a44f848d4518de6dc8a3c08b",
+      "nativeWidth": 2868,
+      "nativeHeight": 1320,
+      "sourceCrop": [
+        0,
+        0,
+        2868,
+        1320
+      ],
+      "headline": "Build it. Watch it rise.",
+      "composition": "native-dominant",
+      "width": 2868,
+      "height": 1320,
+      "bytes": 3050945,
+      "sha256": "22b4fa6ec811458ff3f69994fa43dbbc5ba1484249ccb7aeaec8d7a720a884f1"
+    },
+    {
+      "file": "APP_IPHONE_67/05-network.png",
       "nativeSource": "iphone/01-network.png",
       "nativeSha256": "fe2c2652bbe09e90a410671dbe57f3d5a3985193413fae8bad60b5ff4dbe9b44",
       "nativeWidth": 1320,
@@ -18,11 +94,11 @@
       "composition": "native-dominant",
       "width": 1320,
       "height": 2868,
-      "bytes": 692567,
-      "sha256": "3f4581029de8b5ae057f2a608eadb5a670fad380fba5e60dc1f4d918dbf6cfeb"
+      "bytes": 692755,
+      "sha256": "2655b37c2f7e1052aedff5c050ae7a0a93cdbfa87a7157841e10a3539db57194"
     },
     {
-      "file": "APP_IPHONE_67/02-fleet.png",
+      "file": "APP_IPHONE_67/06-fleet.png",
       "nativeSource": "iphone/02-fleet.png",
       "nativeSha256": "283331fb8689ce017f0da9b6f7d58292a155e53b6299d84c20d9e583f7af1a35",
       "nativeWidth": 1320,
@@ -37,11 +113,11 @@
       "composition": "native-dominant",
       "width": 1320,
       "height": 2868,
-      "bytes": 1482026,
-      "sha256": "6dc4b5c0235bdc7ec76afec45bd7fcb1b0690b51ab5e5593c86994cc579669d6"
+      "bytes": 1484512,
+      "sha256": "3d30c337af88ff9e028a4672a5c06aab93f0d617d6c89b8c5e7102a7b14d5b45"
     },
     {
-      "file": "APP_IPHONE_67/03-routes.png",
+      "file": "APP_IPHONE_67/07-routes.png",
       "nativeSource": "iphone/03-route.png",
       "nativeSha256": "550d062efc23fb74441f683350ab852b83a7654d19047d1efa5d5ca0879cd1c2",
       "nativeWidth": 1320,
@@ -56,11 +132,11 @@
       "composition": "native-dominant",
       "width": 1320,
       "height": 2868,
-      "bytes": 1999785,
-      "sha256": "718ad82b23e0ae29c0b43fb2030f1f5a0d5cef950f8cafd3ed7bc07aed91fe62"
+      "bytes": 2005829,
+      "sha256": "ee651df1fabf601f272a4cec5cedddbf5c449c0c08ba3eebe2b44f6e716c23ef"
     },
     {
-      "file": "APP_IPHONE_67/04-finance.png",
+      "file": "APP_IPHONE_67/08-finance.png",
       "nativeSource": "iphone/04-finance.png",
       "nativeSha256": "6a0dbfeaa0d25f7fc9e13a4c2acec771a9f5771932cfeee2f5d819336dbc6d3c",
       "nativeWidth": 1320,
@@ -75,11 +151,11 @@
       "composition": "native-dominant",
       "width": 1320,
       "height": 2868,
-      "bytes": 1200216,
-      "sha256": "c22498d7b2a91b39852ae328b1f8ffdef956d3e819ac596ae198a937cc2b6d3e"
+      "bytes": 1208448,
+      "sha256": "4b4b4c092aa6d937ab82997f27bff01d1cc920085abab09c93ba3895778e899e"
     },
     {
-      "file": "APP_IPHONE_67/05-rivals.png",
+      "file": "APP_IPHONE_67/09-rivals.png",
       "nativeSource": "iphone/05-rivals.png",
       "nativeSha256": "99d8a6a8df8e299625784f787e90f6a7fd9d43f113726bd3972d3d4acf22b9b3",
       "nativeWidth": 1320,
@@ -94,11 +170,11 @@
       "composition": "native-dominant",
       "width": 1320,
       "height": 2868,
-      "bytes": 2379550,
-      "sha256": "f17d44632f26ff7616ca0bbd5644947efc9646dc87d297f757492db21b637c87"
+      "bytes": 2380881,
+      "sha256": "e7b0164d9306dc0ab53c475ddd858e9832c09a7713528e80ede94a964115ff6b"
     },
     {
-      "file": "APP_IPHONE_67/06-progression.png",
+      "file": "APP_IPHONE_67/10-progression.png",
       "nativeSource": "iphone/06-progression.png",
       "nativeSha256": "1b1e6d4d9618d857ffbcca52cb3b7727c0030480e8ae0af04710fd2865198c4e",
       "nativeWidth": 1320,
@@ -113,11 +189,87 @@
       "composition": "native-dominant",
       "width": 1320,
       "height": 2868,
-      "bytes": 1726113,
-      "sha256": "4c1a0c0ec1433d229f767b57b49f5857198ae45da5fc4bd90f2a32bb30bed3db"
+      "bytes": 1733485,
+      "sha256": "d1dcca6a9a0fe8536ad25b4b950b9a263b31d52853ccbc78574c6834da198ade"
     },
     {
-      "file": "APP_IPHONE_65/01-network.png",
+      "file": "APP_IPHONE_65/01-hub-airport.png",
+      "nativeSource": "iphone/00a-hub-airport.png",
+      "nativeSha256": "6167cca84f84d6c20b95d264669f2f85929b2e90b833aac2faf745e370f22254",
+      "nativeWidth": 2868,
+      "nativeHeight": 1320,
+      "sourceCrop": [
+        0,
+        0,
+        2868,
+        1320
+      ],
+      "headline": "Your airport, alive in 3D.",
+      "composition": "native-dominant",
+      "width": 2688,
+      "height": 1242,
+      "bytes": 2388879,
+      "sha256": "a7b9cf4b79a7748fee8539bbb5ee3cf441596de3ed6b9f91c1acca98650c41c0"
+    },
+    {
+      "file": "APP_IPHONE_65/02-hub-gate.png",
+      "nativeSource": "iphone/00b-hub-gate.png",
+      "nativeSha256": "52c539e114ba509bb26baa264002453b484c4c3215bd6b284b4ea75e47269290",
+      "nativeWidth": 2868,
+      "nativeHeight": 1320,
+      "sourceCrop": [
+        0,
+        0,
+        2868,
+        1320
+      ],
+      "headline": "Every turnaround, gate to pushback.",
+      "composition": "native-dominant",
+      "width": 2688,
+      "height": 1242,
+      "bytes": 2273633,
+      "sha256": "3ecb15e337805b64f271120c668b3ec6275bd46fcb4072667589cdafb7c48a8e"
+    },
+    {
+      "file": "APP_IPHONE_65/03-hub-terminal.png",
+      "nativeSource": "iphone/00c-hub-terminal.png",
+      "nativeSha256": "1376acdcfbc058644c395bd6ee302d1947a03b174bd0a8982225316ee1257c90",
+      "nativeWidth": 2868,
+      "nativeHeight": 1320,
+      "sourceCrop": [
+        0,
+        0,
+        2868,
+        1320
+      ],
+      "headline": "Step inside your terminal.",
+      "composition": "native-dominant",
+      "width": 2688,
+      "height": 1242,
+      "bytes": 2451801,
+      "sha256": "99672e3191011c84d39dabad17c8ed130e38324c38eaa61061197f511a6f26b2"
+    },
+    {
+      "file": "APP_IPHONE_65/04-hub-build.png",
+      "nativeSource": "iphone/00d-hub-build.png",
+      "nativeSha256": "2d2df52ba702cdfa23bb146ad9f22636fe5ca070a44f848d4518de6dc8a3c08b",
+      "nativeWidth": 2868,
+      "nativeHeight": 1320,
+      "sourceCrop": [
+        0,
+        0,
+        2868,
+        1320
+      ],
+      "headline": "Build it. Watch it rise.",
+      "composition": "native-dominant",
+      "width": 2688,
+      "height": 1242,
+      "bytes": 2622858,
+      "sha256": "88bf69d5848234c7c3dfce3383470a9a3caae1955bde06c1bd88c0e7e5cff587"
+    },
+    {
+      "file": "APP_IPHONE_65/05-network.png",
       "nativeSource": "iphone/01-network.png",
       "nativeSha256": "fe2c2652bbe09e90a410671dbe57f3d5a3985193413fae8bad60b5ff4dbe9b44",
       "nativeWidth": 1320,
@@ -132,11 +284,11 @@
       "composition": "native-dominant",
       "width": 1242,
       "height": 2688,
-      "bytes": 786707,
-      "sha256": "76ad0b878af6c5ac2984a47b4c4afb819f20dd10b0e6f7dd7b0a9485303b270d"
+      "bytes": 787638,
+      "sha256": "8792bdfd9e3f0e0b072203b96b1ca09dce939815d59ae40f35a6a55738381054"
     },
     {
-      "file": "APP_IPHONE_65/02-fleet.png",
+      "file": "APP_IPHONE_65/06-fleet.png",
       "nativeSource": "iphone/02-fleet.png",
       "nativeSha256": "283331fb8689ce017f0da9b6f7d58292a155e53b6299d84c20d9e583f7af1a35",
       "nativeWidth": 1320,
@@ -151,11 +303,11 @@
       "composition": "native-dominant",
       "width": 1242,
       "height": 2688,
-      "bytes": 1162523,
-      "sha256": "d0801b12e4f1fce11aa84e97d949bd392a7fb1732cb585883608868e07618233"
+      "bytes": 1164423,
+      "sha256": "9a49370574276057007781a4240c495d981b814f927506c7cb8263a332e5515d"
     },
     {
-      "file": "APP_IPHONE_65/03-routes.png",
+      "file": "APP_IPHONE_65/07-routes.png",
       "nativeSource": "iphone/03-route.png",
       "nativeSha256": "550d062efc23fb74441f683350ab852b83a7654d19047d1efa5d5ca0879cd1c2",
       "nativeWidth": 1320,
@@ -170,11 +322,11 @@
       "composition": "native-dominant",
       "width": 1242,
       "height": 2688,
-      "bytes": 1344212,
-      "sha256": "e4b83af3be83897c6c5fee4527d5065e39563e9c771acf3245d208a5c58832ac"
+      "bytes": 1347644,
+      "sha256": "afa7805948b6706c1a680a2bbe400c0d0fc5463138be2a0b28b62cad9729c1df"
     },
     {
-      "file": "APP_IPHONE_65/04-finance.png",
+      "file": "APP_IPHONE_65/08-finance.png",
       "nativeSource": "iphone/04-finance.png",
       "nativeSha256": "6a0dbfeaa0d25f7fc9e13a4c2acec771a9f5771932cfeee2f5d819336dbc6d3c",
       "nativeWidth": 1320,
@@ -189,11 +341,11 @@
       "composition": "native-dominant",
       "width": 1242,
       "height": 2688,
-      "bytes": 990529,
-      "sha256": "28958bd34951eb5400623fcb4c147aa80a6d8634fb9dc746755e8d109de0fae7"
+      "bytes": 995083,
+      "sha256": "996435dbf60c9b5cc8b230a257aca9d08ee56143578d76e27cf5cb60ae6c5455"
     },
     {
-      "file": "APP_IPHONE_65/05-rivals.png",
+      "file": "APP_IPHONE_65/09-rivals.png",
       "nativeSource": "iphone/05-rivals.png",
       "nativeSha256": "99d8a6a8df8e299625784f787e90f6a7fd9d43f113726bd3972d3d4acf22b9b3",
       "nativeWidth": 1320,
@@ -208,11 +360,11 @@
       "composition": "native-dominant",
       "width": 1242,
       "height": 2688,
-      "bytes": 1713903,
-      "sha256": "0b93dad50e8047b680585433a5e381bef89d69b418971a20b85361ebb7043bec"
+      "bytes": 1714909,
+      "sha256": "6d16f1d6e9093e520bfda6b708db01cc8dd9526a0bd00e6ca1cf9bbd005184b8"
     },
     {
-      "file": "APP_IPHONE_65/06-progression.png",
+      "file": "APP_IPHONE_65/10-progression.png",
       "nativeSource": "iphone/06-progression.png",
       "nativeSha256": "1b1e6d4d9618d857ffbcca52cb3b7727c0030480e8ae0af04710fd2865198c4e",
       "nativeWidth": 1320,
@@ -227,11 +379,87 @@
       "composition": "native-dominant",
       "width": 1242,
       "height": 2688,
-      "bytes": 1319811,
-      "sha256": "a319665f2f0147ea430b609fa3a01be4e50128d5e62a1c34da6b7ad09d8bf57e"
+      "bytes": 1324742,
+      "sha256": "bf8e79d35bfa3b70aacee8e5b9cfb37d1482c8b339528f96a73cc0750015ce89"
     },
     {
-      "file": "APP_IPAD_PRO_3GEN_129/01-network.png",
+      "file": "APP_IPAD_PRO_3GEN_129/01-hub-airport.png",
+      "nativeSource": "ipad/00a-hub-airport.png",
+      "nativeSha256": "71eb5f8e6ecd73a17a6e9b8e8852ef42f346b5e0881c6009ba7240b37fd4bfdb",
+      "nativeWidth": 2752,
+      "nativeHeight": 2064,
+      "sourceCrop": [
+        0,
+        0,
+        2752,
+        2064
+      ],
+      "headline": "Your airport, alive in 3D.",
+      "composition": "native-dominant",
+      "width": 2752,
+      "height": 2064,
+      "bytes": 3595721,
+      "sha256": "f67430e0120e3ed70c4878397a90337d6c5ee17d45ebca1a1bea35ab6d577ae9"
+    },
+    {
+      "file": "APP_IPAD_PRO_3GEN_129/02-hub-gate.png",
+      "nativeSource": "ipad/00b-hub-gate.png",
+      "nativeSha256": "b156c09f413371af02739a049374ed04b11338d203edc6ef141448dbce22c22a",
+      "nativeWidth": 2752,
+      "nativeHeight": 2064,
+      "sourceCrop": [
+        0,
+        0,
+        2752,
+        2064
+      ],
+      "headline": "Every turnaround, gate to pushback.",
+      "composition": "native-dominant",
+      "width": 2752,
+      "height": 2064,
+      "bytes": 3424357,
+      "sha256": "b509b11fd6d220184c48d4941cd444e59bbdc5dd4256dcc46c700b067ae41103"
+    },
+    {
+      "file": "APP_IPAD_PRO_3GEN_129/03-hub-terminal.png",
+      "nativeSource": "ipad/00c-hub-terminal.png",
+      "nativeSha256": "672f33f4726ec4977bd28803e289fdc08c7ca0d2cb3cbea78b29991be64c3756",
+      "nativeWidth": 2752,
+      "nativeHeight": 2064,
+      "sourceCrop": [
+        0,
+        0,
+        2752,
+        2064
+      ],
+      "headline": "Step inside your terminal.",
+      "composition": "native-dominant",
+      "width": 2752,
+      "height": 2064,
+      "bytes": 3697187,
+      "sha256": "ccc770e799e637db2751da830db953fce9c1cfad2646f8a82df6b5dab7707120"
+    },
+    {
+      "file": "APP_IPAD_PRO_3GEN_129/04-hub-build.png",
+      "nativeSource": "ipad/00d-hub-build.png",
+      "nativeSha256": "f89a3a3eb933be9e3708e74e01c987f2289fea274b627c71ba251cdf6b95a2bf",
+      "nativeWidth": 2752,
+      "nativeHeight": 2064,
+      "sourceCrop": [
+        0,
+        0,
+        2752,
+        2064
+      ],
+      "headline": "Build it. Watch it rise.",
+      "composition": "native-dominant",
+      "width": 2752,
+      "height": 2064,
+      "bytes": 3156459,
+      "sha256": "796cc1d6582315d84d1fc699d4b2601c7c5fbfebb7a22c2e06bc033a2c6da785"
+    },
+    {
+      "file": "APP_IPAD_PRO_3GEN_129/05-network.png",
       "nativeSource": "ipad/01-network.png",
       "nativeSha256": "1eedc6d5c189c4826cb9e9daa7f92f49fadbf79d46d4045816713a3c451eeee3",
       "nativeWidth": 2064,
@@ -246,11 +474,11 @@
       "composition": "native-dominant",
       "width": 2064,
       "height": 2752,
-      "bytes": 669338,
-      "sha256": "bd375eee3ca4f7a1e80e63257ee4778cbdad7d9653f01454f459d51fc89ba150"
+      "bytes": 669084,
+      "sha256": "4a5cced22486ab05c281da983e39bd32a5c9ef96ca88bf14943b3d3c4d5dec0d"
     },
     {
-      "file": "APP_IPAD_PRO_3GEN_129/02-fleet.png",
+      "file": "APP_IPAD_PRO_3GEN_129/06-fleet.png",
       "nativeSource": "ipad/02-fleet.png",
       "nativeSha256": "5796012bcad3afd1df317ea6628fe512a65a04f716dbf7cefc362eb69245caca",
       "nativeWidth": 2064,
@@ -265,11 +493,11 @@
       "composition": "native-dominant",
       "width": 2064,
       "height": 2752,
-      "bytes": 2199747,
-      "sha256": "050bf46f23c6cc652bb0df9feeb4442e9059a6c6d460a2f8fa2363611ab85081"
+      "bytes": 2199855,
+      "sha256": "e67f7d53b74fdf751bdc03a1551b1f0ddeca7f127ea3d2f5af78d0587d7e6115"
     },
     {
-      "file": "APP_IPAD_PRO_3GEN_129/03-routes.png",
+      "file": "APP_IPAD_PRO_3GEN_129/07-routes.png",
       "nativeSource": "ipad/03-route.png",
       "nativeSha256": "c5f2e91d766ecf497b7c21bc67e3584a582c68d170043a7b84b4f067217a4f5f",
       "nativeWidth": 2064,
@@ -284,11 +512,11 @@
       "composition": "native-dominant",
       "width": 2064,
       "height": 2752,
-      "bytes": 2551548,
-      "sha256": "c08f5d742f5f6d44c2c5b2563544a2a9a0b5c9341e1061564973849035b16673"
+      "bytes": 2551253,
+      "sha256": "3a3b1359ead4dd7492fe71d87edc92fbb28f54a8b84bed2d029833e27356e51b"
     },
     {
-      "file": "APP_IPAD_PRO_3GEN_129/04-finance.png",
+      "file": "APP_IPAD_PRO_3GEN_129/08-finance.png",
       "nativeSource": "ipad/04-finance.png",
       "nativeSha256": "f1e7f5852a2506c98b4c814ca189d96e2a6c62f0c249935bad4657778675b0c0",
       "nativeWidth": 2064,
@@ -303,11 +531,11 @@
       "composition": "native-dominant",
       "width": 2064,
       "height": 2752,
-      "bytes": 1482250,
-      "sha256": "fdf77450c4924e6d77bf0eb5278a0550c77392fcdd99209f4cac8ab296c36601"
+      "bytes": 1482181,
+      "sha256": "85f12cffedb0f4e836151c559adb61952136ffce8d1b2a146dd32a5fe0aa59d6"
     },
     {
-      "file": "APP_IPAD_PRO_3GEN_129/05-rivals.png",
+      "file": "APP_IPAD_PRO_3GEN_129/09-rivals.png",
       "nativeSource": "ipad/05-rivals.png",
       "nativeSha256": "2b4533e27add6df7e560e546499d35b2fbb7b92fe3be782d2e2f31c892df9f97",
       "nativeWidth": 2064,
@@ -322,11 +550,11 @@
       "composition": "native-dominant",
       "width": 2064,
       "height": 2752,
-      "bytes": 2170224,
-      "sha256": "99dff244c626ded9e814aee80cc47de5ff6e80c92f7f05017323c26991128d38"
+      "bytes": 2170164,
+      "sha256": "86429d35776cca3a31fb9581711092f261ee46038411a8d7032d87a24ac67c64"
     },
     {
-      "file": "APP_IPAD_PRO_3GEN_129/06-progression.png",
+      "file": "APP_IPAD_PRO_3GEN_129/10-progression.png",
       "nativeSource": "ipad/06-progression.png",
       "nativeSha256": "104537010cf80a03ddb5cdbc9ecff567cf8cdcd72b745dd564e83e94f7956a40",
       "nativeWidth": 2064,
@@ -341,8 +569,8 @@
       "composition": "native-dominant",
       "width": 2064,
       "height": 2752,
-      "bytes": 1536531,
-      "sha256": "e9f2699f2b48344f2525b6197174fa6fbe3d8c770bc8e52c0eb2e23aba5e8add"
+      "bytes": 1536167,
+      "sha256": "3ce8deb8415046a19e3ff8568be916cb785880616b2d32681de273115f97e0e1"
     }
   ]
 }
