@@ -1,576 +1,780 @@
 {
-  "direction": "The 3D Hub View first: four landscape captures of the live hub, then six portrait captures of the network, fleet, routes, money, rivals and eras. Native gameplay full-bleed under one compact headline band (Guideline 2.3.3).",
-  "composition": "native-dominant",
+  "direction": "Portrait throughout. The 3D Hub View leads, shown as it plays (an iPhone on its side) over two large cut-aways from other hub moments; the gameplay screens follow in a device frame with a magnified callout from the same campaign. Every pixel inside a frame, callout or panel is a native capture (Guideline 2.3.3).",
+  "composition": "native-showcase",
   "exports": [
     {
-      "file": "APP_IPHONE_67/01-hub-airport.png",
-      "nativeSource": "iphone/00a-hub-airport.png",
-      "nativeSha256": "6167cca84f84d6c20b95d264669f2f85929b2e90b833aac2faf745e370f22254",
-      "nativeWidth": 2868,
-      "nativeHeight": 1320,
-      "sourceCrop": [
-        0,
-        0,
-        2868,
-        1320
-      ],
+      "file": "APP_IPHONE_67/01-hub.png",
+      "layout": "hub",
       "headline": "Your airport, alive in 3D.",
-      "composition": "native-dominant",
-      "width": 2868,
-      "height": 1320,
-      "bytes": 2740940,
-      "sha256": "a66d61745883759689e45e78a83939cac2c843f7a35f9633c6d78472b11d5933"
+      "sources": [
+        {
+          "file": "iphone/hub-01-overview.png",
+          "sha256": "f2cd2802b2fb9f2b6aa9af0235d153081416a4ea8cacb1718be5932d35e53e64",
+          "width": 2868,
+          "height": 1320
+        },
+        {
+          "file": "iphone/hub-02-gate.png",
+          "sha256": "1b021dd56f761c9671ff80da3571033b12c5ad6d048571307b8f77899cf52071",
+          "width": 2868,
+          "height": 1320
+        },
+        {
+          "file": "iphone/hub-03-terminal.png",
+          "sha256": "13569b7dcb1ca1b2737bf140ae281047bb8aaea1a63b2c2acc8f878288645ac7",
+          "width": 2868,
+          "height": 1320
+        },
+        {
+          "file": "iphone/hub-04-district.png",
+          "sha256": "5439aa2c10b8f3bb2c3a655d8486c2a24febceddbbeb69c4590474a7b73d2e4f",
+          "width": 2868,
+          "height": 1320
+        }
+      ],
+      "composition": "native-showcase",
+      "width": 1320,
+      "height": 2868,
+      "bytes": 2022212,
+      "sha256": "0640315a04c0294f2ea01291b6828f1a5d7339e807ce3a3993df6cecd5e4d4ab"
     },
     {
-      "file": "APP_IPHONE_67/02-hub-gate.png",
-      "nativeSource": "iphone/00b-hub-gate.png",
-      "nativeSha256": "52c539e114ba509bb26baa264002453b484c4c3215bd6b284b4ea75e47269290",
-      "nativeWidth": 2868,
-      "nativeHeight": 1320,
-      "sourceCrop": [
-        0,
-        0,
-        2868,
-        1320
-      ],
-      "headline": "Every turnaround, gate to pushback.",
-      "composition": "native-dominant",
-      "width": 2868,
-      "height": 1320,
-      "bytes": 2748927,
-      "sha256": "c50fc7a02e1dd98c116bedffa17f523674b48b40f354e623bc17fa1530ebd776"
-    },
-    {
-      "file": "APP_IPHONE_67/03-hub-terminal.png",
-      "nativeSource": "iphone/00c-hub-terminal.png",
-      "nativeSha256": "1376acdcfbc058644c395bd6ee302d1947a03b174bd0a8982225316ee1257c90",
-      "nativeWidth": 2868,
-      "nativeHeight": 1320,
-      "sourceCrop": [
-        0,
-        0,
-        2868,
-        1320
-      ],
-      "headline": "Step inside your terminal.",
-      "composition": "native-dominant",
-      "width": 2868,
-      "height": 1320,
-      "bytes": 2915375,
-      "sha256": "d427d46529de5294c3d4f847f3bd41a0b68f900e598ed4ba6f6058db444cacd8"
-    },
-    {
-      "file": "APP_IPHONE_67/04-hub-build.png",
-      "nativeSource": "iphone/00d-hub-build.png",
-      "nativeSha256": "2d2df52ba702cdfa23bb146ad9f22636fe5ca070a44f848d4518de6dc8a3c08b",
-      "nativeWidth": 2868,
-      "nativeHeight": 1320,
-      "sourceCrop": [
-        0,
-        0,
-        2868,
-        1320
-      ],
-      "headline": "Build it. Watch it rise.",
-      "composition": "native-dominant",
-      "width": 2868,
-      "height": 1320,
-      "bytes": 3050498,
-      "sha256": "6f0558ccea444ebc2fb0bc9dd2cede8a91de176b07cce73873ad80a08170a55f"
-    },
-    {
-      "file": "APP_IPHONE_67/05-network.png",
-      "nativeSource": "iphone/01-network.png",
-      "nativeSha256": "7996850cdd46f21047a68c35aecd7bd144a2132b72c439f7149cd5befd1dbb43",
-      "nativeWidth": 1320,
-      "nativeHeight": 2868,
-      "sourceCrop": [
-        0,
-        0,
-        1320,
-        2868
-      ],
+      "file": "APP_IPHONE_67/02-network.png",
+      "layout": "phone",
       "headline": "One airline. Endless ambition.",
-      "composition": "native-dominant",
+      "sources": [
+        {
+          "file": "iphone/01-network.png",
+          "sha256": "7996850cdd46f21047a68c35aecd7bd144a2132b72c439f7149cd5befd1dbb43",
+          "width": 1320,
+          "height": 2868
+        }
+      ],
+      "composition": "native-showcase",
       "width": 1320,
       "height": 2868,
-      "bytes": 728652,
-      "sha256": "d4f4c35d975211f28a1358346d3d5360216fc624d037a4cb38477d2dbca9f5ec"
+      "bytes": 972348,
+      "sha256": "fb918a308de2d553270be9e7c7007c202d760496dd0aafd607c994af1f48a594"
     },
     {
-      "file": "APP_IPHONE_67/06-fleet.png",
-      "nativeSource": "iphone/02-fleet.png",
-      "nativeSha256": "ebd33d209b2403e61f8b78bfc63d8fc70ac58f087c3a3e77908ec96c38715c3e",
-      "nativeWidth": 1320,
-      "nativeHeight": 2868,
-      "sourceCrop": [
-        0,
-        0,
-        1320,
-        2868
+      "file": "APP_IPHONE_67/03-hub-build.png",
+      "layout": "hub",
+      "headline": "Build it. Watch it rise.",
+      "sources": [
+        {
+          "file": "iphone/hub-13-opened.png",
+          "sha256": "eee0501d42c34296ae074b0ff85b77a4ec6d28e1d2fe6472143ef031c19e896b",
+          "width": 2868,
+          "height": 1320
+        },
+        {
+          "file": "iphone/hub-14-works.png",
+          "sha256": "adab751525c5ea96260fd00233694ffdeae00dbc2474031c85d9b38db2188f1d",
+          "width": 2868,
+          "height": 1320
+        },
+        {
+          "file": "iphone/hub-09-upgrade.png",
+          "sha256": "ad8cb3bfc14cc1235b1020e8ab450f2a5c5d75fd6752b88c7e465215853ace3b",
+          "width": 2868,
+          "height": 1320
+        }
       ],
+      "composition": "native-showcase",
+      "width": 1320,
+      "height": 2868,
+      "bytes": 1789786,
+      "sha256": "fcb5afdb0713dee3631d44f2bb825b08262261b3da0dd806aef7394524f21134"
+    },
+    {
+      "file": "APP_IPHONE_67/04-fleet.png",
+      "layout": "phone",
       "headline": "Your fleet. Your future.",
-      "composition": "native-dominant",
+      "sources": [
+        {
+          "file": "iphone/02-fleet.png",
+          "sha256": "ebd33d209b2403e61f8b78bfc63d8fc70ac58f087c3a3e77908ec96c38715c3e",
+          "width": 1320,
+          "height": 2868
+        },
+        {
+          "file": "iphone/02b-market.png",
+          "sha256": "1f6cf6c6d2e1cae3dfd0b4fb8a21a2f5f4b0d214226b5eb9494158ccc2ecad72",
+          "width": 1320,
+          "height": 2868
+        }
+      ],
+      "composition": "native-showcase",
       "width": 1320,
       "height": 2868,
-      "bytes": 1524763,
-      "sha256": "28fda425fef95a6a585165764aa499455f9e57d9f849ce68455229f48a6cfe09"
+      "bytes": 1410691,
+      "sha256": "f341e3ff853144afaf970dde3ffab0ee2d0247f1ac727efd4d960e1cdbd50735"
     },
     {
-      "file": "APP_IPHONE_67/07-routes.png",
-      "nativeSource": "iphone/03-route.png",
-      "nativeSha256": "1435cf879e760f981ad60a2d5c19e2ebc383a235d8f28847335638fb85e6621c",
-      "nativeWidth": 1320,
-      "nativeHeight": 2868,
-      "sourceCrop": [
-        0,
-        0,
-        1320,
-        2868
-      ],
+      "file": "APP_IPHONE_67/05-routes.png",
+      "layout": "phone",
       "headline": "Make every route matter.",
-      "composition": "native-dominant",
+      "sources": [
+        {
+          "file": "iphone/03-route.png",
+          "sha256": "1435cf879e760f981ad60a2d5c19e2ebc383a235d8f28847335638fb85e6621c",
+          "width": 1320,
+          "height": 2868
+        },
+        {
+          "file": "iphone/03b-routes.png",
+          "sha256": "359929625f55ada481fbcbec32c6da84c2c35976b8106a1dfc07e159fa3ac178",
+          "width": 1320,
+          "height": 2868
+        }
+      ],
+      "composition": "native-showcase",
       "width": 1320,
       "height": 2868,
-      "bytes": 1928845,
-      "sha256": "26f6769706ab5a73f17008c4a9fba5ef55d63df1e7a6bdf3c6563014c2b8c273"
+      "bytes": 1336744,
+      "sha256": "2c6953af9e5d2e2ef58673946bf666efd4ddb15baacb870aacbcf8170200be52"
     },
     {
-      "file": "APP_IPHONE_67/08-finance.png",
-      "nativeSource": "iphone/04-finance.png",
-      "nativeSha256": "3555d449cb03ec1f9cc837fafbf9b616da0945ca8409955b85df457fcc7dcb11",
-      "nativeWidth": 1320,
-      "nativeHeight": 2868,
-      "sourceCrop": [
-        0,
-        0,
-        1320,
-        2868
+      "file": "APP_IPHONE_67/06-hub-night.png",
+      "layout": "hub",
+      "headline": "Day turns to night.",
+      "sources": [
+        {
+          "file": "iphone/hub-06-overview-night.png",
+          "sha256": "13d5835195d42a44a9a3ca59ca54de1c1498be4bd816d2f071bfdf5a7c620909",
+          "width": 2868,
+          "height": 1320
+        },
+        {
+          "file": "iphone/hub-05-district-night.png",
+          "sha256": "70c7d9a03e83e6f11873e8f3410c4b08320cacb83f6c5e3e1feb08c67b182952",
+          "width": 2868,
+          "height": 1320
+        },
+        {
+          "file": "iphone/hub-07-insights.png",
+          "sha256": "3799e27070b105af0eb0ac1a332932422dcfa37f6f197500b5010aa71707f34b",
+          "width": 2868,
+          "height": 1320
+        }
       ],
+      "composition": "native-showcase",
+      "width": 1320,
+      "height": 2868,
+      "bytes": 1649172,
+      "sha256": "1517c9d0cd6309fcce19c6f941f44c1baab716c0ad8777417fb0a3462ecfe35e"
+    },
+    {
+      "file": "APP_IPHONE_67/07-finance.png",
+      "layout": "phone",
       "headline": "Build more than a network.",
-      "composition": "native-dominant",
+      "sources": [
+        {
+          "file": "iphone/04-finance.png",
+          "sha256": "3555d449cb03ec1f9cc837fafbf9b616da0945ca8409955b85df457fcc7dcb11",
+          "width": 1320,
+          "height": 2868
+        },
+        {
+          "file": "iphone/06b-briefing.png",
+          "sha256": "aa10b88a032fc8ed4846245fa4aa2586075900faaaf3aa8ca50837d6085258c9",
+          "width": 1320,
+          "height": 2868
+        }
+      ],
+      "composition": "native-showcase",
       "width": 1320,
       "height": 2868,
-      "bytes": 1035678,
-      "sha256": "f45dd696578fef4ffd3dba816fabfcb6024af486005edec491bfc73dc5d1d663"
+      "bytes": 1226815,
+      "sha256": "8de4e38abd92c1899fd15ca797a2a9bf1d55b7442ddcd5a196b550909c3ea20c"
     },
     {
-      "file": "APP_IPHONE_67/09-rivals.png",
-      "nativeSource": "iphone/05-rivals.png",
-      "nativeSha256": "427eb0afd3abb8ce6cc83bb89f597aa74036d9c1346d6775e6cd5069b488445b",
-      "nativeWidth": 1320,
-      "nativeHeight": 2868,
-      "sourceCrop": [
-        0,
-        0,
-        1320,
-        2868
-      ],
+      "file": "APP_IPHONE_67/08-rivals.png",
+      "layout": "phone",
       "headline": "Give rivals competition.",
-      "composition": "native-dominant",
+      "sources": [
+        {
+          "file": "iphone/05-rivals.png",
+          "sha256": "427eb0afd3abb8ce6cc83bb89f597aa74036d9c1346d6775e6cd5069b488445b",
+          "width": 1320,
+          "height": 2868
+        },
+        {
+          "file": "iphone/05b-world.png",
+          "sha256": "b6aba791b8b43fbba6649c0ca1943a56ceba79fd42c0b94e4efff41c39e6860c",
+          "width": 1320,
+          "height": 2868
+        }
+      ],
+      "composition": "native-showcase",
       "width": 1320,
       "height": 2868,
-      "bytes": 2325154,
-      "sha256": "e724d0dca2a006c53dd763b79d229079bb0b7a8420dc7286ee0ec788390b391d"
+      "bytes": 1533694,
+      "sha256": "36b6564a93a1556dfc6390cf850fcf5caa51613794ae87074de6b07a1c462d66"
+    },
+    {
+      "file": "APP_IPHONE_67/09-hub-insights.png",
+      "layout": "hub",
+      "headline": "Know your hub inside out.",
+      "sources": [
+        {
+          "file": "iphone/hub-15-status.png",
+          "sha256": "183262069fd408a1a50e9a1b6d96abf6c94f5a449bd71f656efcae6019579dec",
+          "width": 2868,
+          "height": 1320
+        },
+        {
+          "file": "iphone/hub-08-insights-routes.png",
+          "sha256": "2cfaa035fb6e5dfdf5666f280d08a3ab84ff2206c720ed9febf9e416dc113c42",
+          "width": 2868,
+          "height": 1320
+        },
+        {
+          "file": "iphone/hub-12-ceremony.png",
+          "sha256": "12b4be7a62917316174fa9dcd922b4457c493e3585f3227ffa51023cea7ad31a",
+          "width": 2868,
+          "height": 1320
+        }
+      ],
+      "composition": "native-showcase",
+      "width": 1320,
+      "height": 2868,
+      "bytes": 1739294,
+      "sha256": "42f2ba4441fadbdb1b7c8a612ee77e9cda043b7955d518f982b20ea9019a3853"
     },
     {
       "file": "APP_IPHONE_67/10-progression.png",
-      "nativeSource": "iphone/06-progression.png",
-      "nativeSha256": "b352edc127eac601a4f7cc010949338c68be078f0ffb5c080c03a764438d960e",
-      "nativeWidth": 1320,
-      "nativeHeight": 2868,
-      "sourceCrop": [
-        0,
-        0,
-        1320,
-        2868
+      "layout": "phone",
+      "headline": "From one jet to an empire.",
+      "sources": [
+        {
+          "file": "iphone/06-progression.png",
+          "sha256": "b352edc127eac601a4f7cc010949338c68be078f0ffb5c080c03a764438d960e",
+          "width": 1320,
+          "height": 2868
+        }
       ],
-      "headline": "From startup. To global player.",
-      "composition": "native-dominant",
+      "composition": "native-showcase",
       "width": 1320,
       "height": 2868,
-      "bytes": 1735669,
-      "sha256": "64372af0df6f052eb31f52f0f8ee33d2467fc45ef2dad3d511f077c55ad7a7fe"
+      "bytes": 1211918,
+      "sha256": "7cc18667367901a2cbf885e3b6cece324ad4f82c747d352aa5d67465029784dd"
     },
     {
-      "file": "APP_IPHONE_65/01-hub-airport.png",
-      "nativeSource": "iphone/00a-hub-airport.png",
-      "nativeSha256": "6167cca84f84d6c20b95d264669f2f85929b2e90b833aac2faf745e370f22254",
-      "nativeWidth": 2868,
-      "nativeHeight": 1320,
-      "sourceCrop": [
-        0,
-        0,
-        2868,
-        1320
-      ],
+      "file": "APP_IPHONE_65/01-hub.png",
+      "layout": "hub",
       "headline": "Your airport, alive in 3D.",
-      "composition": "native-dominant",
-      "width": 2688,
-      "height": 1242,
-      "bytes": 2388952,
-      "sha256": "940c18782a3686b0899af413643b6114197360e236faf30426c41fe76c8364d1"
+      "sources": [
+        {
+          "file": "iphone/hub-01-overview.png",
+          "sha256": "f2cd2802b2fb9f2b6aa9af0235d153081416a4ea8cacb1718be5932d35e53e64",
+          "width": 2868,
+          "height": 1320
+        },
+        {
+          "file": "iphone/hub-02-gate.png",
+          "sha256": "1b021dd56f761c9671ff80da3571033b12c5ad6d048571307b8f77899cf52071",
+          "width": 2868,
+          "height": 1320
+        },
+        {
+          "file": "iphone/hub-03-terminal.png",
+          "sha256": "13569b7dcb1ca1b2737bf140ae281047bb8aaea1a63b2c2acc8f878288645ac7",
+          "width": 2868,
+          "height": 1320
+        },
+        {
+          "file": "iphone/hub-04-district.png",
+          "sha256": "5439aa2c10b8f3bb2c3a655d8486c2a24febceddbbeb69c4590474a7b73d2e4f",
+          "width": 2868,
+          "height": 1320
+        }
+      ],
+      "composition": "native-showcase",
+      "width": 1242,
+      "height": 2688,
+      "bytes": 1825367,
+      "sha256": "6bdc9865b5cc6b4caf82384e5a3312716b1c5379f2b66523cb0965ce707a5a12"
     },
     {
-      "file": "APP_IPHONE_65/02-hub-gate.png",
-      "nativeSource": "iphone/00b-hub-gate.png",
-      "nativeSha256": "52c539e114ba509bb26baa264002453b484c4c3215bd6b284b4ea75e47269290",
-      "nativeWidth": 2868,
-      "nativeHeight": 1320,
-      "sourceCrop": [
-        0,
-        0,
-        2868,
-        1320
-      ],
-      "headline": "Every turnaround, gate to pushback.",
-      "composition": "native-dominant",
-      "width": 2688,
-      "height": 1242,
-      "bytes": 2273852,
-      "sha256": "1375e94a0c38a591d2f5022c5dc13602e179ec9e4b8f004e962c954529f0bd1e"
-    },
-    {
-      "file": "APP_IPHONE_65/03-hub-terminal.png",
-      "nativeSource": "iphone/00c-hub-terminal.png",
-      "nativeSha256": "1376acdcfbc058644c395bd6ee302d1947a03b174bd0a8982225316ee1257c90",
-      "nativeWidth": 2868,
-      "nativeHeight": 1320,
-      "sourceCrop": [
-        0,
-        0,
-        2868,
-        1320
-      ],
-      "headline": "Step inside your terminal.",
-      "composition": "native-dominant",
-      "width": 2688,
-      "height": 1242,
-      "bytes": 2451930,
-      "sha256": "b61a13474c36c4e0a4463096d2a2fb72c488fdcdeb0b3dba69085ca9ae1d7431"
-    },
-    {
-      "file": "APP_IPHONE_65/04-hub-build.png",
-      "nativeSource": "iphone/00d-hub-build.png",
-      "nativeSha256": "2d2df52ba702cdfa23bb146ad9f22636fe5ca070a44f848d4518de6dc8a3c08b",
-      "nativeWidth": 2868,
-      "nativeHeight": 1320,
-      "sourceCrop": [
-        0,
-        0,
-        2868,
-        1320
-      ],
-      "headline": "Build it. Watch it rise.",
-      "composition": "native-dominant",
-      "width": 2688,
-      "height": 1242,
-      "bytes": 2622730,
-      "sha256": "5c8f9016b80f7ae1a45d5293577d246e592cb9c1d2d74150e787ff3e86f8d9f7"
-    },
-    {
-      "file": "APP_IPHONE_65/05-network.png",
-      "nativeSource": "iphone/01-network.png",
-      "nativeSha256": "7996850cdd46f21047a68c35aecd7bd144a2132b72c439f7149cd5befd1dbb43",
-      "nativeWidth": 1320,
-      "nativeHeight": 2868,
-      "sourceCrop": [
-        0,
-        0,
-        1320,
-        2868
-      ],
+      "file": "APP_IPHONE_65/02-network.png",
+      "layout": "phone",
       "headline": "One airline. Endless ambition.",
-      "composition": "native-dominant",
+      "sources": [
+        {
+          "file": "iphone/01-network.png",
+          "sha256": "7996850cdd46f21047a68c35aecd7bd144a2132b72c439f7149cd5befd1dbb43",
+          "width": 1320,
+          "height": 2868
+        }
+      ],
+      "composition": "native-showcase",
       "width": 1242,
       "height": 2688,
-      "bytes": 820999,
-      "sha256": "59ba7f940eefbb5f4d30452f523c17af47f86ffe7b6c55dce9dbda81dd51de3c"
+      "bytes": 909003,
+      "sha256": "aa2520c5e1c5e8bbc533c203fa8512f44dfbbbb7050aa36b2cd8ccc2d7ad5bd2"
     },
     {
-      "file": "APP_IPHONE_65/06-fleet.png",
-      "nativeSource": "iphone/02-fleet.png",
-      "nativeSha256": "ebd33d209b2403e61f8b78bfc63d8fc70ac58f087c3a3e77908ec96c38715c3e",
-      "nativeWidth": 1320,
-      "nativeHeight": 2868,
-      "sourceCrop": [
-        0,
-        0,
-        1320,
-        2868
+      "file": "APP_IPHONE_65/03-hub-build.png",
+      "layout": "hub",
+      "headline": "Build it. Watch it rise.",
+      "sources": [
+        {
+          "file": "iphone/hub-13-opened.png",
+          "sha256": "eee0501d42c34296ae074b0ff85b77a4ec6d28e1d2fe6472143ef031c19e896b",
+          "width": 2868,
+          "height": 1320
+        },
+        {
+          "file": "iphone/hub-14-works.png",
+          "sha256": "adab751525c5ea96260fd00233694ffdeae00dbc2474031c85d9b38db2188f1d",
+          "width": 2868,
+          "height": 1320
+        },
+        {
+          "file": "iphone/hub-09-upgrade.png",
+          "sha256": "ad8cb3bfc14cc1235b1020e8ab450f2a5c5d75fd6752b88c7e465215853ace3b",
+          "width": 2868,
+          "height": 1320
+        }
       ],
+      "composition": "native-showcase",
+      "width": 1242,
+      "height": 2688,
+      "bytes": 1609909,
+      "sha256": "15f67a01b69bffc184cb38a72fdb8d5276346d4cb7605cdac202e9864439ff1d"
+    },
+    {
+      "file": "APP_IPHONE_65/04-fleet.png",
+      "layout": "phone",
       "headline": "Your fleet. Your future.",
-      "composition": "native-dominant",
+      "sources": [
+        {
+          "file": "iphone/02-fleet.png",
+          "sha256": "ebd33d209b2403e61f8b78bfc63d8fc70ac58f087c3a3e77908ec96c38715c3e",
+          "width": 1320,
+          "height": 2868
+        },
+        {
+          "file": "iphone/02b-market.png",
+          "sha256": "1f6cf6c6d2e1cae3dfd0b4fb8a21a2f5f4b0d214226b5eb9494158ccc2ecad72",
+          "width": 1320,
+          "height": 2868
+        }
+      ],
+      "composition": "native-showcase",
       "width": 1242,
       "height": 2688,
-      "bytes": 1179382,
-      "sha256": "4aab7f2b1ccb691119d6eab49539d501e5828bfd2e6bd95e5e28d3bac0030100"
+      "bytes": 1232685,
+      "sha256": "839013628afa15a3a6ca0e99eaa364c2c5851c05d953f9432e2fe8815a293f34"
     },
     {
-      "file": "APP_IPHONE_65/07-routes.png",
-      "nativeSource": "iphone/03-route.png",
-      "nativeSha256": "1435cf879e760f981ad60a2d5c19e2ebc383a235d8f28847335638fb85e6621c",
-      "nativeWidth": 1320,
-      "nativeHeight": 2868,
-      "sourceCrop": [
-        0,
-        0,
-        1320,
-        2868
-      ],
+      "file": "APP_IPHONE_65/05-routes.png",
+      "layout": "phone",
       "headline": "Make every route matter.",
-      "composition": "native-dominant",
+      "sources": [
+        {
+          "file": "iphone/03-route.png",
+          "sha256": "1435cf879e760f981ad60a2d5c19e2ebc383a235d8f28847335638fb85e6621c",
+          "width": 1320,
+          "height": 2868
+        },
+        {
+          "file": "iphone/03b-routes.png",
+          "sha256": "359929625f55ada481fbcbec32c6da84c2c35976b8106a1dfc07e159fa3ac178",
+          "width": 1320,
+          "height": 2868
+        }
+      ],
+      "composition": "native-showcase",
       "width": 1242,
       "height": 2688,
-      "bytes": 1345556,
-      "sha256": "ec830e3897368d99d6bf2da72788c18f2d59d903e90bff8334e350c3dc5930ea"
+      "bytes": 1249820,
+      "sha256": "f565185fab8f01ed2399c5e98e155fcc640f00d6b9e5b8a58137c4b867bc768c"
     },
     {
-      "file": "APP_IPHONE_65/08-finance.png",
-      "nativeSource": "iphone/04-finance.png",
-      "nativeSha256": "3555d449cb03ec1f9cc837fafbf9b616da0945ca8409955b85df457fcc7dcb11",
-      "nativeWidth": 1320,
-      "nativeHeight": 2868,
-      "sourceCrop": [
-        0,
-        0,
-        1320,
-        2868
+      "file": "APP_IPHONE_65/06-hub-night.png",
+      "layout": "hub",
+      "headline": "Day turns to night.",
+      "sources": [
+        {
+          "file": "iphone/hub-06-overview-night.png",
+          "sha256": "13d5835195d42a44a9a3ca59ca54de1c1498be4bd816d2f071bfdf5a7c620909",
+          "width": 2868,
+          "height": 1320
+        },
+        {
+          "file": "iphone/hub-05-district-night.png",
+          "sha256": "70c7d9a03e83e6f11873e8f3410c4b08320cacb83f6c5e3e1feb08c67b182952",
+          "width": 2868,
+          "height": 1320
+        },
+        {
+          "file": "iphone/hub-07-insights.png",
+          "sha256": "3799e27070b105af0eb0ac1a332932422dcfa37f6f197500b5010aa71707f34b",
+          "width": 2868,
+          "height": 1320
+        }
       ],
+      "composition": "native-showcase",
+      "width": 1242,
+      "height": 2688,
+      "bytes": 1501008,
+      "sha256": "ac69d4bd938e59e3620414498efa088d644149073757bd689082f8c11de58409"
+    },
+    {
+      "file": "APP_IPHONE_65/07-finance.png",
+      "layout": "phone",
       "headline": "Build more than a network.",
-      "composition": "native-dominant",
+      "sources": [
+        {
+          "file": "iphone/04-finance.png",
+          "sha256": "3555d449cb03ec1f9cc837fafbf9b616da0945ca8409955b85df457fcc7dcb11",
+          "width": 1320,
+          "height": 2868
+        },
+        {
+          "file": "iphone/06b-briefing.png",
+          "sha256": "aa10b88a032fc8ed4846245fa4aa2586075900faaaf3aa8ca50837d6085258c9",
+          "width": 1320,
+          "height": 2868
+        }
+      ],
+      "composition": "native-showcase",
       "width": 1242,
       "height": 2688,
-      "bytes": 909008,
-      "sha256": "bf2f5dd95b5edfac44102b8926bad67b9f2afb18ecd8a22aec4a4f69bad2eec4"
+      "bytes": 1101105,
+      "sha256": "b57f223fbfadebbe95a6176c0813c6a3ac53a0cfacf19a5908556cde2b985f48"
     },
     {
-      "file": "APP_IPHONE_65/09-rivals.png",
-      "nativeSource": "iphone/05-rivals.png",
-      "nativeSha256": "427eb0afd3abb8ce6cc83bb89f597aa74036d9c1346d6775e6cd5069b488445b",
-      "nativeWidth": 1320,
-      "nativeHeight": 2868,
-      "sourceCrop": [
-        0,
-        0,
-        1320,
-        2868
-      ],
+      "file": "APP_IPHONE_65/08-rivals.png",
+      "layout": "phone",
       "headline": "Give rivals competition.",
-      "composition": "native-dominant",
+      "sources": [
+        {
+          "file": "iphone/05-rivals.png",
+          "sha256": "427eb0afd3abb8ce6cc83bb89f597aa74036d9c1346d6775e6cd5069b488445b",
+          "width": 1320,
+          "height": 2868
+        },
+        {
+          "file": "iphone/05b-world.png",
+          "sha256": "b6aba791b8b43fbba6649c0ca1943a56ceba79fd42c0b94e4efff41c39e6860c",
+          "width": 1320,
+          "height": 2868
+        }
+      ],
+      "composition": "native-showcase",
       "width": 1242,
       "height": 2688,
-      "bytes": 1652532,
-      "sha256": "7bedae316fcca68e70849a6551449b070d7b4be095e8c1d631bc95279f91a301"
+      "bytes": 1374651,
+      "sha256": "44e0ee6089acbe66e6009dc5f1755a37c454a56d5629f347efa1e7c483002eb2"
+    },
+    {
+      "file": "APP_IPHONE_65/09-hub-insights.png",
+      "layout": "hub",
+      "headline": "Know your hub inside out.",
+      "sources": [
+        {
+          "file": "iphone/hub-15-status.png",
+          "sha256": "183262069fd408a1a50e9a1b6d96abf6c94f5a449bd71f656efcae6019579dec",
+          "width": 2868,
+          "height": 1320
+        },
+        {
+          "file": "iphone/hub-08-insights-routes.png",
+          "sha256": "2cfaa035fb6e5dfdf5666f280d08a3ab84ff2206c720ed9febf9e416dc113c42",
+          "width": 2868,
+          "height": 1320
+        },
+        {
+          "file": "iphone/hub-12-ceremony.png",
+          "sha256": "12b4be7a62917316174fa9dcd922b4457c493e3585f3227ffa51023cea7ad31a",
+          "width": 2868,
+          "height": 1320
+        }
+      ],
+      "composition": "native-showcase",
+      "width": 1242,
+      "height": 2688,
+      "bytes": 1577416,
+      "sha256": "5640b84987b8a39d29e54b83fdac14ec5c5b2b58ed42f61aa079e5b3cd680032"
     },
     {
       "file": "APP_IPHONE_65/10-progression.png",
-      "nativeSource": "iphone/06-progression.png",
-      "nativeSha256": "b352edc127eac601a4f7cc010949338c68be078f0ffb5c080c03a764438d960e",
-      "nativeWidth": 1320,
-      "nativeHeight": 2868,
-      "sourceCrop": [
-        0,
-        0,
-        1320,
-        2868
+      "layout": "phone",
+      "headline": "From one jet to an empire.",
+      "sources": [
+        {
+          "file": "iphone/06-progression.png",
+          "sha256": "b352edc127eac601a4f7cc010949338c68be078f0ffb5c080c03a764438d960e",
+          "width": 1320,
+          "height": 2868
+        }
       ],
-      "headline": "From startup. To global player.",
-      "composition": "native-dominant",
+      "composition": "native-showcase",
       "width": 1242,
       "height": 2688,
-      "bytes": 1327799,
-      "sha256": "9c3d0b6a0baf41e7ee7282a95f2bdb424e0497b57a12808c65f9f65ad0213f28"
+      "bytes": 1094885,
+      "sha256": "c4508d16ffc5fdc474b902e8458388908fcbc76c9d5ce3d4a1099f81b04211c1"
     },
     {
-      "file": "APP_IPAD_PRO_3GEN_129/01-hub-airport.png",
-      "nativeSource": "ipad/00a-hub-airport.png",
-      "nativeSha256": "71eb5f8e6ecd73a17a6e9b8e8852ef42f346b5e0881c6009ba7240b37fd4bfdb",
-      "nativeWidth": 2752,
-      "nativeHeight": 2064,
-      "sourceCrop": [
-        0,
-        0,
-        2752,
-        2064
-      ],
+      "file": "APP_IPAD_PRO_3GEN_129/01-hub.png",
+      "layout": "hub",
       "headline": "Your airport, alive in 3D.",
-      "composition": "native-dominant",
-      "width": 2752,
-      "height": 2064,
-      "bytes": 3595656,
-      "sha256": "f3761eefcfdfb2b39013a0562472e3520cb39c9dfad438c0377c2bf53a9e00b3"
+      "sources": [
+        {
+          "file": "ipad/hub-01-overview.png",
+          "sha256": "dd225b5d492bfa456cba2cf56b907c9185884539423e625eedcb0a9ba096d2bd",
+          "width": 2752,
+          "height": 2064
+        },
+        {
+          "file": "ipad/hub-02-gate.png",
+          "sha256": "678095ad8564059ac178e6ab6a9c4711b4145fea9c8f284ff3375ca382349d60",
+          "width": 2752,
+          "height": 2064
+        },
+        {
+          "file": "ipad/hub-03-terminal.png",
+          "sha256": "4a6db630a34b2d4b52d9057710b8b98e33d897b712b32aba496883b9a4b1e93a",
+          "width": 2752,
+          "height": 2064
+        },
+        {
+          "file": "ipad/hub-04-district.png",
+          "sha256": "549f7b89d83fffda7ecbaaa10c0120bec55a9ace43dc8e002150ee99f4c5c304",
+          "width": 2752,
+          "height": 2064
+        }
+      ],
+      "composition": "native-showcase",
+      "width": 2064,
+      "height": 2752,
+      "bytes": 2691201,
+      "sha256": "2247b51fbe84625652ffb3da95fe37042d24bc67fbc82caf2b6ef895251f1be1"
     },
     {
-      "file": "APP_IPAD_PRO_3GEN_129/02-hub-gate.png",
-      "nativeSource": "ipad/00b-hub-gate.png",
-      "nativeSha256": "b156c09f413371af02739a049374ed04b11338d203edc6ef141448dbce22c22a",
-      "nativeWidth": 2752,
-      "nativeHeight": 2064,
-      "sourceCrop": [
-        0,
-        0,
-        2752,
-        2064
-      ],
-      "headline": "Every turnaround, gate to pushback.",
-      "composition": "native-dominant",
-      "width": 2752,
-      "height": 2064,
-      "bytes": 3424911,
-      "sha256": "4313ad33c992a0d624febae1d987c692e9badbd657ff77a03670e8b35131191c"
-    },
-    {
-      "file": "APP_IPAD_PRO_3GEN_129/03-hub-terminal.png",
-      "nativeSource": "ipad/00c-hub-terminal.png",
-      "nativeSha256": "672f33f4726ec4977bd28803e289fdc08c7ca0d2cb3cbea78b29991be64c3756",
-      "nativeWidth": 2752,
-      "nativeHeight": 2064,
-      "sourceCrop": [
-        0,
-        0,
-        2752,
-        2064
-      ],
-      "headline": "Step inside your terminal.",
-      "composition": "native-dominant",
-      "width": 2752,
-      "height": 2064,
-      "bytes": 3697404,
-      "sha256": "198954da18832f96a802e1f23b365bca57055c7f12088d7a2dec257454158064"
-    },
-    {
-      "file": "APP_IPAD_PRO_3GEN_129/04-hub-build.png",
-      "nativeSource": "ipad/00d-hub-build.png",
-      "nativeSha256": "f89a3a3eb933be9e3708e74e01c987f2289fea274b627c71ba251cdf6b95a2bf",
-      "nativeWidth": 2752,
-      "nativeHeight": 2064,
-      "sourceCrop": [
-        0,
-        0,
-        2752,
-        2064
-      ],
-      "headline": "Build it. Watch it rise.",
-      "composition": "native-dominant",
-      "width": 2752,
-      "height": 2064,
-      "bytes": 3156283,
-      "sha256": "a1fba01913233d240a8aa5eed328b1876077cfb77463ce81c472723b130b9cb1"
-    },
-    {
-      "file": "APP_IPAD_PRO_3GEN_129/05-network.png",
-      "nativeSource": "ipad/01-network.png",
-      "nativeSha256": "b4d7f7fbbc44efd89f38e3885be7c447244469b16e9480ea4710b06fed98dd23",
-      "nativeWidth": 2064,
-      "nativeHeight": 2752,
-      "sourceCrop": [
-        0,
-        0,
-        2064,
-        2752
-      ],
+      "file": "APP_IPAD_PRO_3GEN_129/02-network.png",
+      "layout": "phone",
       "headline": "One airline. Endless ambition.",
-      "composition": "native-dominant",
+      "sources": [
+        {
+          "file": "ipad/01-network.png",
+          "sha256": "b4d7f7fbbc44efd89f38e3885be7c447244469b16e9480ea4710b06fed98dd23",
+          "width": 2064,
+          "height": 2752
+        }
+      ],
+      "composition": "native-showcase",
       "width": 2064,
       "height": 2752,
-      "bytes": 683681,
-      "sha256": "b2c8cdfc48a7ed284e04615e5680b12ea2d0a3b188e2b642886592d0e369dd1f"
+      "bytes": 1146472,
+      "sha256": "9f6e747e08f5a6f5e66001f1d4c34f6ed4117544f54341785090909b5dadbaf0"
     },
     {
-      "file": "APP_IPAD_PRO_3GEN_129/06-fleet.png",
-      "nativeSource": "ipad/02-fleet.png",
-      "nativeSha256": "cf14cff9345b2dc7a623b817f79abfafae4f38ce1d34a8aaa357dfa80fa090c4",
-      "nativeWidth": 2064,
-      "nativeHeight": 2752,
-      "sourceCrop": [
-        0,
-        0,
-        2064,
-        2752
+      "file": "APP_IPAD_PRO_3GEN_129/03-hub-build.png",
+      "layout": "hub",
+      "headline": "Build it. Watch it rise.",
+      "sources": [
+        {
+          "file": "ipad/hub-13-opened.png",
+          "sha256": "f642af43e18de3b5923e177c80cf6eae4e57c56e60eaee0b62be9274c02453e9",
+          "width": 2752,
+          "height": 2064
+        },
+        {
+          "file": "ipad/hub-14-works.png",
+          "sha256": "5fe274808ca05de1406ce8fbbead599b573aa6cd41514158916c87d3e5e3d791",
+          "width": 2752,
+          "height": 2064
+        },
+        {
+          "file": "ipad/hub-09-upgrade.png",
+          "sha256": "2854ea1ff62d0d7db6d8f9f34659a02d84cb17e0a73f37e17db0bf2b1323f956",
+          "width": 2752,
+          "height": 2064
+        }
       ],
+      "composition": "native-showcase",
+      "width": 2064,
+      "height": 2752,
+      "bytes": 2467480,
+      "sha256": "87a891e840c8bac48ddc70a84e5a6adbdff41e275333301e045530240bbe262b"
+    },
+    {
+      "file": "APP_IPAD_PRO_3GEN_129/04-fleet.png",
+      "layout": "phone",
       "headline": "Your fleet. Your future.",
-      "composition": "native-dominant",
+      "sources": [
+        {
+          "file": "ipad/02-fleet.png",
+          "sha256": "cf14cff9345b2dc7a623b817f79abfafae4f38ce1d34a8aaa357dfa80fa090c4",
+          "width": 2064,
+          "height": 2752
+        },
+        {
+          "file": "ipad/02b-market.png",
+          "sha256": "861bf4591557549c570814ac78fe17a0f7a6fc000a98b6a5cf1d9e176e54f66c",
+          "width": 2064,
+          "height": 2752
+        }
+      ],
+      "composition": "native-showcase",
       "width": 2064,
       "height": 2752,
-      "bytes": 2339012,
-      "sha256": "a03a0b32998ad4264e051dd3eca7609bd19e25bea978f02de1fb7223662b0d1c"
+      "bytes": 1813444,
+      "sha256": "7518f89d826dd5c6394e5b5b2ef455df181f23050f2ef31e20427e6b8322850a"
     },
     {
-      "file": "APP_IPAD_PRO_3GEN_129/07-routes.png",
-      "nativeSource": "ipad/03-route.png",
-      "nativeSha256": "e7b800106bbd2e0b2cef59c713804096f4648616a42f1415ecdab403cc6e0dcd",
-      "nativeWidth": 2064,
-      "nativeHeight": 2752,
-      "sourceCrop": [
-        0,
-        0,
-        2064,
-        2752
-      ],
+      "file": "APP_IPAD_PRO_3GEN_129/05-routes.png",
+      "layout": "phone",
       "headline": "Make every route matter.",
-      "composition": "native-dominant",
+      "sources": [
+        {
+          "file": "ipad/03-route.png",
+          "sha256": "e7b800106bbd2e0b2cef59c713804096f4648616a42f1415ecdab403cc6e0dcd",
+          "width": 2064,
+          "height": 2752
+        },
+        {
+          "file": "ipad/03b-routes.png",
+          "sha256": "7fdd22390296c99b0e9bdb774cdfb4556d2a3c853b3f051c4402347841ce4031",
+          "width": 2064,
+          "height": 2752
+        }
+      ],
+      "composition": "native-showcase",
       "width": 2064,
       "height": 2752,
-      "bytes": 2571514,
-      "sha256": "6c4b46c3be220d9bbc2dcecd77c7a901fc061c3a26c5d713c6c7d0cb0a6b0057"
+      "bytes": 1772897,
+      "sha256": "a5bd80b212b5bc8927e71aa99eee24e4fa512f7b527fb8b2bf25a0291cecd800"
     },
     {
-      "file": "APP_IPAD_PRO_3GEN_129/08-finance.png",
-      "nativeSource": "ipad/04-finance.png",
-      "nativeSha256": "4addbcb790700298fadbce64be66c80ea99afc20475c0604eca667257fcbe856",
-      "nativeWidth": 2064,
-      "nativeHeight": 2752,
-      "sourceCrop": [
-        0,
-        0,
-        2064,
-        2752
+      "file": "APP_IPAD_PRO_3GEN_129/06-hub-night.png",
+      "layout": "hub",
+      "headline": "Day turns to night.",
+      "sources": [
+        {
+          "file": "ipad/hub-06-overview-night.png",
+          "sha256": "954dc2e5decb4a6909c5e8a748868f5a4e8a58abcc49b30b593f295575b266c8",
+          "width": 2752,
+          "height": 2064
+        },
+        {
+          "file": "ipad/hub-05-district-night.png",
+          "sha256": "ebcf46851421cdc9338c382010ae87b0603ce5bfced5f9ec1792379a73df5cc5",
+          "width": 2752,
+          "height": 2064
+        },
+        {
+          "file": "ipad/hub-07-insights.png",
+          "sha256": "ad6bf135e368c205a0692179e23f5112d5ee9718297e1d678e7a3e6d20e5e76f",
+          "width": 2752,
+          "height": 2064
+        }
       ],
+      "composition": "native-showcase",
+      "width": 2064,
+      "height": 2752,
+      "bytes": 2530674,
+      "sha256": "9fa607855040bbbcd3e832216bd8ff6a3f6096d68db3125456636da8b455eb0c"
+    },
+    {
+      "file": "APP_IPAD_PRO_3GEN_129/07-finance.png",
+      "layout": "phone",
       "headline": "Build more than a network.",
-      "composition": "native-dominant",
+      "sources": [
+        {
+          "file": "ipad/04-finance.png",
+          "sha256": "4addbcb790700298fadbce64be66c80ea99afc20475c0604eca667257fcbe856",
+          "width": 2064,
+          "height": 2752
+        },
+        {
+          "file": "ipad/06b-briefing.png",
+          "sha256": "000f92468088a8426fdd51dc5133c1e8893e011c668b22d6c9a3be5fca12bbd3",
+          "width": 2064,
+          "height": 2752
+        }
+      ],
+      "composition": "native-showcase",
       "width": 2064,
       "height": 2752,
-      "bytes": 1415683,
-      "sha256": "430ac6797be94f42a35ebca4136e307cf25049b9f6a9003fbaac93e951b17475"
+      "bytes": 1373471,
+      "sha256": "013387a7a8d5b8c5139340a9d3fc893b51ee4925dc1c62803c36bb09d0bb74b7"
     },
     {
-      "file": "APP_IPAD_PRO_3GEN_129/09-rivals.png",
-      "nativeSource": "ipad/05-rivals.png",
-      "nativeSha256": "34bbf06c40cb0bc6ac983fa1212874fd998b3c515a5007628d64c721dd2d44de",
-      "nativeWidth": 2064,
-      "nativeHeight": 2752,
-      "sourceCrop": [
-        0,
-        0,
-        2064,
-        2752
-      ],
+      "file": "APP_IPAD_PRO_3GEN_129/08-rivals.png",
+      "layout": "phone",
       "headline": "Give rivals competition.",
-      "composition": "native-dominant",
+      "sources": [
+        {
+          "file": "ipad/05-rivals.png",
+          "sha256": "34bbf06c40cb0bc6ac983fa1212874fd998b3c515a5007628d64c721dd2d44de",
+          "width": 2064,
+          "height": 2752
+        },
+        {
+          "file": "ipad/05b-world.png",
+          "sha256": "bc32ec6d0d8333b553010b475a16131e3a5ac28bb2237a32f572c30dcb42fcce",
+          "width": 2064,
+          "height": 2752
+        }
+      ],
+      "composition": "native-showcase",
       "width": 2064,
       "height": 2752,
-      "bytes": 2279922,
-      "sha256": "419d5f02a1e9e5a1b6c25768fd7d59ec369e5bedb43659238b7b0079c507f61f"
+      "bytes": 1559123,
+      "sha256": "8d05249f7f753c89723968179590fdd244daaf2550603b929e33d5aa4245a794"
+    },
+    {
+      "file": "APP_IPAD_PRO_3GEN_129/09-hub-insights.png",
+      "layout": "hub",
+      "headline": "Know your hub inside out.",
+      "sources": [
+        {
+          "file": "ipad/hub-15-status.png",
+          "sha256": "7cfcc627ec0d61c07decd60300eb85275313dbc587d39f51c364a0182a8dd9d0",
+          "width": 2752,
+          "height": 2064
+        },
+        {
+          "file": "ipad/hub-08-insights-routes.png",
+          "sha256": "ced646b2e248fc3ffa1a1c0cab4fc670114a75ea72683ccd18a98356497fba72",
+          "width": 2752,
+          "height": 2064
+        },
+        {
+          "file": "ipad/hub-12-ceremony.png",
+          "sha256": "151e6626037db478ae635092fd0d79c68156c438fd09ec5eede234952961adcc",
+          "width": 2752,
+          "height": 2064
+        }
+      ],
+      "composition": "native-showcase",
+      "width": 2064,
+      "height": 2752,
+      "bytes": 2567583,
+      "sha256": "af0585c0c40585d35a5fbad3a55a43b364e198f8e9a67bf1371e783d5354be17"
     },
     {
       "file": "APP_IPAD_PRO_3GEN_129/10-progression.png",
-      "nativeSource": "ipad/06-progression.png",
-      "nativeSha256": "2ec0d579c90d33089f0714184e097bb76aef619408dc05d4412fddb0ffc35478",
-      "nativeWidth": 2064,
-      "nativeHeight": 2752,
-      "sourceCrop": [
-        0,
-        0,
-        2064,
-        2752
+      "layout": "phone",
+      "headline": "From one jet to an empire.",
+      "sources": [
+        {
+          "file": "ipad/06-progression.png",
+          "sha256": "2ec0d579c90d33089f0714184e097bb76aef619408dc05d4412fddb0ffc35478",
+          "width": 2064,
+          "height": 2752
+        }
       ],
-      "headline": "From startup. To global player.",
-      "composition": "native-dominant",
+      "composition": "native-showcase",
       "width": 2064,
       "height": 2752,
-      "bytes": 1537595,
-      "sha256": "95b06d4ce912f09e6f37b9d44b38fa6e6e88b7be6287f60d12f7d3418a3f2176"
+      "bytes": 1413548,
+      "sha256": "4c8016b2bbcb1af73c7a75ec3b6bf981dd674bbfef3c8b8d58bb98111005b0a6"
     }
   ]
 }
