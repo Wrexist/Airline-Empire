@@ -1,0 +1,439 @@
+{
+  "locale": "en-US",
+  "creativeDirection": "Portrait throughout. The 3D Hub View leads, shown as it plays (an iPhone on its side) over two large cut-aways from other hub moments; the gameplay screens follow in a device frame with a magnified callout from the same campaign. Every pixel inside a frame, callout or panel is a native capture (Guideline 2.3.3).",
+  "shots": [
+    {
+      "id": "01-hub",
+      "layout": "hub",
+      "tag": "NEW · 3D HUB",
+      "headline": [
+        "Your airport,",
+        "alive in 3D."
+      ],
+      "sub": "Every gate, every turnaround, every passenger.",
+      "screen": "hub-01-overview.png",
+      "panels": [
+        {
+          "source": "hub-02-gate.png",
+          "label": "GATE TURNAROUND",
+          "crop": {
+            "iphone": [
+              560,
+              300,
+              1300,
+              670
+            ],
+            "ipad": [
+              350,
+              450,
+              1100,
+              1245
+            ]
+          }
+        },
+        {
+          "source": "hub-03-terminal.png",
+          "label": "THE TERMINAL",
+          "half": true,
+          "crop": {
+            "iphone": [
+              1200,
+              280,
+              800,
+              660
+            ],
+            "ipad": [
+              650,
+              620,
+              1000,
+              1131
+            ]
+          }
+        },
+        {
+          "source": "hub-04-district.png",
+          "label": "THE DISTRICT",
+          "half": true,
+          "crop": {
+            "iphone": [
+              1700,
+              250,
+              800,
+              660
+            ],
+            "ipad": [
+              1050,
+              720,
+              880,
+              995
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "02-network",
+      "layout": "phone",
+      "headline": [
+        "One airline.",
+        "Endless ambition."
+      ],
+      "sub": "94 real airports. Fly anywhere you dare.",
+      "proof": "94",
+      "screen": "01-network.png",
+      "callouts": [
+        {
+          "source": "01-network.png",
+          "label": "YOUR NETWORK, LIVE",
+          "side": "right",
+          "at": 0.36,
+          "width": 0.7,
+          "crop": {
+            "iphone": [
+              40,
+              1000,
+              760,
+              620
+            ],
+            "ipad": [
+              600,
+              950,
+              800,
+              640
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "03-hub-build",
+      "layout": "hub",
+      "tag": "NEW · 3D HUB",
+      "headline": [
+        "Build it.",
+        "Watch it rise."
+      ],
+      "sub": "Lounges, hangars and crew bases take shape.",
+      "screen": "hub-13-opened.png",
+      "panels": [
+        {
+          "source": "hub-14-works.png",
+          "label": "CONSTRUCTION IN PROGRESS",
+          "crop": {
+            "iphone": [
+              850,
+              300,
+              1650,
+              650
+            ],
+            "ipad": [
+              1100,
+              740,
+              880,
+              995
+            ]
+          }
+        },
+        {
+          "source": "hub-09-upgrade.png",
+          "label": "CHOOSE THE UPGRADE",
+          "half": true,
+          "crop": {
+            "iphone": [
+              1530,
+              150,
+              990,
+              850
+            ],
+            "ipad": [
+              1880,
+              180,
+              760,
+              860
+            ]
+          }
+        },
+        {
+          "source": "hub-13-opened.png",
+          "label": "CRANE UP",
+          "half": true,
+          "crop": {
+            "iphone": [
+              640,
+              380,
+              640,
+              550
+            ],
+            "ipad": [
+              600,
+              640,
+              780,
+              882
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "04-fleet",
+      "layout": "phone",
+      "headline": [
+        "Your fleet.",
+        "Your future."
+      ],
+      "sub": "14 aircraft types, turboprops to widebodies.",
+      "proof": "14",
+      "screen": "02-fleet.png",
+      "callouts": [
+        {
+          "source": "02b-market.png",
+          "label": "AIRCRAFT MARKET",
+          "side": "left",
+          "at": 0.5,
+          "crop": {
+            "iphone": [
+              40,
+              1390,
+              1240,
+              660
+            ],
+            "ipad": [
+              690,
+              830,
+              1300,
+              720
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "05-routes",
+      "layout": "phone",
+      "headline": [
+        "Make every",
+        "route matter."
+      ],
+      "sub": "Pick the aircraft, set the fare, watch it pay.",
+      "screen": "03-route.png",
+      "callouts": [
+        {
+          "source": "03b-routes.png",
+          "label": "EVERY ROUTE'S RESULT",
+          "side": "right",
+          "at": 0.55,
+          "crop": {
+            "iphone": [
+              30,
+              1570,
+              1260,
+              750
+            ],
+            "ipad": [
+              670,
+              990,
+              1330,
+              880
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "06-hub-night",
+      "layout": "hub",
+      "tag": "NEW · 3D HUB",
+      "headline": [
+        "Day turns",
+        "to night."
+      ],
+      "sub": "Your hub glows long after the sun goes down.",
+      "screen": "hub-06-overview-night.png",
+      "panels": [
+        {
+          "source": "hub-05-district-night.png",
+          "label": "THE DISTRICT AT NIGHT",
+          "crop": {
+            "iphone": [
+              1100,
+              300,
+              1450,
+              680
+            ],
+            "ipad": [
+              560,
+              440,
+              1480,
+              1088
+            ]
+          }
+        },
+        {
+          "source": "hub-07-insights.png",
+          "label": "HUB INSIGHTS",
+          "crop": {
+            "iphone": [
+              1382,
+              150,
+              1110,
+              720
+            ],
+            "ipad": [
+              1800,
+              200,
+              830,
+              610
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "07-finance",
+      "layout": "phone",
+      "headline": [
+        "Build more",
+        "than a network."
+      ],
+      "sub": "Cash, profit and every cost, laid bare.",
+      "screen": "04-finance.png",
+      "callouts": [
+        {
+          "source": "06b-briefing.png",
+          "label": "DAILY BRIEFING",
+          "side": "left",
+          "at": 0.42,
+          "crop": {
+            "iphone": [
+              30,
+              1300,
+              1260,
+              1000
+            ],
+            "ipad": [
+              440,
+              1390,
+              1160,
+              640
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "08-rivals",
+      "layout": "phone",
+      "headline": [
+        "Give rivals",
+        "competition."
+      ],
+      "sub": "5 rival airlines, each with its own playbook.",
+      "proof": "5",
+      "screen": "05-rivals.png",
+      "callouts": [
+        {
+          "source": "05b-world.png",
+          "label": "A LIVING WORLD",
+          "side": "right",
+          "at": 0.5,
+          "crop": {
+            "iphone": [
+              30,
+              870,
+              1260,
+              690
+            ],
+            "ipad": [
+              690,
+              470,
+              1350,
+              580
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "09-hub-insights",
+      "layout": "hub",
+      "tag": "NEW · 3D HUB",
+      "headline": [
+        "Know your hub",
+        "inside out."
+      ],
+      "sub": "Routes, load factors and profit, live.",
+      "screen": "hub-15-status.png",
+      "panels": [
+        {
+          "source": "hub-08-insights-routes.png",
+          "label": "ROUTES FROM YOUR HUB",
+          "crop": {
+            "iphone": [
+              1382,
+              300,
+              1110,
+              800
+            ],
+            "ipad": [
+              1800,
+              200,
+              830,
+              610
+            ]
+          }
+        },
+        {
+          "source": "hub-12-ceremony.png",
+          "label": "OPENING DAY",
+          "crop": {
+            "iphone": [
+              340,
+              290,
+              1080,
+              560
+            ],
+            "ipad": [
+              600,
+              400,
+              1100,
+              809
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "10-progression",
+      "layout": "phone",
+      "headline": [
+        "From one jet",
+        "to an empire."
+      ],
+      "sub": "Grow through 5 eras of aviation.",
+      "proof": "5",
+      "screen": "06-progression.png",
+      "callouts": [
+        {
+          "source": "06-progression.png",
+          "label": "NEXT ERA: EMPIRE",
+          "side": "left",
+          "at": 0.5,
+          "crop": {
+            "iphone": [
+              30,
+              1140,
+              1260,
+              500
+            ],
+            "ipad": [
+              670,
+              210,
+              1360,
+              780
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
