@@ -63,9 +63,9 @@ on:
         options: ['off', plan, apply]
         default: 'off'
       submit_for_review:
-        description: 'App Review submission: plan reads it, attach adds the app version to the open submission, submit also sends it, retarget moves to a new version with its purchases'
+        description: 'App Review submission: plan reads it, attach adds the app version to the open submission, submit also sends it, retarget moves to a new version with its purchases, withdraw takes the version out of review so its screenshots can change'
         type: choice
-        options: ['off', plan, attach, submit, retarget-plan, retarget, retarget-submit]
+        options: ['off', plan, attach, submit, retarget-plan, retarget, retarget-submit, withdraw]
         default: 'off'
 
 concurrency:
@@ -186,7 +186,7 @@ jobs:
       # submit-only dispatch skips this step instead of going red for a refusal
       # that is correct.
       - name: Push metadata
-        if: '!inputs.screenshots_only && !inputs.urls_only && inputs.submit_for_review != ''submit'' && inputs.submit_for_review != ''retarget-submit'' && inputs.submit_for_review != ''retarget'''
+        if: '!inputs.screenshots_only && !inputs.urls_only && inputs.submit_for_review != ''submit'' && inputs.submit_for_review != ''retarget-submit'' && inputs.submit_for_review != ''retarget'' && inputs.submit_for_review != ''withdraw'''
         run: |
           node scripts/asc/push-metadata.mjs \
             --version "${{ inputs.version }}" \
@@ -287,6 +287,7 @@ jobs:
             retarget-plan)   node scripts/asc/resubmit-version.mjs --version "$STORE_VERSION" ;;
             retarget)        node scripts/asc/resubmit-version.mjs --version "$STORE_VERSION" --apply ;;
             retarget-submit) node scripts/asc/resubmit-version.mjs --version "$STORE_VERSION" --apply --submit ;;
+            withdraw)        node scripts/asc/resubmit-version.mjs --version "$STORE_VERSION" --apply --withdraw-only ;;
             *) echo "::error::Unhandled submit_for_review value"; exit 1 ;;
           esac
       - uses: actions/upload-artifact@v4

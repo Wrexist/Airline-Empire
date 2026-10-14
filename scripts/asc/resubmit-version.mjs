@@ -15,6 +15,11 @@
 //   node scripts/asc/resubmit-version.mjs --version 1.1.0            # plan
 //   node scripts/asc/resubmit-version.mjs --version 1.1.0 --apply    # prepare
 //   node scripts/asc/resubmit-version.mjs --version 1.1.0 --apply --submit
+//   node scripts/asc/resubmit-version.mjs --version 1.1.0 --apply --withdraw-only
+//
+// --withdraw-only takes the version out of review and stops there, so its
+// screenshots can be replaced: Apple locks them while the version is in any
+// review submission, a prepared one included. Resubmit with --submit after.
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -25,6 +30,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const args = process.argv.slice(2)
 const apply = args.includes('--apply')
 const submit = args.includes('--submit')
+const withdrawOnly = args.includes('--withdraw-only')
 const versionIndex = args.indexOf('--version')
 const versionString = versionIndex === -1 ? null : args[versionIndex + 1]
 if (!versionString) {
@@ -58,7 +64,7 @@ const ITEM_TYPES = {
   subscriptionGroupVersion: 'subscriptionGroupVersions',
 }
 
-const report = { checkedAt: new Date().toISOString(), appId: app.id, version: versionString, mode: submit ? 'apply+submit' : apply ? 'apply' : 'plan', actions: [] }
+const report = { checkedAt: new Date().toISOString(), appId: app.id, version: versionString, mode: withdrawOnly ? (apply ? 'withdraw' : 'withdraw-plan') : submit ? 'apply+submit' : apply ? 'apply' : 'plan', actions: [] }
 
 // ---- what Apple holds now -------------------------------------------------
 const submissions = await client.getAll(`/v1/apps/${app.id}/reviewSubmissions?limit=50`)
@@ -135,6 +141,13 @@ if (!apply) {
       console.log(`Could not withdraw ${submission.id}: ${error.errors?.[0]?.detail ?? error.message}`)
     }
   }
+}
+
+if (withdrawOnly) {
+  mkdirSync(join(root, 'apple-audit'), { recursive: true })
+  writeFileSync(join(root, 'apple-audit/resubmit-version.json'), JSON.stringify(report, null, 2) + '\n')
+  console.log(JSON.stringify({ mode: report.mode, actions: report.actions }, null, 2))
+  process.exit(0)
 }
 
 // ---- the target version ---------------------------------------------------
