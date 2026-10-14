@@ -39,8 +39,10 @@ product page, so the numeric prefix is the storyboard.
 turnaround, terminal cutaway, a building going up — as **landscape** captures
 (2868×1320, 2688×1242, 2752×2064): the hub runs landscape on iPhone, and a
 landscape first shot fills the whole search-result row. They come from the
-`Hub view review` captures (the iPhone ones rotated upright); the six portrait
-shots after them are the 1.0 captures. The headline band was rebuilt too: the
+`Hub view review` captures (the iPhone ones rotated upright). The six portrait
+shots after them were re-captured for 1.2.1 from main `0b7809f` (Store
+screenshots run 38585649823), so they show the current UI: the 3D hub button
+on the map, the route map preview and the five route tabs. The headline band was rebuilt too: the
 brand line used to run into the first headline line.
 
 ## Rules
