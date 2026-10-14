@@ -1,5 +1,14 @@
 # Airline Empire — TODO
 
+## Release 1.2.1 - 14 October 2026
+
+1.2.0 is approved and live. 1.2.1 carries the hub stand tag fix (PR #50) and the full 3D hub screenshot set.
+
+- [x] Build 1.2.1 (17) from main `0b7809f`: [iOS TestFlight run 38585734176](https://github.com/Wrexist/Airline-Empire/actions/runs/38585734176), full release validation green, processed.
+- [x] Six gameplay shots re-captured ([Store screenshots run 38585649823](https://github.com/Wrexist/Airline-Empire/actions/runs/38585649823)); 60 screenshots uploaded and verified ([run 38596711693](https://github.com/Wrexist/Airline-Empire/actions/runs/38596711693)).
+- [x] Version 1.2.1 created with release notes, Game Center linked; build 17 attached and submitted ([run 38597819835](https://github.com/Wrexist/Airline-Empire/actions/runs/38597819835)): WAITING_FOR_REVIEW. Approved purchases stay out of the submission.
+- [ ] After approval: release the version in App Store Connect (release type is manual).
+
 ## 3D Hub View (1.1) - 9 October 2026
 
 PR #42 (`feature/hub-view-3d`). Handoff, gap list and the step-by-step plan: [HUB_HANDOFF.md](../docs/HUB_HANDOFF.md). Each step is one PR, closed by a `Hub view review` comparison sheet.
