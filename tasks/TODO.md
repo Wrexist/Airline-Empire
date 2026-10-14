@@ -7,6 +7,7 @@
 - [x] Build 1.2.1 (17) from main `0b7809f`: [iOS TestFlight run 38585734176](https://github.com/Wrexist/Airline-Empire/actions/runs/38585734176), full release validation green, processed.
 - [x] Six gameplay shots re-captured ([Store screenshots run 38585649823](https://github.com/Wrexist/Airline-Empire/actions/runs/38585649823)); 60 screenshots uploaded and verified ([run 38596711693](https://github.com/Wrexist/Airline-Empire/actions/runs/38596711693)).
 - [x] Version 1.2.1 created with release notes, Game Center linked; build 17 attached and submitted ([run 38597819835](https://github.com/Wrexist/Airline-Empire/actions/runs/38597819835)): WAITING_FOR_REVIEW. Approved purchases stay out of the submission.
+- [x] Owner asked for an all-portrait set: rebuilt with `scripts/store-art/showcase.cjs` (hub shots in a landscape device over hub cut-aways; gameplay in a device frame with a callout). 1.2.1 withdrawn ([run 38610040008](https://github.com/Wrexist/Airline-Empire/actions/runs/38610040008)), 60 portrait screenshots uploaded and verified ([run 38610408531](https://github.com/Wrexist/Airline-Empire/actions/runs/38610408531)), resubmitted with build 17 ([run 38610939454](https://github.com/Wrexist/Airline-Empire/actions/runs/38610939454)): WAITING_FOR_REVIEW.
 - [ ] After approval: release the version in App Store Connect (release type is manual).
 
 ## 3D Hub View (1.1) - 9 October 2026
