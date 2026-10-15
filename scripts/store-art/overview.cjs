@@ -9,9 +9,9 @@ const root = path.resolve(__dirname, '../..');
     const files = fs.readdirSync(dir).filter(f=>f.endsWith('.png')).sort();
     const tiles = await Promise.all(files.map(async (f,i)=>({
       input: await sharp(path.join(dir,f)).resize(w,h).toBuffer(),
-      left: i%3*(w+20)+10, top: Math.floor(i/3)*(h+20)+10,
+      left: i%5*(w+20)+10, top: Math.floor(i/5)*(h+20)+10,
     })));
-    await sharp({create:{width:(w+20)*3,height:(h+20)*2+20,channels:3,background:'#050B14'}})
+    await sharp({create:{width:(w+20)*5,height:(h+20)*Math.ceil(files.length/5)+20,channels:3,background:'#050B14'}})
       .composite(tiles).jpeg({quality:94}).toFile(path.join(root,'store/artwork',`overview-${device}.jpg`));
   }
 })().catch(e=>{console.error(e);process.exit(1);});
