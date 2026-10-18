@@ -529,6 +529,7 @@ nearest sixteen — a change to where every rival flies, to be measured
 with `ae-rival-scan` and the ten-year world test before it is kept.
 
 ## TD-027 — The route record has no opening date
+**Status:** RESOLVED (2026-10-19, `claude/feat-hub-moments`) — `Route` records when it opened; shown on the route header and at the top of its plan history. Save format 17 migrates older routes from the market-move record where it still has them.
 
 **Symptom.** "Since you arrived, Aurora added sixteen daily rotations" is
 a sentence the game cannot say: `Route` has no `openedAt`, and rival
@@ -810,6 +811,7 @@ noise. The threshold was **not** widened. See AE-044 final report §10 and
 ---
 
 ## TD-034 — One test is half the Core suite's CI time, and no guard fits it
+**Status:** RESOLVED (2026-10-19, `claude/feat-hub-moments`) — the ten-year test runs in its own parallel `core-decade` job (~15.5 min), unconditional, so release validation still requires it; the main Core suite skips it.
 
 **Symptom.** MEASURED (AE-044, each test run alone on the session container,
 sequentially, so contention could not distort the number):
