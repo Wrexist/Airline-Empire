@@ -32,7 +32,8 @@ let fight: (origin: AirportCode, destination: AirportCode, fareRatio: Double)? =
 }()
 
 /// `--profit`: the AE-039 alternative rival ranking (measured, not shipped).
-if arguments.contains("--profit") { CompetitorAISystem.rankingBasis = .profit }
+let rankingBasis: CompetitorAISystem.RankingBasis = arguments.contains("--profit")
+    ? .profit : CompetitorAISystem.shippedRankingBasis
 let catalog = try ContentCatalog.loadBundled()
 guard let spec = catalog.scenario("entrepreneur") else {
     fatalError("no entrepreneur scenario")
@@ -40,7 +41,7 @@ guard let spec = catalog.scenario("entrepreneur") else {
 let engine = SimulationEngine(
     state: ScenarioBootstrap.newGame(scenario: "entrepreneur", worldSeed: seed,
                                      startYear: spec.startYear),
-    systems: GamePipeline.standard(), catalog: catalog)
+    systems: GamePipeline.standard(aiRankingBasis: rankingBasis), catalog: catalog)
 _ = engine.applyNow(FoundAirlineCommand(
     airlineName: "Campaign Air", kind: .player, homeAirport: home,
     startingCash: spec.playerStartingCash))
