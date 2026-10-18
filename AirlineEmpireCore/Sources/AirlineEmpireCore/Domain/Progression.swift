@@ -21,6 +21,11 @@ public struct ProgressionState: Equatable, Codable, Sendable {
     /// read back without the fast-moving event feed. Oldest first; the newest
     /// `recordLimit` are kept.
     public var record: [ProgressionMoment]
+    /// The lifetime counters at each of the last `activityWindowDays + 1`
+    /// day starts, oldest first: what the airline flew and carried over the
+    /// last four weeks, which a contract's target is set from. Optional so
+    /// saves written before it decode unchanged; it refills in four weeks.
+    public var activityMarks: [ActivityMark]?
 
     public init() {
         era = .startup
@@ -68,6 +73,58 @@ public struct ProgressionState: Equatable, Codable, Sendable {
         }
         return nil
     }
+
+    /// Banks what a closing player route has counted toward, before its
+    /// counters go with it: its passengers into every boom rush whose region
+    /// it touches, its cancellations into the lifetime record.
+    /// `CloseRouteCommand` calls it with the route's final stats.
+    public mutating func bankClosingRoute(_ route: Route, catalog: ContentCatalog) {
+        for index in missions.indices {
+            guard case .boomRush(let region, _) = missions[index].kind,
+                  MissionMath.touchesRegion(route, region, catalog: catalog) else { continue }
+            missions[index].bankedPassengers =
+                (missions[index].bankedPassengers ?? 0) + route.stats.passengersCarried
+        }
+        counters.cancelledOnClosedRoutes =
+            (counters.cancelledOnClosedRoutes ?? 0) + route.stats.flightsCancelled
+    }
+
+    /// Days of history `activityMarks` spans — a contract's own length.
+    public static let activityWindowDays = 28
+
+    /// Notes today's counters; `ProgressionSystem` calls it once a day.
+    public mutating func markActivity() {
+        var marks = activityMarks ?? []
+        marks.append(ActivityMark(flights: counters.flightsCompleted,
+                                  passengers: counters.passengersCarried))
+        let keep = Self.activityWindowDays + 1
+        if marks.count > keep {
+            marks.removeFirst(marks.count - keep)
+        }
+        activityMarks = marks
+    }
+
+    /// Flights completed and passengers carried over the last whole days
+    /// the marks cover — up to `activityWindowDays` — and how many days that
+    /// is. Zero days when there is no history yet. Read between marks it
+    /// stays put, so an offer does not drift through the day.
+    public var recentActivity: (flights: Int64, passengers: Int64, days: Int) {
+        guard let marks = activityMarks, marks.count > 1,
+              let first = marks.first, let last = marks.last else { return (0, 0, 0) }
+        return (last.flights - first.flights, last.passengers - first.passengers,
+                marks.count - 1)
+    }
+}
+
+/// The player's lifetime flight and passenger counters at one day start.
+public struct ActivityMark: Equatable, Codable, Sendable {
+    public let flights: Int64
+    public let passengers: Int64
+
+    public init(flights: Int64, passengers: Int64) {
+        self.flights = flights
+        self.passengers = passengers
+    }
 }
 
 /// One thing the campaign did, with the day it happened.
@@ -95,6 +152,13 @@ public struct ProgressionCounters: Equatable, Codable, Sendable {
     public var passengersCarried: Int64
     public var flightsCompleted: Int64
     public var loansTaken: Int64
+    /// Cancellations on the player's routes that have since closed, banked
+    /// as each closed; with the open routes' own counts, the lifetime
+    /// cancellation figure `weatherProof` is judged on. Closing a route used
+    /// to delete its cancellations from the record, so the achievement could
+    /// be bought by closing the routes that cancelled. Optional so older
+    /// saves decode unchanged (nothing banked).
+    public var cancelledOnClosedRoutes: Int64?
 
     public init(passengersCarried: Int64 = 0, flightsCompleted: Int64 = 0,
                 loansTaken: Int64 = 0) {
@@ -172,6 +236,13 @@ public struct Mission: Equatable, Codable, Sendable {
     public let reward: Money
     /// Progress baseline captured at offer time.
     public let baseline: Int64
+    /// Boom rush only: lifetime passengers of the region's routes that have
+    /// closed since the offer, banked as each closed. Progress is measured
+    /// from route counters, and a closed route takes its counter with it, so
+    /// closing one used to drop progress — to zero, if it was the only one
+    /// — and could leave the mission unwinnable. Optional so saves written
+    /// before it decode unchanged (nothing banked).
+    public var bankedPassengers: Int64?
 
     public init(id: Int64, sourceEventID: Int64, kind: MissionKind,
                 deadline: SimTime, reward: Money, baseline: Int64) {

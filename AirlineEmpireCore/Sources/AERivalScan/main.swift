@@ -64,7 +64,8 @@ let horizonLimit: Int? = arguments.firstIndex(of: "--limit").flatMap {
 }
 /// `--profit`: the AE-039 alternative — rank by what an airframe day keeps
 /// after costs rather than what it sells (measured, not shipped).
-if arguments.contains("--profit") { CompetitorAISystem.rankingBasis = .profit }
+let rankingBasis: CompetitorAISystem.RankingBasis = arguments.contains("--profit")
+    ? .profit : CompetitorAISystem.shippedRankingBasis
 let shipped = try ContentCatalog.loadBundled()
 let catalog: ContentCatalog = try {
     guard let horizonLimit else { return shipped }
@@ -205,10 +206,11 @@ func explainReach(state: GameState, catalog: ContentCatalog, rival: Airline,
     guard let spec = specs.max(by: { $0.rangeKm < $1.rangeKm }) else { return "no aircraft" }
     let everything = CompetitorAISystem.candidateMarkets(
         from: base, airline: rival, spec: spec, profile: profile, state: state,
-        catalog: catalog, tuning: tuning, limit: catalog.orderedAirportCodes.count)
+        catalog: catalog, tuning: tuning, limit: catalog.orderedAirportCodes.count,
+        basis: rankingBasis)
     let inside = CompetitorAISystem.candidateMarkets(
         from: base, airline: rival, spec: spec, profile: profile, state: state,
-        catalog: catalog, tuning: tuning)
+        catalog: catalog, tuning: tuning, basis: rankingBasis)
     guard let target = everything.first(where: { $0.destination == far }) else { return "not in catalog" }
     let winner = inside.compactMap { c in c.score.map { (c, $0) } }.max { $0.1 < $1.1 }
     let winnerText = winner.map { "\($0.0.destination.raw) \(Int($0.1))" } ?? "none"
@@ -244,7 +246,7 @@ func runCampaign(seed: UInt64, home: AirportCode) -> CampaignResult {
     let engine = SimulationEngine(
         state: ScenarioBootstrap.newGame(scenario: "entrepreneur", worldSeed: seed,
                                          startYear: spec.startYear),
-        systems: GamePipeline.standard(), catalog: catalog)
+        systems: GamePipeline.standard(aiRankingBasis: rankingBasis), catalog: catalog)
     _ = engine.applyNow(FoundAirlineCommand(
         airlineName: "Campaign Air", kind: .player, homeAirport: home,
         startingCash: spec.playerStartingCash))
@@ -665,7 +667,7 @@ func runCampaign(seed: UInt64, home: AirportCode) -> CampaignResult {
                 let everything = CompetitorAISystem.candidateMarkets(
                     from: airline.homeAirport, airline: airline, spec: spec, profile: profile,
                     state: state, catalog: catalog, tuning: catalog.tuning.ai,
-                    limit: catalog.orderedAirportCodes.count)
+                    limit: catalog.orderedAirportCodes.count, basis: rankingBasis)
                 let ranked = everything.compactMap { c in c.score.map { (c, $0) } }.sorted { $0.1 > $1.1 }
                 let myFarEnds = Set(state.routes(of: player).compactMap { r -> AirportCode? in
                     r.origin == airline.homeAirport ? r.destination : r.destination == airline.homeAirport ? r.origin : nil

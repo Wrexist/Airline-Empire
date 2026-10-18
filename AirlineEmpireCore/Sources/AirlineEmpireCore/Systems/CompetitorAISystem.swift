@@ -6,8 +6,14 @@
 public struct CompetitorAISystem: SimulationSystem {
     public let id = "competitorAI"
     public let cadence = Cadence.daily
+    /// What this pipeline's rivals rank candidate markets by. The shipped
+    /// game runs `shippedRankingBasis`; the scan and probe executables build
+    /// a pipeline on `.profit` to re-measure the alternative.
+    public let rankingBasis: RankingBasis
 
-    public init() {}
+    public init(rankingBasis: RankingBasis = CompetitorAISystem.shippedRankingBasis) {
+        self.rankingBasis = rankingBasis
+    }
 
     public func update(state: inout GameState, context: SimContext) {
         let tuning = context.catalog.tuning.ai
@@ -233,7 +239,8 @@ public struct CompetitorAISystem: SimulationSystem {
                                         spec: AircraftTypeSpec, profile: AIProfile,
                                         state: GameState, catalog: ContentCatalog,
                                         tuning: AITuning,
-                                        limit: Int? = nil) -> [MarketCandidate] {
+                                        limit: Int? = nil,
+                                        basis: RankingBasis = shippedRankingBasis) -> [MarketCandidate] {
         guard let originSpec = catalog.airport(origin) else { return [] }
         // The offer this airline would put on a new pair: a starter
         // operation at its archetype's fare, carrying its own reputation.
@@ -300,7 +307,7 @@ public struct CompetitorAISystem: SimulationSystem {
                 serviceTier: airline.serviceTier,
                 reputationMultiplier: airline.reputation.demandMultiplier(
                     tuning: catalog.tuning.reputation),
-                incumbents: incumbents, state: state, catalog: catalog).value
+                incumbents: incumbents, state: state, catalog: catalog, basis: basis).value
             guard score > 0 else { out.append(candidate(.unprofitable(score))); continue }
             out.append(candidate(.scored(score)))
         }
@@ -324,10 +331,14 @@ public struct CompetitorAISystem: SimulationSystem {
         case profit
     }
 
-    /// The shipped basis; the scan and probe executables set `.profit` to
-    /// re-measure the alternative. Tooling only — nothing in the app or the
-    /// simulation writes it.
-    nonisolated(unsafe) public static var rankingBasis: RankingBasis = .revenue
+    /// The shipped basis (AE-041). A constant: the basis used to be a
+    /// mutable global that tooling — and one test — flipped to `.profit` and
+    /// back, which raced every other suite running in parallel and could
+    /// hand a campaign test the wrong rivals. A different basis is now a
+    /// parameter: `CompetitorAISystem(rankingBasis:)`,
+    /// `GamePipeline.standard(aiRankingBasis:)`, or `basis:` on the
+    /// estimator functions below.
+    public static let shippedRankingBasis: RankingBasis = .revenue
 
     /// What one airframe of `spec` would sell on a market per day, in
     /// dollars — and, on the `.profit` basis, what it would keep after the
@@ -348,7 +359,7 @@ public struct CompetitorAISystem: SimulationSystem {
                                         origin: AirportSpec, destination: AirportSpec,
                                         state: GameState, catalog: ContentCatalog,
                                         rotationsPerDay: Int? = nil,
-                                        basis: RankingBasis = rankingBasis) -> Double {
+                                        basis: RankingBasis = shippedRankingBasis) -> Double {
         let ops = catalog.tuning.ops
         let rotations = rotationsPerDay ?? FlightSchedulingSystem.roundTripsPerAircraftPerDay(
             distanceKm: distanceKm, spec: spec, ops: ops)
@@ -423,7 +434,7 @@ public struct CompetitorAISystem: SimulationSystem {
         spec: AircraftTypeSpec, fareRatio: Double, serviceTier: ServiceTier,
         reputationMultiplier: Double = 1.0, incumbents: [Route] = [],
         rotationsPerDay: Int? = nil, state: GameState, catalog: ContentCatalog,
-        basis: RankingBasis = rankingBasis) -> AirframeDayEstimate {
+        basis: RankingBasis = shippedRankingBasis) -> AirframeDayEstimate {
         let rotations = rotationsPerDay ?? FlightSchedulingSystem.roundTripsPerAircraftPerDay(
             distanceKm: distanceKm, spec: spec, ops: catalog.tuning.ops)
         let demand = DemandSystem.serviceDemand(
@@ -459,7 +470,8 @@ public struct CompetitorAISystem: SimulationSystem {
         var best: MarketCandidate?
         for candidate in Self.candidateMarkets(from: origin, airline: airline, spec: spec,
                                                profile: profile, state: state,
-                                               catalog: context.catalog, tuning: tuning) {
+                                               catalog: context.catalog, tuning: tuning,
+                                               basis: rankingBasis) {
             guard let score = candidate.score else { continue }
             if best == nil || score > best!.score! {
                 best = candidate
@@ -489,16 +501,22 @@ public struct CompetitorAISystem: SimulationSystem {
             guard let airport = context.catalog.airport(end) else { return false }
             if airport.runwayClass < spec.runwayRequirement { return false }
         }
-        return true
+        // The assignment validator refuses a round trip longer than the
+        // day; asking first keeps the slot from being spent on a refusal.
+        return FlightSchedulingSystem.roundTripsPerDay(spec: spec, on: route, state: state,
+                                                       catalog: context.catalog) > 0
     }
 
     private func manageRoutes(_ airlineID: AirlineID, profile: AIProfile,
                               state: inout GameState, context: SimContext,
                               tuning: AITuning) {
         for route in state.routes(of: airlineID) {
-            // Pricing response to competitors on the same market.
+            // Pricing response to competitors on the same market — the ones
+            // actually flying it. An empty route's fare sells no seats, and
+            // answering it let a player crash a rival's fare with a route it
+            // never put an aircraft on.
             let rivals = state.routes.values.filter {
-                $0.airline != airlineID
+                $0.airline != airlineID && $0.isOperating
                     && $0.sameMarket(origin: route.origin, destination: route.destination)
             }
             if let cheapest = rivals.map(\.ticketPrice).min(),
@@ -515,10 +533,26 @@ public struct CompetitorAISystem: SimulationSystem {
                 }
             }
 
+            // Frequency only within what the airframes can rotate. A hot
+            // route used to climb a trip a week to the cap of 20 whatever was
+            // assigned — one aeroplane flying three trips held the slots of
+            // twenty at both ends. One trip above capacity is allowed: it is
+            // the request `employ` answers with the next airframe
+            // (`routeNeedsAnotherAircraft`). Anything beyond that is handed
+            // back.
+            let capacity = FlightSchedulingSystem.rotationCapacity(
+                route: route, state: state, catalog: context.catalog)
+            if capacity > 0, route.dailyRoundTrips > capacity + 1 {
+                issue(SetRouteFrequencyCommand(airline: airlineID, route: route.id,
+                                               dailyRoundTrips: capacity + 1),
+                      state: &state, context: context)
+                continue
+            }
+
             // Frequency: push winners, trim losers.
             guard route.stats.seatsFlown > 500 else { continue }
             if route.stats.loadFactor > tuning.expandLoadFactor,
-               route.dailyRoundTrips < 20 {
+               route.dailyRoundTrips < 20, route.dailyRoundTrips <= capacity {
                 issue(SetRouteFrequencyCommand(airline: airlineID, route: route.id,
                                                dailyRoundTrips: route.dailyRoundTrips + 1),
                       state: &state, context: context)

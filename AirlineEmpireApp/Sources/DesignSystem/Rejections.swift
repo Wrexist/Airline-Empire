@@ -114,6 +114,17 @@ enum Rejections {
                          suggestion: "Use a smaller aircraft, or choose an "
                             + "airport that can take this one.")
 
+        // In range, but there and back takes longer than the operating day,
+        // so the scheduler would never give the aircraft a flight on it.
+        case "route.tooLongForDay":
+            return .init(title: "Too far for one day",
+                         explanation: "This aircraft cannot fly there and back "
+                            + "inside one operating day, so it would never fly "
+                            + "this route.",
+                         suggestion: "Assign a faster aircraft, or open the "
+                            + "route to a nearer airport. A crew base at "
+                            + "either end lengthens the day.")
+
         case "fleet.alreadyAssigned":
             return .init(title: "Aircraft already flying",
                          explanation: "This aircraft is assigned to another "

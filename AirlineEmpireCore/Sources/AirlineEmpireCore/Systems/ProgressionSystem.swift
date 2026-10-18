@@ -25,6 +25,8 @@ public struct ProgressionSystem: SimulationSystem {
         checkMilestones(player: player, state: &state, context: context)
         checkAchievements(player: player, state: &state, context: context, tuning: tuning)
         runMissions(player: player, state: &state, context: context, tuning: tuning)
+        // The four-week history a contract's target is set from.
+        state.progression.markActivity()
     }
 
     // MARK: Capabilities
@@ -73,7 +75,9 @@ public struct ProgressionSystem: SimulationSystem {
 
     private func checkMilestones(player: Airline, state: inout GameState,
                                  context: SimContext) {
-        let routes = state.routes(of: player.id)
+        // As for the era gates: destinations and an intercontinental route
+        // are milestones of the network that flies, not of the routes opened.
+        let routes = state.operatingRoutes(of: player.id)
         let fleet = state.fleet(of: player.id)
         let counters = state.progression.counters
 
@@ -144,19 +148,19 @@ public struct ProgressionSystem: SimulationSystem {
                    && state.progression.counters.loansTaken == 0,
                state: &state, context: context)
 
-        // Weather-proof: big completed volume at near-perfect completion.
+        // Weather-proof: big completed volume at near-perfect completion,
+        // over the airline's whole life. It was judged on the routes still
+        // open, so closing the ones that cancelled bought it; closed routes'
+        // cancellations are banked now (`bankClosingRoute`), and the
+        // completed side is the lifetime counter.
         let counters = state.progression.counters
         if counters.flightsCompleted >= tuning.weatherProofFlights {
-            let routes = state.routes(of: player.id)
-            let totals = routes.reduce((completed: Int64(0), total: Int64(0))) {
-                ($0.completed + $1.stats.flightsCompleted, $0.total + $1.stats.totalFlights)
-            }
-            if totals.total > 0 {
-                unlock("weatherProof",
-                       when: Double(totals.completed) / Double(totals.total)
-                           >= tuning.weatherProofCompletionRate,
-                       state: &state, context: context)
-            }
+            let cancelled = MissionMath.lifetimeCancellations(player: player, state: state)
+            let total = counters.flightsCompleted + cancelled
+            unlock("weatherProof",
+                   when: Double(counters.flightsCompleted) / Double(total)
+                       >= tuning.weatherProofCompletionRate,
+                   state: &state, context: context)
         }
     }
 
@@ -203,12 +207,15 @@ public struct ProgressionSystem: SimulationSystem {
             else { continue }
             let baseline = regionPassengers(region, player: player, state: state,
                                             catalog: context.catalog)
-            // Target scales with what the player could plausibly add.
+            // Target scales with what the player could plausibly add: the
+            // seats its routes touching the region actually put on sale a
+            // day, not 150 a trip at whatever frequency was asked for.
             let routesInRegion = state.routes(of: player.id).filter { route in
                 touchesRegion(route, region, catalog: context.catalog)
             }
             let dailySeats = routesInRegion.reduce(0) { partial, route in
-                partial + route.dailyRoundTrips * 2 * 150
+                partial + MissionMath.dailySeatsOffered(route, state: state,
+                                                        catalog: context.catalog)
             }
             let days = max(1, (event.endsAt - context.current).minutes
                 / GameCalendar.minutesPerDay)

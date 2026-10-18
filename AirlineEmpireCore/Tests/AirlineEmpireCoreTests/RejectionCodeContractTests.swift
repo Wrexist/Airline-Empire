@@ -181,6 +181,31 @@ struct RejectionCodeContractTests {
             .validate(state: state, catalog: catalog)?.code == "fleet.notYourAircraft")
     }
 
+    @Test("A round trip longer than the operating day is route.tooLongForDay")
+    func tooLongForDayCode() throws {
+        let catalog = try ContentCatalog.loadBundled()
+        // An AI airline buys the widebody the player's era would lock.
+        let engine = SimulationEngine(state: Fixtures.newState(seed: 4242),
+                                      systems: [], catalog: catalog)
+        _ = engine.applyNow(FoundAirlineCommand(
+            airlineName: "Contract Long Haul", kind: .ai, homeAirport: "LHR",
+            startingCash: Money.dollars(900_000_000),
+            aiProfile: AIProfile(archetype: .premium)))
+        let airline = try #require(engine.state.airlines.values.first).id
+        let (spec, far) = try #require(
+            AssignmentEligibilityTests.unrotatablePairing(from: "LHR", catalog: catalog))
+        _ = engine.applyNow(BuyUsedAircraftCommand(buyer: airline, type: spec.code, ageYears: 4))
+        _ = engine.applyNow(OpenRouteCommand(
+            airline: airline, origin: "LHR", destination: far,
+            dailyRoundTrips: 1, ticketPrice: Money.dollars(900)))
+        let state = engine.state
+        let aircraft = try #require(state.fleet(of: airline).first)
+        let route = try #require(state.routes(of: airline).first)
+        #expect(AssignAircraftToRouteCommand(airline: airline, route: route.id,
+                                             aircraftID: aircraft.id)
+            .validate(state: state, catalog: catalog)?.code == "route.tooLongForDay")
+    }
+
     @Test("Returning an owned aircraft is fleet.notLeased")
     func notLeasedCode() async throws {
         let (session, player, catalog) = try await world()
@@ -215,7 +240,8 @@ struct RejectionCodeContractTests {
             "progression.lockedCategory", "progression.tooManyPrograms",
             "route.badFrequency", "route.badPrice", "route.beyondRange",
             "route.duplicate", "route.flightsAirborne", "route.noSlots",
-            "route.runwayTooSmall", "route.sameAirport", "route.tooShort",
+            "route.runwayTooSmall", "route.sameAirport", "route.tooLongForDay",
+            "route.tooShort",
         ]
         // The three that were wrong. Named explicitly so that anyone
         // reintroducing them meets this test rather than a silent no-op.

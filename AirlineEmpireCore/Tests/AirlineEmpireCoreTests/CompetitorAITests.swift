@@ -48,6 +48,60 @@ struct CompetitorAITests {
         #expect((engine.state.aircraft[aircraft] != nil) == (situation == .generating))
     }
 
+    /// GAME_AUDIT_2026-10-18 §2.1: a hot rival route gained a round trip
+    /// every decision up to 20 whatever was assigned, holding slots its one
+    /// aeroplane could never use. Frequency now stays within the airframes'
+    /// rotations plus the one-trip request that brings the next airframe,
+    /// and anything above that is handed back.
+    @Test func rivalFrequencyStaysWithinTheRotationsItCanFly() throws {
+        let catalog = try ContentCatalog.loadBundled()
+        let setup = SimulationEngine(state: Fixtures.newState(), systems: [], catalog: catalog)
+        #expect(setup.applyNow(FoundAirlineCommand(
+            airlineName: "Slot Hoard", kind: .ai, homeAirport: "ARN",
+            startingCash: .dollars(400_000_000), aiProfile: AIProfile(archetype: .lowCost))) == .applied)
+        let id = try #require(setup.state.orderedAirlineIDs.first)
+        let spec = try #require(catalog.aircraftType("MR180"))
+        // Three routes, one MR180 each: at capacity, one above, and at 20.
+        var routes: [(RouteID, capacity: Int)] = []
+        for (index, destination) in ["OSL", "CPH", "HEL"].enumerated() {
+            #expect(setup.applyNow(BuyUsedAircraftCommand(buyer: id, type: "MR180",
+                                                          ageYears: 4)) == .applied)
+            let aircraft = try #require(setup.state.fleet(of: id).last).id
+            let distance = try #require(catalog.distanceKm("ARN", AirportCode(destination)))
+            let capacity = FlightSchedulingSystem.roundTripsPerAircraftPerDay(
+                distanceKm: distance, spec: spec, ops: catalog.tuning.ops)
+            try #require(capacity >= 1 && capacity + 1 < 20)
+            let trips = [capacity, capacity + 1, 20][index]
+            #expect(setup.applyNow(OpenRouteCommand(
+                airline: id, origin: "ARN", destination: AirportCode(destination),
+                dailyRoundTrips: trips, ticketPrice: .dollars(99))) == .applied)
+            let route = try #require(setup.state.routes(of: id).last).id
+            #expect(setup.applyNow(AssignAircraftToRouteCommand(
+                airline: id, route: route, aircraftID: aircraft)) == .applied)
+            routes.append((route, capacity))
+        }
+        var state = setup.state
+        for (route, _) in routes {
+            // Running full: every route is one the old rule would thicken.
+            state.routes[route]?.stats = RouteStats(flightsCompleted: 100,
+                                                    passengersCarried: 9_500,
+                                                    seatsFlown: 10_000)
+        }
+        // One decision: the AI decides once every `decisionIntervalDays`.
+        let engine = SimulationEngine(state: state, systems: [CompetitorAISystem()], catalog: catalog)
+        engine.advance(ticks: Fixtures.ticksPerDay * catalog.tuning.ai.decisionIntervalDays)
+
+        let trips = routes.map { engine.state.routes[$0.0]?.dailyRoundTrips }
+        // At capacity and hot: one more trip, the request for an airframe.
+        #expect(trips[0] == routes[0].capacity + 1)
+        // Already asking: no further.
+        #expect(trips[1] == routes[1].capacity + 1)
+        // Twenty with one aeroplane: handed back to capacity plus one.
+        #expect(trips[2] == routes[2].capacity + 1)
+        #expect(engine.state.world.slotsHeld(by: id, at: "HEL")
+                == Route.dailySlotMovements(roundTrips: routes[2].capacity + 1))
+    }
+
     @Test func worldSetupFoundsDistinctCompetitors() throws {
         let (engine, player) = try AIFixtures.world(competitors: 5)
         let ais = engine.state.airlines.values.filter { $0.kind == .ai }

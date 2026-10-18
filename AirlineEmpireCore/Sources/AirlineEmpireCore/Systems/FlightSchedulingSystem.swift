@@ -113,6 +113,61 @@ public struct FlightSchedulingSystem: SimulationSystem {
         return max(0, Int((operatingMinutes ?? ops.operatingDayMinutes) / roundTripBlock))
     }
 
+    /// Minutes one round trip of `spec` on `route` holds an airframe for the
+    /// route's operator: two legs and two turnarounds — the block the
+    /// materialisation above plans each rotation in.
+    public static func roundTripMinutes(spec: AircraftTypeSpec, on route: Route,
+                                        state: GameState, catalog: ContentCatalog) -> Int64 {
+        let minutes = flightMinutes(distanceKm: route.distanceKm,
+                                    cruiseSpeedKmh: spec.cruiseSpeedKmh,
+                                    overheadMinutes: catalog.tuning.ops.flightOverheadMinutes)
+        return 2 * (minutes + state.turnaroundMinutes(spec: spec, airline: route.airline))
+    }
+
+    /// Round trips one airframe of `spec` could fly on `route` in a day for
+    /// the route's operator: the route's own operating window (a crew base
+    /// lengthens it) and the operator's turnaround, as `update` plans them.
+    ///
+    /// Zero means a single round trip does not fit the day, so an aircraft
+    /// assigned there is never given a flight while its lease, payroll and
+    /// checks keep billing. Range alone allowed that for every long-haul
+    /// type past roughly 6,500 km; `AssignAircraftToRouteCommand` now
+    /// refuses it, and the assignment picker says why.
+    public static func roundTripsPerDay(spec: AircraftTypeSpec, on route: Route,
+                                        state: GameState, catalog: ContentCatalog) -> Int {
+        roundTripsPerAircraftPerDay(
+            distanceKm: route.distanceKm, spec: spec, ops: catalog.tuning.ops,
+            operatingMinutes: state.operatingWindow(for: route, catalog: catalog).minutes,
+            turnaroundMinutes: state.turnaroundMinutes(spec: spec, airline: route.airline))
+    }
+
+    /// Round trips per day a route's assigned airframes can fly at most,
+    /// whatever its frequency: every assigned airframe not still on order,
+    /// at `update`'s per-aircraft capacity — timed, as `update` times it, by
+    /// the route's first assigned aircraft's type in the route's operating
+    /// window. Zero with nothing assigned.
+    public static func rotationCapacity(route: Route, state: GameState,
+                                        catalog: ContentCatalog) -> Int {
+        let assigned = route.assignedAircraft.sorted().compactMap { state.aircraft[$0] }
+        guard let first = assigned.first,
+              let spec = catalog.aircraftType(first.typeCode) else { return 0 }
+        let airframes = assigned.filter { !$0.status.isOnOrder }.count
+        return roundTripsPerDay(spec: spec, on: route, state: state, catalog: catalog) * airframes
+    }
+
+    /// The round trips a route actually offers a day: its frequency, capped
+    /// by what its airframes can rotate (`rotationCapacity`) — the same cap
+    /// `update` materialises the day with.
+    ///
+    /// The demand engine prices a route's schedule with this. It used the
+    /// requested frequency, so twenty round trips asked of one aeroplane
+    /// that can fly three bought the schedule quality of twenty — while
+    /// flying three and holding the slots of twenty.
+    public static func flyableRoundTrips(route: Route, state: GameState,
+                                         catalog: ContentCatalog) -> Int {
+        min(route.dailyRoundTrips, rotationCapacity(route: route, state: state, catalog: catalog))
+    }
+
     /// Whether the aircraft will be airworthy when today's flying starts.
     /// `FleetSystem` runs after the scheduler on the same tick: an aircraft
     /// whose check finishes today flies today, and one whose wear will send
