@@ -590,7 +590,7 @@ final class GameController {
             // ring and the account, never to banners or the speakers, and
             // the audio director is seeded from the world as it now stands.
             var report: OfflineCatchUpReport?
-            if let awaySeconds, self.catchUpAllowed {
+            if let awaySeconds, self.earnsCatchUp(awaySeconds, catalog: catalog) {
                 self.isCatchingUp = true
                 report = await session.catchUp(awaySeconds: awaySeconds)
                 self.isCatchingUp = false
@@ -1095,8 +1095,16 @@ final class GameController {
         catchUp(awaySeconds: seconds)
     }
 
+    /// Whether an absence earns any catch-up at all — asked before the
+    /// session is, so a short app switch does not flash "Catching up".
+    private func earnsCatchUp(_ awaySeconds: Double, catalog: ContentCatalog?) -> Bool {
+        guard catchUpAllowed, let catalog else { return false }
+        return OfflineCatchUp.creditedGameMinutes(awaySeconds: awaySeconds,
+                                                  tuning: catalog.tuning.offline) > 0
+    }
+
     private func catchUp(awaySeconds: Double) {
-        guard let session, catchUpAllowed else { return }
+        guard let session, earnsCatchUp(awaySeconds, catalog: catalog) else { return }
         // Everything the catch-up publishes is newer than the world on
         // screen, and the window closes at the report's end.
         quietEventsAfter = snapshot?.clock.now
