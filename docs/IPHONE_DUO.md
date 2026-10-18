@@ -40,23 +40,24 @@ Xcode 27.1. GitHub's `xcode-27` runner image has it
    8 %, not only on aspect: folding outer → inner on its side is 1.455 →
    1.422, the same ratio at nearly twice the size. A construction site being
    watched stays in frame through the fold.
-5. `FoldableLayoutReviewTests` hosts the shell, Finance and Settings at all
+5. `GameShell` keeps its tab bar on any iPhone, even at regular width. The
+   old size-class switch to a sidebar rebuilt every tab on a fold, losing
+   the map camera, selection and any half-drawn route. iPad is unchanged.
+6. `FoldableLayoutReviewTests` hosts the shell, Finance and Settings at all
    four Duo window shapes, and pins the `HubChromeMode` each one gets.
-6. CI: `ci.yml` takes `xcode: 27.1` (the phone app job runs on `xcode-27`)
+7. CI: `ci.yml` takes `xcode: 27.1` (the phone app job runs on `xcode-27`)
    and `duo: true` (new `app-duo` job: Xcode 27.1, finds or creates an
    iPhone Duo simulator, runs the Duo tests plus the shell, map and hub
    journeys, prints `DUO-*` and `KEY-*` screenshots into the log).
-7. `ios-testflight.yml` takes `xcode: 27.1`: full validation, the Duo lane
+8. `ios-testflight.yml` takes `xcode: 27.1`: full validation, the Duo lane
    and the archive all use Xcode 27.1.
 
 ## Already fine (checked)
 
 - No `UIDevice.current.orientation`, no hard-coded screen heights, no
   `scaledToFill` hero images in the app.
-- The shell switches tab bar ↔ sidebar on `horizontalSizeClass`, not on
-  device type. The map and hub lay out from `GeometryReader` sizes and safe
-  areas, so a vertical tab bar on the side is a safe-area change, not a
-  break.
+- The map and hub lay out from `GeometryReader` sizes and safe areas, so a
+  vertical tab bar on the side is a safe-area change, not a break.
 
 ## Still to do
 

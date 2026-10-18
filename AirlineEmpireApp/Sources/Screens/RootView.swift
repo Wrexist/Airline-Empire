@@ -218,10 +218,19 @@ struct GameShell: View {
 
     var body: some View {
         Group {
-            // iPad and landscape get a sidebar rather than a phone tab bar
+            // iPad gets a sidebar rather than a phone tab bar
             // (docs/UI_ARCHITECTURE.md §2 — the adaptive shell that was
             // specified and never built, UI-013).
-            if sizeClass == .regular {
+            //
+            // Not an iPhone, even when it reports regular width. Swapping
+            // the container rebuilds every tab, and with it the map's
+            // camera, selection, navigation path and half-drawn route — an
+            // iPhone changes width class mid-session: a Pro Max turning to
+            // landscape for the hub, and iPhone Duo on every fold, where
+            // Apple's own test is that context survives the fold. The tab
+            // bar is what the iOS 27.1 SDK lays out natively on the Duo's
+            // inner display (docs/IPHONE_DUO.md).
+            if sizeClass == .regular && !AEOrientation.isPhone {
                 NavigationSplitView {
                     List(selection: sidebarSelection) {
                         ForEach(Tab.allCases, id: \.self) { tab in

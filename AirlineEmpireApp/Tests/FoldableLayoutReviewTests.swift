@@ -16,8 +16,9 @@ import AirlineEmpireCore
 final class FoldableLayoutReviewTests: XCTestCase {
     /// Window shapes in points. Outer 1398×2034 px and inner 1878×2670 px,
     /// both at 3x (apple.com/iphone-duo/specs). The size class of the inner
-    /// display is rendered both ways: the shell switches tab bar ↔ sidebar
-    /// on it, and both branches must hold at this shape.
+    /// display is rendered both ways: screens branch on it, and both
+    /// branches must hold at this shape. (The shell itself keeps its tab bar
+    /// on any iPhone so a fold never rebuilds the tabs — `GameShell`.)
     private struct Canvas {
         let name: String
         let size: CGSize
