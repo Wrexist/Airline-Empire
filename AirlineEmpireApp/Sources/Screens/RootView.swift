@@ -391,14 +391,23 @@ struct GameOverView: View {
                 // continued — loading it only returns here — and on the free
                 // tier it held the one save slot, so founding the next airline
                 // opened the paywall instead of the setup screen.
+                //
+                // It also carries the seed: the founding screen opens with it
+                // filled in, so "replays the same world" is one tap rather
+                // than a number to copy by hand.
                 Button("Start a new airline") {
-                    let collapsed = controller.activeSaveSlot
-                    controller.quitToMenu()
-                    if let collapsed { controller.deleteSlot(collapsed) }
+                    if let seed = controller.snapshot?.meta.worldSeed {
+                        controller.startAgain(fromCollapsed: seed)
+                    } else {
+                        let collapsed = controller.activeSaveSlot
+                        controller.quitToMenu()
+                        if let collapsed { controller.deleteSlot(collapsed) }
+                    }
                 }
                 .buttonStyle(.aePrimary)
                 .padding(.top, AETheme.spacingS)
-                Text("This airline's save is cleared. Its seed, above, replays the same world.")
+                .accessibilityIdentifier("ae-game-over-restart")
+                Text("This airline's save is cleared. Its seed, above, is filled in for the next airline — keep it to fly the same world again.")
                     .font(.caption)
                     .foregroundStyle(AETheme.mutedText)
                     .multilineTextAlignment(.center)
@@ -482,6 +491,10 @@ struct RunSummaryCard: View {
                     AESectionHeader(text: "This world", systemImage: "globe")
                     Text("Seed \(String(snapshot.meta.worldSeed))")
                         .font(.subheadline.monospaced())
+                        // Selectable, so it can be copied and shared — the
+                        // whole point of showing a seed.
+                        .textSelection(.enabled)
+                        .accessibilityIdentifier("ae-game-over-seed")
                     Text("Start a new airline with this seed to fly the same world again — the same markets, the same rivals, the same weather.")
                         .font(.caption)
                         .foregroundStyle(AETheme.mutedText)

@@ -116,6 +116,27 @@ final class GameController {
     private var sessionCheckpoint: SessionCheckpoint?
     private(set) var lastSessionReport: SessionReport?
     private(set) var lastSessionNextMove: String?
+    /// The world seed a collapsed airline asked to replay. The game-over
+    /// screen says its seed "replays the same world", and then handed the
+    /// player a blank seed field; this carries it to the founding screen,
+    /// which takes it once (`takeReplaySeed`).
+    private(set) var replaySeed: UInt64?
+
+    /// Leaves a collapsed airline for the founding screen, with its seed
+    /// ready to fly the same world again. The save goes with it: it can
+    /// never be continued, and on the free tier it held the one slot.
+    func startAgain(fromCollapsed seed: UInt64) {
+        let collapsed = activeSaveSlot
+        quitToMenu()
+        if let collapsed { deleteSlot(collapsed) }
+        replaySeed = seed
+    }
+
+    /// The pending replay seed, handed over once.
+    func takeReplaySeed() -> UInt64? {
+        defer { replaySeed = nil }
+        return replaySeed
+    }
 
     /// The menu's "since you opened this campaign" card belongs to the
     /// session that just ended. It outlived that save's deletion and the

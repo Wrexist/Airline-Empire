@@ -118,6 +118,15 @@ struct NewGameView: View {
             if !entitlements.access.allowsScenario(scenario) {
                 scenario = defaultScenario
             }
+            // Arrived from "Start a new airline" on the game-over screen:
+            // straight to founding, with the collapsed world's seed filled in
+            // and its field open, so replaying it is the default and changing
+            // it is one edit.
+            if let seed = controller.takeReplaySeed() {
+                seedText = String(seed)
+                showsSeed = true
+                showingSetup = true
+            }
         }
         // Buying Pro from this screen must make the locked pills usable
         // without a relaunch.
