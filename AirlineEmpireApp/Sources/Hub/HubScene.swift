@@ -328,14 +328,28 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
     }
 
     private var framedAspect: Float = 0
+    private var framedSize: CGSize = .zero
     private var framedForRealBounds = false
     private var focusIndex: Int?
+
+    /// Whether the view has changed shape enough to frame the shot again.
+    /// Aspect alone misses a fold: iPhone Duo's outer and inner displays on
+    /// their sides are 1.455 and 1.422 — nearly the same ratio at almost
+    /// twice the size, and with different chrome over them.
+    private var needsReframe: Bool {
+        if abs(aspect - framedAspect) > 0.05 { return true }
+        let size = arView.bounds.size
+        guard framedSize.width > 0, framedSize.height > 0 else { return false }
+        return abs(size.width / framedSize.width - 1) > 0.08
+            || abs(size.height / framedSize.height - 1) > 0.08
+    }
 
     func show(_ shot: HubShot, focus: Int?, animated: Bool = true) {
         self.shot = shot
         siteFocus = nil
         focusIndex = focus
         framedAspect = aspect
+        framedSize = arView.bounds.size
         framedForRealBounds = arView.bounds.height > 0
         let stand = focus.flatMap { $0 < layout.stands.count ? layout.stands[$0] : nil }
         let size = arView.bounds.height > 0 ? arView.bounds.size : CGSize(width: 1_376, height: 1_032)
@@ -526,12 +540,15 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
     private func tick(_ rawDT: Float) {
         let dt = min(rawDT, 0.1)
         dynamics.update(dt)
-        // Reframe when the view changes shape (rotation, split view) unless
-        // the player has just moved the camera.
-        if abs(aspect - framedAspect) > 0.05
+        // Reframe when the view changes shape (rotation, split view, a fold)
+        // unless the player has just moved the camera. A construction site
+        // being watched stays the subject: `show` clears it, so fly back.
+        if needsReframe
             && (!framedForRealBounds || Date().timeIntervalSince(lastInteraction) > 1.5) {
             let keepDrift = lastInteraction
+            let site = siteFocus
             show(shot, focus: focusIndex, animated: !framedForRealBounds ? false : true)
+            if let site { showFacility(site) }
             lastInteraction = keepDrift
         }
         advanceDusk(dt)

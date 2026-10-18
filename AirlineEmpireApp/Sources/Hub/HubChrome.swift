@@ -94,8 +94,13 @@ enum HubChromeMode: Equatable {
     /// A narrow window (iPad split view): stacked.
     case portrait
 
+    /// The iPad layout stacks KPI cards and shots over a timeline, with the
+    /// controls, inspector and board down the right; under ~700 pt of height
+    /// those collide. iPhone Duo's inner display on its side (890 × 626 pt)
+    /// is wide enough for it and too short, so a wide window takes the slim
+    /// landscape chrome until it is iPad-tall (iPad mini landscape is 744).
     init(size: CGSize) {
-        if size.width > size.height && size.height < 520 {
+        if size.width > size.height && size.height < 700 {
             self = .landscape
         } else {
             self = size.width >= 760 ? .regular : .portrait

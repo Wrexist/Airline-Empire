@@ -97,6 +97,11 @@ final class FoldableLayoutReviewTests: XCTestCase {
         XCTAssertEqual(HubChromeMode(size: CGSize(width: 466, height: 678)), .portrait, "outer, upright")
         XCTAssertEqual(HubChromeMode(size: CGSize(width: 678, height: 466)), .landscape, "outer, on its side")
         XCTAssertEqual(HubChromeMode(size: CGSize(width: 626, height: 890)), .portrait, "inner, upright")
-        XCTAssertEqual(HubChromeMode(size: CGSize(width: 890, height: 626)), .regular, "inner, on its side")
+        // Wide enough for the iPad layout, too short for it: slim chrome.
+        XCTAssertEqual(HubChromeMode(size: CGSize(width: 890, height: 626)), .landscape, "inner, on its side")
+        // The layouts it must not disturb.
+        XCTAssertEqual(HubChromeMode(size: CGSize(width: 852, height: 393)), .landscape, "iPhone on its side")
+        XCTAssertEqual(HubChromeMode(size: CGSize(width: 1133, height: 744)), .regular, "iPad mini on its side")
+        XCTAssertEqual(HubChromeMode(size: CGSize(width: 834, height: 1194)), .regular, "iPad 11-inch upright")
     }
 }

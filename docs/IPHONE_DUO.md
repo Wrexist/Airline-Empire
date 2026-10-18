@@ -1,6 +1,6 @@
 # iPhone Duo support
 
-Status, 18 October 2026: **code and CI ready; first Xcode 27.1 build pending.**
+Status, 18 October 2026: **the app and its tests compile with Xcode 27.1 / iOS 27.1 SDK** (CI run 39133562645, 0 errors). Duo simulator lane and fold transitions pending.
 
 iPhone Duo is Apple's foldable (iOS 27, A20 Pro). Two displays, both 3x:
 
@@ -28,17 +28,25 @@ Xcode 27.1. GitHub's `xcode-27` runner image has it
 
 1. `HubScreen` no longer reads `UIScreen.main.bounds`. The hub inspector now
    opens based on the **window** size (`AEOrientation.windowSize`), through
-   the same `HubChromeMode` the dashboard already uses. On the Duo's inner
-   display held sideways (890 × 626 pt) it gets the iPad layout.
-2. `AEOrientation.lockLandscape()` documents that the inner display ignores
-   orientation locks; the hub lays out for whatever shape it gets.
-3. `FoldableLayoutReviewTests` hosts the shell, Finance and Settings at all
+   the same `HubChromeMode` the dashboard already uses.
+2. `HubChromeMode` gives a wide window the iPad layout only from 700 pt of
+   height (iPad mini landscape is 744). The Duo's inner display on its side
+   (890 × 626) gets the slim landscape chrome; the iPad layout's right column
+   would overlap at 626.
+3. `AEOrientation.lockLandscape()` locks only phone-narrow windows (shortest
+   side under 520 pt). The inner display ignores orientation locks anyway and
+   has room for the hub either way up.
+4. `HubSceneController` reframes the camera on a size change of more than
+   8 %, not only on aspect: folding outer → inner on its side is 1.455 →
+   1.422, the same ratio at nearly twice the size. A construction site being
+   watched stays in frame through the fold.
+5. `FoldableLayoutReviewTests` hosts the shell, Finance and Settings at all
    four Duo window shapes, and pins the `HubChromeMode` each one gets.
-4. CI: `ci.yml` takes `xcode: 27.1` (the phone app job runs on `xcode-27`)
+6. CI: `ci.yml` takes `xcode: 27.1` (the phone app job runs on `xcode-27`)
    and `duo: true` (new `app-duo` job: Xcode 27.1, finds or creates an
    iPhone Duo simulator, runs the Duo tests plus the shell, map and hub
    journeys, prints `DUO-*` and `KEY-*` screenshots into the log).
-5. `ios-testflight.yml` takes `xcode: 27.1`: full validation, the Duo lane
+7. `ios-testflight.yml` takes `xcode: 27.1`: full validation, the Duo lane
    and the archive all use Xcode 27.1.
 
 ## Already fine (checked)

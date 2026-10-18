@@ -24,12 +24,14 @@ enum AEOrientation {
         return (scene.keyWindow ?? scene.windows.first)?.bounds.size ?? .zero
     }
 
-    /// Turns the phone to landscape and holds it there. iPhone Duo's inner
-    /// display does not honour supported orientations, so there the request
-    /// is ignored and the hub lays out for the near-square window it has
-    /// (`HubChromeMode`); folded to the outer display, the lock applies.
+    /// Turns the phone to landscape and holds it there — only when the window
+    /// is phone-narrow. iPhone Duo's inner display (626 × 890 pt) has room
+    /// for the hub either way up and does not honour orientation locks, so
+    /// there the hub lays out for the window it has (`HubChromeMode`).
     static func lockLandscape() {
-        guard isPhone, let scene = activeScene else { return }
+        let window = windowSize
+        guard isPhone, min(window.width, window.height) < 520,
+              let scene = activeScene else { return }
         if mask != .landscape { restore = scene.effectiveGeometry.interfaceOrientation }
         mask = .landscape
         update(scene, to: .landscape)
