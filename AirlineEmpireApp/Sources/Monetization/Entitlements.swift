@@ -292,10 +292,11 @@ final class Entitlements {
                   let ended = transaction.revocationDate ?? transaction.expirationDate,
                   ended <= Date() else { continue }
             if latest.map({ ended > $0.date }) ?? true {
-                latest = (tier, ended, transaction.revocationDate != nil)
+                latest = (tier: tier, date: ended,
+                          refunded: transaction.revocationDate != nil)
             }
         }
-        return latest.map { .ended($0.tier, on: $0.date, refunded: $0.refunded) }
+        return latest.map { Outcome.ended($0.tier, on: $0.date, refunded: $0.refunded) }
     }
 
     // MARK: - Entitlement
