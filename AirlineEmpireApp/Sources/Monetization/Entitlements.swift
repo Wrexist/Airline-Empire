@@ -78,6 +78,10 @@ final class Entitlements {
         case purchased(ProProduct)
         case restored
         case nothingToRestore
+        /// Restore found a purchase, but it no longer grants Pro: a
+        /// subscription that expired, or a purchase Apple refunded or
+        /// revoked. `on` is when access ended.
+        case ended(ProProduct, on: Date, refunded: Bool)
         case pending
         case failed(String)
     }
@@ -265,9 +269,33 @@ final class Entitlements {
         } else if let failure {
             lastOutcome = .failed("Purchases could not be restored. " + failure.localizedDescription)
         } else if !cancelled {
-            lastOutcome = .nothingToRestore
+            lastOutcome = await endedPurchase() ?? .nothingToRestore
         }
         if failure == nil && !cancelled { RevenueCatReporting.sync(force: true) }
+    }
+
+    /// The most recent Pro purchase that no longer grants access, if any.
+    ///
+    /// `currentEntitlements` has already said nothing is owned; this asks
+    /// what *was*. A lapsed subscriber who tapped Restore used to be told no
+    /// purchase had ever been found for their Apple Account — which reads as
+    /// a lost purchase and sends them hunting for a different account. The
+    /// latest transaction per product is enough to say when access ended.
+    private func endedPurchase() async -> Outcome? {
+        var latest: (tier: ProProduct, date: Date, refunded: Bool)?
+        for tier in ProProduct.allCases {
+            // An upgraded plan was replaced, not lost; the plan it became
+            // carries the date that matters.
+            guard let result = await StoreKit.Transaction.latest(for: tier.rawValue),
+                  case .verified(let transaction) = result,
+                  !transaction.isUpgraded,
+                  let ended = transaction.revocationDate ?? transaction.expirationDate,
+                  ended <= Date() else { continue }
+            if latest.map({ ended > $0.date }) ?? true {
+                latest = (tier, ended, transaction.revocationDate != nil)
+            }
+        }
+        return latest.map { .ended($0.tier, on: $0.date, refunded: $0.refunded) }
     }
 
     // MARK: - Entitlement

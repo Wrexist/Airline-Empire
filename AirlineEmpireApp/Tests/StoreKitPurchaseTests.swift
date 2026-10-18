@@ -87,6 +87,20 @@ final class StoreKitPurchaseTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(100))
         }
         XCTAssertFalse(entitlements.isPro)
+
+        // Restore must say the subscription ended, not that no purchase was
+        // ever found. `.failed` is tolerated only because `AppStore.sync` is
+        // not always served by a local StoreKit session.
+        await entitlements.restore()
+        switch entitlements.lastOutcome {
+        case .ended(let tier, _, let refunded)?:
+            XCTAssertEqual(tier, .weekly)
+            XCTAssertFalse(refunded)
+        case .failed?:
+            break
+        default:
+            XCTFail("A lapsed subscriber was told: \(String(describing: entitlements.lastOutcome))")
+        }
     }
 
     /// A launch with no network has no products, and renewal state used to
