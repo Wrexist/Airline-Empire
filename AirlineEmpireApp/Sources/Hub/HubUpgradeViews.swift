@@ -28,9 +28,10 @@ struct HubUpgradeCard: View {
     let mode: HubChromeMode
     @State private var armed = false
 
-    /// A phone on its side has about 380 pt under the top bar: the card
-    /// drops the fine print to fit.
-    private var compact: Bool { mode == .landscape }
+    /// A phone on its side has about 380 pt under the top bar, and in a
+    /// narrow window the card runs along the bottom under its site: either
+    /// way it drops the fine print to fit.
+    private var compact: Bool { mode != .regular }
 
     var body: some View {
         VStack(alignment: .leading, spacing: compact ? 8 : 12) {
@@ -62,7 +63,10 @@ struct HubUpgradeCard: View {
                     .font(.system(size: 12)).foregroundStyle(HubChromeStyle.secondary)
             }
         }
-        .frame(width: mode == .regular ? 340 : 300)
+        // Beside the site a fixed width; along the bottom of a narrow
+        // window as wide as it is, up to a readable measure.
+        .frame(width: mode == .portrait ? nil : mode == .regular ? 340 : 300)
+        .frame(maxWidth: mode == .portrait ? 440 : nil)
         .hubGlass(padding: compact ? 11 : 14)
         .onChange(of: model.offer(kind)?.level) { _, _ in armed = false }
     }

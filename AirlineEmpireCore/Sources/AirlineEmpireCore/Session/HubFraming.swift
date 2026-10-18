@@ -50,6 +50,9 @@ public struct HubSafeArea: Equatable, Sendable {
     /// iPad and wide windows: KPI cards across the top, the inspector down
     /// the right, timeline and board along the bottom.
     public static let wide = HubSafeArea(minX: -0.94, maxX: 0.52, minY: -0.64, maxY: 0.56)
+    /// The same with the inspector closed: only the camera controls keep
+    /// the right edge, so the subject is not pushed left of an empty column.
+    public static let wideOpen = HubSafeArea(minX: -0.94, maxX: 0.86, minY: -0.64, maxY: 0.56)
     /// iPhone portrait: KPI cards and shot picker on top, timeline below.
     /// Slightly wider than the screen: a tall frame crops a wide airport's
     /// ends rather than shrinking the jets to specks.
@@ -58,6 +61,24 @@ public struct HubSafeArea: Equatable, Sendable {
     /// under it, the camera controls down the right, a slim timeline
     /// along the bottom. The inspector slides over when asked for.
     public static let landscape = HubSafeArea(minX: -0.9, maxX: 0.78, minY: -0.5, maxY: 0.5)
+
+    /// This area less a panel `points` wide down the right of a view
+    /// `width` points across (the upgrade card beside its site). At least
+    /// a sliver is always left to frame in.
+    public func clearing(right points: Double, of width: Double) -> HubSafeArea {
+        var area = self
+        area.maxX = max(minX + 0.3, min(maxX, 1 - 2 * points / max(width, 1)))
+        return area
+    }
+
+    /// This area less a panel `points` tall along the bottom of a view
+    /// `height` points high (the upgrade card under its site in a narrow
+    /// window).
+    public func clearing(bottom points: Double, of height: Double) -> HubSafeArea {
+        var area = self
+        area.minY = min(maxY - 0.3, max(minY, -1 + 2 * points / max(height, 1)))
+        return area
+    }
 }
 
 /// The shots a hub camera can be asked for.
@@ -145,10 +166,18 @@ public enum HubFraming {
     }
 
     /// The safe area for a view of this shape: the dashboard puts the
-    /// inspector beside the scene once the view is wide enough.
-    public static func safeArea(width: Double, height: Double) -> HubSafeArea {
-        if width > height && height < 520 { return .landscape }
-        return width >= 760 && width >= height * 0.7 ? .wide : .tall
+    /// inspector beside the scene once the view is wide enough, and keeps
+    /// its column only while `inspector` shows (or a side panel stands in
+    /// its place).
+    ///
+    /// A wide window under 700 pt tall gets the slim landscape chrome
+    /// (the app's `HubChromeMode`), so it gets the landscape area too:
+    /// iPhone Duo's inner display on its side (890 × 626) would otherwise
+    /// frame for an iPad's inspector it never shows.
+    public static func safeArea(width: Double, height: Double, inspector: Bool = true) -> HubSafeArea {
+        if width > height && height < 700 { return .landscape }
+        guard width >= 760 && width >= height * 0.7 else { return .tall }
+        return inspector ? .wide : .wideOpen
     }
 }
 
