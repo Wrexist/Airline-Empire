@@ -281,10 +281,12 @@ struct LongHaulTests {
         // A second aircraft takes the days between: a departure every day.
         let (_, pair, _, pairRoute, _) = try LongHaulFixtures.world(
             to: LongHaulFixtures.twelveThousand, type: "LH12", aircraft: 2)
-        #expect(FlightSchedulingSystem.flyableTripsPerDay(
-            route: try #require(pair.state.routes[pairRoute]), state: pair.state, catalog: catalog) == 1)
+        let pairing = try #require(pair.state.routes[pairRoute])
+        #expect(FlightSchedulingSystem.flyableTripsPerDay(route: pairing, state: pair.state,
+                                                          catalog: catalog) == 1)
         #expect(LongHaulFixtures.homeDepartureDays(pair, route: pairRoute, days: 10) == Array(1...10))
-        #expect(try #require(pair.state.routes[pairRoute]).stats.flightsCompleted >= 15)
+        let pairFlown = try #require(pair.state.routes[pairRoute])
+        #expect(pairFlown.stats.flightsCompleted >= 15)
     }
 
     @Test("A departure flown every other day sells both days' demand")
@@ -308,7 +310,8 @@ struct LongHaulTests {
         let (_, pair, _, pairRoute, _) = try LongHaulFixtures.world(
             to: LongHaulFixtures.twelveThousand, type: "LH12", aircraft: 2)
         pair.advance(ticks: Fixtures.ticksPerDay)
-        #expect(FlightOpsSystem.backlog(on: try #require(pair.state.routes[pairRoute]), outbound: true,
+        let daily = try #require(pair.state.routes[pairRoute])
+        #expect(FlightOpsSystem.backlog(on: daily, outbound: true,
                                         state: pair.state, catalog: catalog) == 0)
     }
 
@@ -365,9 +368,10 @@ struct LongHaulTests {
             if case .maintenanceStarted(let id, _, _) = $0.kind { id == aircraftID } else { false }
         })
         worn.advance(ticks: Fixtures.ticksPerDay * 6)
-        #expect(try #require(worn.state.routes[routeID]).stats.flightsCancelled == 0)
+        let after = try #require(worn.state.routes[routeID])
+        #expect(after.stats.flightsCancelled == 0)
         // Back from the check, it flies again.
-        #expect(try #require(worn.state.routes[routeID]).stats.flightsCompleted > 0)
+        #expect(after.stats.flightsCompleted > 0)
     }
 
     @Test("A check that falls due on a rotation waits until the aircraft is home")
@@ -429,7 +433,8 @@ struct LongHaulTests {
         source.advance(ticks: Fixtures.ticksPerDay * 5)
         restored.advance(ticks: Fixtures.ticksPerDay * 5)
         #expect(restored.state == source.state)
-        #expect(try #require(restored.state.routes[routeID]).stats.flightsCompleted >= 5)
+        let continued = try #require(restored.state.routes[routeID])
+        #expect(continued.stats.flightsCompleted >= 5)
     }
 
     // MARK: What the player is shown
@@ -447,9 +452,9 @@ struct LongHaulTests {
         #expect(quote.seatsPerDay == LongHaulFixtures.largeWidebody.seats)
         #expect(quote.revenue > .zero)
         let aircraftID = try #require(fleet.first)
+        let airframe = try #require(state.aircraft[aircraftID])
         let preview = try #require(AircraftConfigurationPreview.make(
-            aircraftID: aircraftID,
-            configuration: try #require(state.aircraft[aircraftID]).cabin(for: LongHaulFixtures.largeWidebody),
+            aircraftID: aircraftID, configuration: airframe.cabin(for: LongHaulFixtures.largeWidebody),
             state: state, catalog: catalog))
         #expect(preview.tripsPerDay == 0.5)
 
