@@ -9,11 +9,26 @@ import AirlineEmpireCore
 /// `MapModel` and `GameState`, never re-derived.
 
 private struct MapCardShell<Content: View>: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let title: String
     let subtitle: String
     let accent: Color
     let dismiss: () -> Void
+    /// Whether the content scrolls inside a capped height at accessibility
+    /// sizes. At AX3 and up the route and flight cards outgrew the map: the
+    /// facts, the advice and the link stacked past the top chrome, so the
+    /// card covered the very thing it was describing and its last control
+    /// sat off screen. The airport card manages its own long list.
+    var scrollsAtAccessibilitySizes = false
     @ViewBuilder var content: Content
+
+    /// Tall enough for a card's facts and its one action; short enough that
+    /// the map keeps most of the screen. Landscape has far less of both.
+    private var accessibilityCap: CGFloat {
+        verticalSizeClass == .compact ? 160 : 320
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: AETheme.spacingS) {
@@ -42,11 +57,43 @@ private struct MapCardShell<Content: View>: View {
                 .buttonStyle(.aePress)
                 .accessibilityLabel("Clear selection")
             }
-            content
+            if scrollsAtAccessibilitySizes && typeSize.isAccessibilitySize {
+                // The natural height when it fits under the cap, a scroll
+                // inside the cap when it does not — a bare capped ScrollView
+                // would claim the whole cap even for a short card. The title
+                // row stays outside, so Clear selection is always reachable.
+                ViewThatFits(in: .vertical) {
+                    VStack(alignment: .leading, spacing: AETheme.spacingS) { content }
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: AETheme.spacingS) { content }
+                    }
+                }
+                .frame(maxHeight: accessibilityCap)
+            } else {
+                content
+            }
         }
         .padding(AETheme.spacingM)
         .aeClay(in: AETheme.cardShape, tint: accent)
-        .transition(.move(edge: .bottom).combined(with: .opacity))
+        // A fade, not a slide, under Reduce Motion — the same substitution
+        // the celebration banner makes.
+        .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+    }
+}
+
+/// The facts strip: across at reading sizes, stacked at accessibility sizes,
+/// where four facts in one row squeezed every value to an ellipsis.
+private struct MapFactRow<Content: View>: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
+    var spacing: CGFloat = AETheme.spacingS
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: AETheme.spacingXS) { content }
+        } else {
+            HStack(spacing: spacing) { content }
+        }
     }
 }
 
@@ -283,8 +330,9 @@ struct MapRouteCard: View {
 
     var body: some View {
         MapCardShell(title: "\(route.origin.raw) – \(route.destination.raw)",
-                     subtitle: subtitle, accent: accent, dismiss: dismiss) {
-            HStack(spacing: AETheme.spacingS) {
+                     subtitle: subtitle, accent: accent, dismiss: dismiss,
+                     scrollsAtAccessibilitySizes: true) {
+            MapFactRow {
                 MapFact(label: "load", value: Format.percent(route.loadFactor),
                         tint: route.loadFactor > 0.7 ? AETheme.positive : AETheme.caution)
                 MapFact(label: "per day", value: "\(route.dailyRoundTrips)×")
@@ -296,20 +344,47 @@ struct MapRouteCard: View {
                     MapFact(label: "fare", value: Format.money(real.ticketPrice))
                 }
             }
-            Text(healthAdvice)
+            Text(route.isPlayer ? healthAdvice : rivalReading)
                 .font(.caption)
                 .foregroundStyle(.white.opacity(0.7))
                 .fixedSize(horizontal: false, vertical: true)
-            NavigationLink(value: route.id) {
-                HStack {
-                    Text("Open route detail").font(.caption.weight(.medium))
-                    Spacer()
-                    Image(systemName: "chevron.right").font(.caption2)
+                .accessibilityIdentifier("ae-route-card-advice")
+            // The player's routes only. `RouteDetailView` resolves the
+            // player's own routes and nothing else, so a rival's line opened
+            // a screen titled "Route closed" — about a route that was flying
+            // in front of them.
+            if route.isPlayer {
+                NavigationLink(value: route.id) {
+                    HStack {
+                        Text("Open route detail").font(.caption.weight(.medium))
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.caption2)
+                    }
+                    .foregroundStyle(.white)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
                 }
-                .foregroundStyle(.white)
-                .frame(minHeight: 44)
-                .contentShape(Rectangle())
+                .accessibilityIdentifier("ae-route-card-detail")
             }
+        }
+    }
+
+    /// What a rival's route says to the player. The health advice below is
+    /// written to the route's owner — "try a lower fare, or fewer rotations"
+    /// — and was being handed to a player who cannot set a rival's fare. The
+    /// same facts, read as what they mean for someone who might compete.
+    private var rivalReading: String {
+        switch route.health {
+        case .grounded:
+            "Nothing is flying it at the moment."
+        case .disrupted:
+            "Disrupted — an airport on this route is closed, or flights are being cancelled."
+        case .weak:
+            "Struggling: losing money or flying half-empty. An opening, if you can serve the pair better."
+        case .healthy:
+            "Operating normally. Opening the same pair would mean sharing its passengers."
+        case .strong:
+            "Full and profitable — proven demand, and a rival that will fight for it."
         }
     }
 
@@ -378,14 +453,14 @@ struct MapFlightCard: View {
 
     var body: some View {
         MapCardShell(title: title, subtitle: subtitle, accent: accent,
-                     dismiss: dismiss) {
+                     dismiss: dismiss, scrollsAtAccessibilitySizes: true) {
             HStack(spacing: AETheme.spacingM) {
                 AircraftShape(category: flight.category)
                     .fill(Vocab.liveryColor(flight.livery))
                     .frame(width: 30, height: 30)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: AETheme.spacingXS) {
-                    HStack(spacing: AETheme.spacingS) {
+                    MapFactRow {
                         MapFact(label: "progress",
                                 value: Format.percent(flight.progress))
                         MapFact(label: arrivalLabel, value: arrivalValue,

@@ -137,9 +137,15 @@ enum AETheme {
 /// - `screen` — a whole view swapped. The only one slow enough to notice, and
 ///   the only one that should be.
 ///
-/// All three respect Reduce Motion through SwiftUI's own handling of
-/// `withAnimation`; nothing here animates position over long distances, which
-/// is the thing that actually makes people ill.
+/// None of them respects Reduce Motion by itself. SwiftUI does not consult
+/// the setting for `withAnimation` or `.animation(_:value:)` — this comment
+/// used to claim it did, and the map's card slides, the digest's disclosure
+/// and the aircraft market's scroll ran at full motion for players who had
+/// asked for less. So the setting is read at every call site: declaratively
+/// through `aeAnimation(_:value:)`, which drops the curve, and imperatively as
+/// `withAnimation(reduceMotion ? nil : AEMotion.content)`, with
+/// `accessibilityReduceMotion` read from the environment. A slide that should
+/// still say "something arrived" swaps its `.move` transition for `.opacity`.
 enum AEMotion {
     static let selection: Animation = .snappy(duration: 0.22)
     static let content: Animation = .smooth(duration: 0.32)

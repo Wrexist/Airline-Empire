@@ -604,6 +604,7 @@ struct DigestCard: View {
     /// as a rival's, losing its alarm styling.
     let player: AirlineID
     let snapshot: GameState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var expanded = false
 
     var body: some View {
@@ -629,7 +630,7 @@ struct DigestCard: View {
                                 icon: "exclamationmark.triangle")
                     }
                     Button(expanded ? "Hide detail" : "Why?") {
-                        withAnimation(.snappy) { expanded.toggle() }
+                        withAnimation(reduceMotion ? nil : AEMotion.selection) { expanded.toggle() }
                     }
                     .font(.caption.weight(.medium))
                     .buttonStyle(.bordered)

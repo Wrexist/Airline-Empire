@@ -510,7 +510,7 @@ struct MapScreen: View {
                             // nothing to unlock it would be a trap.
                             camera.stopFollowing(landingAt: followMemory.lastPoint)
                             followMemory.clear()
-                            withAnimation(AEMotion.content) { selection = nil }
+                            withAnimation(reduceMotion ? nil : AEMotion.content) { selection = nil }
                         },
                         openAirportRoute: { airportDraft = AirportDraft(airport: $0) })
                 }
@@ -635,7 +635,7 @@ struct MapScreen: View {
             camera.stopFollowing(landingAt: followMemory.lastPoint)
             followMemory.clear()
         }
-        withAnimation(AEMotion.content) { selection = hit }
+        withAnimation(reduceMotion ? nil : AEMotion.content) { selection = hit }
         revealSelection(hit, in: model)
     }
 

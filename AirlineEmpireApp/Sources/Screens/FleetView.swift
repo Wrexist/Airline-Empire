@@ -1221,6 +1221,7 @@ struct AircraftShopSheet: View {
     @Environment(Entitlements.self) private var entitlements
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var usedAge = 8
     @State private var leaseTermMonths = 60
     @State private var sort: Sort = .recommended
@@ -1805,7 +1806,9 @@ struct AircraftShopSheet: View {
             ForEach(Array(comparison.shortlist.enumerated()), id: \.element.id) { index, candidate in
                 Button {
                     focusedPurchase = candidate.spec.code
-                    withAnimation(AEMotion.selection) {
+                    // A jump rather than a glide under Reduce Motion: a long
+                    // scroll is exactly the movement the setting is for.
+                    withAnimation(reduceMotion ? nil : AEMotion.selection) {
                         proxy.scrollTo(candidate.spec.code, anchor: .top)
                     }
                 } label: {
