@@ -233,13 +233,18 @@ struct RivalPressureCampaignTests {
         #expect(response - invasion <= 7, "\(report.firstRivalResponse)")
 
         // COMP-03: the player holds a real share, the model can say where
-        // they stand and why, and the rivals answer with capacity — the
-        // measured arc is both incumbents climbing to the frequency cap.
+        // they stand and why, and the rivals answer with capacity. The arc
+        // measured before GAME_AUDIT_2026-10-18 §2.1 was both incumbents
+        // climbing toward the frequency cap of 20 whatever they had
+        // assigned — trips their aircraft could not fly, holding slots.
+        // Frequency now follows the airframes they add (rotations plus the
+        // one-trip request for the next airframe): MEASURED 9 at this seed,
+        // from the 2 a rival opens at.
         let share = try #require(report.shareAfterAWeek)
         #expect(share > 0.15 && share < 0.6)
         #expect(report.standingAfterAWeek != .alone && report.standingAfterAWeek != .tooEarly)
         #expect(report.edgeAfterAWeek != nil)
-        #expect(report.rivalMaxTrips >= 10)
+        #expect(report.rivalMaxTrips >= 6)
 
         // COMP-05: a retreat from the pair is not part of this seed's arc
         // any more (the London–Paris incumbent that left on day 248 never

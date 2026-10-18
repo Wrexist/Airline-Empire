@@ -144,15 +144,105 @@ public enum PaywallContent {
         + "Manage or cancel in Settings → Apple Account → Subscriptions. Pro "
         + "Lifetime is a one-time purchase and does not renew."
 
+    /// An introductory offer, described by its shape rather than assumed.
+    ///
+    /// StoreKit's `Product.SubscriptionOffer`, reduced to the facts the copy
+    /// needs so Core can phrase it without importing StoreKit. The sentence
+    /// used to take only the offer's price and borrow the *renewal* period
+    /// for its length — "$0.99 for your first week" — which was true of the
+    /// one offer this game launched with and of nothing else. Change the
+    /// offer in App Store Connect to three months at $0.99 a month, or a
+    /// free week, and the paywall would have stated a price Apple was not
+    /// going to charge: guideline 3.1.2, from a dashboard edit with no build.
+    public struct IntroductoryOffer: Equatable, Sendable {
+        public enum PaymentMode: Equatable, Sendable {
+            /// Nothing is charged until the offer ends.
+            case freeTrial
+            /// `price` is charged at the start of each period, for
+            /// `periodCount` periods.
+            case payAsYouGo
+            /// `price` is charged once, at purchase, for the whole offer.
+            case payUpFront
+        }
+
+        public enum Unit: Equatable, Sendable {
+            case day, week, month, year
+        }
+
+        /// The localised offer price, from StoreKit (`$0.99`). Not read for
+        /// a free trial, whose price StoreKit renders as a zero amount.
+        public let price: String
+        public let paymentMode: PaymentMode
+        /// One offer period is `periodValue` × `periodUnit`.
+        public let periodValue: Int
+        public let periodUnit: Unit
+        /// How many periods the offer lasts.
+        public let periodCount: Int
+
+        public init(price: String, paymentMode: PaymentMode,
+                    periodValue: Int, periodUnit: Unit, periodCount: Int) {
+            self.price = price
+            self.paymentMode = paymentMode
+            self.periodValue = periodValue
+            self.periodUnit = periodUnit
+            self.periodCount = periodCount
+        }
+    }
+
+    /// What the introductory offer costs and for how long, as a clause:
+    /// "$0.99 for your first week", "$0.99 per month for your first 3
+    /// months", "$2.99 for your first 3 months", "Free for your first week".
+    ///
+    /// Every word comes from the offer. The whole length is the period times
+    /// the count, whatever the mode — StoreKit reports a free trial and a
+    /// pay-up-front offer as one long period, and pay-as-you-go as several
+    /// short ones, and the product of the two is right for all three.
+    public static func introductoryTerms(_ offer: IntroductoryOffer) -> String {
+        let count = max(1, offer.periodCount)
+        let whole = span(offer.periodValue * count, offer.periodUnit)
+        switch offer.paymentMode {
+        case .freeTrial:
+            return "Free for your first \(whole.text)"
+        case .payUpFront:
+            return "\(offer.price) for your first \(whole.text)"
+        case .payAsYouGo:
+            guard count > 1 else { return "\(offer.price) for your first \(whole.text)" }
+            let each = span(offer.periodValue, offer.periodUnit)
+            let rate = each.count == 1 ? "per \(each.text)" : "every \(each.text)"
+            return "\(offer.price) \(rate) for your first \(whole.text)"
+        }
+    }
+
+    /// A length of time as the copy says it: "week", "3 months".
+    ///
+    /// Seven days are a week and twelve months a year, because StoreKit has
+    /// reported a one-week period as seven days and the copy should not
+    /// change with it.
+    static func span(_ value: Int, _ unit: IntroductoryOffer.Unit)
+        -> (count: Int, text: String) {
+        var value = max(1, value)
+        var unit = unit
+        if unit == .day, value % 7 == 0 { value /= 7; unit = .week }
+        if unit == .month, value % 12 == 0 { value /= 12; unit = .year }
+        let name: String
+        switch unit {
+        case .day: name = "day"
+        case .week: name = "week"
+        case .month: name = "month"
+        case .year: name = "year"
+        }
+        return (value, value == 1 ? name : "\(value) \(name)s")
+    }
+
     /// The sentence directly above the buy button, stating what will actually
     /// be charged and when.
     ///
-    /// The `introductory` argument is the localised price of the intro offer
-    /// (`$0.99`), `standard` the localised renewal price (`$8.99`), and
-    /// `period` its unit (`week`). All three come from StoreKit rather than
-    /// from this file: a price typed into a game is a price that is wrong in
-    /// 174 storefronts, and Apple rejects hard-coded prices that disagree
-    /// with the product.
+    /// `introductory` is the offer this account may still take, if any
+    /// (`IntroductoryOffer`), `standard` the localised renewal price
+    /// (`$8.99`), and `period` its unit (`week`). Every price comes from
+    /// StoreKit rather than from this file: a price typed into a game is a
+    /// price that is wrong in 174 storefronts, and Apple rejects hard-coded
+    /// prices that disagree with the product.
     ///
     /// Note the order. The introductory price is named once; the price the
     /// player will keep paying is named with equal weight and in the same
@@ -160,12 +250,12 @@ public enum PaywallContent {
     /// screen's design invites — a reference paywall that renders "Start 7
     /// days free" at three times the size of the price is describing a
     /// rejection, not a design.
-    public static func commitment(introductory: String?, standard: String,
+    public static func commitment(introductory: IntroductoryOffer?, standard: String,
                                   period: String) -> String {
         guard let introductory else {
             return "\(standard) per \(period). Renews automatically until you cancel."
         }
-        return "\(introductory) for your first \(period), then \(standard) "
+        return "\(introductoryTerms(introductory)), then \(standard) "
             + "per \(period). Renews automatically until you cancel."
     }
 
@@ -181,12 +271,19 @@ public enum PaywallContent {
     /// which is the thing App Review reads the screen for — and the thing a
     /// player reads their bank statement for a week later. The refund and the
     /// rejection are the same defect.
-    public static func callToAction(introductory: String?,
+    ///
+    /// With an offer, today's charge is the offer price in either paid mode
+    /// — the first instalment, or the whole up-front amount — and nothing
+    /// for a free trial, which says so instead of "Start for $0.00". The
+    /// commitment line above the button carries the renewal price in every
+    /// case.
+    public static func callToAction(introductory: IntroductoryOffer?,
                                     standard: String,
                                     isSubscription: Bool) -> String {
         if !isSubscription { return "Unlock Pro — \(standard)" }
-        if let introductory { return "Start for \(introductory)" }
-        return "Subscribe — \(standard)"
+        guard let introductory else { return "Subscribe — \(standard)" }
+        if introductory.paymentMode == .freeTrial { return "Start free trial" }
+        return "Start for \(introductory.price)"
     }
 
     /// The reassurance row under the button. Three claims, all of which the

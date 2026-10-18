@@ -104,7 +104,7 @@ jobs:
   # ── 1 · The simulation core, on Linux ──────────────────────────────────────
   core:
     name: Core (swift build + test)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # The official image, pinned to the toolchain every result in
     # docs/APPLE_VALIDATION.md §7 was measured with. `scripts/setup-linux-
     # toolchain.sh` exists for sandboxes where download.swift.org is blocked;
@@ -122,7 +122,7 @@ jobs:
       run:
         working-directory: AirlineEmpireCore
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
           ref: ${{ inputs.candidate_sha || github.sha }}
@@ -139,7 +139,7 @@ jobs:
       # one module, not the package. A stale cache cannot produce a false green:
       # SwiftPM recompiles what changed, and the key changes with the toolchain.
       - name: Restore the SwiftPM build cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             AirlineEmpireCore/.build
@@ -210,10 +210,10 @@ jobs:
   # ── 2 · Release tooling and the store listing ──────────────────────────────
   release-tooling:
     name: Release tooling (selftest + listing)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
           ref: ${{ inputs.candidate_sha || github.sha }}
@@ -221,7 +221,7 @@ jobs:
       # Node is preinstalled on the runner image; this pins the major version
       # so a runner-image bump cannot change what the release tooling runs on.
       # Nothing is installed — scripts/asc has no dependencies by design.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
 
@@ -313,7 +313,7 @@ jobs:
   #   See the matrix below for what is in the subset and why.
   plan:
     name: Plan the macOS work
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -322,7 +322,7 @@ jobs:
       build: ${{ steps.decide.outputs.build }}
       matrix: ${{ steps.decide.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
           ref: ${{ inputs.candidate_sha || github.sha }}
@@ -561,7 +561,7 @@ jobs:
       # No `fetch-depth: 0` and no change detection here any more: the
       # `plan` job answered both questions on a 1x runner, and this job does
       # not start at all when the answer was no.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
           ref: ${{ inputs.candidate_sha || github.sha }}
@@ -572,6 +572,14 @@ jobs:
       - name: Select Xcode 27.1
         if: inputs.xcode == '27.1'
         run: sudo xcode-select -s /Applications/Xcode_27.1.app/Contents/Developer
+
+      # Otherwise pin the toolchain rather than take the image's default:
+      # build 1.2.1 (17) was archived with whatever macos-26 defaulted to
+      # that day (26.6) while launch safety ran 26.2. A pin changes only
+      # when someone changes it here.
+      - name: Select Xcode 26.6
+        if: inputs.xcode != '27.1'
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app/Contents/Developer
 
       - name: Xcode version
         run: xcodebuild -version
@@ -780,7 +788,7 @@ jobs:
       # looking at a failure.
       - name: Keep the screenshots
         if: failure() && matrix.run
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ui-screenshots-shard${{ matrix.shard }}
           path: |
@@ -875,7 +883,7 @@ jobs:
 
       - name: Keep full-resolution menu previews
         if: always() && matrix.run
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: menu-screenshots-shard${{ matrix.shard }}
           path: |
@@ -940,7 +948,7 @@ jobs:
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
           ref: ${{ inputs.candidate_sha || github.sha }}
@@ -995,7 +1003,7 @@ jobs:
       # Failures only, three days — same reasoning as the phone job above.
       - name: Keep the screenshots
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ui-screenshots-ipad
           path: AirlineEmpireApp/UITestResults.xcresult
@@ -1059,7 +1067,7 @@ jobs:
 
       - name: Keep full-resolution menu previews
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: menu-screenshots-ipad
           path: |
@@ -1113,7 +1121,7 @@ jobs:
     runs-on: xcode-27
     timeout-minutes: 75
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
           ref: ${{ inputs.candidate_sha || github.sha }}
@@ -1259,7 +1267,7 @@ jobs:
 
       - name: Keep the Duo screenshots
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: iphone-duo-screenshots
           path: AirlineEmpireApp/ReviewScreenshots

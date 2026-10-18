@@ -306,14 +306,12 @@ if let candidateHomes = option("--candidates") {
         let state = engine.state
         for type in types {
             guard let spec = catalog.aircraftType(type) else { continue }
-            CompetitorAISystem.rankingBasis = .profit
             let byProfit = CompetitorAISystem.candidateMarkets(
                 from: home, airline: airline, spec: spec, profile: profile, state: state,
-                catalog: catalog, tuning: catalog.tuning.ai)
-            CompetitorAISystem.rankingBasis = .revenue
+                catalog: catalog, tuning: catalog.tuning.ai, basis: .profit)
             let byRevenue = CompetitorAISystem.candidateMarkets(
                 from: home, airline: airline, spec: spec, profile: profile, state: state,
-                catalog: catalog, tuning: catalog.tuning.ai)
+                catalog: catalog, tuning: catalog.tuning.ai, basis: .revenue)
             var regionExcluded = 0, ineligible = 0, belowFloor = 0, unprofitable = 0, profitable = 0
             var scored: [(AirportCode, Int, Double, Double, Double)] = []   // dest, km, profit, feeShare, revenue
             for (index, candidate) in byProfit.enumerated() {

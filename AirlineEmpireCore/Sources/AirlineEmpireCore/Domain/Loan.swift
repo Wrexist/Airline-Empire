@@ -37,6 +37,25 @@ public struct Loan: Equatable, Codable, Sendable {
         return Money(rounding: principalRemaining.asDouble * monthlyRate
             * Double(heldMinutes) / Double(monthMinutes))
     }
+
+    /// The share of the month that closed at `boundary` this loan was held
+    /// for: 1 for a loan drawn before that month began, the drawn share for
+    /// one drawn during it. Loan service charges interest once, at the
+    /// boundary, and used to charge the whole month whatever the draw date —
+    /// a loan taken on the 28th cost as much interest as one taken on the
+    /// 1st. Early payoff (`accruedInterest`) already pro-rated the same way.
+    public func heldFraction(ofMonthEndingAt boundary: SimTime, startYear: Int) -> Double {
+        // The month that closed is the one the minute before the boundary
+        // falls in.
+        let closed = GameCalendar.date(at: SimTime(rawMinutes: boundary.rawMinutes - 1),
+                                       startYear: startYear)
+        let monthStart = GameCalendar.time(year: closed.year, month: closed.month, day: 1,
+                                           startYear: startYear)
+        guard takenAt > monthStart else { return 1 }
+        let monthMinutes = GameCalendar.monthLengths[closed.month - 1] * GameCalendar.minutesPerDay
+        let heldMinutes = (boundary - takenAt).minutes
+        return min(1, max(0, Double(heldMinutes) / Double(monthMinutes)))
+    }
 }
 
 /// Credit math — pure functions so UI quotes exactly what the simulation

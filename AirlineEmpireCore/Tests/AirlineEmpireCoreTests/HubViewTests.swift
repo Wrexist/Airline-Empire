@@ -250,7 +250,13 @@ struct HubLayoutTests {
     /// dashboard leaves free, on iPad and iPhone, and the overview's jets
     /// stay big enough to read.
     @Test func shotsFrameTheirSubjectInTheSafeArea() {
-        let shapes: [(aspect: Double, safe: HubSafeArea)] = [(1.333, .wide), (0.46, .tall), (2.17, .landscape)]
+        // iPhone Duo's four window shapes (docs/IPHONE_DUO.md): inner and
+        // outer display on their sides (1.42, 1.455), then upright (0.70,
+        // 0.687), each with the safe area its window gets.
+        let duo: [(aspect: Double, safe: HubSafeArea)] = [(890.0, 626.0), (678.0, 466.0), (626.0, 890.0), (466.0, 678.0)]
+            .map { size in (size.0 / size.1, HubFraming.safeArea(width: size.0, height: size.1, inspector: false)) }
+        let shapes: [(aspect: Double, safe: HubSafeArea)] = [(1.333, .wide), (1.333, .wideOpen), (0.46, .tall),
+                                                             (2.17, .landscape)] + duo
         for spec in Self.allAirports.prefix(30) {
             let layout = HubLayout.make(airport: spec)
             for (aspect, safe) in shapes {
@@ -367,6 +373,49 @@ struct HubLayoutTests {
         // An iPhone on its side: the short height wins over the width.
         #expect(HubFraming.safeArea(width: 932, height: 430) == .landscape)
         #expect(HubFraming.safeArea(width: 852, height: 393) == .landscape)
+        // iPhone Duo: the inner display on its side is wide but short, so it
+        // gets the slim landscape chrome (`HubChromeMode`) and frames for it;
+        // upright, both displays are tall. iPad mini on its side stays wide.
+        #expect(HubFraming.safeArea(width: 890, height: 626) == .landscape)
+        #expect(HubFraming.safeArea(width: 678, height: 466) == .landscape)
+        #expect(HubFraming.safeArea(width: 626, height: 890) == .tall)
+        #expect(HubFraming.safeArea(width: 466, height: 678) == .tall)
+        #expect(HubFraming.safeArea(width: 1_133, height: 744) == .wide)
+        // The inspector's column is kept only while the inspector shows.
+        #expect(HubFraming.safeArea(width: 1_376, height: 1_032, inspector: false) == .wideOpen)
+        #expect(HubSafeArea.wideOpen.maxX > HubSafeArea.wide.maxX)
+        #expect(HubFraming.safeArea(width: 852, height: 393, inspector: false) == .landscape)
+    }
+
+    /// A narrow window (iPhone Duo upright, an iPhone, iPad split view): the
+    /// upgrade card runs along the bottom, and its site is framed in the
+    /// room above it rather than under the card.
+    @Test func upgradeSitesFrameAboveTheCardInNarrowWindows() {
+        let windows: [(width: Double, height: Double)] = [(466, 678), (626, 890), (430, 932)]
+        for spec in Self.allAirports.prefix(30) {
+            let layout = HubLayout.make(airport: spec)
+            for window in windows {
+                let aspect = window.width / window.height
+                // The compact card is about 300 pt; with its margin and the
+                // home indicator, 350 of the bottom.
+                let safe = HubFraming.safeArea(width: window.width, height: window.height)
+                    .clearing(bottom: 350, of: window.height)
+                #expect(safe.minY > HubSafeArea.tall.minY && safe.maxY - safe.minY >= 0.3)
+                for kind in HubFacilityKind.allCases {
+                    guard let site = layout.site(kind) else { continue }
+                    let frame = layout.frame(.facility(kind), aspect: aspect, safe: safe)
+                    guard let s = HubFraming.project(site.center, frame: frame, aspect: aspect) else {
+                        Issue.record("\(kind) site behind the camera at \(spec.code)"); continue
+                    }
+                    #expect(s.x >= safe.minX - 0.03 && s.x <= safe.maxX + 0.03 &&
+                            s.y >= safe.minY - 0.03 && s.y <= safe.maxY + 0.03,
+                            "\(kind) site under the card (\(s.x), \(s.y)) at \(spec.code) \(window)")
+                }
+            }
+        }
+        // The card beside its site on a wide screen takes the right instead.
+        let beside = HubSafeArea.wideOpen.clearing(right: 432, of: 1_376)
+        #expect(beside.maxX < HubSafeArea.wideOpen.maxX && beside.maxX > beside.minX + 0.29)
     }
 
     @Test func roundedPathsTurnThroughArcsNearTheirCorners() {

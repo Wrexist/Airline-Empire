@@ -507,6 +507,9 @@ final class MapRenderCache {
         let revision: UInt64
         let selection: AirportCode?
         let settle: Int
+        /// The label scale (`MapLabelLayout.scale(for:)`): a text-size
+        /// change re-places every label at its new size.
+        let scale: CGFloat
     }
 
     private var placementKey: PlacementKey?
@@ -535,13 +538,21 @@ final class MapRenderCache {
                        selected: AirportCode?, revision: UInt64, settle: Int,
                        limit: Int, labelBounds: CGRect,
                        markerRadius: (MapModel.MapAirport) -> CGFloat,
-                       textWidth: (String) -> CGFloat)
+                       textWidth: (String) -> CGFloat,
+                       scale: CGFloat = 1)
         -> (labels: [MapLabel], placedNow: Bool) {
         let offsets = projector.visibleWorldOffsets
         let key = PlacementKey(level: policy.level, size: projector.size,
                                offsets: offsets,
                                revision: revision, selection: selected,
-                               settle: settle)
+                               settle: settle, scale: scale)
+        // Remembered boxes and offsets were measured at the old size; kept,
+        // they would seed the new placement with labels sitting on their
+        // own markers.
+        if let previous = placementKey, previous.scale != scale {
+            airportMemory = []
+            countryMemory = []
+        }
         if placementKey == key,
            cameraDrifted(builtZoom: placementZoom,
                          builtCenter: placementCenter,
@@ -585,7 +596,7 @@ final class MapRenderCache {
             selected: selected, limit: limit,
             bounds: labelBounds,
             markerRadius: markerRadius, textWidth: textWidth,
-            remembered: airportMemory)
+            remembered: airportMemory, scale: scale)
         let fullNames = policy.zoom >= MapLabelLayout.fullNameZoom
         airportMemory = labels.compactMap { label in
             guard let code = label.code else { return nil }
@@ -607,7 +618,8 @@ final class MapRenderCache {
     func countryLabels(projector: MapProjector, policy: MapDetailPolicy,
                        blocked: [CGRect], placedNow: Bool,
                        labelBounds: CGRect,
-                       textWidth: (String) -> CGFloat) -> [MapLabel] {
+                       textWidth: (String) -> CGFloat,
+                       scale: CGFloat = 1) -> [MapLabel] {
         if !placedNow {
             // Same edge rule as the airports: full containment, or the
             // label sits this frame out rather than drawing torn.
@@ -615,8 +627,8 @@ final class MapRenderCache {
             return countryMemory.compactMap { memory in
                 let point = projector.project(MapPoint(x: Double(memory.anchor.x),
                                                        y: Double(memory.anchor.y)))
-                let box = CGRect(x: point.x - memory.width / 2, y: point.y - 8,
-                                 width: memory.width, height: 16)
+                let box = MapLabelLayout.countryBox(centre: point, width: memory.width,
+                                                    scale: scale)
                 guard keep.contains(box) else { return nil }
                 return MapLabel(
                     text: memory.text, point: point, priority: 0,
@@ -637,7 +649,7 @@ final class MapRenderCache {
         let labels = MapLabelLayout.placeCountries(
             projected, blocked: blocked,
             limit: policy.level == .world ? 10 : 18,
-            bounds: labelBounds, textWidth: textWidth)
+            bounds: labelBounds, textWidth: textWidth, scale: scale)
         countryMemory = labels.map {
             (anchor: projector.unproject($0.point), text: $0.text,
              width: $0.box.width)

@@ -55,6 +55,16 @@ public struct GameState: Equatable, Codable, Sendable {
         orderedRouteIDs.compactMap { routes[$0] }.filter { $0.airline == airline }
     }
 
+    /// The airline's routes that can carry anyone (`Route.isOperating`), in
+    /// route order. Opening a route costs a slot pair and a month's route
+    /// payroll, so counting empty ones let a player buy destinations and
+    /// regions for era gates, drag rivals' fares down from a pair it never
+    /// flew, and set its value perception with fares nobody paid. Those
+    /// questions ask this instead of `routes(of:)`.
+    public func operatingRoutes(of airline: AirlineID) -> [Route] {
+        routes(of: airline).filter(\.isOperating)
+    }
+
     public func fleet(of airline: AirlineID) -> [Aircraft] {
         orderedAircraftIDs.compactMap { aircraft[$0] }.filter { $0.owner == airline }
     }

@@ -28,7 +28,7 @@ jobs:
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - name: Generate an earned campaign from the current simulation
@@ -70,7 +70,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO -resultBundlePath StoreCaptures.xcresult 2>&1 | tee ../store-capture-log.txt
       - name: Export full-resolution captures
         run: python3 scripts/export-store-captures.py AirlineEmpireApp/StoreCaptures.xcresult captures/${{ matrix.device }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: store-captures-${{ matrix.device }}
           path: |
@@ -78,7 +78,7 @@ jobs:
             store-campaign-ledger.txt
             AirlineEmpireApp/UITests/Fixtures/store-campaign.json
           retention-days: 45
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: store-capture-failure-${{ matrix.device }}

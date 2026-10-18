@@ -109,13 +109,18 @@ public struct FleetBillingSystem: SimulationSystem {
 /// (docs/SIMULATION_ARCHITECTURE.md §4): systems register here as their
 /// phases land. Sessions and tools use this; tests may compose subsets.
 public enum GamePipeline {
-    public static func standard() -> [any SimulationSystem] {
+    /// `aiRankingBasis` is for tooling that re-measures the rivals' market
+    /// ranking (`ae-rival-scan --profit`); the game always runs the shipped
+    /// basis.
+    public static func standard(
+        aiRankingBasis: CompetitorAISystem.RankingBasis = CompetitorAISystem.shippedRankingBasis
+    ) -> [any SimulationSystem] {
         [
             WorldEventSystem(),         // #1a: event lifecycle before world prices
             WorldSystem(),              // #1 in the documented pipeline
             StatementRollupSystem(),    // closes the previous month BEFORE new billings
             DemandSystem(),             // #2
-            CompetitorAISystem(),       // #3
+            CompetitorAISystem(rankingBasis: aiRankingBasis), // #3
             FacilityConstructionSystem(), // buildings open before today's plan
             FlightSchedulingSystem(),   // #4
             FlightOpsSystem(),          // #5 (+ passenger allocation at boarding, #6)

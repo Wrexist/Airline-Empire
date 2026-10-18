@@ -66,7 +66,7 @@ final class HubMaterials {
         guard let additive else { return nil }
         // Quantised and kept: four rings asked every frame would otherwise
         // build four materials a frame.
-        let step = Int((max(0, min(1, brightness)) * 31).rounded())
+        let step = Self.pulseStep(brightness)
         if let hit = additiveCache[step] { return hit }
         var m = UnlitMaterial(program: additive)
         let k = CGFloat(step) / 31
@@ -77,6 +77,12 @@ final class HubMaterials {
         m.blending = .transparent(opacity: 1.0)
         additiveCache[step] = m
         return m
+    }
+
+    /// Which of the 32 cached brightnesses `additivePulse` draws `brightness`
+    /// with: a ring whose step has not changed keeps its material.
+    nonisolated static func pulseStep(_ brightness: Float) -> Int {
+        Int((max(0, min(1, brightness)) * 31).rounded())
     }
 
     // MARK: Factory

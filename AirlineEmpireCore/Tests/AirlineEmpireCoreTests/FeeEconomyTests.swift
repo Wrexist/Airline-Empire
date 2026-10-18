@@ -274,12 +274,12 @@ struct FeeEconomyTests {
             startingCash: Money.dollars(120_000_000), aiProfile: profile))
         let airline = engine.state.airlines.values.first!
         let spec = try #require(catalog.aircraftType("NA70"))
-        let saved = CompetitorAISystem.rankingBasis
-        CompetitorAISystem.rankingBasis = .profit
-        defer { CompetitorAISystem.rankingBasis = saved }
+        // The basis is a parameter. This test used to flip a shared global
+        // to `.profit` and back, racing every suite running beside it.
         let candidates = CompetitorAISystem.candidateMarkets(
             from: "CDG", airline: airline, spec: spec, profile: profile,
-            state: engine.state, catalog: catalog, tuning: catalog.tuning.ai)
+            state: engine.state, catalog: catalog, tuning: catalog.tuning.ai,
+            basis: .profit)
         let profitable = candidates.filter { ($0.score ?? 0) > 0 }
         print("REGIONAL CDG NA70: \(profitable.count) profitable of \(candidates.count): \(profitable.map { "\($0.destination.raw) \(Int($0.score!))" }.joined(separator: " "))")
         #expect(profitable.count >= 3, "\(candidates.map { "\($0.destination.raw) \($0.verdict)" })")

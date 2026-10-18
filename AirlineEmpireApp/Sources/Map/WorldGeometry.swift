@@ -97,6 +97,26 @@ enum WorldGeometry {
         borderLines
     }
 
+    /// Parses every tier now, off the main thread.
+    ///
+    /// Lazy was the right default and the wrong moment: the first map frame
+    /// is where the parse landed — tens of thousands of coordinate pairs
+    /// split and converted inside a `Canvas` draw, on the main thread, as the
+    /// player arrived at the world. And the opening frame for a new airline
+    /// is at local zoom (`frameNetwork` on one airport), so the costliest
+    /// tier was the first one asked for. Called once at launch from a
+    /// detached task; a `static let` initialises exactly once, so a draw that
+    /// gets there first simply waits for the same work rather than repeating
+    /// it. Coarse first: the menu's atlas and the world view want it soonest.
+    static func warm() {
+        _ = coarseLand.count
+        _ = borderLines.count
+        _ = mediumLand.count
+        _ = mediumLakes.count
+        _ = fineLand.count
+        _ = fineLakes.count
+    }
+
     private static let coarseLand = points(WorldGeometryData.coarseLand)
     private static let mediumLand = points(WorldGeometryData.mediumLand)
     private static let fineLand = points(WorldGeometryData.fineLand)

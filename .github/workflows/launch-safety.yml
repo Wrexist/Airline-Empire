@@ -17,11 +17,11 @@ concurrency:
   cancel-in-progress: true
 jobs:
   core:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container: swift:6.0.3-jammy
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
           ref: ${{ inputs.candidate_sha || github.sha }}
@@ -42,7 +42,7 @@ jobs:
     # timed out on an identical commit (run 37534434608).
     timeout-minutes: 55
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
           ref: ${{ inputs.candidate_sha || github.sha }}
@@ -71,7 +71,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO -resultBundlePath LaunchSafety.xcresult
       - name: Export genuine paywall review screenshots
         run: python3 scripts/export-iap-review.py AirlineEmpireApp/LaunchSafety.xcresult iap-review
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: iap-review-screenshots
           path: iap-review/
@@ -85,7 +85,7 @@ jobs:
             -parallel-testing-enabled NO \
             -only-testing:AirlineEmpireTests/LaunchSafetyTests/testUnrelatedUITestFlagsDoNotGrantPro \
             CODE_SIGNING_ALLOWED=NO -resultBundlePath ReleaseSafety.xcresult
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: launch-safety-results
@@ -96,7 +96,7 @@ jobs:
       - name: UI checkpoints in the log
         if: always()
         run: python3 scripts/export-ci-checkpoints.py AirlineEmpireApp/LaunchSafety.xcresult accessibility-review
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: accessibility-review-screenshots

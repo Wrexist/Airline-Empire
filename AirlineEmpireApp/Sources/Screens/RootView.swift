@@ -191,6 +191,10 @@ struct GameShell: View {
     @Environment(GameController.self) private var controller
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var selection: Tab = .home
+    /// The map's camera, selection, layer and pushed screens, held here so
+    /// they outlive the container swap below (`MapScreenMemory`). One per
+    /// shell, so a new or loaded game starts from a fresh view of the world.
+    @State private var mapMemory = MapScreenMemory()
 
     enum Tab: Hashable, CaseIterable {
         case home, network, finance, world
@@ -230,6 +234,11 @@ struct GameShell: View {
             // Apple's own test is that context survives the fold. The tab
             // bar is what the iOS 27.1 SDK lays out natively on the Duo's
             // inner display (docs/IPHONE_DUO.md).
+            //
+            // An iPad still swaps containers when Split View resizes across
+            // the size-class line. The other tabs rebuild; the map does not
+            // lose its place, because what it remembers lives in `mapMemory`
+            // up here rather than in the screen being rebuilt.
             if sizeClass == .regular && !AEOrientation.isPhone {
                 NavigationSplitView {
                     List(selection: sidebarSelection) {
@@ -318,7 +327,7 @@ struct GameShell: View {
     @ViewBuilder
     private func screen(for tab: Tab) -> some View {
         switch tab {
-        case .home: MapScreen()
+        case .home: MapScreen(memory: mapMemory)
         case .network: NetworkView()
         case .finance: FinanceView()
         case .world: OperationsView()
@@ -382,14 +391,23 @@ struct GameOverView: View {
                 // continued — loading it only returns here — and on the free
                 // tier it held the one save slot, so founding the next airline
                 // opened the paywall instead of the setup screen.
+                //
+                // It also carries the seed: the founding screen opens with it
+                // filled in, so "replays the same world" is one tap rather
+                // than a number to copy by hand.
                 Button("Start a new airline") {
-                    let collapsed = controller.activeSaveSlot
-                    controller.quitToMenu()
-                    if let collapsed { controller.deleteSlot(collapsed) }
+                    if let seed = controller.snapshot?.meta.worldSeed {
+                        controller.startAgain(fromCollapsed: seed)
+                    } else {
+                        let collapsed = controller.activeSaveSlot
+                        controller.quitToMenu()
+                        if let collapsed { controller.deleteSlot(collapsed) }
+                    }
                 }
                 .buttonStyle(.aePrimary)
                 .padding(.top, AETheme.spacingS)
-                Text("This airline's save is cleared. Its seed, above, replays the same world.")
+                .accessibilityIdentifier("ae-game-over-restart")
+                Text("This airline's save is cleared. Its seed, above, is filled in for the next airline — keep it to fly the same world again.")
                     .font(.caption)
                     .foregroundStyle(AETheme.mutedText)
                     .multilineTextAlignment(.center)
@@ -473,6 +491,10 @@ struct RunSummaryCard: View {
                     AESectionHeader(text: "This world", systemImage: "globe")
                     Text("Seed \(String(snapshot.meta.worldSeed))")
                         .font(.subheadline.monospaced())
+                        // Selectable, so it can be copied and shared — the
+                        // whole point of showing a seed.
+                        .textSelection(.enabled)
+                        .accessibilityIdentifier("ae-game-over-seed")
                     Text("Start a new airline with this seed to fly the same world again — the same markets, the same rivals, the same weather.")
                         .font(.caption)
                         .foregroundStyle(AETheme.mutedText)

@@ -106,6 +106,9 @@ final class HubScreenModel {
         didSet {
             // Leaving an upgrade card lets the overview's overlays back.
             if case .upgrade = oldValue, panel != oldValue { scene.leaveFacility() }
+            // A drag that starts on a world label pans the camera, unless a
+            // panel is open: then it may be the panel's.
+            scene.labelsPassCameraGestures = panel == nil
             updateBlueprint()
         }
     }

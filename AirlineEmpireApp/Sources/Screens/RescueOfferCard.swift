@@ -10,12 +10,12 @@ struct RescueOfferCard: View {
             AECard {
                 VStack(alignment: .leading, spacing: AETheme.spacingS) {
                     Text("An investor offers a lifeline").font(.headline)
-                    Text("Borrow \(Format.money(offer.principal)) at 15% annual interest for 24 months.")
+                    Text("Borrow \(Format.money(offer.principal)) at \(Self.terms).")
                     Text("Monthly repayment: \(Format.money(offer.monthlyPayment)). You can repay early in Finance.")
                     Text("This is debt, not a gift. It buys time to repair your airline. Administration and bankruptcy still apply if you keep losing money. This offer is available once, before your first administration.")
                         .font(.caption).foregroundStyle(.secondary)
                     ConfirmableButton(title: "Accept rescue financing?",
-                                      message: "Borrow \(Format.money(offer.principal)). Pay \(Format.money(offer.monthlyPayment)) per month for 24 months at 15% annual interest.",
+                                      message: "Borrow \(Format.money(offer.principal)). Pay \(Format.money(offer.monthlyPayment)) per month for \(Self.term) at \(Self.rate) annual interest.",
                                       confirmTitle: "Accept financing", role: nil,
                                       action: { controller.submit(DecideRescueCommand(accept: true)) }) {
                         Text("Accept financing").frame(minHeight: 44)
@@ -34,4 +34,21 @@ struct RescueOfferCard: View {
             .accessibilityIdentifier("ae-rescue-offer")
         }
     }
+
+    // The terms come from Core's `RescueOffer`, which is what the loan is
+    // actually written with. They were typed here by hand — "15%", "24
+    // months" — so a retuned offer would have kept promising the old one.
+
+    /// "15%", from the offer's annual rate in basis points.
+    static var rate: String {
+        Format.percent(Double(RescueOffer.annualRateBasisPoints) / 10_000)
+    }
+
+    /// "24 months".
+    static var term: String {
+        RescueOffer.termMonths == 1 ? "1 month" : "\(RescueOffer.termMonths) months"
+    }
+
+    /// "15% annual interest for 24 months".
+    static var terms: String { "\(rate) annual interest for \(term)" }
 }

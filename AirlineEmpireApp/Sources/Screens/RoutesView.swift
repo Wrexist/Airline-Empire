@@ -209,6 +209,30 @@ struct RouteRow: View {
             }
         }
         .padding(.vertical, 2)
+        // One element and one sentence, as `FleetRow` does. VoiceOver used
+        // to stop on every chip — "3×/day", "load 72%", "$120" — and read
+        // the shorthand as written, so a forty-route board was a hundred
+        // and sixty swipes of symbols.
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityText)
+    }
+
+    /// The codes stay first and as written: the board is searched by them,
+    /// and the UI tests find a row by the codes in its label.
+    private var accessibilityText: String {
+        var parts = ["\(card.origin.raw) to \(card.destination.raw)",
+                     card.dailyRoundTrips == 1
+                        ? "1 round trip a day"
+                        : "\(card.dailyRoundTrips) round trips a day"]
+        parts.append(card.hasFlown
+                     ? "load \(Format.percent(card.loadFactor))"
+                     : "not flown yet")
+        parts.append("fare \(Format.moneyAccessibility(card.ticketPrice))")
+        parts.append("\(card.hasClosedMonth ? "this month" : "so far") \(Format.moneyAccessibility(card.thisMonthProfit))")
+        if card.assignedAircraftCount == 0 {
+            parts.append("no aircraft")
+        }
+        return parts.joined(separator: ", ")
     }
 }
 
@@ -923,6 +947,11 @@ struct OpenRouteSheet: View {
                         }
                 }
                 .navigationDestination(for: AircraftID.self) { AircraftDetailView(aircraftID: $0) }
+                // The new route's aircraft links back to *its* route, and that
+                // link was silently dead in this stack: open a route, tap its
+                // aircraft, tap the route — nothing. Every other stack that
+                // knows `AircraftID` knows `RouteID` too (BUG-029's family).
+                .navigationDestination(for: RouteID.self) { RouteDetailView(routeID: $0) }
                 // Buying Pro from inside this sheet opens the rest of the map
                 // without closing and reopening it.
                 .onChange(of: entitlements.access) { _, _ in

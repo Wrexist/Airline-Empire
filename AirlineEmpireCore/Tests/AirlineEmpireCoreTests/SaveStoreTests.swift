@@ -18,11 +18,19 @@ struct SaveStoreTests {
         return (engine.state, engine.catalog)
     }
 
+    /// A manager checking saves against the fixture's own content. The
+    /// default manager checks against the shipped catalog, which has no
+    /// Metroburg or Costport, and would rightly refuse these saves.
+    static func manager(_ root: URL, _ catalog: ContentCatalog) -> SaveManager {
+        SaveManager(store: FileSaveStore(rootDirectory: root),
+                    codec: JSONSaveCodec(catalog: catalog))
+    }
+
     @Test func saveLoadRoundTripOnDisk() throws {
         let root = Self.scratch()
         defer { try? FileManager.default.removeItem(at: root) }
-        let manager = SaveManager(store: FileSaveStore(rootDirectory: root))
-        let (state, _) = try Self.populatedState()
+        let (state, catalog) = try Self.populatedState()
+        let manager = Self.manager(root, catalog)
 
         try manager.save(state, slot: "1")
         let loaded = try manager.load(slot: "1")
@@ -38,8 +46,8 @@ struct SaveStoreTests {
     @Test func rotationKeepsTwoBackups() throws {
         let root = Self.scratch()
         defer { try? FileManager.default.removeItem(at: root) }
-        let manager = SaveManager(store: FileSaveStore(rootDirectory: root))
         var (state, catalog) = try Self.populatedState()
+        let manager = Self.manager(root, catalog)
 
         try manager.save(state, slot: "1") // gen A
         let engine = SimulationEngine(state: state, systems: GamePipeline.standard(),
@@ -60,8 +68,8 @@ struct SaveStoreTests {
     @Test func corruptedCurrentFallsBackToBackup() throws {
         let root = Self.scratch()
         defer { try? FileManager.default.removeItem(at: root) }
-        let manager = SaveManager(store: FileSaveStore(rootDirectory: root))
         let (stateA, catalog) = try Self.populatedState()
+        let manager = Self.manager(root, catalog)
         try manager.save(stateA, slot: "1")
         let engine = SimulationEngine(state: stateA, systems: GamePipeline.standard(),
                                       catalog: catalog)
@@ -91,8 +99,8 @@ struct SaveStoreTests {
     @Test func strayTmpFileDoesNotBreakSaves() throws {
         let root = Self.scratch()
         defer { try? FileManager.default.removeItem(at: root) }
-        let manager = SaveManager(store: FileSaveStore(rootDirectory: root))
-        let (state, _) = try Self.populatedState()
+        let (state, catalog) = try Self.populatedState()
+        let manager = Self.manager(root, catalog)
         // Simulate a crash mid-write: stale tmp garbage in the slot dir.
         let directory = manager.store.slotDirectory("1")
         try FileManager.default.createDirectory(at: directory,
@@ -113,8 +121,8 @@ struct SaveStoreTests {
     @Test func stateThatWouldNotLoadIsNeverSaved() throws {
         let root = Self.scratch()
         defer { try? FileManager.default.removeItem(at: root) }
-        let manager = SaveManager(store: FileSaveStore(rootDirectory: root))
-        let (good, _) = try Self.populatedState()
+        let (good, catalog) = try Self.populatedState()
+        let manager = Self.manager(root, catalog)
         try manager.save(good, slot: "1")
 
         // An aircraft owned by an airline that does not exist.
@@ -132,6 +140,66 @@ struct SaveStoreTests {
         let loaded = try manager.load(slot: "1")
         #expect(loaded.generation == 0)
         #expect(loaded.state == good)
+    }
+
+    /// A content update that renames a code must not crash old saves on
+    /// their first tick (twenty-odd simulation paths force-unwrap catalog
+    /// lookups). The save is refused at load with the codes it is missing.
+    /// The fixture world flies Metroburg–Costport, which the shipped content
+    /// does not have — exactly how a renamed airport looks to a new build.
+    @Test func saveNamingContentTheGameNoLongerHasIsRefusedNotCrashed() throws {
+        let root = Self.scratch()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let (state, catalog) = try Self.populatedState()
+        try Self.manager(root, catalog).save(state, slot: "1")
+
+        let shipped = SaveManager(store: FileSaveStore(rootDirectory: root))
+        #expect(throws: SaveError.missingContent(["airport COS", "airport MET"])) {
+            _ = try shipped.load(slot: "1")
+        }
+        // The same refusal on the import/fixture path, which decodes bytes.
+        let file = shipped.store.slotDirectory("1").appendingPathComponent(FileSaveStore.currentName)
+        #expect(throws: SaveError.missingContent(["airport COS", "airport MET"])) {
+            _ = try shipped.codec.decode(try Data(contentsOf: file))
+        }
+        // And it is never written over saves that would load.
+        #expect(throws: SaveError.missingContent(["airport COS", "airport MET"])) {
+            try shipped.save(state, slot: "2")
+        }
+        #expect(shipped.store.candidates(slot: "2").isEmpty)
+    }
+
+    @Test func renamedAircraftTypeIsReported() throws {
+        let (state, catalog) = try Self.populatedState()
+        #expect(state.unknownContentCodes(in: catalog).isEmpty)
+        let renamed = try ContentCatalog(
+            version: "renamed",
+            airports: catalog.orderedAirportCodes.compactMap { catalog.airports[$0] },
+            seasonality: Array(catalog.seasonality.values),
+            aircraftTypes: [], tuning: catalog.tuning)
+        #expect(state.unknownContentCodes(in: renamed) == ["aircraft type MR180"])
+    }
+
+    /// The envelope carried "0" for every save ever written. It now records
+    /// the content the save was written against.
+    @Test func savesRecordTheirContentVersion() throws {
+        let root = Self.scratch()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let shippedVersion = try #require(ContentCatalog.shipped).version
+        #expect(shippedVersion != "0")
+
+        let manager = SaveManager(store: FileSaveStore(rootDirectory: root))
+        try manager.save(Fixtures.newState(), slot: "v")
+        let file = manager.store.slotDirectory("v").appendingPathComponent(FileSaveStore.currentName)
+        let envelope = try JSONDecoder().decode(SaveEnvelope.self, from: Data(contentsOf: file))
+        #expect(envelope.contentVersion == shippedVersion)
+
+        let (state, catalog) = try Self.populatedState()
+        let data = try JSONSaveCodec(catalog: catalog).encode(state)
+        #expect(try JSONDecoder().decode(SaveEnvelope.self, from: data).contentVersion == "anchor")
+        // No catalog, no claim.
+        let bare = try JSONSaveCodec().encode(state)
+        #expect(try JSONDecoder().decode(SaveEnvelope.self, from: bare).contentVersion == "0")
     }
 
     @Test func repeatedSaveLoadCyclesOnDiskStayIdentical() throws {

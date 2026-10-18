@@ -82,8 +82,12 @@ public struct WorldEventSystem: SimulationSystem {
             context.emit(.worldEventForecast(kind: .storm(region: region),
                                              beginsAt: begins))
 
-            // A violent storm closes the region's most exposed big airport.
+            // A violent storm closes the region's most exposed big airport —
+            // if the regional cap still has room. The cap was checked before
+            // the storm was added, so a storm landing on the last free slot
+            // used to bring its closure in over the limit.
             if severity >= tuning.closureSeverityThreshold,
+               regionalEventCount(state) < tuning.maxActiveRegionalEvents,
                let exposed = mostExposedAirport(in: region, catalog: context.catalog) {
                 add(kind: .airportClosure(airport: exposed), beginsAt: begins,
                     endsAt: begins + .days(min(days, 2)), severity: severity,
