@@ -334,8 +334,13 @@ final class HubDynamics {
         }
     }
 
+    /// The terminal cutaway: the hall's people show, and the gates' crowds
+    /// outside it — off to the side of the shot or behind the wall — stop.
     var showsInterior = false {
-        didSet { interiorCrowd.isEnabled = showsInterior }
+        didSet {
+            interiorCrowd.isEnabled = showsInterior
+            for crowd in standCrowds.values { crowd.entity.isEnabled = !showsInterior }
+        }
     }
 
     var showsRoute = false {
@@ -601,10 +606,26 @@ final class HubDynamics {
                                                motion: .loop(stand.queue, offset: Float(k) / Float(count), speed: speed)))
             }
         }
+        // A 3 GB device animates the focused stand's people only (32 at
+        // most); the other stands' crew and queues stand where they would
+        // start, merged into the stand's batch, which costs nothing a frame.
+        if HubDevice.isLowMemory && !focused {
+            for (k, walker) in walkers.enumerated() where walker.figure < crowdFigures.count {
+                batch.add(crowdFigures[walker.figure], matrix: HubCrowd.startPose(walker, index: k)) { key in
+                    switch key {
+                    case .cloth: .cloth(walker.cloth)
+                    case .skin: .skin(walker.skin)
+                    default: key
+                    }
+                }
+            }
+            walkers.removeAll()
+        }
         group.addChild(batch.entity(materials: materials, name: "stand\(stand.index)"))
         if !walkers.isEmpty {
             let crowd = HubCrowd(figures: crowdFigures, walkers: walkers, materials: materials,
                                  name: "standCrowd\(stand.index)")
+            crowd.entity.isEnabled = !showsInterior
             group.addChild(crowd.entity)
             standCrowds[stand.index] = crowd
         } else {
@@ -1033,8 +1054,10 @@ final class HubDynamics {
         var jitter = SplitMix(seed: 7)
         // ~34 people per bay of the hall at a quiet hour, ~84 when full —
         // the reference's hall holds about 28 in one bay's worth of floor.
+        // A 3 GB device draws fewer and animates at most 40 of them.
+        let small = HubDevice.isLowMemory
         let bays = max(1, layout.interior.bays)
-        let count = min(300, bays * (34 + Int(50 * load)))
+        let count = min(small ? 180 : 300, bays * (34 + Int(50 * load)))
         let hotspots = layout.interior.hotspots
         guard !hotspots.isEmpty else { return }
         let total = hotspots.reduce(0) { $0 + $1.weight }
@@ -1043,7 +1066,7 @@ final class HubDynamics {
         // About two in five are on their way somewhere — kiosk to security,
         // security to the shops, the shops to the gates — and the rest
         // queue, browse and wait where they are.
-        let walking = min(110, count * 2 / 5)
+        let walking = min(small ? 40 : 110, count * 2 / 5)
         let spots = hotspots.map { SIMD3<Float>(Float($0.position.x), 1.7, Float($0.position.z)) }
         var walkers: [HubCrowd.Walker] = []
         for k in 0..<walking {

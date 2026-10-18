@@ -77,17 +77,37 @@ final class HubCrowd {
     let entity = Entity()
     private let figures: [[Template]]
     private let walkers: [Walker]
+    /// Each walker's path length, measured once rather than every frame.
+    private let lengths: [Float]
     private var states: [State]
     private var batches: [Batch] = []
     private var frame = 0
+    /// Time since the last pose, carried over the frames that skip one.
+    private var pending: Float = 0
 
     /// `figures` are raw figures (`HubModels.rawPerson`), facing +x.
     init(figures raw: [[(HubMaterialKey, HubMeshBatch)]], walkers: [Walker], materials: HubMaterials, name: String) {
         figures = raw.map(Self.prepare)
         self.walkers = walkers
+        lengths = walkers.map { walker in
+            switch walker.motion {
+            case .loop(let path, _, _), .pace(let path, _, _, _): Float(path.length)
+            case .wander: 0
+            }
+        }
         states = walkers.enumerated().map { index, walker in Self.start(walker, index: index) }
         build(materials: materials, name: name)
         write()
+    }
+
+    /// Where `walker` stands at the start, as a matrix for a static batch:
+    /// the people a small device keeps still rather than animating.
+    static func startPose(_ walker: Walker, index: Int) -> float4x4 {
+        let s = start(walker, index: index)
+        var yaw = s.yaw
+        if case .loop(_, _, let v) = walker.motion, v < 0 { yaw += .pi }
+        return HubMeshBatch.translation(s.position) * HubMeshBatch.yaw(yaw)
+            * HubMeshBatch.scale(SIMD3<Float>(repeating: walker.scale))
     }
 
     var isEmpty: Bool { walkers.isEmpty }
@@ -279,14 +299,24 @@ final class HubCrowd {
         yaw += max(-rate * dt, min(rate * dt, wrap(wanted - yaw)))
     }
 
-    /// Moves everyone on by `dt`, then rewrites the meshes when the crowd is
-    /// on screen; `detail` above 1 writes only every few frames (the camera
-    /// is far enough out that people are a few pixels tall).
+    /// Moves everyone on and rewrites the meshes, at most thirty times a
+    /// second — a walk reads the same at half the frame rate, and the
+    /// rewrite is CPU work per vertex — and less often when `detail` is
+    /// above 2 (the camera is far enough out that people are a few pixels
+    /// tall). A hidden crowd (the terminal cutaway, off the scene) stands
+    /// still and costs nothing, and picks up where it was when it shows.
     func update(_ dt: Float, detail: Int = 1) {
         guard !walkers.isEmpty else { return }
-        for i in states.indices { step(i, dt) }
+        guard entity.scene != nil, entity.isEnabledInHierarchy else {
+            pending = 0
+            return
+        }
+        pending += dt
         frame += 1
-        guard entity.scene != nil, entity.isEnabledInHierarchy, frame % max(1, detail) == 0 else { return }
+        guard frame % max(2, detail) == 0 else { return }
+        let elapsed = min(pending, 0.25)
+        pending = 0
+        for i in states.indices { step(i, elapsed) }
         write()
     }
 
@@ -296,7 +326,7 @@ final class HubCrowd {
         var speed: Float = 0
         switch walker.motion {
         case .loop(let path, _, let v):
-            let length = Float(path.length)
+            let length = lengths[i]
             guard length > 0.1 else { break }
             s.distance += v * dt
             if s.distance >= length { s.distance -= length }
@@ -309,7 +339,7 @@ final class HubCrowd {
             s.size = grow * grow * (3 - 2 * grow)
             speed = abs(v)
         case .pace(let path, _, let v, let pause):
-            let length = Float(path.length)
+            let length = lengths[i]
             guard length > 0.1 else { break }
             if s.pause > 0 {
                 s.pause -= dt
