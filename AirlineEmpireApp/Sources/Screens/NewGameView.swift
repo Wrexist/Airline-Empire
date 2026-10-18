@@ -74,13 +74,30 @@ struct NewGameView: View {
                 withAnimation(reduceMotion ? nil : AEMotion.selection) { customHome = code }
             }
         }
+        // Held while an import is read, checked and written off the main
+        // actor; a large save takes long enough that a menu which kept
+        // answering taps would invite a second import over the first.
+        .allowsHitTesting(!controller.isImporting)
+        .overlay {
+            if controller.isImporting {
+                ProgressView("Importing campaign…")
+                    .tint(.white)
+                    .foregroundStyle(.white)
+                    .padding(AETheme.spacingL)
+                    .aeGlass(in: AETheme.cardShape)
+                    .accessibilityIdentifier("ae-menu-importing")
+            }
+        }
         .environment(\.colorScheme, .dark)
         .preferredColorScheme(.dark)
         .fileImporter(isPresented: $showingImport, allowedContentTypes: [.data]) { result in
-            do {
-                try controller.importCampaign(from: result.get(), access: entitlements.access)
-                slots = controller.availableSlots()
-            } catch { importFailure = error.localizedDescription }
+            Task {
+                do {
+                    try await controller.importCampaign(from: result.get(),
+                                                        access: entitlements.access)
+                    slots = controller.availableSlots()
+                } catch { importFailure = error.localizedDescription }
+            }
         }
         .alert("Could not import campaign", isPresented: Binding(
             get: { importFailure != nil }, set: { if !$0 { importFailure = nil } })) {
