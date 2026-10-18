@@ -10,8 +10,9 @@ and posed per variant:
   c  hoodie with the hood down, backpack
   d  shirt, reaching forward to a kiosk screen
   crew  dark overalls, hi-vis vest, ear defenders
+  staff terminal staff: navy uniform, white collar, hands folded
 
-Writes all five files:
+Writes all six files (`--only person_staff` for one):
 
     blender --background --python scripts/hub-models/procedural/people.py -- --preview <dir>
 """
@@ -31,7 +32,7 @@ def torso(kit, slot, rings):
 
 
 def body(kit, top="cloth", legs="darkMetal", arms=None, stride=0.0, reach=None, swing=0.0,
-         right_hand=None, coat=False, hair="short"):
+         right_hand=None, left_hand=None, coat=False, hair="short"):
     """The shared figure. `stride` puts the left foot forward and the right back;
     `swing` the opposite for the arms; `reach`/`right_hand` place the right hand."""
     arms = arms or top
@@ -48,6 +49,8 @@ def body(kit, top="cloth", legs="darkMetal", arms=None, stride=0.0, reach=None, 
         shoulder = Vector((0, side * 0.21, SHOULDER))
         if side == -1 and right_hand is not None:
             hand = Vector(right_hand)
+        elif side == 1 and left_hand is not None:
+            hand = Vector(left_hand)
         else:
             hand = Vector((-side * swing if stride else 0.02, side * 0.25, 0.86))
         kit.add(kit.limb(shoulder, hand, 0.056, 0.045, arms))
@@ -106,9 +109,20 @@ def crew(kit):
     kit.add(kit.ellipsoid((0.0, 0, 1.69), (0.105, 0.098, 0.07), "cloth", n=12, rings=4))
 
 
+def staff(kit):
+    """Terminal staff: navy uniform jacket and trousers (ae_cloth, which the
+    app leaves navy), white collar and name badge, hands folded in front."""
+    kit.recentre = True
+    kit.smooth = 70
+    body(kit, top="cloth", legs="cloth", left_hand=(0.2, 0.05, 1.0), right_hand=(0.2, -0.05, 0.98))
+    kit.add(K.Piece().box((0.118, 0, 1.4), (0.04, 0.16, 0.1), "white", bevel=0.015, segments=1).seal())
+    kit.add(K.Piece().box((0.128, 0, 1.31), (0.02, 0.05, 0.12), "darkMetal").seal())
+    kit.add(K.Piece().box((0.13, 0.09, 1.27), (0.02, 0.07, 0.045), "white").seal())
+
+
 VIEWS = [("front", (4.4, 2.6, 1.6), (0, 0, 0.88)), ("side", (0, 5.0, 1.0), (0, 0, 0.88))]
 
 for slot, build in [("person_passenger_a", passenger_a), ("person_passenger_b", passenger_b),
                     ("person_passenger_c", passenger_c), ("person_passenger_d", passenger_d),
-                    ("person_crew", crew)]:
+                    ("person_crew", crew), ("person_staff", staff)]:
     K.run(slot, build, VIEWS)
