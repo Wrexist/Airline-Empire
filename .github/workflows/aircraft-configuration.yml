@@ -10,11 +10,6 @@ on:
         description: Run only native iPad validation after an iPhone pass
         type: boolean
         default: false
-  push:
-    branches: [codex/ae049-aircraft-configuration]
-    paths:
-      - AirlineEmpireApp/**
-      - AirlineEmpireCore/**
 permissions:
   contents: read
 concurrency:
@@ -23,11 +18,11 @@ concurrency:
 jobs:
   core:
     if: inputs.tablet_only != true && inputs.captures_only != true
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container: swift:6.0.3-jammy
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Core regression tests
         working-directory: AirlineEmpireCore
         run: swift test --filter 'AirportFacilitiesTests|EconomyTests|FinanceBreakdownTests|FinanceTests|SummaryModelTests|ProgressionTests|CampaignRecordTests|BriefingModelTests|CompetitionPriorityTests|CompetitionTests|RivalPressureCampaignTests|AircraftMarketTests|AdvisoryModelTests|OnboardingTests|NextMovesTests|LiveryMigrationTests|RoutePlanningTests|AircraftConfigurationTests|ServiceDemandTests|DemandTests|ReputationTests|PassengerExperienceTests|FleetBoardTests|FleetTests|RouteManagementTests|FlightOpsTests|PersistenceTests|SaveStoreTests'
@@ -43,7 +38,7 @@ jobs:
     # was cancelled by the 45-minute cap at the very end.
     timeout-minutes: 75
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Generate project
         run: |
           mkdir -p build
@@ -117,7 +112,7 @@ jobs:
             fi
           done
       - name: Upload review images and logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: airport-review
@@ -128,7 +123,7 @@ jobs:
             build/ae049-*-screens/*.png
             build/ae049-*-screens/*.txt
             build/ae049-*-screens/manifest.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: aircraft-validation

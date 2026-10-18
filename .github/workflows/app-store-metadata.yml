@@ -81,13 +81,13 @@ jobs:
   crash-audit:
     name: Read existing beta crash diagnostics
     if: inputs.mode == 'plan' && !inputs.review_images && !inputs.screenshots_only && !inputs.urls_only
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
       - name: Fetch technical crash evidence
@@ -106,7 +106,7 @@ jobs:
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
         run: node scripts/asc/audit-review-submission.mjs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: apple-beta-crash-audit
           path: apple-audit/
@@ -116,13 +116,13 @@ jobs:
   # never reaches Apple.
   validate:
     name: Validate the listing (strict)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
 
@@ -144,17 +144,17 @@ jobs:
     name: Push to App Store Connect (plan or apply)
     needs: validate
     if: github.event_name == 'workflow_dispatch' && !inputs.review_images
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
       APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
       APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
 
@@ -210,7 +210,7 @@ jobs:
         run: |
           node scripts/asc/update-website-urls.mjs --version "$STORE_VERSION" ${{ inputs.mode == 'apply' && '--apply' || '' }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always() && inputs.urls_only
         with:
           name: website-url-verification
@@ -223,7 +223,7 @@ jobs:
           STORE_VERSION: ${{ inputs.version }}
         run: node scripts/asc/verify-screenshots.mjs --version "$STORE_VERSION"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always() && (inputs.screenshots || inputs.screenshots_only)
         with:
           name: screenshot-upload-verification
@@ -246,17 +246,17 @@ jobs:
     # submitted, because submitting locks it. After `game-center` too: the
     # version needs its Game Center configuration before Apple will take it.
     needs: [validate, push, game-center]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
       APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
       APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
       APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
       # The same three acts of intent as a listing write. attach, submit,
@@ -290,7 +290,7 @@ jobs:
             withdraw)        node scripts/asc/resubmit-version.mjs --version "$STORE_VERSION" --apply --withdraw-only ;;
             *) echo "::error::Unhandled submit_for_review value"; exit 1 ;;
           esac
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: review-submission-report
@@ -303,17 +303,17 @@ jobs:
   game-center:
     if: inputs.game_center != 'off'
     needs: validate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
       APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
       APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
       APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
       - name: Plan or apply Game Center
@@ -336,13 +336,13 @@ jobs:
   purchase-review-images:
     if: inputs.review_images
     needs: validate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
       - name: Validate the prepared review assets
@@ -361,7 +361,7 @@ jobs:
           else
             node scripts/asc/upload-iap-review.mjs
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: purchase-review-image-report
