@@ -76,7 +76,12 @@ public struct AirportFacilityTuning: Equatable, Codable, Sendable {
                 transferCentreInstallation: Money = .dollars(25_000_000),
                 transferCentreMonthly: Money = .dollars(200_000), transferCentreBuildDays: Int = 60,
                 transferMinimumConnectMinutes: Int64 = 30, transferMaximumLayoverMinutes: Int64 = 300,
-                transferThroughFareDiscount: Double = 0.2, transferConnectionQuality: Double = 0.6,
+                // Measured (TransferCentreTests' balance runs): at 0.6 a
+                // three-spoke hub paid back in 12.5 months and an uncontested
+                // eight-spoke one in 8; at 0.25 they sit inside the plan's
+                // 18–36 month bar, and a change of planes weighs about a
+                // quarter of a nonstop, near classic QSI weights.
+                transferThroughFareDiscount: Double = 0.2, transferConnectionQuality: Double = 0.25,
                 transferLayoverPenalty: Double = 0.4, transferMaximumDetour: Double = 1.5,
                 transferSpokesPerHub: Int = 48, transferMarketsPerHub: Int = 40) {
         self.loungeInstallation = loungeInstallation; self.groundInstallation = groundInstallation

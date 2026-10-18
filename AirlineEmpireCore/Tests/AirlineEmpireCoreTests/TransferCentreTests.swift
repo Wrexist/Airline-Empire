@@ -575,6 +575,9 @@ struct TransferCentreTests {
         #expect(hub.revenue > plain.revenue)
         #expect(hub.load > plain.load)
         #expect(hub.load <= 1)
+        // No money-printer: a small hub pays back within the plan's bar
+        // (§8: 18–36 months), not in a year.
+        #expect(payback > 15, "a three-spoke hub pays back in \(payback) months")
     }
 
     /// The same measurement on the real map: Stockholm with eight European
@@ -630,6 +633,8 @@ struct TransferCentreTests {
         #expect(hub.connecting > 0)
         #expect(hub.revenue > plain.revenue)
         #expect(hub.load <= 1)
+        // The uncontested upper bound still takes over a year to pay back.
+        #expect(payback > 12, "an uncontested eight-spoke hub pays back in \(payback) months")
     }
 
     // MARK: The hub view

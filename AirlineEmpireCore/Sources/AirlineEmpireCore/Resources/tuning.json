@@ -247,7 +247,7 @@
   "transferMinimumConnectMinutes": 30,
   "transferMaximumLayoverMinutes": 300,
   "transferThroughFareDiscount": 0.2,
-  "transferConnectionQuality": 0.6,
+  "transferConnectionQuality": 0.25,
   "transferLayoverPenalty": 0.4,
   "transferMaximumDetour": 1.5,
   "transferSpokesPerHub": 48,
