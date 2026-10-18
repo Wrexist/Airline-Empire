@@ -69,6 +69,12 @@ public struct RouteCardModel: Equatable, Sendable {
     /// on the route screen had a number and no reason (AE-040); this is
     /// the reason, from the same content the flight system charges.
     public var feeTerms: FeeTerms? = nil
+    /// The route's ends where the airline has a transfer centre open: the
+    /// hubs its connecting travellers change at ("of which 120 connecting
+    /// via ARN"). Empty on a point-to-point route.
+    public var connectingVia: [AirportCode] = []
+    /// Of today's demand, travellers connecting at one of those hubs.
+    public var connectingToday: Int = 0
 }
 
 /// The airport charges behind a route's fee line: each end's movement fee
@@ -164,10 +170,11 @@ extension GameState {
     /// Route cards for an airline, deterministic order.
     public func routeCards(for airline: AirlineID,
                            catalog: ContentCatalog) -> [RouteCardModel] {
-        routes(of: airline).map { route in
+        let hubs = Set(airlines[airline]?.designatedHubs ?? [])
+        return routes(of: airline).map { (route: Route) -> RouteCardModel in
             let reference = DemandSystem.referenceFare(
                 distanceKm: route.distanceKm, tuning: catalog.tuning.demand)
-            return RouteCardModel(
+            var card = RouteCardModel(
                 id: route.id, origin: route.origin, destination: route.destination,
                 distanceKm: route.distanceKm, dailyRoundTrips: route.dailyRoundTrips,
                 ticketPrice: route.ticketPrice,
@@ -188,6 +195,9 @@ extension GameState {
                 hasClosedMonth: route.economicsLastMonth != RouteMonthEconomics(),
                 hasFlown: route.stats.totalFlights > 0,
                 feeTerms: feeTerms(for: route, catalog: catalog))
+            card.connectingVia = [route.origin, route.destination].filter { hubs.contains($0) }
+            card.connectingToday = route.connectionsToday?.booked ?? 0
+            return card
         }
     }
 
@@ -285,6 +295,11 @@ public struct NetworkSummary: Equatable, Sendable {
     /// Direct operating costs — fuel, airport fees, crew. Positive.
     public let monthToDateCosts: Money
     public let destinations: Int
+    /// Of the month's passengers and ticket revenue: travellers connecting
+    /// at the airline's hubs (counted on each leg they fly) and their share
+    /// of it. Zero on a point-to-point network.
+    public var monthToDateConnectingPassengers: Int64 = 0
+    public var monthToDateConnectingRevenue: Money = .zero
 
     public init(routeCount: Int, profitableRoutes: Int, losingRoutes: Int,
                 idleRoutes: Int, averageLoadFactor: Double?, liveFlights: Int,
@@ -401,7 +416,7 @@ extension GameState {
 
         let live = airborneFlightCount(for: airline)
 
-        return NetworkSummary(
+        var summary = NetworkSummary(
             routeCount: routes.count, profitableRoutes: profitable,
             losingRoutes: losing, idleRoutes: idle,
             averageLoadFactor: seatsFlown > 0
@@ -409,6 +424,13 @@ extension GameState {
             liveFlights: live, monthToDateProfit: monthToDate,
             monthToDateRevenue: revenue, monthToDateCosts: costs,
             destinations: destinations.count)
+        summary.monthToDateConnectingPassengers = routes.reduce(0) {
+            $0 + ($1.economicsThisMonth.connectingPassengers ?? 0)
+        }
+        summary.monthToDateConnectingRevenue = Money(cents: routes.reduce(0) {
+            $0 + ($1.economicsThisMonth.connectingRevenueCents ?? 0)
+        })
+        return summary
     }
 
     /// The fleet at a glance.

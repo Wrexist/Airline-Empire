@@ -31,6 +31,40 @@ public struct HubRouteLink: Equatable, Codable, Sendable, Identifiable {
     public let profitThisMonthCents: Int64
     /// The last closed month, the comparable figure.
     public let profitLastMonthCents: Int64
+    /// Of today's demand, travellers connecting at either end.
+    public var connectingToday: Int = 0
+}
+
+/// The hub's connecting traffic, once its transfer centre is open: today's
+/// flows through it, the month's travellers, and when its departures bunch
+/// into banks (docs/HUB_PROGRESSION_PLAN.md §6.6).
+public struct HubTransfers: Equatable, Codable, Sendable {
+    public struct Flow: Equatable, Codable, Sendable, Identifiable {
+        public var id: String { from.raw + ">" + to.raw }
+        public let from: AirportCode
+        public let fromCity: String
+        public let to: AirportCode
+        public let toCity: String
+        public let passengers: Int
+        /// Arrivals with an onward flight in the window today.
+        public let connections: Int
+        public let averageWaitMinutes: Int
+        /// The through fare, per traveller.
+        public let fareCents: Int64
+    }
+
+    public let passengersToday: Int
+    /// City pairs connecting today.
+    public let marketsToday: Int
+    /// The largest of them, up to eight.
+    public let flows: [Flow]
+    public let thisMonth: Int64
+    public let lastMonth: Int64
+    public let revenueThisMonthCents: Int64
+    /// Local hours where the player's departures bunch into a bank, busiest
+    /// first: an hour with at least two departures and more than either
+    /// neighbour.
+    public let banks: [Int]
 }
 
 /// A carrier's share of the hub's daily slots.
@@ -94,6 +128,8 @@ public struct HubInsights: Equatable, Codable, Sendable {
     public let alerts: [HubAlert]
     /// Home first, then by routes: the airports the hub switcher offers.
     public var network: [HubNetworkAirport] = []
+    /// Connections through the hub; nil until its transfer centre opens.
+    public var transfers: HubTransfers? = nil
 
     public static let empty = HubInsights(
         routes: [], carriers: [], slotCapacity: 0, slotsUsed: 0, movementsByHour: Array(repeating: 0, count: 24),
@@ -125,11 +161,11 @@ extension GameState {
         let mine = orderedRouteIDs.compactMap { routes[$0] }.filter { $0.airline == pid }
         let hubRoutes = mine.filter { $0.servesAirport(code) }
 
-        let links: [HubRouteLink] = hubRoutes.map { r in
+        let links: [HubRouteLink] = hubRoutes.map { (r: Route) -> HubRouteLink in
             let other = r.origin == code ? r.destination : r.origin
             let far = catalog.airport(other)
             let s = r.stats
-            return HubRouteLink(
+            var link = HubRouteLink(
                 routeID: r.id, other: other, city: far?.city ?? other.raw,
                 bearing: far.map { Geo.bearing(from: spec.coordinate, to: $0.coordinate) } ?? 0,
                 distanceKm: r.distanceKm, dailyRoundTrips: r.dailyRoundTrips,
@@ -143,6 +179,8 @@ extension GameState {
                 revenueThisMonthCents: r.economicsThisMonth.revenueCents,
                 profitThisMonthCents: r.economicsThisMonth.directOperatingProfit.cents,
                 profitLastMonthCents: r.economicsLastMonth.directOperatingProfit.cents)
+            link.connectingToday = r.connectionsToday?.booked ?? 0
+            return link
         }
         .sorted { $0.dailyRoundTrips != $1.dailyRoundTrips ? $0.dailyRoundTrips > $1.dailyRoundTrips
                                                            : $0.routeID.raw < $1.routeID.raw }
@@ -248,6 +286,40 @@ extension GameState {
             monthProfitCents: hubRoutes.reduce(0) { $0 + $1.economicsThisMonth.directOperatingProfit.cents },
             alerts: alerts)
         insights.network = Array(network.prefix(16))
+        if facilities.transferCentre > 0 {
+            insights.transfers = hubTransfers(at: code, player: player, catalog: catalog, spec: spec)
+        }
         return insights
+    }
+
+    /// The hub's connecting traffic for the Insights panel.
+    func hubTransfers(at code: AirportCode, player: Airline, catalog: ContentCatalog,
+                      spec: AirportSpec) -> HubTransfers {
+        let through = (player.connectingFlowsToday ?? []).filter { $0.hub == code }
+        let flows = through.sorted { $0.passengers != $1.passengers ? $0.passengers > $1.passengers
+                                                                     : ($0.origin, $0.destination) < ($1.origin, $1.destination) }
+            .prefix(8)
+            .map { flow in
+                HubTransfers.Flow(from: flow.origin, fromCity: catalog.airport(flow.origin)?.city ?? flow.origin.raw,
+                                  to: flow.destination, toCity: catalog.airport(flow.destination)?.city ?? flow.destination.raw,
+                                  passengers: flow.passengers, connections: flow.connections,
+                                  averageWaitMinutes: flow.averageWaitMinutes, fareCents: flow.fare.cents)
+            }
+        // Banks: the hours the player's departures from here bunch into.
+        var departures = Array(repeating: 0, count: 24)
+        for flight in orderedFlightIDs.compactMap({ flights[$0] })
+        where flight.from == code && flight.kind == .revenue && aircraft[flight.aircraft]?.owner == player.id {
+            departures[HubFormat.localMinute(flight.scheduledDeparture, utcOffsetMinutes: spec.utcOffsetMinutes) / 60 % 24] += 1
+        }
+        let banks = (0..<24).filter { hour in
+            let count = departures[hour]
+            let before = departures[(hour + 23) % 24], after = departures[(hour + 1) % 24]
+            return count >= 2 && count >= before && count >= after && (count > before || count > after)
+        }
+        .sorted { departures[$0] != departures[$1] ? departures[$0] > departures[$1] : $0 < $1 }
+        let tally = player.hubTransfers?[code] ?? HubTransferTally()
+        return HubTransfers(passengersToday: through.reduce(0) { $0 + $1.passengers }, marketsToday: through.count,
+                            flows: Array(flows), thisMonth: tally.thisMonth, lastMonth: tally.lastMonth,
+                            revenueThisMonthCents: tally.revenueThisMonthCents, banks: Array(banks.prefix(4)))
     }
 }

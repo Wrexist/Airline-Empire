@@ -137,6 +137,23 @@ public struct FinanceBreakdown: Equatable, Sendable {
     /// The most recent closed month, if one has closed.
     public let latestStatement: MonthlyStatement?
     public let recurring: RecurringCommitments
+    /// What the airline's hubs connected, this month and last; nil on a
+    /// point-to-point network.
+    public var connecting: Connecting? = nil
+
+    /// Ticket revenue from travellers changing planes at the airline's hubs:
+    /// part of the ticket revenue above, never extra to it.
+    public struct Connecting: Equatable, Sendable {
+        /// Travellers booked through the hubs (each counted once).
+        public let travellersThisMonth: Int64
+        public let travellersLastMonth: Int64
+        /// Both legs' shares of their fares, flown so far this month and
+        /// in the closed month.
+        public let revenueThisMonth: Money
+        public let revenueLastMonth: Money
+        /// The hubs, sorted.
+        public let hubs: [AirportCode]
+    }
 
     public init(monthToDate: MonthFlow?, latestStatement: MonthlyStatement?,
                 recurring: RecurringCommitments) {
@@ -157,10 +174,20 @@ extension GameState {
     /// simulation writes.
     public func financeBreakdown(for airline: AirlineID,
                                  catalog: ContentCatalog) -> FinanceBreakdown {
-        FinanceBreakdown(
+        var breakdown = FinanceBreakdown(
             monthToDate: MonthFlow.make(ledger.monthTotals(for: airline)),
             latestStatement: finance.byAirline[airline]?.latest,
             recurring: RecurringCommitments.make(airline: airline, state: self,
                                                  catalog: catalog))
+        if let tallies = airlines[airline]?.hubTransfers, !tallies.isEmpty {
+            let routes = routes(of: airline)
+            breakdown.connecting = .init(
+                travellersThisMonth: tallies.values.reduce(0) { $0 + $1.thisMonth },
+                travellersLastMonth: tallies.values.reduce(0) { $0 + $1.lastMonth },
+                revenueThisMonth: Money(cents: routes.reduce(0) { $0 + ($1.economicsThisMonth.connectingRevenueCents ?? 0) }),
+                revenueLastMonth: Money(cents: routes.reduce(0) { $0 + ($1.economicsLastMonth.connectingRevenueCents ?? 0) }),
+                hubs: tallies.keys.sorted())
+        }
+        return breakdown
     }
 }

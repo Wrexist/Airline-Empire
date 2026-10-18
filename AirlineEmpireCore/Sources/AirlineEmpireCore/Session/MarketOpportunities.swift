@@ -64,6 +64,12 @@ public struct MarketOpportunity: Equatable, Sendable {
     /// cannot pay for the aircraft that flies it.
     public var paysForItsAirframe: Bool { monthlyAfterAirframe > .zero }
 
+    /// When `origin` is one of the airline's hubs (a transfer centre open):
+    /// its other routes there this one would connect with, so the new spoke
+    /// also feeds connecting travellers. Zero elsewhere. Informational — the
+    /// ranking is demand and airframe economics, as before.
+    public var hubConnections: Int = 0
+
     public init(origin: AirportCode, destination: AirportCode,
                 destinationCity: String, distanceKm: Int,
                 expectedDailyPassengers: Int, referenceFare: Money,
@@ -297,6 +303,7 @@ extension GameState {
         // cost is a handful of evaluations rather than one per market.
         var qualifying: [MarketOpportunity] = []
         var rest: [MarketOpportunity] = []
+        let hubs = Set(player.designatedHubs)
         for (opportunity, _, _) in ranked {
             guard qualifying.count < limit else { break }
             let result = airframeResult(
@@ -306,7 +313,7 @@ extension GameState {
                 incumbents: routesByMarket[Route.market(opportunity.origin,
                                                         opportunity.destination)] ?? [],
                 catalog: catalog)
-            let priced = MarketOpportunity(
+            var priced = MarketOpportunity(
                 origin: opportunity.origin, destination: opportunity.destination,
                 destinationCity: opportunity.destinationCity,
                 distanceKm: opportunity.distanceKm,
@@ -317,6 +324,9 @@ extension GameState {
                 servableByEra: opportunity.servableByEra,
                 bestAirframe: result?.spec.code,
                 monthlyAfterAirframe: result?.monthly ?? .zero)
+            if hubs.contains(opportunity.origin) {
+                priced.hubConnections = (touchCounts[opportunity.origin] ?? 0)
+            }
             if priced.paysForItsAirframe {
                 qualifying.append(priced)
             } else if rest.count < limit {
