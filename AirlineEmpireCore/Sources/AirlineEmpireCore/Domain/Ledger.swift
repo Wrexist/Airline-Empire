@@ -94,7 +94,9 @@ public struct Ledger: Equatable, Codable, Sendable {
     public mutating func closeAccount(_ airline: AirlineID) {
         balances[airline] = nil
         monthAccumulator[airline] = nil
-        dayWindows?[airline] = nil
+        // The day window stays: it is two days of totals, it stops growing
+        // with the postings, and it is what the digest of the airline's last
+        // day reads (the shared ring keeps those transactions too).
     }
 
     /// The current month's signed totals, for a screen that wants "this month
