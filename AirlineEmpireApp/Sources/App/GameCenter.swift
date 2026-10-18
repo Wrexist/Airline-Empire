@@ -84,7 +84,7 @@ final class GameCenter {
         pendingSignIn = nil
         let player = GKLocalPlayer.local
         guard player.isAuthenticated else {
-            status = error == nil ? .signedOut : .unavailable
+            status = Self.status(afterSignInError: error)
             return
         }
         status = .signedIn(displayName: player.displayName)
@@ -94,6 +94,24 @@ final class GameCenter {
         reportedFingerprint = nil
         if let latestProgression { reportAchievements(latestProgression) }
         submitScores()
+    }
+
+    /// What an unauthenticated answer means for Settings.
+    ///
+    /// Any error used to read as `.unavailable` — "restricted, or offline" —
+    /// including the two GameKit hands over when nothing is wrong at all: the
+    /// player dismissed the sign-in sheet (`.cancelled`), or is simply not
+    /// signed in on this device (`.notAuthenticated`). Both are signed out,
+    /// and signed out is the state that tells the player how to sign in.
+    static func status(afterSignInError error: Error?) -> Status {
+        guard let error else { return .signedOut }
+        if let gameKit = error as? GKError {
+            switch gameKit.code {
+            case .cancelled, .notAuthenticated: return .signedOut
+            default: break
+            }
+        }
+        return .unavailable
     }
 
     /// Shows GameKit's sign-in screen, if it gave us one.
