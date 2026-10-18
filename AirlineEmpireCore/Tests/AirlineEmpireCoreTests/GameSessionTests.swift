@@ -109,15 +109,54 @@ struct GameSessionTests {
         #expect(saved == snapshot)
     }
 
-    @Test func advanceToNextMorningLandsAtMidnight() async {
+    /// BUG-061: the sunrise control lands on the operating day's start, not
+    /// on midnight — and always on the *next* day's, so each press moves the
+    /// date by exactly one.
+    @Test func advanceToNextMorningLandsAtOperatingStart() async {
         let session = GameSession(state: Fixtures.newState(), systems: [])
-        await session.advance(ticks: 10) // 150 min into day 0
+        let start = ContentCatalog.empty.tuning.ops.operatingDayStartMinute
+        #expect(start == 6 * 60)
+        let day = GameCalendar.minutesPerDay
+        await session.advance(ticks: 10) // 02:30 on day 0, before dawn
         await session.advanceToNextMorning()
-        let now = await session.snapshot.clock.now
-        #expect(now.rawMinutes == GameCalendar.minutesPerDay)
-        // From exactly midnight, next morning is the NEXT midnight.
+        #expect(await session.snapshot.clock.now.rawMinutes == day + start)
+        // From exactly 06:00, the next morning is the next day's 06:00.
         await session.advanceToNextMorning()
-        #expect(await session.snapshot.clock.now.rawMinutes == 2 * GameCalendar.minutesPerDay)
+        #expect(await session.snapshot.clock.now.rawMinutes == 2 * day + start)
+        // From the afternoon, still one date forward.
+        await session.advance(ticks: 40) // 16:00 on day 2
+        await session.advanceToNextMorning()
+        #expect(await session.snapshot.clock.now.rawMinutes == 3 * day + start)
+    }
+
+    /// The shipped content agrees, and a morning is when the airline is
+    /// flying: a scheduled world has flights in the air or boarding.
+    @Test func nextMorningFindsTheScheduleRunning() async throws {
+        let catalog = try ContentCatalog.loadBundled()
+        let session = GameSession(state: Fixtures.newState(seed: 3),
+                                  systems: GamePipeline.standard(), catalog: catalog)
+        _ = await session.submit(FoundAirlineCommand(
+            airlineName: "Dawn Air", kind: .player, homeAirport: "ARN",
+            startingCash: Money.dollars(120_000_000)))
+        let player = try #require(await session.snapshot.playerAirline).id
+        _ = await session.submit(BuyUsedAircraftCommand(buyer: player, type: "MR180", ageYears: 6))
+        let market = try #require(await session.snapshot
+            .marketOpportunities(catalog: catalog, limit: 1).first)
+        #expect(await session.submit(OpenRouteCommand(
+            airline: player, origin: market.origin, destination: market.destination,
+            dailyRoundTrips: 2, ticketPrice: market.referenceFare)) == .applied)
+        let state = await session.snapshot
+        let route = try #require(state.routes(of: player).first).id
+        let aircraft = try #require(state.fleet(of: player).first).id
+        #expect(await session.submit(AssignAircraftToRouteCommand(
+            airline: player, route: route, aircraftID: aircraft)) == .applied)
+
+        await session.advanceToNextMorning()
+        let morning = await session.snapshot
+        #expect(morning.clock.now.rawMinutes % GameCalendar.minutesPerDay
+                == catalog.tuning.ops.operatingDayStartMinute)
+        #expect(morning.flights.values.contains { $0.aircraft == aircraft },
+                "a 06:00 morning should find the day's schedule built")
     }
 
     @Test func snapshotStreamDeliversInitialState() async {

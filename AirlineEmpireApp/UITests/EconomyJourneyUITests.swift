@@ -131,7 +131,7 @@ final class EconomyJourneyUITests: AEUITestCase {
     /// have only ever existed as code (READ, never OBSERVED).
     ///
     /// The engine is driven by the sunrise control — "Advance to next
-    /// morning" simulates to the next midnight, a real product
+    /// morning" simulates to 06:00 the next day, a real product
     /// action, so the month passes through the real economy with no
     /// wall-clock dependence and no cheat scaffolding. Thirty-one taps take
     /// the calendar from 2030-01-01 to 2030-02-01; the month boundary runs

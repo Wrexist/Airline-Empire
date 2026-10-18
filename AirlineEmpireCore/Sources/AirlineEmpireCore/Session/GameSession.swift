@@ -216,11 +216,20 @@ public actor GameSession {
         }
     }
 
-    /// Runs the simulation to the start of the next game day.
+    /// Runs the simulation to the start of the next game day's operations —
+    /// `OpsTuning.operatingDayStartMinute`, 06:00 — rather than to midnight.
+    ///
+    /// It used to stop at 00:00 (BUG-061): the one instant in twenty-four
+    /// hours when nothing flies, under a control whose name, icon and
+    /// VoiceOver label all promise a morning. Always the *next* day's
+    /// morning, even when pressed before dawn, so every press moves the date
+    /// by exactly one — the UI journeys count days by it.
     public func advanceToNextMorning() {
         let now = engine.state.clock.now
-        let nextMidnight = (now.dayIndex + 1) * GameCalendar.minutesPerDay
-        let minutes = nextMidnight - now.rawMinutes
+        let dayStart = min(max(0, engine.catalog.tuning.ops.operatingDayStartMinute),
+                           GameCalendar.minutesPerDay - 1)
+        let nextMorning = (now.dayIndex + 1) * GameCalendar.minutesPerDay + dayStart
+        let minutes = nextMorning - now.rawMinutes
         advance(ticks: Int(minutes / engine.state.meta.tickMinutes))
     }
 

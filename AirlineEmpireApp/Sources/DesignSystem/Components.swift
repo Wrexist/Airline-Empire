@@ -407,7 +407,9 @@ struct SpeedControl: View {
                     .contentShape(Capsule(style: .continuous))
             }
             .buttonStyle(.aePress)
-            .accessibilityLabel("Advance to next day")
+            // Core lands on 06:00 of the next day (BUG-061), so the label
+            // can say what the icon has always shown.
+            .accessibilityLabel("Advance to next morning")
 
             // For the UI journeys only (`-AEUITestSunriseWeek`): seven
             // mornings in one tap — the same engine calls, one refresh —
@@ -480,7 +482,7 @@ struct TimeMenuButton: View {
             Button {
                 controller.advanceToNextMorning()
             } label: {
-                Label("Advance to next day", systemImage: "sunrise")
+                Label("Advance to next morning", systemImage: "sunrise")
             }
         } label: {
             HStack(spacing: AETheme.spacingXS) {
