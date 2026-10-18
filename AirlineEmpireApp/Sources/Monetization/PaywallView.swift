@@ -138,7 +138,7 @@ struct PaywallView: View {
                     tier: tier,
                     isSelected: selection == tier,
                     price: entitlements.displayPrice(tier),
-                    introductoryPrice: entitlements.introductoryPrice(tier),
+                    introductoryTerms: entitlements.introductoryTerms(tier),
                     period: entitlements.periodName(tier),
                     badge: entitlements.badge(tier),
                     footnote: entitlements.footnote(tier)) {

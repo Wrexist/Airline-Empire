@@ -493,13 +493,50 @@ final class Entitlements {
         }
     }
 
-    /// The introductory price, if this account may still take one.
-    func introductoryPrice(_ tier: ProProduct) -> String? {
+    /// The introductory offer, if this account may still take one, in the
+    /// shape Core phrases: price, payment mode, period and period count.
+    ///
+    /// All four are read from the offer Apple will actually apply, so the
+    /// paywall's sentence follows App Store Connect rather than the offer
+    /// this build happened to ship beside. A payment mode this build does
+    /// not know is shown as no offer at all: the renewal price stated alone
+    /// is incomplete, but a sentence describing a different charge is false.
+    func introductoryOffer(_ tier: ProProduct) -> PaywallContent.IntroductoryOffer? {
         guard isEligibleForIntroOffer,
               let offer = products[tier]?.subscription?.introductoryOffer else {
             return nil
         }
-        return offer.displayPrice
+        // `PaymentMode` is a struct of static values rather than an enum,
+        // so it is compared rather than switched over.
+        let mode: PaywallContent.IntroductoryOffer.PaymentMode
+        if offer.paymentMode == .freeTrial {
+            mode = .freeTrial
+        } else if offer.paymentMode == .payAsYouGo {
+            mode = .payAsYouGo
+        } else if offer.paymentMode == .payUpFront {
+            mode = .payUpFront
+        } else {
+            return nil
+        }
+        let unit: PaywallContent.IntroductoryOffer.Unit
+        switch offer.period.unit {
+        case .day: unit = .day
+        case .week: unit = .week
+        case .month: unit = .month
+        case .year: unit = .year
+        @unknown default: return nil
+        }
+        return PaywallContent.IntroductoryOffer(
+            price: offer.displayPrice, paymentMode: mode,
+            periodValue: offer.period.value, periodUnit: unit,
+            periodCount: offer.periodCount)
+    }
+
+    /// The offer as the plan card's one-line summary, e.g. "$0.99 for your
+    /// first week". The same clause the commitment line uses, so the card
+    /// and the sentence above the button cannot disagree.
+    func introductoryTerms(_ tier: ProProduct) -> String? {
+        introductoryOffer(tier).map(PaywallContent.introductoryTerms)
     }
 
     /// The sentence stating what will be charged, and when. Core owns the
@@ -509,7 +546,7 @@ final class Entitlements {
         guard tier.isSubscription else {
             return PaywallContent.lifetimeCommitment(price: price)
         }
-        return PaywallContent.commitment(introductory: introductoryPrice(tier),
+        return PaywallContent.commitment(introductory: introductoryOffer(tier),
                                          standard: price,
                                          period: periodName(tier))
     }
@@ -518,7 +555,7 @@ final class Entitlements {
     func callToAction(_ tier: ProProduct) -> String {
         guard let price = displayPrice(tier) else { return "Unlock Pro" }
         return PaywallContent.callToAction(
-            introductory: tier.isSubscription ? introductoryPrice(tier) : nil,
+            introductory: tier.isSubscription ? introductoryOffer(tier) : nil,
             standard: price, isSubscription: tier.isSubscription)
     }
 
