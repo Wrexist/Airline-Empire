@@ -294,17 +294,33 @@ final class Entitlements {
         refreshGeneration += 1
         let generation = refreshGeneration
         var candidates: [UInt64: ProEntitlement] = [:]
+        var subscriptionGroups = Set<String>()
         for await result in StoreKit.Transaction.currentEntitlements {
-            guard case .verified(let transaction) = result,
-                  transaction.revocationDate == nil, !transaction.isUpgraded,
+            guard case .verified(let transaction) = result else { continue }
+            if let group = transaction.subscriptionGroupID { subscriptionGroups.insert(group) }
+            guard transaction.revocationDate == nil, !transaction.isUpgraded,
                   let tier = ProProduct(rawValue: transaction.productID) else { continue }
             candidates[transaction.originalID] = ProEntitlement(grantedBy: tier,
                                                 expiresAt: transaction.expirationDate)
         }
+        if let group = (products[.weekly]?.subscription
+                        ?? products[.yearly]?.subscription)?.subscriptionGroupID {
+            subscriptionGroups.insert(group)
+        }
         // All subscription plans share a group. Verify both signed values,
         // and use the grace deadline rather than treating retry as ownership.
-        if let subscription = products[.weekly]?.subscription ?? products[.yearly]?.subscription,
-           let statuses = try? await subscription.status {
+        //
+        // The group is asked for by ID, not through a loaded `Product`. The
+        // grace deadline used to be read only from `products`, which is
+        // empty until the App Store answers — so a subscriber whose renewal
+        // was being retried and who opened the game offline had a
+        // transaction that had already expired, no grace date to extend it,
+        // and lost Pro until they found a signal. `currentEntitlements` still
+        // carries a grace-period transaction, and its group ID is enough to
+        // ask StoreKit's on-device status for the deadline.
+        for group in subscriptionGroups.sorted() {
+            guard let statuses = try? await Product.SubscriptionInfo.status(for: group)
+            else { continue }
             for status in statuses {
                 guard case .verified(let transaction) = status.transaction,
                       case .verified(let renewal) = status.renewalInfo,
