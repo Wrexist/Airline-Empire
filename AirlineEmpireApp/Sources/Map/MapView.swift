@@ -37,10 +37,23 @@ struct MapScreen: View {
     @Environment(\.feedback) private var feedback
     @Environment(\.scenePhase) private var scenePhase
 
-    @State private var path = NavigationPath()
-    @State private var camera = MapCamera()
-    @State private var selection: MapHit?
-    @State private var overlay: MapOverlay = .network
+    /// Where the player was looking, held by the shell rather than here — see
+    /// `MapScreenMemory`. The four accessors below keep every use in this
+    /// file reading as it did when these were this view's own `@State`.
+    @Bindable var memory: MapScreenMemory
+    private var camera: MapCamera { memory.camera }
+    private var selection: MapHit? {
+        get { memory.selection }
+        nonmutating set { memory.selection = newValue }
+    }
+    private var overlay: MapOverlay {
+        get { memory.overlay }
+        nonmutating set { memory.overlay = newValue }
+    }
+    private var hasFramedHome: Bool {
+        get { memory.hasFramedHome }
+        nonmutating set { memory.hasFramedHome = newValue }
+    }
     @State private var routeDraft: RouteDraft?
     @State private var airportDraft: AirportDraft?
     private struct AirportDraft: Identifiable {
@@ -55,7 +68,6 @@ struct MapScreen: View {
     /// The aircraft market, which the first onboarding step opens directly.
     /// The same sheet the Airline tab presents — not a second market.
     @State private var showingAircraftMarket = false
-    @State private var hasFramedHome = false
     @State private var topChromeHeight: CGFloat = 0
     @State private var bottomChromeHeight: CGFloat = 0
     /// Frozen geometry from the last draw, so a tap resolves against exactly
@@ -97,7 +109,7 @@ struct MapScreen: View {
     }
 
     var body: some View {
-        NavigationStack(path: $path) {
+        NavigationStack(path: $memory.path) {
             GeometryReader { geometry in
                 if let snapshot = controller.snapshot, let model = controller.mapModel {
                     ZStack {
@@ -211,7 +223,7 @@ struct MapScreen: View {
                 airportDraft = nil
                 showingBriefing = false
                 showingAircraftMarket = false
-                path = NavigationPath()
+                memory.path = NavigationPath()
                 camera.stopFollowing(landingAt: followMemory.lastPoint)
                 followMemory.clear()
                 camera.frameNetwork(model, animated: !reduceMotion)
@@ -423,7 +435,7 @@ struct MapScreen: View {
 
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: AETheme.spacingS) {
-                        MapOverlayPicker(selection: $overlay,
+                        MapOverlayPicker(selection: $memory.overlay,
                                          expanded: $overlayPickerOpen)
                         let flights = model.flights.filter { $0.isPlayer && $0.airborne }
                         if !flights.isEmpty {
@@ -729,6 +741,33 @@ struct MapScreen: View {
                 ?? "Selected an aircraft"
         }
     }
+}
+
+// MARK: - Memory
+
+/// What the map remembers about where the player was looking: the camera,
+/// the selection, the layer, the pushed screens, and whether the network has
+/// been framed once.
+///
+/// Owned by `GameShell`, above the container that holds the map, because on
+/// iPad the container itself changes. Resizing Split View or Slide Over
+/// across the regular/compact line swaps `NavigationSplitView` for
+/// `TabView`, and SwiftUI builds a new `MapScreen` for the new container —
+/// with fresh `@State`, so the camera jumped back to the framed network, the
+/// card the player was reading closed, and a pushed route detail was gone.
+/// The iPhone keeps its tab bar through a rotation or a fold and never paid
+/// this; the iPad paid it on every resize (audit 2026-10-18 §3 #4).
+///
+/// Only what describes the *world view* lives here. Sheets, chrome heights
+/// and the render caches are per screen on purpose: a sheet cannot survive
+/// its presenter, and the caches are rebuilt from the next frame anyway.
+@Observable
+final class MapScreenMemory {
+    let camera = MapCamera()
+    var selection: MapHit?
+    var overlay: MapOverlay = .network
+    var path = NavigationPath()
+    var hasFramedHome = false
 }
 
 // MARK: - Camera

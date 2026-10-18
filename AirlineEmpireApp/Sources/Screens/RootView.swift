@@ -191,6 +191,10 @@ struct GameShell: View {
     @Environment(GameController.self) private var controller
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var selection: Tab = .home
+    /// The map's camera, selection, layer and pushed screens, held here so
+    /// they outlive the container swap below (`MapScreenMemory`). One per
+    /// shell, so a new or loaded game starts from a fresh view of the world.
+    @State private var mapMemory = MapScreenMemory()
 
     enum Tab: Hashable, CaseIterable {
         case home, network, finance, world
@@ -230,6 +234,11 @@ struct GameShell: View {
             // Apple's own test is that context survives the fold. The tab
             // bar is what the iOS 27.1 SDK lays out natively on the Duo's
             // inner display (docs/IPHONE_DUO.md).
+            //
+            // An iPad still swaps containers when Split View resizes across
+            // the size-class line. The other tabs rebuild; the map does not
+            // lose its place, because what it remembers lives in `mapMemory`
+            // up here rather than in the screen being rebuilt.
             if sizeClass == .regular && !AEOrientation.isPhone {
                 NavigationSplitView {
                     List(selection: sidebarSelection) {
@@ -318,7 +327,7 @@ struct GameShell: View {
     @ViewBuilder
     private func screen(for tab: Tab) -> some View {
         switch tab {
-        case .home: MapScreen()
+        case .home: MapScreen(memory: mapMemory)
         case .network: NetworkView()
         case .finance: FinanceView()
         case .world: OperationsView()
