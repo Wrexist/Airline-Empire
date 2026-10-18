@@ -75,7 +75,9 @@ public struct ProgressionSystem: SimulationSystem {
 
     private func checkMilestones(player: Airline, state: inout GameState,
                                  context: SimContext) {
-        let routes = state.routes(of: player.id)
+        // As for the era gates: destinations and an intercontinental route
+        // are milestones of the network that flies, not of the routes opened.
+        let routes = state.operatingRoutes(of: player.id)
         let fleet = state.fleet(of: player.id)
         let counters = state.progression.counters
 

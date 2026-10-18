@@ -45,16 +45,30 @@ public struct ReputationSystem: SimulationSystem {
                                  toward: target, rate: tuning.driftRate)
             }
 
-            // Value perception: quality delivered relative to price position.
-            let routes = state.routes(of: airlineID)
+            // Value perception: quality delivered relative to the price
+            // position travellers actually met. Only routes with an aircraft
+            // sell a seat, and each counts by the passengers it carried this
+            // month and last — a plain mean over every route let one empty
+            // route at a token fare lift the whole airline's value. Before
+            // anything has flown, the operating routes count equally.
+            let routes = state.operatingRoutes(of: airlineID)
             if !routes.isEmpty {
                 var ratioSum = 0.0
+                var weightedSum = 0.0
+                var passengerSum = 0.0
                 for route in routes {
                     let reference = DemandSystem.referenceFare(
                         distanceKm: route.distanceKm, tuning: context.catalog.tuning.demand)
-                    ratioSum += route.ticketPrice.asDouble / reference
+                    let ratio = route.ticketPrice.asDouble / reference
+                    let passengers = Double(route.economicsThisMonth.passengers
+                        + route.economicsLastMonth.passengers)
+                    ratioSum += ratio
+                    weightedSum += ratio * passengers
+                    passengerSum += passengers
                 }
-                let todayPosition = ratioSum / Double(routes.count)
+                let todayPosition = passengerSum > 0
+                    ? weightedSum / passengerSum
+                    : ratioSum / Double(routes.count)
                 // Unclamped: a fare position is a ratio and routinely
                 // exceeds 1 (the generic drift clamps to 0...1, which would
                 // silently pin premium pricing at neutral — caught by test).

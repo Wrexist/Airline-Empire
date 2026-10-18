@@ -63,6 +63,45 @@ struct ProgressionTests {
                 "era is \(engine.state.progression.era)")
     }
 
+    /// GAME_AUDIT_2026-10-18 §2.2: a route with no aircraft counted as
+    /// network, so eight empty routes bought the National era's destinations
+    /// for a slot pair and a month's route payroll each.
+    @Test func eraGatesCountOnlyRoutesThatFly() throws {
+        let (catalog, engine, airline) = try FleetFixtures.catalogAndEngine(
+            cash: Money.dollars(500_000_000), systems: [])
+        let nearby = catalog.nearestAirports(to: "ARN", limit: 20)
+            .filter { $0.1 >= catalog.tuning.minRouteDistanceKm }
+            .prefix(catalog.tuning.progression.nationalDestinations)
+        for (airport, _) in nearby {
+            #expect(engine.applyNow(OpenRouteCommand(
+                airline: airline, origin: "ARN", destination: airport.code,
+                dailyRoundTrips: 1, ticketPrice: Money.dollars(119))) == .applied)
+        }
+        func destinations() throws -> Double {
+            let player = try #require(engine.state.playerAirline)
+            let national = EraGate.requirements(
+                for: .national, player: player, state: engine.state, catalog: catalog,
+                tuning: catalog.tuning.progression)
+            return try #require(national.first { $0.kind == .destinations }).current
+        }
+        #expect(try destinations() == 0, "empty routes serve no destination")
+
+        #expect(engine.applyNow(BuyUsedAircraftCommand(
+            buyer: airline, type: "MR180", ageYears: 3)) == .applied)
+        let aircraft = try #require(engine.state.fleet(of: airline).first).id
+        let spec = try #require(catalog.aircraftType("MR180"))
+        let route = try #require(engine.state.routes(of: airline).first { route in
+            route.distanceKm <= spec.rangeKm
+                && [route.origin, route.destination].allSatisfy {
+                    (catalog.airport($0)?.runwayClass ?? .small) >= spec.runwayRequirement
+                }
+        })
+        #expect(engine.applyNow(AssignAircraftToRouteCommand(
+            airline: airline, route: route.id, aircraftID: aircraft)) == .applied)
+        // One route flying: its two ends, and nothing from the empty seven.
+        #expect(try destinations() == 2)
+    }
+
     @Test func capabilityProgramGatesAndEffects() throws {
         let (_, engine, airline) = try FleetFixtures.catalogAndEngine(
             cash: Money.dollars(500_000_000))

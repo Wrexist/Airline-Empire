@@ -78,6 +78,59 @@ struct ReputationTests {
         #expect(engine2.state.airlines[airline2]!.reputation.service < 0.5)
     }
 
+    /// GAME_AUDIT_2026-10-18 §2.2: value perception averaged every route's
+    /// fare position equally, so one empty route at a token fare lifted the
+    /// whole airline's value. Only routes with an aircraft count now, each by
+    /// the passengers it carried.
+    @Test func farePositionCountsOperatingRoutesByPassengers() throws {
+        let (catalog, setup, airline) = try FleetFixtures.catalogAndEngine(
+            cash: Money.dollars(400_000_000), systems: [])
+        let demand = catalog.tuning.demand
+        // LHR at the reference fare and CPH at twice it, each with an
+        // aircraft; OSL at $1 with none.
+        let plans: [(AirportCode, Double, Bool)] = [("LHR", 1, true), ("CPH", 2, true),
+                                                     ("OSL", 0, false)]
+        var routes: [RouteID] = []
+        for (destination, factor, flown) in plans {
+            let distance = try #require(catalog.distanceKm("ARN", destination))
+            let fare = factor > 0
+                ? Money(rounding: DemandSystem.referenceFare(distanceKm: distance, tuning: demand) * factor)
+                : Money.dollars(1)
+            #expect(setup.applyNow(OpenRouteCommand(
+                airline: airline, origin: "ARN", destination: destination,
+                dailyRoundTrips: 2, ticketPrice: fare)) == .applied)
+            let route = try #require(setup.state.routes(of: airline).last).id
+            if flown {
+                #expect(setup.applyNow(BuyUsedAircraftCommand(
+                    buyer: airline, type: "MR180", ageYears: 3)) == .applied)
+                let aircraft = try #require(setup.state.fleet(of: airline).last).id
+                #expect(setup.applyNow(AssignAircraftToRouteCommand(
+                    airline: airline, route: route, aircraftID: aircraft)) == .applied)
+            }
+            routes.append(route)
+        }
+        var state = setup.state
+        state.routes[routes[0]]?.economicsThisMonth.passengers = 900
+        state.routes[routes[1]]?.economicsLastMonth.passengers = 100
+        state.airlines[airline]?.reputation.farePositionEWMA = 1
+        #expect(state.operatingRoutes(of: airline).map(\.id) == [routes[0], routes[1]])
+
+        func ratio(_ id: RouteID) throws -> Double {
+            let route = try #require(state.routes[id])
+            return route.ticketPrice.asDouble
+                / DemandSystem.referenceFare(distanceKm: route.distanceKm, tuning: demand)
+        }
+        // 900 passengers at ~1x and 100 at ~2x: ~1.1, where the old plain
+        // mean over all three routes read ~1.0 and hid the premium fare.
+        let position = (try ratio(routes[0]) * 900 + ratio(routes[1]) * 100) / 1_000
+        let engine = SimulationEngine(state: state, systems: [ReputationSystem()], catalog: catalog)
+        engine.advance(ticks: Fixtures.ticksPerDay)
+        let rate = catalog.tuning.reputation.valueDriftRate
+        let after = try #require(engine.state.airlines[airline]).reputation.farePositionEWMA
+        #expect(abs(after - (1 + rate * (position - 1))) < 1e-9,
+                "EWMA \(after), expected a step toward \(position)")
+    }
+
     @Test func overpricingErodesValuePerception() throws {
         let fair = try DemandFixtures.market(fare: Money.dollars(129))
         let gouger = try DemandFixtures.market(fare: Money.dollars(320))

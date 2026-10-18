@@ -511,9 +511,12 @@ public struct CompetitorAISystem: SimulationSystem {
                               state: inout GameState, context: SimContext,
                               tuning: AITuning) {
         for route in state.routes(of: airlineID) {
-            // Pricing response to competitors on the same market.
+            // Pricing response to competitors on the same market — the ones
+            // actually flying it. An empty route's fare sells no seats, and
+            // answering it let a player crash a rival's fare with a route it
+            // never put an aircraft on.
             let rivals = state.routes.values.filter {
-                $0.airline != airlineID
+                $0.airline != airlineID && $0.isOperating
                     && $0.sameMarket(origin: route.origin, destination: route.destination)
             }
             if let cheapest = rivals.map(\.ticketPrice).min(),
