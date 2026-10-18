@@ -40,6 +40,7 @@ public struct MigrationChain: Sendable {
         MigrationV13AddProgressionRecord(),
         MigrationV14AddHubBuildings(),
         MigrationV15AddPlayerWindows(),
+        MigrationV16AddRouteOpenedAt(),
     ])
 
     public func migrate(payload: [String: Any], from version: Int) throws -> [String: Any] {
@@ -56,6 +57,50 @@ public struct MigrationChain: Sendable {
             v += 1
         }
         return current
+    }
+}
+
+/// v16 → v17: routes gained `openedAt` (TD-027). The opening is recovered
+/// where the save still knows it: `OpenRouteCommand` has always recorded a
+/// market entry for the same airline and pair at the same instant, so the
+/// latest such entry is the current route's opening. The record keeps the
+/// last 64 moves, so an older route may have none left; it stays nil, which
+/// the route screen reads as "before opening dates were recorded" rather
+/// than inventing a date.
+public struct MigrationV16AddRouteOpenedAt: SaveMigration {
+    public let fromVersion = 16
+    public init() {}
+
+    public func migrate(_ payload: inout [String: Any]) throws {
+        guard var routes = payload["routes"] as? [String: Any] else { return }
+        let world = payload["world"] as? [String: Any]
+        let moves = world?["marketMoves"] as? [[String: Any]] ?? []
+        for key in routes.keys.sorted() {
+            guard var route = routes[key] as? [String: Any], route["openedAt"] == nil,
+                  let airline = Self.integer(route["airline"]),
+                  let origin = route["origin"] as? String,
+                  let destination = route["destination"] as? String else { continue }
+            let opening = moves.last { move in
+                (move["kind"] as? String) == MarketMove.Kind.entered.rawValue
+                    && Self.integer(move["airline"]) == airline
+                    && (move["origin"] as? String) == origin
+                    && (move["destination"] as? String) == destination
+            }
+            guard let at = opening?["at"] else { continue }
+            route["openedAt"] = at
+            routes[key] = route
+        }
+        payload["routes"] = routes
+    }
+
+    /// A JSON number as an integer, whichever type `JSONSerialization`
+    /// bridged it to on this platform.
+    private static func integer(_ value: Any?) -> Int64? {
+        guard let value else { return nil }
+        if let number = value as? Int { return Int64(number) }
+        if let number = value as? Int64 { return number }
+        if let number = value as? NSNumber { return number.int64Value }
+        return nil
     }
 }
 

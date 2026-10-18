@@ -268,7 +268,8 @@ struct RouteDetailView: View {
                 VStack(spacing: AETheme.spacingM) {
                     FirstFlightProgress()
                     if let route = snapshot.routes[routeID] {
-                        RouteOverviewHero(route: route, catalog: catalog) {
+                        RouteOverviewHero(route: route, catalog: catalog,
+                                          startYear: snapshot.meta.startYear) {
                             controller.showRouteOnMap(routeID); dismiss()
                         }
                         RouteManagementTabs(selection: $section)

@@ -59,6 +59,8 @@ struct RouteManagementTabs: View {
 struct RouteOverviewHero: View {
     let route: Route
     let catalog: ContentCatalog
+    /// The campaign's first year, for the opening date (TD-027); nil hides it.
+    var startYear: Int? = nil
     let showMap: () -> Void
     var body: some View {
         AircraftPanel {
@@ -84,6 +86,10 @@ struct RouteOverviewHero: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("\(route.distanceKm.formatted()) km · \(roundTripsLabel(route.dailyRoundTrips))").font(.caption.weight(.semibold))
             Text("\(route.assignedAircraft.count) aircraft assigned").font(.caption).foregroundStyle(AETheme.mutedText)
+            if let startYear, let openedAt = route.openedAt {
+                Text("Opened \(Format.longDate(GameCalendar.date(at: openedAt, startYear: startYear)))")
+                    .font(.caption).foregroundStyle(AETheme.mutedText)
+            }
         }
     }
     private var mapButton: some View {
@@ -474,6 +480,13 @@ struct RoutePlanHistoryCard: View {
         AircraftPanel {
             VStack(alignment: .leading, spacing: 14) {
                 Label("Plan history", systemImage: "clock.arrow.circlepath").font(.headline)
+                // Where the route's story starts (TD-027). A route from a save
+                // older than opening dates says so rather than guessing one.
+                Text(route.openedAt.map { "Opened \(Format.longDate(GameCalendar.date(at: $0, startYear: startYear)))" }
+                     ?? "Opened before this save recorded opening dates")
+                    .font(.subheadline)
+                    .foregroundStyle(AETheme.mutedText)
+                    .accessibilityIdentifier("ae-route-opened")
                 if let history = route.planHistory, !history.isEmpty {
                     ForEach(history, id: \.id) { change in
                         VStack(alignment: .leading, spacing: 4) {

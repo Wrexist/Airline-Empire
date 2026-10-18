@@ -83,7 +83,7 @@ public struct OpenRouteCommand: Command, Equatable {
         state.routes[id] = Route(
             id: id, airline: airline, origin: origin, destination: destination,
             distanceKm: Geo.distanceKm(from: originSpec.coordinate, to: destSpec.coordinate),
-            dailyRoundTrips: dailyRoundTrips, ticketPrice: ticketPrice)
+            dailyRoundTrips: dailyRoundTrips, ticketPrice: ticketPrice, openedAt: context.current)
         context.emit(.routeOpened(id: id, origin: origin, destination: destination))
         state.world.recordMarketMove(MarketMove(
             at: state.clock.now, airline: airline, origin: origin,
