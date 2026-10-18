@@ -693,16 +693,48 @@ final class GameController {
 
     /// Backgrounding: save, quietly. A failure here is recorded but never
     /// interrupts — the player is already looking at another app.
+    ///
+    /// Skipped when nothing has happened since the last save. The scene
+    /// calls this on `.inactive` as well as `.background` — a force-quit
+    /// from the app switcher may never reach `.background` — and `.inactive`
+    /// is every notification banner and Control Centre pull. Each save
+    /// rotates the slot's backups, so a paused game glanced away from five
+    /// times overwrote five generations of history with five copies of the
+    /// same state.
     func saveOnBackground() {
         guard let session, let slot = activeSaveSlot,
               backgroundSaveTask == .invalid else { return }
+        let mark = saveMark(for: session)
+        guard mark == nil || mark != lastSavedMark else { return }
         backgroundSaveTask = UIApplication.shared.beginBackgroundTask(withName: "Save campaign") {
             MainActor.assumeIsolated { self.endBackgroundSave() }
         }
         Task {
-            _ = await self.save(session: session, slot: slot, announce: false)
+            _ = await self.save(session: session, slot: slot, announce: false, mark: mark)
             self.endBackgroundSave()
         }
+    }
+
+    /// What a save captured, in the two counters `refresh` already trusts to
+    /// say whether the world changed: the tick, and the event count (every
+    /// command applied while paused emits one). Read from the published
+    /// snapshot when the save is *asked for* — the session can only be at
+    /// or past it, so a matching mark later means the slot is at least as new.
+    private struct SaveMark: Equatable {
+        let session: ObjectIdentifier
+        let tick: Int64
+        let events: Int64
+    }
+
+    /// The last mark a save completed with. Nil after a failure, so the next
+    /// chance always tries again.
+    @ObservationIgnored private var lastSavedMark: SaveMark?
+
+    private func saveMark(for session: GameSession) -> SaveMark? {
+        guard let snapshot, publishedSession == ObjectIdentifier(session) else { return nil }
+        return SaveMark(session: ObjectIdentifier(session),
+                        tick: snapshot.clock.tickCount,
+                        events: snapshot.eventLog.totalCount)
     }
 
     private func endBackgroundSave() {
@@ -714,7 +746,8 @@ final class GameController {
     /// An explicit save, which must report what happened either way.
     func saveNow() {
         guard let session, let slot = activeSaveSlot else { return }
-        Task { _ = await self.save(session: session, slot: slot, announce: true) }
+        let mark = saveMark(for: session)
+        Task { _ = await self.save(session: session, slot: slot, announce: true, mark: mark) }
     }
 
     /// Saves, waits for it, and only then leaves.
@@ -752,15 +785,18 @@ final class GameController {
     }
 
     private func save(session: GameSession, slot: String, announce: Bool,
-                      announceSuccess: Bool = true) async -> Bool {
+                      announceSuccess: Bool = true, mark: SaveMark? = nil) async -> Bool {
         do {
             try await session.saveNow(slot: slot)
             guard self.session === session else { return true }
+            lastSavedMark = mark
             quietSaveFailure = nil
             if announce && announceSuccess { lastSaveOutcome = .saved(slot: slot) }
             return true
         } catch {
             guard self.session === session else { return false }
+            // A failed write may have left the slot behind the last mark.
+            lastSavedMark = nil
             // Swallowing this is how a failing save became indistinguishable
             // from a working one (UI-012). But `lastSaveOutcome` is what
             // `GameShell` raises an alert from, and `saveOnBackground` passes
@@ -813,6 +849,7 @@ final class GameController {
         // opens Settings to a warning that *this* one's autosave failed
         // (tasks/BUGS.md BUG-028) — the same leak class as BUG-013.
         quietSaveFailure = nil
+        lastSavedMark = nil
         lastSolvencyStage = .healthy
         pendingAudioEvents = []
         // The director goes with the game. Without this the next airline

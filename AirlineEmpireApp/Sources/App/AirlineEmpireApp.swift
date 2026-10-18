@@ -73,6 +73,9 @@ struct AirlineEmpireApp: App {
                 // be on the wrong side of.
                 .onChange(of: scenePhase, initial: true) { _, phase in
                     // Scene-phase autosave (docs/PERSISTENCE_ARCHITECTURE §4).
+                    // `.inactive` too, for a force-quit from the app switcher;
+                    // the controller skips a save when nothing changed since
+                    // the last one, so banners stop rotating the backups.
                     if phase == .background || phase == .inactive {
                         controller.saveOnBackground()
                     }
