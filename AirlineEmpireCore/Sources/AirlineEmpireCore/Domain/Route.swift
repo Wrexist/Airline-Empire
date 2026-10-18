@@ -60,6 +60,12 @@ public struct Route: Equatable, Codable, Sendable {
         origin == code || destination == code
     }
 
+    /// Whether the route can carry anyone: at least one aircraft assigned.
+    /// A route without one holds slots and draws payroll, and nothing else —
+    /// it is not part of the network a gate, a rival or a traveller sees
+    /// (`GameState.operatingRoutes(of:)`).
+    public var isOperating: Bool { !assignedAircraft.isEmpty }
+
     /// True if the two routes cover the same city pair in either direction.
     public func sameMarket(origin o: AirportCode, destination d: AirportCode) -> Bool {
         (origin == o && destination == d) || (origin == d && destination == o)

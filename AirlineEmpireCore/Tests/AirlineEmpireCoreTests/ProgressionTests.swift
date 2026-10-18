@@ -63,6 +63,45 @@ struct ProgressionTests {
                 "era is \(engine.state.progression.era)")
     }
 
+    /// GAME_AUDIT_2026-10-18 §2.2: a route with no aircraft counted as
+    /// network, so eight empty routes bought the National era's destinations
+    /// for a slot pair and a month's route payroll each.
+    @Test func eraGatesCountOnlyRoutesThatFly() throws {
+        let (catalog, engine, airline) = try FleetFixtures.catalogAndEngine(
+            cash: Money.dollars(500_000_000), systems: [])
+        let nearby = catalog.nearestAirports(to: "ARN", limit: 20)
+            .filter { $0.1 >= catalog.tuning.minRouteDistanceKm }
+            .prefix(catalog.tuning.progression.nationalDestinations)
+        for (airport, _) in nearby {
+            #expect(engine.applyNow(OpenRouteCommand(
+                airline: airline, origin: "ARN", destination: airport.code,
+                dailyRoundTrips: 1, ticketPrice: Money.dollars(119))) == .applied)
+        }
+        func destinations() throws -> Double {
+            let player = try #require(engine.state.playerAirline)
+            let national = EraGate.requirements(
+                for: .national, player: player, state: engine.state, catalog: catalog,
+                tuning: catalog.tuning.progression)
+            return try #require(national.first { $0.kind == .destinations }).current
+        }
+        #expect(try destinations() == 0, "empty routes serve no destination")
+
+        #expect(engine.applyNow(BuyUsedAircraftCommand(
+            buyer: airline, type: "MR180", ageYears: 3)) == .applied)
+        let aircraft = try #require(engine.state.fleet(of: airline).first).id
+        let spec = try #require(catalog.aircraftType("MR180"))
+        let route = try #require(engine.state.routes(of: airline).first { route in
+            route.distanceKm <= spec.rangeKm
+                && [route.origin, route.destination].allSatisfy {
+                    (catalog.airport($0)?.runwayClass ?? .small) >= spec.runwayRequirement
+                }
+        })
+        #expect(engine.applyNow(AssignAircraftToRouteCommand(
+            airline: airline, route: route.id, aircraftID: aircraft)) == .applied)
+        // One route flying: its two ends, and nothing from the empty seven.
+        #expect(try destinations() == 2)
+    }
+
     @Test func capabilityProgramGatesAndEffects() throws {
         let (_, engine, airline) = try FleetFixtures.catalogAndEngine(
             cash: Money.dollars(500_000_000))
@@ -162,6 +201,123 @@ struct ProgressionTests {
         #expect(surgical.state.progression.missions.isEmpty)
         // No duplicate offer for the same event.
         #expect(surgical.state.world.eventCooldowns["mission.500"] != nil)
+    }
+
+    /// Two European routes, each with its own MR180, and a European tourism
+    /// boom live from the start — the shape a boom rush is offered on.
+    private func boomWorld() throws -> (ContentCatalog, SimulationEngine, AirlineID, [RouteID]) {
+        let (catalog, setup, airline) = try FleetFixtures.catalogAndEngine(
+            cash: Money.dollars(400_000_000), systems: [])
+        var routes: [RouteID] = []
+        for destination in ["OSL", "CPH"] {
+            _ = setup.applyNow(BuyUsedAircraftCommand(buyer: airline, type: "MR180", ageYears: 3))
+            let aircraft = try #require(setup.state.fleet(of: airline).last).id
+            _ = setup.applyNow(OpenRouteCommand(
+                airline: airline, origin: "ARN", destination: AirportCode(destination),
+                dailyRoundTrips: 2, ticketPrice: Money.dollars(79)))
+            let route = try #require(setup.state.routes(of: airline).last).id
+            _ = setup.applyNow(AssignAircraftToRouteCommand(
+                airline: airline, route: route, aircraftID: aircraft))
+            routes.append(route)
+        }
+        var state = setup.state
+        var event = WorldEvent(id: 600, kind: .tourismBoom(region: .europe),
+                               beginsAt: state.clock.now,
+                               endsAt: state.clock.now + .days(90), severity: 0.35)
+        event.hasStarted = true
+        state.world.activeEvents.append(event)
+        let engine = SimulationEngine(state: state, systems: GamePipeline.standard(),
+                                      catalog: catalog)
+        return (catalog, engine, airline, routes)
+    }
+
+    /// GAME_AUDIT_2026-10-18 §2.3: boom-rush progress was the region's open
+    /// routes' lifetime passengers less the offer's baseline, so closing a
+    /// route took its passengers back — to zero, closing the only one — and
+    /// could leave the mission unwinnable.
+    @Test func boomRushProgressSurvivesClosingARoute() throws {
+        let (catalog, engine, airline, routes) = try boomWorld()
+        engine.advance(ticks: Fixtures.ticksPerDay * 2)
+        let offered = try #require(engine.state.progression.missions.first)
+        guard case .boomRush = offered.kind else {
+            Issue.record("expected a boom rush, got \(offered.kind)"); return
+        }
+        engine.advance(ticks: Fixtures.ticksPerDay * 5)
+        func progress() throws -> Int64 {
+            let mission = try #require(engine.state.progression.missions.first { $0.id == offered.id })
+            let player = try #require(engine.state.playerAirline)
+            return MissionMath.progress(of: mission, player: player, state: engine.state,
+                                        catalog: catalog)
+        }
+        let before = try progress()
+        try #require(before > 0)
+        let closing = try #require(engine.state.routes[routes[0]])
+        try #require(closing.stats.passengersCarried > 0)
+
+        // Midnight: today's legs are planned, none airborne.
+        #expect(engine.applyNow(CloseRouteCommand(airline: airline, route: routes[0])) == .applied)
+        #expect(engine.state.routes[routes[0]] == nil)
+        // The open routes' counters dropped by the closed route's lifetime;
+        // progress did not move.
+        #expect(try progress() == before)
+
+        engine.advance(ticks: Fixtures.ticksPerDay * 3)
+        #expect(try progress() > before, "the remaining route keeps counting")
+    }
+
+    /// GAME_AUDIT_2026-10-18 §6: the boom-rush target assumed 150 seats a
+    /// trip at the requested frequency. It is the seats the region's routes
+    /// actually offer.
+    @Test func boomRushTargetComesFromSeatsOffered() throws {
+        let (catalog, engine, airline, _) = try boomWorld()
+        let before = engine.state
+        engine.advance(ticks: Fixtures.ticksPerDay)
+        let mission = try #require(engine.state.progression.missions.first)
+        guard case .boomRush(_, let target) = mission.kind else {
+            Issue.record("expected a boom rush, got \(mission.kind)"); return
+        }
+        let seats = before.routes(of: airline).reduce(0) {
+            $0 + MissionMath.dailySeatsOffered($1, state: before, catalog: catalog)
+        }
+        // Two MR180 routes at two round trips: four legs a day of its cabin each.
+        let spec = try #require(catalog.aircraftType("MR180"))
+        let cabin = try #require(before.fleet(of: airline).first).cabin(for: spec).totalSeats
+        #expect(seats == 2 * 2 * 2 * cabin)
+        let event = try #require(engine.state.world.activeEvents.first { $0.id == 600 })
+        let days = max(1, (event.endsAt - engine.state.clock.now).minutes
+            / GameCalendar.minutesPerDay)
+        #expect(target == max(500, Int64(Double(seats) * Double(days)
+            * catalog.tuning.progression.boomRushTargetFactor)))
+    }
+
+    /// GAME_AUDIT_2026-10-18 §6: `weatherProof` was judged on the routes
+    /// still open, so closing the ones that cancelled bought it.
+    @Test func weatherProofCannotBeBoughtByClosingRoutes() throws {
+        let (catalog, setup, airline) = try FleetFixtures.catalogAndEngine(
+            cash: Money.dollars(400_000_000), systems: [])
+        for destination in ["OSL", "CPH"] {
+            _ = setup.applyNow(OpenRouteCommand(
+                airline: airline, origin: "ARN", destination: AirportCode(destination),
+                dailyRoundTrips: 2, ticketPrice: Money.dollars(79)))
+        }
+        var state = setup.state
+        let routes = state.routes(of: airline).map(\.id)
+        // 1,000 flights: 900 on a route that also cancelled 100, and 100
+        // clean ones elsewhere — 91% over the airline's life.
+        state.progression.counters.flightsCompleted = 1_000
+        state.routes[routes[0]]?.stats = RouteStats(flightsCompleted: 900, flightsCancelled: 100)
+        state.routes[routes[1]]?.stats = RouteStats(flightsCompleted: 100)
+        let engine = SimulationEngine(state: state, systems: [ProgressionSystem()], catalog: catalog)
+        engine.advance(ticks: Fixtures.ticksPerDay)
+        #expect(!engine.state.progression.achievements.contains("weatherProof"))
+
+        // Close the route that cancelled. Only the clean route is left open.
+        #expect(engine.applyNow(CloseRouteCommand(airline: airline, route: routes[0])) == .applied)
+        let player = try #require(engine.state.playerAirline)
+        #expect(MissionMath.lifetimeCancellations(player: player, state: engine.state) == 100)
+        engine.advance(ticks: Fixtures.ticksPerDay)
+        #expect(!engine.state.progression.achievements.contains("weatherProof"),
+                "closing the route that cancelled must not erase its cancellations")
     }
 
     @Test func playerCollapseIsGameOver() throws {

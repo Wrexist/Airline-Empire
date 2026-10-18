@@ -43,7 +43,12 @@ final class StoreKitPurchaseTests: XCTestCase {
         store.disableDialogs = true
         store.clearTransactions()
         defer { store.clearTransactions(); store.resetToDefaultState() }
-        store.failTransactionsEnabled = true
+        // `failTransactionsEnabled` is deprecated from iOS 17, the app's
+        // floor, so the replacement needs no availability check: a
+        // simulated error on the purchase API makes `Product.purchase()`
+        // throw, which is the failure `Entitlements` reports. Cleared by
+        // `resetToDefaultState()` in the defer above.
+        try await store.setSimulatedError(.generic(.unknown), forAPI: .purchase)
         let entitlements = Entitlements(arguments: ["-AEUITestFree"])
         await entitlements.start()
         _ = try XCTUnwrap(entitlements.products[.lifetime], "StoreKit did not load the lifetime product")
@@ -87,5 +92,54 @@ final class StoreKitPurchaseTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(100))
         }
         XCTAssertFalse(entitlements.isPro)
+
+        // Restore must say the subscription ended, not that no purchase was
+        // ever found. `.failed` is tolerated only because `AppStore.sync` is
+        // not always served by a local StoreKit session.
+        await entitlements.restore()
+        switch entitlements.lastOutcome {
+        case .ended(let tier, _, let refunded)?:
+            XCTAssertEqual(tier, .weekly)
+            XCTAssertFalse(refunded)
+        case .failed?:
+            break
+        default:
+            XCTFail("A lapsed subscriber was told: \(String(describing: entitlements.lastOutcome))")
+        }
+    }
+
+    /// A launch with no network has no products, and renewal state used to
+    /// be read only through a loaded product — so a subscriber in billing
+    /// grace lost Pro offline. The state must come from the subscription
+    /// group itself. Turning auto-renew off is the observable stand-in:
+    /// only the group's status can say the subscription will not renew.
+    @MainActor
+    func testRenewalStateIsReadWithoutLoadedProducts() async throws {
+        let store = try SKTestSession(configurationFileNamed: "AirlineEmpire")
+        store.resetToDefaultState()
+        store.disableDialogs = true
+        store.clearTransactions()
+        defer { store.clearTransactions(); store.resetToDefaultState() }
+        let buyer = Entitlements(arguments: ["-AEUITestFree"])
+        await buyer.start()
+        _ = try XCTUnwrap(buyer.products[.weekly], "StoreKit did not load the weekly product")
+        await buyer.purchase(.weekly)
+        XCTAssertTrue(buyer.isPro)
+        let purchase = try XCTUnwrap(store.allTransactions().last {
+            $0.productIdentifier == ProProduct.weekly.rawValue
+        })
+        try store.disableAutoRenewForTransaction(identifier: purchase.identifier)
+
+        // A second owner that never loads products, as at an offline launch.
+        let offline = Entitlements(arguments: ["-AEUITestFree"])
+        for _ in 0..<50 {
+            await offline.refreshEntitlement()
+            if offline.isPro, !offline.entitlement.willRenew { break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        XCTAssertTrue(offline.products.isEmpty)
+        XCTAssertTrue(offline.isPro)
+        XCTAssertFalse(offline.entitlement.willRenew,
+                       "Renewal state must be read from the subscription group, not a loaded product")
     }
 }

@@ -72,7 +72,9 @@ public enum EraGate {
     public static func requirements(for era: Era, player: Airline, state: GameState,
                                     catalog: ContentCatalog,
                                     tuning: ProgressionTuning) -> [EraRequirement] {
-        let routes = state.routes(of: player.id)
+        // The network is what flies: a route with no aircraft served no
+        // destination and touched no region, however cheaply it was opened.
+        let routes = state.operatingRoutes(of: player.id)
         let fleet = state.fleet(of: player.id)
         switch era {
         case .startup:

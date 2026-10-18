@@ -28,6 +28,10 @@ struct AirlineEmpireApp: App {
                 // of the moments audio cares about.
                 .environment(\.feedback, controller.feedback)
                 .task {
+                    // The coastlines, parsed before anyone needs them rather
+                    // than inside the first map frame (`WorldGeometry.warm`).
+                    // Detached and low priority: nothing waits for it.
+                    Task.detached(priority: .utility) { WorldGeometry.warm() }
                     // UI tests only: open a save the engine wrote, so the
                     // late game can be photographed (AE-037 COMP-07).
                     controller.loadFixtureIfRequested()
@@ -73,6 +77,9 @@ struct AirlineEmpireApp: App {
                 // be on the wrong side of.
                 .onChange(of: scenePhase, initial: true) { _, phase in
                     // Scene-phase autosave (docs/PERSISTENCE_ARCHITECTURE §4).
+                    // `.inactive` too, for a force-quit from the app switcher;
+                    // the controller skips a save when nothing changed since
+                    // the last one, so banners stop rotating the backups.
                     if phase == .background || phase == .inactive {
                         controller.saveOnBackground()
                     }

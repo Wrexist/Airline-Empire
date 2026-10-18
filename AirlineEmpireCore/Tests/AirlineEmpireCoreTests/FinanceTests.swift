@@ -122,6 +122,43 @@ struct LoanTests {
         #expect(engine.state.ledger.balance(of: airline)
                 == before - loan.principalRemaining - interest)
     }
+
+    /// GAME_AUDIT_2026-10-18 §6: month-end loan service charged a whole
+    /// month's interest whatever the draw date. A loan drawn ten days before
+    /// the boundary now owes those ten days — the same pro rata early payoff
+    /// already charged — and its repayment schedule does not move.
+    @Test func firstMonthInterestIsProRatedFromTheDrawDate() throws {
+        let (_, engine, airline) = try FleetFixtures.catalogAndEngine(
+            cash: Money.dollars(20_000_000), systems: [EconomySystem()])
+        // Drawn on 22 January: held for the last ten of January's 31 days.
+        engine.advance(ticks: Fixtures.ticksPerDay * 21)
+        #expect(engine.applyNow(TakeLoanCommand(
+            airline: airline, amount: Money.dollars(5_000_000), termMonths: 60)) == .applied)
+        let loan = try #require(engine.state.airlines[airline]?.loans.first)
+
+        engine.advance(ticks: Fixtures.ticksPerDay * 10) // crosses 1 February
+        let first = engine.state.ledger.recent
+            .filter { $0.airline == airline && $0.category == .loanInterest }
+        #expect(first.count == 1)
+        let charged = -(first.first?.amount ?? .zero)
+        let expected = loan.principalRemaining.asDouble * loan.monthlyRate * 10 / 31
+        #expect(abs(charged.asDouble - expected) < 0.02,
+                "charged \(charged.cents)¢ for ten days; a full month is \(Int(loan.principalRemaining.asDouble * loan.monthlyRate * 100))¢")
+        // The scheduled principal portion was paid: the annuity is unchanged.
+        let serviced = try #require(engine.state.airlines[airline]?.loans.first)
+        let scheduledPrincipal = loan.monthlyPayment
+            - Money(rounding: loan.principalRemaining.asDouble * loan.monthlyRate)
+        #expect(serviced.principalRemaining == loan.principalRemaining - scheduledPrincipal)
+        #expect(serviced.monthsRemaining == loan.monthsRemaining - 1)
+
+        // Held through all of February: a full month.
+        engine.advance(ticks: Fixtures.ticksPerDay * 28) // crosses 1 March
+        let charges = engine.state.ledger.recent
+            .filter { $0.airline == airline && $0.category == .loanInterest }
+        #expect(charges.count == 2)
+        #expect(charges.last?.amount
+                == -Money(rounding: serviced.principalRemaining.asDouble * serviced.monthlyRate))
+    }
 }
 
 @Suite("Statements")
@@ -235,6 +272,81 @@ struct SolvencyTests {
             } || engine.state.ledger.balance(of: airline).cents
                  >= catalog.tuning.finance.overdraftFloorCents)
         }
+    }
+
+    /// GAME_AUDIT_2026-10-18 §0.3: administration only sold *idle owned*
+    /// aircraft and never returned a lease, so an airline flying its whole
+    /// fleet had nothing to sell and collapsed the same day. Now it sheds the
+    /// weakest routes' airframes — leases back without penalty, owned ones
+    /// fire-sold — and stops as soon as the books balance.
+    @Test func administrationRestoresAFullyAssignedFleetIncludingLeases() throws {
+        let (catalog, setup, airline) = try FleetFixtures.catalogAndEngine(
+            cash: Money.dollars(400_000_000), systems: [])
+        // Four routes, one airframe each: leased, owned, owned, leased.
+        var aircraftOn: [AircraftID] = []
+        var routes: [RouteID] = []
+        for (index, destination) in ["OSL", "CPH", "HEL", "LHR"].enumerated() {
+            let leased = index == 0 || index == 3
+            let acquired = leased
+                ? setup.applyNow(LeaseAircraftCommand(lessee: airline, type: "MR180", termMonths: 60))
+                : setup.applyNow(BuyUsedAircraftCommand(buyer: airline, type: "MR180", ageYears: 2))
+            #expect(acquired == .applied)
+            let aircraft = try #require(setup.state.fleet(of: airline).last).id
+            #expect(setup.applyNow(OpenRouteCommand(
+                airline: airline, origin: "ARN", destination: AirportCode(destination),
+                dailyRoundTrips: 2, ticketPrice: Money.dollars(119))) == .applied)
+            let route = try #require(setup.state.routes(of: airline).last).id
+            #expect(setup.applyNow(AssignAircraftToRouteCommand(
+                airline: airline, route: route, aircraftID: aircraft)) == .applied)
+            aircraftOn.append(aircraft)
+            routes.append(route)
+        }
+
+        var state = setup.state
+        // Last closed month, weakest first: the leased OSL route, then the
+        // owned CPH route; HEL and LHR made money.
+        for (route, profit) in zip(routes, [-500_000, -100_000, 200_000, 300_000] as [Int64]) {
+            state.routes[route]?.economicsLastMonth = profit < 0
+                ? RouteMonthEconomics(fuelCents: -profit * 100)
+                : RouteMonthEconomics(revenueCents: profit * 100)
+        }
+        // A hole one owned airframe's fire sale covers, below the floor.
+        let finance = catalog.tuning.finance
+        let owned = try #require(state.aircraft[aircraftOn[1]])
+        let spec = try #require(catalog.aircraftType(owned.typeCode))
+        let fireSale = Money(rounding: FleetEconomics.saleValue(
+            type: spec, ageYears: owned.ageYears, condition: owned.condition,
+            tuning: catalog.tuning.fleet).asDouble * finance.fireSalePriceFactor)
+        let hole = Money(cents: -fireSale.cents / 2)
+        try #require(hole.cents < finance.overdraftFloorCents)
+        state.ledger.post(airline: airline, category: .overhead,
+                          amount: hole - state.ledger.balance(of: airline),
+                          at: state.clock.now, memo: "Test distress")
+        state.airlines[airline]?.daysInsolvent = finance.administrationGraceDays - 1
+
+        let engine = SimulationEngine(state: state, systems: [SolvencySystem()], catalog: catalog)
+        engine.advance(ticks: Fixtures.ticksPerDay)
+        let after = engine.state
+        let a = try #require(after.airlines[airline])
+        // A second chance, not a same-day collapse.
+        #expect(a.status == .active)
+        #expect(a.administrationCount == 1)
+        #expect(after.ledger.balance(of: airline) >= .zero)
+        // The weakest route's lease went back, then the next route's owned
+        // airframe was sold — which balanced the books, so the two
+        // profitable routes keep their aircraft.
+        #expect(after.aircraft[aircraftOn[0]] == nil)
+        #expect(after.aircraft[aircraftOn[1]] == nil)
+        #expect(after.aircraft[aircraftOn[2]]?.assignedRoute == routes[2])
+        #expect(after.aircraft[aircraftOn[3]]?.assignedRoute == routes[3])
+        #expect(after.routes[routes[0]]?.assignedAircraft.isEmpty == true)
+        #expect(after.routes[routes[1]]?.assignedAircraft.isEmpty == true)
+        // No early-return penalty on the lease the administrator returned.
+        #expect(!after.ledger.recent.contains { $0.category == .leasePenalty })
+        #expect(after.ledger.recent.contains {
+            $0.category == .aircraftSale && $0.amount == fireSale
+        })
+        #expect(after.integrityViolations().isEmpty)
     }
 
     @Test func secondFailureCollapsesAndCleansUp() throws {

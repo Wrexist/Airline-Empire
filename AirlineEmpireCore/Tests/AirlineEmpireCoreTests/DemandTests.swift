@@ -111,6 +111,40 @@ struct DemandEngineTests {
         #expect(two.paxPerDay < one.paxPerDay * 1.9)
     }
 
+    /// GAME_AUDIT_2026-10-18 §2.1: the schedule term read the requested
+    /// frequency, so asking one aeroplane for 20 round trips it could never
+    /// fly bought the schedule quality — and the demand — of 20. It reads
+    /// the trips the fleet can rotate now.
+    @Test func scheduleQualityComesFromTripsTheFleetCanFly() throws {
+        let (asked, _, askedRoute) = try DemandFixtures.market(fare: Money.dollars(129), trips: 20)
+        let route = try #require(asked.state.routes[askedRoute])
+        let flyable = FlightSchedulingSystem.flyableRoundTrips(
+            route: route, state: asked.state, catalog: asked.catalog)
+        try #require(flyable > 0 && flyable < 20)
+        #expect(flyable == FlightSchedulingSystem.rotationCapacity(
+            route: route, state: asked.state, catalog: asked.catalog))
+
+        // The same airline flying exactly what one aeroplane can.
+        let (flown, _, flownRoute) = try DemandFixtures.market(fare: Money.dollars(129),
+                                                               trips: flyable)
+        let flownRouteNow = try #require(flown.state.routes[flownRoute])
+        let askedTerms = try #require(DemandSystem.offerQualityTerms(
+            route: route, state: asked.state, catalog: asked.catalog))
+        let flownTerms = try #require(DemandSystem.offerQualityTerms(
+            route: flownRouteNow, state: flown.state, catalog: flown.catalog))
+        #expect(askedTerms == flownTerms)
+        #expect(askedTerms.schedule > 0)
+
+        // And so the same passengers: the unflyable trips buy nothing.
+        asked.advance(ticks: Fixtures.ticksPerDay)
+        flown.advance(ticks: Fixtures.ticksPerDay)
+        let askedToday = try #require(asked.state.routes[askedRoute])
+        let flownToday = try #require(flown.state.routes[flownRoute])
+        #expect(askedToday.demandOutboundToday == flownToday.demandOutboundToday)
+        #expect(askedToday.demandInboundToday == flownToday.demandInboundToday)
+        #expect(askedToday.demandOutboundToday > 0)
+    }
+
     @Test func competitionSplitsTheMarket() throws {
         let catalog = try DemandFixtures.anchorCatalog()
         let engine = SimulationEngine(state: Fixtures.newState(),

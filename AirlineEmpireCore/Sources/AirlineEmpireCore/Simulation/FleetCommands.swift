@@ -280,7 +280,8 @@ public struct SellAircraftCommand: Command, Equatable {
                           amount: proceeds, at: context.current,
                           memo: "Sold \(spec.model)")
         state.aircraft[aircraftID] = nil
-        context.emit(.aircraftSold(id: aircraftID, proceeds: proceeds))
+        // The seller travels with the event: the aircraft is already gone.
+        context.emit(.aircraftSold(id: aircraftID, proceeds: proceeds, airline: seller))
     }
 }
 
@@ -329,7 +330,7 @@ public struct ReturnLeasedAircraftCommand: Command, Equatable {
                               memo: "Early lease return")
         }
         state.aircraft[aircraftID] = nil
-        context.emit(.leaseReturned(id: aircraftID, penalty: penalty))
+        context.emit(.leaseReturned(id: aircraftID, penalty: penalty, airline: lessee))
     }
 }
 

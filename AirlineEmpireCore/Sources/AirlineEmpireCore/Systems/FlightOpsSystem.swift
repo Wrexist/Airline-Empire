@@ -168,6 +168,26 @@ public struct FlightOpsSystem: SimulationSystem {
         state.flights[flightID] = nil
         if flight.kind == .revenue, var route = state.routes[flight.route] {
             route.stats.flightsCancelled += 1
+            // Seats sold at boarding go back to the day's demand. They used
+            // to vanish with the flight, so a cancellation also emptied the
+            // market for every later departure that day. Only within the day
+            // of the sale: boarding cannot begin before the scheduled
+            // departure less the boarding window, so if that instant is
+            // today the sale was today; once the day has rolled, demand has
+            // been recomputed and those passengers are not owed to it.
+            let earliestSale = flight.scheduledDeparture
+                + .minutes(-context.catalog.tuning.ops.boardingMinutes)
+            if flight.passengers > 0, earliestSale.dayIndex == context.current.dayIndex {
+                if flight.from == route.origin {
+                    route.remainingOutboundToday = min(
+                        route.demandOutboundToday,
+                        route.remainingOutboundToday + flight.passengers)
+                } else {
+                    route.remainingInboundToday = min(
+                        route.demandInboundToday,
+                        route.remainingInboundToday + flight.passengers)
+                }
+            }
             state.routes[flight.route] = route
         }
         if flight.kind == .revenue, var airline = state.airlines[aircraft.owner] {

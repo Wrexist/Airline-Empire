@@ -604,6 +604,11 @@ extension Vocab {
             return "\(Format.grouped(Int64(distanceKm - rangeKm))) km beyond its range"
         case .runwayTooSmall(let airport, _, _):
             return "\(airport.raw) cannot take this aircraft"
+        case .roundTripExceedsDay(let roundTripMinutes, let operatingMinutes):
+            // It reaches, so "beyond range" would be false: it just cannot
+            // get back in time to fly the route at all. The two durations
+            // are the fact a player can weigh against a faster aeroplane.
+            return "\(Format.duration(minutes: roundTripMinutes)) round trip — longer than its \(Format.duration(minutes: operatingMinutes)) flying day"
         }
     }
 

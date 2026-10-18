@@ -105,6 +105,61 @@ struct RescueAndContractTests {
         #expect(ContractOffer.offers(in: completing.state).isEmpty)
     }
 
+    /// GAME_AUDIT_2026-10-18 §6: a flight contract asked for 30 flights per
+    /// aircraft in 28 days — about a week of one airframe's ordinary flying —
+    /// so the bonus paid for doing nothing differently. The target is now
+    /// about 110% of what the airline actually flew over the last four weeks;
+    /// the reward is unchanged.
+    @Test func contractTargetsAskForGrowthOverTheLastFourWeeks() throws {
+        let (engine, _, _) = try DemandFixtures.market(fare: .dollars(129))
+        // Five weeks of the full pipeline fill the four-week history.
+        engine.advance(ticks: Fixtures.ticksPerDay * 35)
+        let state = engine.state
+        let recent = state.progression.recentActivity
+        #expect(recent.days == ProgressionState.activityWindowDays)
+        try #require(recent.flights > 0)
+
+        let offers = ContractOffer.offers(in: state)
+        let flights = try #require(offers.first { $0.choice == .flights })
+        guard case .flightContract(let target) = flights.kind else {
+            Issue.record("expected a flight contract, got \(flights.kind)"); return
+        }
+        let pace = Double(recent.flights) / Double(recent.days)
+            * Double(ContractOffer.durationDays)
+        #expect(target == Int64((pace * ContractOffer.growthFactor).rounded(.up)))
+        // More than the airline flew in the last 28 days, and far more than
+        // the week of flying the old 30-per-aircraft figure asked for.
+        #expect(target > recent.flights)
+        #expect(target > 30)
+        // One aircraft: the reward basis is the old figure, unchanged.
+        #expect(flights.reward == .dollars(30 * 1_500))
+    }
+
+    @Test func contractTargetsFallBackToTheOldFloorAndScaleShortHistory() throws {
+        let (original, _, _) = try DemandFixtures.market(fare: .dollars(129))
+        var state = original.state
+        state.progression.milestones.append("firstFlight")
+
+        // No history — day one, or a save from before the marks: the old
+        // per-aircraft figures.
+        state.progression.activityMarks = nil
+        var offers = ContractOffer.offers(in: state)
+        #expect(offers.first { $0.choice == .flights }?.kind == .flightContract(targetFlights: 30))
+        #expect(offers.first { $0.choice == .passengers }?.kind
+                == .passengerContract(targetPassengers: 5_000))
+
+        // A week of history at 10 flights and 1,000 passengers a day is
+        // scaled to the contract's four weeks before the 10% stretch.
+        state.progression.activityMarks = (0...7).map {
+            ActivityMark(flights: Int64($0) * 10, passengers: Int64($0) * 1_000)
+        }
+        offers = ContractOffer.offers(in: state)
+        #expect(offers.first { $0.choice == .flights }?.kind == .flightContract(
+            targetFlights: Int64((280.0 * ContractOffer.growthFactor).rounded(.up))))
+        #expect(offers.first { $0.choice == .passengers }?.kind == .passengerContract(
+            targetPassengers: Int64((28_000.0 * ContractOffer.growthFactor).rounded(.up))))
+    }
+
     @Test func ignoredOffersAndExpiredContractsCostNothing() throws {
         let (original, id, _) = try DemandFixtures.market(fare: .dollars(129))
         var state = original.state

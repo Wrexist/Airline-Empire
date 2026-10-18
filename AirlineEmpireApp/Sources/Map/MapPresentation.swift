@@ -488,10 +488,32 @@ enum MapLabelLayout {
     }
 
     /// A label's box: its measured text, padded 3pt a side and 2pt above
-    /// and below so neighbours keep a visible gap rather than touching.
-    static func labelBox(centre: CGPoint, textWidth: CGFloat) -> CGRect {
-        CGRect(x: centre.x - textWidth / 2, y: centre.y - 6,
-               width: textWidth, height: 12).insetBy(dx: -3, dy: -2)
+    /// and below so neighbours keep a visible gap rather than touching. The
+    /// text line is 12pt at the standard size and grows with `scale`.
+    static func labelBox(centre: CGPoint, textWidth: CGFloat,
+                         scale: CGFloat = 1) -> CGRect {
+        let half = 6 * scale
+        return CGRect(x: centre.x - textWidth / 2, y: centre.y - half,
+                      width: textWidth, height: half * 2).insetBy(dx: -3, dy: -2)
+    }
+
+    /// How much larger than their standard 9-11pt the map's labels are drawn
+    /// for the player's text size.
+    ///
+    /// They were fixed, so a player who had asked the system for larger text
+    /// read every other screen at that size and the map's city names at nine
+    /// points. Never smaller than standard — the labels are already the
+    /// smallest text in the app — and capped at 1.4×: a label at world zoom
+    /// sits over a country, and past that size the placer has room for so
+    /// few that the map stops naming anything. What a label leaves out, the
+    /// selection card says in full at any size.
+    static func scale(for size: DynamicTypeSize) -> CGFloat {
+        switch size {
+        case .xLarge: 1.1
+        case .xxLarge: 1.2
+        case .xxxLarge: 1.3
+        default: size.isAccessibilitySize ? 1.4 : 1
+        }
     }
 
     /// - Parameter textWidth: the drawn width of a label's text
@@ -506,7 +528,8 @@ enum MapLabelLayout {
                       bounds: CGRect,
                       markerRadius: (MapModel.MapAirport) -> CGFloat,
                       textWidth: (String) -> CGFloat,
-                      remembered: [Remembered] = []) -> [MapLabel] {
+                      remembered: [Remembered] = [],
+                      scale: CGFloat = 1) -> [MapLabel] {
         let cap = min(limit, labelBudget(zoom: zoom))
         // Hysteresis at the edges (docs/MAP_PERFORMANCE_TARGETS.md L4): a
         // new label must clear the stricter rect, a remembered one is kept
@@ -574,7 +597,8 @@ enum MapLabelLayout {
                         selected: selected).contains(memory.text) else { continue }
             let centre = CGPoint(x: point.x + memory.offset.width,
                                  y: point.y + memory.offset.height)
-            let box = labelBox(centre: centre, textWidth: textWidth(memory.text))
+            let box = labelBox(centre: centre, textWidth: textWidth(memory.text),
+                               scale: scale)
             guard keepBounds.contains(box),
                   !placed.contains(where: { $0.intersects(box) }),
                   !discs.contains(where: {
@@ -633,14 +657,16 @@ enum MapLabelLayout {
                 // placement runs on a settle, and the widths are cached.
                 let width = textWidth(text)
                 let half = width / 2 + 3
+                // Above and below keep the same gap to the marker at any
+                // text size: at the standard size, -13 and r + 9.
                 let centres = [
-                    CGPoint(x: point.x, y: point.y - 13),
-                    CGPoint(x: point.x, y: point.y + r + 9),
+                    CGPoint(x: point.x, y: point.y - 7 - 6 * scale),
+                    CGPoint(x: point.x, y: point.y + r + 3 + 6 * scale),
                     CGPoint(x: point.x + r + 4 + half, y: point.y),
                     CGPoint(x: point.x - r - 4 - half, y: point.y),
                 ]
                 for centre in centres {
-                    let box = labelBox(centre: centre, textWidth: width)
+                    let box = labelBox(centre: centre, textWidth: width, scale: scale)
                     guard enterBounds.contains(box) else { continue }
                     let hitsLabel = placed.contains { $0.intersects(box) }
                     let hitsMarker = discs.contains {
@@ -685,7 +711,8 @@ enum MapLabelLayout {
                                blocked: [CGRect],
                                limit: Int,
                                bounds: CGRect,
-                               textWidth: (String) -> CGFloat) -> [MapLabel] {
+                               textWidth: (String) -> CGFloat,
+                               scale: CGFloat = 1) -> [MapLabel] {
         let ranked = countries.sorted { lhs, rhs in
             lhs.0.minZoom != rhs.0.minZoom
                 ? lhs.0.minZoom < rhs.0.minZoom
@@ -701,8 +728,7 @@ enum MapLabelLayout {
             // in tracked capitals, so a box was narrower than its own text
             // and two countries could overlap without either noticing.
             let width = textWidth(country.caption) + 6
-            let box = CGRect(x: point.x - width / 2, y: point.y - 8,
-                             width: width, height: 16)
+            let box = countryBox(centre: point, width: width, scale: scale)
             guard bounds.insetBy(dx: 2, dy: 2).contains(box) else { continue }
             guard !placed.contains(where: { $0.intersects(box) }) else { continue }
             placed.append(box)
@@ -711,6 +737,16 @@ enum MapLabelLayout {
                                    emphasis: false, box: box))
         }
         return labels
+    }
+
+    /// A country caption's box: 16pt tall at the standard size, grown with
+    /// the text. One definition, because the placement and the replay
+    /// between placements (`MapRenderCache.countryLabels`) must agree.
+    static func countryBox(centre: CGPoint, width: CGFloat,
+                           scale: CGFloat = 1) -> CGRect {
+        let half = 6 * scale + 2
+        return CGRect(x: centre.x - width / 2, y: centre.y - half,
+                      width: width, height: half * 2)
     }
 
     /// Zero means "never label this one".
@@ -751,14 +787,26 @@ final class MapTextMetrics {
     private var airportWidths: [String: CGFloat] = [:]
     private var countryWidths: [String: CGFloat] = [:]
     private let unbounded = CGSize(width: 10_000, height: 200)
+    /// The label scale the widths were measured at. A text-size change
+    /// re-measures everything rather than mixing two sizes in one cache.
+    private var measuredScale: CGFloat = 1
+
+    private func use(_ scale: CGFloat) {
+        guard scale != measuredScale else { return }
+        airportWidths.removeAll(keepingCapacity: true)
+        countryWidths.removeAll(keepingCapacity: true)
+        measuredScale = scale
+    }
 
     /// Measured in the widest face an airport label is drawn in — 11pt
-    /// semibold, the emphasised size (`MapFrame`) — so a box is never
-    /// narrower than its text.
-    func airportTextWidth(_ text: String, in context: GraphicsContext) -> CGFloat {
+    /// semibold, the emphasised size (`MapFrame`), times the label scale —
+    /// so a box is never narrower than its text.
+    func airportTextWidth(_ text: String, scale: CGFloat = 1,
+                          in context: GraphicsContext) -> CGFloat {
+        use(scale)
         if let width = airportWidths[text] { return width }
         let resolved = context.resolve(
-            Text(text).font(.system(size: 11, weight: .semibold)))
+            Text(text).font(.system(size: 11 * scale, weight: .semibold)))
         let width = resolved.measure(in: unbounded).width.rounded(.up)
         airportWidths[text] = width
         return width
@@ -766,10 +814,12 @@ final class MapTextMetrics {
 
     /// A country caption at its larger (local-zoom) size, with the 1.4pt
     /// tracking it is drawn with.
-    func countryTextWidth(_ text: String, in context: GraphicsContext) -> CGFloat {
+    func countryTextWidth(_ text: String, scale: CGFloat = 1,
+                          in context: GraphicsContext) -> CGFloat {
+        use(scale)
         if let width = countryWidths[text] { return width }
         let resolved = context.resolve(
-            Text(text).font(.system(size: 10, weight: .semibold)).tracking(1.4))
+            Text(text).font(.system(size: 10 * scale, weight: .semibold)).tracking(1.4))
         let width = resolved.measure(in: unbounded).width.rounded(.up)
         countryWidths[text] = width
         return width

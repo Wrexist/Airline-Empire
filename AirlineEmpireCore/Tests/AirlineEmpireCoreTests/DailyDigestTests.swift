@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import AirlineEmpireCore
 
@@ -150,11 +151,10 @@ struct DailyDigestTests {
         #expect(state.dailyDigest(for: player, day: Int64.min) == nil)
     }
 
-    /// Honesty under pressure: when the transaction ring cannot hold a
-    /// whole day, the digest must say so instead of under-reporting.
-    @Test func truncationIsReportedNotHidden() throws {
+    /// A world whose shared transaction ring cannot hold a day — a
+    /// deliberately tiny ring stands in for a very large network.
+    private func tinyRingWorld() throws -> (SimulationEngine, AirlineID, ContentCatalog) {
         let catalog = try ContentCatalog.loadBundled()
-        // A deliberately tiny ring stands in for a very large network.
         var state = Fixtures.newState(seed: 12)
         state.ledger = Ledger(recentCapacity: 8)
         let engine = SimulationEngine(state: state,
@@ -177,10 +177,64 @@ struct DailyDigestTests {
         _ = engine.applyNow(AssignAircraftToRouteCommand(
             airline: player, route: route, aircraftID: aircraft))
         engine.advance(ticks: Fixtures.ticksPerDay * 5)
+        return (engine, player, catalog)
+    }
 
-        let digest = try #require(engine.state.dailyDigest(
-            for: player, day: engine.state.clock.now.dayIndex - 1))
+    /// The state as a save from before the per-airline windows (format 15)
+    /// carried it: the same world with the window fields absent.
+    private func withoutWindows(_ state: GameState) throws -> GameState {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        var tree = try #require(JSONSerialization.jsonObject(with: encoder.encode(state))
+            as? [String: Any])
+        var ledger = try #require(tree["ledger"] as? [String: Any])
+        #expect(ledger["dayWindows"] != nil)
+        ledger["dayWindows"] = nil
+        ledger["dayWindowStart"] = nil
+        tree["ledger"] = ledger
+        var log = try #require(tree["eventLog"] as? [String: Any])
+        #expect(log["feedEvents"] != nil)
+        log["feedEvents"] = nil
+        log["feedStart"] = nil
+        tree["eventLog"] = log
+        return try JSONDecoder().decode(GameState.self,
+                                        from: JSONSerialization.data(withJSONObject: tree))
+    }
+
+    /// TD-032: the shared ring is one window for every airline, so a busy
+    /// world truncated the player's day. The airline's own day window keeps
+    /// the digest whole and exact however small the shared ring is.
+    @Test func aFullSharedRingNoLongerTruncatesTheDay() throws {
+        let (engine, player, _) = try tinyRingWorld()
+        let state = engine.state
+        #expect(state.ledger.recent.count == state.ledger.recentCapacity)
+        let digest = try #require(state.dailyDigest(for: player,
+                                                    day: state.clock.now.dayIndex - 1))
+        #expect(digest.isComplete)
+        #expect(digest.byCategory[.ticketRevenue]?.cents ?? 0 > 0)
+        #expect(digest.byCategory[.fuel]?.cents ?? 0 < 0)
+        #expect(digest.revenue + digest.expenses == digest.netCashChange)
+        #expect(digest.byCategory.values.reduce(Money.zero, +) == digest.netCashChange)
+    }
+
+    /// Honesty under pressure still holds where the windows cannot vouch: a
+    /// save from before they existed falls back to the shared ring and says
+    /// the day is partial instead of under-reporting — and the windows start
+    /// over on its first tick, so a later day is whole again.
+    @Test func truncationIsReportedNotHidden() throws {
+        let (engine, player, catalog) = try tinyRingWorld()
+        let legacy = try withoutWindows(engine.state)
+        let digest = try #require(legacy.dailyDigest(
+            for: player, day: legacy.clock.now.dayIndex - 1))
         #expect(!digest.isComplete, "a full ring must flag the day as partial")
+
+        let resumed = SimulationEngine(state: legacy, systems: GamePipeline.standard(),
+                                       catalog: catalog)
+        resumed.advance(ticks: Fixtures.ticksPerDay * 2)
+        let later = try #require(resumed.state.dailyDigest(
+            for: player, day: resumed.state.clock.now.dayIndex - 1))
+        #expect(later.isComplete)
+        #expect(later.flightsCompleted > 0)
     }
     // MARK: - BUG-008: the first day has no yesterday
 

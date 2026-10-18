@@ -490,8 +490,12 @@ struct ServiceDemandTests {
     /// decision, and this fails loudly if a later phase does so silently.
     @Test func theRivalStrategyIsStillRevenueAtSixteen() throws {
         let catalog = try ContentCatalog.loadBundled()
-        #expect(CompetitorAISystem.rankingBasis == .revenue,
+        #expect(CompetitorAISystem.shippedRankingBasis == .revenue,
                 "the shipped rival ranking basis is no longer revenue (AE-041)")
+        let shipped = GamePipeline.standard()
+            .compactMap { $0 as? CompetitorAISystem }.first
+        #expect(shipped?.rankingBasis == .revenue,
+                "the standard pipeline's rivals no longer rank by revenue")
         #expect(catalog.tuning.ai.candidateMarketLimit == 16,
                 "the rival horizon is no longer 16 (AE-039, AE-041)")
         #expect(catalog.tuning.ai.initialRoundTrips == 2)

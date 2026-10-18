@@ -541,4 +541,51 @@ struct FlightOpsTests {
         }
         #expect(try run() == run())
     }
+
+    /// A boarded flight that dispatch then cancels gives its passengers back
+    /// to the day's demand; they used to vanish with the flight. Not across
+    /// a day boundary, where demand has already been recomputed.
+    @Test func cancelledFlightReturnsItsSeatsToTodaysDemand() throws {
+        let (catalog, engine, _, aircraftID, routeID) = try Self.operating()
+        let route = try #require(engine.state.routes[routeID])
+        func boarded(departingAt departure: SimTime) -> (GameState, FlightID) {
+            var state = engine.state
+            state.clock.now = departure
+            let id = FlightID(raw: 99_998)
+            var flight = Flight(id: id, route: routeID, aircraft: aircraftID, kind: .revenue,
+                                from: route.origin, to: route.destination,
+                                distanceKm: route.distanceKm, flightMinutes: 120,
+                                scheduledDeparture: departure)
+            flight.phase = .boarding
+            flight.passengers = 80
+            state.flights = [id: flight]
+            state.aircraft[aircraftID]?.activeFlight = id
+            state.routes[routeID]?.demandOutboundToday = 200
+            state.routes[routeID]?.remainingOutboundToday = 120 // 80 sold to this flight
+            return (state, id)
+        }
+        func dispatch(_ state: GameState, seed: UInt64) -> GameState {
+            var state = state
+            state.rng = RNGState(worldSeed: seed)
+            FlightOpsSystem().update(state: &state, context: SimContext(
+                previous: state.clock.now, current: state.clock.now, tick: .minutes(0),
+                catalog: catalog, events: EventCollector(), progressionCeiling: .empire))
+            return state
+        }
+
+        // Mid-morning: the sale was today.
+        let (morning, id) = boarded(departingAt: SimTime(rawMinutes: 10 * 60))
+        let seed = try #require((UInt64(0)..<100_000).first { dispatch(morning, seed: $0).flights[id] == nil },
+                                "no seed cancels the dispatch")
+        let cancelled = dispatch(morning, seed: seed)
+        #expect(cancelled.routes[routeID]?.stats.flightsCancelled == 1)
+        #expect(cancelled.routes[routeID]?.remainingOutboundToday == 200)
+
+        // Just after midnight, boarding began yesterday: nothing is returned
+        // to a day whose demand was already reset.
+        let (overnight, _) = boarded(departingAt: SimTime(rawMinutes: GameCalendar.minutesPerDay + 10))
+        let lateCancel = dispatch(overnight, seed: seed)
+        #expect(lateCancel.routes[routeID]?.stats.flightsCancelled == 1)
+        #expect(lateCancel.routes[routeID]?.remainingOutboundToday == 120)
+    }
 }

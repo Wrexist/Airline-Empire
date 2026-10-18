@@ -116,6 +116,27 @@ final class GameController {
     private var sessionCheckpoint: SessionCheckpoint?
     private(set) var lastSessionReport: SessionReport?
     private(set) var lastSessionNextMove: String?
+    /// The world seed a collapsed airline asked to replay. The game-over
+    /// screen says its seed "replays the same world", and then handed the
+    /// player a blank seed field; this carries it to the founding screen,
+    /// which takes it once (`takeReplaySeed`).
+    private(set) var replaySeed: UInt64?
+
+    /// Leaves a collapsed airline for the founding screen, with its seed
+    /// ready to fly the same world again. The save goes with it: it can
+    /// never be continued, and on the free tier it held the one slot.
+    func startAgain(fromCollapsed seed: UInt64) {
+        let collapsed = activeSaveSlot
+        quitToMenu()
+        if let collapsed { deleteSlot(collapsed) }
+        replaySeed = seed
+    }
+
+    /// The pending replay seed, handed over once.
+    func takeReplaySeed() -> UInt64? {
+        defer { replaySeed = nil }
+        return replaySeed
+    }
 
     /// The menu's "since you opened this campaign" card belongs to the
     /// session that just ended. It outlived that save's deletion and the
@@ -518,28 +539,36 @@ final class GameController {
             let catalog = try ContentCatalog.loadBundled()
             let manager = makeSaveManager()
             let result = try manager.load(slot: slot)
-            let session = GameSession(state: result.state,
-                                      systems: GamePipeline.standard(), catalog: catalog)
-            self.catalog = catalog
-            self.session = session
-            self.activeSaveSlot = slot
-            self.saveManager = manager
-            self.loadedFromBackup = result.generation > 0 ? result.generation : nil
-            self.lastSolvencyStage = .healthy
-            Task {
-                await session.setProgressionCeiling(self.eraCeiling)
-                await session.attachSaveManager(manager, autosaveSlot: slot,
-                                                autosaveEveryGameDays: 1)
-                await self.subscribe()
-                await self.refresh()
-                // Same as founding: a loaded game needs its clock started
-                // (BUG-040).
-                self.setPumping(true)
-            }
+            begin(state: result.state, catalog: catalog, manager: manager,
+                  slot: slot, generation: result.generation)
         } catch {
             // Reported on the menu, which has no rejection alert of its own —
             // this used to be set and never shown to anyone (UI-004).
             self.startupFailure = "That save could not be opened. It may have been written by a newer version of the game."
+        }
+    }
+
+    /// Makes a loaded world the running game: a slot load and an import end
+    /// the same way, and two copies of this would drift.
+    private func begin(state: GameState, catalog: ContentCatalog, manager: SaveManager,
+                       slot: String, generation: Int) {
+        let session = GameSession(state: state,
+                                  systems: GamePipeline.standard(), catalog: catalog)
+        self.catalog = catalog
+        self.session = session
+        self.activeSaveSlot = slot
+        self.saveManager = manager
+        self.loadedFromBackup = generation > 0 ? generation : nil
+        self.lastSolvencyStage = .healthy
+        Task {
+            await session.setProgressionCeiling(self.eraCeiling)
+            await session.attachSaveManager(manager, autosaveSlot: slot,
+                                            autosaveEveryGameDays: 1)
+            await self.subscribe()
+            await self.refresh()
+            // Same as founding: a loaded game needs its clock started
+            // (BUG-040).
+            self.setPumping(true)
         }
     }
 
@@ -606,29 +635,54 @@ final class GameController {
         return CampaignDocument(data: data)
     }
 
+    /// True while an imported file is being read, checked and written. The
+    /// menu shows progress and holds its controls for it.
+    private(set) var isImporting = false
+
     /// Imports only validated data and always into a fresh slot. An invalid
     /// file or a failed write cannot replace a campaign the player already has.
-    func importCampaign(from url: URL, access: ContentAccess) throws {
-        guard session == nil, access.allowsNewSave(existingSaves: availableSlots().count) else {
+    ///
+    /// The read, the decode, the write — which fsyncs — and the content load
+    /// all run off the main actor. They used to run on it, so a large late-game
+    /// save froze the menu for as long as it took, with no sign that anything
+    /// was happening. The decoded state goes straight into the session rather
+    /// than being read back from the slot just written: a second decode on the
+    /// main actor would have put half the freeze back.
+    func importCampaign(from url: URL, access: ContentAccess) async throws {
+        guard session == nil, !isImporting,
+              access.allowsNewSave(existingSaves: availableSlots().count) else {
             throw SaveError.corruptPayload("Keep your current campaign, or use Pro to keep more than one.")
         }
-        let scoped = url.startAccessingSecurityScopedResource()
-        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { try? handle.close() }
-        let limit = 32 * 1024 * 1024
-        let data = try handle.read(upToCount: limit + 1) ?? Data()
-        guard data.count <= limit else {
-            throw SaveError.corruptPayload("This file is too large to be an Airline Empire campaign.")
-        }
+        isImporting = true
+        defer { isImporting = false }
         let manager = makeSaveManager()
-        let state = try manager.codec.decode(data)
-        guard state.playerAirline != nil else {
-            throw SaveError.corruptPayload("This save does not contain a founded airline.")
-        }
-        let slot = UUID().uuidString.lowercased()
-        try manager.save(state, slot: slot)
-        loadGame(slot: slot)
+        let imported = try await Task.detached(priority: .userInitiated) {
+            () throws -> (slot: String, state: GameState, catalog: ContentCatalog) in
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            let handle = try FileHandle(forReadingFrom: url)
+            defer { try? handle.close() }
+            let limit = 32 * 1024 * 1024
+            let data = try handle.read(upToCount: limit + 1) ?? Data()
+            guard data.count <= limit else {
+                throw SaveError.corruptPayload("This file is too large to be an Airline Empire campaign.")
+            }
+            let state = try manager.codec.decode(data)
+            guard state.playerAirline != nil else {
+                throw SaveError.corruptPayload("This save does not contain a founded airline.")
+            }
+            let slot = UUID().uuidString.lowercased()
+            try manager.save(state, slot: slot)
+            let catalog = try ContentCatalog.loadBundled()
+            return (slot, state, catalog)
+        }.value
+        // The slot is written either way; it is on the menu if a game began
+        // in the meantime.
+        guard session == nil else { return }
+        startupFailure = nil
+        clearSessionReport()
+        begin(state: imported.state, catalog: imported.catalog, manager: manager,
+              slot: imported.slot, generation: 0)
     }
 
     /// Removes a save. The menu listed slots with no way to manage them, and
@@ -672,16 +726,48 @@ final class GameController {
 
     /// Backgrounding: save, quietly. A failure here is recorded but never
     /// interrupts — the player is already looking at another app.
+    ///
+    /// Skipped when nothing has happened since the last save. The scene
+    /// calls this on `.inactive` as well as `.background` — a force-quit
+    /// from the app switcher may never reach `.background` — and `.inactive`
+    /// is every notification banner and Control Centre pull. Each save
+    /// rotates the slot's backups, so a paused game glanced away from five
+    /// times overwrote five generations of history with five copies of the
+    /// same state.
     func saveOnBackground() {
         guard let session, let slot = activeSaveSlot,
               backgroundSaveTask == .invalid else { return }
+        let mark = saveMark(for: session)
+        guard mark == nil || mark != lastSavedMark else { return }
         backgroundSaveTask = UIApplication.shared.beginBackgroundTask(withName: "Save campaign") {
             MainActor.assumeIsolated { self.endBackgroundSave() }
         }
         Task {
-            _ = await self.save(session: session, slot: slot, announce: false)
+            _ = await self.save(session: session, slot: slot, announce: false, mark: mark)
             self.endBackgroundSave()
         }
+    }
+
+    /// What a save captured, in the two counters `refresh` already trusts to
+    /// say whether the world changed: the tick, and the event count (every
+    /// command applied while paused emits one). Read from the published
+    /// snapshot when the save is *asked for* — the session can only be at
+    /// or past it, so a matching mark later means the slot is at least as new.
+    private struct SaveMark: Equatable {
+        let session: ObjectIdentifier
+        let tick: Int64
+        let events: Int64
+    }
+
+    /// The last mark a save completed with. Nil after a failure, so the next
+    /// chance always tries again.
+    @ObservationIgnored private var lastSavedMark: SaveMark?
+
+    private func saveMark(for session: GameSession) -> SaveMark? {
+        guard let snapshot, publishedSession == ObjectIdentifier(session) else { return nil }
+        return SaveMark(session: ObjectIdentifier(session),
+                        tick: snapshot.clock.tickCount,
+                        events: snapshot.eventLog.totalCount)
     }
 
     private func endBackgroundSave() {
@@ -693,7 +779,8 @@ final class GameController {
     /// An explicit save, which must report what happened either way.
     func saveNow() {
         guard let session, let slot = activeSaveSlot else { return }
-        Task { _ = await self.save(session: session, slot: slot, announce: true) }
+        let mark = saveMark(for: session)
+        Task { _ = await self.save(session: session, slot: slot, announce: true, mark: mark) }
     }
 
     /// Saves, waits for it, and only then leaves.
@@ -731,15 +818,18 @@ final class GameController {
     }
 
     private func save(session: GameSession, slot: String, announce: Bool,
-                      announceSuccess: Bool = true) async -> Bool {
+                      announceSuccess: Bool = true, mark: SaveMark? = nil) async -> Bool {
         do {
             try await session.saveNow(slot: slot)
             guard self.session === session else { return true }
+            lastSavedMark = mark
             quietSaveFailure = nil
             if announce && announceSuccess { lastSaveOutcome = .saved(slot: slot) }
             return true
         } catch {
             guard self.session === session else { return false }
+            // A failed write may have left the slot behind the last mark.
+            lastSavedMark = nil
             // Swallowing this is how a failing save became indistinguishable
             // from a working one (UI-012). But `lastSaveOutcome` is what
             // `GameShell` raises an alert from, and `saveOnBackground` passes
@@ -792,6 +882,7 @@ final class GameController {
         // opens Settings to a warning that *this* one's autosave failed
         // (tasks/BUGS.md BUG-028) — the same leak class as BUG-013.
         quietSaveFailure = nil
+        lastSavedMark = nil
         lastSolvencyStage = .healthy
         pendingAudioEvents = []
         // The director goes with the game. Without this the next airline
@@ -1148,10 +1239,24 @@ final class GameController {
 
     private func refresh() async {
         guard let session else { return }
-        let state = await session.snapshot
-        let fraction = await session.pendingGameMinutes
-        let sessionSpeed = await session.speed
+        // One hop, so the three values describe one instant. As three awaits,
+        // the pump could advance the session between them — a fraction from
+        // after a tick paired with the state from before it, which is the
+        // aircraft-jumps-ahead shape BUG-058 was.
+        let publication = await session.publication()
+        let state = publication.state
+        let fraction = publication.pendingGameMinutes
+        let sessionSpeed = publication.speed
         guard self.session === session else { return }
+        // Refreshes overlap: the pump's and a command's can both be waiting
+        // on the session, and the one that asked first can resume last. Its
+        // world is older than the one already on screen, and publishing it
+        // stepped every view back a tick. Dropped; its queued audio rides
+        // the next refresh.
+        if let current = snapshot, publishedSession == ObjectIdentifier(session),
+           Self.isOlder(state, than: current) {
+            return
+        }
         if sessionCheckpoint == nil {
             sessionCheckpoint = SessionCheckpoint(state)
         }
@@ -1209,6 +1314,16 @@ final class GameController {
     /// The session whose state `snapshot` holds, so a new or imported game
     /// always publishes even if its counters happen to match the last one's.
     @ObservationIgnored private var publishedSession: ObjectIdentifier?
+
+    /// Whether `state` comes from before `current` in the same session, by
+    /// the counters that only ever grow: the tick, then — for commands
+    /// applied while paused, which do not move the clock — the event count.
+    nonisolated static func isOlder(_ state: GameState, than current: GameState) -> Bool {
+        if state.clock.tickCount != current.clock.tickCount {
+            return state.clock.tickCount < current.clock.tickCount
+        }
+        return state.eventLog.totalCount < current.eventLog.totalCount
+    }
 
     /// Hands the batch to the director together with the state that produced
     /// it. Drained unconditionally — the director is asked on every refresh
@@ -1425,4 +1540,20 @@ private final class DefaultsStore: AudioSettingsStore {
 
     func set(_ value: Bool, forKey key: String) { defaults.set(value, forKey: key) }
     func set(_ value: Double, forKey key: String) { defaults.set(value, forKey: key) }
+}
+
+/// Everything one publish needs, read in a single hop onto the session's
+/// actor. An extension here rather than a method in Core: it adds nothing to
+/// the simulation, only groups three public reads so they cannot interleave
+/// with a pump (`GameController.refresh`).
+private extension GameSession {
+    struct Publication: Sendable {
+        let state: GameState
+        let pendingGameMinutes: Double
+        let speed: SimSpeed
+    }
+
+    func publication() -> Publication {
+        Publication(state: snapshot, pendingGameMinutes: pendingGameMinutes, speed: speed)
+    }
 }

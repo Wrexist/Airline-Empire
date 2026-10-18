@@ -143,6 +143,77 @@ struct AssignmentEligibilityTests {
         #expect(candidate.note == nil)
     }
 
+    /// A long-haul pairing range alone would wave through: a type and a
+    /// destination inside its range and both runways, where one round trip
+    /// is still longer than the standard operating day. Searched for rather
+    /// than named, for the reason `tightRangeIsFlagged` gives.
+    static func unrotatablePairing(from home: AirportCode, catalog: ContentCatalog)
+        -> (spec: AircraftTypeSpec, destination: AirportCode)? {
+        guard let origin = catalog.airport(home) else { return nil }
+        let longestFirst = catalog.orderedAircraftTypeCodes
+            .compactMap { catalog.aircraftType($0) }
+            .sorted { ($0.rangeKm, $0.code.raw) > ($1.rangeKm, $1.code.raw) }
+        for spec in longestFirst where origin.runwayClass >= spec.runwayRequirement {
+            for code in catalog.orderedAirportCodes where code != home {
+                guard let airport = catalog.airport(code),
+                      airport.runwayClass >= spec.runwayRequirement,
+                      let distance = catalog.distanceKm(home, code),
+                      distance <= spec.rangeKm,
+                      FlightSchedulingSystem.roundTripsPerAircraftPerDay(
+                          distanceKm: distance, spec: spec, ops: catalog.tuning.ops) == 0
+                else { continue }
+                return (spec, code)
+            }
+        }
+        return nil
+    }
+
+    /// GAME_AUDIT_2026-10-18 §0.2: a widebody was accepted onto a route it
+    /// reaches but can never rotate — the scheduler plans whole round trips
+    /// inside the day, so it got no flights while it kept billing. Model
+    /// and validator now refuse it together, for the same reason.
+    @Test("A round trip longer than the operating day is blocked, by model and validator alike")
+    func roundTripLongerThanTheDayIsBlocked() throws {
+        let catalog = try ContentCatalog.loadBundled()
+        // No systems: nothing moves, and an AI airline is free of the
+        // player's era locks, so the widebody can simply be bought.
+        let engine = SimulationEngine(state: Fixtures.newState(seed: 8080),
+                                      systems: [], catalog: catalog)
+        #expect(engine.applyNow(FoundAirlineCommand(
+            airlineName: "Long Haul", kind: .ai, homeAirport: "LHR",
+            startingCash: Money.dollars(900_000_000),
+            aiProfile: AIProfile(archetype: .premium))) == .applied)
+        let airline = try #require(engine.state.airlines.values.first).id
+        let (spec, far) = try #require(Self.unrotatablePairing(from: "LHR", catalog: catalog),
+                                       "no type in the catalog reaches a route it cannot rotate")
+        #expect(engine.applyNow(BuyUsedAircraftCommand(
+            buyer: airline, type: spec.code, ageYears: 4)) == .applied)
+        #expect(engine.applyNow(OpenRouteCommand(
+            airline: airline, origin: "LHR", destination: far,
+            dailyRoundTrips: 1, ticketPrice: Money.dollars(900))) == .applied)
+        let state = engine.state
+        let aircraft = try #require(state.fleet(of: airline).first)
+        let route = try #require(state.routes(of: airline).first)
+        #expect(route.distanceKm <= spec.rangeKm, "precondition: range alone allows it")
+
+        let rejection = AssignAircraftToRouteCommand(
+            airline: airline, route: route.id, aircraftID: aircraft.id)
+            .validate(state: state, catalog: catalog)
+        #expect(rejection?.code == "route.tooLongForDay")
+
+        let candidate = state.candidate(aircraft: aircraft, route: route, catalog: catalog)
+        guard case .roundTripExceedsDay(let roundTrip, let day)? = candidate.blocker else {
+            Issue.record("expected roundTripExceedsDay, got \(String(describing: candidate.blocker))")
+            return
+        }
+        #expect(day == catalog.tuning.ops.operatingDayMinutes)
+        #expect(roundTrip > day)
+        #expect(candidate.note == nil)
+        // And the AI, asking the same question, does not spend a slot on it.
+        #expect(FlightSchedulingSystem.roundTripsPerDay(spec: spec, on: route, state: state,
+                                                        catalog: catalog) == 0)
+    }
+
     @Test("An aircraft already on a route is blocked, and names the route")
     func alreadyAssignedIsBlocked() async throws {
         let (session, player, catalog) = try await mixedWorld()

@@ -280,8 +280,9 @@ struct PaywallPlanCard: View {
     let isSelected: Bool
     /// The recurring price, localised by StoreKit. `nil` while loading.
     let price: String?
-    /// The introductory price, if this account may still take one.
-    let introductoryPrice: String?
+    /// The introductory offer, if this account may still take one, as Core
+    /// phrases it from the offer's own shape ("$0.99 for your first week").
+    let introductoryTerms: String?
     /// "week" / "year" — the unit the price is per.
     let period: String
     /// The pill beside the plan name, if this plan earns one. Two of the
@@ -323,8 +324,8 @@ struct PaywallPlanCard: View {
                     Text(tier.renewalDescription)
                         .font(AEType.secondary)
                         .foregroundStyle(.secondary)
-                    if let introductoryPrice {
-                        Text("First \(period): \(introductoryPrice)")
+                    if let introductoryTerms {
+                        Text(introductoryTerms)
                             .font(AEType.secondary.weight(.semibold))
                             .foregroundStyle(AETheme.positive)
                     }

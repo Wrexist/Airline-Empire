@@ -141,6 +141,12 @@ public struct CloseRouteCommand: Command, Equatable {
             }
             state.flights[flightID] = nil
         }
+        // What the route counted toward goes with it unless banked: a boom
+        // rush's passengers, the lifetime cancellation record. Read after
+        // the turnarounds above have recorded their completions.
+        if state.isPlayer(airline), let closing = state.routes[route] {
+            state.progression.bankClosingRoute(closing, catalog: context.catalog)
+        }
         for aircraftID in r.assignedAircraft {
             if var aircraft = state.aircraft[aircraftID] {
                 aircraft.assignedRoute = nil
@@ -285,6 +291,17 @@ public struct AssignAircraftToRouteCommand: Command, Equatable {
                 return CommandRejection(code: "route.runwayTooSmall",
                                         message: "\(end) cannot handle a \(spec.model)")
             }
+        }
+        // In range and still never flown: the scheduler plans whole round
+        // trips inside the operating day, so a route whose round trip is
+        // longer than the day materialises no flights at all — and the
+        // aeroplane's lease, payroll and checks bill regardless. Range was
+        // the only distance check, so long-haul types were accepted onto
+        // routes they could never fly.
+        if FlightSchedulingSystem.roundTripsPerDay(spec: spec, on: r, state: state,
+                                                    catalog: catalog) == 0 {
+            return CommandRejection(code: "route.tooLongForDay",
+                                    message: "A \(spec.model) round trip of \(r.distanceKm) km does not fit in one operating day")
         }
         return nil
     }

@@ -14,7 +14,7 @@ jobs:
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -56,7 +56,7 @@ jobs:
             xcrun xcresulttool get test-results metrics --path "comparison/$variant.xcresult" > "comparison/$variant-metrics.json"
             xcrun xcresulttool export attachments --path "comparison/$variant.xcresult" --output-path "comparison/$variant-captures"
           done
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: release-performance-comparison
@@ -67,7 +67,7 @@ jobs:
             comparison/simulator-id.txt
             comparison/*-captures/
           retention-days: 30
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: release-performance-results

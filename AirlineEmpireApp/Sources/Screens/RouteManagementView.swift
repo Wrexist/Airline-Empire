@@ -70,7 +70,9 @@ struct RouteOverviewHero: View {
                     Spacer()
                     endpoint(route.destination)
                 }
-                RouteAirportDiagram(route: route, catalog: catalog)
+                RouteAirportDiagram(origin: route.origin, destination: route.destination,
+                                    catalog: catalog)
+                    .equatable()
                 ViewThatFits(in: .horizontal) {
                     HStack { facts; Spacer(); mapButton }
                     VStack(alignment: .leading, spacing: 8) { facts; mapButton }
@@ -100,12 +102,26 @@ struct RouteOverviewHero: View {
 /// (`WorldGeometry`), framed on the two airports, with the great-circle path
 /// the aircraft fly rather than a straight line on an empty grid. Date-line
 /// crossings stay one continuous curve.
-private struct RouteAirportDiagram: View {
-    let route: Route
+///
+/// Given the two codes and nothing else, and equatable on them. It took the
+/// whole `Route`, whose statistics change on every tick, so the coastline
+/// culling and the great circle were redrawn four times a second for a
+/// picture of two fixed airports.
+private struct RouteAirportDiagram: View, Equatable {
+    let origin: AirportCode
+    let destination: AirportCode
     let catalog: ContentCatalog
+
+    /// Nonisolated, as `Equatable` requires; it reads only immutable,
+    /// `Sendable` inputs.
+    nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.origin == rhs.origin && lhs.destination == rhs.destination
+            && lhs.catalog === rhs.catalog
+    }
+
     var body: some View {
         Canvas { context, size in
-            guard let a = catalog.airport(route.origin), let b = catalog.airport(route.destination) else { return }
+            guard let a = catalog.airport(origin), let b = catalog.airport(destination) else { return }
             // The path, longitudes unwrapped from the origin.
             var path: [(lat: Double, lon: Double)] = []
             var previous = a.coordinate.longitude
@@ -195,7 +211,7 @@ private struct RouteAirportDiagram: View {
         }.frame(height: 150)
             .clipShape(.rect(cornerRadius: 12))
             .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(AETheme.surfaceRim.opacity(0.6)) }
-            .accessibilityLabel("Map of the route from \(route.origin.raw) to \(route.destination.raw)")
+            .accessibilityLabel("Map of the route from \(origin.raw) to \(destination.raw)")
     }
 }
 
@@ -293,7 +309,11 @@ struct RoutePlanEditor: View {
                         }.buttonStyle(.aePrimary).disabled(pending != nil || controller.precheck(command) != nil)
                             .accessibilityIdentifier("ae-route-plan-apply")
                         if let rejection = controller.precheck(command) {
-                            Text(rejection.message).font(.caption).foregroundStyle(AETheme.caution)
+                            // The player-facing refusal, as every other screen shows
+                            // it. Core's message is written for the simulation's
+                            // reader ("No such route", an inequality of slots) and
+                            // was printed here verbatim.
+                            RefusalNote(rejection: rejection, detail: .reason)
                         }
                         Button("Discard Changes") { draft = nil; saved = false }.frame(minHeight: 44).disabled(pending != nil)
                     }

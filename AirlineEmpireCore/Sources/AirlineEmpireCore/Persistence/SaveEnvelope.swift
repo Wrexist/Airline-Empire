@@ -29,7 +29,11 @@ public enum SaveFormat {
     /// under construction, earned hub statuses, and the events and record
     /// entries for openings — all optional, so v14 needs no rewriting, but an
     /// older build must refuse a save that may hold them.
-    public static let currentVersion = 15
+    /// v16 adds the per-airline windows of TD-032 — the player's feed ring in
+    /// the event log and each airline's ledger day totals — and the airline
+    /// on `aircraftSold`/`leaseReturned` events. All optional again: a v15
+    /// save decodes as is and the windows start recording on its first tick.
+    public static let currentVersion = 16
 }
 
 public struct SaveEnvelope: Codable, Sendable {
@@ -55,6 +59,10 @@ public enum SaveError: Error, Equatable, Sendable, LocalizedError {
     case checksumMismatch
     case unsupportedVersion(Int)
     case corruptPayload(String)
+    /// The save names aircraft types or airports the running content does
+    /// not have (a renamed or removed code). Refused at load so the
+    /// simulation never meets a code its catalog lookups cannot resolve.
+    case missingContent([String])
 
     public var errorDescription: String? {
         switch self {
@@ -62,6 +70,8 @@ public enum SaveError: Error, Equatable, Sendable, LocalizedError {
         case .checksumMismatch: "This save is damaged or incomplete. Try another backup."
         case .unsupportedVersion: "This save uses an unsupported format. Update the app or choose a compatible backup."
         case .corruptPayload(let reason): reason
+        case .missingContent(let codes):
+            "This save refers to aircraft or airports this version of the game does not have (\(codes.prefix(4).joined(separator: ", "))). Update the app or choose another backup."
         }
     }
 }
@@ -71,18 +81,33 @@ public enum SaveError: Error, Equatable, Sendable, LocalizedError {
 /// Older formats are lifted through the migration chain before decoding.
 public struct JSONSaveCodec: Sendable {
     public let migrations: MigrationChain
+    /// The content saves are written against and checked against.
+    ///
+    /// A save refers to content by code (an aircraft type, an airport), and
+    /// some twenty simulation paths force-unwrap the catalog lookup for a
+    /// code they assume exists. Nothing at load checked that it did, so a
+    /// content update that renamed one code would have crashed every old
+    /// save that used it on its first tick. With a catalog, `decode` refuses
+    /// such a save with `SaveError.missingContent` — an honest "cannot open"
+    /// on the menu instead of a crash in the game — and `encode` records the
+    /// catalog's version in the envelope instead of "0". Nil (the default)
+    /// skips both, for tools and tests that run on synthetic content.
+    public let catalog: ContentCatalog?
 
-    public init(migrations: MigrationChain = .standard) {
+    public init(migrations: MigrationChain = .standard, catalog: ContentCatalog? = nil) {
         self.migrations = migrations
+        self.catalog = catalog
     }
 
-    public func encode(_ state: GameState, contentVersion: String = "0") throws -> Data {
+    /// Encodes a save. `contentVersion` defaults to the catalog's version,
+    /// or "0" without a catalog.
+    public func encode(_ state: GameState, contentVersion: String? = nil) throws -> Data {
         let payloadEncoder = JSONEncoder()
         payloadEncoder.outputFormatting = [.sortedKeys]
         let payload = try payloadEncoder.encode(state)
         let envelope = SaveEnvelope(
             formatVersion: SaveFormat.currentVersion,
-            contentVersion: contentVersion,
+            contentVersion: contentVersion ?? catalog?.version ?? "0",
             savedAtTick: state.clock.tickCount,
             payload: payload)
         let envelopeEncoder = JSONEncoder()
@@ -127,6 +152,10 @@ public struct JSONSaveCodec: Sendable {
             guard state.isLoadable else {
                 throw SaveError.corruptPayload("This save contains an invalid game state. Choose another backup.")
             }
+            if let catalog {
+                let missing = state.unknownContentCodes(in: catalog)
+                guard missing.isEmpty else { throw SaveError.missingContent(missing) }
+            }
             return state
         } catch let error as SaveError {
             throw error
@@ -137,6 +166,46 @@ public struct JSONSaveCodec: Sendable {
 }
 
 extension GameState {
+    /// Every content code the live state refers to that `catalog` does not
+    /// define, labelled and sorted ("aircraft type MR999", "airport XYZ").
+    ///
+    /// Covers the references the simulation resolves through the catalog:
+    /// aircraft types and positions, airline homes and stations, routes,
+    /// flights, airport runtimes and airport closures. History — market
+    /// moves, records, the event log — only ever names a code for display,
+    /// so an old name there is harmless and not reported.
+    public func unknownContentCodes(in catalog: ContentCatalog) -> [String] {
+        var missing = Set<String>()
+        func check(_ code: AirportCode) {
+            if catalog.airport(code) == nil { missing.insert("airport \(code.raw)") }
+        }
+        for plane in self.aircraft.values {
+            if catalog.aircraftType(plane.typeCode) == nil {
+                missing.insert("aircraft type \(plane.typeCode.raw)")
+            }
+            check(plane.location)
+        }
+        for airline in self.airlines.values {
+            check(airline.homeAirport)
+            for code in (airline.airportFacilities ?? [:]).keys { check(code) }
+            for code in (airline.hubStatuses ?? [:]).keys { check(code) }
+            for build in airline.facilityConstructions ?? [] { check(build.airport) }
+        }
+        for route in self.routes.values {
+            check(route.origin)
+            check(route.destination)
+        }
+        for flight in self.flights.values {
+            check(flight.from)
+            check(flight.to)
+        }
+        for code in world.airportRuntimes.keys { check(code) }
+        for event in world.activeEvents {
+            if case .airportClosure(let code) = event.kind { check(code) }
+        }
+        return missing.sorted()
+    }
+
     /// Everything `JSONSaveCodec.decode` demands of a decoded state: a tick
     /// that divides the day, a clock with headroom, and no integrity
     /// violation. `SaveManager.save` asks the same question, so a state the
