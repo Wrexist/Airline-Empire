@@ -233,7 +233,12 @@ struct BriefingView: View {
         // The banner already carries the insolvency alert; the rows below are
         // the things it does not say.
         let rows = briefing.alerts.filter { !$0.kind.isInsolvency }
-        let hasRival = controller.competitionSummary?.headline != nil
+        // Only a rival headline that is bad news belongs here. A rival
+        // pulling out of the player's market, or the player leading every
+        // fight, was filed under "Needs you now" — good news, read as an
+        // alarm. Those ride in the next section instead (`howItIsGoing`).
+        let hasRival = controller.competitionSummary?.headline
+            .map(RivalPressureCard.needsAction) ?? false
         if !rows.isEmpty || hasRival {
             VStack(alignment: .leading, spacing: AETheme.spacingS) {
                 sectionHeader("Needs you now", "exclamationmark.circle",
@@ -241,8 +246,9 @@ struct BriefingView: View {
                 ForEach(Array(rows.enumerated()), id: \.offset) { _, alert in
                     alertRow(alert, snapshot: snapshot)
                 }
-                // One competitive fact, only when the world has one (AE-037).
-                RivalPressureCard()
+                // One competitive fact, only when the world has one (AE-037)
+                // and only when it asks something of the player.
+                if hasRival { RivalPressureCard() }
             }
         }
     }
@@ -298,6 +304,13 @@ struct BriefingView: View {
                           id: "ae-briefing-performance")
             pulse(briefing.performance)
             statGrid(briefing.performance.dashboard)
+            // The competitive fact when it is not an alarm — a rival's
+            // retreat, an even fight, a lead. Still on the briefing, where
+            // the player looks for it; just not under "Needs you now".
+            if let headline = controller.competitionSummary?.headline,
+               !RivalPressureCard.needsAction(headline) {
+                RivalPressureCard()
+            }
         }
     }
 
@@ -793,13 +806,24 @@ struct NextMovesCard: View {
     /// count, because the card now offers to open one — an instruction the
     /// player has to carry to another tab by hand is the weakest form of
     /// advice a game can give (tasks/BUGS.md BUG-059).
+    ///
+    /// Operational ones only, as the briefing's own idle row counts them: an
+    /// aircraft still on order, or in a check, has no route because it cannot
+    /// fly one, and counting it changed the heading to "Or grow the
+    /// network:" over an idle warning that was not there.
     private var idleAircraft: [Aircraft] {
         guard let player = snapshot.playerAirline?.id else { return [] }
-        return snapshot.fleet(of: player).filter { $0.assignedRoute == nil }
+        return snapshot.fleet(of: player).filter {
+            $0.assignedRoute == nil && $0.isOperational
+        }
     }
 
     private var idleCount: Int { idleAircraft.count }
 
+    /// A demand pass over every market from the player's bases. Read once per
+    /// `body`, into `markets` there — the heading used to ask for it a second
+    /// time through `anyMarketPays`, doubling the most expensive call on the
+    /// card on every refresh.
     private var opportunities: [MarketOpportunity] {
         // Servable markets first: advice the fleet cannot act on today is a
         // wish, not a move. Two at most — a ranked pair is a decision, a
@@ -810,19 +834,17 @@ struct NextMovesCard: View {
         return Array((servable.isEmpty ? ranked : servable).prefix(2))
     }
 
+    /// The heading over the markets, which has to stay true when none of them
+    /// pays for the aircraft it needs — a real state at one of the ninety-three
+    /// homes a player can pick.
+    ///
     /// Core ranks these and gates them on whether they pay for the airframe
     /// they need; a home where none does is a real state (AE-042 measured one
     /// of the ninety-three pickable homes in that position), and saying so is
     /// better than calling the least bad option strong.
-    private var anyMarketPays: Bool {
-        opportunities.contains { $0.paysForItsAirframe }
-    }
-
-    /// The heading over the markets, which has to stay true when none of them
-    /// pays for the aircraft it needs — a real state at one of the ninety-three
-    /// homes a player can pick.
-    private func marketsHeading(idleWarningAbove: Bool) -> String {
-        if anyMarketPays {
+    private func marketsHeading(_ markets: [MarketOpportunity],
+                                idleWarningAbove: Bool) -> String {
+        if markets.contains(where: \.paysForItsAirframe) {
             return idleWarningAbove ? "Or grow the network:"
                                     : "Strong open markets from your bases:"
         }
@@ -862,10 +884,14 @@ struct NextMovesCard: View {
                 VStack(alignment: .leading, spacing: AETheme.spacingS) {
                     Text("Next moves").font(.headline)
                     if !markets.isEmpty {
-                        Text(marketsHeading(idleWarningAbove: idle > 0))
+                        Text(marketsHeading(markets, idleWarningAbove: idle > 0))
                             .font(.caption)
                             .foregroundStyle(AETheme.mutedText)
-                        ForEach(markets, id: \.destination) { market in
+                        // Keyed by the pair. A player with two bases can be
+                        // offered the same destination from both, and keyed
+                        // by destination alone the two rows shared an
+                        // identity — SwiftUI drew one twice, or dropped one.
+                        ForEach(markets, id: \.pairKey) { market in
                             Button {
                                 openSuggestion(market.asFirstRouteSuggestion)
                             } label: {
@@ -989,6 +1015,16 @@ struct RivalPressureCard: View {
             return controller.competitionSummary?.contested.first?.routeID
         case .rivalExpanding, .leading, .fighting:
             return nil
+        }
+    }
+
+    /// Whether a headline is something the player should act on: a rival
+    /// entering their market, or a market they are losing. The same split
+    /// the card's tint already made — caution for these, calm for the rest.
+    nonisolated static func needsAction(_ headline: CompetitionSummary.Headline) -> Bool {
+        switch headline {
+        case .rivalEnteredYourMarket, .trailing: true
+        case .rivalLeftYourMarket, .leading, .rivalExpanding, .fighting: false
         }
     }
 
@@ -1266,4 +1302,9 @@ private struct GuidedRoute: Identifiable {
     let suggestion: FirstRouteSuggestion
     var id: String { "\(suggestion.origin.raw)-\(suggestion.destination.raw)" }
     init(_ suggestion: FirstRouteSuggestion) { self.suggestion = suggestion }
+}
+
+private extension MarketOpportunity {
+    /// One market, from one base: the identity a list of them is keyed on.
+    var pairKey: String { "\(origin.raw)-\(destination.raw)" }
 }
