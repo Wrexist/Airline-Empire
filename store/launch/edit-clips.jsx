@@ -1,15 +1,16 @@
 import fs from "node:fs";
+import path from "node:path";
 export default async ({ project }) => {
   const config = JSON.parse(fs.readFileSync("clip-config.json", "utf8"));
   const p = await project({dir: config.name, size:"1080x1920", fps:30, background:"#07111d"});
   let at = 0;
   for (const shot of config.shots) {
-    const source = await p.add(shot.source);
+    const source = await p.add(path.resolve(shot.source));
     p.compose(
       <frame layout="none" width={1080} height={1920}>
         <rect x={48} y={270} width={984} height={1360} radius={38} fill="#10243a"/>
         <frame x={78} y={280} width={924} height={1340} layout="column" align="center" justify="center">
-          <media file={source} trimStart={shot.from} fit="contain" width={924} height={1340}/>
+          <media file={source} trimStart={shot.from} fit="contain" width={924} height={1340} radius={22}/>
         </frame>
         <text x={72} y={60} width={936} height={42} fontFamily="Montserrat" fontWeight={600} fontSize={26} color="#62b7ff" align="center">AIRLINE EMPIRE · FLIGHT TYCOON</text>
         <text x={72} y={126} width={936} height={128} fontFamily="Montserrat" fontWeight={700} fontSize={52} lineHeight={1.15} color="#ffffff" align="center">{shot.title}</text>

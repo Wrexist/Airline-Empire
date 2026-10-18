@@ -1,0 +1,37 @@
+{
+  "candidateSHA": "c66c6808ab452f918d0aca43f81c63a754c553f3",
+  "workflowSHA": "1c61ec65be4ab396c28ba5d24f765ce174af9ae0",
+  "version": "1.0.18",
+  "build": "7",
+  "runID": "34630867296",
+  "workflowConclusion": "success",
+  "fullCI": "34626254623",
+  "launchSafety": "34626259020",
+  "launchSafetyAttempt": 2,
+  "ipaSHA256": "4cc3bdcc5b8a803a68a987b905a752183e51b4903b487ee17c15eabf1f16a8a5",
+  "appMachOUUID": "F581EB5F-29F7-3A78-AA8B-E972BC5B854D",
+  "dSYMMachOUUID": "F581EB5F-29F7-3A78-AA8B-E972BC5B854D",
+  "symbolMatch": true,
+  "localInspectionMatchesRunner": true,
+  "appleBuildID": "19dd6dcf-c0ee-4b41-9da7-03dbab2c9b2e",
+  "uploadSucceededAt": "2026-09-11T18:29:39Z",
+  "processingState": "VALID",
+  "processingVerifiedAt": "2026-09-11T18:31:55Z",
+  "coreTests": {
+    "isolatedPassed": 1,
+    "isolatedSeconds": 54.045,
+    "remainingPassed": 522,
+    "remainingSeconds": 1257.772
+  },
+  "testFlightGroup": {
+    "id": "cd94c3af-ec64-4784-b44f-76d74b393cb8",
+    "name": "Tester",
+    "type": "Internal",
+    "testers": 1,
+    "assignmentVerifiedInBrowser": true
+  },
+  "testFlightNotesSaved": true,
+  "durableArtifacts": "C:/Users/IsacC/Airline-Empire-release-artifacts/candidate-c66c680/build-1.0.18-7",
+  "publicAppReviewSubmitted": false,
+  "physicalDeviceAcceptance": "pending"
+}

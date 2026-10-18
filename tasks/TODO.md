@@ -1,22 +1,28 @@
-# Airline Empire — TODO
+# Airline Empire - TODO
 
 ## Current pre-TestFlight work - 14 September 2026
 
-Current app source: `eeb0bc7` (steps 1/2 and portrait map framing implemented; production app code identical to `df7a45c`). Distributed build: **1.0.22 (11)**. **No new TestFlight build or upload until the user explicitly approves.**
-The [six-part current audit](../docs/PRE_TESTFLIGHT_AUDIT_2026-09-14.md) is the source of priorities and acceptance criteria. Historical phases below are not an accurate open-feature queue.
+Current repair candidate: `fb55640`, [PR #37](https://github.com/Wrexist/Airline-Empire/pull/37), based on merged PR #36. Full iPhone/iPad CI, Launch safety, portability/live pages, phone/tablet camera review and the unchanged exact-source evidence checker passed. See [failure repair review](../docs/TESTFLIGHT_FAILURE_REVIEW_2026-09-14.md). The original **1.1.0** request was restarted only after those checks, pinned to this candidate: [run 34909225180](https://github.com/Wrexist/Airline-Empire/actions/runs/34909225180). The release workflow is running; archive/upload and Apple processing are not yet confirmed. PR #37 is ready for review and remains unmerged.
+The [six-part current audit](../docs/PRE_TESTFLIGHT_AUDIT_2026-09-14.md) defines priorities. The [final accessibility/release review](../docs/ACCESSIBILITY_RELEASE_REVIEW_2026-09-14.md) records fixes, native evidence, performance findings and remaining physical-device acceptance. Historical phases below are not an accurate open-feature queue.
 
 - [x] AUD-08: Fix informative badge contrast in light/dark appearances.
-- [x] AUD-05: Keep a concise next-departure/readiness line visible on route details.
+- [x] AUD-05: Keep concise next-departure/readiness visible on route details.
 - [x] AUD-10: Show actual version/build in Settings.
 - [x] AUD-02: Compact Fleet/Routes summaries and filters; show useful rows sooner.
-- [x] AUD-03: Unify aircraft-market model and purchase-row surfaces.
-- [x] AUD-01: Improve portrait map framing; verify fit, pan, zoom, follow and iPad rotation behavior.
-- [ ] AUD-07/09: Review fresh-game and secondary screens, large text, VoiceOver, motion/transparency/contrast settings and older supported iOS fallback.
-- [ ] AUD-12/14: Compare affected-screen performance; run full exact-source iPhone/iPad journeys and safety/tooling checks after fixes.
-- [ ] Present final previews and obtain explicit TestFlight build/upload approval.
-- [ ] After approved upload: verify processing, existing Tester group and build notes, then perform physical upgrade/save/purchase/performance acceptance before App Store changes.
+- [x] AUD-03: Unify aircraft-market surfaces and verify Cancel, confirmation, acquisition and assignment.
+- [x] AUD-01: Improve portrait map framing; verify fit, pan, zoom, follow and iPad rotation.
+- [x] AUD-07: Review fresh/secondary states; prove real first-month save, restart and reopened statement.
+- [x] AUD-09 automated scope: Improve large text, spoken amounts, touch targets and motion behavior; complete native description/trait audits and contrast/Bold Text component captures.
+- [x] AUD-12 benchmark scope: Compare affected screens using the same late-game fixture; retain mixed CPU results and simulator limitations.
+- [x] AUD-14 previous candidate: Complete full exact-source iPhone/iPad, safety/tooling and unchanged release-evidence gates for d44cf65, subsequently merged as PR #36.
+- [x] Repair live briefing handle movement, explicit briefing dismissal and covered-map interaction. Focused native regression and final MapHome journey passed.
+- [x] Complete final fb55640 Economy/full CI and unchanged release-evidence checker; review final save/flight captures.
+- [ ] AUD-09 device acceptance: Physical VoiceOver, actual OS motion/transparency settings, older supported iOS and real iPad multitasking.
+- [ ] AUD-12 device acceptance: Sustained play, frame pacing, thermals and battery; investigate Fleet/16x CPU increases on hardware.
+- [x] Restart the original 1.1.0 request only after the repair has passed full validation, using its immutable validated source.
+- [ ] After upload: verify processing, existing Tester group and build notes; complete physical upgrade/save/purchase/audio acceptance before App Store changes.
 
-Next polish, if included: AUD-04 shorter briefing/rival explanations; AUD-06 faster access to route management. AUD-13 audit/navigation cleanup is completed; historical Apple/account statements still require a fresh account check before future actions.
+Next optional polish: AUD-04 shorter briefing/rival explanations; AUD-06 faster route-management access. AUD-13 audit/navigation cleanup is complete. Historical Apple/account statements require a fresh account check before future actions.
 
 ---
 

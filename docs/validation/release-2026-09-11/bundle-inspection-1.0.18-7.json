@@ -1,0 +1,38 @@
+{
+  "sha256": "4cc3bdcc5b8a803a68a987b905a752183e51b4903b487ee17c15eabf1f16a8a5",
+  "bundle": {
+    "CFBundleIdentifier": "com.airlineempire.game",
+    "CFBundleShortVersionString": "1.0.18",
+    "CFBundleVersion": "7",
+    "MinimumOSVersion": "17.0",
+    "ITSAppUsesNonExemptEncryption": false
+  },
+  "minimumOSVersion": "17.0",
+  "deviceFamilies": [
+    1,
+    2
+  ],
+  "ipadOrientations": [
+    "UIInterfaceOrientationPortrait",
+    "UIInterfaceOrientationPortraitUpsideDown",
+    "UIInterfaceOrientationLandscapeLeft",
+    "UIInterfaceOrientationLandscapeRight"
+  ],
+  "privacyManifest": {
+    "NSPrivacyTracking": false,
+    "NSPrivacyTrackingDomains": [],
+    "NSPrivacyCollectedDataTypes": [],
+    "NSPrivacyAccessedAPITypes": [
+      {
+        "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+        "NSPrivacyAccessedAPITypeReasons": [
+          "CA92.1"
+        ]
+      }
+    ]
+  },
+  "testResources": [],
+  "errors": [],
+  "passed": true,
+  "scope": "Exported bundle inspection; signature/processing and physical-device acceptance are separate."
+}

@@ -1,0 +1,10 @@
+UI and navigation polish for iPhone and iPad:
+- More consistent spacing, aligned finance metrics, and wrapping status badges.
+- Clear an unmatched route search and open the restored route with one tap.
+- Purchase and billing information stays together in the Pro screen.
+- Improved large-text layouts and Reduce Motion behavior.
+
+Please test an existing saved campaign and a fresh campaign. Check route search,
+aircraft assignment, save/reopen, large text, and Pro purchase/restore. Export
+important saves before updating. Report the device, iOS version, and steps for
+any issue. This is a TestFlight build for validation before public release.

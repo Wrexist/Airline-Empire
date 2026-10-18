@@ -1,0 +1,91 @@
+{
+  "sourceCommit": "ae55749ea3658bb17ebf191012a52b5ff1a99d0d",
+  "reviewBranchCommit": "698fc3c",
+  "captureRun": "https://github.com/Wrexist/Airline-Empire/actions/runs/34619999830",
+  "sourceDurationSeconds": 196.486667,
+  "sourceWidth": 1320,
+  "sourceHeight": 2868,
+  "output": "1080x1920 H.264, 30 fps, 12 seconds each, silent",
+  "selection": "Verified visually against source timeline; host marker offsets were not used.",
+  "slices": [
+    {
+      "name": "network",
+      "from": 70,
+      "duration": 6,
+      "crop": {
+        "width": 1320,
+        "height": 1914,
+        "x": 0,
+        "y": 500
+      }
+    },
+    {
+      "name": "fleet",
+      "from": 95,
+      "duration": 6,
+      "crop": {
+        "width": 1320,
+        "height": 1914,
+        "x": 0,
+        "y": 170
+      }
+    },
+    {
+      "name": "route",
+      "from": 122,
+      "duration": 6,
+      "crop": {
+        "width": 1320,
+        "height": 1914,
+        "x": 0,
+        "y": 170
+      }
+    },
+    {
+      "name": "finance",
+      "from": 145,
+      "duration": 6,
+      "crop": {
+        "width": 1320,
+        "height": 2100,
+        "x": 0,
+        "y": 170
+      }
+    }
+  ],
+  "disclosure": "Actual simulator gameplay from an earned campaign, includes Pro content. Editorial crops omit peripheral UI; no balances or gameplay were fabricated. Network and finance are separate views, not a before/after growth claim.",
+  "reviewedAt": "2026-09-11",
+  "artifacts": [
+    {
+      "name": "network",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GrdTITHMTVBc0Xa9Gk3roHNgZP/b166d91c-04ff-4ec9-92f4-d056ef40c8f1.mp4",
+      "mediaId": "b166d91c-04ff-4ec9-92f4-d056ef40c8f1"
+    },
+    {
+      "name": "fleet",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GrdTITHMTVBc0Xa9Gk3roHNgZP/6d8037f6-f277-47a1-a9ae-abb0f776bb1d.mp4",
+      "mediaId": "6d8037f6-f277-47a1-a9ae-abb0f776bb1d"
+    },
+    {
+      "name": "finance",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GrdTITHMTVBc0Xa9Gk3roHNgZP/871e387f-8d19-428b-82eb-4c714ec4d822.mp4",
+      "mediaId": "871e387f-8d19-428b-82eb-4c714ec4d822"
+    },
+    {
+      "name": "editable-kit",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GrdTITHMTVBc0Xa9Gk3roHNgZP/9eccf76d-42d8-47c2-80ae-a8455904b79b.zip",
+      "mediaId": "9eccf76d-42d8-47c2-80ae-a8455904b79b"
+    },
+    {
+      "name": "review-sheet",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GrdTITHMTVBc0Xa9Gk3roHNgZP/f55617e9-c94b-48d1-97b1-65230e0c9619.jpg",
+      "mediaId": "f55617e9-c94b-48d1-97b1-65230e0c9619"
+    }
+  ],
+  "checks": [
+    "Both scenes and final frame inspected in every output.",
+    "All exports are 1080x1920, 30 fps H.264 yuv420p, 12 seconds, silent.",
+    "Source timestamps checked visually; simulator host timestamps were not reliable.",
+    "Final framing removes the status bar and keeps the finance chart visible."
+  ]
+}

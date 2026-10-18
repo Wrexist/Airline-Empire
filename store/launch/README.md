@@ -20,15 +20,15 @@ Send after the preview build is verified and an external access path works. Foll
 
 All video must show actual recorded app UI. The earned campaign includes Pro content; keep that disclosure readable. Do not imply that a developed network was created instantly. No fabricated revenue, tap indicators, reviews, awards or Apple featuring badges.
 
-1. **Network:** "Where would you build your airline?" Show the live network, then route detail. Caption: "Choose the routes. Build the network. Airline Empire: Flight Tycoon is planned for iPhone and iPad on 16 October. Offline play, with a free starting campaign and optional Pro. Gameplay shown includes Pro content. Which airport would you call home?"
-2. **Fleet:** "The right aircraft changes the route." Show fleet and route economics. Caption: "Aircraft choice is a business decision. Match your fleet to the network in Airline Empire: Flight Tycoon. Planned for iPhone and iPad on 16 October. Gameplay shown includes Pro content."
+1. **Network:** "Where would you build your airline?" Show the live network, then its finances. Caption: "Choose the routes. Build the network. Airline Empire: Flight Tycoon is planned for iPhone and iPad on 16 October. Offline play, with a free starting campaign and optional Pro. Gameplay shown includes Pro content. Which airport would you call home?"
+2. **Fleet:** "An idle plane is a decision." Show the fleet and an unassigned route's costs. Caption: "An idle aircraft. A route still paying airport fees. What would you change first? Airline Empire: Flight Tycoon is planned for iPhone and iPad on 16 October. Gameplay shown includes Pro content."
 3. **Finance:** "Can your airline stay profitable?" Show route economics, Finance, then network. Caption: "Routes, fares and operating costs: every decision feeds the airline's finances. Airline Empire: Flight Tycoon. Planned for iPhone and iPad on 16 October. Free starting campaign; optional Pro."
 
 Pre-release CTA: "Follow the launch" with the official site. Use "Pre-order" only after the actual store page supports it. Use "Available now" only after checking availability. No music is required; these edits should remain understandable with sound off.
 
 ## Sequence
 
-- **Now:** Finish native validation, inspect captures and close remaining device acceptance. Prepare the new candidate containing the UI changes. The prior TestFlight build 5 does not contain them.
+- **Now:** Finish native validation, inspect captures and close remaining device acceptance. Prepare the new candidate containing the UI changes. Current TestFlight 1.0.16 (6) uses candidate 18253b3 and does not contain them.
 - **When preview access works:** Send the three pitches individually. Give interested reviewers a tested access link and concise free/Pro explanation. Supply clean footage and screenshots without an embargo unless one is explicitly agreed.
 - **When pre-order is public:** Verify the store link on mobile, then publish the network clip with the working link. Publish the fleet and finance angles on separate days; compare completed views, shares, profile visits and store visits within each platform before choosing the next angle. Do not compare raw views across platforms as equivalent.
 - **One week before release:** Recheck release date, availability, screenshots, support contact, purchase text, restore flow and review notes. Confirm that all public wording matches the accepted build.
