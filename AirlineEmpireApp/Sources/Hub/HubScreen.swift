@@ -162,8 +162,9 @@ struct HubScreen: View {
     private func updateSoundscape(_ state: GameState) {
         let building = (state.playerAirline?.facilityConstructions ?? []).contains { $0.airport == code }
         let kpis = model?.snapshot?.kpis
-        feedback.setHubSoundscape(.init(constructionUnderWay: building,
-                                        activity: (kpis?.activeFlights ?? 0) + (kpis?.aircraftOnGround ?? 0)))
+        feedback.setHubSoundscape(Feedback.HubSoundscape(
+            constructionUnderWay: building,
+            activity: (kpis?.activeFlights ?? 0) + (kpis?.aircraftOnGround ?? 0)))
     }
 }
 
