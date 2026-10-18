@@ -21,6 +21,11 @@ public struct ProgressionState: Equatable, Codable, Sendable {
     /// read back without the fast-moving event feed. Oldest first; the newest
     /// `recordLimit` are kept.
     public var record: [ProgressionMoment]
+    /// The lifetime counters at each of the last `activityWindowDays + 1`
+    /// day starts, oldest first: what the airline flew and carried over the
+    /// last four weeks, which a contract's target is set from. Optional so
+    /// saves written before it decode unchanged; it refills in four weeks.
+    public var activityMarks: [ActivityMark]?
 
     public init() {
         era = .startup
@@ -67,6 +72,43 @@ public struct ProgressionState: Equatable, Codable, Sendable {
             if case .eraAdvanced = moment.kind { return moment.at }
         }
         return nil
+    }
+
+    /// Days of history `activityMarks` spans — a contract's own length.
+    public static let activityWindowDays = 28
+
+    /// Notes today's counters; `ProgressionSystem` calls it once a day.
+    public mutating func markActivity() {
+        var marks = activityMarks ?? []
+        marks.append(ActivityMark(flights: counters.flightsCompleted,
+                                  passengers: counters.passengersCarried))
+        let keep = Self.activityWindowDays + 1
+        if marks.count > keep {
+            marks.removeFirst(marks.count - keep)
+        }
+        activityMarks = marks
+    }
+
+    /// Flights completed and passengers carried over the last whole days
+    /// the marks cover — up to `activityWindowDays` — and how many days that
+    /// is. Zero days when there is no history yet. Read between marks it
+    /// stays put, so an offer does not drift through the day.
+    public var recentActivity: (flights: Int64, passengers: Int64, days: Int) {
+        guard let marks = activityMarks, marks.count > 1,
+              let first = marks.first, let last = marks.last else { return (0, 0, 0) }
+        return (last.flights - first.flights, last.passengers - first.passengers,
+                marks.count - 1)
+    }
+}
+
+/// The player's lifetime flight and passenger counters at one day start.
+public struct ActivityMark: Equatable, Codable, Sendable {
+    public let flights: Int64
+    public let passengers: Int64
+
+    public init(flights: Int64, passengers: Int64) {
+        self.flights = flights
+        self.passengers = passengers
     }
 }
 

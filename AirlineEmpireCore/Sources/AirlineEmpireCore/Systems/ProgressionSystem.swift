@@ -25,6 +25,8 @@ public struct ProgressionSystem: SimulationSystem {
         checkMilestones(player: player, state: &state, context: context)
         checkAchievements(player: player, state: &state, context: context, tuning: tuning)
         runMissions(player: player, state: &state, context: context, tuning: tuning)
+        // The four-week history a contract's target is set from.
+        state.progression.markActivity()
     }
 
     // MARK: Capabilities

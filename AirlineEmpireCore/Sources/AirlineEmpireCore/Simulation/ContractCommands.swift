@@ -11,6 +11,8 @@ public struct ContractOffer: Equatable, Sendable {
     public let baseline: Int64
     public let deadline: SimTime
     public static let durationDays: Int64 = 28
+    /// How far past its recent pace a contract asks the airline to go.
+    public static let growthFactor = 1.1
     static let cooldownKey = "contract.lastAcceptedMonth"
 
     static func month(in state: GameState) -> Int64 {
@@ -28,18 +30,34 @@ public struct ContractOffer: Equatable, Sendable {
                   }
               }) else { return [] }
         let fleet = Int64(min(20, max(1, state.fleet(of: player.id).count)))
-        let flights = min(300, fleet * 30)
-        let passengers = fleet * 5_000
+        // The per-aircraft figures these used to *be* the target — 30
+        // flights and 5,000 passengers a month — are about a week of ordinary
+        // flying for one airframe, so the bonus paid for nothing the player
+        // chose to do. They stay as the reward basis, which is unchanged,
+        // and as the floor for an airline with little history yet.
+        let baseFlights = min(300, fleet * 30)
+        let basePassengers = fleet * 5_000
+        // The target asks for growth instead: about 110% of what the airline
+        // flew and carried over the last four weeks, at the contract's
+        // length.
+        let recent = state.progression.recentActivity
+        func stretch(_ done: Int64, atLeast minimum: Int64) -> Int64 {
+            guard recent.days > 0 else { return minimum }
+            let pace = Double(done) / Double(recent.days) * Double(ContractOffer.durationDays)
+            return max(minimum, Int64((pace * ContractOffer.growthFactor).rounded(.up)))
+        }
+        let flights = stretch(recent.flights, atLeast: baseFlights)
+        let passengers = stretch(recent.passengers, atLeast: basePassengers)
         // Missions settle at midnight. Publish that exact deadline instead
         // of promising a partial final day the daily resolver cannot honor.
         let deadline = SimTime(rawMinutes: (state.clock.now.dayIndex + durationDays)
                                * GameCalendar.minutesPerDay)
         return [
             ContractOffer(choice: .flights, kind: .flightContract(targetFlights: flights),
-                          reward: .dollars(flights * 1_500),
+                          reward: .dollars(baseFlights * 1_500),
                           baseline: state.progression.counters.flightsCompleted, deadline: deadline),
             ContractOffer(choice: .passengers, kind: .passengerContract(targetPassengers: passengers),
-                          reward: .dollars(passengers * 2),
+                          reward: .dollars(basePassengers * 2),
                           baseline: state.progression.counters.passengersCarried, deadline: deadline)
         ]
     }
