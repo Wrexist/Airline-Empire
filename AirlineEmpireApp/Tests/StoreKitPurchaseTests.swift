@@ -43,7 +43,12 @@ final class StoreKitPurchaseTests: XCTestCase {
         store.disableDialogs = true
         store.clearTransactions()
         defer { store.clearTransactions(); store.resetToDefaultState() }
-        store.failTransactionsEnabled = true
+        // `failTransactionsEnabled` is deprecated from iOS 17, the app's
+        // floor, so the replacement needs no availability check: a
+        // simulated error on the purchase API makes `Product.purchase()`
+        // throw, which is the failure `Entitlements` reports. Cleared by
+        // `resetToDefaultState()` in the defer above.
+        try await store.setSimulatedError(.generic(.unknown), forAPI: .purchase)
         let entitlements = Entitlements(arguments: ["-AEUITestFree"])
         await entitlements.start()
         _ = try XCTUnwrap(entitlements.products[.lifetime], "StoreKit did not load the lifetime product")
