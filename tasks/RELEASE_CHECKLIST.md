@@ -47,7 +47,7 @@ Check a box only when its acceptance evidence is linked. Apple account tasks req
 
 ## D. Complete the Apple account — account holder/release owner
 
-- [x] **REL-03 account fields:** Separate US/UK official privacy URLs saved; existing published label is Data Not Collected. Actual build 6 archive privacy validation passed.
+- [x] **REL-03 account fields:** Separate US/UK official privacy URLs saved; existing published label is Data Not Collected. Actual build 6 archive privacy validation passed. *Superseded 23 Sep 2026: with RevenueCat the label declares Purchase History (not linked, not tracking) — `docs/REVENUECAT_SETUP_2026-09-23.md`.*
 - [x] **REL-04 account fields:** App price Free; weekly/yearly auto-renewable and lifetime non-consumable IDs created with documented prices. Weekly/yearly share group level 1. US/UK localizations and Family Sharing match the plan.
 - [x] Apple prices, product states, weekly introductory offer configuration and 173-region availability verified; future territory expansion off for app and all products. See `apple-territories.json` and `apple-iap-review-images.json`.
 - [ ] Verify localized Apple purchase sheets and introductory eligibility on a physical device (E).

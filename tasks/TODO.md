@@ -23,10 +23,10 @@ The complete, ranked list of what to fix and build is [GAME_AUDIT_2026-10-18.md]
 PR #42 (`feature/hub-view-3d`). Handoff, gap list and the step-by-step plan: [HUB_HANDOFF.md](../docs/HUB_HANDOFF.md). Each step is one PR, closed by a `Hub view review` comparison sheet.
 
 - [x] H1-H4: Core layout + snapshot, procedural RealityKit scene, glass dashboard, five shots, night, capture workflow, USDZ drop-in seam, model list.
-- [ ] Step 1: composition (cameras, tighter apron, doll's-house walls, callout placement).
-- [ ] Step 2: density (vehicles, queues, kiosks, FIDS, heatmap, route line, curved roads).
-- [ ] Step 3: procedural glass and night palette.
-- [ ] Step 4: authored USDZ models in model-list priority order, made with Meshy + Blender via [HUB_MODEL_PIPELINE.md](../docs/HUB_MODEL_PIPELINE.md) (needs the owner's Meshy key and Blender MCP on his PC).
+- [x] Step 1: composition (cameras, tighter apron, doll's-house walls, callout placement) — PRs #43–#48.
+- [x] Step 2: density (vehicles, queues, kiosks, FIDS, heatmap, route line, curved roads) — PRs #43–#48.
+- [x] Step 3: procedural glass and night palette — PRs #43–#48.
+- [ ] Step 4: authored USDZ models in model-list priority order, built as Blender Python scripts (`scripts/hub-models/procedural/`, no Meshy — owner's choice 11 Oct). 18 listed models still have no file and no slot (audit 18 Oct §7).
 - [ ] Step 5: bloom + SSAO post-process.
 - [ ] Step 6: physical-device performance pass.
 - [ ] Step 7: owner approves the comparison sheet; enable for 1.1.
@@ -41,7 +41,7 @@ Branch `claude/game-audit-optimize-a28480` (development line `codex/ae049-aircra
 
 - [x] Audit core simulation, app shell, monetization, first session, screens and map.
 - [x] Fix the P0 audio crash, the four P1 simulation bugs, paywall timing, first-flight flow and the IPA privacy gate.
-- [ ] CI: compile and Core tests on the branch; then the onboarding, acquisition and full UI suites.
+- [x] CI: compile and Core tests on the branch; then the onboarding, acquisition and full UI suites — branch merged; `main` CI green.
 - [ ] Follow-ups listed at the end of the audit record (pipeline reorder baselines, launch colour key, Swift 6 mode, import off the main thread).
 
 ## Current pre-TestFlight work - 14 September 2026
@@ -60,7 +60,7 @@ The [six-part current audit](../docs/PRE_TESTFLIGHT_AUDIT_2026-09-14.md) is the 
 - [ ] Present final previews and obtain explicit TestFlight build/upload approval.
 - [ ] After approved upload: verify processing, existing Tester group and build notes, then perform physical upgrade/save/purchase/performance acceptance before App Store changes.
 
-Next polish, if included: AUD-04 shorter briefing/rival explanations; AUD-06 faster access to route management. AUD-13 audit/navigation cleanup is completed; historical Apple/account statements still require a fresh account check before future actions.
+Next polish: AUD-04 shorter briefing/rival explanations and AUD-06 faster access to route management are both in the code (audit 18 Oct). AUD-13 audit/navigation cleanup is completed; historical Apple/account statements still require a fresh account check before future actions.
 
 ---
 

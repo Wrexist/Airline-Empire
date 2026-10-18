@@ -296,6 +296,9 @@ cramped one.
 ---
 
 ## TD-016 — The App target has no test that runs anywhere we build
+**Status:** RESOLVED (2026-10-18 audit) — `AirlineEmpireTests` (unit) and
+`AirlineEmpireUITests` targets exist (`AirlineEmpireApp/project.yml`) and run
+in CI on every dispatched suite. Kept for the history below.
 **Severity:** P2 (it is the reason three separate defect classes stayed
 invisible: BUG-029, BUG-030, BUG-033).
 **Introduced:** pre-existing; named 2026-08-30.

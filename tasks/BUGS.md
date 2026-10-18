@@ -1482,7 +1482,9 @@ change re-pins the February picks of every campaign twin and journey
 fixtures are worlds built on those picks), and a phase that changes them
 must re-photograph them. Recommended as the next phase
 (docs/AE041_PROFIT_VS_REVENUE_REPORT.md §16).
-**Status:** OPEN — root-caused, MEASURED, fix designed.
+**Status:** SUPERSEDED (2026-10-18 audit) — the same defect is filed again
+below as the second BUG-055, which is FIXED and tested. Kept for its
+measurements.
 
 ---
 
@@ -1623,6 +1625,9 @@ It is still not enough to build the pinned recommendation on:
 **Status:** OPEN — reproduced, root-caused, re-measured twice; the estimator
 blocker (TD-033) is resolved, the aircraft market is not. Now blocked on
 TD-036, not TD-033. Not forced closed.
+2026-10-18 audit: the market half is fixed in code — "Best fit" is the
+default sort, locked aircraft are hidden, and the list filters by route
+(`FleetView.swift` market). Only the estimator half (TD-036) remains open.
 
 ---
 
