@@ -85,6 +85,17 @@ final class AudioEngine {
     private var servicesLost = false
     private var observers: [NSObjectProtocol] = []
 
+    /// Called after the system stopped the engine and it was started again —
+    /// a route change (AirPods in or out), or an interruption that ended.
+    ///
+    /// `markStoppedBySystem` forgets the music and the bed down here, but the
+    /// facade above remembers what it last asked for. Its `applyMusic` saw
+    /// the same music state and the same gain on the next snapshot and never
+    /// called `setMusic` again, so the music stayed silent until the app was
+    /// backgrounded and brought back, which is the one other path that
+    /// resets the facade. This is that path, for the restart nobody asked for.
+    var onSystemRestart: (@MainActor () -> Void)?
+
     /// The engine can stop *itself*: a Bluetooth headset connecting changes
     /// the output sample rate, and a call answered from the banner is an
     /// interruption without backgrounding. `isRunning` alone went stale then,
@@ -263,6 +274,10 @@ final class AudioEngine {
         markStoppedBySystem()
         guard wantsRunning else { return }
         resume()
+        // After the restart, not before: a facade reset while the engine is
+        // still down would be spent on a `setMusic` that returns early, and
+        // leave the facade stale again.
+        if canStartNodes { onSystemRestart?() }
     }
 
     private func configureSession() -> Bool {

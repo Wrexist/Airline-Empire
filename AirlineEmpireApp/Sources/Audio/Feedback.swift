@@ -45,6 +45,10 @@ final class Feedback {
 
     init(preferences: Preferences) {
         self.preferences = preferences
+        // A headset connecting restarts the engine behind the facade's back;
+        // the continuous layers have to be re-derived exactly as they are
+        // after a return from the background.
+        audio.onSystemRestart = { [weak self] in self?.forgetContinuousLayers() }
     }
 
     // MARK: - Lifecycle
@@ -64,8 +68,13 @@ final class Feedback {
 
     func applicationWillEnterForeground() {
         if !preferences.audio.isSilent { audio.resume() }
-        // Both continuous layers were torn down on the way out; forcing a
-        // re-derive is what brings them back on the next snapshot.
+        forgetContinuousLayers()
+    }
+
+    /// Both continuous layers were torn down — on the way into the
+    /// background, or by the system stopping the engine — and forcing a
+    /// re-derive is what brings them back on the next snapshot.
+    private func forgetContinuousLayers() {
         lastMix = nil
         musicState = .menu
         audioHasMusic = false
@@ -301,9 +310,21 @@ final class Feedback {
 // MARK: - Environment
 
 private struct FeedbackKey: EnvironmentKey {
-    // A feedback object that was never prepared plays nothing, which is the
-    // right behaviour for a preview and for any view rendered outside the app.
-    @MainActor static let defaultValue = Feedback(preferences: Preferences(
+    /// `EnvironmentKey.defaultValue` is a nonisolated requirement, and a
+    /// main-actor `static let` satisfying it is a Swift 6 error (Xcode 27.1
+    /// already warns). SwiftUI reads the environment on the main thread, so
+    /// the requirement is met nonisolated and asserts that — once, on the
+    /// rare read that finds no value set — rather than crossing actors
+    /// unchecked.
+    static var defaultValue: Feedback {
+        MainActor.assumeIsolated { Feedback.unprepared }
+    }
+}
+
+extension Feedback {
+    /// A feedback object that was never prepared plays nothing, which is the
+    /// right behaviour for a preview and for any view rendered outside the app.
+    @MainActor static let unprepared = Feedback(preferences: Preferences(
         defaults: UserDefaults(suiteName: "ae.preview") ?? .standard))
 }
 
