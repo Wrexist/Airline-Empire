@@ -141,6 +141,12 @@ public struct CloseRouteCommand: Command, Equatable {
             }
             state.flights[flightID] = nil
         }
+        // What the route counted toward goes with it unless banked: a boom
+        // rush's passengers, the lifetime cancellation record. Read after
+        // the turnarounds above have recorded their completions.
+        if state.isPlayer(airline), let closing = state.routes[route] {
+            state.progression.bankClosingRoute(closing, catalog: context.catalog)
+        }
         for aircraftID in r.assignedAircraft {
             if var aircraft = state.aircraft[aircraftID] {
                 aircraft.assignedRoute = nil

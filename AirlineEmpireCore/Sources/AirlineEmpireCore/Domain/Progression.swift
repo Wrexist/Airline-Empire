@@ -74,6 +74,21 @@ public struct ProgressionState: Equatable, Codable, Sendable {
         return nil
     }
 
+    /// Banks what a closing player route has counted toward, before its
+    /// counters go with it: its passengers into every boom rush whose region
+    /// it touches, its cancellations into the lifetime record.
+    /// `CloseRouteCommand` calls it with the route's final stats.
+    public mutating func bankClosingRoute(_ route: Route, catalog: ContentCatalog) {
+        for index in missions.indices {
+            guard case .boomRush(let region, _) = missions[index].kind,
+                  MissionMath.touchesRegion(route, region, catalog: catalog) else { continue }
+            missions[index].bankedPassengers =
+                (missions[index].bankedPassengers ?? 0) + route.stats.passengersCarried
+        }
+        counters.cancelledOnClosedRoutes =
+            (counters.cancelledOnClosedRoutes ?? 0) + route.stats.flightsCancelled
+    }
+
     /// Days of history `activityMarks` spans — a contract's own length.
     public static let activityWindowDays = 28
 
@@ -137,6 +152,13 @@ public struct ProgressionCounters: Equatable, Codable, Sendable {
     public var passengersCarried: Int64
     public var flightsCompleted: Int64
     public var loansTaken: Int64
+    /// Cancellations on the player's routes that have since closed, banked
+    /// as each closed; with the open routes' own counts, the lifetime
+    /// cancellation figure `weatherProof` is judged on. Closing a route used
+    /// to delete its cancellations from the record, so the achievement could
+    /// be bought by closing the routes that cancelled. Optional so older
+    /// saves decode unchanged (nothing banked).
+    public var cancelledOnClosedRoutes: Int64?
 
     public init(passengersCarried: Int64 = 0, flightsCompleted: Int64 = 0,
                 loansTaken: Int64 = 0) {
@@ -214,6 +236,13 @@ public struct Mission: Equatable, Codable, Sendable {
     public let reward: Money
     /// Progress baseline captured at offer time.
     public let baseline: Int64
+    /// Boom rush only: lifetime passengers of the region's routes that have
+    /// closed since the offer, banked as each closed. Progress is measured
+    /// from route counters, and a closed route takes its counter with it, so
+    /// closing one used to drop progress — to zero, if it was the only one
+    /// — and could leave the mission unwinnable. Optional so saves written
+    /// before it decode unchanged (nothing banked).
+    public var bankedPassengers: Int64?
 
     public init(id: Int64, sourceEventID: Int64, kind: MissionKind,
                 deadline: SimTime, reward: Money, baseline: Int64) {
