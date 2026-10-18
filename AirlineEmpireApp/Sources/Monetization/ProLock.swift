@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 import AirlineEmpireCore
 
 /// Offers further expansion while the current airline keeps operating.
@@ -119,6 +120,7 @@ struct ProBadge: View {
 struct ProSection: View {
     @Environment(Entitlements.self) private var entitlements
     @Environment(\.openURL) private var openURL
+    @State private var showingManageSubscriptions = false
 
     var body: some View {
         Section("Airline Empire Pro") {
@@ -147,18 +149,31 @@ struct ProSection: View {
             .accessibilityIdentifier("ae-settings-restore")
 
             if entitlements.entitlement.grantedBy?.isSubscription == true {
-                // Deep link into the system sheet rather than a paragraph
+                // Apple's own sheet, inside the game, rather than a paragraph
                 // explaining where Settings keeps subscriptions. Apple asks
-                // for the path to be obvious; this is the shortest one.
-                Link(destination: URL(string: "https://apps.apple.com/account/subscriptions")!) {
+                // for the path to be obvious; this is the shortest one. It
+                // used to be a link to apps.apple.com, which left the game
+                // for a web page that could ask the player to sign in again.
+                Button {
+                    showingManageSubscriptions = true
+                } label: {
                     Label("Manage subscription", systemImage: "creditcard")
                 }
+                .accessibilityIdentifier("ae-settings-manage-subscription")
             }
 
             PurchaseFeedback()
 
             Button("Terms of Use") { openURL(PaywallContent.termsURL) }
             Button("Privacy Policy") { openURL(PaywallContent.privacyURL) }
+        }
+        .manageSubscriptionsSheet(isPresented: $showingManageSubscriptions)
+        // A change made in the sheet — cancelling, switching plan — need
+        // not arrive as a new transaction, so the status line below would
+        // keep saying "Renews" until the next launch. Re-read it on close.
+        .onChange(of: showingManageSubscriptions) { _, shown in
+            guard !shown else { return }
+            Task { await entitlements.refreshEntitlement() }
         }
     }
 

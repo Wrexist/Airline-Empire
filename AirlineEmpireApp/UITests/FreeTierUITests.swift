@@ -38,19 +38,29 @@ final class FreeTierUITests: AEUITestCase {
         guard scrollUntil(pro, "Airline Empire Pro"), tapWhenReady(pro) else { return }
 
         let buy = app.buttons["ae-paywall-buy"]
-        let initiallyVisible = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            buy.exists && buy.isEnabled && buy.isHittable
+        // Two claims, checked separately (TD-037). Where the button sits is
+        // layout and holds from the first frame: it must exist, settle, and
+        // be on screen without scrolling. Whether it has a price depends on
+        // the StoreKit test server, which a cold simulator has taken more
+        // than the old 20 s to answer — run 38160387690 failed "visible
+        // without scrolling" on a button that was visible and hittable but
+        // still disabled, reading "Unlock Pro" while prices loaded.
+        guard require(buy, "The purchase button") else { return }
+        let placed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            buy.exists && buy.isHittable
         }, object: nil)
-        let initialResult = XCTWaiter.wait(for: [initiallyVisible], timeout: 20)
-        if initialResult != .completed {
-            capture("KEY-00-\(capturePrefix)on-open-failure")
-            print("PAYWALL purchase exists=\(buy.exists) enabled=\(buy.isEnabled) hittable=\(buy.isHittable) label=\(buy.label)")
-        }
-        XCTAssertEqual(initialResult, .completed,
-                      "Purchase must be visible when the paywall opens, without scrolling")
+        let placedResult = XCTWaiter.wait(for: [placed], timeout: 20)
         _ = waitUntilStill(buy)
+        if placedResult != .completed || !app.frame.contains(buy.frame) {
+            capture("KEY-00-\(capturePrefix)on-open-failure")
+            print("PAYWALL purchase exists=\(buy.exists) hittable=\(buy.isHittable) frame=\(buy.frame) label=\(buy.label)")
+        }
+        XCTAssertEqual(placedResult, .completed,
+                      "Purchase must be visible when the paywall opens, without scrolling")
         XCTAssertTrue(app.frame.contains(buy.frame),
                       "The whole purchase button must fit inside the initial viewport")
+        guard waitForPrices(buy, capturePrefix: capturePrefix) else { return }
+        _ = waitUntilStill(buy)
         capture("KEY-00-\(capturePrefix)on-open")
 
         let paywallScroll = app.scrollViews["ae-paywall-content"]
@@ -98,6 +108,30 @@ final class FreeTierUITests: AEUITestCase {
                                         in: paywallScroll))
         XCTAssertTrue(app.buttons["Terms of Use"].exists)
         XCTAssertTrue(app.buttons["Privacy Policy"].exists)
+    }
+
+    /// Waits for the StoreKit test products to price the buy button.
+    ///
+    /// Generous, because the wait is on the simulator's StoreKit service
+    /// rather than on the app. A load that failed outright shows the
+    /// paywall's own Retry; it is used once, as a player would.
+    private func waitForPrices(_ buy: XCUIElement, capturePrefix: String) -> Bool {
+        let priced = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            buy.exists && buy.isEnabled
+        }, object: nil)
+        var result = XCTWaiter.wait(for: [priced], timeout: 45)
+        let retry = app.scrollViews["ae-paywall-content"].buttons["Retry"]
+        if result != .completed, retry.exists, retry.isHittable {
+            retry.tap()
+            result = XCTWaiter.wait(for: [priced], timeout: 45)
+        }
+        if result != .completed {
+            capture("KEY-00-\(capturePrefix)prices-unavailable")
+            print("PAYWALL purchase exists=\(buy.exists) enabled=\(buy.isEnabled) label=\(buy.label) retry=\(retry.exists)")
+        }
+        XCTAssertEqual(result, .completed,
+                       "Real StoreKit test products must load before photographing the paywall")
+        return result == .completed
     }
 
     private func paywallViewport(in scroll: XCUIElement) -> CGRect {

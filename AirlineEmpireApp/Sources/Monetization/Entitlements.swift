@@ -78,6 +78,10 @@ final class Entitlements {
         case purchased(ProProduct)
         case restored
         case nothingToRestore
+        /// Restore found a purchase, but it no longer grants Pro: a
+        /// subscription that expired, or a purchase Apple refunded or
+        /// revoked. `on` is when access ended.
+        case ended(ProProduct, on: Date, refunded: Bool)
         case pending
         case failed(String)
     }
@@ -265,9 +269,34 @@ final class Entitlements {
         } else if let failure {
             lastOutcome = .failed("Purchases could not be restored. " + failure.localizedDescription)
         } else if !cancelled {
-            lastOutcome = .nothingToRestore
+            lastOutcome = await endedPurchase() ?? .nothingToRestore
         }
         if failure == nil && !cancelled { RevenueCatReporting.sync(force: true) }
+    }
+
+    /// The most recent Pro purchase that no longer grants access, if any.
+    ///
+    /// `currentEntitlements` has already said nothing is owned; this asks
+    /// what *was*. A lapsed subscriber who tapped Restore used to be told no
+    /// purchase had ever been found for their Apple Account — which reads as
+    /// a lost purchase and sends them hunting for a different account. The
+    /// latest transaction per product is enough to say when access ended.
+    private func endedPurchase() async -> Outcome? {
+        var latest: (tier: ProProduct, date: Date, refunded: Bool)?
+        for tier in ProProduct.allCases {
+            // An upgraded plan was replaced, not lost; the plan it became
+            // carries the date that matters.
+            guard let result = await StoreKit.Transaction.latest(for: tier.rawValue),
+                  case .verified(let transaction) = result,
+                  !transaction.isUpgraded,
+                  let ended = transaction.revocationDate ?? transaction.expirationDate,
+                  ended <= Date() else { continue }
+            if latest.map({ ended > $0.date }) ?? true {
+                latest = (tier: tier, date: ended,
+                          refunded: transaction.revocationDate != nil)
+            }
+        }
+        return latest.map { Outcome.ended($0.tier, on: $0.date, refunded: $0.refunded) }
     }
 
     // MARK: - Entitlement
@@ -294,17 +323,33 @@ final class Entitlements {
         refreshGeneration += 1
         let generation = refreshGeneration
         var candidates: [UInt64: ProEntitlement] = [:]
+        var subscriptionGroups = Set<String>()
         for await result in StoreKit.Transaction.currentEntitlements {
-            guard case .verified(let transaction) = result,
-                  transaction.revocationDate == nil, !transaction.isUpgraded,
+            guard case .verified(let transaction) = result else { continue }
+            if let group = transaction.subscriptionGroupID { subscriptionGroups.insert(group) }
+            guard transaction.revocationDate == nil, !transaction.isUpgraded,
                   let tier = ProProduct(rawValue: transaction.productID) else { continue }
             candidates[transaction.originalID] = ProEntitlement(grantedBy: tier,
                                                 expiresAt: transaction.expirationDate)
         }
+        if let group = (products[.weekly]?.subscription
+                        ?? products[.yearly]?.subscription)?.subscriptionGroupID {
+            subscriptionGroups.insert(group)
+        }
         // All subscription plans share a group. Verify both signed values,
         // and use the grace deadline rather than treating retry as ownership.
-        if let subscription = products[.weekly]?.subscription ?? products[.yearly]?.subscription,
-           let statuses = try? await subscription.status {
+        //
+        // The group is asked for by ID, not through a loaded `Product`. The
+        // grace deadline used to be read only from `products`, which is
+        // empty until the App Store answers — so a subscriber whose renewal
+        // was being retried and who opened the game offline had a
+        // transaction that had already expired, no grace date to extend it,
+        // and lost Pro until they found a signal. `currentEntitlements` still
+        // carries a grace-period transaction, and its group ID is enough to
+        // ask StoreKit's on-device status for the deadline.
+        for group in subscriptionGroups.sorted() {
+            guard let statuses = try? await Product.SubscriptionInfo.status(for: group)
+            else { continue }
             for status in statuses {
                 guard case .verified(let transaction) = status.transaction,
                       case .verified(let renewal) = status.renewalInfo,
@@ -449,13 +494,50 @@ final class Entitlements {
         }
     }
 
-    /// The introductory price, if this account may still take one.
-    func introductoryPrice(_ tier: ProProduct) -> String? {
+    /// The introductory offer, if this account may still take one, in the
+    /// shape Core phrases: price, payment mode, period and period count.
+    ///
+    /// All four are read from the offer Apple will actually apply, so the
+    /// paywall's sentence follows App Store Connect rather than the offer
+    /// this build happened to ship beside. A payment mode this build does
+    /// not know is shown as no offer at all: the renewal price stated alone
+    /// is incomplete, but a sentence describing a different charge is false.
+    func introductoryOffer(_ tier: ProProduct) -> PaywallContent.IntroductoryOffer? {
         guard isEligibleForIntroOffer,
               let offer = products[tier]?.subscription?.introductoryOffer else {
             return nil
         }
-        return offer.displayPrice
+        // `PaymentMode` is a struct of static values rather than an enum,
+        // so it is compared rather than switched over.
+        let mode: PaywallContent.IntroductoryOffer.PaymentMode
+        if offer.paymentMode == .freeTrial {
+            mode = .freeTrial
+        } else if offer.paymentMode == .payAsYouGo {
+            mode = .payAsYouGo
+        } else if offer.paymentMode == .payUpFront {
+            mode = .payUpFront
+        } else {
+            return nil
+        }
+        let unit: PaywallContent.IntroductoryOffer.Unit
+        switch offer.period.unit {
+        case .day: unit = .day
+        case .week: unit = .week
+        case .month: unit = .month
+        case .year: unit = .year
+        @unknown default: return nil
+        }
+        return PaywallContent.IntroductoryOffer(
+            price: offer.displayPrice, paymentMode: mode,
+            periodValue: offer.period.value, periodUnit: unit,
+            periodCount: offer.periodCount)
+    }
+
+    /// The offer as the plan card's one-line summary, e.g. "$0.99 for your
+    /// first week". The same clause the commitment line uses, so the card
+    /// and the sentence above the button cannot disagree.
+    func introductoryTerms(_ tier: ProProduct) -> String? {
+        introductoryOffer(tier).map(PaywallContent.introductoryTerms)
     }
 
     /// The sentence stating what will be charged, and when. Core owns the
@@ -465,7 +547,7 @@ final class Entitlements {
         guard tier.isSubscription else {
             return PaywallContent.lifetimeCommitment(price: price)
         }
-        return PaywallContent.commitment(introductory: introductoryPrice(tier),
+        return PaywallContent.commitment(introductory: introductoryOffer(tier),
                                          standard: price,
                                          period: periodName(tier))
     }
@@ -474,7 +556,7 @@ final class Entitlements {
     func callToAction(_ tier: ProProduct) -> String {
         guard let price = displayPrice(tier) else { return "Unlock Pro" }
         return PaywallContent.callToAction(
-            introductory: tier.isSubscription ? introductoryPrice(tier) : nil,
+            introductory: tier.isSubscription ? introductoryOffer(tier) : nil,
             standard: price, isSubscription: tier.isSubscription)
     }
 
