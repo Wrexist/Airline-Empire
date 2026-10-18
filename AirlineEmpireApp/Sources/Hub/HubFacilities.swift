@@ -73,6 +73,8 @@ final class HubFacilityYard {
         case .groundServices: level == 0 ? 4 : level == 1 ? 10 : 12.5
         case .hangar: level == 0 ? 4 : level == 1 ? 22 : 28
         case .crewBase: level == 0 ? 4 : 27
+        // The pier's vault tops out near 15 m; your sign stands over it.
+        case .pier: level == 0 ? 15.5 : level == 1 ? 18.4 : 19.4
         }
     }
 
@@ -180,6 +182,8 @@ final class HubFacilityYard {
         case .groundServices: (w * 0.7, d * 0.62)
         case .hangar: (w * 0.9, d * 0.86)
         case .crewBase: (w * 0.8, d * 0.5)
+        // Round the pier that stays in use, not over a cleared lot.
+        case .pier: (w + 3, d + 2)
         }
     }
 
@@ -315,12 +319,13 @@ final class HubFacilityYard {
         case .groundServices: e = depot(w: w, d: d, level: level, livery: livery, apronSide: apronSide)
         case .hangar: e = hangar(w: w, d: d, level: level, livery: livery, inCheck: state.inCheck)
         case .crewBase: e = crewBase(w: w, d: d, level: level, livery: livery, apronSide: apronSide)
+        case .pier: e = pier(site, level: level, livery: livery, locked: state.locked)
         }
         let holder = Entity()
         holder.name = "facility-\(site.kind.rawValue)"
         holder.position = Self.f(site.center)
         holder.addChild(e)
-        if level == 0 && site.kind != .lounge && site.kind != .groundServices {
+        if level == 0 && site.kind != .lounge && site.kind != .groundServices && site.kind != .pier {
             holder.addChild(entity(Self.plotBoard(w: w, d: d, livery: livery, locked: state.locked), name: "board"))
         }
         if let target = state.building, let stage = state.stage {
@@ -349,12 +354,17 @@ final class HubFacilityYard {
         let w = Float(site.footprint.width), d = Float(site.footprint.depth)
         let h = Self.height(kind, level: target)
         let roof = kind == .lounge
+        // The pier is rebuilt round the pier that keeps flying: hoarding
+        // round its walls, scaffold up them, the works beyond its tip —
+        // never a cleared lot.
+        let inPlace = kind == .pier
+        let standing = inPlace ? max(1, standing) : standing
         // An upgrade builds beside or over what stands; a new building on
         // the whole lot.
         let (sw, sd) = Self.scaffoldSize(kind, w: w, d: d)
         var p: [HubMaterialKey: HubMeshBatch] = [:]
         // Hoarding: panels in the livery with a white cap, a gap for the gate.
-        let hw = roof ? w * 0.92 : w - 3, hd = roof ? d * 0.88 : d - 3
+        let hw = roof ? w * 0.92 : inPlace ? w + 4 : w - 3, hd = roof ? d * 0.88 : inPlace ? d + 4 : d - 3
         let fence: Float = roof ? 1.6 : 2.6
         Self.with(&p, .livery(livery)) { b in
             b.box(center: [-hw / 2, 0, 0], size: [0.3, fence, hd])
@@ -374,16 +384,18 @@ final class HubFacilityYard {
             Self.with(&p, .houseWood) { $0.box(center: .zero, size: [hw - 1, 0.24, hd - 1]) }
         }
         // From the first day: the site cabin by the gate and pallets of
-        // materials waiting.
-        let cabin: SIMD3<Float> = roof ? [hw / 2 - 3.5, 0, -hd / 2 + 2.5] : [hw / 2 - 6, 0, -hd / 2 + 4]
+        // materials waiting — beyond the tip where the pier keeps working.
+        let yard: Float = inPlace ? -9 : 0
+        let cabin: SIMD3<Float> = roof ? [hw / 2 - 3.5, 0, -hd / 2 + 2.5]
+            : inPlace ? [min(hw / 2, 12) - 4, 0, -hd / 2 - 5] : [hw / 2 - 6, 0, -hd / 2 + 4]
         let cabinSize: SIMD3<Float> = roof ? [5, 2.4, 2.2] : [8, 2.8, 3]
         Self.with(&p, .white) { $0.roundedBox(center: cabin, size: cabinSize, bevel: 0.2) }
         Self.with(&p, .windowDark) { $0.box(center: cabin + [0, 1.0, -cabinSize.z / 2 - 0.05], size: [cabinSize.x * 0.6, 0.9, 0.1]) }
         Self.with(&p, .houseWood) { b in
             for k in 0..<(roof ? 3 : 5) {
-                let x = -hw / 2 + 3 + Float(k) * 2.6
-                b.box(center: [x, 0, -hd / 2 + 3], size: [2, 0.25, 2])
-                b.box(center: [x, 0.25, -hd / 2 + 3], size: [1.8, 0.8 + Float(k % 2) * 0.5, 1.8])
+                let x = (inPlace ? -min(hw / 2, 12) : -hw / 2) + 3 + Float(k) * 2.6
+                b.box(center: [x, 0, -hd / 2 + 3 + yard], size: [2, 0.25, 2])
+                b.box(center: [x, 0.25, -hd / 2 + 3 + yard], size: [1.8, 0.8 + Float(k % 2) * 0.5, 1.8])
             }
         }
         if stage >= .groundworks && !roof && standing == 0 {
@@ -443,7 +455,7 @@ final class HubFacilityYard {
         var batcher = HubStaticBatcher()
         var craneList: [Entity] = []
         var diggerList: [Entity] = []
-        if stage >= .groundworks && !roof {
+        if stage >= .groundworks && !roof && !inPlace {
             // An excavator at the dig and a tipper by the gate.
             let (digger, arm) = excavator(livery: livery)
             digger.position = [-hw * 0.12, 0, hd * 0.12]
@@ -454,14 +466,17 @@ final class HubFacilityYard {
                         * HubMeshBatch.yaw(.pi / 2))
         }
         if stage >= .frame {
-            let (crane, jib) = self.crane(height: h + (roof ? 8 : 14), reach: max(sw, sd) * 0.85)
-            crane.position = [sw / 2 + 2.5, 0, sd / 2 + 2.5]
+            // Over a pier the crane stands off its tip, its jib along it.
+            let (crane, jib) = self.crane(height: h + (roof ? 8 : 14),
+                                          reach: inPlace ? min(sd * 0.6, 60) : max(sw, sd) * 0.85)
+            crane.position = inPlace ? [sw / 2 + 2.5, 0, -sd / 2 - 4] : [sw / 2 + 2.5, 0, sd / 2 + 2.5]
             site.addChild(crane)
             craneList.append(jib)
         }
-        if stage < .frame && !roof {
-            // A parked van before the steel arrives.
-            batcher.add(models.rawVehicle(.serviceVan), matrix: HubMeshBatch.translation([-hw * 0.3, 0, -hd / 2 + 6]))
+        if (stage < .frame || inPlace) && !roof {
+            // A parked van before the steel arrives; at the pier, by the tip.
+            let van: SIMD3<Float> = inPlace ? [-min(hw / 2, 12), 0, -hd / 2 - 12] : [-hw * 0.3, 0, -hd / 2 + 6]
+            batcher.add(models.rawVehicle(.serviceVan), matrix: HubMeshBatch.translation(van))
         }
         // The crew in hi-vis and white hard hats.
         // Procedural crews' hair and authored crews' cloth caps become white hard hats.
@@ -473,7 +488,10 @@ final class HubFacilityYard {
         let spots: [SIMD3<Float>] = [[-0.28, 0, -0.36], [0.05, 0, -0.4], [0.3, 0, -0.1], [-0.12, 0, 0.18],
                                      [0.22, 0, 0.3], [-0.34, 0, 0.05], [0.1, 0, 0.05], [-0.05, 0, -0.2]]
         for (k, spot) in spots.prefix(roof ? 4 : 8).enumerated() {
-            let at = SIMD3<Float>(spot.x * hw, 0, spot.z * hd)
+            // At the pier the crew work along the outside of the hoarding.
+            let at = inPlace
+                ? SIMD3<Float>((spot.x < 0 ? -1 : 1) * (hw / 2 + 1.5), 0, spot.z * hd)
+                : SIMD3<Float>(spot.x * hw, 0, spot.z * hd)
             batcher.add(models.rawPerson(crew: true),
                         matrix: HubMeshBatch.translation(at) * HubMeshBatch.yaw(Float(k) * 1.3), remap: hardHat)
         }
@@ -926,6 +944,113 @@ final class HubFacilityYard {
                   remap: own)
         e.addChild(fleet.entity(materials: materials, name: "crewBus"))
         return e
+    }
+
+    /// The dedicated pier: the airport's westmost pier, taken over. Level 0
+    /// is the shared pier as the airport built it, with a board off its tip;
+    /// 1 paints it in your colours — the base and the eaves in the livery,
+    /// your sign over the vault — and brands the bridges at its stands; 2,
+    /// the flagship, rings the vault in your accent colour and lights the
+    /// sign. A field without piers gets a covered gate walkway along the
+    /// terminal's face instead.
+    private func pier(_ site: HubFacilitySite, level: Int, livery: Livery, locked: Bool) -> Entity {
+        let w = Float(site.footprint.width), d = Float(site.footprint.depth)
+        let finger = d > w
+        let root = Entity()
+        root.name = "pier"
+        guard level > 0 else {
+            // The shared pier; the board stands off its tip, or off the
+            // walkway's west end, on the apron.
+            let board = entity(Self.plotBoard(w: 24, d: 12, livery: livery, locked: locked), name: "board")
+            board.position = finger ? [0, 0, -d / 2 - 7] : [-w / 2 - 8, 0, -6]
+            root.addChild(board)
+            return root
+        }
+        let flagship = level >= 2
+        var p: [HubMaterialKey: HubMeshBatch] = [:]
+        if finger {
+            // The base in your livery under an accent stripe, and the eaves
+            // the glazed vault springs from in the livery too.
+            Self.with(&p, .livery(livery)) { b in
+                for side: Float in [-1, 1] {
+                    b.box(center: [side * (w / 2 + 0.12), 0.5, 0], size: [0.24, 3.1, d - 1.2])
+                    b.roundedBox(center: [side * (w / 2 + 0.2), 9.05, 0], size: [1.7, 1.15, d + 1.7], bevel: 0.25)
+                }
+                // The tip's gable panel.
+                b.box(center: [0, 0.5, -d / 2 - 0.12], size: [w + 0.5, 3.1, 0.24])
+            }
+            Self.with(&p, .liveryAccent(livery)) { b in
+                for side: Float in [-1, 1] {
+                    b.box(center: [side * (w / 2 + 0.14), 3.6, 0], size: [0.28, 0.4, d - 1.2])
+                }
+                b.box(center: [0, 3.6, -d / 2 - 0.14], size: [w + 0.55, 0.4, 0.28])
+            }
+            // Your sign over the vault, by the terminal.
+            let sign = SIMD3<Float>(0, 15.4, d / 2 - 8)
+            Self.with(&p, .darkMetal) { b in
+                for dx: Float in [-w * 0.2, w * 0.2] { b.box(center: sign + [dx, -0.6, 0], size: [0.3, 0.8, 0.3]) }
+            }
+            Self.with(&p, .livery(livery)) { $0.roundedBox(center: sign + [0, 0.2, 0], size: [w * 0.6, 2.6, 0.7], bevel: 0.2) }
+            Self.with(&p, flagship ? .lamp : .white) { b in
+                b.box(center: sign + [0, 1.1, -0.38], size: [w * 0.42, 0.7, 0.06])
+                b.box(center: sign + [0, 1.1, 0.38], size: [w * 0.42, 0.7, 0.06])
+            }
+            if flagship {
+                // The flagship: the vault's ribs in your accent colour.
+                Self.with(&p, .liveryAccent(livery)) { b in
+                    var z = -d / 2 + 3
+                    while z <= d / 2 - 3 {
+                        b.vault(center: [0, 10.1, z], width: w + 1.3, depth: 0.6, rise: 5.6, segments: 16, caps: false)
+                        z += 14
+                    }
+                }
+            }
+        } else {
+            // A covered walkway along the terminal's face: a glass front, a
+            // white roof and your fascia.
+            Self.with(&p, .glass) { $0.box(center: [0, 0.2, -d / 2 + 0.4], size: [w - 1, 3.9, 0.25]) }
+            Self.with(&p, .white) { b in
+                b.roundedBox(center: [0, 4.2, 0], size: [w, 0.45, d + 1], bevel: 0.15)
+                var x = -w / 2 + 1
+                while x <= w / 2 - 1 {
+                    b.box(center: [x, 0, -d / 2 + 0.3], size: [0.35, 4.2, 0.35])
+                    x += 8
+                }
+            }
+            Self.with(&p, .livery(livery)) { $0.box(center: [0, 3.5, -d / 2 - 0.35], size: [w + 0.2, 0.8, 0.25]) }
+            if flagship {
+                Self.with(&p, .liveryAccent(livery)) { $0.box(center: [0, 3.2, -d / 2 - 0.4], size: [w + 0.2, 0.25, 0.2]) }
+                Self.with(&p, .lamp) { $0.box(center: [-w / 2 + 6, 4.7, -d / 2], size: [8, 0.9, 0.2]) }
+            }
+        }
+        // Your bridges at its stands: a collar and cap in the livery on each
+        // rotunda, and your colour over each gate sign.
+        let stands = bridges(site)
+        Self.with(&p, .livery(livery)) { b in
+            for stand in stands {
+                let at = Self.f(stand.bridgeRoot - site.center)
+                b.cylinder(base: at + [0, 5.6, 0], radius: 2.6, height: 1.0, segments: 16)
+                b.cylinder(base: at + [0, 6.55, 0], radius: 2.7, height: 0.3, segments: 16)
+                b.box(center: at + [0, 10.4, 0], size: [6.6, 0.7, 0.5], yaw: Float(stand.heading + .pi / 2))
+            }
+        }
+        if flagship {
+            Self.with(&p, .liveryAccent(livery)) { b in
+                for stand in stands {
+                    let at = Self.f(stand.bridgeRoot - site.center)
+                    b.cylinder(base: at + [0, 4.6, 0], radius: 2.45, height: 0.35, segments: 16)
+                }
+            }
+        }
+        root.addChild(entity(p, name: "pierLivery"))
+        return root
+    }
+
+    /// The stands whose bridges join the pier's site.
+    private func bridges(_ site: HubFacilitySite) -> [HubStand] {
+        let r = site.footprint
+        let around = HubRect(minX: r.minX - 1, minZ: r.minZ - 1, maxX: r.maxX + 1, maxZ: r.maxZ + 1)
+        return layout.stands.filter { $0.hasBridge && around.contains($0.bridgeRoot) }
     }
 
     // MARK: Helpers

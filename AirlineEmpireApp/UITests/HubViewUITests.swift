@@ -202,6 +202,50 @@ final class HubViewUITests: AEUITestCase {
         XCUIDevice.shared.orientation = .portrait
     }
 
+    /// Hub Phase D (docs/HUB_PROGRESSION_PLAN.md §4): a National-era hub
+    /// with its dedicated pier open — the pier in the airline's colours with
+    /// its branded bridges, its opening, the card with the flagship level's
+    /// blueprint, and the overview and gate shot along it.
+    func testDedicatedPierInYourColours() throws {
+        let bundle = Bundle(for: HubViewUITests.self)
+        let url = try XCTUnwrap(bundle.url(forResource: "store-campaign", withExtension: "json"))
+        let codec = JSONSaveCodec()
+        var state = try codec.decode(Data(contentsOf: url))
+        var player = try XCTUnwrap(state.playerAirline)
+        let home = player.homeAirport
+        state.progression.era = .national
+        player.airportFacilities = [home: AirportFacilities(lounge: 1, groundServices: 1, hangar: 1,
+                                                            crewBase: 1, pier: 1)]
+        player.facilityConstructions = nil
+        state.airlines[player.id] = player
+        let fixture = FileManager.default.temporaryDirectory.appendingPathComponent("hub-pier.aesave")
+        try codec.encode(state).write(to: fixture)
+        defer { try? FileManager.default.removeItem(at: fixture) }
+
+        app.launchArguments.append(contentsOf: ["-AEUITestLoadSave", fixture.path, "-AEUITestProbes",
+                                                "-AEUITestOpenHub", "-AEUITestHubStage", "boarding",
+                                                "-AEUITestHubCeremony", "pier"])
+        XCUIDevice.shared.orientation = .landscapeLeft
+        app.launch()
+        app.activate()
+        require(app.descendants(matching: .any)["ae-hub-scene"], "hub scene", timeout: 90)
+        // The opening: the camera flies to the pier, it goes up in the
+        // airline's colours, the toast.
+        require(app.descendants(matching: .any)["ae-hub-toast"], "opening toast", timeout: 40)
+        Thread.sleep(forTimeInterval: 1.4)
+        frame("HUB-17-pier-ceremony")
+        Thread.sleep(forTimeInterval: 5)
+        frame("HUB-18-pier-open")
+        XCTAssertTrue(app.descendants(matching: .any)["ae-hub-upgrade-card"].exists)
+        let close = app.buttons["Close upgrade"]
+        if close.exists { close.tap() }
+        Thread.sleep(forTimeInterval: 1)
+        shot("HUB-19-pier-overview", "overview")
+        // Gate 1 is on the westmost pier: the branded bridge at the jet.
+        shot("HUB-20-pier-gate", "gate")
+        XCUIDevice.shared.orientation = .portrait
+    }
+
     func testCloseReturnsToTheMap() throws {
         try open()
         let close = app.buttons["ae-hub-close"]
