@@ -96,6 +96,7 @@ final class Feedback {
         milestoneUntil = -1
         focus = .away
         hasSelection = false
+        hub = nil
     }
 
     /// Back to the menu. The director goes with the game.
@@ -108,6 +109,7 @@ final class Feedback {
         lastMusicGain = -1
         milestoneUntil = -1
         clearMapFocus()
+        hub = nil
     }
 
     // MARK: - Playing
@@ -191,6 +193,23 @@ final class Feedback {
         hasSelection = false
     }
 
+    /// What the open Hub View sounds like (docs/HUB_PROGRESSION_PLAN.md §6,
+    /// "Audio"): whether works are under way at its airport, and how busy it
+    /// is. Nil when no hub is open.
+    struct HubSoundscape: Equatable {
+        var constructionUnderWay: Bool
+        var activity: Int
+    }
+
+    /// Set by the Hub View while it is on screen; it takes the bed from the
+    /// map, which is covered and keeps the focus it had for when the hub
+    /// closes. Stores only, like `setMapFocus`: the next snapshot applies it.
+    @ObservationIgnored private var hub: HubSoundscape?
+
+    func setHubSoundscape(_ soundscape: HubSoundscape?) {
+        hub = soundscape
+    }
+
     /// Re-derives the bed and the music state from the world.
     ///
     /// Called once per snapshot refresh, from the same place the cues are
@@ -215,9 +234,12 @@ final class Feedback {
                   state.routes[flight.route]?.airline == player else { return }
             count += 1
         }
-        let mix = AmbienceDirector.mix(focus: focus, airborne: airborne,
-                                       speed: speed, hasSelection: hasSelection,
-                                       stage: stage)
+        let mix = hub.map {
+            AmbienceDirector.hubMix(constructionUnderWay: $0.constructionUnderWay,
+                                    activity: $0.activity, speed: speed, stage: stage)
+        } ?? AmbienceDirector.mix(focus: focus, airborne: airborne,
+                                  speed: speed, hasSelection: hasSelection,
+                                  stage: stage)
         guard mix != lastMix else { return }
         lastMix = mix
         guard let bed = mix.bed else {

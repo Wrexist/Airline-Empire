@@ -182,10 +182,19 @@ final class HubScreenModel {
                       detail: offer.effect))
     }
 
+    /// Set by the screen: plays a hub cue (docs/HUB_PROGRESSION_PLAN.md §6,
+    /// "Audio").
+    var onCue: ((AudioCue) -> Void)?
+
     /// The opening of a building: the camera flies to it if nothing else is
-    /// open, the reveal plays, the toast says what it does.
+    /// open, the reveal plays, the toast says what it does. A replay brings
+    /// its own chime; a live opening is already voiced by the game's audio
+    /// director from the event, and must not chime twice.
     private func celebrate(_ offer: HubUpgradeOffer, replay: Bool) {
-        if replay { scene.replayFacility(offer.kind) }
+        if replay {
+            scene.replayFacility(offer.kind)
+            onCue?(.facilityOpened)
+        }
         if panel == nil { openUpgrade(offer.kind) }
         withAnimation(HubMotion.panel) { announce(offer) }
     }
@@ -327,6 +336,7 @@ final class HubScreenModel {
             next = next.holding(held, progress: 0.45, atStand: stand)
         }
         let first = snapshot == nil
+        let previousStatus = snapshot?.status.status
         groundServices = state.playerAirline?.facilities(at: airport).groundServices ?? groundServices
         var opened: [HubUpgradeOffer] = []
         if let previous = snapshot {
@@ -356,6 +366,16 @@ final class HubScreenModel {
         applyLighting()
         if first { scene.show(shot, focus: focus, animated: false) }
         for offer in opened { celebrate(offer, replay: false) }
+        // A status earned with the hub open gets its banner here — the game's
+        // own celebration sits under this full-screen cover (§6.5). Last, so
+        // it outranks a building's toast landing on the same day.
+        if let previousStatus, next.status.status > previousStatus {
+            withAnimation(HubMotion.panel) {
+                show(HubToast(systemImage: "flag.fill",
+                              title: "\(airport.raw) is now a \(next.status.status.title.lowercased())",
+                              detail: Vocab.hubStatusDetail(next.status.status)))
+            }
+        }
         // Buildings that opened while the player was elsewhere get their
         // ceremony once, the next time this hub is opened.
         let missed = HubSeenBuildings.missed(at: airport, offers: next.upgrades, first: first)

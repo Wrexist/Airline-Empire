@@ -552,6 +552,34 @@ _mix_into(_era, chord([D5, A5], 1.6, spread=0.10, attack=0.30, decay=0.8),
           0.95, 0.30)
 asset("era_advanced", _era, 0.80)
 
+# --- Hub (docs/HUB_PROGRESSION_PLAN.md §6). The diorama's own voice. --------
+
+# A building opens: the hoarding drops. A soft body, an open fifth that rings
+# out, and one high bell partial on top — a ribbon cut rather than a trophy.
+_opened = []
+_mix_into(_opened, thump(G3, 0.45, seed=111), 0.0, 0.7)
+_mix_into(_opened, chord([D4, G4, D5], 0.95, spread=0.07, attack=0.012,
+                         decay=0.46, harmonics=(1.0, 0.24, 0.08)), 0.04, 0.85)
+_mix_into(_opened, tone(A5, 0.9, attack=0.004, decay=0.5,
+                        harmonics=(1.0, 0.35, 0.12)), 0.20, 0.22)
+_mix_into(_opened, highpass(bandsweep(0.7, 1400, 3600, seed=112, attack=0.12),
+                            1100), 0.0, 0.12)
+asset("facility_opened", _opened, 0.54)
+
+# A station earns a status: three rising steps over a held low D, landing on
+# a chord — a banner going up. Bigger than a building, smaller than an era.
+_status = []
+_mix_into(_status, tone(D3, 1.6, attack=0.18, decay=0.8,
+                        harmonics=(1.0, 0.26, 0.09)), 0.0, 0.6)
+for k, f in enumerate([D4, A4, D5]):
+    _mix_into(_status, tone(f, 0.7, attack=0.01, decay=0.36,
+                            harmonics=(1.0, 0.22, 0.07)), 0.16 * k, 0.75)
+_mix_into(_status, chord([A4, D5, F5], 1.1, spread=0.05, attack=0.03,
+                         decay=0.55), 0.50, 0.55)
+_mix_into(_status, highpass(bandsweep(1.2, 1200, 4000, seed=113, attack=0.30),
+                            1000), 0.10, 0.14)
+asset("hub_status", _status, 0.62)
+
 # --- The end. Sophisticated, never a jump-scare. ----------------------------
 
 # Administration: a slow, low, unresolved pulse. Urgent by repetition rather
@@ -593,6 +621,22 @@ _amb_world = [s * (1.0 + 0.30 * math.sin(2 * math.pi * i / (RATE * 6.5)))
               for i, s in enumerate(_amb_world)]
 _mix_into(_amb_world, tone(A3 * 0.5, 11.0, attack=3.0, decay=11.0), 0.0, 0.07)
 asset("ambience_world", loopable(_amb_world), 0.26)
+
+# The works: a hub while a building goes up there. A low site rumble, a
+# diesel idling under it and an uneven knock of machinery — busy, never
+# regular enough to read as a beat, and quieter than the airport bed it
+# stands in for.
+_amb_works = lowpass(noise(10.0, 103), 300)
+_amb_works = [s * (1.0 + 0.25 * math.sin(2 * math.pi * i / (RATE * 3.2)))
+              for i, s in enumerate(_amb_works)]
+_mix_into(_amb_works, tone(D3 * 0.5, 10.0, attack=2.0, decay=10.0,
+                           harmonics=(1.0, 0.4, 0.2)), 0.0, 0.08)
+for k, at in enumerate([0.7, 2.1, 3.0, 4.6, 6.2, 7.1, 8.5]):
+    _mix_into(_amb_works, lowpass(thump(G3 * 0.5, 0.3, seed=120 + k), 900),
+              at, 0.18)
+_mix_into(_amb_works, highpass(bandsweep(0.4, 1800, 2600, seed=130,
+                                         attack=0.05), 1500), 5.3, 0.05)
+asset("ambience_construction", loopable(_amb_works), 0.28)
 
 
 # ── Music ──────────────────────────────────────────────────────────────────

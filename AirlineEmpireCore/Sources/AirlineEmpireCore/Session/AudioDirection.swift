@@ -151,6 +151,13 @@ public enum AudioCue: String, Hashable, Sendable, CaseIterable {
     case capabilityCompleted
     case eraAdvanced
 
+    // MARK: Hub (docs/HUB_PROGRESSION_PLAN.md §6, "Audio")
+
+    /// A building opens: the completion chime under the ceremony.
+    case facilityOpened
+    /// A station earns a status: the fanfare under the banner.
+    case hubStatusRaised
+
     // MARK: The end
 
     case administrationEntered
@@ -161,6 +168,9 @@ public enum AudioCue: String, Hashable, Sendable, CaseIterable {
 
     case ambienceOperations
     case ambienceWorld
+    /// The works at a hub: the bed while a building goes up there and the
+    /// Hub View is open.
+    case ambienceConstruction
 
     public var category: AudioCategory {
         switch self {
@@ -185,18 +195,18 @@ public enum AudioCue: String, Hashable, Sendable, CaseIterable {
             return .world
         case .missionOffered, .missionCompleted, .missionExpired,
              .milestoneReached, .achievementUnlocked, .capabilityCompleted,
-             .eraAdvanced:
+             .eraAdvanced, .facilityOpened, .hubStatusRaised:
             return .progression
         case .administrationEntered, .collapse, .gameOver:
             return .critical
-        case .ambienceOperations, .ambienceWorld:
+        case .ambienceOperations, .ambienceWorld, .ambienceConstruction:
             return .world
         }
     }
 
     public var priority: AudioPriority {
         switch self {
-        case .ambienceOperations, .ambienceWorld:
+        case .ambienceOperations, .ambienceWorld, .ambienceConstruction:
             return .ambient
 
         case .uiSelect, .uiNavigate, .uiToggle, .uiSheetOpen, .uiSheetClose,
@@ -216,7 +226,7 @@ public enum AudioCue: String, Hashable, Sendable, CaseIterable {
              .monthClosedProfit, .monthClosedLoss, .loanTaken, .solvencyWarning,
              .stormStarted, .strikeStarted, .fuelShockStarted, .airportClosed,
              .missionCompleted, .milestoneReached, .achievementUnlocked,
-             .capabilityCompleted:
+             .capabilityCompleted, .facilityOpened, .hubStatusRaised:
             return .important
 
         // The first times are the emotional spine of the opening hour, and
@@ -298,19 +308,23 @@ public enum AudioCue: String, Hashable, Sendable, CaseIterable {
         case .capabilityCompleted: return "capability_completed"
         case .eraAdvanced: return "era_advanced"
 
+        case .facilityOpened: return "facility_opened"
+        case .hubStatusRaised: return "hub_status"
+
         case .administrationEntered: return "administration"
         case .collapse: return "collapse"
         case .gameOver: return "game_over"
 
         case .ambienceOperations: return "ambience_operations"
         case .ambienceWorld: return "ambience_world"
+        case .ambienceConstruction: return "ambience_construction"
         }
     }
 
-    /// True for the two cues that play as a continuous bed rather than once.
+    /// True for the three cues that play as a continuous bed rather than once.
     public var isLoop: Bool {
         switch self {
-        case .ambienceOperations, .ambienceWorld: return true
+        case .ambienceOperations, .ambienceWorld, .ambienceConstruction: return true
         default: return false
         }
     }
@@ -622,10 +636,11 @@ extension AudioCue {
         case .milestoneReached: return .milestoneReached
         case .achievementUnlocked: return .achievementUnlocked
         case .capabilityCompleted: return .capabilityCompleted
-        // A building opening is a completion; a station rising in status is
-        // a milestone of the campaign.
-        case .facilityOpened: return .capabilityCompleted
-        case .hubStatusRaised: return .milestoneReached
+        // The hub's own voice (docs/HUB_PROGRESSION_PLAN.md §6): a building
+        // opening has its chime and a station rising in status its fanfare,
+        // rather than borrowing a programme's and a milestone's.
+        case .facilityOpened: return .facilityOpened
+        case .hubStatusRaised: return .hubStatusRaised
         case .missionOffered: return .missionOffered
         case .missionCompleted: return .missionCompleted
         case .missionExpired: return .missionExpired
@@ -693,7 +708,7 @@ extension AudioCue {
 
         // Progression.
         case .missionCompleted, .milestoneReached, .achievementUnlocked,
-             .capabilityCompleted:
+             .capabilityCompleted, .facilityOpened, .hubStatusRaised:
             return .success
         case .eraAdvanced:
             return .heavy
