@@ -148,9 +148,12 @@ struct HubInsightsPanel: View {
         }
         section("Your movements today") {
             let now = (model.snapshot?.localMinuteOfDay ?? 0) / 60
+            // At a hub, the departure banks stand out in green.
+            let banks = Set(insights.transfers?.banks ?? [])
             Chart(Array(insights.movementsByHour.enumerated()), id: \.offset) { hour, count in
                 BarMark(x: .value("Hour", hour), y: .value("Movements", count), width: .fixed(8))
-                    .foregroundStyle(hour == now ? HubChromeStyle.accent : HubChromeStyle.accent.opacity(0.35))
+                    .foregroundStyle(hour == now ? HubChromeStyle.accent
+                                     : banks.contains(hour) ? HubChromeStyle.good : HubChromeStyle.accent.opacity(0.35))
                     .cornerRadius(2)
             }
             .chartXAxis {
@@ -164,6 +167,9 @@ struct HubInsightsPanel: View {
             .frame(height: 110)
             .animation(HubMotion.data, value: insights.movementsByHour)
         }
+        if let transfers = insights.transfers {
+            section("Transfers") { transferSection(transfers) }
+        }
         section("Alerts") {
             if insights.alerts.isEmpty {
                 empty("checkmark.seal.fill", "All clear at this hub.")
@@ -171,6 +177,56 @@ struct HubInsightsPanel: View {
                 ForEach(insights.alerts.prefix(5)) { alert in alertRow(alert) }
             }
         }
+    }
+
+    // MARK: Transfers
+
+    /// The hub's connecting traffic: today's travellers and the month's, the
+    /// city pairs that connect, and when the departure banks leave.
+    @ViewBuilder
+    private func transferSection(_ transfers: HubTransfers) -> some View {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+            tile("arrow.triangle.branch", "Connecting today", Format.count(Int64(transfers.passengersToday)))
+            tile("calendar", "This month", Format.count(transfers.thisMonth))
+        }
+        if transfers.flows.isEmpty {
+            empty("clock.arrow.2.circlepath",
+                  "No connection works on today's schedule. Onward flights need to leave soon after arrivals.")
+        } else {
+            ForEach(transfers.flows) { flow in transferRow(flow) }
+            if transfers.marketsToday > transfers.flows.count {
+                Text("And \(transfers.marketsToday - transfers.flows.count) more city pairs.")
+                    .font(.system(size: 10)).foregroundStyle(HubChromeStyle.secondary)
+            }
+        }
+        if !transfers.banks.isEmpty {
+            Label("Departure banks: " + transfers.banks.sorted().map { String(format: "%02d:00", $0) }.joined(separator: " · "),
+                  systemImage: "waveform.path")
+                .font(.system(size: 11)).foregroundStyle(HubChromeStyle.good)
+        }
+    }
+
+    private func transferRow(_ flow: HubTransfers.Flow) -> some View {
+        HStack(spacing: 8) {
+            Text("\(flow.from.raw) → \(model.airport.raw) → \(flow.to.raw)")
+                .font(.system(size: 11, weight: .bold).monospaced())
+                .foregroundStyle(HubChromeStyle.ink)
+                .lineLimit(1).minimumScaleFactor(0.8)
+            VStack(alignment: .leading, spacing: 0) {
+                Text("\(flow.fromCity) to \(flow.toCity)").font(.system(size: 11)).foregroundStyle(HubChromeStyle.ink)
+                    .lineLimit(1)
+                Text("\(flow.connections) connection\(flow.connections == 1 ? "" : "s") · \(flow.averageWaitMinutes) min wait")
+                    .font(.system(size: 9)).foregroundStyle(HubChromeStyle.secondary)
+            }
+            Spacer(minLength: 4)
+            Text("\(flow.passengers)")
+                .font(.system(size: 13, weight: .semibold).monospacedDigit())
+                .foregroundStyle(HubChromeStyle.good)
+        }
+        .padding(8)
+        .background(Color.white.opacity(0.5), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(flow.fromCity) to \(flow.toCity) via \(model.airport.raw): \(flow.passengers) connecting today")
     }
 
     // MARK: Routes
@@ -234,6 +290,11 @@ struct HubInsightsPanel: View {
             HubMeter(title: "Load factor", value: link.loadFactor ?? 0,
                      detail: link.loadFactor.map { Format.percent($0) } ?? "No flights yet",
                      tint: HubRouteStyle.tint(link.loadFactor))
+            if link.connectingToday > 0 {
+                Label("\(link.connectingToday) of today's \(link.demandToday) travellers are connecting",
+                      systemImage: "arrow.triangle.branch")
+                    .font(.system(size: 10)).foregroundStyle(HubChromeStyle.good)
+            }
         }
         .padding(10)
         .background(Color.white.opacity(selected ? 0.92 : 0.5), in: RoundedRectangle(cornerRadius: 12, style: .continuous))

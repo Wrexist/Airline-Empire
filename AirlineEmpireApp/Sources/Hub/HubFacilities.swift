@@ -64,7 +64,11 @@ final class HubFacilityYard {
         root.addChild(roofRoot)
     }
 
-    private func parent(_ kind: HubFacilityKind) -> Entity { kind == .lounge ? roofRoot : root }
+    /// The sites on the terminal roof (the lounge at the east end, the
+    /// transfer centre at the west): they lift away with it in the cutaway.
+    static func onRoof(_ kind: HubFacilityKind) -> Bool { kind == .lounge || kind == .transferCentre }
+
+    private func parent(_ kind: HubFacilityKind) -> Entity { Self.onRoof(kind) ? roofRoot : root }
 
     /// The tallest the building on `kind`'s site gets, for tags and taps.
     static func height(_ kind: HubFacilityKind, level: Int) -> Float {
@@ -73,6 +77,7 @@ final class HubFacilityYard {
         case .groundServices: level == 0 ? 4 : level == 1 ? 10 : 12.5
         case .hangar: level == 0 ? 4 : level == 1 ? 22 : 28
         case .crewBase: level == 0 ? 4 : 27
+        case .transferCentre: level == 0 ? 2 : 10.5
         }
     }
 
@@ -80,7 +85,7 @@ final class HubFacilityYard {
     static func tagHeight(_ offer: HubUpgradeOffer) -> Float {
         let standing = height(offer.kind, level: offer.level)
         guard let build = offer.construction else { return standing }
-        return max(standing, height(offer.kind, level: build.level) + (offer.kind == .lounge ? 6 : 12))
+        return max(standing, height(offer.kind, level: build.level) + (onRoof(offer.kind) ? 6 : 12))
     }
 
     // MARK: Levels
@@ -180,6 +185,7 @@ final class HubFacilityYard {
         case .groundServices: (w * 0.7, d * 0.62)
         case .hangar: (w * 0.9, d * 0.86)
         case .crewBase: (w * 0.8, d * 0.5)
+        case .transferCentre: (w * 0.8, d * 0.7)
         }
     }
 
@@ -262,6 +268,7 @@ final class HubFacilityYard {
         if let ghost {
             ghost.entity.components.set(OpacityComponent(opacity: 0.32 + 0.12 * sin(time * 2.4)))
         }
+        advanceBanner(dt)
         guard !jobs.isEmpty else { return false }
         for i in jobs.indices {
             jobs[i].t += dt
@@ -315,6 +322,8 @@ final class HubFacilityYard {
         case .groundServices: e = depot(w: w, d: d, level: level, livery: livery, apronSide: apronSide)
         case .hangar: e = hangar(w: w, d: d, level: level, livery: livery, inCheck: state.inCheck)
         case .crewBase: e = crewBase(w: w, d: d, level: level, livery: livery, apronSide: apronSide)
+        case .transferCentre:
+            e = entity(Self.transferCentre(w: w, d: d, level: level, livery: livery), name: "transferCentre")
         }
         let holder = Entity()
         holder.name = "facility-\(site.kind.rawValue)"
@@ -348,7 +357,7 @@ final class HubFacilityYard {
         let kind = site.kind
         let w = Float(site.footprint.width), d = Float(site.footprint.depth)
         let h = Self.height(kind, level: target)
-        let roof = kind == .lounge
+        let roof = Self.onRoof(kind)
         // An upgrade builds beside or over what stands; a new building on
         // the whole lot.
         let (sw, sd) = Self.scaffoldSize(kind, w: w, d: d)
@@ -427,7 +436,7 @@ final class HubFacilityYard {
         }
         if stage == .cladding && standing == 0 {
             // Walls going on from the bottom, under scaffold.
-            Self.with(&p, kind == .lounge ? .glass : .building) { b in
+            Self.with(&p, roof ? .glass : .building) { b in
                 b.box(center: [0, 0, -sd / 2], size: [sw, h * 0.7, 0.3])
                 b.box(center: [-sw / 2, 0, 0], size: [0.3, h * 0.7, sd])
                 b.box(center: [sw / 2, 0, 0], size: [0.3, h * 0.55, sd])
@@ -631,6 +640,138 @@ final class HubFacilityYard {
             }
         }
         return p
+    }
+
+    /// The transfer centre on the west end of the terminal roof, the
+    /// lounge's twin: level 0 a marked-out site; level 1 a glazed transfer
+    /// hall under a ribbed barrel vault — the piers' own language — with a
+    /// fascia in the airline's colours, seats and an info desk inside, and a
+    /// pylon carrying the lit connections board.
+    private static func transferCentre(w: Float, d: Float, level: Int, livery: Livery) -> [HubMaterialKey: HubMeshBatch] {
+        var p: [HubMaterialKey: HubMeshBatch] = [:]
+        guard level > 0 else {
+            // A dashed outline and two planters: the site, waiting.
+            with(&p, .marking) { b in
+                var x = -w / 2 + 5
+                while x < w / 2 - 5 {
+                    for z in [-d / 2 + 4, d / 2 - 4] { b.box(center: [x, 0.02, z], size: [2.4, 0.05, 0.5]) }
+                    x += 4
+                }
+                var z = -d / 2 + 6
+                while z < d / 2 - 6 {
+                    for x in [-w / 2 + 4, w / 2 - 4] { b.box(center: [x, 0.02, z], size: [0.5, 0.05, 2.4]) }
+                    z += 4
+                }
+            }
+            with(&p, .buildingShade) { b in
+                for sz: Float in [-1, 1] { b.roundedBox(center: [w / 2 - 2, 0, sz * (d / 2 - 2)], size: [3, 1.1, 3], bevel: 0.25) }
+            }
+            with(&p, .tree(1)) { b in
+                for sz: Float in [-1, 1] { b.sphere(center: [w / 2 - 2, 1.9, sz * (d / 2 - 2)], radius: 1.4, segments: 8, rings: 5) }
+            }
+            return p
+        }
+        let gw = w * 0.7, gd = d * 0.66, gh: Float = 5.6
+        let eave = 0.4 + gh
+        // Deck, glass walls with white mullions.
+        with(&p, .white) { b in
+            b.roundedBox(center: .zero, size: [w * 0.9, 0.4, d * 0.86], bevel: 0.15)
+            var z = -gd / 2
+            while z <= gd / 2 + 0.01 {
+                for x in [-gw / 2, gw / 2] { b.box(center: [x, 0.4, z], size: [0.35, gh, 0.35]) }
+                z += 3.4
+            }
+        }
+        with(&p, .glass) { $0.box(center: [0, 0.4, 0], size: [gw, gh, gd]) }
+        // The vault along the hall, ribs every 3.4 m, gable ends filled.
+        with(&p, .skylight) { $0.vault(center: [0, eave, 0], width: gw + 0.6, depth: gd + 0.8, rise: 3.2, segments: 14, caps: false) }
+        with(&p, .white) { b in
+            var z = -gd / 2 - 0.3
+            while z <= gd / 2 + 0.4 {
+                b.vault(center: [0, eave, z], width: gw + 1.0, depth: 0.4, rise: 3.45, segments: 14, caps: false)
+                z += 3.4
+            }
+            for side: Float in [-1, 1] {
+                b.vault(center: [0, eave, side * (gd / 2 + 0.45)], width: gw + 0.6, depth: 0.3, rise: 3.2, segments: 14)
+            }
+        }
+        // The airline's band under the eaves.
+        with(&p, .livery(livery)) { $0.box(center: [0, eave - 0.75, 0], size: [gw + 0.4, 0.75, gd + 0.4], top: false) }
+        // Inside: rows of seats, and the info desk in the accent.
+        with(&p, .cloth(5)) { b in
+            var z = -gd / 2 + 2.5
+            while z < gd / 2 - 2 {
+                b.roundedBox(center: [-gw * 0.22, 0.4, z], size: [1.1, 0.8, 1.6], bevel: 0.15)
+                b.roundedBox(center: [gw * 0.22, 0.4, z], size: [1.1, 0.8, 1.6], bevel: 0.15)
+                z += 3.2
+            }
+        }
+        with(&p, .liveryAccent(livery)) { $0.roundedBox(center: [0, 0.4, 0], size: [1.6, 1.0, gd * 0.3], bevel: 0.2) }
+        // The pylon at the deck's corner, the connections board lit on it.
+        let pylon = SIMD3<Float>(gw / 2 + (w * 0.9 - gw) / 4, 0.4, -gd / 2)
+        with(&p, .livery(livery)) { $0.roundedBox(center: pylon, size: [1.2, 9.6, 3.4], bevel: 0.2) }
+        with(&p, .kioskScreen) { b in
+            b.box(center: pylon + [-0.65, 6.0, 0], size: [0.12, 2.6, 2.8])
+            b.box(center: pylon + [0.65, 6.0, 0], size: [0.12, 2.6, 2.8])
+        }
+        with(&p, .white) { $0.box(center: pylon + [0, 9.6, 0], size: [1.4, 0.3, 3.6]) }
+        return p
+    }
+
+    // MARK: Hub banner
+
+    /// The Hub status's banners, hanging from the terminal's landside roof
+    /// edge in the airline's colours (docs/HUB_PROGRESSION_PLAN.md §3: "hub
+    /// banner"); unveiled, rolling down from the eaves, when it is earned.
+    private var banner: Entity?
+    private var bannerReveal: Float?
+
+    /// Shows the banners when `status` is Hub or above. `unveil` plays the
+    /// roll-down: a status earned while the hub is open, or one missed.
+    func setHubStatus(_ status: HubStatus, livery: Livery, unveil: Bool = false) {
+        guard status >= .hub else {
+            banner?.removeFromParent()
+            banner = nil
+            return
+        }
+        if banner == nil {
+            let e = banners(livery: livery)
+            roofRoot.addChild(e)
+            banner = e
+        }
+        if unveil {
+            bannerReveal = 0
+            banner?.scale = [1, 0.02, 1]
+        }
+    }
+
+    private func banners(livery: Livery) -> Entity {
+        let t = layout.terminal
+        let top = Float(HubLayout.terminalRoofTop) - 1.8
+        let holder = Entity()
+        holder.name = "hubBanner"
+        // Two drops at the thirds of the landside face, hung from y = 0 down
+        // so the roll-down scales them from the eaves.
+        var p: [HubMaterialKey: HubMeshBatch] = [:]
+        let length: Float = 9.5
+        for fraction: Float in [-0.32, 0.32] {
+            let x = Float(t.center.x) + fraction * Float(t.width)
+            Self.with(&p, .livery(livery)) { $0.box(center: [x, -length, 0], size: [3.4, length, 0.25]) }
+            Self.with(&p, .white) { $0.box(center: [x, -length * 0.62, 0.14], size: [2.2, 0.5, 0.05]) }
+            Self.with(&p, .liveryAccent(livery)) { $0.box(center: [x, -length - 0.5, 0], size: [3.6, 0.5, 0.3]) }
+            Self.with(&p, .darkMetal) { $0.box(center: [x, -0.2, 0], size: [4.0, 0.3, 0.4]) }
+        }
+        holder.addChild(entity(p, name: "hubBanner"))
+        holder.position = [0, top, Float(t.maxZ) + 0.7]
+        return holder
+    }
+
+    /// Advances the roll-down; called from `update`.
+    private func advanceBanner(_ dt: Float) {
+        guard let reveal = bannerReveal, let banner else { return }
+        let t = min(1, reveal + dt / 1.6)
+        bannerReveal = t < 1 ? t : nil
+        banner.scale = [1, max(0.02, Self.easeOutBack(t)), 1]
     }
 
     /// The ground-services depot. Level 0 is the shared handler's corner:

@@ -293,6 +293,7 @@ enum Vocab {
         case .station: "You fly here."
         case .base: "A base of your airline: aircraft and buildings of your own."
         case .mainBase: "Your main base: your own hangar and crews."
+        case .hub: "Your hub: travellers change planes here between your routes."
         }
     }
 

@@ -12,6 +12,7 @@ extension HubFacilityKind {
         case .groundServices: "box.truck.fill"
         case .hangar: "wrench.and.screwdriver.fill"
         case .crewBase: "person.2.fill"
+        case .transferCentre: "arrow.triangle.branch"
         }
     }
 }

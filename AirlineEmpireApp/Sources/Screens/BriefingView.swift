@@ -303,6 +303,16 @@ struct BriefingView: View {
                           "chart.line.uptrend.xyaxis",
                           id: "ae-briefing-performance")
             pulse(briefing.performance)
+            // A hub's connecting travellers, part of the month's passengers
+            // and revenue (counted on each leg they fly).
+            let network = briefing.performance.network
+            if network.monthToDateConnectingPassengers > 0 {
+                Label("This month \(Format.count(network.monthToDateConnectingPassengers)) seats went to travellers connecting at your hubs, for \(Format.money(network.monthToDateConnectingRevenue)) of the revenue.",
+                      systemImage: "arrow.triangle.branch")
+                    .font(.caption).foregroundStyle(AETheme.mutedText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("ae-briefing-connecting")
+            }
             statGrid(briefing.performance.dashboard)
             // The competitive fact when it is not an alarm — a rival's
             // retreat, an even fight, a lead. Still on the briefing, where

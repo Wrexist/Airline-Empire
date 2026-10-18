@@ -438,8 +438,23 @@ struct RouteDetailView: View {
                     .font(.caption)
                     .foregroundStyle(AETheme.mutedText)
                     .fixedSize(horizontal: false, vertical: true)
+                // Of them, the travellers changing planes at a hub end, and
+                // this leg's share of their through fares.
+                if let connecting = card.thisMonthBreakdown.connectingPassengers, connecting > 0 {
+                    Label("of which \(Format.count(connecting)) connecting via \(Self.via(card)), paying \(Format.money(Money(cents: card.thisMonthBreakdown.connectingRevenueCents ?? 0))) of the fares",
+                          systemImage: "arrow.triangle.branch")
+                        .font(.caption)
+                        .foregroundStyle(AETheme.positive)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("ae-route-connecting")
+                }
             }
         }
+    }
+
+    /// The hub (or hubs) at the route's ends its connections change at.
+    private static func via(_ card: RouteCardModel) -> String {
+        card.connectingVia.isEmpty ? "your hubs" : card.connectingVia.map(\.raw).joined(separator: " and ")
     }
 
     /// Today's market, which the route has always known and never showed.
@@ -457,6 +472,12 @@ struct RouteDetailView: View {
                         AEInstrument(label: "Seats you have sold today",
                                      value: Format.count(Int64(taken)), icon: "ticket",
                                      tint: AETheme.positive)
+                    }
+                    if card.connectingToday > 0 {
+                        Label("of which \(Format.count(Int64(card.connectingToday))) connecting via \(Self.via(card)) — filling seats your local passengers leave empty",
+                              systemImage: "arrow.triangle.branch")
+                            .font(.caption).foregroundStyle(AETheme.positive)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     if offered > 0 {
                         ProgressView(value: Double(taken) / Double(offered))

@@ -89,6 +89,13 @@ struct SessionReportCard: View {
                 LabeledContent("Cash change", value: Format.money(report.cashChange))
                 LabeledContent("Net routes added", value: "\(report.routeChange)")
                 LabeledContent("Net aircraft added", value: "\(report.aircraftChange)")
+                // "Stockholm is now a Hub": the statuses the session earned.
+                ForEach(report.statusRises, id: \.airport) { rise in
+                    Label("\(ContentCatalog.shipped?.airport(rise.airport)?.city ?? rise.airport.raw) is now a \(rise.status.title)",
+                          systemImage: "flag.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(AETheme.positive)
+                }
                 Text("Cash change includes aircraft purchases, loans and operating costs. It is not profit.")
                     .font(.caption).foregroundStyle(.secondary)
                 if let nextMove {

@@ -382,6 +382,7 @@ final class HubDynamics {
     var showsInterior = false {
         didSet {
             interiorCrowd.isEnabled = showsInterior
+            transferHall.isEnabled = showsInterior
             for crowd in standCrowds.values { crowd.entity.isEnabled = !showsInterior }
         }
     }
@@ -544,11 +545,69 @@ final class HubDynamics {
             focusStand = focus
             rebuildFocusOverlays()
         }
+        // A hub's departures leave in banks: the fan's lights go out in
+        // waves together rather than each on its own clock.
+        banked = snapshot.insights.transfers != nil
         updateRouteFan(snapshot.insights.routes)
         if !snapshot.upgrades.isEmpty {
             yard.apply(offers: snapshot.upgrades, livery: snapshot.livery)
         }
+        yard.setHubStatus(snapshot.status.status, livery: snapshot.livery)
+        setTransfers(snapshot.insights.transfers?.passengersToday)
         rebuildAnchors(snapshot)
+    }
+
+    // MARK: Transfer hall
+
+    /// Connecting travellers walking the mezzanine pier to pier in the
+    /// terminal cutaway (`HubLayout.transferWalk`), along a glowing lane:
+    /// the transfer hall. Nil without a transfer centre.
+    private var transferHall = Entity()
+    private var transferCrowd: HubCrowd?
+    private var transferBucket: Int?
+    private var banked = false
+
+    /// About one walker per eight connecting travellers today, from twelve
+    /// to fifty (24 on a 3 GB device); rebuilt only when that count moves by
+    /// a step. Shown with the hall, in the cutaway.
+    private func setTransfers(_ passengers: Int?) {
+        let most = HubDevice.isLowMemory ? 24 : 50
+        let bucket = passengers.map { min(most, max(12, $0 / 8)) / 4 * 4 }
+        guard bucket != transferBucket else { return }
+        transferBucket = bucket
+        transferHall.children.removeAll()
+        transferCrowd = nil
+        guard let count = bucket, let walk = layout.transferWalk else { return }
+        if transferHall.parent == nil {
+            transferHall.isEnabled = showsInterior
+            root.addChild(transferHall)
+        }
+        // The lane: a soft cyan strip the length of the walk, like the
+        // boarding queue's.
+        var lane = HubMeshBatch()
+        let a = Self.f(walk.points[0]), b = Self.f(walk.points[walk.points.count - 1])
+        let length = simd_distance(a, b)
+        lane.plane(center: (a + b) / 2 + [0, 0.05, 0], width: length, depth: 3.2)
+        if let mesh = lane.resource(name: "transferLane") {
+            let e = ModelEntity(mesh: mesh, materials: [materials[.queueGlow]])
+            e.components.set(HubMaterialTag(key: .queueGlow))
+            transferHall.addChild(e)
+        }
+        // Two lanes of walkers, one each way, spread along the walk; every
+        // other one pulls a suitcase (figure 0 carries one).
+        let east = HubPath([walk.points[0] + HubVec(0, 0, 0.8), walk.points[walk.points.count - 1] + HubVec(0, 0, 0.8)])
+        let west = HubPath([walk.points[0] + HubVec(0, 0, -0.8), walk.points[walk.points.count - 1] + HubVec(0, 0, -0.8)])
+        var walkers: [HubCrowd.Walker] = []
+        for k in 0..<count {
+            let outbound = k % 2 == 0
+            walkers.append(HubCrowd.Walker(
+                figure: k % 4 == 0 ? 0 : (k % 4 == 2 ? 2 : 1), scale: 2, cloth: (k * 3 + 1) % 8, skin: k % 4,
+                motion: .loop(outbound ? east : west, offset: Float(k) / Float(count),
+                              speed: (outbound ? 1 : -1) * (2.2 + Float(k % 5) * 0.18))))
+        }
+        let crowd = HubCrowd(figures: crowdFigures, walkers: walkers, materials: materials, name: "transferCrowd")
+        transferHall.addChild(crowd.entity)
+        transferCrowd = crowd
     }
 
     private var pulseCategory: AircraftCategory?
@@ -908,7 +967,7 @@ final class HubDynamics {
     private func updateRouteFan(_ links: [HubRouteLink]) {
         lastLinks = links
         let signature = links.map { "\($0.routeID.raw):\(Self.band($0.loadFactor)):\($0.dailyRoundTrips)" }
-            .joined(separator: ",") + "|\(highlightedRoute?.raw ?? -1)"
+            .joined(separator: ",") + "|\(highlightedRoute?.raw ?? -1)|\(banked)"
         guard signature != routeSignature else { return }
         routeSignature = signature
         routeFan.children.removeAll()
@@ -954,8 +1013,12 @@ final class HubDynamics {
                 e.components.set(HubMaterialTag(key: .routePulse))
                 e.scale = SIMD3<Float>(repeating: highlighted ? 3.4 : 2.3)
                 routeFan.addChild(e)
-                routePulses.append(RoutePulse(entity: e, arc: arc, offset: Float(k) / Float(count) + Float(arc) * 0.137,
-                                              speed: 1 / (7 + length / 300), outbound: k % 2 == 0))
+                // At a hub the lights leave in banks: every route's on one
+                // clock, in waves a third of a cycle apart, so the departures
+                // read as the waves of a banked schedule.
+                let offset = banked ? Float(k % 3) / 3 : Float(k) / Float(count) + Float(arc) * 0.137
+                routePulses.append(RoutePulse(entity: e, arc: arc, offset: offset,
+                                              speed: banked ? 1 / 11 : 1 / (7 + length / 300), outbound: k % 2 == 0))
             }
         }
         for (key, batch) in batches {
@@ -1252,6 +1315,7 @@ final class HubDynamics {
         // People walking: queues to the door, crew round the jets, the hall.
         for crowd in standCrowds.values { crowd.update(dt, detail: crowdDetail) }
         hallCrowd?.update(dt)
+        transferCrowd?.update(dt)
         if !popups.isEmpty {
             popups.removeAll { time - $0.born > 3.4 }
             // The last one gone: the labels drop it.

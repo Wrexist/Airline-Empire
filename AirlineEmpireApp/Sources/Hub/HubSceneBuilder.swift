@@ -618,9 +618,9 @@ struct HubSceneBuilder {
         with(.terminalRoof, .roof) {
             $0.roundedBox(center: [c.x, glassTop, c.z], size: [w + 3, 1.6, d + 5], bevel: 0.6, bottom: true)
         }
-        // The vaults stop short of the lounge site on the roof's east end
-        // (`HubLayout.facilitySites`), where the player's lounge is built.
-        let west = c.x - w * 0.43
+        // The vaults run between the two roof sites (`HubLayout.facilitySites`):
+        // the lounge's on the east end, the transfer centre's on the west.
+        let west = layout.site(.transferCentre).map { Float($0.footprint.maxX) + 4 } ?? c.x - w * 0.43
         let east = layout.site(.lounge).map { Float($0.footprint.minX) - 4 } ?? c.x + w * 0.43
         let vaultLength = max(w * 0.4, east - west)
         let vaultX = west + vaultLength / 2
