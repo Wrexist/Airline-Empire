@@ -1634,7 +1634,9 @@ struct HubSceneBuilder {
             }
         }
         if let label = p.label {
-            sign(label, at: [c.x, fl + box.hi.y - 0.5, front + 0.06], width: width * 0.5)
+            // On the middle unit's fascia, clear of the pilasters between units.
+            let x = c.x - width / 2 + unit * (Float((count - 1) / 2) + 0.5)
+            sign(label, at: [x, fl + box.hi.y - 0.5, front + 0.06], width: unit * 0.5)
         }
         return true
     }
