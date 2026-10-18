@@ -36,7 +36,11 @@ public struct AircraftMarketComparison: Equatable, Sendable {
         public let spec: AircraftTypeSpec
         /// Rotations one aircraft of this type can fly in a day at this
         /// route's distance and runways — the scheduler's own arithmetic.
+        /// Whole round trips: a long-haul rotation of two days is 0 here and
+        /// 0.5 in `tripsPerAircraft`.
         public let rotationsPerAircraft: Int
+        /// Round trips one aircraft flies a day, as a fraction.
+        public let tripsPerAircraft: Double
         /// Aircraft of this type the route's daily frequency needs. One when
         /// a single airframe can fly it; more when the type is too slow.
         public let aircraftNeeded: Int
@@ -57,9 +61,10 @@ public struct AircraftMarketComparison: Equatable, Sendable {
         public init(spec: AircraftTypeSpec, rotationsPerAircraft: Int,
                     aircraftNeeded: Int, capacityPerAircraftPerDay: Int,
                     frequencySeatsPerDay: Int, demandToday: Int,
-                    monthlyAfterAirframe: Money) {
+                    monthlyAfterAirframe: Money, tripsPerAircraft: Double? = nil) {
             self.spec = spec
             self.rotationsPerAircraft = rotationsPerAircraft
+            self.tripsPerAircraft = tripsPerAircraft ?? Double(rotationsPerAircraft)
             self.aircraftNeeded = aircraftNeeded
             self.capacityPerAircraftPerDay = capacityPerAircraftPerDay
             self.frequencySeatsPerDay = frequencySeatsPerDay
@@ -182,12 +187,17 @@ extension GameState {
                       aircraftRangeKm: spec.rangeKm,
                       aircraftRunwayRequirement: spec.runwayRequirement).isEmpty
             else { continue }
-            let rotationsPerAircraft = FlightSchedulingSystem.roundTripsPerAircraftPerDay(
-                distanceKm: route.distanceKm, spec: spec, ops: tuning.ops)
-            guard rotationsPerAircraft > 0 else { continue }
-            // Integer ceiling: the aircraft the route's own frequency takes.
-            let aircraftNeeded = (frequency + rotationsPerAircraft - 1)
-                / rotationsPerAircraft
+            // Long haul flies one round trip a rotation — half a round trip
+            // a day on a two-day one — so its frequency takes more airframes.
+            let cycle = FlightSchedulingSystem.rotation(distanceKm: route.distanceKm, spec: spec,
+                                                        ops: tuning.ops)
+            guard cycle.isFlyable else { continue }
+            let tripsPerAircraft = cycle.tripsPerDay
+            let rotationsPerAircraft = cycle.isLongHaul ? Int(tripsPerAircraft) : cycle.roundTrips
+            // Ceiling: the aircraft the route's own frequency takes.
+            let aircraftNeeded = cycle.isLongHaul
+                ? Int((Double(frequency) / tripsPerAircraft).rounded(.up))
+                : (frequency + rotationsPerAircraft - 1) / rotationsPerAircraft
             // The market sees the route's own frequency on this type; the
             // costs are the flights that frequency posts, and the fixed
             // charges scale with the aircraft it takes to fly them.
@@ -208,12 +218,13 @@ extension GameState {
             candidates.append(AircraftMarketComparison.Candidate(
                 spec: spec, rotationsPerAircraft: rotationsPerAircraft,
                 aircraftNeeded: aircraftNeeded,
-                capacityPerAircraftPerDay: rotationsPerAircraft * spec.seats * 2,
+                capacityPerAircraftPerDay: Int((tripsPerAircraft * Double(spec.seats * 2)).rounded()),
                 // The frequency is held, so the seats it offers are the
                 // route's own schedule on this type's cabin.
                 frequencySeatsPerDay: frequency * spec.seats * 2,
                 demandToday: demandToday,
-                monthlyAfterAirframe: Money(rounding: monthly)))
+                monthlyAfterAirframe: Money(rounding: monthly),
+                tripsPerAircraft: tripsPerAircraft))
         }
         // The money decides, then the fleet it takes, then the smaller cabin
         // — a tie on both is a tie the code breaks so the order never moves.

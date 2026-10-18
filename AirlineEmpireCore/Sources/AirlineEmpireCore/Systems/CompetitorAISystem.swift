@@ -359,12 +359,15 @@ public struct CompetitorAISystem: SimulationSystem {
                                         origin: AirportSpec, destination: AirportSpec,
                                         state: GameState, catalog: ContentCatalog,
                                         rotationsPerDay: Int? = nil,
+                                        tripsPerDay: Double? = nil,
                                         basis: RankingBasis = shippedRankingBasis) -> Double {
         let ops = catalog.tuning.ops
-        let rotations = rotationsPerDay ?? FlightSchedulingSystem.roundTripsPerAircraftPerDay(
-            distanceKm: distanceKm, spec: spec, ops: ops)
-        guard rotations > 0 else { return 0 }
-        let flights = Double(rotations * 2)
+        // `tripsPerDay`, when given, is a fraction a long-haul rotation flies
+        // (the player's estimates); the rivals price whole day rotations.
+        let trips = tripsPerDay ?? Double(rotationsPerDay ?? FlightSchedulingSystem.roundTripsPerAircraftPerDay(
+            distanceKm: distanceKm, spec: spec, ops: ops))
+        guard trips > 0 else { return 0 }
+        let flights = trips * 2
         let carried = min(passengersPerDay, flights * Double(spec.seats))
         let fare = DemandSystem.referenceFare(distanceKm: distanceKm,
                                              tuning: catalog.tuning.demand) * fareRatio
@@ -411,12 +414,16 @@ public struct CompetitorAISystem: SimulationSystem {
         public let demand: DemandSystem.ServiceDemand
         /// Revenue, or profit on the `.profit` basis, for one airframe day.
         public let value: Double
+        /// Round trips a day as priced, a fraction on long haul; equal to
+        /// `rotationsPerDay` on a day route.
+        public let tripsPerDay: Double
 
         public init(rotationsPerDay: Int, demand: DemandSystem.ServiceDemand,
-                    value: Double) {
+                    value: Double, tripsPerDay: Double? = nil) {
             self.rotationsPerDay = rotationsPerDay
             self.demand = demand
             self.value = value
+            self.tripsPerDay = tripsPerDay ?? Double(rotationsPerDay)
         }
     }
 
@@ -433,21 +440,25 @@ public struct CompetitorAISystem: SimulationSystem {
         origin: AirportSpec, destination: AirportSpec, distanceKm: Int,
         spec: AircraftTypeSpec, fareRatio: Double, serviceTier: ServiceTier,
         reputationMultiplier: Double = 1.0, incumbents: [Route] = [],
-        rotationsPerDay: Int? = nil, state: GameState, catalog: ContentCatalog,
+        rotationsPerDay: Int? = nil, tripsPerDay: Double? = nil,
+        state: GameState, catalog: ContentCatalog,
         basis: RankingBasis = shippedRankingBasis) -> AirframeDayEstimate {
         let rotations = rotationsPerDay ?? FlightSchedulingSystem.roundTripsPerAircraftPerDay(
             distanceKm: distanceKm, spec: spec, ops: catalog.tuning.ops)
+        // A fraction, when given, prices long haul flown less than daily.
+        let trips = tripsPerDay ?? Double(rotations)
         let demand = DemandSystem.serviceDemand(
             origin: origin.code, destination: destination.code, spec: spec,
-            roundTripsPerDay: rotations, fareRatio: fareRatio,
+            tripsPerDay: trips, fareRatio: fareRatio,
             reputationMultiplier: reputationMultiplier, incumbents: incumbents,
             state: state, catalog: catalog)
         let value = airframeDayValue(
             distanceKm: distanceKm, passengersPerDay: demand.capturedPerDay, spec: spec,
             fareRatio: fareRatio, serviceTier: serviceTier, origin: origin,
             destination: destination, state: state, catalog: catalog,
-            rotationsPerDay: rotations, basis: basis)
-        return AirframeDayEstimate(rotationsPerDay: rotations, demand: demand, value: value)
+            tripsPerDay: trips, basis: basis)
+        return AirframeDayEstimate(rotationsPerDay: rotations, demand: demand, value: value,
+                                   tripsPerDay: trips)
     }
 
     /// Deterministic candidate scoring: the pool an entrant could plan
@@ -501,8 +512,8 @@ public struct CompetitorAISystem: SimulationSystem {
             guard let airport = context.catalog.airport(end) else { return false }
             if airport.runwayClass < spec.runwayRequirement { return false }
         }
-        // The assignment validator refuses a round trip longer than the
-        // day; asking first keeps the slot from being spent on a refusal.
+        // Rivals fly day routes only: a round trip longer than the day is a
+        // long-haul rotation, which their network planning does not price.
         return FlightSchedulingSystem.roundTripsPerDay(spec: spec, on: route, state: state,
                                                        catalog: context.catalog) > 0
     }

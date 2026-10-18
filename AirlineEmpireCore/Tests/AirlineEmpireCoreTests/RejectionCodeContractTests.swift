@@ -181,23 +181,12 @@ struct RejectionCodeContractTests {
             .validate(state: state, catalog: catalog)?.code == "fleet.notYourAircraft")
     }
 
-    @Test("A round trip longer than the operating day is route.tooLongForDay")
+    @Test("A round trip beyond the longest rotation is route.tooLongForDay")
     func tooLongForDayCode() throws {
-        let catalog = try ContentCatalog.loadBundled()
-        // An AI airline buys the widebody the player's era would lock.
-        let engine = SimulationEngine(state: Fixtures.newState(seed: 4242),
-                                      systems: [], catalog: catalog)
-        _ = engine.applyNow(FoundAirlineCommand(
-            airlineName: "Contract Long Haul", kind: .ai, homeAirport: "LHR",
-            startingCash: Money.dollars(900_000_000),
-            aiProfile: AIProfile(archetype: .premium)))
-        let airline = try #require(engine.state.airlines.values.first).id
-        let (spec, far) = try #require(
-            AssignmentEligibilityTests.unrotatablePairing(from: "LHR", catalog: catalog))
-        _ = engine.applyNow(BuyUsedAircraftCommand(buyer: airline, type: spec.code, ageYears: 4))
-        _ = engine.applyNow(OpenRouteCommand(
-            airline: airline, origin: "LHR", destination: far,
-            dailyRoundTrips: 1, ticketPrice: Money.dollars(900)))
+        // Range enough for 9,000 km at a pace that would take four days to
+        // get there and back: past every rotation the scheduler plans.
+        let (catalog, engine, airline, _, _) = try LongHaulFixtures.world(
+            to: LongHaulFixtures.nineThousand, type: "SLW", assign: false)
         let state = engine.state
         let aircraft = try #require(state.fleet(of: airline).first)
         let route = try #require(state.routes(of: airline).first)

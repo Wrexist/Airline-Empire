@@ -39,8 +39,25 @@ public struct FleetSystem: SimulationSystem {
                 }
 
             case .active:
+                let before = aircraft.condition
                 aircraft.condition = max(0, aircraft.condition - tuning.dailyConditionDecay)
-                if aircraft.condition < tuning.maintenanceConditionThreshold {
+                var due = aircraft.condition < tuning.maintenanceConditionThreshold
+                // Long haul (docs/ROUTES.md): the check waits until the
+                // aircraft is home rather than stranding it at the far end
+                // with its return leg cancelled; and one home that could not
+                // fly another rotation above the threshold goes in now — the
+                // scheduler has kept it on the ground today for that reason.
+                if let longHaul = state.longHaulRotation(of: aircraft, catalog: context.catalog) {
+                    if state.hasLegsAhead(aircraftID) {
+                        due = false
+                    } else if !due {
+                        due = !FlightSchedulingSystem.completesRotation(
+                            condition: before, rotation: longHaul.rotation,
+                            flightMinutes: longHaul.flightMinutes, fleet: tuning,
+                            ops: context.catalog.tuning.ops)
+                    }
+                }
+                if due {
                     let spec = context.catalog.aircraftType(aircraft.typeCode)!
                     var cost = FleetEconomics.maintenanceCheckCost(
                         type: spec, ageYears: aircraft.ageYears, tuning: tuning)

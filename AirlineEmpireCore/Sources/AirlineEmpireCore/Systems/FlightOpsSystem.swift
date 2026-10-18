@@ -42,12 +42,17 @@ public struct FlightOpsSystem: SimulationSystem {
                         let outbound = flight.from == route.origin
                         let remaining = outbound ? route.remainingOutboundToday
                                                  : route.remainingInboundToday
-                        let sold = min(aircraft.cabin(for: spec).totalSeats, max(0, remaining))
+                        // Long haul flown less than daily also sells the days
+                        // without a departure: their passengers take this one.
+                        let backlog = Self.backlog(on: route, outbound: outbound,
+                                                   state: state, catalog: context.catalog)
+                        let sold = min(aircraft.cabin(for: spec).totalSeats, max(0, remaining) + backlog)
                         flight.passengers = sold
+                        let fromToday = min(sold, max(0, remaining))
                         if outbound {
-                            route.remainingOutboundToday = remaining - sold
+                            route.remainingOutboundToday = remaining - fromToday
                         } else {
-                            route.remainingInboundToday = remaining - sold
+                            route.remainingInboundToday = remaining - fromToday
                         }
                         state.routes[flight.route] = route
                     }
@@ -131,6 +136,19 @@ public struct FlightOpsSystem: SimulationSystem {
             state.flights[flightID] = flight
             state.aircraft[flight.aircraft] = aircraft
         }
+    }
+
+    /// Passengers a departure on a long-haul route flown less than daily
+    /// takes beyond today's: the days between its departures in this
+    /// direction (`FlightSchedulingSystem.demandDaysPerDeparture`), at
+    /// today's demand. None on a route flown every day.
+    static func backlog(on route: Route, outbound: Bool, state: GameState,
+                        catalog: ContentCatalog) -> Int {
+        let days = FlightSchedulingSystem.demandDaysPerDeparture(route: route, state: state,
+                                                                 catalog: catalog)
+        guard days > 1 else { return 0 }
+        let today = outbound ? route.demandOutboundToday : route.demandInboundToday
+        return Int((Double(max(0, today)) * (days - 1)).rounded(.down))
     }
 
     /// The books a revenue flight closes when it is done: route stats, the
@@ -262,7 +280,8 @@ public struct FlightOpsSystem: SimulationSystem {
             state.routes[flight.route] = route
         }
 
-        let until = context.current + .minutes(state.turnaroundMinutes(spec: spec, airline: owner))
+        let until = context.current + .minutes(state.turnaroundMinutes(
+            spec: spec, airline: owner, at: flight.to, tuning: catalog.tuning.airportServices))
         flight.phase = .turnaround(until: until)
         context.emit(.flightArrived(id: flightID, route: flight.route,
                                     delayMinutes: flight.delayMinutes))

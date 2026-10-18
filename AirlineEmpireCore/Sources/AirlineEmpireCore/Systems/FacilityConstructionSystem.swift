@@ -111,6 +111,25 @@ public struct OperatingWindow: Equatable, Sendable {
     }
 }
 
+/// The minutes an aircraft spends turning at each end of a route.
+public struct RouteTurnarounds: Equatable, Sendable {
+    public let atOrigin: Int64
+    public let atDestination: Int64
+
+    public init(atOrigin: Int64, atDestination: Int64) {
+        self.atOrigin = atOrigin
+        self.atDestination = atDestination
+    }
+
+    /// Both turns of one round trip.
+    public var roundTrip: Int64 { atOrigin + atDestination }
+
+    /// The turn at `airport`, one end of `route`.
+    public func at(_ airport: AirportCode, on route: Route) -> Int64 {
+        airport == route.origin ? atOrigin : atDestination
+    }
+}
+
 extension GameState {
     /// Whether the route's operator has a crew base open at either end.
     public func hasCrewBase(on route: Route) -> Bool {
@@ -140,6 +159,23 @@ extension GameState {
             minutes = Int64((Double(minutes) * 0.85).rounded())
         }
         return minutes
+    }
+
+    /// Minutes an aircraft of `spec` turns at `airport` for this airline —
+    /// what the scheduler plans at each end of a route and what flight
+    /// operations holds the aircraft for when it lands there.
+    public func turnaroundMinutes(spec: AircraftTypeSpec, airline: AirlineID, at airport: AirportCode,
+                                  tuning: AirportFacilityTuning) -> Int64 {
+        turnaroundMinutes(spec: spec, airline: airline)
+    }
+
+    /// The turnaround at each end of a route, for its operator.
+    public func turnarounds(spec: AircraftTypeSpec, on route: Route,
+                            tuning: AirportFacilityTuning) -> RouteTurnarounds {
+        RouteTurnarounds(
+            atOrigin: turnaroundMinutes(spec: spec, airline: route.airline, at: route.origin, tuning: tuning),
+            atDestination: turnaroundMinutes(spec: spec, airline: route.airline, at: route.destination,
+                                             tuning: tuning))
     }
 
     /// The best hangar the owner has where this aircraft flies: either end of

@@ -143,6 +143,12 @@ extension GameState {
                 from: origin, to: destination,
                 aircraftRangeKm: spec.rangeKm,
                 aircraftRunwayRequirement: spec.runwayRequirement).isEmpty else { continue }
+            // Long haul flies a fraction of a round trip a day — half on a
+            // two-day rotation — and is priced so; a rotation too long to
+            // plan is no airframe for the pair.
+            let cycle = FlightSchedulingSystem.rotation(distanceKm: distanceKm, spec: spec,
+                                                        ops: catalog.tuning.ops)
+            guard cycle.isFlyable else { continue }
             let perDay = CompetitorAISystem.airframeDayEstimate(
                 origin: originSpec, destination: destinationSpec, distanceKm: distanceKm,
                 spec: spec, fareRatio: 1.0, serviceTier: .standard,
@@ -150,6 +156,8 @@ extension GameState {
                 rotationsPerDay: min(PlayerRouteDefaults.dailyRoundTrips,
                     FlightSchedulingSystem.roundTripsPerAircraftPerDay(
                         distanceKm: distanceKm, spec: spec, ops: catalog.tuning.ops)),
+                tripsPerDay: cycle.isLongHaul
+                    ? min(Double(PlayerRouteDefaults.dailyRoundTrips), cycle.tripsPerDay) : nil,
                 state: self, catalog: catalog, basis: .profit).value
             let monthly = perDay * 30 - spec.leaseMonthly.asDouble - payroll
             if best == nil || monthly > best!.monthly { best = (spec, monthly) }

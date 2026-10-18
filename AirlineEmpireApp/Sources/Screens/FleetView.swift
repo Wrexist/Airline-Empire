@@ -1894,7 +1894,7 @@ struct AircraftShopSheet: View {
                 }
             }
             Text("\(candidate.spec.seats) seats \u{00B7} "
-                 + "\(candidate.rotationsPerAircraft)\u{00D7}/day per aircraft"
+                 + "\(Self.tripsText(candidate.tripsPerAircraft))\u{00D7}/day per aircraft"
                  + (candidate.coversFrequencyAlone
                     ? "" : " \u{00B7} needs \(candidate.aircraftNeeded) aircraft"))
                 .font(.caption).foregroundStyle(AETheme.mutedText)
@@ -1942,7 +1942,13 @@ struct AircraftShopSheet: View {
                 ? "One aircraft flies \(frequency)\u{00D7}/day and the cabin covers the demand."
                 : "One aircraft flies \(frequency)\u{00D7}/day; the cabin seats \(Format.count(Int64(candidate.frequencySeatsPerDay))) of \(Format.count(Int64(candidate.demandToday))) a day."
         }
-        return "\(frequency)\u{00D7}/day takes \(candidate.aircraftNeeded) of this type; a single one flies \(candidate.rotationsPerAircraft)\u{00D7}."
+        return "\(frequency)\u{00D7}/day takes \(candidate.aircraftNeeded) of this type; a single one flies \(Self.tripsText(candidate.tripsPerAircraft))\u{00D7}."
+    }
+
+    /// Round trips a day one aircraft flies, a fraction on long haul: "3",
+    /// "0.5" — a two-day rotation flies every other day.
+    private static func tripsText(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(0...2)))
     }
 
     private func routePicker(snapshot: GameState, catalog: ContentCatalog,

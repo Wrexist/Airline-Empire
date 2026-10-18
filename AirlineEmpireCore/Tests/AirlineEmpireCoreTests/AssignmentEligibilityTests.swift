@@ -143,11 +143,11 @@ struct AssignmentEligibilityTests {
         #expect(candidate.note == nil)
     }
 
-    /// A long-haul pairing range alone would wave through: a type and a
-    /// destination inside its range and both runways, where one round trip
-    /// is still longer than the standard operating day. Searched for rather
-    /// than named, for the reason `tightRangeIsFlagged` gives.
-    static func unrotatablePairing(from home: AirportCode, catalog: ContentCatalog)
+    /// A long-haul pairing: a type and a destination inside its range and
+    /// both runways, where one round trip is longer than the standard
+    /// operating day. Searched for rather than named, for the reason
+    /// `tightRangeIsFlagged` gives.
+    static func longHaulPairing(from home: AirportCode, catalog: ContentCatalog)
         -> (spec: AircraftTypeSpec, destination: AirportCode)? {
         guard let origin = catalog.airport(home) else { return nil }
         let longestFirst = catalog.orderedAircraftTypeCodes
@@ -168,12 +168,13 @@ struct AssignmentEligibilityTests {
         return nil
     }
 
-    /// GAME_AUDIT_2026-10-18 §0.2: a widebody was accepted onto a route it
-    /// reaches but can never rotate — the scheduler plans whole round trips
-    /// inside the day, so it got no flights while it kept billing. Model
-    /// and validator now refuse it together, for the same reason.
-    @Test("A round trip longer than the operating day is blocked, by model and validator alike")
-    func roundTripLongerThanTheDayIsBlocked() throws {
+    /// GAME_AUDIT_2026-10-18 §0.2 found a widebody accepted onto a route it
+    /// reaches but could never rotate inside the day, so it got no flights
+    /// while it kept billing; the first fix refused it. Long haul now flies
+    /// such a route as a rotation over days (`LongHaulTests`), so model and
+    /// validator accept it together, and the model says how it flies.
+    @Test("A round trip longer than the operating day is accepted as a long-haul rotation, by model and validator alike")
+    func roundTripLongerThanTheDayIsALongHaulRotation() throws {
         let catalog = try ContentCatalog.loadBundled()
         // No systems: nothing moves, and an AI airline is free of the
         // player's era locks, so the widebody can simply be bought.
@@ -184,8 +185,8 @@ struct AssignmentEligibilityTests {
             startingCash: Money.dollars(900_000_000),
             aiProfile: AIProfile(archetype: .premium))) == .applied)
         let airline = try #require(engine.state.airlines.values.first).id
-        let (spec, far) = try #require(Self.unrotatablePairing(from: "LHR", catalog: catalog),
-                                       "no type in the catalog reaches a route it cannot rotate")
+        let (spec, far) = try #require(Self.longHaulPairing(from: "LHR", catalog: catalog),
+                                       "no type in the catalog reaches past the operating day")
         #expect(engine.applyNow(BuyUsedAircraftCommand(
             buyer: airline, type: spec.code, ageYears: 4)) == .applied)
         #expect(engine.applyNow(OpenRouteCommand(
@@ -196,20 +197,19 @@ struct AssignmentEligibilityTests {
         let route = try #require(state.routes(of: airline).first)
         #expect(route.distanceKm <= spec.rangeKm, "precondition: range alone allows it")
 
-        let rejection = AssignAircraftToRouteCommand(
+        #expect(AssignAircraftToRouteCommand(
             airline: airline, route: route.id, aircraftID: aircraft.id)
-            .validate(state: state, catalog: catalog)
-        #expect(rejection?.code == "route.tooLongForDay")
-
+            .validate(state: state, catalog: catalog) == nil)
+        let rotation = FlightSchedulingSystem.rotation(spec: spec, on: route, state: state,
+                                                       catalog: catalog)
+        #expect(rotation.isLongHaul && rotation.isFlyable)
         let candidate = state.candidate(aircraft: aircraft, route: route, catalog: catalog)
-        guard case .roundTripExceedsDay(let roundTrip, let day)? = candidate.blocker else {
-            Issue.record("expected roundTripExceedsDay, got \(String(describing: candidate.blocker))")
-            return
-        }
-        #expect(day == catalog.tuning.ops.operatingDayMinutes)
-        #expect(roundTrip > day)
-        #expect(candidate.note == nil)
-        // And the AI, asking the same question, does not spend a slot on it.
+        #expect(candidate.isEligible)
+        let tight = Double(route.distanceKm)
+            >= AssignmentThresholds.tightRangeFraction * Double(spec.rangeKm)
+        #expect(candidate.note == (tight ? .tightRange(marginKm: spec.rangeKm - route.distanceKm)
+                                         : .longHaul(rotationDays: rotation.days)))
+        // The rivals, asking for day rotations, still pass it by.
         #expect(FlightSchedulingSystem.roundTripsPerDay(spec: spec, on: route, state: state,
                                                         catalog: catalog) == 0)
     }

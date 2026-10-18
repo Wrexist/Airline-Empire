@@ -209,9 +209,10 @@ public struct DemandSystem: SimulationSystem {
         let airportComfort = Double(loungeLevels) / 2 * catalog.tuning.airportServices.loungeComfortPerLevel
         // The trips the route can actually fly, not the frequency it asks
         // for: an unflyable frequency bought schedule quality for nothing.
+        // A fraction on long haul flown less than daily.
         return offerQualityTerms(
             spec: spec,
-            roundTripsPerDay: FlightSchedulingSystem.flyableRoundTrips(
+            tripsPerDay: FlightSchedulingSystem.flyableTripsPerDay(
                 route: route, state: state, catalog: catalog),
             operationsScore: route.stats.completionRate * 0.5 + route.stats.punctuality * 0.5,
             reputationMultiplier: reputation, tuning: catalog.tuning.demand,
@@ -229,7 +230,19 @@ public struct DemandSystem: SimulationSystem {
                                          operationsScore: Double,
                                          reputationMultiplier: Double,
                                          tuning: DemandTuning, comfortOverride: Double? = nil) -> OfferQualityTerms {
-        let trips = Double(min(roundTripsPerDay, tuning.scheduleQualityTripCap))
+        offerQualityTerms(spec: spec, tripsPerDay: Double(roundTripsPerDay),
+                          operationsScore: operationsScore,
+                          reputationMultiplier: reputationMultiplier,
+                          tuning: tuning, comfortOverride: comfortOverride)
+    }
+
+    /// The same at a fraction of a round trip a day — long haul flown less
+    /// than daily (`FlightSchedulingSystem.flyableTripsPerDay`).
+    public static func offerQualityTerms(spec: AircraftTypeSpec, tripsPerDay: Double,
+                                         operationsScore: Double,
+                                         reputationMultiplier: Double,
+                                         tuning: DemandTuning, comfortOverride: Double? = nil) -> OfferQualityTerms {
+        let trips = min(tripsPerDay, Double(tuning.scheduleQualityTripCap))
         let schedule = pow(trips / tuning.scheduleQualityReferenceTrips,
                            tuning.scheduleQualityExponent)
         let comfort = tuning.comfortBase + tuning.comfortWeight * (comfortOverride ?? spec.comfortBaseline)
@@ -350,13 +363,29 @@ public struct DemandSystem: SimulationSystem {
         reputationMultiplier: Double = 1.0,
         incumbents: [Route], state: GameState,
         catalog: ContentCatalog) -> ServiceDemand {
+        serviceDemand(origin: origin, destination: destination, spec: spec,
+                      tripsPerDay: Double(roundTripsPerDay), fareRatio: fareRatio,
+                      operationsScore: operationsScore, reputationMultiplier: reputationMultiplier,
+                      incumbents: incumbents, state: state, catalog: catalog)
+    }
+
+    /// The same at a fraction of a round trip a day — long haul flown less
+    /// than daily. Its seats a day are the fraction's: one 300-seat aircraft
+    /// on a two-day rotation puts 300 on sale a day, both directions.
+    public static func serviceDemand(
+        origin: AirportCode, destination: AirportCode, spec: AircraftTypeSpec,
+        tripsPerDay: Double, fareRatio: Double,
+        operationsScore: Double = unprovenOperationsScore,
+        reputationMultiplier: Double = 1.0,
+        incumbents: [Route], state: GameState,
+        catalog: ContentCatalog) -> ServiceDemand {
         let tuning = catalog.tuning.demand
-        let seats = Double(max(0, roundTripsPerDay) * 2 * spec.seats)
-        guard roundTripsPerDay > 0, let distance = catalog.distanceKm(origin, destination)
+        let seats = max(0, tripsPerDay) * 2 * Double(spec.seats)
+        guard tripsPerDay > 0, let distance = catalog.distanceKm(origin, destination)
         else { return ServiceDemand(poolPerDay: 0, capturedPerDay: 0, seatsPerDay: 0) }
 
         let quality = offerQualityTerms(
-            spec: spec, roundTripsPerDay: roundTripsPerDay,
+            spec: spec, tripsPerDay: tripsPerDay,
             operationsScore: operationsScore,
             reputationMultiplier: reputationMultiplier, tuning: tuning).product
         let business = utility(fareRatio: fareRatio, quality: quality,

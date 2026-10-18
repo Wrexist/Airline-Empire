@@ -410,4 +410,16 @@ enum Format {
     /// Whole numbers with thousands separators — `Format.money` compresses
     /// above $10k, but a passenger count should read exactly.
     static func count(_ value: Int64) -> String { grouped(value) }
+
+    /// Round trips a day, a fraction on long haul: "3 round trips/day",
+    /// "1 round trip/day", "0.5 round trips/day". A whole number reads whole;
+    /// a fraction keeps up to two places, because half a round trip a day is
+    /// a rotation every other day and rounding it to "1" or "0" would lie.
+    static func roundTrips(perDay value: Double) -> String {
+        let whole = value.rounded()
+        if abs(value - whole) < 0.005 {
+            return whole == 1 ? "1 round trip/day" : "\(grouped(Int64(whole))) round trips/day"
+        }
+        return "\(value.formatted(.number.precision(.fractionLength(0...2)))) round trips/day"
+    }
 }
