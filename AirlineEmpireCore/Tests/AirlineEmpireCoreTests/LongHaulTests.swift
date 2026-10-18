@@ -321,9 +321,11 @@ struct LongHaulTests {
             to: LongHaulFixtures.nineThousand, type: "LH9")
         let aircraftID = try #require(fleet.first)
         engine.advance(ticks: Fixtures.ticksPerDay * 2)  // day 2, 00:00
-        let overnight = try #require(engine.state.flights.values.first {
-            $0.route == routeID && $0.from == LongHaulFixtures.nineThousand
-        })
+        // Day 2's own return leg is planned by now too: the earliest leg
+        // back is day 1's (dictionary order is not a time order).
+        let overnight = try #require(engine.state.flights.values
+            .filter { $0.route == routeID && $0.from == LongHaulFixtures.nineThousand }
+            .min { $0.scheduledDeparture < $1.scheduledDeparture })
         guard case .enRoute(let departed) = overnight.phase else {
             Issue.record("the return leg should be airborne at midnight"); return
         }
