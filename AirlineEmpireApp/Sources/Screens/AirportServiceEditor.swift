@@ -104,7 +104,7 @@ struct AirportFacilityEditor: View {
         let days = AirportService.allCases.map {
             $0.buildDays(from: $0.level(in: installed), to: $0.level(in: proposed), tuning: tuning)
         }.max() ?? 0
-        return days > 0 ? " Building takes up to \(days) days." : ""
+        return days > 0 ? " Building takes up to \(Format.days(days))." : ""
     }
 
     private var introduction: some View {
@@ -160,7 +160,7 @@ struct AirportFacilityEditor: View {
                             }
                         }
                         if let building {
-                            Label("Under construction: \(service.levelName(building.level)) opens in \(building.daysLeft(at: snapshot.clock.now)) days",
+                            Label("Under construction: \(service.levelName(building.level)) opens in \(Format.days(building.daysLeft(at: snapshot.clock.now)))",
                                   systemImage: "hammer.fill")
                                 .font(.caption.weight(.semibold)).foregroundStyle(AETheme.caution)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -184,7 +184,7 @@ struct AirportFacilityEditor: View {
                 AirportFact(title: "Installation now", value: Format.money(model.installation))
                 AirportFact(title: "Monthly cost once open", value: Format.money(model.monthly))
                 if model.buildDays > 0 {
-                    AirportFact(title: "Build time", value: "\(model.buildDays) days")
+                    AirportFact(title: "Build time", value: Format.days(model.buildDays))
                 }
                 ViewThatFits(in: .horizontal) {
                     HStack {
