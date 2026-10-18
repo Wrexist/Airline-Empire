@@ -293,12 +293,13 @@ struct MonetizationTests {
     /// not there is an introductory one, and the introductory price may
     /// never appear without it.
     @Test func theCommitmentLineAlwaysNamesTheBilledAmount() {
-        let withIntro = PaywallContent.commitment(introductory: "$0.99",
-                                                  standard: "$8.99",
-                                                  period: "week")
-        #expect(withIntro.contains("$8.99"))
-        #expect(withIntro.contains("$0.99"))
-        #expect(withIntro.contains("Renews automatically"))
+        for offer in [Self.launchOffer, Self.monthlyInstalments, Self.upFront, Self.freeWeek] {
+            let withIntro = PaywallContent.commitment(introductory: offer,
+                                                      standard: "$8.99",
+                                                      period: "week")
+            #expect(withIntro.contains("then $8.99 per week"), "\(offer)")
+            #expect(withIntro.contains("Renews automatically"), "\(offer)")
+        }
 
         let without = PaywallContent.commitment(introductory: nil,
                                                 standard: "$8.99",
@@ -307,14 +308,80 @@ struct MonetizationTests {
         #expect(without.contains("$0.99") == false)
     }
 
+    // MARK: - Introductory offers, by shape
+
+    /// The offer 1.0 launched with: one week, paid as you go.
+    static let launchOffer = PaywallContent.IntroductoryOffer(
+        price: "$0.99", paymentMode: .payAsYouGo,
+        periodValue: 1, periodUnit: .week, periodCount: 1)
+    static let monthlyInstalments = PaywallContent.IntroductoryOffer(
+        price: "$0.99", paymentMode: .payAsYouGo,
+        periodValue: 1, periodUnit: .month, periodCount: 3)
+    static let upFront = PaywallContent.IntroductoryOffer(
+        price: "$2.99", paymentMode: .payUpFront,
+        periodValue: 3, periodUnit: .month, periodCount: 1)
+    static let freeWeek = PaywallContent.IntroductoryOffer(
+        price: "$0.00", paymentMode: .freeTrial,
+        periodValue: 1, periodUnit: .week, periodCount: 1)
+
+    /// Guideline 3.1.2: the sentence above the button must describe the
+    /// charge Apple will make. It used to take the offer's price and borrow
+    /// the renewal period for its length, so any offer but the launch one —
+    /// changed in App Store Connect, with no build — would have been stated
+    /// wrongly. Each payment mode, period and count is phrased from the
+    /// offer itself.
+    @Test func theIntroductorySentenceFollowsTheOffersShape() {
+        // The launch offer reads exactly as it always has.
+        #expect(PaywallContent.commitment(introductory: Self.launchOffer,
+                                          standard: "$8.99", period: "week")
+            == "$0.99 for your first week, then $8.99 per week. "
+            + "Renews automatically until you cancel.")
+        #expect(PaywallContent.introductoryTerms(Self.monthlyInstalments)
+            == "$0.99 per month for your first 3 months")
+        #expect(PaywallContent.introductoryTerms(Self.upFront)
+            == "$2.99 for your first 3 months")
+        // A free trial never states its zero price as a charge.
+        #expect(PaywallContent.introductoryTerms(Self.freeWeek)
+            == "Free for your first week")
+
+        // StoreKit's other spellings of the same lengths.
+        let sevenDays = PaywallContent.IntroductoryOffer(
+            price: "$0.99", paymentMode: .payAsYouGo,
+            periodValue: 7, periodUnit: .day, periodCount: 1)
+        #expect(PaywallContent.introductoryTerms(sevenDays) == "$0.99 for your first week")
+        let twelveMonths = PaywallContent.IntroductoryOffer(
+            price: "$19.99", paymentMode: .payUpFront,
+            periodValue: 12, periodUnit: .month, periodCount: 1)
+        #expect(PaywallContent.introductoryTerms(twelveMonths) == "$19.99 for your first year")
+        let fortnightly = PaywallContent.IntroductoryOffer(
+            price: "$1.49", paymentMode: .payAsYouGo,
+            periodValue: 2, periodUnit: .week, periodCount: 2)
+        #expect(PaywallContent.introductoryTerms(fortnightly)
+            == "$1.49 every 2 weeks for your first 4 weeks")
+        let threeDaysFree = PaywallContent.IntroductoryOffer(
+            price: "$0.00", paymentMode: .freeTrial,
+            periodValue: 3, periodUnit: .day, periodCount: 1)
+        #expect(PaywallContent.introductoryTerms(threeDaysFree) == "Free for your first 3 days")
+    }
+
     /// The call to action names a number in every state it can be in — no
     /// bare "Continue", which is the button that gets apps rejected and
-    /// charges refunded.
+    /// charges refunded. A free trial charges nothing today and says "free"
+    /// instead of "$0.00".
     @Test func theCallToActionAlwaysNamesAPrice() {
-        #expect(PaywallContent.callToAction(introductory: "$0.99",
+        #expect(PaywallContent.callToAction(introductory: Self.launchOffer,
                                             standard: "$8.99",
                                             isSubscription: true)
             .contains("$0.99"))
+        #expect(PaywallContent.callToAction(introductory: Self.upFront,
+                                            standard: "$8.99",
+                                            isSubscription: true)
+            .contains("$2.99"))
+        let trial = PaywallContent.callToAction(introductory: Self.freeWeek,
+                                                standard: "$8.99",
+                                                isSubscription: true)
+        #expect(trial.lowercased().contains("free"))
+        #expect(trial.contains("$0.00") == false)
         #expect(PaywallContent.callToAction(introductory: nil,
                                             standard: "$8.99",
                                             isSubscription: true)
