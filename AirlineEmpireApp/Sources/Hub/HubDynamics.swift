@@ -27,6 +27,11 @@ final class HubMover {
     private let speeds: [Float]
     /// Where each original leg ends, measured along the rounded path.
     private let legEnds: [Float]
+    /// The rounded path's points and the distance along it to each, so a
+    /// position is found by bisection rather than by measuring every leg
+    /// twice a frame.
+    private let points: [SIMD3<Float>]
+    private let stops: [Float]
     private let length: Float
     private let closed: Bool
     private let accel: Float
@@ -49,7 +54,15 @@ final class HubMover {
         self.height = height
         let resolved = speeds.isEmpty ? [Float(6)] : speeds
         self.speeds = resolved
-        let total = Float(path.length)
+        let points = path.points.map { SIMD3<Float>(Float($0.x), Float($0.y), Float($0.z)) }
+        var stops: [Float] = [0]
+        stops.reserveCapacity(points.count)
+        for (a, b) in zip(points, points.dropFirst()) {
+            stops.append(stops[stops.count - 1] + simd_distance(a, b))
+        }
+        self.points = points
+        self.stops = stops
+        let total = stops[stops.count - 1]
         length = total
         closed = path.points.count > 2 && path.points.first == path.points.last
         accel = style == .air ? 3.5 : 2.4
@@ -108,7 +121,10 @@ final class HubMover {
         pose(dt)
     }
 
-    private func at(_ d: Float) -> HubVec {
+    /// The point `d` along the path (wrapped round a closed one, clamped to
+    /// the ends of an open one) — `HubPath.sample`, by bisection.
+    private func at(_ d: Float) -> SIMD3<Float> {
+        guard points.count > 1 else { return points.first ?? .zero }
         var x = d
         if closed {
             x = x.truncatingRemainder(dividingBy: length)
@@ -116,14 +132,21 @@ final class HubMover {
         } else {
             x = max(0, min(length, x))
         }
-        return path.sample(at: Double(x)).position
+        var lo = 0, hi = points.count - 1
+        while hi - lo > 1 {
+            let mid = (lo + hi) / 2
+            if stops[mid] < x { lo = mid } else { hi = mid }
+        }
+        let span = stops[hi] - stops[lo]
+        let t = span > 0 ? min(1, max(0, (x - stops[lo]) / span)) : 0
+        return points[lo] + (points[hi] - points[lo]) * t
     }
 
     private func pose(_ dt: Float) {
         let here = at(distance)
         let lookahead: Float = style == .air ? 30 + speed * 0.8 : 3 + speed * 0.45
         let ahead = at(distance + lookahead * (dwell > 0 ? -direction : direction))
-        let dx = Float(ahead.x - here.x), dz = Float(ahead.z - here.z)
+        let dx = ahead.x - here.x, dz = ahead.z - here.z
         let flat = (dx * dx + dz * dz).squareRoot()
         let wanted = flat > 0.05 ? atan2(-dz, dx) : (heading ?? 0)
         let previous = heading ?? wanted
@@ -135,11 +158,11 @@ final class HubMover {
             let yawRate = dt > 0 ? Self.wrap(yaw - previous) / dt : 0
             let wantBank = max(-0.5, min(0.5, -yawRate * 1.6))
             bank += (wantBank - bank) * min(1, dt * 2)
-            let climb = flat > 0.5 ? Float(ahead.y - here.y) / flat : 0
+            let climb = flat > 0.5 ? (ahead.y - here.y) / flat : 0
             let wantPitch = here.y > 0.5 || climb > 0.01 ? max(-0.1, min(0.24, atan(climb))) : 0
             pitch += (wantPitch - pitch) * min(1, dt * 2.5)
         }
-        entity.position = [Float(here.x), Float(here.y) + height, Float(here.z)]
+        entity.position = [here.x, here.y + height, here.z]
         entity.orientation = simd_quatf(angle: yaw, axis: [0, 1, 0])
             * simd_quatf(angle: pitch, axis: [0, 0, 1])
             * simd_quatf(angle: bank, axis: [1, 0, 0])
@@ -291,6 +314,9 @@ final class HubDynamics {
     private var interiorCrowd = Entity()
     private var overlays = Entity()
     private var pulse: [Entity] = []
+    /// Each pulse ring's brightness step (`HubMaterials.pulseStep`), -1 before
+    /// its additive material is first set.
+    private var ringSteps: [Int] = []
     /// The focused jet's engine on the camera side, in the jet's own frame.
     private var pulseEngine: SIMD3<Float> = .zero
     private var routeLine = Entity()
@@ -300,7 +326,17 @@ final class HubDynamics {
     /// The player's routes out of the hub (`updateRouteFan`).
     private var routeFan = Entity()
     private var routeArcs: [(link: HubRouteLink, points: [SIMD3<Float>])] = []
-    private var routePulses: [(entity: Entity, arc: Int, offset: Float, speed: Float, outbound: Bool)] = []
+    private struct RoutePulse {
+        let entity: Entity
+        let arc: Int
+        let offset: Float
+        let speed: Float
+        let outbound: Bool
+        /// The opacity last set, so a light in full view is not given a
+        /// new component every frame.
+        var opacity: Float = -1
+    }
+    private var routePulses: [RoutePulse] = []
     private var routeSignature = ""
     /// The player's facility buildings and their construction.
     let yard: HubFacilityYard
@@ -321,6 +357,13 @@ final class HubDynamics {
     private var popupSerial = 0
     /// Each player stand's stage at the last snapshot, to see a pushback start.
     private var lastStages: [Int: HubTurnaroundStage] = [:]
+
+    /// Bumped whenever the labels change other than by moving with the
+    /// camera, so the scene re-projects only when something did.
+    private(set) var anchorsRevision = 0
+    /// Labels that move by themselves (the departures' pop-ups): projected
+    /// every frame while any show.
+    var hasMovingAnchors: Bool { !popups.isEmpty }
 
     var anchors: [HubAnchor] {
         guard !popups.isEmpty else { return snapshotAnchors }
@@ -362,6 +405,8 @@ final class HubDynamics {
             guard highlightedRoute != oldValue else { return }
             routeSignature = ""
             if let last = lastLinks { updateRouteFan(last) }
+            // Its label lights up now, not at the next snapshot.
+            if let snapshot = lastSnapshot { rebuildAnchors(snapshot) }
         }
     }
     private var lastLinks: [HubRouteLink]?
@@ -681,6 +726,7 @@ final class HubDynamics {
     private func rebuildFocusOverlays() {
         overlays.children.removeAll()
         pulse.removeAll()
+        ringSteps.removeAll()
         pulseCategory = nil
         guard let index = focusStand, index < layout.stands.count else { return }
         let stand = layout.stands[index]
@@ -720,6 +766,13 @@ final class HubDynamics {
             overlays.addChild(ring)
             pulse.append(ring)
         }
+        ringSteps = Array(repeating: -1, count: pulse.count)
+    }
+
+    /// The scene repainted every material for the time of day, the rings'
+    /// additive glow with it: set it again on the next frame.
+    func repainted() {
+        for k in ringSteps.indices { ringSteps[k] = -1 }
     }
 
     // MARK: Anchors
@@ -826,6 +879,7 @@ final class HubDynamics {
                                   kind: .route(tag)))
         }
         snapshotAnchors = list
+        anchorsRevision &+= 1
     }
 
     private static func symbol(_ stage: HubTurnaroundStage?) -> String {
@@ -864,6 +918,12 @@ final class HubDynamics {
         let t = layout.terminal
         let start = SIMD3<Float>(Float(t.center.x), 26, Float(t.center.z))
         let reach = Float(min(1_800, max(900, max(layout.bounds.width, layout.bounds.depth) * 0.45)))
+        // Lights on the sixteen busiest routes and the highlighted one: four
+        // a route over a big network would be hundreds of moving entities.
+        let lit = Set(links.enumerated().sorted {
+            $0.element.dailyRoundTrips != $1.element.dailyRoundTrips
+                ? $0.element.dailyRoundTrips > $1.element.dailyRoundTrips : $0.offset < $1.offset
+        }.prefix(16).map(\.element.routeID))
         var batches: [HubMaterialKey: HubMeshBatch] = [:]
         for link in links {
             let bearing = Float(link.bearing * .pi / 180)
@@ -887,15 +947,15 @@ final class HubDynamics {
             batches[key] = batch
             let arc = routeArcs.count
             routeArcs.append((link, points))
-            let count = max(1, min(4, link.dailyRoundTrips))
+            let count = lit.contains(link.routeID) || highlighted ? max(1, min(4, link.dailyRoundTrips)) : 0
             for k in 0..<count {
                 guard let mesh = pulseMesh else { break }
                 let e = ModelEntity(mesh: mesh, materials: [materials[.routePulse]])
                 e.components.set(HubMaterialTag(key: .routePulse))
                 e.scale = SIMD3<Float>(repeating: highlighted ? 3.4 : 2.3)
                 routeFan.addChild(e)
-                routePulses.append((e, arc, Float(k) / Float(count) + Float(arc) * 0.137,
-                                    1 / (7 + length / 300), k % 2 == 0))
+                routePulses.append(RoutePulse(entity: e, arc: arc, offset: Float(k) / Float(count) + Float(arc) * 0.137,
+                                              speed: 1 / (7 + length / 300), outbound: k % 2 == 0))
             }
         }
         for (key, batch) in batches {
@@ -1162,7 +1222,11 @@ final class HubDynamics {
         // A finished construction changes its site's tag at once, not at
         // the next snapshot (which, paused, may be a long way off).
         if yard.update(dt), let snapshot = lastSnapshot { rebuildAnchors(snapshot) }
-        for mover in movers { mover.step(dt) }
+        // Every mover is traffic: with the layer off they wait where they
+        // are instead of driving round unseen.
+        if showsTraffic {
+            for mover in movers { mover.step(dt) }
+        }
         // Near jets in full, far ones procedural; a few times a second is
         // plenty, with a margin either side so a jet on the line does not
         // flicker between the two.
@@ -1188,18 +1252,29 @@ final class HubDynamics {
         // People walking: queues to the door, crew round the jets, the hall.
         for crowd in standCrowds.values { crowd.update(dt, detail: crowdDetail) }
         hallCrowd?.update(dt)
-        popups.removeAll { time - $0.born > 3.4 }
+        if !popups.isEmpty {
+            popups.removeAll { time - $0.born > 3.4 }
+            // The last one gone: the labels drop it.
+            if popups.isEmpty { anchorsRevision &+= 1 }
+        }
         // Route lights run out along their arcs and back, easing in and
         // out of the terminal and fading at both ends.
         if showsRouteFan {
-            for pulse in routePulses {
+            for i in routePulses.indices {
+                let pulse = routePulses[i]
                 let points = routeArcs[pulse.arc].points
                 var u = (pulse.offset + time * pulse.speed).truncatingRemainder(dividingBy: 1)
                 if u < 0 { u += 1 }
                 let eased = u * u * (3 - 2 * u) * 0.35 + u * 0.65
                 pulse.entity.position = Self.sample(points, pulse.outbound ? eased : 1 - eased)
                 let edge = min(u, 1 - u)
-                pulse.entity.components.set(OpacityComponent(opacity: min(1, edge / 0.08)))
+                let opacity = min(1, edge / 0.08)
+                // Most of a light's run is in full view: no new component
+                // each frame for an opacity that has not changed.
+                if opacity < 1 || pulse.opacity < 1 {
+                    pulse.entity.components.set(OpacityComponent(opacity: opacity))
+                    routePulses[i].opacity = opacity
+                }
             }
         }
         // Pulse rings round the focused jet's engine: stacked, tilted,
@@ -1216,9 +1291,15 @@ final class HubDynamics {
                 ring.scale = [size, 1, size]
                 let fadeIn = min(1, phase / 0.12)
                 let fade = fadeIn * (1 - phase) * (1 - phase) * 1.4
-                if let glow = materials.additivePulse(brightness: fade) {
-                    // Additive: brighten where rings overlap; fade by darkening.
-                    ring.components.set(OpacityComponent(opacity: 1))
+                if materials.additive != nil {
+                    // Additive: brighten where rings overlap; fade by
+                    // darkening. The material changes only when the ring's
+                    // brightness reaches another of the cached steps.
+                    let step = HubMaterials.pulseStep(fade)
+                    guard k < ringSteps.count, step != ringSteps[k],
+                          let glow = materials.additivePulse(brightness: fade) else { continue }
+                    if ringSteps[k] < 0 { ring.components.set(OpacityComponent(opacity: 1)) }
+                    ringSteps[k] = step
                     for part in ring.children {
                         guard var model = part.components[ModelComponent.self] else { continue }
                         model.materials = [glow]

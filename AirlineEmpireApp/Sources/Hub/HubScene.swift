@@ -498,6 +498,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         sun.light.color = palette.keyColor
         sun.light.intensity = palette.keyIntensity
         repaint(anchor)
+        dynamics.repainted()
         layers[.lamps]?.isEnabled = true
     }
 
