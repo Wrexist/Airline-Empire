@@ -13,10 +13,13 @@ struct HubPart {
 /// cached per shape so every jet of a category shares its meshes and only
 /// the livery material differs. Local frame: forward +x, up +y, right +z,
 /// origin at the centre of the footprint on the ground.
+///
+/// The shapes are kept for the whole run (`HubModelCache`), so a second
+/// visit does not build them again.
 @available(iOS 18.0, *)
 @MainActor
 final class HubModels {
-    private var cache: [String: [HubPart]] = [:]
+    private let shared = HubModelCache.shared
     /// Authored replacements (docs/HUB_MODEL_LIST.md); procedural otherwise.
     let library = HubAssetLibrary()
 
@@ -52,23 +55,21 @@ final class HubModels {
         return ["person_passenger_\(first)"] + letters.filter { $0 != first }.map { "person_passenger_\($0)" }
     }
 
-    private var rawCache: [String: [(HubMaterialKey, HubMeshBatch)]] = [:]
-
     private func parts(_ key: String, _ build: () -> [(HubMaterialKey, HubMeshBatch)]) -> [HubPart] {
-        if let hit = cache[key] { return hit }
+        if let hit = shared.parts[key] { return hit }
         let made = raw(key, build).compactMap { material, batch in
             batch.resource(name: key).map { HubPart(mesh: $0, material: material) }
         }
-        cache[key] = made
+        shared.parts[key] = made
         return made
     }
 
     /// The CPU geometry behind a model, per material, for merging many
     /// static copies into one batch.
     private func raw(_ key: String, _ build: () -> [(HubMaterialKey, HubMeshBatch)]) -> [(HubMaterialKey, HubMeshBatch)] {
-        if let hit = rawCache[key] { return hit }
+        if let hit = shared.proceduralRaw[key] { return hit }
         let made = build()
-        rawCache[key] = made
+        shared.proceduralRaw[key] = made
         return made
     }
 

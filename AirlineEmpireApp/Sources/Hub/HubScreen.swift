@@ -27,8 +27,19 @@ struct HubScreen: View {
     @State private var model: HubScreenModel?
     /// Another airport of the network, chosen in the hub switcher.
     @State private var switched: AirportCode?
+    /// Bumped when game data arrives while the hub still waits for it, so
+    /// the build runs again (`refresh`).
+    @State private var attempt = 0
+    /// The build under way, if any.
+    @State private var building: BuildKey?
 
     private var code: AirportCode { switched ?? airport }
+
+    /// What the build is for: the airport, and which try.
+    private struct BuildKey: Equatable {
+        let airport: AirportCode
+        let attempt: Int
+    }
 
     private static var isUITest: Bool {
         ProcessInfo.processInfo.arguments.contains { $0.hasPrefix("-AEUITest") }
@@ -40,9 +51,11 @@ struct HubScreen: View {
             if let model {
                 HubDashboard(model: model, dismiss: { dismiss() })
                     .id(model.airport)
-                    .transition(.opacity)
+                    // In, not out: the old airport's 3D view goes at once, so
+                    // a hub switch never renders two scenes through a fade.
+                    .transition(.asymmetric(insertion: .opacity, removal: .identity))
             } else {
-                ProgressView().tint(HubChromeStyle.accent)
+                HubLoadingView(dismiss: { dismiss() })
             }
         }
         .animation(.smooth(duration: 0.45), value: model?.airport)
@@ -51,8 +64,11 @@ struct HubScreen: View {
         .statusBarHidden(false)
         .onAppear {
             AEOrientation.lockLandscape()
-            start()
+            model?.scene.pause(false)
         }
+        // On appearing, on a hub switch, and again when data that was
+        // missing arrives; cancelled if the hub closes first.
+        .task(id: BuildKey(airport: code, attempt: attempt)) { await build(BuildKey(airport: code, attempt: attempt)) }
         .onChange(of: controller.snapshotReceivedAt) { refresh() }
         .onChange(of: controller.mapRevision) { refresh() }
         .onChange(of: controller.lastRejection) { _, rejection in
@@ -64,11 +80,22 @@ struct HubScreen: View {
         }
     }
 
-    private func start() {
-        if let model {
-            model.scene.pause(false)
-            return
-        }
+    /// Builds the hub after the spinner is on screen: the authored models
+    /// are read asynchronously into the app-wide cache (instant on a later
+    /// visit), then the scene is put together in one go.
+    private func build(_ key: BuildKey) async {
+        guard model == nil, controller.snapshot != nil, controller.catalog?.airport(code) != nil else { return }
+        building = key
+        defer { if building == key { building = nil } }
+        await HubModelCache.shared.preload()
+        // A frame or two for the spinner before the build takes the main
+        // thread; the spinner itself keeps turning (Core Animation).
+        try? await Task.sleep(for: .milliseconds(50))
+        guard !Task.isCancelled, model == nil else { return }
+        make()
+    }
+
+    private func make() {
         guard let state = controller.snapshot, let catalog = controller.catalog,
               let spec = catalog.airport(code) else { return }
         let facilities = state.playerAirline?.airportFacilities?[code] ?? AirportFacilities()
@@ -100,9 +127,9 @@ struct HubScreen: View {
     private func switchTo(_ next: AirportCode) {
         guard next != code else { return }
         model?.scene.pause(true)
+        // The new airport's build follows (`task(id:)` sees the new code).
         switched = next
         model = nil
-        start()
     }
 
     /// `-AEUITestHubShot gate` opens on a given shot, for the captures.
@@ -113,8 +140,41 @@ struct HubScreen: View {
     }
 
     private func refresh() {
-        guard let model, let state = controller.snapshot, let catalog = controller.catalog else { return }
+        guard let model else {
+            // Opened before the game's data was ready: try again now some
+            // has arrived, unless a build is already under way.
+            if building == nil { attempt += 1 }
+            return
+        }
+        guard let state = controller.snapshot, let catalog = controller.catalog else { return }
         model.refresh(state: state, catalog: catalog)
+    }
+}
+
+/// While the hub is built, or waits for the game's data: the spinner, and
+/// a way back that does not depend on the build ever finishing.
+@available(iOS 18.0, *)
+private struct HubLoadingView: View {
+    let dismiss: () -> Void
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            ProgressView()
+                .tint(HubChromeStyle.accent)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Button(action: dismiss) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(HubChromeStyle.ink)
+                    .frame(width: 32, height: 32)
+                    .background(Color.white.opacity(0.7), in: Circle())
+            }
+            .buttonStyle(HubPressStyle())
+            .padding(.horizontal, 14)
+            .padding(.top, 11)
+            .accessibilityLabel("Close hub view")
+            .accessibilityIdentifier("ae-hub-loading-close")
+        }
     }
 }
 
