@@ -313,8 +313,8 @@ struct ProgressionTests {
 
         // Close the route that cancelled. Only the clean route is left open.
         #expect(engine.applyNow(CloseRouteCommand(airline: airline, route: routes[0])) == .applied)
-        #expect(MissionMath.lifetimeCancellations(
-            player: try #require(engine.state.playerAirline), state: engine.state) == 100)
+        let player = try #require(engine.state.playerAirline)
+        #expect(MissionMath.lifetimeCancellations(player: player, state: engine.state) == 100)
         engine.advance(ticks: Fixtures.ticksPerDay)
         #expect(!engine.state.progression.achievements.contains("weatherProof"),
                 "closing the route that cancelled must not erase its cancellations")
