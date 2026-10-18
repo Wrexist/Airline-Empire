@@ -9,6 +9,23 @@ import AirlineEmpireCore
 final class HubViewUITests: AEUITestCase {
     override var wantsSunriseWeek: Bool { false }
 
+    /// The Insights panel's "Airline" segment. On iPhone the shell's own
+    /// "Airline" tab is still in the hierarchy under the full-screen hub —
+    /// the shell keeps its tab bar on any iPhone so a fold cannot rebuild it
+    /// (docs/IPHONE_DUO.md) — so the label alone matches two buttons (Hub
+    /// view review 39145695323). The panel's is the hittable one outside the
+    /// tab bar.
+    private var insightsAirlineSegment: XCUIElement {
+        let matches = app.buttons.matching(identifier: "Airline")
+        let bar = app.tabBars.firstMatch
+        let barFrame = bar.exists ? bar.frame : .null
+        for index in 0..<matches.count {
+            let candidate = matches.element(boundBy: index)
+            if candidate.isHittable, !barFrame.contains(candidate.frame) { return candidate }
+        }
+        return matches.firstMatch
+    }
+
     private func open(extra: [String] = []) throws {
         let bundle = Bundle(for: HubViewUITests.self)
         let url = try XCTUnwrap(bundle.url(forResource: "store-campaign", withExtension: "json"))
@@ -86,7 +103,7 @@ final class HubViewUITests: AEUITestCase {
         } else {
             insights.tap()
             Thread.sleep(forTimeInterval: 1)
-            app.buttons["Airline"].tap()
+            insightsAirlineSegment.tap()
             Thread.sleep(forTimeInterval: 1)
             let lounge = app.buttons["ae-hub-facility-lounge"]
             require(lounge, "lounge row")
@@ -168,7 +185,7 @@ final class HubViewUITests: AEUITestCase {
         require(insights, "insights button")
         insights.tap()
         Thread.sleep(forTimeInterval: 1)
-        let airline = app.buttons["Airline"]
+        let airline = insightsAirlineSegment
         require(airline, "Airline tab")
         airline.tap()
         Thread.sleep(forTimeInterval: 1.5)
