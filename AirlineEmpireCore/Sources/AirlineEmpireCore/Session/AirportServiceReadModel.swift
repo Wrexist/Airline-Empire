@@ -45,6 +45,15 @@ public struct AirportServiceReadModel: Equatable, Sendable {
             let saving = Int(((1 - tuning.crewBaseCrewCostFactor) * 100).rounded())
             return ("Operating day \(clock(start))–\(clock(end)), crews \(saving)% cheaper",
                     "Routes from this airport: more rotations fit in a day.")
+        case .pier:
+            guard level > 0 else {
+                return ("Shared gates and the airport's slot pool", "Your flights at this airport.")
+            }
+            let slots = tuning.pierReservedSlots[safe: level - 1] ?? 0
+            let factor = tuning.pierTurnaroundFactor[safe: level - 1] ?? 1
+            let faster = Int(((1 - factor) * 100).rounded())
+            return ("\(slots) movements a day held for you beyond the shared pool; turnarounds \(faster)% quicker",
+                    "Your flights here: slots at a full airport, and quicker turns add rotations.")
         }
     }
 

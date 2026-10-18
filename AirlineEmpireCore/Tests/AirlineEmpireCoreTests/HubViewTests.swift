@@ -610,7 +610,7 @@ struct HubSnapshotTests {
 
         // Bought, the offer moves up a level; at the top there is no next.
         var state = engine.state
-        let top = AirportFacilities(lounge: 2, groundServices: 2, hangar: 2, crewBase: 1)
+        let top = AirportFacilities(lounge: 2, groundServices: 2, hangar: 2, crewBase: 1, pier: 2)
         var owner = state.airlines[airline]!
         owner.airportFacilities = ["MET": top]
         state.airlines[airline] = owner

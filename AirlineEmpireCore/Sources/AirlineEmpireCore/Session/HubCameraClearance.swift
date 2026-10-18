@@ -49,7 +49,10 @@ public struct HubCameraClearance: Equatable, Sendable {
         }
         // The terminal as a whole, roof vaults included.
         list.append(HubCameraObstacle(bounds: layout.terminal, top: HubLayout.terminalRoofTop + 6))
-        for site in layout.facilitySites {
+        // The dedicated pier is rebuilt on a pier already counted above at
+        // its own height; the gate shot looks along it, and a crane's room
+        // over it would lift that shot at every airport.
+        for site in layout.facilitySites where site.kind != .pier {
             list.append(HubCameraObstacle(bounds: site.footprint, top: site.elevation + 34))
         }
         for stand in layout.stands {

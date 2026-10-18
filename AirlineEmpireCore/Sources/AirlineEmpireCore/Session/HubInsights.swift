@@ -236,7 +236,11 @@ extension GameState {
         }
 
         var insights = HubInsights(
-            routes: links, carriers: carriers, slotCapacity: spec.slotCapacityPerDay, slotsUsed: used,
+            // The pool plus what the player's own pier holds beyond it.
+            routes: links, carriers: carriers,
+            slotCapacity: spec.slotCapacityPerDay
+                + reservedSlots(for: pid, at: code, tuning: catalog.tuning.airportServices),
+            slotsUsed: used,
             movementsByHour: hours, cashCents: ledger.balance(of: pid).cents,
             reputation: player.reputation.score, punctuality: player.reputation.punctuality,
             reliability: player.reputation.reliability, service: player.reputation.service,

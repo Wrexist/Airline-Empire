@@ -270,10 +270,11 @@ public struct CompetitorAISystem: SimulationSystem {
                     && $0.sameMarket(origin: origin, destination: destination)
             }) { out.append(candidate(.alreadyServed)); continue }
             // Slots for the initial frequency at both ends?
+            // The shared pool as the route command reads it: a player's pier
+            // holds its own slots outside it.
             let movements = Route.dailySlotMovements(roundTrips: tuning.initialRoundTrips)
-            if state.world.slotsUsed(at: origin) + movements > originSpec.slotCapacityPerDay
-                || state.world.slotsUsed(at: destination) + movements
-                    > destinationSpec.slotCapacityPerDay {
+            if movements > state.slotsAvailable(to: airline.id, at: origin, catalog: catalog)
+                || movements > state.slotsAvailable(to: airline.id, at: destination, catalog: catalog) {
                 out.append(candidate(.noSlots)); continue
             }
 
