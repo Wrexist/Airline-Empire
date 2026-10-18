@@ -73,6 +73,14 @@ on:
         description: 'Full commit SHA to validate and archive; empty uses this workflow commit'
         type: string
         default: ''
+      xcode:
+        description: >-
+          Toolchain. 27.1 validates and archives with Xcode 27.1 (iOS 27.1 SDK)
+          on the xcode-27 image, adds the iPhone Duo lane, and is what makes
+          the build run edge to edge on iPhone Duo (docs/IPHONE_DUO.md).
+        type: choice
+        options: [default, '27.1']
+        default: default
 
 concurrency:
   # Never two archives at once: they would race for build numbers and produce
@@ -247,6 +255,9 @@ jobs:
       suite: full
       ipad: true
       candidate_sha: ${{ needs.preflight.outputs.candidate-sha }}
+      # The phone journeys run on the toolchain the archive will use.
+      xcode: ${{ inputs.xcode }}
+      duo: ${{ inputs.xcode == '27.1' }}
 
   launch-validation:
     name: Launch safety validation
@@ -258,7 +269,7 @@ jobs:
   archive:
     name: Archive and upload (macOS, 10x)
     needs: [preflight, full-validation, launch-validation]
-    runs-on: macos-26
+    runs-on: ${{ inputs.xcode == '27.1' && 'xcode-27' || 'macos-26' }}
     # A hung compile must not sit on a 10x runner until the six-hour default.
     timeout-minutes: 75
     outputs:
@@ -293,6 +304,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+
+      # iPhone Duo lays the app out edge to edge only when it is built with
+      # the iOS 27.1 SDK; the xcode-27 image defaults to 27.0.
+      - name: Select Xcode 27.1
+        if: inputs.xcode == '27.1'
+        run: sudo xcode-select -s /Applications/Xcode_27.1.app/Contents/Developer
 
       - name: Xcode version
         run: |

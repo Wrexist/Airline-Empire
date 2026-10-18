@@ -74,8 +74,10 @@ struct HubScreen: View {
         let facilities = state.playerAirline?.airportFacilities?[code] ?? AirportFacilities()
         let made = HubScreenModel(airport: code, spec: spec, facilities: facilities, uiTest: Self.isUITest)
         // The inspector opens beside the scene where there is room for it;
-        // on a phone it waits to be asked for (tap a jet or its callout).
-        made.showsInspector = !AEOrientation.isPhone && UIScreen.main.bounds.width >= 760
+        // in a phone-sized window it waits to be asked for (tap a jet or its
+        // callout). The window, not the device: iPhone Duo's inner display
+        // has an iPad's room, and an iPad in Split View has a phone's.
+        made.showsInspector = HubChromeMode(size: AEOrientation.windowSize) == .regular
         made.switchHub = { next in switchTo(next) }
         // Upgrades from the hub are the Airport Services screen's command,
         // with the one facility moved up a level.

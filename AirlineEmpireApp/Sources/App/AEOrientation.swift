@@ -15,7 +15,19 @@ enum AEOrientation {
 
     static var isPhone: Bool { UIDevice.current.userInterfaceIdiom == .phone }
 
-    /// Turns the phone to landscape and holds it there.
+    /// The size of the app's window, which is not the screen's: an iPad in
+    /// Split View, or iPhone Duo folding between its 5.4" outer and 7.6"
+    /// inner display, hands the app a window of its own shape. Layout
+    /// decisions read this (or a GeometryReader), never `UIScreen.main`.
+    static var windowSize: CGSize {
+        guard let scene = activeScene else { return .zero }
+        return (scene.keyWindow ?? scene.windows.first)?.bounds.size ?? .zero
+    }
+
+    /// Turns the phone to landscape and holds it there. iPhone Duo's inner
+    /// display does not honour supported orientations, so there the request
+    /// is ignored and the hub lays out for the near-square window it has
+    /// (`HubChromeMode`); folded to the outer display, the lock applies.
     static func lockLandscape() {
         guard isPhone, let scene = activeScene else { return }
         if mask != .landscape { restore = scene.effectiveGeometry.interfaceOrientation }

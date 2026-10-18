@@ -75,6 +75,16 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn('if [ -n "$CANDIDATE_SHA" ]', plan["run"])
         self.assertIn("inputs.ipad", workflow("ci")["jobs"]["app-ipad"]["if"])
 
+    def test_archive_ships_the_toolchain_the_phone_journeys_ran_on(self):
+        # iPhone Duo needs the 27.1 SDK; a release that archives with it must
+        # have validated with it (docs/IPHONE_DUO.md).
+        jobs = workflow("ios-testflight")["jobs"]
+        self.assertEqual(jobs["full-validation"]["with"]["xcode"], "${{ inputs.xcode }}")
+        self.assertIn("inputs.xcode == '27.1'", jobs["full-validation"]["with"]["duo"])
+        self.assertIn("inputs.xcode == '27.1'", jobs["archive"]["runs-on"])
+        self.assertIn("inputs.xcode == '27.1'", workflow("ci")["jobs"]["app"]["runs-on"])
+        self.assertIn("inputs.duo", workflow("ci")["jobs"]["app-duo"]["if"])
+
 
 if __name__ == "__main__":
     unittest.main()
