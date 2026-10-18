@@ -191,7 +191,10 @@ struct EventFeedTests {
         }
     }
 
-    @Test func queuedCommandRejectionReachesTheSubscriber() async throws {
+    /// BUG-005 was a refusal that never reached the player because a running
+    /// game queued the command and `submit` returned nil. Commands now apply
+    /// at once, so the refusal comes straight back from `submit`.
+    @Test func runningCommandRejectionIsReturnedAtOnce() async throws {
         let catalog = try ContentCatalog.loadBundled()
         let session = GameSession(state: Fixtures.newState(seed: 4),
                                   systems: GamePipeline.standard(),
@@ -201,22 +204,16 @@ struct EventFeedTests {
             startingCash: Money.dollars(1_000)))
         let player = try #require(await session.snapshot.playerAirline).id
 
-        let rejections = await session.rejections()
-        let collector = Task {
-            for await rejection in rejections { return rejection }
-            return CommandRejection(code: "none", message: "none")
-        }
-
-        // Running, not paused: the command is queued, not applied now.
         await session.setSpeed(.x4)
-        let immediate = await session.submit(BuyNewAircraftCommand(
+        let result = await session.submit(BuyNewAircraftCommand(
             buyer: player, type: "MR180"))
-        #expect(immediate == nil)
-
-        await session.advance(ticks: 4)
-        let rejection = await collector.value
-        #expect(rejection.code != "none")
+        guard case .rejected(let rejection) = result else {
+            Issue.record("An unaffordable purchase was not refused: \(result)")
+            return
+        }
+        #expect(!rejection.code.isEmpty)
         #expect(!rejection.message.isEmpty)
+        #expect(await session.snapshot.fleet(of: player).isEmpty)
     }
 
     /// Subscription lifecycle (V3 prompt §27): subscribers are independent,

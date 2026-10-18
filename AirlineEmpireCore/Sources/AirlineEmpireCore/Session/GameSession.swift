@@ -83,10 +83,14 @@ public actor GameSession {
         }
     }
 
-    /// Rejections of commands that were queued while the simulation was
-    /// running. `submit` can only report immediately for a paused game; a
-    /// queued command is validated at the next tick boundary, and without
-    /// this stream that failure would never reach the player (BUG-005).
+    /// Rejections of commands the engine validated at a tick boundary.
+    ///
+    /// `submit` used to queue a command while the simulation was running and
+    /// this stream was the only way its refusal reached the player (BUG-005).
+    /// `submit` now applies every command immediately and returns its result,
+    /// so nothing the session submits arrives here any more; the stream stays
+    /// for subscribers that still listen, and for any command an engine-level
+    /// caller enqueues.
     public func rejections() -> AsyncStream<CommandRejection> {
         AsyncStream { continuation in
             nextSubscriptionID += 1
@@ -220,20 +224,22 @@ public actor GameSession {
         advance(ticks: Int(minutes / engine.state.meta.tickMinutes))
     }
 
-    /// Submits a command. While paused it applies immediately (the player
-    /// may act with the world stopped); while running it applies at the next
-    /// tick boundary and the result reports as `.applied` optimistically
-    /// only through the events stream — so callers get the definitive
-    /// result: enqueued commands return nil and surface via events.
-    public func submit(_ command: any Command) -> CommandResult? {
-        if speed == .paused {
-            let result = engine.applyNow(command)
-            publish()
-            return result
-        } else {
-            engine.enqueue(command)
-            return nil
-        }
+    /// Submits a command and applies it at once, paused or running.
+    ///
+    /// A running game used to queue the command until the next tick
+    /// boundary — up to 3.75 real seconds at 1x — and report nothing. The
+    /// screen went on showing the world without the purchase, so a second
+    /// tap bought a second aircraft; and pausing or backgrounding never
+    /// drained the queue, so a save taken in that window lost the command
+    /// outright (audit 2026-10-18 §2.4). The session is an actor and never
+    /// runs a command in the middle of a tick, so "now" is already a defined
+    /// point between two ticks — the same one a paused game has always used
+    /// — and the caller gets the definitive result.
+    @discardableResult
+    public func submit(_ command: any Command) -> CommandResult {
+        let result = engine.applyNow(command)
+        publish()
+        return result
     }
 
     // MARK: Publishing

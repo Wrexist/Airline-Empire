@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import AirlineEmpireCore
 
@@ -60,15 +61,52 @@ struct GameSessionTests {
         #expect(await session.snapshot.schedule.entries.count == 1)
     }
 
-    @Test func submitWhileRunningAppliesAtBoundary() async {
+    /// A running game applies a command at once too. It used to queue it for
+    /// the next tick boundary and return nil, so the screen kept showing the
+    /// world without it (a second tap bought a second aircraft) and a pause
+    /// or save in that window never saw it (audit 2026-10-18 §2.4).
+    @Test func submitWhileRunningAppliesImmediately() async {
         let session = GameSession(state: Fixtures.newState(), systems: [])
         await session.setSpeed(.x1)
         let result = await session.submit(
             ScheduleWakeCommand(label: "note", at: SimTime(rawMinutes: 60)))
-        #expect(result == nil)
-        #expect(await session.snapshot.schedule.entries.isEmpty)
+        #expect(result == .applied)
+        #expect(await session.snapshot.schedule.entries.count == 1)
         await session.advance(ticks: 1)
         #expect(await session.snapshot.schedule.entries.count == 1)
+    }
+
+    /// The exact window the queue lost: a purchase made mid-tick while
+    /// running, then pause and an immediate save. The purchase is in the
+    /// snapshot straight away and in the save.
+    @Test func commandSubmittedWhileRunningSurvivesPauseAndSave() async throws {
+        let root = SaveStoreTests.scratch()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let catalog = try ContentCatalog.loadBundled()
+        let session = GameSession(state: Fixtures.newState(seed: 9),
+                                  systems: GamePipeline.standard(), catalog: catalog)
+        _ = await session.submit(FoundAirlineCommand(
+            airlineName: "Queue Air", kind: .player, homeAirport: "ARN",
+            startingCash: Money.dollars(120_000_000)))
+        let player = try #require(await session.snapshot.playerAirline).id
+        let manager = SaveManager(store: FileSaveStore(rootDirectory: root))
+        await session.attachSaveManager(manager, autosaveSlot: "auto")
+
+        await session.setSpeed(.x1)
+        _ = await session.pump(elapsedSeconds: 1) // 4 game-min pending: mid-tick
+        let ticksBefore = await session.snapshot.clock.tickCount
+        let result = await session.submit(BuyUsedAircraftCommand(
+            buyer: player, type: "MR180", ageYears: 8))
+        #expect(result == .applied)
+        #expect(await session.snapshot.fleet(of: player).count == 1)
+        #expect(await session.snapshot.clock.tickCount == ticksBefore)
+
+        await session.setSpeed(.paused)
+        try await session.saveNow(slot: "manual")
+        let saved = try manager.load(slot: "manual").state
+        let snapshot = await session.snapshot
+        #expect(saved.fleet(of: player).count == 1)
+        #expect(saved == snapshot)
     }
 
     @Test func advanceToNextMorningLandsAtMidnight() async {
