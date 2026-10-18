@@ -55,7 +55,7 @@ final class CampaignUITests: AEUITestCase {
             screen is not showing it.
             """)
         checkpoint("30-mission-offered")
-        app.navigationBars.buttons.firstMatch.tap()
+        backButton.tap()
 
         // ── React: a route into the boom region ────────────────────────────
         // Cairo is the nearest African airport inside a narrowbody's range
@@ -139,7 +139,7 @@ final class CampaignUITests: AEUITestCase {
         }
         guard openProgression() else { return }
         checkpoint("31-mission-after-reaction")
-        app.navigationBars.buttons.firstMatch.tap()
+        backButton.tap()
 
         // ── February: buy used, expand on the ranking ──────────────────────
         guard advanceMornings(until: "2030-02", cap: 20) else {
@@ -312,7 +312,7 @@ final class CampaignUITests: AEUITestCase {
         // The day of entry: the rivals' offers before they answer.
         guard openContestedRouteDetail() else { return }
         checkpoint("42-contested-route-on-entry")
-        app.navigationBars.buttons.firstMatch.tap()
+        backButton.tap()
 
         // A week on: the answer (COMP-04), the split (COMP-03), and the
         // sentence that says where the player stands and why.
@@ -367,14 +367,14 @@ final class CampaignUITests: AEUITestCase {
             player stands — no standing sentence rendered.
             """)
         checkpoint("44-contested-route-after-a-week")
-        app.navigationBars.buttons.firstMatch.tap()
+        backButton.tap()
 
         // COMP-06: the World hub and the Competitors screen, live.
         openTab("World")
         checkpoint("45-world-hub-with-competition")
         guard openCompetitors() else { return }
         checkpoint("46-competitors-screen")
-        app.navigationBars.buttons.firstMatch.tap()
+        backButton.tap()
 
         // CAUSALITY: the gate counts routes that made money, so the campaign
         // has to actually be flying four of them. A silent three is what run
@@ -405,7 +405,7 @@ final class CampaignUITests: AEUITestCase {
             the next era" — no "To reach Regional" section rendered.
             """)
         checkpoint("34-progression-before-era")
-        app.navigationBars.buttons.firstMatch.tap()
+        backButton.tap()
 
         // ── February closes; the era arrives with March ────────────────────
         guard advanceMornings(until: "2030-03", cap: 33) else {
@@ -422,7 +422,7 @@ final class CampaignUITests: AEUITestCase {
         checkpoint("36-era-home")
         guard openProgression() else { return }
         checkpoint("37-progression-after-era")
-        app.navigationBars.buttons.firstMatch.tap()
+        backButton.tap()
         // The era is on the briefing's header, where the date, the season and
         // the money are — it did not move in AE-048, the screen around it did.
         guard openBriefing() else { return }
@@ -447,7 +447,7 @@ final class CampaignUITests: AEUITestCase {
             next goal — "To reach National" is missing, and a campaign \
             without a next goal ends here.
             """)
-        app.navigationBars.buttons.firstMatch.tap()
+        backButton.tap()
 
     }
 
@@ -601,7 +601,7 @@ final class CampaignUITests: AEUITestCase {
             The late-game Competitors screen shows \(cards.count) rival cards; \
             the saved world has five rivals.
             """)
-        app.navigationBars.buttons.firstMatch.tap()
+        backButton.tap()
         openTab("Home")
         Thread.sleep(forTimeInterval: 2)
         let layer = app.buttons["Map layer"]

@@ -341,6 +341,7 @@ jobs:
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PUSH_BEFORE: ${{ github.event.before }}
           SUITE_INPUT: ${{ inputs.suite }}
+          XCODE_INPUT: ${{ inputs.xcode }}
           FULL_VALIDATION: ${{ contains(github.event.pull_request.labels.*.name, 'full-validation') }}
         run: |
           set -euo pipefail
@@ -507,6 +508,13 @@ jobs:
                  tests: ""}
               ]}') ;;
           esac
+          # Xcode 27.1 (the iPhone Duo toolchain) runs on the xcode-27 preview
+          # image, and its xcodebuild sat five minutes after the last test of
+          # run 39138961381 before exiting — nine green tests, cancelled by the
+          # 18-minute cap. Double the caps there until it settles.
+          if [ "${XCODE_INPUT:-}" = "27.1" ]; then
+            MATRIX=$(echo "$MATRIX" | jq -c '.include |= map(.job = .job + .ui | .ui = .ui * 2)')
+          fi
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           echo "$MATRIX" | jq .
 

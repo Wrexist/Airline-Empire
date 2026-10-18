@@ -42,6 +42,16 @@ class AEUITestCase: XCTestCase {
     var wantsSunriseWeek: Bool { true }
     var usesProFixture: Bool { true }
 
+    /// The navigation bar's Back button. Not the bar's first button: on
+    /// iPhone Duo the iOS 27.1 SDK moves Back into a vertical bar on the
+    /// trailing edge, and the first button is then the screen's leading
+    /// item — the clock's speed menu (run 39138961381). Where there is no
+    /// system Back, the first button, as before.
+    var backButton: XCUIElement {
+        let system = app.navigationBars.buttons["BackButton"]
+        return system.exists ? system : app.navigationBars.buttons.element(boundBy: 0)
+    }
+
     override func tearDown() {
         if let run = testRun, run.failureCount > 0 {
             // A device capture still works when the app has exited or a
@@ -834,8 +844,8 @@ class AEUITestCase: XCTestCase {
                 bare += 1
                 // Leave whatever screen the misses landed on, so the next
                 // row starts from the board.
-                if !row.exists, app.navigationBars.buttons.firstMatch.exists {
-                    app.navigationBars.buttons.firstMatch.tap()
+                if !row.exists, backButton.exists {
+                    backButton.tap()
                     Thread.sleep(forTimeInterval: 0.5)
                 }
                 continue
@@ -855,7 +865,7 @@ class AEUITestCase: XCTestCase {
                 }
                 if !unassign.waitForExistence(timeout: 8) { bare += 1 }
             }
-            app.navigationBars.buttons.firstMatch.tap()
+            backButton.tap()
             Thread.sleep(forTimeInterval: 0.5)
         }
         return bare
@@ -941,7 +951,7 @@ class AEUITestCase: XCTestCase {
         }
         for _ in 0..<3 {
             if segment.exists, segment.isHittable { return selectSection() }
-            let back = app.navigationBars.buttons.firstMatch
+            let back = backButton
             guard back.exists, back.isHittable else { break }
             back.tap()
             Thread.sleep(forTimeInterval: 0.6)

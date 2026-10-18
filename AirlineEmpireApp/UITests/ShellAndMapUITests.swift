@@ -235,7 +235,7 @@ final class ShellAndMapUITests: AEUITestCase {
             Aircraft detail shows no Ownership section — either the wrong \
             screen was pushed or it rendered empty. Screenshot attached.
             """)
-        app.navigationBars.buttons.firstMatch.tap()
+        backButton.tap()
 
         // ── Route detail, via the routes board ────────────────────────────
         guard openARoute() else { return }
