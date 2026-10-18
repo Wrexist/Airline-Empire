@@ -101,6 +101,14 @@ struct HubCameraRig: Equatable {
         return clear == frame ? self : HubCameraRig(clear)
     }
 
+    /// Within a centimetre and a hundredth of a degree: the springs creep
+    /// towards their goal for ever, and the labels need not follow motion
+    /// well under a point.
+    func isClose(to other: HubCameraRig) -> Bool {
+        simd_distance_squared(target, other.target) < 0.000_1 && abs(distance - other.distance) < 0.01
+            && abs(pitch - other.pitch) < 0.000_2 && abs(yaw - other.yaw) < 0.000_2
+    }
+
     func lerp(to b: HubCameraRig, _ t: Float) -> HubCameraRig {
         HubCameraRig(target: target + (b.target - target) * t,
                      distance: distance + (b.distance - distance) * t,
@@ -315,10 +323,12 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
     // MARK: Shots
 
     /// Default framing per shot, solved in Core (`HubLayout.frame`) so the
-    /// subject fills the part of a `size` view the dashboard leaves free.
-    static func rig(for shot: HubShot, layout: HubLayout, focus: HubStand?, size: CGSize) -> HubCameraRig {
+    /// subject fills the part of a `size` view the dashboard leaves free —
+    /// with the inspector's column, or without it while it is closed.
+    static func rig(for shot: HubShot, layout: HubLayout, focus: HubStand?, size: CGSize,
+                    inspector: Bool = true) -> HubCameraRig {
         let w = Double(max(size.width, 1)), h = Double(max(size.height, 1))
-        let safe = HubFraming.safeArea(width: w, height: h)
+        let safe = HubFraming.safeArea(width: w, height: h, inspector: inspector)
         let cameraShot: HubCameraShot
         switch shot {
         case .overview: cameraShot = .overview
@@ -358,9 +368,11 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         framedAspect = aspect
         framedSize = arView.bounds.size
         framedForRealBounds = arView.bounds.height > 0
+        cameraIsFramed = true
+        projectionsDirty = true
         let stand = focus.flatMap { $0 < layout.stands.count ? layout.stands[$0] : nil }
         let size = arView.bounds.height > 0 ? arView.bounds.size : CGSize(width: 1_376, height: 1_032)
-        goal = Self.rig(for: shot, layout: layout, focus: stand, size: size)
+        goal = Self.rig(for: shot, layout: layout, focus: stand, size: size, inspector: inspectorShown)
         // Turn the short way round to the new shot.
         goal.yaw = rig.yaw + (goal.yaw - rig.yaw).remainder(dividingBy: 2 * .pi)
         panVelocity = .zero
@@ -390,32 +402,86 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
     func showFacility(_ kind: HubFacilityKind) {
         if shot != .overview { show(.overview, focus: focusIndex) }
         siteFocus = kind
-        let size = arView.bounds.height > 0 ? arView.bounds.size : CGSize(width: 1_376, height: 1_032)
-        let w = Double(max(size.width, 1)), h = Double(max(size.height, 1))
-        // The upgrade card takes the right of the screen: frame the site in
-        // what is left of it, so the construction is never under the card.
-        var safe = HubFraming.safeArea(width: w, height: h)
-        let card: Double
-        switch HubChromeMode(size: size) {
-        case .regular: card = 340 + 64 + 28
-        case .landscape: card = 300 + 60 + 24
-        case .portrait: card = 0
-        }
-        if card > 0 { safe.maxX = min(safe.maxX, 1 - 2 * card / w) }
-        goal = HubCameraRig(layout.frame(.facility(kind), aspect: w / h, safe: safe))
-        goal.yaw = rig.yaw + (goal.yaw - rig.yaw).remainder(dividingBy: 2 * .pi)
+        frameFacility(kind)
         panVelocity = .zero
         yawVelocity = 0
         driftRate = 0
         smoothTime = 0.6
         applyOverlays()
+        projectionsDirty = true
         lastInteraction = Date()
+    }
+
+    /// The upgrade card's height along the bottom of a narrow window, as
+    /// laid out (the dashboard measures it); 0 while it is beside the site.
+    private var facilityCard: CGFloat = 0
+
+    func setFacilityCard(height: CGFloat) {
+        guard abs(height - facilityCard) > 12 else { return }
+        facilityCard = height
+        projectionsDirty = true
+        // The card grew or shrank under the site being watched: frame it
+        // again in the room that is left.
+        if let site = siteFocus { frameFacility(site) }
+    }
+
+    /// The camera for a facility site, in the part of the screen the
+    /// upgrade card leaves, so the construction is never under the card:
+    /// the card takes the right of a wide screen and the bottom of a
+    /// narrow one.
+    private func frameFacility(_ kind: HubFacilityKind) {
+        let size = arView.bounds.height > 0 ? arView.bounds.size : CGSize(width: 1_376, height: 1_032)
+        let w = Double(max(size.width, 1)), h = Double(max(size.height, 1))
+        goal = HubCameraRig(layout.frame(.facility(kind), aspect: w / h, safe: facilitySafeArea(size)))
+        goal.yaw = rig.yaw + (goal.yaw - rig.yaw).remainder(dividingBy: 2 * .pi)
+    }
+
+    /// The part of a `size` view the upgrade card leaves free.
+    private func facilitySafeArea(_ size: CGSize) -> HubSafeArea {
+        let w = Double(max(size.width, 1)), h = Double(max(size.height, 1))
+        // A side panel, not the inspector, has the right column now.
+        let safe = HubFraming.safeArea(width: w, height: h, inspector: false)
+        switch HubChromeMode(size: size) {
+        case .regular: return safe.clearing(right: 340 + 64 + 28, of: w)
+        case .landscape: return safe.clearing(right: 300 + 60 + 24, of: w)
+        case .portrait:
+            // Until the card has been measured, about the compact card.
+            let card = Double(facilityCard > 0 ? facilityCard : 300)
+            return safe.clearing(bottom: card + 12 + 8 + Double(arView.safeAreaInsets.bottom), of: h)
+        }
     }
 
     func leaveFacility() {
         guard siteFocus != nil else { return }
         siteFocus = nil
         applyOverlays()
+        projectionsDirty = true
+    }
+
+    // MARK: Inspector
+
+    /// Whether the inspector (or a side panel in its place) has the right
+    /// column of a wide window. Framing and labels leave the column free
+    /// only while it does.
+    private var inspectorShown = true
+    /// The camera still sits where the last shot put it: no pan, pinch or
+    /// twist since. Only then does the inspector opening or closing frame
+    /// the shot again — a camera the player placed stays where they put it.
+    private var cameraIsFramed = true
+
+    func setInspector(shown: Bool) {
+        guard shown != inspectorShown else { return }
+        let size = arView.bounds.size
+        let w = Double(size.width), h = Double(size.height)
+        let changesFraming = w > 0 && h > 0
+            && HubFraming.safeArea(width: w, height: h, inspector: shown)
+            != HubFraming.safeArea(width: w, height: h, inspector: inspectorShown)
+        inspectorShown = shown
+        projectionsDirty = true
+        guard changesFraming, cameraIsFramed, siteFocus == nil else { return }
+        let keepDrift = lastInteraction
+        show(shot, focus: focusIndex)
+        lastInteraction = keepDrift
     }
 
     /// The next level of a building as a blueprint on its site; nil hides it.
@@ -435,6 +501,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
     func setOverlays(_ value: Set<HubOverlay>) {
         overlays = value
         applyOverlays()
+        projectionsDirty = true
     }
 
     func highlightRoute(_ id: RouteID?) {
@@ -587,7 +654,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         let quiet = Date().timeIntervalSince(lastInteraction)
         let idle = idleDrift && !resting && quiet > 5 && quiet < 65
         driftRate += ((idle ? 0.012 : 0) - driftRate) * min(1, dt * 0.6)
-        if driftRate > 0.000_1 { goal.yaw += dt * driftRate } else { driftRate = 0 }
+        if idle || driftRate > 0.000_1 { goal.yaw += dt * driftRate } else { driftRate = 0 }
         spring.step(to: goal, smoothTime: smoothTime, dt: dt)
         rig = spring.rig.cleared(by: clearance)
         applyRig()
@@ -597,6 +664,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         // with the camera this frame renders with, so they stay pinned.
         publishProjections()
         adaptQuality(Float(rawDT))
+        if gestureHost == nil { hostCameraGestures() }
     }
 
     // MARK: Quality
@@ -687,62 +755,159 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         sun.shadow = DirectionalLightComponent.Shadow(maximumDistance: wanted, depthBias: 3)
     }
 
+    // MARK: Labels
+
+    /// Something other than the camera changed what the labels show (a
+    /// shot, the layers, a site, the inspector): project them again even
+    /// if the camera has not moved.
+    private var projectionsDirty = true
+    private var projectedRig: HubCameraRig?
+    private var projectedRevision = -1
+    private var projectedSize: CGSize = .zero
+    /// The labels in placing order, kept between frames: sorted again only
+    /// when the labels or the set already showing change.
+    private var orderedAnchors: [HubAnchor] = []
+    private var orderedRevision = -1
+    /// Reused every projection instead of allocated.
+    private var placedBoxes: [CGRect] = []
+    private var shownScratch: Set<String> = []
+    /// Where the tappable labels are on screen this frame, so a pan, pinch
+    /// or twist that starts on one still moves the camera (`acceptsCameraTouch`).
+    private var labelBoxes: [CGRect] = []
+
     private func publishProjections() {
         guard let onProjected else { return }
         let size = arView.bounds.size
         guard size.width > 0, size.height > 0 else { return }
-        // Labels stay in the part of the screen the dashboard leaves free
-        // and never stack: the focused stand first, then stands, then routes,
-        // then the live figures. A label already showing keeps its place.
-        let safe = HubFraming.safeArea(width: Double(size.width), height: Double(size.height))
-        let free = CGRect(x: (safe.minX + 1) / 2 * size.width, y: (1 - safe.maxY) / 2 * size.height,
+        // Nothing moved — the camera has settled, the labels are as they
+        // were — and nothing moves by itself: last frame's layout stands.
+        let moving = dynamics.hasMovingAnchors
+        let dirty = projectionsDirty
+        if !dirty, !moving, size == projectedSize, dynamics.anchorsRevision == projectedRevision,
+           let last = projectedRig, last.isClose(to: rig) {
+            return
+        }
+        projectionsDirty = false
+        projectedSize = size
+        projectedRevision = dynamics.anchorsRevision
+        projectedRig = rig
+        // Labels stay wholly inside the part of the screen the dashboard
+        // leaves free and never stack: the focused stand first, then
+        // stands, then routes, then the live figures. A label already
+        // showing keeps its place, with a few points of slack at the edge
+        // so it does not flicker there as the camera moves.
+        let mode = HubChromeMode(size: size)
+        // With an upgrade card open, what the card leaves.
+        let safe = siteFocus != nil ? facilitySafeArea(size)
+            : HubFraming.safeArea(width: Double(size.width), height: Double(size.height), inspector: inspectorShown)
+        var free = CGRect(x: (safe.minX + 1) / 2 * size.width, y: (1 - safe.maxY) / 2 * size.height,
                           width: (safe.maxX - safe.minX) / 2 * size.width,
-                          height: (safe.maxY - safe.minY) / 2 * size.height).insetBy(dx: -10, dy: -24)
-        let roomy = free.insetBy(dx: -28, dy: -28)
-        var placed: [CGRect] = []
+                          height: (safe.maxY - safe.minY) / 2 * size.height)
+        if siteFocus == nil && mode == .landscape && inspectorShown {
+            // A phone's inspector slides over the right of the scene.
+            let edge = size.width - arView.safeAreaInsets.right - 312
+            free.size.width = max(0, min(free.maxX, edge) - free.minX)
+        }
+        let roomy = free.insetBy(dx: -8, dy: -8)
         let all = dynamics.anchors
-        let ordered = all.enumerated().sorted { a, b in
-            let ra = rank(a.element), rb = rank(b.element)
-            if ra != rb { return ra < rb }
-            let sa = shownAnchors.contains(a.element.id), sb = shownAnchors.contains(b.element.id)
-            if sa != sb { return sa }
-            return a.offset < b.offset
-        }.map(\.element)
+        // The order depends on the focus, the site and what showed last
+        // frame, all of which mark the projection dirty.
+        if dirty || moving || dynamics.anchorsRevision != orderedRevision {
+            orderedRevision = dynamics.anchorsRevision
+            orderedAnchors = all.enumerated().sorted { a, b in
+                let ra = rank(a.element), rb = rank(b.element)
+                if ra != rb { return ra < rb }
+                let sa = shownAnchors.contains(a.element.id), sb = shownAnchors.contains(b.element.id)
+                if sa != sb { return sa }
+                return a.offset < b.offset
+            }.map(\.element)
+        }
+        placedBoxes.removeAll(keepingCapacity: true)
+        labelBoxes.removeAll(keepingCapacity: true)
+        var visible: [HubProjectedAnchor] = []
+        visible.reserveCapacity(orderedAnchors.count)
         let forward = rig.target - rig.position
-        let visible: [HubProjectedAnchor] = ordered.compactMap { anchor in
+        for anchor in orderedAnchors {
             switch anchor.kind {
-            case .pin: guard shot == .terminal, overlays.contains(.labels) else { return nil }
-            case .pill: guard shot == .district, overlays.contains(.labels) else { return nil }
-            case .callout: guard shot == .gate else { return nil }
-            case .tag: guard shot == .overview, overlays.contains(.standTags) else { return nil }
-            case .route: guard shot == .overview, overlays.contains(.routes), siteFocus == nil else { return nil }
+            case .pin: guard shot == .terminal, overlays.contains(.labels) else { continue }
+            case .pill: guard shot == .district, overlays.contains(.labels) else { continue }
+            case .callout: guard shot == .gate else { continue }
+            case .tag: guard shot == .overview, overlays.contains(.standTags) else { continue }
+            case .route: guard shot == .overview, overlays.contains(.routes), siteFocus == nil else { continue }
             case .facility(let tag):
-                guard shot == .overview, overlays.contains(.upgrades) || siteFocus == tag.kind else { return nil }
-            case .stat: guard shot == .overview, overlays.contains(.labels), siteFocus == nil else { return nil }
-            case .popup: guard shot == .overview || shot == .gate else { return nil }
+                guard shot == .overview, overlays.contains(.upgrades) || siteFocus == tag.kind else { continue }
+            case .stat: guard shot == .overview, overlays.contains(.labels), siteFocus == nil else { continue }
+            case .popup: guard shot == .overview || shot == .gate else { continue }
             }
             // Behind the camera.
             guard simd_dot(anchor.position - rig.position, forward) > 0,
                   let p = arView.project(anchor.position),
-                  p.x > -40, p.y > -40, p.x < size.width + 40, p.y < size.height + 40 else { return nil }
-            // Where the label is drawn: above its anchor, on its stem.
-            let box: CGRect?
-            switch anchor.kind {
-            case .tag: box = CGRect(x: p.x - 85, y: p.y - 42, width: 170, height: 32)
-            case .facility: box = CGRect(x: p.x - 85, y: p.y - 52, width: 170, height: 40)
-            case .stat: box = CGRect(x: p.x - 90, y: p.y - 56, width: 180, height: 42)
-            case .route: box = CGRect(x: p.x - 70, y: p.y - 13, width: 140, height: 26)
-            default: box = nil
-            }
-            if let box {
+                  p.x > -40, p.y > -40, p.x < size.width + 40, p.y < size.height + 40 else { continue }
+            if case .callout = anchor.kind {
+                // Never hidden: the overlay holds it inside the free band
+                // over its jet (`HubAnchorOverlay.calloutCenter`). It claims
+                // its box first, so nothing is laid over it.
+                let box = Self.calloutBox(p, compact: mode == .landscape, in: free)
+                placedBoxes.append(box)
+                labelBoxes.append(box)
+            } else if let box = Self.labelBox(anchor.kind, at: p) {
                 let region = shownAnchors.contains(anchor.id) ? roomy : free
-                guard region.contains(p), !placed.contains(where: { $0.intersects(box) }) else { return nil }
-                placed.append(box)
+                // The site being watched is the subject, framed to fill the
+                // free area: its tag floats over the building, often just
+                // past the area's top, and is kept as long as its anchor
+                // is inside.
+                var watched = false
+                if case .facility(let tag) = anchor.kind { watched = tag.kind == siteFocus }
+                let fits = watched ? region.insetBy(dx: -10, dy: -24).contains(p) : region.contains(box)
+                guard fits, !placedBoxes.contains(where: { $0.intersects(box) }) else { continue }
+                placedBoxes.append(box)
+                switch anchor.kind {
+                case .tag, .facility, .stat, .route: labelBoxes.append(box)
+                default: break
+                }
             }
-            return HubProjectedAnchor(anchor: anchor, point: p)
+            visible.append(HubProjectedAnchor(anchor: anchor, point: p))
         }
-        shownAnchors = Set(visible.map(\.id))
+        shownScratch.removeAll(keepingCapacity: true)
+        for item in visible { shownScratch.insert(item.id) }
+        if shownScratch != shownAnchors {
+            let previous = shownAnchors
+            shownAnchors = shownScratch
+            shownScratch = previous
+            // Those showing now go first: place once more next frame.
+            projectionsDirty = true
+        }
         onProjected(visible)
+    }
+
+    /// Where a label is drawn, in view points: above its anchor on its
+    /// stem, or centred on it. Nil for the pop-ups, which float free.
+    private static func labelBox(_ kind: HubAnchor.Kind, at p: CGPoint) -> CGRect? {
+        switch kind {
+        case .tag: return CGRect(x: p.x - 85, y: p.y - 42, width: 170, height: 32)
+        case .facility: return CGRect(x: p.x - 85, y: p.y - 52, width: 170, height: 40)
+        case .stat: return CGRect(x: p.x - 90, y: p.y - 56, width: 180, height: 42)
+        case .route: return CGRect(x: p.x - 70, y: p.y - 13, width: 140, height: 26)
+        case .pin(let label):
+            // The name's capsule over the teardrop, drawn 24 pt up.
+            let width = max(40, CGFloat(label.count) * 6.6 + 18)
+            return CGRect(x: p.x - width / 2, y: p.y - 56, width: width, height: 64)
+        case .pill(let label, _):
+            let width = CGFloat(label.count) * 7 + 42
+            return CGRect(x: p.x - width / 2, y: p.y - 14, width: width, height: 28)
+        case .callout, .popup: return nil
+        }
+    }
+
+    /// The callout's box: over its jet, held inside `free`, the size of
+    /// `HubCallout` (one line and a bar on a phone on its side).
+    private static func calloutBox(_ p: CGPoint, compact: Bool, in free: CGRect) -> CGRect {
+        let half = compact ? CGSize(width: 110, height: 30) : CGSize(width: 118, height: 80)
+        let left = free.minX + half.width, right = max(left, free.maxX - half.width)
+        let top = free.minY + half.height, bottom = max(top, free.maxY - half.height)
+        let x = min(max(p.x, left), right)
+        let y = min(max(p.y - 60 - half.height, top), bottom)
+        return CGRect(x: x - half.width, y: y - half.height, width: half.width * 2, height: half.height * 2)
     }
 
     private func rank(_ anchor: HubAnchor) -> Int {
@@ -759,17 +924,65 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
 
     private var pinchStart: Float = 0
     private var rotateStart: Float = 0
+    /// Pan, pinch and twist. They start on the 3D view and move up to the
+    /// view that hosts the whole dashboard once it is on screen
+    /// (`hostCameraGestures`), so they also hear a finger that lands on a
+    /// world label: the labels sit over the scene in SwiftUI, and used to
+    /// swallow any pan or pinch begun on one. A tap on a label stays the
+    /// label's own (its button, its accessibility identifier); a tap on the
+    /// scene stays the 3D view's.
+    private var cameraGestures: [UIGestureRecognizer] = []
+    private weak var gestureHost: UIView?
+    /// Off while a panel is open: a drag inside it is the panel's.
+    var labelsPassCameraGestures = true
 
     private func installGestures() {
-        let pan = UIPanGestureRecognizer(target: self, action: #selector(onPan(_:)))
+        let relay = HubGestureRelay(scene: self)
+        let pan = HubCameraPan(target: relay, action: #selector(HubGestureRelay.pan(_:)))
         pan.maximumNumberOfTouches = 1
-        let pinch = UIPinchGestureRecognizer(target: self, action: #selector(onPinch(_:)))
-        let rotate = UIRotationGestureRecognizer(target: self, action: #selector(onRotate(_:)))
-        let tap = UITapGestureRecognizer(target: self, action: #selector(onTap(_:)))
-        for g in [pan, pinch, rotate, tap] as [UIGestureRecognizer] {
-            g.delegate = self
+        pan.relay = relay
+        let pinch = HubCameraPinch(target: relay, action: #selector(HubGestureRelay.pinch(_:)))
+        pinch.relay = relay
+        let rotate = HubCameraRotation(target: relay, action: #selector(HubGestureRelay.rotate(_:)))
+        rotate.relay = relay
+        cameraGestures = [pan, pinch, rotate]
+        for g in cameraGestures {
+            g.delegate = relay
             arView.addGestureRecognizer(g)
         }
+        let tap = UITapGestureRecognizer(target: self, action: #selector(onTap(_:)))
+        tap.delegate = self
+        arView.addGestureRecognizer(tap)
+    }
+
+    /// Moves the camera gestures to the view controller's view that holds
+    /// the 3D view and every label over it — the hub's own presentation —
+    /// once the scene is in a window. Until then, or if there is none,
+    /// they stay on the 3D view, as before.
+    private func hostCameraGestures() {
+        guard gestureHost == nil, arView.window != nil else { return }
+        var responder: UIResponder? = arView.next
+        while let next = responder, !(next is UIViewController) { responder = next.next }
+        guard let host = (responder as? UIViewController)?.view, host !== arView else { return }
+        for g in cameraGestures { host.addGestureRecognizer(g) }
+        gestureHost = host
+    }
+
+    /// Back onto the 3D view while paused: nothing is left on a view that
+    /// outlives this scene (a hub switch keeps the presentation).
+    private func lowerCameraGestures() {
+        guard gestureHost != nil else { return }
+        for g in cameraGestures { arView.addGestureRecognizer(g) }
+        gestureHost = nil
+    }
+
+    /// Whether a camera gesture may take this touch: any on the 3D view,
+    /// and one on a tappable label while no panel is open.
+    fileprivate func acceptsCameraTouch(_ touch: UITouch) -> Bool {
+        if let view = touch.view, view.isDescendant(of: arView) { return true }
+        guard labelsPassCameraGestures, !labelBoxes.isEmpty else { return false }
+        let p = touch.location(in: arView)
+        return labelBoxes.contains { $0.contains(p) }
     }
 
     nonisolated func gestureRecognizer(_ g: UIGestureRecognizer,
@@ -783,9 +996,10 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         lastInteraction = Date()
         smoothTime = 0.11
         driftRate = 0
+        cameraIsFramed = false
     }
 
-    @objc private func onPan(_ g: UIPanGestureRecognizer) {
+    fileprivate func onPan(_ g: UIPanGestureRecognizer) {
         touch()
         if g.state == .began { panVelocity = .zero }
         let t = g.translation(in: arView)
@@ -807,13 +1021,13 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         }
     }
 
-    @objc private func onPinch(_ g: UIPinchGestureRecognizer) {
+    fileprivate func onPinch(_ g: UIPinchGestureRecognizer) {
         touch()
         if g.state == .began { pinchStart = goal.distance }
         goal.distance = min(4_200, max(60, pinchStart / Float(max(g.scale, 0.05))))
     }
 
-    @objc private func onRotate(_ g: UIRotationGestureRecognizer) {
+    fileprivate func onRotate(_ g: UIRotationGestureRecognizer) {
         touch()
         if g.state == .began {
             rotateStart = goal.yaw
@@ -845,6 +1059,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
     func zoom(by factor: Float) {
         lastInteraction = Date()
         smoothTime = 0.32
+        cameraIsFramed = false
         goal.distance = min(4_200, max(60, goal.distance * factor))
     }
 
@@ -852,6 +1067,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         lastInteraction = Date()
         smoothTime = 0.4
         driftRate = 0
+        cameraIsFramed = false
         goal.yaw += radians
     }
 
@@ -875,12 +1091,54 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         if paused {
             updates?.cancel()
             updates = nil
+            lowerCameraGestures()
         } else if updates == nil {
             updates = arView.scene.subscribe(to: SceneEvents.Update.self) { [weak self] event in
                 MainActor.assumeIsolated { self?.tick(Float(event.deltaTime)) }
             }
         }
     }
+}
+
+/// Target and delegate of the camera gestures. Each gesture holds its
+/// relay and the relay only a weak reference to the scene, so a gesture
+/// left on the hosting view can never message a scene that has gone — it
+/// just stops taking touches.
+@available(iOS 18.0, *)
+@MainActor
+private final class HubGestureRelay: NSObject, UIGestureRecognizerDelegate {
+    weak var scene: HubSceneController?
+
+    init(scene: HubSceneController) {
+        self.scene = scene
+    }
+
+    @objc func pan(_ g: UIPanGestureRecognizer) { scene?.onPan(g) }
+    @objc func pinch(_ g: UIPinchGestureRecognizer) { scene?.onPinch(g) }
+    @objc func rotate(_ g: UIRotationGestureRecognizer) { scene?.onRotate(g) }
+
+    func gestureRecognizer(_ g: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        scene?.acceptsCameraTouch(touch) ?? false
+    }
+
+    func gestureRecognizer(_ g: UIGestureRecognizer,
+                           shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+        true
+    }
+}
+
+/// The camera gestures, each keeping its relay alive (UIKit holds neither
+/// a target nor a delegate strongly).
+private final class HubCameraPan: UIPanGestureRecognizer {
+    var relay: AnyObject?
+}
+
+private final class HubCameraPinch: UIPinchGestureRecognizer {
+    var relay: AnyObject?
+}
+
+private final class HubCameraRotation: UIRotationGestureRecognizer {
+    var relay: AnyObject?
 }
 
 @available(iOS 18.0, *)

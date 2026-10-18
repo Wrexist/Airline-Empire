@@ -218,7 +218,17 @@ private struct HubDashboard: View {
             .animation(HubMotion.panel, value: model.focus)
             .animation(HubMotion.panel, value: model.panel)
             .animation(HubMotion.panel, value: model.toast)
+            // The camera frames for the right column only while something
+            // is in it; the labels keep out of it.
+            .onChange(of: inspectorShown, initial: true) { _, shown in
+                model.scene.setInspector(shown: shown)
+            }
         }
+    }
+
+    /// The inspector, or a side panel in its place, has the right column.
+    private var inspectorShown: Bool {
+        (model.showsInspector && model.focusedOccupant != nil) || model.sidePanelOpen
     }
 
     // MARK: Layouts
@@ -365,13 +375,27 @@ private struct HubDashboard: View {
     private func panels(_ mode: HubChromeMode) -> some View {
         if let panel = model.panel {
             if case .upgrade(let kind) = panel {
-                // The upgrade card beside its site: the scene stays live so
-                // the construction can be watched.
-                HubUpgradeCard(model: model, kind: kind, mode: mode)
-                    .padding(.top, mode.topBarHeight + 10)
-                    .padding(.trailing, mode == .landscape ? 60 : 64)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                if mode == .portrait {
+                    // A narrow window has no room beside the site: the card
+                    // runs along the bottom and the camera frames the site
+                    // in the room above it, measured as laid out.
+                    HubUpgradeCard(model: model, kind: kind, mode: mode)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                            model.scene.setFacilityCard(height: height)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 12)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else {
+                    // The upgrade card beside its site: the scene stays live
+                    // so the construction can be watched.
+                    HubUpgradeCard(model: model, kind: kind, mode: mode)
+                        .padding(.top, mode.topBarHeight + 10)
+                        .padding(.trailing, mode == .landscape ? 60 : 64)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
             } else if panel == .insights {
                 // A side panel: the scene stays live and touchable beside it.
                 HubInsightsPanel(model: model, mode: mode)
