@@ -106,28 +106,68 @@ public struct SolvencySystem: SimulationSystem {
         }
     }
 
-    /// Administration: sell unassigned owned aircraft at fire-sale prices
-    /// until solvent; creditors write off part of the debt.
+    /// Administration: the administrator sheds operations until the books
+    /// balance; creditors write off part of the debt.
+    ///
+    /// It used to sell only *unassigned owned* aircraft and never touch a
+    /// lease. An airline in trouble is flying everything it has, so there
+    /// was nothing to sell, the balance stayed under the floor and the same
+    /// update collapsed it — the "second chance" only ever reached airlines
+    /// that had parked their fleet. Now, in this order:
+    ///
+    /// 1. idle leased airframes go back to the lessor with no early-return
+    ///    penalty: they earn nothing and bill every month;
+    /// 2. idle owned airframes are fire-sold;
+    /// 3. route by route, weakest last closed month first, each airframe is
+    ///    taken off its route — owned ones fire-sold, leased ones returned
+    ///    without penalty.
+    ///
+    /// Selling stops the moment the balance is back at zero, so the
+    /// stronger routes keep flying. An airframe working a flight (boarding
+    /// to the end of its turnaround) is left alone, as unassigning it would
+    /// be refused. Every list is in id or route order, so the same world
+    /// always sheds the same aeroplanes.
     private func administer(_ airline: inout Airline, state: inout GameState,
                             context: SimContext) {
         let tuning = context.catalog.tuning.finance
         airline.administrationCount += 1
         airline.daysInsolvent = 0
 
-        for aircraft in state.fleet(of: airline.id) {
+        let free = state.fleet(of: airline.id).filter { $0.activeFlight == nil }
+        let freeIDs = Set(free.map(\.id))
+        let idle = free.filter { $0.assignedRoute == nil }
+        var shed = idle.filter { $0.ownership.isLeased }.map(\.id)
+            + idle.filter { !$0.ownership.isLeased }.map(\.id)
+        let weakestFirst = state.routes(of: airline.id).sorted {
+            let (a, b) = ($0.economicsLastMonth.directOperatingProfit,
+                          $1.economicsLastMonth.directOperatingProfit)
+            return a != b ? a < b : $0.id < $1.id
+        }
+        for route in weakestFirst {
+            shed += route.assignedAircraft.sorted().filter { freeIDs.contains($0) }
+        }
+
+        for aircraftID in shed {
             guard state.ledger.balance(of: airline.id) < .zero else { break }
-            guard case .owned = aircraft.ownership,
-                  aircraft.assignedRoute == nil, aircraft.activeFlight == nil
-            else { continue }
-            let spec = context.catalog.aircraftType(aircraft.typeCode)!
-            let value = FleetEconomics.saleValue(
-                type: spec, ageYears: aircraft.ageYears, condition: aircraft.condition,
-                tuning: context.catalog.tuning.fleet)
-            let proceeds = Money(rounding: value.asDouble * tuning.fireSalePriceFactor)
-            state.ledger.post(airline: airline.id, category: .aircraftSale,
-                              amount: proceeds, at: context.current,
-                              memo: "Fire sale, \(spec.model)")
-            state.aircraft[aircraft.id] = nil
+            guard let aircraft = state.aircraft[aircraftID],
+                  let spec = context.catalog.aircraftType(aircraft.typeCode) else { continue }
+            switch aircraft.ownership {
+            case .owned:
+                let value = FleetEconomics.saleValue(
+                    type: spec, ageYears: aircraft.ageYears, condition: aircraft.condition,
+                    tuning: context.catalog.tuning.fleet)
+                let proceeds = Money(rounding: value.asDouble * tuning.fireSalePriceFactor)
+                state.ledger.post(airline: airline.id, category: .aircraftSale,
+                                  amount: proceeds, at: context.current,
+                                  memo: "Fire sale, \(spec.model)")
+                context.emit(.aircraftSold(id: aircraftID, proceeds: proceeds))
+            case .leased:
+                // The administrator hands the airframe back; the lessor
+                // waives the early-return penalty rather than rank behind
+                // the other creditors for it.
+                context.emit(.leaseReturned(id: aircraftID, penalty: .zero))
+            }
+            Self.release(aircraft, state: &state)
         }
 
         airline.reputation.applyScar(
@@ -146,6 +186,21 @@ public struct SolvencySystem: SimulationSystem {
             return restructured
         }
         context.emit(.airlineEnteredAdministration(id: airline.id))
+    }
+
+    /// Takes a shed airframe off the books: off its route, its pending
+    /// flights dropped (it has no live one — only free airframes are shed),
+    /// then gone, so no route or flight is left pointing at it.
+    private static func release(_ aircraft: Aircraft, state: inout GameState) {
+        if let routeID = aircraft.assignedRoute, var route = state.routes[routeID] {
+            route.assignedAircraft.removeAll { $0 == aircraft.id }
+            state.routes[routeID] = route
+        }
+        for flightID in state.orderedFlightIDs
+        where state.flights[flightID]?.aircraft == aircraft.id {
+            state.flights[flightID] = nil
+        }
+        state.aircraft[aircraft.id] = nil
     }
 
     /// Terminal failure: routes close (slots freed, flights cancelled),
