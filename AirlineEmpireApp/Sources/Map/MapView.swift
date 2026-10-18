@@ -36,6 +36,7 @@ struct MapScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.feedback) private var feedback
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     /// Where the player was looking, held by the shell rather than here — see
     /// `MapScreenMemory`. The four accessors below keep every use in this
@@ -289,6 +290,9 @@ struct MapScreen: View {
         // (docs/MAP_INTERACTION_ARCHITECTURE.md §3). Read here, in the body,
         // so the draw only ever sees a value that matches its model.
         let revision = controller.mapRevision
+        // Labels follow the player's text size, within a cap; read here so
+        // the draw sees one value per body pass.
+        let labelScale = MapLabelLayout.scale(for: typeSize)
         // `isMoving` keeps the clock running through a camera move even with
         // the simulation paused: the world stops, the map still has to travel.
         // And the clock stops whenever nobody can see the map: under a sheet
@@ -338,7 +342,8 @@ struct MapScreen: View {
                                      revision: revision,
                                      settle: camera.settleGeneration,
                                      bottomOcclusion: bottomOcclusion,
-                                     cache: renderCache)
+                                     cache: renderCache,
+                                     labelScale: labelScale)
                 let drawStart = probesEnabled ? DispatchTime.now() : nil
                 frame.draw(into: &context, size: canvasSize)
                 if let drawStart {

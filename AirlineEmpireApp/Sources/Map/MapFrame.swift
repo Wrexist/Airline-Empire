@@ -46,6 +46,9 @@ struct MapFrame {
     /// The cached geometry this frame replays instead of rebuilding
     /// (docs/MAP_RUNTIME_BASELINE.md §2 is the bill it retires).
     let cache: MapRenderCache
+    /// How much larger than standard the labels are drawn, for the player's
+    /// text size (`MapLabelLayout.scale(for:)`).
+    let labelScale: CGFloat
 
     /// What the frame drew, in screen space.
     struct Geometry {
@@ -87,7 +90,8 @@ struct MapFrame {
          speed: SimSpeed, elapsed: TimeInterval, gameMinutes: Double,
          revision: UInt64, settle: Int,
          bottomOcclusion: CGFloat = 0,
-         cache: MapRenderCache) {
+         cache: MapRenderCache,
+         labelScale: CGFloat = 1) {
         self.model = model
         self.snapshot = snapshot
         self.projector = projector
@@ -101,6 +105,7 @@ struct MapFrame {
         self.settle = settle
         self.bottomOcclusion = bottomOcclusion
         self.cache = cache
+        self.labelScale = labelScale
         self.airportsByCode = cache.airportIndex(for: model, revision: revision)
         self.worldOffsets = projector.visibleWorldOffsets
     }
@@ -928,10 +933,12 @@ struct MapFrame {
         // (MapRenderCache.countryLabels).
         let metrics = cache.textMetrics
         let measuring = context
+        let scale = labelScale
         let labels = cache.countryLabels(
             projector: projector, policy: policy, blocked: blocked,
             placedNow: labelsPlacedThisFrame, labelBounds: labelBounds,
-            textWidth: { metrics.countryTextWidth($0, in: measuring) })
+            textWidth: { metrics.countryTextWidth($0, scale: scale, in: measuring) },
+            scale: scale)
         for label in labels {
             // Uppercase and letterspaced, which is how an atlas says "this is
             // a region, not a place". It matters more now that airports carry
@@ -941,7 +948,7 @@ struct MapFrame {
             // text (`CountryLabel.caption`), made once rather than per frame.
             context.draw(
                 Text(label.text)
-                    .font(.system(size: policy.level == .local ? 10 : 9,
+                    .font(.system(size: (policy.level == .local ? 10 : 9) * labelScale,
                                   weight: .semibold))
                     .tracking(1.4)
                     .foregroundStyle(AETheme.mapCountryLabel),
@@ -964,6 +971,7 @@ struct MapFrame {
         var selectedCode: AirportCode?
         if case .airport(let code) = selection { selectedCode = code }
         let metrics = cache.textMetrics
+        let scale = labelScale
         let result = cache.airportLabels(
             airports: labelAnchors, byCode: airportsByCode,
             projector: projector, policy: policy, selected: selectedCode,
@@ -971,7 +979,8 @@ struct MapFrame {
             limit: policy.level == .world ? 10 : 32,
             labelBounds: labelBounds,
             markerRadius: { policy.radius($0) },
-            textWidth: { metrics.airportTextWidth($0, in: context) })
+            textWidth: { metrics.airportTextWidth($0, scale: scale, in: context) },
+            scale: scale)
         labelsPlacedThisFrame = result.placedNow
         return result.labels
     }
@@ -986,7 +995,7 @@ struct MapFrame {
             // The text carries no colour of its own, so `shading` fills it.
             var text = context.resolve(
                 Text(label.text)
-                    .font(.system(size: label.emphasis ? 11 : 10,
+                    .font(.system(size: (label.emphasis ? 11 : 10) * labelScale,
                                   weight: label.isPlayer ? .semibold : .medium)))
 
             // A hairline of the ocean colour underneath, offset a point.
