@@ -472,6 +472,10 @@ class AEUITestCase: XCTestCase {
         let fleetRow = app.descendants(matching: .any)
             .matching(identifier: "ae-fleet-row").firstMatch
 
+        // Open is the list or the title: the iOS 27.1 SDK hides the title
+        // while the list scrolls on iPhone Duo's short outer display.
+        func marketOpen() -> Bool { list.exists || market.exists }
+
         // A fast application swipe can overshoot a virtualised row in a
         // nested sheet. Scroll within this market and require the entire
         // action to sit below its toolbar before resolving a tap position.
@@ -514,7 +518,7 @@ class AEUITestCase: XCTestCase {
             }
             if attempt == 1 { checkpoint("LEASE-BEFORE-TAP") }
             let frame = lease.frame
-            print("LEASE-TAP frame=\(frame), list=\(list.frame), title=\(market.frame)")
+            print("LEASE-TAP frame=\(frame), list=\(list.frame), title=\(market.exists ? "\(market.frame)" : "hidden")")
             app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
                 .withOffset(CGVector(dx: frame.midX, dy: frame.midY)).tap()
 
@@ -539,7 +543,7 @@ class AEUITestCase: XCTestCase {
                     XCTAssertGreaterThanOrEqual(cancel.frame.height, 44)
                     cancel.tap()
                     guard leaseDialogTitle.waitForNonExistence(timeout: 8),
-                          market.exists, lease.exists, lease.isEnabled else {
+                          marketOpen(), lease.exists, lease.isEnabled else {
                         checkpoint("LEASE-CANCEL-FAILED")
                         XCTFail("Cancelling must return to the open market with its lease action enabled")
                         return false
@@ -549,8 +553,8 @@ class AEUITestCase: XCTestCase {
                     continue
                 }
                 confirm.tap()
-                let closed = market.waitForNonExistence(timeout: 8)
-                if (closed || !market.exists), leaseLanded(proof, fleetRow: fleetRow) {
+                let closed = list.waitForNonExistence(timeout: 8)
+                if (closed || !marketOpen()), leaseLanded(proof, fleetRow: fleetRow) {
                     return true
                 }
                 // Never resubmit a purchase after confirmation. A slow or
@@ -560,13 +564,15 @@ class AEUITestCase: XCTestCase {
                 return false
             }
             checkpoint("LEASE-ATTEMPT-\(attempt)")
-            guard market.exists else {
+            guard marketOpen() else {
                 XCTFail("The market closed before a lease confirmation; no purchase was proven")
                 return false
             }
             // Only opening the confirmation is retried. Dismiss a wrong
             // popover without confirming any transaction.
-            market.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            if market.exists {
+                market.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            }
         }
         XCTFail("The lease confirmation did not open after four visible, stationary taps")
         return false
