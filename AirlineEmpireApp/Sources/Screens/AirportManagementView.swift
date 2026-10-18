@@ -71,6 +71,11 @@ struct AirportDetailView: View {
                         Text(item.rawValue).font(.caption.weight(.semibold)).padding(.horizontal, 12).frame(minHeight: 44)
                             .background(section == item ? AETheme.accent.opacity(0.2) : .clear, in: .rect(cornerRadius: 12))
                             .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(section == item ? AETheme.accent : .clear) }
+                            // The whole pill, not only its glyphs: `.plain` hit-tests the
+                            // drawn text, and an unselected tab's background is clear, so
+                            // a tap beside the word fell through (RouteManagementTabs had
+                            // this line; these tabs did not).
+                            .contentShape(.rect)
                     }.buttonStyle(.plain).foregroundStyle(section == item ? .primary : AETheme.mutedText)
                         .accessibilityAddTraits(section == item ? .isSelected : [])
                         .accessibilityIdentifier("ae-airport-tab-\(item.rawValue)")
