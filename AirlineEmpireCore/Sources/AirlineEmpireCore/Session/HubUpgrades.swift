@@ -49,7 +49,7 @@ public enum HubFacilityKind: String, CaseIterable, Codable, Sendable {
         case (.crewBase, _): "Crew base and hotel"
         case (.pier, 0): "Shared pier"
         case (.pier, 1): "Your own pier"
-        case (.pier, _): "Your pier and satellite"
+        case (.pier, _): "Your flagship pier"
         }
     }
 }

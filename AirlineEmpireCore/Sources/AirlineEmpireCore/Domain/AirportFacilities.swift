@@ -124,7 +124,7 @@ public enum AirportService: String, CaseIterable, Codable, Sendable {
         case (.hangar, 1): "Line maintenance"
         case (.hangar, _): "Heavy maintenance"
         case (.pier, 1): "Own gates"
-        case (.pier, _): "Pier and satellite"
+        case (.pier, _): "Flagship pier"
         default: Self.levelName(level)
         }
     }
