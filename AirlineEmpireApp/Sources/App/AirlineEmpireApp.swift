@@ -28,6 +28,10 @@ struct AirlineEmpireApp: App {
                 // of the moments audio cares about.
                 .environment(\.feedback, controller.feedback)
                 .task {
+                    // The coastlines, parsed before anyone needs them rather
+                    // than inside the first map frame (`WorldGeometry.warm`).
+                    // Detached and low priority: nothing waits for it.
+                    Task.detached(priority: .utility) { WorldGeometry.warm() }
                     // UI tests only: open a save the engine wrote, so the
                     // late game can be photographed (AE-037 COMP-07).
                     controller.loadFixtureIfRequested()
