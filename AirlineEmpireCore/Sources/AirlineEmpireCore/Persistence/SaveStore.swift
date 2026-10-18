@@ -139,7 +139,13 @@ public final class SaveManager: Sendable {
     public let store: FileSaveStore
     public let codec: JSONSaveCodec
 
-    public init(store: FileSaveStore, codec: JSONSaveCodec = JSONSaveCodec()) {
+    /// The default codec checks saves against the shipped content and stamps
+    /// its version: the app's saves are always played on the shipped
+    /// catalog, so that is what a save must resolve against before the
+    /// simulation is handed it (see `JSONSaveCodec.catalog`). Tests and tools
+    /// on synthetic content pass a codec carrying their own catalog, or none.
+    public init(store: FileSaveStore,
+                codec: JSONSaveCodec = JSONSaveCodec(catalog: ContentCatalog.shipped)) {
         self.store = store
         self.codec = codec
     }
@@ -153,6 +159,12 @@ public final class SaveManager: Sendable {
         // the generations already on disk survive.
         guard state.isLoadable else {
             throw SaveError.corruptPayload("The game state failed its integrity check, so it was not saved. Your existing saves are unchanged.")
+        }
+        // Same rule for content: never write over good generations a save
+        // the loader would refuse.
+        if let catalog = codec.catalog {
+            let missing = state.unknownContentCodes(in: catalog)
+            guard missing.isEmpty else { throw SaveError.missingContent(missing) }
         }
         let data = try codec.encode(state)
         try store.save(data, slot: slot, meta: Self.meta(for: state))
