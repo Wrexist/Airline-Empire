@@ -1025,8 +1025,6 @@ struct MapFrame {
 
     // MARK: - Primitives
 
-    /// The viewport as a rectangle in normalised map space.
-
     /// One pip per status past a station — a base shows one, a main base two —
     /// so the badge grows with the hub without the map learning each status's
     /// name. Up and to the right of the marker, clear of the rings around it.
@@ -1047,6 +1045,8 @@ struct MapFrame {
             fillCircle(&context, at: centre, radius: pip, color: playerColor)
         }
     }
+
+    /// The viewport as a rectangle in normalised map space.
 
     private func fillCircle(_ context: inout GraphicsContext, at point: CGPoint,
                             radius: CGFloat, color: Color) {
