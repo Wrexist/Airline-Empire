@@ -50,6 +50,11 @@ public struct AssignmentCandidate: Equatable, Sendable {
         /// and the two ends are usually not equally replaceable.
         case runwayTooSmall(airport: AirportCode, needs: RunwayClass,
                             has: RunwayClass)
+        /// In range, but one round trip — two legs and two turnarounds —
+        /// takes longer than the operating day, so the scheduler would never
+        /// give the aeroplane a flight. Both figures, so a screen can say by
+        /// how much rather than only that it does not fit.
+        case roundTripExceedsDay(roundTripMinutes: Int64, operatingMinutes: Int64)
     }
 
     /// A fact about an allowed assignment, where the data supports one.
@@ -172,6 +177,18 @@ extension GameState {
                                              needs: spec.runwayRequirement,
                                              has: airport.runwayClass))
             }
+        }
+        // The scheduler's own arithmetic, as the validator asks it: zero
+        // round trips a day is the same condition as one round trip longer
+        // than the window.
+        if FlightSchedulingSystem.roundTripsPerDay(spec: spec, on: route, state: self,
+                                                    catalog: catalog) == 0 {
+            return AssignmentCandidate(
+                aircraftID: aircraft.id, routeID: route.id,
+                blocker: .roundTripExceedsDay(
+                    roundTripMinutes: FlightSchedulingSystem.roundTripMinutes(
+                        spec: spec, on: route, state: self, catalog: catalog),
+                    operatingMinutes: operatingWindow(for: route, catalog: catalog).minutes))
         }
         return AssignmentCandidate(aircraftID: aircraft.id, routeID: route.id,
                                    note: note(aircraft: aircraft, route: route,

@@ -286,6 +286,17 @@ public struct AssignAircraftToRouteCommand: Command, Equatable {
                                         message: "\(end) cannot handle a \(spec.model)")
             }
         }
+        // In range and still never flown: the scheduler plans whole round
+        // trips inside the operating day, so a route whose round trip is
+        // longer than the day materialises no flights at all — and the
+        // aeroplane's lease, payroll and checks bill regardless. Range was
+        // the only distance check, so long-haul types were accepted onto
+        // routes they could never fly.
+        if FlightSchedulingSystem.roundTripsPerDay(spec: spec, on: r, state: state,
+                                                    catalog: catalog) == 0 {
+            return CommandRejection(code: "route.tooLongForDay",
+                                    message: "A \(spec.model) round trip of \(r.distanceKm) km does not fit in one operating day")
+        }
         return nil
     }
 

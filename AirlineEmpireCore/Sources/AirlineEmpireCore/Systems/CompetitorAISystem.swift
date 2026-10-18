@@ -489,7 +489,10 @@ public struct CompetitorAISystem: SimulationSystem {
             guard let airport = context.catalog.airport(end) else { return false }
             if airport.runwayClass < spec.runwayRequirement { return false }
         }
-        return true
+        // The assignment validator refuses a round trip longer than the
+        // day; asking first keeps the slot from being spent on a refusal.
+        return FlightSchedulingSystem.roundTripsPerDay(spec: spec, on: route, state: state,
+                                                       catalog: context.catalog) > 0
     }
 
     private func manageRoutes(_ airlineID: AirlineID, profile: AIProfile,
