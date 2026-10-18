@@ -546,6 +546,7 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
 
     private func tick(_ rawDT: Float) {
         let dt = min(rawDT, 0.1)
+        dynamics.cameraPosition = rig.position
         dynamics.update(dt)
         // Reframe when the view changes shape (rotation, split view, a fold)
         // unless the player has just moved the camera. A construction site

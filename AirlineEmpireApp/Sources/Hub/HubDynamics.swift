@@ -404,13 +404,46 @@ final class HubDynamics {
         return e
     }
 
+    /// A jet with an authored model also carries the procedural one, shown
+    /// instead beyond about 900 m: there the authored detail is a pixel or
+    /// two, and a hub's twenty-odd jets would otherwise spend most of the
+    /// triangle budget on it (docs/GAME_AUDIT_2026-10-18.md §4).
+    private final class JetLOD {
+        let root: Entity
+        let high: Entity
+        let low: Entity
+        var far = false
+
+        init(root: Entity, high: Entity, low: Entity) {
+            self.root = root
+            self.high = high
+            self.low = low
+        }
+    }
+
+    private var jetLODs: [JetLOD] = []
+    private var lodFrame = 0
+    /// Where the camera is, set by the scene every frame, for the jets' LOD.
+    var cameraPosition: SIMD3<Float> = .zero
+
     private func aircraftEntity(_ category: AircraftCategory, livery: Livery) -> Entity {
-        let e = models.make(["aircraft_\(category.rawValue)"], models.aircraft(category), materials: materials) { key in
+        let remap: (HubMaterialKey) -> HubMaterialKey = { key in
             switch key {
             case .livery: .livery(livery)
             case .liveryAccent: .liveryAccent(livery)
             default: key
             }
+        }
+        let procedural = entity(models.aircraft(category), remap: remap)
+        let e: Entity
+        if let authored = models.library.instance("aircraft_\(category.rawValue)", materials: materials, remap: remap) {
+            e = Entity()
+            e.addChild(authored)
+            procedural.isEnabled = false
+            e.addChild(procedural)
+            jetLODs.append(JetLOD(root: e, high: authored, low: procedural))
+        } else {
+            e = procedural
         }
         let m = HubModels.metrics(category)
         let shadow = entity(models.blob())
@@ -428,6 +461,7 @@ final class HubDynamics {
             || wanted[index]!.category != current.occupant.category
             || wanted[index]!.livery != current.occupant.livery {
             current.entity.removeFromParent()
+            jetLODs.removeAll { $0.root === current.entity }
             standDressing[index]?.removeFromParent()
             standDressing[index] = nil
             standCrowds[index] = nil
@@ -902,6 +936,15 @@ final class HubDynamics {
 
     // MARK: Ambient traffic
 
+    /// A jet of the circuit: no draw in the sun's shadow pass. It is in the
+    /// air or far down the runway most of the time, and on the ground its
+    /// blob shadow goes with it.
+    private func ambientJet(_ category: AircraftCategory, livery: Livery) -> Entity {
+        let e = aircraftEntity(category, livery: livery)
+        e.setCastsShadows(false)
+        return e
+    }
+
     private func buildAmbientTraffic() {
         guard let runway = layout.runways.first,
               let taxi = layout.pieces.first(where: { $0.kind == .taxiway && $0.variant == 0 }) else { return }
@@ -924,7 +967,7 @@ final class HubDynamics {
         let liveries: [Livery] = [.slate, .crimson, .teal]
         let lap = Float(circuit.length)
         for k in 0..<3 {
-            let e = aircraftEntity(categories[k], livery: liveries[k])
+            let e = ambientJet(categories[k], livery: liveries[k])
             traffic.addChild(e)
             movers.append(HubMover(entity: e, path: circuit, speeds: speeds, start: Float(k) * lap / 3,
                                    style: .air, corner: 45))
@@ -935,7 +978,7 @@ final class HubDynamics {
             let dep = HubPath([HubVec(r2.thresholdA.x + 60, 0, r2.thresholdA.z), HubVec(r2.thresholdB.x - 200, 0, r2.thresholdA.z),
                                HubVec(r2.thresholdB.x + 600, 260, r2.thresholdA.z),
                                HubVec(r2.thresholdB.x + 2_600, 900, r2.thresholdA.z)])
-            let e = aircraftEntity(.largeWidebody, livery: .gold)
+            let e = ambientJet(.largeWidebody, livery: .gold)
             traffic.addChild(e)
             movers.append(HubMover(entity: e, path: dep, speeds: [55, 80, 92], start: 400, style: .air))
         }
@@ -947,7 +990,7 @@ final class HubDynamics {
                 HubVec(east + 260, 190, rwZ + 260), HubVec(stop.x + 260, 260, stop.z - 220),
                 HubVec(stop.x + 1_600, 760, stop.z + 1_400),
             ])
-            let e = aircraftEntity(.narrowbody, livery: .azure)
+            let e = ambientJet(.narrowbody, livery: .azure)
             traffic.addChild(e)
             movers.append(HubMover(entity: e, path: out, speeds: [45, 70, 78, 82, 92], start: Float(out.length) * 0.55,
                                    style: .air, corner: 120))
@@ -1120,6 +1163,20 @@ final class HubDynamics {
         // the next snapshot (which, paused, may be a long way off).
         if yard.update(dt), let snapshot = lastSnapshot { rebuildAnchors(snapshot) }
         for mover in movers { mover.step(dt) }
+        // Near jets in full, far ones procedural; a few times a second is
+        // plenty, with a margin either side so a jet on the line does not
+        // flicker between the two.
+        lodFrame &+= 1
+        if lodFrame % 6 == 0 {
+            for lod in jetLODs {
+                let d = simd_distance_squared(lod.root.position, cameraPosition)
+                let far = lod.far ? d > 850 * 850 : d > 950 * 950
+                guard far != lod.far else { continue }
+                lod.far = far
+                lod.high.isEnabled = !far
+                lod.low.isEnabled = far
+            }
+        }
         // Parked jets glide to where the snapshot puts them (pushback).
         for (index, target) in parkTargets {
             guard let e = parked[index]?.entity else { continue }
