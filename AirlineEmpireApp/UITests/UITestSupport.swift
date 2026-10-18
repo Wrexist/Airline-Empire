@@ -45,11 +45,17 @@ class AEUITestCase: XCTestCase {
     /// The navigation bar's Back button. Not the bar's first button: on
     /// iPhone Duo the iOS 27.1 SDK moves Back into a vertical bar on the
     /// trailing edge, and the first button is then the screen's leading
-    /// item — the clock's speed menu (run 39138961381). Where there is no
-    /// system Back, the first button, as before.
+    /// item — the clock's speed menu (run 39138961381). That vertical bar is
+    /// a `Toolbar` element, not part of the navigation bar (run
+    /// 39141479458's hierarchy), so Back is looked for anywhere, the first
+    /// hittable one winning. Where there is no system Back, the navigation
+    /// bar's first button, as before.
     var backButton: XCUIElement {
-        let system = app.navigationBars.buttons["BackButton"]
-        return system.exists ? system : app.navigationBars.buttons.element(boundBy: 0)
+        let system = app.buttons.matching(identifier: "BackButton")
+        for index in 0..<system.count where system.element(boundBy: index).isHittable {
+            return system.element(boundBy: index)
+        }
+        return app.navigationBars.buttons.element(boundBy: 0)
     }
 
     override func tearDown() {
