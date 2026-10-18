@@ -1,5 +1,13 @@
 # Airline Empire — TODO
 
+## Whole-game audit and iPhone Duo - 18 October 2026
+
+The complete, ranked list of what to fix and build is [GAME_AUDIT_2026-10-18.md](../docs/GAME_AUDIT_2026-10-18.md). iPhone Duo support: [IPHONE_DUO.md](../docs/IPHONE_DUO.md), branch `claude/iphone-duo-support`.
+
+- [ ] Do-first five (audit §0): pin `ubuntu-24.04`, zero-rotation assignment guard, administration fix, device acceptance session, RevenueCat check.
+- [x] iPhone Duo: app compiles with Xcode 27.1 / iOS 27.1 SDK; hub and shell survive folds; Duo CI lane.
+- [ ] iPhone Duo: simulator lane result, manual fold test, release with `xcode=27.1`, Duo store screenshots (required April 2027).
+
 ## Release 1.2.1 - 14 October 2026
 
 1.2.0 is approved and live. 1.2.1 carries the hub stand tag fix (PR #50) and the full 3D hub screenshot set.
@@ -8,7 +16,7 @@
 - [x] Six gameplay shots re-captured ([Store screenshots run 38585649823](https://github.com/Wrexist/Airline-Empire/actions/runs/38585649823)); 60 screenshots uploaded and verified ([run 38596711693](https://github.com/Wrexist/Airline-Empire/actions/runs/38596711693)).
 - [x] Version 1.2.1 created with release notes, Game Center linked; build 17 attached and submitted ([run 38597819835](https://github.com/Wrexist/Airline-Empire/actions/runs/38597819835)): WAITING_FOR_REVIEW. Approved purchases stay out of the submission.
 - [x] Owner asked for an all-portrait set: rebuilt with `scripts/store-art/showcase.cjs` (hub shots in a landscape device over hub cut-aways; gameplay in a device frame with a callout). 1.2.1 withdrawn ([run 38610040008](https://github.com/Wrexist/Airline-Empire/actions/runs/38610040008)), 60 portrait screenshots uploaded and verified ([run 38610408531](https://github.com/Wrexist/Airline-Empire/actions/runs/38610408531)), resubmitted with build 17 ([run 38610939454](https://github.com/Wrexist/Airline-Empire/actions/runs/38610939454)): WAITING_FOR_REVIEW.
-- [ ] After approval: release the version in App Store Connect (release type is manual).
+- [x] After approval: release the version in App Store Connect — live since 16 October 2026 (public lookup).
 
 ## 3D Hub View (1.1) - 9 October 2026
 
