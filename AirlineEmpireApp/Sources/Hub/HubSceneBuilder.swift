@@ -1745,7 +1745,10 @@ struct HubSceneBuilder {
                 Double(p.x) > r.minX - 1 && Double(p.x) < r.maxX + 1 && Double(p.z) > r.minZ - 1 && Double(p.z) < r.maxZ + 1
             }
         }
-        let fins = modelBounds("barrier_fin") != nil
+        // A 3 GB device (`HubDevice.isLowMemory`) keeps the power units but
+        // leaves out the fins and chocks: hundreds of copies few would miss.
+        let decor = !HubDevice.isLowMemory
+        let fins = decor && modelBounds("barrier_fin") != nil
         for stand in layout.stands {
             let h = Float(stand.heading)
             let fwd = SIMD3<Float>(cos(h), 0, -sin(h))
@@ -1754,9 +1757,11 @@ struct HubSceneBuilder {
             let gpu = nose - fwd * 2 + right * 7
             if !nearLane(gpu, 4.5) {
                 batchModel("gpu", layer: .airside, matrix: HubMeshBatch.translation(gpu) * HubMeshBatch.yaw(h))
-                // Small and flat: no shadow worth a draw.
-                batchModel("wheelChock", layer: .markings,
-                           matrix: HubMeshBatch.translation(nose + fwd * 0.4 + right * 7) * HubMeshBatch.yaw(h + .pi / 2))
+                if decor {
+                    // Small and flat: no shadow worth a draw.
+                    batchModel("wheelChock", layer: .markings,
+                               matrix: HubMeshBatch.translation(nose + fwd * 0.4 + right * 7) * HubMeshBatch.yaw(h + .pi / 2))
+                }
             }
             guard fins else { continue }
             let points = stand.queue.points.map { SIMD3<Float>(Float($0.x), 0, Float($0.z)) }
@@ -1804,7 +1809,8 @@ struct HubSceneBuilder {
             keepClear.append(HubRect(minX: Double(centre.x - ext.z / 2), minZ: Double(r.maxZ),
                                      maxX: Double(centre.x + ext.z / 2), maxZ: Double(r.maxZ) + 3.6))
         }
-        guard modelBounds("pathLight") != nil else { return }
+        // A 3 GB device skips the path lights' few hundred copies.
+        guard !HubDevice.isLowMemory, modelBounds("pathLight") != nil else { return }
         func clear(_ x: Float, _ z: Float) -> Bool {
             !keepClear.contains { Double(x) > $0.minX - 0.3 && Double(x) < $0.maxX + 0.3 && Double(z) > $0.minZ - 0.3 && Double(z) < $0.maxZ + 0.3 }
         }
