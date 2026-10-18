@@ -533,10 +533,26 @@ public struct CompetitorAISystem: SimulationSystem {
                 }
             }
 
+            // Frequency only within what the airframes can rotate. A hot
+            // route used to climb a trip a week to the cap of 20 whatever was
+            // assigned — one aeroplane flying three trips held the slots of
+            // twenty at both ends. One trip above capacity is allowed: it is
+            // the request `employ` answers with the next airframe
+            // (`routeNeedsAnotherAircraft`). Anything beyond that is handed
+            // back.
+            let capacity = FlightSchedulingSystem.rotationCapacity(
+                route: route, state: state, catalog: context.catalog)
+            if capacity > 0, route.dailyRoundTrips > capacity + 1 {
+                issue(SetRouteFrequencyCommand(airline: airlineID, route: route.id,
+                                               dailyRoundTrips: capacity + 1),
+                      state: &state, context: context)
+                continue
+            }
+
             // Frequency: push winners, trim losers.
             guard route.stats.seatsFlown > 500 else { continue }
             if route.stats.loadFactor > tuning.expandLoadFactor,
-               route.dailyRoundTrips < 20 {
+               route.dailyRoundTrips < 20, route.dailyRoundTrips <= capacity {
                 issue(SetRouteFrequencyCommand(airline: airlineID, route: route.id,
                                                dailyRoundTrips: route.dailyRoundTrips + 1),
                       state: &state, context: context)

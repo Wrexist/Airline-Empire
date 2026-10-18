@@ -182,8 +182,9 @@ public struct DemandSystem: SimulationSystem {
     /// (docs/RIVAL_PRESSURE_AUDIT.md §5). Nil when the route cannot carry
     /// anyone (no assigned aircraft).
     public struct OfferQualityTerms: Equatable, Sendable {
-        /// Frequency, with hard diminishing returns beyond ~4/day
-        /// (docs/GAME_BALANCE.md §5 anti-frequency-spam).
+        /// Frequency flown — the requested one, capped by what the assigned
+        /// airframes can rotate — with hard diminishing returns beyond
+        /// ~4/day (docs/GAME_BALANCE.md §5 anti-frequency-spam).
         public let schedule: Double
         /// The first assigned aircraft's cabin.
         public let comfort: Double
@@ -206,8 +207,12 @@ public struct DemandSystem: SimulationSystem {
         let loungeLevels = (owner?.facilities(at: route.origin).lounge ?? 0)
             + (owner?.facilities(at: route.destination).lounge ?? 0)
         let airportComfort = Double(loungeLevels) / 2 * catalog.tuning.airportServices.loungeComfortPerLevel
+        // The trips the route can actually fly, not the frequency it asks
+        // for: an unflyable frequency bought schedule quality for nothing.
         return offerQualityTerms(
-            spec: spec, roundTripsPerDay: route.dailyRoundTrips,
+            spec: spec,
+            roundTripsPerDay: FlightSchedulingSystem.flyableRoundTrips(
+                route: route, state: state, catalog: catalog),
             operationsScore: route.stats.completionRate * 0.5 + route.stats.punctuality * 0.5,
             reputationMultiplier: reputation, tuning: catalog.tuning.demand,
             comfortOverride: min(1, spec.comfortBaseline + cabinTerms(route: route, state: state, catalog: catalog).bonus + airportComfort))
