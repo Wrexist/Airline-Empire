@@ -87,6 +87,10 @@ public struct MapModel: Equatable, Sendable {
         public let slotPressure: Double
         public let weatherRisk: WeatherRisk
         public let closed: Bool
+        /// The status the player has earned here (docs/HUB_PROGRESSION_PLAN.md
+        /// §3: "the map gets a status badge on the airport"), or nil at a
+        /// plain station — the badge marks how built-up each hub is.
+        public var playerHubStatus: HubStatus? = nil
     }
 
     public struct MapRoute: Equatable, Sendable {
@@ -445,13 +449,14 @@ extension GameState {
         let maxSlots = Double(catalog.orderedAirportCodes
             .compactMap { catalog.airports[$0]?.slotCapacityPerDay }.max() ?? 1)
 
+        let statusHolder = playerAirline
         let airports = catalog.orderedAirportCodes.compactMap { code -> MapModel.MapAirport? in
             guard let spec = catalog.airports[code] else { return nil }
             let prominence = maxPopulation > 0
                 ? Double(spec.demographics.populationThousands) / maxPopulation : 0
             let playerRoutes = playerRouteCounts[code] ?? 0
             let capacity = max(1, spec.slotCapacityPerDay)
-            return MapModel.MapAirport(
+            var airport = MapModel.MapAirport(
                 code: code, name: spec.name, city: spec.city, country: spec.country,
                 region: spec.region,
                 position: MapPoint(coordinate: spec.coordinate),
@@ -469,6 +474,11 @@ extension GameState {
                 slotPressure: min(1, Double(world.slotsUsed(at: code)) / Double(capacity)),
                 weatherRisk: spec.weatherRisk,
                 closed: world.isAirportClosed(code, at: clock.now))
+            // Only where it says something: a station is every airport flown.
+            if let status = statusHolder?.hubStatus(at: code), status > .station {
+                airport.playerHubStatus = status
+            }
+            return airport
         }
 
         let closedAirports = Set(airports.filter(\.closed).map(\.code))

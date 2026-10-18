@@ -578,6 +578,15 @@ struct MapFrame {
                              color: fill.opacity(0.55), width: 1.0)
             }
 
+            // The status the player has earned here, as pips on a small tab
+            // beside the marker (docs/HUB_PROGRESSION_PLAN.md §3: "the map
+            // gets a status badge on the airport"). Only the player's own
+            // hubs carry one — a handful of fills a frame, nothing cached or
+            // rebuilt (docs/MAP_PERFORMANCE_TARGETS.md).
+            if let status = airport.playerHubStatus {
+                drawHubBadge(&context, status: status, at: point, radius: radius)
+            }
+
             // A closed airport gets a cross, because a red dot among coloured
             // dots is not a signal anybody can rely on.
             if airport.closed {
@@ -1017,6 +1026,27 @@ struct MapFrame {
     // MARK: - Primitives
 
     /// The viewport as a rectangle in normalised map space.
+
+    /// One pip per status past a station — a base shows one, a main base two —
+    /// so the badge grows with the hub without the map learning each status's
+    /// name. Up and to the right of the marker, clear of the rings around it.
+    private func drawHubBadge(_ context: inout GraphicsContext, status: HubStatus,
+                              at point: CGPoint, radius: CGFloat) {
+        let steps = max(1, status.rawValue)
+        let pip: CGFloat = 2.4
+        let gap: CGFloat = 1.6
+        let inset: CGFloat = 2
+        let tab = CGRect(x: point.x + radius + 2, y: point.y - radius - pip * 2 - inset * 2,
+                         width: CGFloat(steps) * pip * 2 + CGFloat(steps - 1) * gap + inset * 2,
+                         height: pip * 2 + inset * 2)
+        context.fill(Path(roundedRect: tab, cornerRadius: tab.height / 2),
+                     with: .color(.black.opacity(0.55)))
+        for step in 0..<steps {
+            let centre = CGPoint(x: tab.minX + inset + pip + CGFloat(step) * (pip * 2 + gap),
+                                 y: tab.midY)
+            fillCircle(&context, at: centre, radius: pip, color: playerColor)
+        }
+    }
 
     private func fillCircle(_ context: inout GraphicsContext, at point: CGPoint,
                             radius: CGFloat, color: Color) {
