@@ -75,6 +75,24 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn('if [ -n "$CANDIDATE_SHA" ]', plan["run"])
         self.assertIn("inputs.ipad", workflow("ci")["jobs"]["app-ipad"]["if"])
 
+    def test_the_decade_runs_beside_the_suite_and_still_gates_release(self):
+        # TD-034: the ten-year world left the Core job for its own, parallel
+        # one. It must still be a gate — a release's full-validation calls
+        # this workflow, and only an unconditional, failing-closed job blocks
+        # the archive — and the suite must not run it a second time.
+        jobs = workflow("ci")["jobs"]
+        core = next(s for s in jobs["core"]["steps"] if s.get("name") == "Test (debug)")
+        self.assertIn('--skip "$DECADE_TEST"', core["run"])
+        self.assertEqual(core["env"]["DECADE_TEST"], "tenYearWorldRemainsStableAndContested")
+        decade = jobs["core-decade"]
+        for key in ("if", "needs", "continue-on-error"):
+            self.assertNotIn(key, decade)
+        step = next(s for s in decade["steps"] if s.get("name") == "Ten-year world (debug)")
+        self.assertEqual(step["env"]["DECADE_TEST"], "tenYearWorldRemainsStableAndContested")
+        self.assertIn('swift test --filter "$DECADE_TEST"', step["run"])
+        self.assertIn("Test run with 1 test passed", step["run"])
+        self.assertNotIn("continue-on-error", step)
+
     def test_archive_ships_the_toolchain_the_phone_journeys_ran_on(self):
         # iPhone Duo needs the 27.1 SDK; a release that archives with it must
         # have validated with it (docs/IPHONE_DUO.md).
