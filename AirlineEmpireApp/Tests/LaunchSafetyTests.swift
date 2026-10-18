@@ -93,15 +93,25 @@ final class LaunchSafetyTests: XCTestCase {
         try document.data.write(to: exported)
         let saved = await controller.saveAndQuit()
         XCTAssertTrue(saved)
-        XCTAssertThrowsError(try controller.importCampaign(from: exported, access: .free))
-        try controller.importCampaign(from: exported, access: .pro)
+        // `XCTAssertThrowsError` takes no `await`; the import runs off the
+        // main actor now, so the refusals are checked by hand.
+        do {
+            try await controller.importCampaign(from: exported, access: .free)
+            XCTFail("A free airline with a save must not import a second campaign")
+        } catch {}
+        try await controller.importCampaign(from: exported, access: .pro)
+        XCTAssertFalse(controller.isImporting, "The menu's import progress must clear")
         try await waitForGame(controller)
         XCTAssertEqual(controller.snapshot?.playerAirline?.name, "Portable")
         XCTAssertNotEqual(controller.activeSaveSlot, originalSlot)
         let importedSaved = await controller.saveAndQuit()
         XCTAssertTrue(importedSaved)
         try Data("not a campaign".utf8).write(to: exported)
-        XCTAssertThrowsError(try controller.importCampaign(from: exported, access: .pro))
+        do {
+            try await controller.importCampaign(from: exported, access: .pro)
+            XCTFail("A corrupt file must not import")
+        } catch {}
+        XCTAssertFalse(controller.isImporting)
         XCTAssertEqual(controller.availableSlots().count, 2)
     }
 }

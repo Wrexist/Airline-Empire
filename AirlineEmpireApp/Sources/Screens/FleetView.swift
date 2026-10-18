@@ -585,7 +585,16 @@ struct AircraftDetailLink: Hashable {
 struct AircraftDetailView: View {
     @Environment(GameController.self) private var controller
     @Environment(\.dismiss) private var dismiss
-    let aircraftID: AircraftID
+    /// The aircraft this screen was opened for.
+    private let openedFor: AircraftID
+    /// Another of the fleet, chosen from "Change Aircraft". The list used to
+    /// push a second detail screen *inside* its own sheet — a detail over a
+    /// sheet over a detail, with Done closing only the top layer and the
+    /// screen underneath still showing the old aircraft. Choosing now swaps
+    /// this screen to the new one and closes the list.
+    @State private var replacement: AircraftID?
+    /// The aircraft on show; everything below reads this.
+    private var aircraftID: AircraftID { replacement ?? openedFor }
     /// Whether the "where does it fly next" sheet is up. State rather than a
     /// `Menu`, because the menu was the wrong container for the decision —
     /// see `AssignRouteSheet`.
@@ -597,7 +606,7 @@ struct AircraftDetailView: View {
     @State private var configurationDraft: AircraftConfiguration?
 
     init(aircraftID: AircraftID, initialSection: AircraftDetailSection? = nil) {
-        self.aircraftID = aircraftID
+        self.openedFor = aircraftID
         _section = State(initialValue: initialSection)
     }
 
@@ -645,6 +654,10 @@ struct AircraftDetailView: View {
                 }
                 .frame(maxWidth: 920)
                 .aePageInsets()
+                // A changed aircraft is a new page: nothing a card below
+                // held for the last one — a half-made decision, an open
+                // confirmation — may carry over to this one.
+                .id(aircraftID)
             } else {
                 EmptyStateView(icon: "airplane.slash", title: "Aircraft gone",
                                message: "This aircraft is no longer in your fleet.")
@@ -675,20 +688,19 @@ struct AircraftDetailView: View {
         .sheet(isPresented: $assigning) {
             AssignRouteSheet(aircraftID: aircraftID)
         }
+        // A picker, not a second navigation: choosing a row swaps this screen
+        // to that aircraft and closes the list.
         .sheet(isPresented: $changingAircraft) {
             NavigationStack {
                 List(controller.fleetCards, id: \.id) { card in
-                    NavigationLink {
-                        AircraftDetailView(aircraftID: card.id)
+                    Button {
+                        change(to: card)
                     } label: {
                         changeAircraftRow(card)
+                            .contentShape(.rect)
                     }
+                    .buttonStyle(.plain)
                 }
-                // What is pushed from here links onward — a route's own
-                // screen lists its aircraft by `AircraftID` — and a link
-                // with no destination in its stack is silently dead.
-                .navigationDestination(for: RouteID.self) { RouteDetailView(routeID: $0) }
-                .navigationDestination(for: AircraftID.self) { AircraftDetailView(aircraftID: $0) }
                 .navigationTitle("Change Aircraft")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -697,6 +709,18 @@ struct AircraftDetailView: View {
                 }
             }
         }
+    }
+
+    /// Shows `card`'s aircraft here instead, on the tab an aircraft in its
+    /// state opens on — what the pushed screen used to open on — with no
+    /// unsaved cabin draft carried across from the last one.
+    private func change(to card: FleetCardModel) {
+        if card.id != aircraftID {
+            configurationDraft = nil
+            replacement = card.id == openedFor ? nil : card.id
+            section = Self.openingSection(for: card)
+        }
+        changingAircraft = false
     }
 
     /// An idle aircraft opened on another tab — the fleet list opens the
@@ -1221,6 +1245,7 @@ struct AircraftShopSheet: View {
     @Environment(Entitlements.self) private var entitlements
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var usedAge = 8
     @State private var leaseTermMonths = 60
     @State private var sort: Sort = .recommended
@@ -1805,7 +1830,9 @@ struct AircraftShopSheet: View {
             ForEach(Array(comparison.shortlist.enumerated()), id: \.element.id) { index, candidate in
                 Button {
                     focusedPurchase = candidate.spec.code
-                    withAnimation(AEMotion.selection) {
+                    // A jump rather than a glide under Reduce Motion: a long
+                    // scroll is exactly the movement the setting is for.
+                    withAnimation(reduceMotion ? nil : AEMotion.selection) {
                         proxy.scrollTo(candidate.spec.code, anchor: .top)
                     }
                 } label: {

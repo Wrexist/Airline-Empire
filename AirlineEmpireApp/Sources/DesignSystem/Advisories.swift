@@ -121,11 +121,17 @@ struct AutoPauseNotice: View {
             Text(text)
                 .font(.subheadline.weight(.medium))
             Spacer(minLength: 0)
-            Button("Dismiss", action: dismiss)
-                .font(.caption.weight(.semibold))
-                .buttonStyle(.aePress)
-                .foregroundStyle(AETheme.accent)
-                .frame(minHeight: 44)
+            // The 44-point height inside the label, where it is part of the
+            // button. Framed outside, it made the row taller and left the tap
+            // target the size of the word.
+            Button(action: dismiss) {
+                Text("Dismiss")
+                    .font(.caption.weight(.semibold))
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.aePress)
+            .foregroundStyle(AETheme.accent)
         }
         .padding(.horizontal, AETheme.spacingM)
         .padding(.vertical, AETheme.spacingS)
