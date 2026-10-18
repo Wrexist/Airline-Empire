@@ -1116,6 +1116,14 @@ jobs:
           xcodebuild -version
           xcodebuild -showsdks | grep -i ios || true
 
+      # The hub journey opens an earned campaign, generated from the current
+      # simulation exactly as hub-view-review.yml does.
+      - name: Generate an earned campaign for the hub journey
+        working-directory: AirlineEmpireCore
+        run: |
+          swift run -c release ae-rival-probe 2039 1825 ARN LHR-CDG:0.88 --snapshot-hour 12 --save ../AirlineEmpireApp/UITests/Fixtures/store-campaign.json > ../store-campaign-ledger.txt
+          grep -E '^saved |^final:|^   player routes:' ../store-campaign-ledger.txt
+
       - name: Generate the Xcode project
         working-directory: AirlineEmpireApp
         run: |

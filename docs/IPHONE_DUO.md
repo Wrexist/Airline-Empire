@@ -1,6 +1,11 @@
 # iPhone Duo support
 
-Status, 18 October 2026: **the app and its tests compile with Xcode 27.1 / iOS 27.1 SDK** (CI run 39133562645, 0 errors). Duo simulator lane and fold transitions pending.
+Status, 18 October 2026: **runs edge to edge on the iPhone Duo simulator.** CI run
+39133562645 built with Xcode 27.1 / iOS 27.1 SDK (0 errors), created an iPhone Duo
+simulator on iOS 27.1 and launched the game on the outer display: content left of the
+status bar, the tab bar vertical on the right, founding → every tab passed. The three
+failures were test-harness assumptions (fixture not generated; lease helper relied on
+a sheet title the 27.1 SDK hides while scrolling on the short display), fixed after.
 
 iPhone Duo is Apple's foldable (iOS 27, A20 Pro). Two displays, both 3x:
 

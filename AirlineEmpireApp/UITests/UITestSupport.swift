@@ -477,9 +477,14 @@ class AEUITestCase: XCTestCase {
         // action to sit below its toolbar before resolving a tap position.
         func positionLease() -> Bool {
             for _ in 0..<24 {
-                guard market.exists, list.exists else { return false }
+                // The list, not the title, is what proves the sheet is open:
+                // on iPhone Duo's short outer display the iOS 27.1 SDK hides
+                // the sheet's navigation title while the list scrolls (CI run
+                // 39133562645, "Sign the lease" on screen and hittable).
+                guard list.exists else { return false }
                 let bounds = list.frame.intersection(window)
-                let top = max(bounds.minY, market.frame.maxY + 12)
+                let titleBottom = market.exists ? market.frame.maxY + 12 : bounds.minY
+                let top = max(bounds.minY, titleBottom)
                 let viewport = CGRect(x: bounds.minX, y: top,
                     width: bounds.width, height: max(0, bounds.maxY - top - 20))
                 guard viewport.height > 100 else { return false }
