@@ -243,6 +243,66 @@ public actor GameSession {
         advance(ticks: Int(minutes / engine.state.meta.tickMinutes))
     }
 
+    /// Advances the world for time the player spent away, capped and
+    /// protected (`OfflineCatchUp.swift`), and returns the account of it — or
+    /// nil when the absence earned nothing or there is no airline to run.
+    ///
+    /// The ticks are the ordinary ones, run singly as `advance` runs them, so
+    /// events stream and autosaves land exactly as in play. Two things are
+    /// different. Before each tick the session asks whether the world must
+    /// wait for the player (`OfflineCatchUp.blocker`). And a tick that
+    /// crosses a day boundary — the only kind that runs the solvency watch —
+    /// is run against a held copy of the world: if it started the
+    /// administration countdown, restructured the airline or ended the game,
+    /// the copy is put back and the catch-up stops there. The undone tick's
+    /// events were never published, so nothing outside ever saw it.
+    ///
+    /// Deterministic: the same world and the same absence produce the same
+    /// world and the same report, and a catch-up that nothing stopped equals
+    /// `advance(ticks:)` over the same ticks.
+    public func catchUp(awaySeconds: Double) -> OfflineCatchUpReport? {
+        let tuning = engine.catalog.tuning.offline
+        let tickMinutes = engine.state.meta.tickMinutes
+        let planned = OfflineCatchUp.plannedTicks(awaySeconds: awaySeconds,
+                                                  tickMinutes: tickMinutes, tuning: tuning)
+        guard planned > 0, var tally = OfflineCatchUpTally(state: engine.state) else { return nil }
+        let tick = SimDuration(minutes: tickMinutes)
+        let chunk = Int(GameCalendar.minutesPerDay / tickMinutes)
+        var ran = 0
+        var stop: OfflineCatchUpReport.StopReason?
+        while ran < planned {
+            let now = engine.state.clock.now
+            let next = now + tick
+            if let reason = OfflineCatchUp.blocker(in: engine.state, nextTick: next,
+                                                   catalog: engine.catalog) {
+                stop = reason
+                break
+            }
+            let mark = tally.mark(engine.state)
+            // Held only across a day boundary: holding the world across every
+            // tick would make each one copy every container it touches.
+            let undo: GameState? = next.dayIndex != now.dayIndex ? engine.state : nil
+            engine.advance(ticks: 1)
+            if let undo, let reason = OfflineCatchUp.violation(before: undo, after: engine.state) {
+                engine.restore(undo)
+                stop = reason
+                break
+            }
+            tally.record(from: mark, to: engine.state)
+            publishRejections()
+            publishEvents()
+            ran += 1
+            if ran % chunk == 0 {
+                autosaveIfDue()
+                publish()
+            }
+        }
+        autosaveIfDue()
+        publish()
+        return tally.report(state: engine.state, awaySeconds: awaySeconds, tuning: tuning,
+                            ticksRun: ran, stopReason: stop)
+    }
+
     /// Submits a command and applies it at once, paused or running.
     ///
     /// A running game used to queue the command until the next tick

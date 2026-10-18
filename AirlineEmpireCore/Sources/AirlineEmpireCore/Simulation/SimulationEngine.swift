@@ -97,6 +97,19 @@ public final class SimulationEngine {
         }
     }
 
+    /// Puts back a world this engine held a moment ago.
+    ///
+    /// Offline catch-up (`GameSession.catchUp`) undoes the one tick that would
+    /// have started punishing the player's absence — the solvency countdown
+    /// advancing while nobody was there to answer it. Nothing else may rewind
+    /// time: the engine stays deterministic because the undone tick is
+    /// simply never part of the history, and the next tick runs from the
+    /// restored world exactly as it would have.
+    func restore(_ snapshot: GameState) {
+        precondition(pendingCommands.isEmpty, "Restoring would drop queued commands")
+        state = snapshot
+    }
+
     /// Events the UI digest builds on; emitted exactly when their boundary
     /// is crossed, independent of tick size.
     private func emitCalendarEvents(previous: SimTime, context: SimContext) {

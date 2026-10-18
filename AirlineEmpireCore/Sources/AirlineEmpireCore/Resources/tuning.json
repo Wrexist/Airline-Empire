@@ -119,6 +119,12 @@
   "usedPriceConditionFloor": 0.7
  },
  "minRouteDistanceKm": 80,
+ "offlineCatchUp": {
+  "gameMinutesPerRealMinute": 3,
+  "capGameDays": 7,
+  "minimumAwayRealMinutes": 10,
+  "maximumTrustedAwayDays": 400
+ },
  "ops": {
   "baseFuelPricePerTon": {
    "cents": 65000
