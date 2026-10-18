@@ -209,6 +209,9 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
     private var yawVelocity: Float = 0
     /// The idle turntable eases in rather than starting at full rate.
     private var driftRate: Float = 0
+    /// Hot or in Low Power Mode (`HubDevice.shouldRest`), read once a second.
+    private var resting = false
+    private var restCheck: Float = 0
     private var nightValue: Double = 0
     private var lastInteraction = Date()
     private let idleDrift: Bool
@@ -251,7 +254,11 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
                                 .disablePersonOcclusion, .disableGroundingShadows]
         arView.environment.background = .color(HubPalette.day.background)
         applyLighting(.day)
-        if !ProcessInfo.processInfo.arguments.contains("-AEHubNoBloom") {
+        // Bloom is a full-screen pass a 3 GB device (A12, A13) cannot spare
+        // at 60 frames; it starts there a quality step down, without it.
+        if HubDevice.isLowMemory {
+            quality = 1
+        } else if !ProcessInfo.processInfo.arguments.contains("-AEHubNoBloom") {
             post.install(on: arView)
             bloomInstalled = true
         }
@@ -567,10 +574,18 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
             yawVelocity = 0
         }
         // The idle turntable: after five quiet seconds it eases up to a
-        // slow orbit over about four seconds.
-        let idle = idleDrift && Date().timeIntervalSince(lastInteraction) > 5
+        // slow orbit over about four seconds, and after a minute eases out
+        // again — a hub left open must not re-lay its labels sixty times a
+        // second forever. Never on a hot device or in Low Power Mode.
+        restCheck -= dt
+        if restCheck <= 0 {
+            restCheck = 1
+            resting = HubDevice.shouldRest
+        }
+        let quiet = Date().timeIntervalSince(lastInteraction)
+        let idle = idleDrift && !resting && quiet > 5 && quiet < 65
         driftRate += ((idle ? 0.012 : 0) - driftRate) * min(1, dt * 0.6)
-        if idle { goal.yaw += dt * driftRate }
+        if driftRate > 0.000_1 { goal.yaw += dt * driftRate } else { driftRate = 0 }
         spring.step(to: goal, smoothTime: smoothTime, dt: dt)
         rig = spring.rig.cleared(by: clearance)
         applyRig()
