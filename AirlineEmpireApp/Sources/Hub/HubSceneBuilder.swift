@@ -1620,7 +1620,9 @@ struct HubSceneBuilder {
         let width = Float(p.size.x)
         let count = max(1, Int((width / ext.z).rounded()))
         let unit = width / Float(count)
-        let front = c.z + Float(p.size.z) / 2
+        // Set back behind the mezzanine's front columns (1 m in from its
+        // edge), so they stand in front of the shops as a colonnade.
+        let front = c.z + Float(p.size.z) / 2 - 1.3
         for i in 0..<count {
             let x = c.x - width / 2 + unit * (Float(i) + 0.5)
             // Open front (+X) to the hall (+z); the unit's width runs along x.
