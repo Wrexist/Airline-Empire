@@ -47,7 +47,9 @@ struct WorldEventTests {
         }
         #expect(sawStorm, "No storm in five years")
         #expect(sawEnd, "Events never ended")
-        #expect(maxConcurrentRegional <= catalog.tuning.events.maxActiveRegionalEvents + 1)
+        // The cap holds exactly: a severe storm's closure no longer slips in
+        // over it (this allowed `+ 1` while it could).
+        #expect(maxConcurrentRegional <= catalog.tuning.events.maxActiveRegionalEvents)
         // Population stays small forever (expiry works).
         #expect(engine.state.world.activeEvents.count < 8)
     }
@@ -235,5 +237,91 @@ struct WorldEventTests {
         resumed.advance(ticks: Fixtures.ticksPerYear)
         engine.advance(ticks: Fixtures.ticksPerYear)
         #expect(try resumed.state.stateHash() == engine.state.stateHash())
+    }
+
+    /// Shipped content with only storms switched on, every storm severe
+    /// enough to close an airport, and the regional cap set to `cap`.
+    static func stormCatalog(cap: Int) throws -> ContentCatalog {
+        let real = try ContentCatalog.loadBundled()
+        let base = real.tuning.events
+        // 0.45 x the riskiest region's 2.2 stays a valid probability.
+        let events = EventTuning(
+            fuelShockDailyChance: 0, fuelShockSeverityMin: base.fuelShockSeverityMin,
+            fuelShockSeverityMax: base.fuelShockSeverityMax,
+            fuelShockDurationDaysMin: base.fuelShockDurationDaysMin,
+            fuelShockDurationDaysMax: base.fuelShockDurationDaysMax,
+            stormBaseDailyChance: 0.45, stormSeverityMin: 1.0, stormSeverityMax: 1.0,
+            stormDurationDaysMin: base.stormDurationDaysMin,
+            stormDurationDaysMax: base.stormDurationDaysMax,
+            stormForecastLeadDays: base.stormForecastLeadDays,
+            stormDisruptionBoost: base.stormDisruptionBoost,
+            closureSeverityThreshold: 0.85, tourismBoomDailyChance: 0,
+            tourismBoomBoost: base.tourismBoomBoost,
+            tourismBoomDurationDaysMin: base.tourismBoomDurationDaysMin,
+            tourismBoomDurationDaysMax: base.tourismBoomDurationDaysMax,
+            strikeServiceThreshold: base.strikeServiceThreshold, strikeDailyChance: 0,
+            strikeDurationDaysMin: base.strikeDurationDaysMin,
+            strikeDurationDaysMax: base.strikeDurationDaysMax,
+            strikeCooldownDays: base.strikeCooldownDays,
+            maxActiveRegionalEvents: cap, majorEventCooldownDays: base.majorEventCooldownDays)
+        let t = real.tuning
+        let tuning = Tuning(
+            minRouteDistanceKm: t.minRouteDistanceKm, fleet: t.fleet, ops: t.ops,
+            demand: t.demand, finance: t.finance, world: t.world,
+            reputation: t.reputation, ai: t.ai, events: events,
+            progression: t.progression, aircraftConfiguration: t.cabin,
+            airportFacilities: t.airportServices)
+        return try ContentCatalog(
+            version: "storms", airports: real.orderedAirportCodes.compactMap { real.airports[$0] },
+            seasonality: Array(real.seasonality.values),
+            aircraftTypes: real.orderedAircraftTypeCodes.compactMap { real.aircraftTypes[$0] },
+            tuning: tuning)
+    }
+
+    static func regionalCount(_ state: GameState) -> Int {
+        state.world.activeEvents.filter {
+            switch $0.kind {
+            case .storm, .tourismBoom, .airportClosure: true
+            case .fuelShock, .strike: false
+            }
+        }.count
+    }
+
+    /// A storm that takes the last free regional slot used to bring its
+    /// airport closure in anyway, over the cap.
+    @Test func severeStormRespectsTheRegionalCap() throws {
+        let catalog = try Self.stormCatalog(cap: 1)
+        let engine = SimulationEngine(state: Fixtures.newState(seed: 17),
+                                      systems: [WorldEventSystem()], catalog: catalog)
+        var sawStorm = false
+        for _ in 0..<120 {
+            engine.advance(ticks: Fixtures.ticksPerDay)
+            let state = engine.state
+            #expect(Self.regionalCount(state) <= 1)
+            for event in state.world.activeEvents {
+                if case .storm = event.kind { sawStorm = true }
+                if case .airportClosure = event.kind {
+                    Issue.record("A closure was added with the only regional slot taken")
+                }
+            }
+        }
+        #expect(sawStorm, "no storm in 120 days at a near-certain daily chance")
+    }
+
+    /// The re-check only refuses closures that do not fit: with room, a
+    /// severe storm still closes its most exposed airport.
+    @Test func severeStormStillClosesAnAirportWhenThereIsRoom() throws {
+        let catalog = try Self.stormCatalog(cap: 2)
+        let engine = SimulationEngine(state: Fixtures.newState(seed: 17),
+                                      systems: [WorldEventSystem()], catalog: catalog)
+        var sawClosure = false
+        for _ in 0..<120 {
+            engine.advance(ticks: Fixtures.ticksPerDay)
+            #expect(Self.regionalCount(engine.state) <= 2)
+            if engine.state.world.activeEvents.contains(where: {
+                if case .airportClosure = $0.kind { true } else { false }
+            }) { sawClosure = true }
+        }
+        #expect(sawClosure)
     }
 }

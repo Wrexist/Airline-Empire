@@ -567,6 +567,13 @@ extension ContentCatalog {
         let scenarios: [ScenarioSpec]
     }
 
+    /// The shipped content, loaded once on first use and shared; nil only if
+    /// the bundle is broken, which `loadBundled` callers and the content
+    /// tests report loudly. For places that need the shipped catalog as a
+    /// default without owning a copy — the save manager checks every save
+    /// against it.
+    public static let shipped: ContentCatalog? = try? loadBundled()
+
     /// Loads and validates the shipped content. Fails loudly on any defect
     /// (docs/ARCHITECTURE.md §6): broken content is a build/test failure,
     /// never a runtime surprise.

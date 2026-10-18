@@ -2,17 +2,21 @@
 /// step 4): "a small profit or loss with its *why*" — the beat that closes
 /// the decide → watch → understand loop at the end of each game day.
 ///
-/// Derived entirely from the ledger's timestamped transaction ring and the
-/// event log. No per-day state is accumulated and nothing new is persisted,
-/// so the save format is untouched (v10) — a digest is a *view* of what
-/// already happened, never a second copy of it.
+/// Derived from what the simulation already keeps — a digest is a *view* of
+/// what happened, never a second copy of it. Money comes from the airline's
+/// own ledger day window (`Ledger.dayTotals`), news and flight counts from
+/// the player's feed ring (`BoundedEventLog.playerFeedEvents`): both are
+/// per-airline, so a world full of rival traffic can no longer push the
+/// player's day out before it is summarised (TD-032).
 ///
-/// Both rings are bounded (`Ledger.defaultRecentCapacity`,
-/// `BoundedEventLog.defaultCapacity`), so a very large network can post more
-/// in one day than either retains, and an entity deleted mid-day can leave a
-/// flight event unattributable. Every such case is reported through
-/// `isComplete` rather than quietly under-counting: a digest that lies about
-/// money or flights is worse than one that admits it is partial.
+/// For a day those windows cannot vouch for — before they existed in an
+/// older save, or a rival's day — it falls back to the shared rings, which
+/// are bounded (`Ledger.defaultRecentCapacity`,
+/// `BoundedEventLog.defaultCapacity`) and can drop part of a busy day, while
+/// an entity deleted mid-day can leave a flight event unattributable. Every
+/// such case is reported through `isComplete` rather than quietly
+/// under-counting: a digest that lies about money or flights is worse than
+/// one that admits it is partial.
 
 public struct DailyDigestModel: Equatable, Sendable {
     public let date: GameDate
@@ -69,30 +73,51 @@ extension GameState {
         var byCategory: [TransactionCategory: Money] = [:]
         var revenueCents: Int64 = 0
         var expenseCents: Int64 = 0
-        for transaction in ledger.recent
-        where transaction.airline == airline
-            && transaction.at >= dayStart && transaction.at < dayEnd {
-            let existing = byCategory[transaction.category] ?? .zero
-            byCategory[transaction.category] = existing + transaction.amount
-            if transaction.amount.cents >= 0 {
-                revenueCents += transaction.amount.cents
-            } else {
-                expenseCents += transaction.amount.cents
+        let isComplete: Bool
+        if let window = ledger.dayTotals(of: airline, day: dayIndex) {
+            // The airline's own day, whole whatever the world's traffic.
+            for (category, cents) in window.credits {
+                byCategory[category] = (byCategory[category] ?? .zero) + Money(cents: cents)
+                revenueCents += cents
             }
+            for (category, cents) in window.debits {
+                byCategory[category] = (byCategory[category] ?? .zero) + Money(cents: cents)
+                expenseCents += cents
+            }
+            isComplete = true
+        } else {
+            for transaction in ledger.recent
+            where transaction.airline == airline
+                && transaction.at >= dayStart && transaction.at < dayEnd {
+                let existing = byCategory[transaction.category] ?? .zero
+                byCategory[transaction.category] = existing + transaction.amount
+                if transaction.amount.cents >= 0 {
+                    revenueCents += transaction.amount.cents
+                } else {
+                    expenseCents += transaction.amount.cents
+                }
+            }
+            // The ring only loses the oldest entries. If it is full and its
+            // oldest surviving transaction already falls inside this day,
+            // then earlier ones from the same day were evicted.
+            let ringFull = ledger.recent.count >= ledger.recentCapacity
+            let oldestRetained = ledger.recent.first?.at
+            isComplete = !ringFull || (oldestRetained.map { $0 < dayStart } ?? true)
         }
 
-        // The ring only loses the oldest entries. If it is full and its
-        // oldest surviving transaction already falls inside this day, then
-        // earlier ones from the same day were evicted.
-        let ringFull = ledger.recent.count >= ledger.recentCapacity
-        let oldestRetained = ledger.recent.first?.at
-        let isComplete = !ringFull || (oldestRetained.map { $0 < dayStart } ?? true)
-
-        // The event ring is bounded independently of the ledger's, so a day
-        // can be complete in money and truncated in news. Both must hold.
+        // The player's feed ring holds only the player's news and flights,
+        // each classified when it happened — so nothing in it needs, or can
+        // fail, a second attribution now that a route may have closed.
+        let feed = airline == playerAirline?.id
+            ? eventLog.playerFeedEvents(from: dayStart, to: dayEnd) : nil
+        let dayEvents = feed ?? eventLog.recent.filter { $0.at >= dayStart && $0.at < dayEnd }
+        // The shared event ring is bounded independently of the ledger's, so
+        // a day can be complete in money and truncated in news. Both must
+        // hold.
         let eventRingFull = eventLog.recent.count >= eventLog.capacity
         let oldestEvent = eventLog.recent.first?.at
-        let eventsComplete = !eventRingFull || (oldestEvent.map { $0 < dayStart } ?? true)
+        let eventsComplete = feed != nil
+            || !eventRingFull || (oldestEvent.map { $0 < dayStart } ?? true)
 
         var completed = 0
         var cancelled = 0
@@ -101,17 +126,17 @@ extension GameState {
         // closed it, or its airline collapsed) cannot be attributed, so it can
         // neither be counted nor safely shown (BUG-007).
         var unattributableFlights = false
-        for event in eventLog.recent
-        where event.at >= dayStart && event.at < dayEnd {
+        for event in dayEvents {
             switch event.kind {
-            case .flightArrived:
-                let subject = subjectAirline(of: event)
-                if subject == airline { completed += 1 }
-                else if subject == nil { unattributableFlights = true }
-            case .flightCancelled:
-                let subject = subjectAirline(of: event)
-                if subject == airline { cancelled += 1 }
-                else if subject == nil { unattributableFlights = true }
+            case .flightArrived, .flightCancelled:
+                let isArrival: Bool
+                if case .flightArrived = event.kind { isArrival = true } else { isArrival = false }
+                let subject: AirlineID? = feed != nil ? airline : subjectAirline(of: event)
+                if subject == airline {
+                    if isArrival { completed += 1 } else { cancelled += 1 }
+                } else if subject == nil {
+                    unattributableFlights = true
+                }
             // Individual departures and arrivals are the day's texture, not
             // its story; the story is what changed.
             case .flightDeparted, .flightDelayed, .dayStarted, .weekStarted,
@@ -119,7 +144,7 @@ extension GameState {
                  .aircraftUnassigned:
                 continue
             default:
-                if isFeedEvent(event, for: airline) { notable.append(event) }
+                if feed != nil || isFeedEvent(event, for: airline) { notable.append(event) }
             }
         }
 

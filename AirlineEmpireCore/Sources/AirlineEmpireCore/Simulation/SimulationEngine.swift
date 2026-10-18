@@ -43,7 +43,7 @@ public final class SimulationEngine {
                                  tick: SimDuration(minutes: 0), catalog: catalog,
                                  events: collector, progressionCeiling: progressionCeiling)
         let result = process(command, context: context)
-        state.eventLog.append(contentsOf: collector.drain())
+        state.recordEvents(collector.drain())
         return result
     }
 
@@ -89,8 +89,9 @@ public final class SimulationEngine {
                 system.update(state: &state, context: context)
             }
 
-            // 5. Collect events; integrity in debug builds.
-            state.eventLog.append(contentsOf: collector.drain())
+            // 5. Collect events (filing the player's feed copy, TD-032);
+            //    integrity in debug builds.
+            state.recordEvents(collector.drain())
             assert(state.integrityViolations().isEmpty,
                    "Integrity violations: \(state.integrityViolations())")
         }

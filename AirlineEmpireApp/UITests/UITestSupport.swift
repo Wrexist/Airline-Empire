@@ -979,7 +979,7 @@ class AEUITestCase: XCTestCase {
     ///
     /// AE-048 made the briefing a sheet over the map, and both surfaces carry
     /// a `SpeedControl` — so with the briefing up there can be two buttons
-    /// labelled "Advance to next day" in the tree (iOS usually hides the
+    /// labelled "Advance to next morning" in the tree (iOS usually hides the
     /// presenter behind a full-height sheet, but "usually" is not a contract,
     /// and `app.buttons[label]` raises on multiple matches rather than
     /// picking one).
@@ -1003,7 +1003,7 @@ class AEUITestCase: XCTestCase {
     func advanceMornings(until datePrefix: String, cap: Int = 35) -> Bool {
         dismissOptionalFreeOffer()
         openTabIfNeeded("Home")
-        let sunrise = labelledButton("Advance to next day")
+        let sunrise = labelledButton("Advance to next morning")
         guard sunrise.waitForExistence(timeout: 8) else { return false }
         let arrived = app.staticTexts.matching(NSPredicate(
             format: "label BEGINSWITH %@", datePrefix)).firstMatch
@@ -1046,7 +1046,7 @@ class AEUITestCase: XCTestCase {
         var taps = 0
         while taps < cap, !arrived.exists {
             guard let today = currentHomeDate() else { return false }
-            guard advanceAndWait("Advance to next day", from: today, days: 1) else { return false }
+            guard advanceAndWait("Advance to next morning", from: today, days: 1) else { return false }
             taps += 1
         }
         return arrived.exists
@@ -1200,7 +1200,7 @@ class AEUITestCase: XCTestCase {
         // control the map's does — so the whole loop runs inside it, and the
         // caller gets the tab bar back at the end.
         guard openBriefing() else { return false }
-        let sunrise = labelledButton("Advance to next day")
+        let sunrise = labelledButton("Advance to next morning")
         guard sunrise.waitForExistence(timeout: 8) else {
             closeBriefing()
             return false
@@ -1217,7 +1217,7 @@ class AEUITestCase: XCTestCase {
     }
 
     private func openTabIfNeeded(_ title: String) {
-        if labelledButton("Advance to next day").exists { return }
+        if labelledButton("Advance to next morning").exists { return }
         openTab(title)
     }
 

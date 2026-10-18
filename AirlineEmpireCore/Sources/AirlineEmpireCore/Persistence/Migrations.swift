@@ -39,6 +39,7 @@ public struct MigrationChain: Sendable {
         MigrationV12AddRescueDecision(),
         MigrationV13AddProgressionRecord(),
         MigrationV14AddHubBuildings(),
+        MigrationV15AddPlayerWindows(),
     ])
 
     public func migrate(payload: [String: Any], from version: Int) throws -> [String: Any] {
@@ -56,6 +57,18 @@ public struct MigrationChain: Sendable {
         }
         return current
     }
+}
+
+/// v15 → v16: the event log gained the player's feed ring, the ledger each
+/// airline's day window, and sale/lease-return events their airline
+/// (TD-032). Every new field decodes as absent: the windows report that they
+/// cover nothing yet, so a digest falls back to the shared rings until they
+/// have recorded a whole day, and old events resolve their owner by lookup
+/// as before. The step only moves the version.
+public struct MigrationV15AddPlayerWindows: SaveMigration {
+    public let fromVersion = 15
+    public init() {}
+    public func migrate(_ payload: inout [String: Any]) throws {}
 }
 
 /// v14 → v15: airlines gained hub buildings (docs/HUB_PROGRESSION_PLAN.md).

@@ -83,10 +83,14 @@ public actor GameSession {
         }
     }
 
-    /// Rejections of commands that were queued while the simulation was
-    /// running. `submit` can only report immediately for a paused game; a
-    /// queued command is validated at the next tick boundary, and without
-    /// this stream that failure would never reach the player (BUG-005).
+    /// Rejections of commands the engine validated at a tick boundary.
+    ///
+    /// `submit` used to queue a command while the simulation was running and
+    /// this stream was the only way its refusal reached the player (BUG-005).
+    /// `submit` now applies every command immediately and returns its result,
+    /// so nothing the session submits arrives here any more; the stream stays
+    /// for subscribers that still listen, and for any command an engine-level
+    /// caller enqueues.
     public func rejections() -> AsyncStream<CommandRejection> {
         AsyncStream { continuation in
             nextSubscriptionID += 1
@@ -196,44 +200,65 @@ public actor GameSession {
     /// Advances exactly `ticks` ticks regardless of speed (used by
     /// "advance to next morning" and by tests).
     public func advance(ticks: Int) {
-        // Chunked so long fast-forwards keep draining commands at
-        // boundaries (docs/SIMULATION_ARCHITECTURE.md §3).
+        // Chunked so autosave and snapshots keep pace with long
+        // fast-forwards (docs/SIMULATION_ARCHITECTURE.md §3).
         var remaining = ticks
         let chunk = Int(GameCalendar.minutesPerDay / engine.state.meta.tickMinutes)
         while remaining > 0 {
             let step = min(chunk, remaining)
-            engine.advance(ticks: step)
+            // Events stream out tick by tick, not once per chunk. A chunk is a
+            // whole game day, and a busy world posts more events in a day than
+            // the bounded log holds: publishing only at the end of the chunk
+            // delivered the last 512 and silently dropped the rest — the
+            // player's own business included, pushed out by rival traffic
+            // (TD-032). The engine is chunk-invariant, so one tick at a time
+            // lands on exactly the same world.
+            for _ in 0..<step {
+                engine.advance(ticks: 1)
+                // The engine's results are overwritten by the next advance,
+                // so rejections must be published now.
+                publishRejections()
+                publishEvents()
+            }
             remaining -= step
-            // Per chunk: the engine's results are overwritten by the next
-            // advance, so queued-command rejections must be published now.
-            publishRejections()
             autosaveIfDue()
             publish()
         }
     }
 
-    /// Runs the simulation to the start of the next game day.
+    /// Runs the simulation to the start of the next game day's operations —
+    /// `OpsTuning.operatingDayStartMinute`, 06:00 — rather than to midnight.
+    ///
+    /// It used to stop at 00:00 (BUG-061): the one instant in twenty-four
+    /// hours when nothing flies, under a control whose name, icon and
+    /// VoiceOver label all promise a morning. Always the *next* day's
+    /// morning, even when pressed before dawn, so every press moves the date
+    /// by exactly one — the UI journeys count days by it.
     public func advanceToNextMorning() {
         let now = engine.state.clock.now
-        let nextMidnight = (now.dayIndex + 1) * GameCalendar.minutesPerDay
-        let minutes = nextMidnight - now.rawMinutes
+        let dayStart = min(max(0, engine.catalog.tuning.ops.operatingDayStartMinute),
+                           GameCalendar.minutesPerDay - 1)
+        let nextMorning = (now.dayIndex + 1) * GameCalendar.minutesPerDay + dayStart
+        let minutes = nextMorning - now.rawMinutes
         advance(ticks: Int(minutes / engine.state.meta.tickMinutes))
     }
 
-    /// Submits a command. While paused it applies immediately (the player
-    /// may act with the world stopped); while running it applies at the next
-    /// tick boundary and the result reports as `.applied` optimistically
-    /// only through the events stream — so callers get the definitive
-    /// result: enqueued commands return nil and surface via events.
-    public func submit(_ command: any Command) -> CommandResult? {
-        if speed == .paused {
-            let result = engine.applyNow(command)
-            publish()
-            return result
-        } else {
-            engine.enqueue(command)
-            return nil
-        }
+    /// Submits a command and applies it at once, paused or running.
+    ///
+    /// A running game used to queue the command until the next tick
+    /// boundary — up to 3.75 real seconds at 1x — and report nothing. The
+    /// screen went on showing the world without the purchase, so a second
+    /// tap bought a second aircraft; and pausing or backgrounding never
+    /// drained the queue, so a save taken in that window lost the command
+    /// outright (audit 2026-10-18 §2.4). The session is an actor and never
+    /// runs a command in the middle of a tick, so "now" is already a defined
+    /// point between two ticks — the same one a paused game has always used
+    /// — and the caller gets the definitive result.
+    @discardableResult
+    public func submit(_ command: any Command) -> CommandResult {
+        let result = engine.applyNow(command)
+        publish()
+        return result
     }
 
     // MARK: Publishing
@@ -243,22 +268,28 @@ public actor GameSession {
         for continuation in snapshotContinuations.values {
             continuation.yield(state)
         }
-        // Deliver only events not yet streamed (log is bounded; a consumer
-        // that falls a full ring behind misses old events by design).
+        publishEvents()
+    }
+
+    /// Streams events not yet delivered. The log is bounded, so a consumer
+    /// that falls a full ring behind misses old events by design — which is
+    /// why `advance` calls this every tick rather than once per chunk.
+    private func publishEvents() {
+        let state = engine.state
         let missed = state.eventLog.totalCount - deliveredEventCount
-        if missed > 0 {
-            let available = min(Int(missed), state.eventLog.recent.count)
-            let player = state.playerAirline?.id
-            for event in state.eventLog.recent.suffix(available) {
-                // Classified against the state that produced the event, so
-                // ownership is resolved before anything can be sold on.
-                let playerVisible = player.map { state.isFeedEvent(event, for: $0) } ?? false
-                for (continuation, playerFeedOnly) in eventContinuations.values
-                where !playerFeedOnly || playerVisible {
-                    continuation.yield(event)
-                }
+        guard missed > 0 else { return }
+        deliveredEventCount = state.eventLog.totalCount
+        guard !eventContinuations.isEmpty else { return }
+        let available = min(Int(missed), state.eventLog.recent.count)
+        let player = state.playerAirline?.id
+        for event in state.eventLog.recent.suffix(available) {
+            // Classified against the state that produced the event, so
+            // ownership is resolved before anything can be sold on.
+            let playerVisible = player.map { state.isFeedEvent(event, for: $0) } ?? false
+            for (continuation, playerFeedOnly) in eventContinuations.values
+            where !playerFeedOnly || playerVisible {
+                continuation.yield(event)
             }
-            deliveredEventCount = state.eventLog.totalCount
         }
     }
 

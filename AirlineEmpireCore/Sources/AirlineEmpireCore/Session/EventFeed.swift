@@ -7,8 +7,11 @@
 ///
 /// Ownership lives on the entities, not on the event payloads (an event
 /// carries an `AircraftID`, not its owner), so classification needs state.
-/// It is resolved at publish time, against the exact state that produced the
-/// event — never later, when the aircraft may have been sold.
+/// It is resolved as the events are recorded (the player's feed ring,
+/// `GameState.recordEvents`) and as they are streamed, each time against the
+/// state that produced them — never later, when the aircraft may have been
+/// sold. Sales and lease returns, which delete the aircraft themselves,
+/// carry their airline in the payload.
 
 extension GameState {
     /// The airline whose business this event describes; nil for world-wide
@@ -38,11 +41,16 @@ extension GameState {
              .hubStatusRaised(let airline, _, _):
             return airline
 
+        // A sale or lease return deletes the aircraft in the command that
+        // emits it, so the event carries its airline; the owner lookup only
+        // serves events written before it did.
+        case .aircraftSold(let id, _, let airline),
+             .leaseReturned(let id, _, let airline):
+            return airline ?? aircraft[id]?.owner
+
         // Fleet events name an aircraft; its owner is the subject.
         case .aircraftOrdered(let id, _, _),
              .aircraftDelivered(let id),
-             .aircraftSold(let id, _),
-             .leaseReturned(let id, _),
              .maintenanceStarted(let id, _, _),
              .maintenanceCompleted(let id):
             return aircraft[id]?.owner

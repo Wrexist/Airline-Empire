@@ -59,6 +59,8 @@ struct LateGameTests {
         // Every bounded collection is still bounded.
         #expect(state.eventLog.recent.count <= BoundedEventLog.defaultCapacity)
         #expect(state.eventLog.totalCount > Int64(BoundedEventLog.defaultCapacity))
+        #expect(state.eventLog.playerFeed.count <= BoundedEventLog.feedCapacity)
+        #expect(!state.eventLog.playerFeed.isEmpty)
         #expect(state.ledger.recent.count <= Ledger.defaultRecentCapacity)
         for airlineID in state.orderedAirlineIDs {
             let statements = state.finance.byAirline[airlineID]?.statements ?? []
