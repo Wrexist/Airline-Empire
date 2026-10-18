@@ -29,7 +29,11 @@ public enum SaveFormat {
     /// under construction, earned hub statuses, and the events and record
     /// entries for openings — all optional, so v14 needs no rewriting, but an
     /// older build must refuse a save that may hold them.
-    public static let currentVersion = 15
+    /// v16 adds the per-airline windows of TD-032 — the player's feed ring in
+    /// the event log and each airline's ledger day totals — and the airline
+    /// on `aircraftSold`/`leaseReturned` events. All optional again: a v15
+    /// save decodes as is and the windows start recording on its first tick.
+    public static let currentVersion = 16
 }
 
 public struct SaveEnvelope: Codable, Sendable {

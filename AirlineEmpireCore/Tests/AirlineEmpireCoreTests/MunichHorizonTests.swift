@@ -110,7 +110,9 @@ struct MunichHorizonTests {
                 if case .rivalEnteredYourMarket(let move)? = summary?.headline {
                     report.headlinePair = "\(move.origin.raw)-\(move.destination.raw)"
                 }
-                report.feedEventNextMorning = state.eventLog.recent.contains { event in
+                // The player's feed ring, not the shared one a busy world
+                // turns over in a day (TD-032).
+                report.feedEventNextMorning = state.eventLog.playerFeed.contains { event in
                     if case .marketEntered(_, let a, let b) = event.kind, Route.market(a, b) == own.market {
                         return state.isFeedEvent(event, for: player)
                     }

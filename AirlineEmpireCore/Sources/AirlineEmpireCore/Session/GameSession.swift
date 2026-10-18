@@ -200,17 +200,27 @@ public actor GameSession {
     /// Advances exactly `ticks` ticks regardless of speed (used by
     /// "advance to next morning" and by tests).
     public func advance(ticks: Int) {
-        // Chunked so long fast-forwards keep draining commands at
-        // boundaries (docs/SIMULATION_ARCHITECTURE.md §3).
+        // Chunked so autosave and snapshots keep pace with long
+        // fast-forwards (docs/SIMULATION_ARCHITECTURE.md §3).
         var remaining = ticks
         let chunk = Int(GameCalendar.minutesPerDay / engine.state.meta.tickMinutes)
         while remaining > 0 {
             let step = min(chunk, remaining)
-            engine.advance(ticks: step)
+            // Events stream out tick by tick, not once per chunk. A chunk is a
+            // whole game day, and a busy world posts more events in a day than
+            // the bounded log holds: publishing only at the end of the chunk
+            // delivered the last 512 and silently dropped the rest — the
+            // player's own business included, pushed out by rival traffic
+            // (TD-032). The engine is chunk-invariant, so one tick at a time
+            // lands on exactly the same world.
+            for _ in 0..<step {
+                engine.advance(ticks: 1)
+                // The engine's results are overwritten by the next advance,
+                // so rejections must be published now.
+                publishRejections()
+                publishEvents()
+            }
             remaining -= step
-            // Per chunk: the engine's results are overwritten by the next
-            // advance, so queued-command rejections must be published now.
-            publishRejections()
             autosaveIfDue()
             publish()
         }
@@ -258,22 +268,28 @@ public actor GameSession {
         for continuation in snapshotContinuations.values {
             continuation.yield(state)
         }
-        // Deliver only events not yet streamed (log is bounded; a consumer
-        // that falls a full ring behind misses old events by design).
+        publishEvents()
+    }
+
+    /// Streams events not yet delivered. The log is bounded, so a consumer
+    /// that falls a full ring behind misses old events by design — which is
+    /// why `advance` calls this every tick rather than once per chunk.
+    private func publishEvents() {
+        let state = engine.state
         let missed = state.eventLog.totalCount - deliveredEventCount
-        if missed > 0 {
-            let available = min(Int(missed), state.eventLog.recent.count)
-            let player = state.playerAirline?.id
-            for event in state.eventLog.recent.suffix(available) {
-                // Classified against the state that produced the event, so
-                // ownership is resolved before anything can be sold on.
-                let playerVisible = player.map { state.isFeedEvent(event, for: $0) } ?? false
-                for (continuation, playerFeedOnly) in eventContinuations.values
-                where !playerFeedOnly || playerVisible {
-                    continuation.yield(event)
-                }
+        guard missed > 0 else { return }
+        deliveredEventCount = state.eventLog.totalCount
+        guard !eventContinuations.isEmpty else { return }
+        let available = min(Int(missed), state.eventLog.recent.count)
+        let player = state.playerAirline?.id
+        for event in state.eventLog.recent.suffix(available) {
+            // Classified against the state that produced the event, so
+            // ownership is resolved before anything can be sold on.
+            let playerVisible = player.map { state.isFeedEvent(event, for: $0) } ?? false
+            for (continuation, playerFeedOnly) in eventContinuations.values
+            where !playerFeedOnly || playerVisible {
+                continuation.yield(event)
             }
-            deliveredEventCount = state.eventLog.totalCount
         }
     }
 
