@@ -1354,10 +1354,19 @@ struct HubSceneBuilder {
             }
             with(.interior, .glass) { $0.box(center: c + [0, 0.6, d / 2 - 0.1], size: [w, 1.1, 0.12]) }
             with(.interior, .darkMetal) { $0.box(center: c + [0, 1.7, d / 2 - 0.1], size: [w, 0.08, 0.16]) }
+            // Along an authored pharmacy's frontage its shop units carry the
+            // deck; a column there would stand inside a shop.
+            let shops: [ClosedRange<Float>] = hasPharmacy
+                ? layout.interior.pieces.filter { $0.kind == .shopFront }.map { shop in
+                    Float(shop.center.x - shop.size.x / 2 - 0.5)...Float(shop.center.x + shop.size.x / 2 + 0.5)
+                }
+                : []
             with(.interior, .white) {
                 var x = c.x - w / 2 + 6
                 while x < c.x + w / 2 {
-                    $0.box(center: [x, fl, c.z + d / 2 - 1], size: [0.7, c.y - fl, 0.7])
+                    if !shops.contains(where: { span in span.contains(x) }) {
+                        $0.box(center: [x, fl, c.z + d / 2 - 1], size: [0.7, c.y - fl, 0.7])
+                    }
                     x += 12
                 }
             }
@@ -1620,9 +1629,10 @@ struct HubSceneBuilder {
         let width = Float(p.size.x)
         let count = max(1, Int((width / ext.z).rounded()))
         let unit = width / Float(count)
-        // Set back behind the mezzanine's front columns (1 m in from its
-        // edge), so they stand in front of the shops as a colonnade.
-        let front = c.z + Float(p.size.z) / 2 - 1.3
+        // On the shop front's line, just under the mezzanine's edge, where
+        // the fascia shows; the units carry the deck there (`mezzanine`
+        // leaves out its columns along the frontage).
+        let front = c.z + Float(p.size.z) / 2
         for i in 0..<count {
             let x = c.x - width / 2 + unit * (Float(i) + 0.5)
             // Open front (+X) to the hall (+z); the unit's width runs along x.
