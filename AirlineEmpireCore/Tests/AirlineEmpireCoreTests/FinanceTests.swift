@@ -122,6 +122,43 @@ struct LoanTests {
         #expect(engine.state.ledger.balance(of: airline)
                 == before - loan.principalRemaining - interest)
     }
+
+    /// GAME_AUDIT_2026-10-18 §6: month-end loan service charged a whole
+    /// month's interest whatever the draw date. A loan drawn ten days before
+    /// the boundary now owes those ten days — the same pro rata early payoff
+    /// already charged — and its repayment schedule does not move.
+    @Test func firstMonthInterestIsProRatedFromTheDrawDate() throws {
+        let (_, engine, airline) = try FleetFixtures.catalogAndEngine(
+            cash: Money.dollars(20_000_000), systems: [EconomySystem()])
+        // Drawn on 22 January: held for the last ten of January's 31 days.
+        engine.advance(ticks: Fixtures.ticksPerDay * 21)
+        #expect(engine.applyNow(TakeLoanCommand(
+            airline: airline, amount: Money.dollars(5_000_000), termMonths: 60)) == .applied)
+        let loan = try #require(engine.state.airlines[airline]?.loans.first)
+
+        engine.advance(ticks: Fixtures.ticksPerDay * 10) // crosses 1 February
+        let first = engine.state.ledger.recent
+            .filter { $0.airline == airline && $0.category == .loanInterest }
+        #expect(first.count == 1)
+        let charged = -(first.first?.amount ?? .zero)
+        let expected = loan.principalRemaining.asDouble * loan.monthlyRate * 10 / 31
+        #expect(abs(charged.asDouble - expected) < 0.02,
+                "charged \(charged.cents)¢ for ten days; a full month is \(Int(loan.principalRemaining.asDouble * loan.monthlyRate * 100))¢")
+        // The scheduled principal portion was paid: the annuity is unchanged.
+        let serviced = try #require(engine.state.airlines[airline]?.loans.first)
+        let scheduledPrincipal = loan.monthlyPayment
+            - Money(rounding: loan.principalRemaining.asDouble * loan.monthlyRate)
+        #expect(serviced.principalRemaining == loan.principalRemaining - scheduledPrincipal)
+        #expect(serviced.monthsRemaining == loan.monthsRemaining - 1)
+
+        // Held through all of February: a full month.
+        engine.advance(ticks: Fixtures.ticksPerDay * 28) // crosses 1 March
+        let charges = engine.state.ledger.recent
+            .filter { $0.airline == airline && $0.category == .loanInterest }
+        #expect(charges.count == 2)
+        #expect(charges.last?.amount
+                == -Money(rounding: serviced.principalRemaining.asDouble * serviced.monthlyRate))
+    }
 }
 
 @Suite("Statements")

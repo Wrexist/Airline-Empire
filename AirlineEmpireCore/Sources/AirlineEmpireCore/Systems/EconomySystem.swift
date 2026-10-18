@@ -38,9 +38,24 @@ public struct EconomySystem: SimulationSystem {
             // Loan service: interest + principal from the fixed annuity.
             var remainingLoans: [Loan] = []
             for var loan in airline.loans {
-                let interest = Money(rounding: loan.principalRemaining.asDouble * loan.monthlyRate)
+                // Drawn on this boundary's own tick: its first period has
+                // not begun, so nothing is due until the next boundary. It
+                // used to pay a full month the minute it was drawn.
+                if loan.takenAt >= context.current {
+                    remainingLoans.append(loan)
+                    continue
+                }
+                // Interest for the part of the closed month the loan was
+                // held; a full month for every loan drawn before it began,
+                // which is every period after the first. The principal
+                // portion stays the annuity's scheduled one, so a late draw
+                // pays less interest and the schedule itself is unchanged.
+                let scheduledInterest = loan.principalRemaining.asDouble * loan.monthlyRate
+                let interest = Money(rounding: scheduledInterest * loan.heldFraction(
+                    ofMonthEndingAt: context.current, startYear: state.meta.startYear))
                 let principalDue = min(loan.principalRemaining,
-                                       max(.zero, loan.monthlyPayment - interest))
+                                       max(.zero, loan.monthlyPayment
+                                           - Money(rounding: scheduledInterest)))
                 state.ledger.post(airline: airlineID, category: .loanInterest,
                                   amount: -interest, at: context.current, memo: "Loan interest")
                 state.ledger.post(airline: airlineID, category: .loanPrincipal,
