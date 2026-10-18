@@ -750,16 +750,20 @@ final class HubFacilityYard {
         let top = Float(HubLayout.terminalRoofTop) - 1.8
         let holder = Entity()
         holder.name = "hubBanner"
-        // Two drops at the thirds of the landside face, hung from y = 0 down
-        // so the roll-down scales them from the eaves.
+        // Two drops on the landside face, either side of the kerb canopy
+        // (it spans the middle 60 %), hung from y = 0 down so the roll-down
+        // scales them from the eaves. Big enough to read from the overview.
         var p: [HubMaterialKey: HubMeshBatch] = [:]
-        let length: Float = 9.5
-        for fraction: Float in [-0.32, 0.32] {
+        let length: Float = 11.5, width: Float = 6
+        for fraction: Float in [-0.37, 0.37] {
             let x = Float(t.center.x) + fraction * Float(t.width)
-            Self.with(&p, .livery(livery)) { $0.box(center: [x, -length, 0], size: [3.4, length, 0.25]) }
-            Self.with(&p, .white) { $0.box(center: [x, -length * 0.62, 0.14], size: [2.2, 0.5, 0.05]) }
-            Self.with(&p, .liveryAccent(livery)) { $0.box(center: [x, -length - 0.5, 0], size: [3.6, 0.5, 0.3]) }
-            Self.with(&p, .darkMetal) { $0.box(center: [x, -0.2, 0], size: [4.0, 0.3, 0.4]) }
+            Self.with(&p, .livery(livery)) { $0.box(center: [x, -length, 0], size: [width, length, 0.25]) }
+            Self.with(&p, .white) {
+                $0.box(center: [x, -length * 0.6, 0.14], size: [width * 0.64, 0.8, 0.05])
+                $0.box(center: [x, -length * 0.45, 0.14], size: [width * 0.4, 0.5, 0.05])
+            }
+            Self.with(&p, .liveryAccent(livery)) { $0.box(center: [x, -length - 0.6, 0], size: [width + 0.2, 0.6, 0.3]) }
+            Self.with(&p, .darkMetal) { $0.box(center: [x, -0.2, 0], size: [width + 0.6, 0.3, 0.4]) }
         }
         holder.addChild(entity(p, name: "hubBanner"))
         holder.position = [0, top, Float(t.maxZ) + 0.7]
