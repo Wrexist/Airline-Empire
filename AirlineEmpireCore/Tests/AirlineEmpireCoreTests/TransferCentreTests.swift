@@ -95,9 +95,9 @@ struct TransferCentreTests {
     @Test func buildingTheTransferCentreMakesAMainBaseAHub() throws {
         let catalog = try HubFixtures.catalog()
         let systems: [any SimulationSystem] = [FacilityConstructionSystem(), EconomySystem()]
-        let (_, founded, routes) = try HubFixtures.network(spokes: [], hub: false, catalog: catalog, systems: systems)
+        let (founded, airline, routes) = try HubFixtures.network(spokes: [], hub: false, catalog: catalog,
+                                                                 systems: systems)
         #expect(routes.isEmpty)
-        let airline = try #require(founded.state.playerAirline).id
         // Regional first: the transfer centre waits for the National era.
         let regional = inEra(.regional, founded)
         regional.advance(ticks: Fixtures.ticksPerDay)
@@ -385,7 +385,7 @@ struct TransferCentreTests {
         #expect(connectingRevenue < month.reduce(Int64(0)) { $0 + $1.revenueCents })
         #expect(month.allSatisfy { ($0.connectingPassengers ?? 0) <= $0.passengers })
         #expect(engine.state.ledger.recent.contains {
-            $0.airline == airline && $0.category == .ticketRevenue && $0.memo.contains("connecting")
+            $0.airline == airline && $0.category == .ticketRevenue && $0.memo?.contains("connecting") == true
         })
         // The read models say so.
         let cards = engine.state.routeCards(for: airline, catalog: engine.catalog)
