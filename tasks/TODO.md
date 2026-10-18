@@ -2,11 +2,14 @@
 
 ## Whole-game audit and iPhone Duo - 18 October 2026
 
-The complete, ranked list of what to fix and build is [GAME_AUDIT_2026-10-18.md](../docs/GAME_AUDIT_2026-10-18.md). iPhone Duo support: [IPHONE_DUO.md](../docs/IPHONE_DUO.md), branch `claude/iphone-duo-support`.
+The complete, ranked list of what to fix and build is [GAME_AUDIT_2026-10-18.md](../docs/GAME_AUDIT_2026-10-18.md). iPhone Duo support: [IPHONE_DUO.md](../docs/IPHONE_DUO.md), merged in PR #52. Audit fixes wave 1 (simulation, saves, screens, 3D hub performance, purchases, privacy, CI): PR #53, merged with every iPhone, iPad and Duo lane green.
 
-- [ ] Do-first five (audit §0): pin `ubuntu-24.04`, zero-rotation assignment guard, administration fix, device acceptance session, RevenueCat check.
-- [x] iPhone Duo: app compiles with Xcode 27.1 / iOS 27.1 SDK; hub and shell survive folds; Duo CI lane.
-- [ ] iPhone Duo: simulator lane result, manual fold test, release with `xcode=27.1`, Duo store screenshots (required April 2027).
+- [x] Do-first (audit §0) code items: `ubuntu-24.04` pin, zero-rotation assignment guard, administration fix — PR #53.
+- [ ] Owner: physical-device acceptance session (purchases, restore, grace, offline relaunch, hub performance) and the RevenueCat dashboard check.
+- [x] Audit §2–§6 fixes (all P2 and most P3) — PR #53. Not done: rival estimator TD-035/036 (needs its own measured balance phase).
+- [ ] Wave 2 features: long-haul multi-day rotations + dedicated pier (Phase D), transfer centre + connecting passengers (Phase E), offline catch-up + hub moments + TD-027/TD-034, the 18 missing hub models.
+- [x] iPhone Duo: app compiles with Xcode 27.1 / iOS 27.1 SDK; hub and shell survive folds; Duo CI lane green on the Duo simulator (iOS 27.1) — PR #52.
+- [ ] iPhone Duo: manual fold test, release with `xcode=27.1`, Duo store screenshots (required April 2027).
 
 ## Release 1.2.1 - 14 October 2026
 

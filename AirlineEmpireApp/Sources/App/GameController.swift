@@ -631,7 +631,10 @@ final class GameController {
     func exportCampaign() async throws -> CampaignDocument {
         guard let session else { throw CocoaError(.fileNoSuchFile) }
         let state = await session.snapshot
-        let data = try await Task.detached { try JSONSaveCodec().encode(state) }.value
+        // With the catalog, the envelope records the content version the
+        // campaign was played on, as every save now does, instead of "0".
+        let catalog = self.catalog
+        let data = try await Task.detached { try JSONSaveCodec(catalog: catalog).encode(state) }.value
         return CampaignDocument(data: data)
     }
 
@@ -1050,10 +1053,9 @@ final class GameController {
     /// *before* the player commits, disable the control, and say why. This is
     /// what replaces "tap the button, watch nothing happen" (UI-004, UI-006).
     ///
-    /// It is a pre-check, not a guarantee: a command queued while the
-    /// simulation is running is validated again at the next tick boundary,
-    /// against a world that has moved. That second refusal still arrives on
-    /// the rejection stream.
+    /// It is a pre-check, not a guarantee: `submit` validates the command
+    /// again when it applies it — at once, between two ticks — against the
+    /// world as it is then, and a refusal there is `submit`'s own result.
     func precheck(_ command: any Command) -> CommandRejection? {
         guard let snapshot, let catalog else { return nil }
         return ExpansionAccess.rejection(for: command, state: snapshot,
@@ -1086,8 +1088,8 @@ final class GameController {
         return nil
     }
 
-    /// Every refusal, from whichever of the three paths raised it — the
-    /// pre-check, the immediate result, or the queued-command stream — makes
+    /// Every refusal, from whichever path raised it — the pre-check, the
+    /// immediate result, or the session's tick-boundary stream — makes
     /// the same sound. A command that succeeds makes none here: its own
     /// domain event will voice it a moment later, and playing a confirmation
     /// as well would say the same thing twice
@@ -1226,8 +1228,9 @@ final class GameController {
                 self.pendingAudioEvents.append(event)
             }
         }
-        // Commands queued while running are validated at the next tick;
-        // their rejections arrive here, not from `submit` (BUG-005).
+        // `submit` applies every command at once and returns its refusal
+        // directly; this stream now only carries a refusal raised at a tick
+        // boundary by an engine-level caller (BUG-005, audit 2026-10-18).
         let rejections = await session.rejections()
         rejectionTask = Task { [weak self] in
             for await rejection in rejections {

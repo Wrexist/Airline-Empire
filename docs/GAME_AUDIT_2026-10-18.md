@@ -6,6 +6,8 @@
 No P0 crash found. Paths: `Core/` = `AirlineEmpireCore/Sources/AirlineEmpireCore/`,
 `App/` = `AirlineEmpireApp/Sources/`. Minutes are estimates.
 
+**Status, 18 Oct evening.** Fixed and merged: iPhone Duo (PR #52) and §0 items 1–3, all of §2, §3, §4, §5 and almost all of §6 (PR #53, every iPhone/iPad/Duo lane green). Still open: §0 items 4–5 (owner), §2 item 8 (rival estimator, its own balance phase), §1 items 2–4, §7 features (in progress as wave 2), §8 decisions.
+
 ## 0. Do first
 
 | # | What | Where | Min |
