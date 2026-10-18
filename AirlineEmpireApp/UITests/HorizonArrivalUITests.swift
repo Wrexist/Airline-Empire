@@ -90,7 +90,7 @@ final class HorizonArrivalUITests: AEUITestCase {
         let alone = app.staticTexts["Nobody. This market is yours alone — for now."]
         if !alone.waitForExistence(timeout: 6) { capture(Self.logPrefix + "HZ1-ISTANBUL-NOT-ALONE") }
         checkpoint("HZ1-route-before-the-world-moves")
-        app.navigationBars.buttons.firstMatch.tap()
+        backButton.tap()
 
         // ── HORIZON-KEY-02/03 · the morning after: Home says who and where ──
         guard advanceMornings(until: "2030-02-04", cap: 4) else {
@@ -115,7 +115,7 @@ final class HorizonArrivalUITests: AEUITestCase {
         closeBriefing()
         guard openRouteDetail(containing: "IST") else { return }
         checkpoint("HZ3-route-morning-after-entry")
-        app.navigationBars.buttons.firstMatch.tap()
+        backButton.tap()
 
         // ── HORIZON-KEY-04 · a month on: the split and what it costs ───────
         guard advanceMornings(until: "2030-03-05", cap: 34) else {
@@ -183,7 +183,7 @@ final class HorizonArrivalUITests: AEUITestCase {
         confirm.tap()
         XCTAssertTrue(app.staticTexts["Route plan saved"].waitForExistence(timeout: 10))
         checkpoint("HZ5-after-response")
-        app.navigationBars.buttons.firstMatch.tap()
+        backButton.tap()
 
         // ── HORIZON-KEY-06 · two weeks later: the world after the response ─
         guard advanceMornings(until: "2030-03-19", cap: 18) else {
@@ -193,7 +193,7 @@ final class HorizonArrivalUITests: AEUITestCase {
         checkpoint("HZ6-home-after-response")
         guard openRouteDetail(containing: "IST") else { return }
         checkpoint("HZ6-route-after-response")
-        app.navigationBars.buttons.firstMatch.tap()
+        backButton.tap()
         openTab("World")
         checkpoint("HZ6-world-hub-after-response")
     }

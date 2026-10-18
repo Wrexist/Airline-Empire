@@ -87,7 +87,7 @@ final class PassengerExperienceUITests: AEUITestCase {
         checkpoint("PAX-06-applied")
 
         // Persist through the player's own save flow, terminate and reopen.
-        app.navigationBars.buttons.firstMatch.tap()
+        backButton.tap()
         XCTAssertTrue(app.buttons["ae-briefing-close"].waitForExistence(timeout: 10))
         let settings = app.buttons["Settings"]
         XCTAssertTrue(settings.waitForExistence(timeout: 10))

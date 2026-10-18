@@ -24,6 +24,16 @@ on:
       candidate_sha:
         type: string
         required: true
+      # '27.1' builds and tests the phone app with Xcode 27.1 on the
+      # `xcode-27` image — the iOS 27.1 SDK is what lets iPhone Duo run the
+      # app edge to edge instead of in a centred window (docs/IPHONE_DUO.md).
+      # Empty keeps the macos-26 image's default Xcode.
+      xcode:
+        type: string
+        default: ''
+      duo:
+        type: boolean
+        default: false
   # Docs-only pushes to main do not need a compiler. This filter is safe
   # *here* and deliberately absent from `pull_request` below: GitHub reports
   # no status at all for a workflow a paths filter skipped, and this file's
@@ -68,9 +78,23 @@ on:
         description: 'iOS simulator runtime identifier: latest, or an installed version such as 26.4 for compatibility checks.'
         type: string
         default: latest
+      xcode:
+        description: >-
+          Toolchain for the phone app job. 27.1 runs it on the xcode-27 image
+          with the iOS 27.1 SDK, which iPhone Duo needs to run the app edge to
+          edge (docs/IPHONE_DUO.md); empty keeps the macos-26 default.
+        type: choice
+        options: [default, '27.1']
+        default: default
+      duo:
+        description: >-
+          Also build with Xcode 27.1 and run the shell, map, hub and Duo
+          layout tests on an iPhone Duo simulator. A separate macOS job.
+        type: boolean
+        default: false
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ inputs.runtime || 'latest' }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ inputs.runtime || 'latest' }}-${{ inputs.xcode || 'default' }}
   cancel-in-progress: true
 
 permissions:
@@ -317,6 +341,7 @@ jobs:
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PUSH_BEFORE: ${{ github.event.before }}
           SUITE_INPUT: ${{ inputs.suite }}
+          XCODE_INPUT: ${{ inputs.xcode }}
           FULL_VALIDATION: ${{ contains(github.event.pull_request.labels.*.name, 'full-validation') }}
         run: |
           set -euo pipefail
@@ -483,6 +508,13 @@ jobs:
                  tests: ""}
               ]}') ;;
           esac
+          # Xcode 27.1 (the iPhone Duo toolchain) runs on the xcode-27 preview
+          # image, and its xcodebuild sat five minutes after the last test of
+          # run 39138961381 before exiting — nine green tests, cancelled by the
+          # 18-minute cap. Double the caps there until it settles.
+          if [ "${XCODE_INPUT:-}" = "27.1" ]; then
+            MATRIX=$(echo "$MATRIX" | jq -c '.include |= map(.job = .job + .ui | .ui = .ui * 2)')
+          fi
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           echo "$MATRIX" | jq .
 
@@ -491,7 +523,7 @@ jobs:
     name: iOS app (xcodebuild) · ${{ matrix.name }}
     needs: plan
     if: needs.plan.outputs.build == 'true'
-    runs-on: macos-26
+    runs-on: ${{ inputs.xcode == '27.1' && 'xcode-27' || 'macos-26' }}
     # One class to a runner, and **no simulator cloning anywhere**.
     #
     # Four measurements got it here. Run 123: XCUITest distributes by test
@@ -533,6 +565,13 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ inputs.candidate_sha || github.sha }}
+
+      # The xcode-27 image defaults to 27.0; the Duo's edge-to-edge layout
+      # needs the 27.1 SDK, so select it by path rather than trusting the
+      # default to move.
+      - name: Select Xcode 27.1
+        if: inputs.xcode == '27.1'
+        run: sudo xcode-select -s /Applications/Xcode_27.1.app/Contents/Developer
 
       - name: Xcode version
         run: xcodebuild -version
@@ -1055,3 +1094,186 @@ jobs:
           echo "=== FAILURES ==="
           grep -E "^.*: error: -\[" ui-test-output.txt | head -40 || true
           grep -E "Executed [0-9]+ tests?," ui-test-output.txt | tail -1 || true
+
+  # ── 5 · iPhone Duo, on the SDK that lays the app out for it ────────────────
+  #
+  # Opt-in via the `duo` input. iPhone Duo runs an app built with the iOS 26
+  # SDK in a centred window with empty space around it; the 27.1 SDK is what
+  # takes it edge to edge and moves tab bars and toolbars vertical on the
+  # inner display (developer.apple.com/iphone-duo/prepare). So this job asks
+  # two questions at once: does the app still compile with Xcode 27.1, and
+  # does it hold together in the Duo's windows. docs/IPHONE_DUO.md.
+  #
+  # The simulator is resolved, then created if the image ships the device type
+  # without a device, then the platform is downloaded as a last resort — the
+  # xcode-27 image is a preview and its simulator list has moved before.
+  app-duo:
+    name: iPhone Duo (Xcode 27.1)
+    if: inputs.duo
+    runs-on: xcode-27
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.candidate_sha || github.sha }}
+
+      - name: Select Xcode 27.1
+        run: |
+          sudo xcode-select -s /Applications/Xcode_27.1.app/Contents/Developer
+          xcodebuild -version
+          xcodebuild -showsdks | grep -i ios || true
+
+      # The hub journey opens an earned campaign, generated from the current
+      # simulation exactly as hub-view-review.yml does.
+      - name: Generate an earned campaign for the hub journey
+        working-directory: AirlineEmpireCore
+        run: |
+          swift run -c release ae-rival-probe 2039 1825 ARN LHR-CDG:0.88 --snapshot-hour 12 --save ../AirlineEmpireApp/UITests/Fixtures/store-campaign.json > ../store-campaign-ledger.txt
+          grep -E '^saved |^final:|^   player routes:' ../store-campaign-ledger.txt
+
+      - name: Generate the Xcode project
+        working-directory: AirlineEmpireApp
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Pick or create an iPhone Duo simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/duo.py" <<'PY'
+          import json, os, re, subprocess, sys
+
+          def simctl(*args):
+              return json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', *args, '--json']))
+
+          def version(identifier):
+              return tuple(int(p) for p in re.findall(r'[0-9]+', identifier))
+
+          def existing():
+              found = []
+              for runtime, entries in simctl('devices', 'available')['devices'].items():
+                  if 'iOS' not in runtime:
+                      continue
+                  for d in entries:
+                      if d.get('isAvailable') and 'Duo' in d['name']:
+                          found.append((version(runtime), d['udid'], d['name'], runtime))
+              return max(found) if found else None
+
+          def create():
+              types = [t for t in simctl('devicetypes')['devicetypes']
+                       if 'Duo' in t['name'] or 'Duo' in t['identifier']]
+              runtimes = sorted((r for r in simctl('runtimes')['runtimes']
+                                 if r.get('isAvailable') and 'iOS' in r['identifier']),
+                                key=lambda r: version(r['version']), reverse=True)
+              print('Duo device types:', [t['identifier'] for t in types], file=sys.stderr)
+              print('iOS runtimes:', [r['identifier'] for r in runtimes], file=sys.stderr)
+              for t in types:
+                  for r in runtimes:
+                      made = subprocess.run(['xcrun', 'simctl', 'create', t['name'], t['identifier'], r['identifier']],
+                                            capture_output=True, text=True)
+                      if made.returncode == 0:
+                          return (version(r['identifier']), made.stdout.strip(), t['name'], r['identifier'])
+              return None
+
+          device = existing() or create()
+          if not device and sys.argv[1:] == ['--final']:
+              subprocess.run(['xcrun', 'simctl', 'list', 'devicetypes'])
+              subprocess.run(['xcrun', 'simctl', 'list', 'runtimes'])
+              raise SystemExit('No iPhone Duo simulator could be found or created on this image.')
+          if device:
+              print('Using simulator:', device[2], 'on', device[3], file=sys.stderr)
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+                  out.write('id=' + device[1] + '\n')
+          PY
+          python3 "$RUNNER_TEMP/duo.py"
+          if ! grep -q '^id=' "$GITHUB_OUTPUT"; then
+            echo 'No Duo simulator on the image; downloading the iOS platform.'
+            xcodebuild -downloadPlatform iOS
+            python3 "$RUNNER_TEMP/duo.py" --final
+          fi
+          ID=$(grep '^id=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2)
+          xcrun simctl boot "$ID" || true
+          xcrun simctl bootstatus "$ID" -b
+
+      - name: Run the Duo layout tests and the shell, map and hub journeys
+        working-directory: AirlineEmpireApp
+        timeout-minutes: 50
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project AirlineEmpire.xcodeproj \
+            -scheme AirlineEmpire \
+            -configuration Debug \
+            -destination 'platform=iOS Simulator,id=${{ steps.sim.outputs.id }}' \
+            -parallel-testing-enabled NO \
+            -resultBundlePath UITestResults.xcresult \
+            -only-testing:AirlineEmpireTests/FoldableLayoutReviewTests \
+            -only-testing:AirlineEmpireUITests/CampaignUITests/testFoundingAnAirlineReachesEveryTab \
+            -only-testing:AirlineEmpireUITests/MapHomeUITests/testTheMapIsTheHomeScreen \
+            -only-testing:AirlineEmpireUITests/ShellAndMapUITests/testDetailScreensAndSettingsRender \
+            -only-testing:AirlineEmpireUITests/HubViewUITests/testCloseReturnsToTheMap \
+            CODE_SIGNING_ALLOWED=NO \
+            test 2>&1 | tee ui-test-output.txt
+
+      # Same reasoning as the phone job: the agent reads logs, not artifacts.
+      # DUO-* are the hosted layout captures from FoldableLayoutReviewTests.
+      - name: Screenshots into the log
+        if: always()
+        working-directory: AirlineEmpireApp
+        continue-on-error: true
+        run: |
+          set +e
+          [ -d UITestResults.xcresult ] || { echo "No result bundle."; exit 0; }
+          OUT=$(mktemp -d)
+          xcrun xcresulttool export attachments --path UITestResults.xcresult --output-path "$OUT" >/dev/null 2>&1
+          python3 - "$OUT" <<'PYEOF'
+          import base64, json, os, shutil, subprocess, sys
+          out = sys.argv[1]
+          manifest = os.path.join(out, "manifest.json")
+          if not os.path.exists(manifest):
+              print("NO-ATTACHMENTS-EXPORTED"); sys.exit(0)
+          os.makedirs("ReviewScreenshots", exist_ok=True)
+          seen = set()
+          for suite in json.load(open(manifest)):
+              for a in suite.get("attachments", []):
+                  name = a.get("suggestedHumanReadableName") or a.get("exportedFileName")
+                  path = os.path.join(out, a.get("exportedFileName", ""))
+                  if not name or name in seen or not os.path.exists(path):
+                      continue
+                  if not (name.startswith("KEY-") or name.startswith("DUO-")):
+                      continue
+                  seen.add(name)
+                  shutil.copyfile(path, os.path.join("ReviewScreenshots", os.path.basename(name) + ".png"))
+                  small = path + ".small.png"
+                  subprocess.run(["sips", "--resampleWidth", "360", path, "--out", small], capture_output=True)
+                  data = base64.b64encode(open(small if os.path.exists(small) else path, "rb").read()).decode()
+                  print(f"===SHOT {name} {len(data)}")
+                  for i in range(0, len(data), 500):
+                      print(data[i:i+500])
+                  print("===ENDSHOT")
+          print(f"CHECKPOINTS: {len(seen)}")
+          PYEOF
+          exit 0
+
+      - name: Keep the Duo screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iphone-duo-screenshots
+          path: AirlineEmpireApp/ReviewScreenshots
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: What failed
+        if: always()
+        working-directory: AirlineEmpireApp
+        continue-on-error: true
+        run: |
+          [ -f ui-test-output.txt ] || { echo "No test output captured."; exit 0; }
+          echo "=== DUO TEST RESULTS ==="
+          grep -E "Test [Cc]ase .* (passed|failed)" ui-test-output.txt || true
+          echo "=== FAILURES ==="
+          grep -E "^.*: error: " ui-test-output.txt | head -40 || true
+          grep -E "Executed [0-9]+ tests?," ui-test-output.txt | tail -2 || true

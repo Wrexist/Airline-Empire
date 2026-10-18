@@ -42,6 +42,22 @@ class AEUITestCase: XCTestCase {
     var wantsSunriseWeek: Bool { true }
     var usesProFixture: Bool { true }
 
+    /// The navigation bar's Back button. Not the bar's first button: on
+    /// iPhone Duo the iOS 27.1 SDK moves Back into a vertical bar on the
+    /// trailing edge, and the first button is then the screen's leading
+    /// item — the clock's speed menu (run 39138961381). That vertical bar is
+    /// a `Toolbar` element, not part of the navigation bar (run
+    /// 39141479458's hierarchy), so Back is looked for anywhere, the first
+    /// hittable one winning. Where there is no system Back, the navigation
+    /// bar's first button, as before.
+    var backButton: XCUIElement {
+        let system = app.buttons.matching(identifier: "BackButton")
+        for index in 0..<system.count where system.element(boundBy: index).isHittable {
+            return system.element(boundBy: index)
+        }
+        return app.navigationBars.buttons.element(boundBy: 0)
+    }
+
     override func tearDown() {
         if let run = testRun, run.failureCount > 0 {
             // A device capture still works when the app has exited or a
@@ -472,14 +488,23 @@ class AEUITestCase: XCTestCase {
         let fleetRow = app.descendants(matching: .any)
             .matching(identifier: "ae-fleet-row").firstMatch
 
+        // Open is the list or the title: the iOS 27.1 SDK hides the title
+        // while the list scrolls on iPhone Duo's short outer display.
+        func marketOpen() -> Bool { list.exists || market.exists }
+
         // A fast application swipe can overshoot a virtualised row in a
         // nested sheet. Scroll within this market and require the entire
         // action to sit below its toolbar before resolving a tap position.
         func positionLease() -> Bool {
             for _ in 0..<24 {
-                guard market.exists, list.exists else { return false }
+                // The list, not the title, is what proves the sheet is open:
+                // on iPhone Duo's short outer display the iOS 27.1 SDK hides
+                // the sheet's navigation title while the list scrolls (CI run
+                // 39133562645, "Sign the lease" on screen and hittable).
+                guard list.exists else { return false }
                 let bounds = list.frame.intersection(window)
-                let top = max(bounds.minY, market.frame.maxY + 12)
+                let titleBottom = market.exists ? market.frame.maxY + 12 : bounds.minY
+                let top = max(bounds.minY, titleBottom)
                 let viewport = CGRect(x: bounds.minX, y: top,
                     width: bounds.width, height: max(0, bounds.maxY - top - 20))
                 guard viewport.height > 100 else { return false }
@@ -509,7 +534,7 @@ class AEUITestCase: XCTestCase {
             }
             if attempt == 1 { checkpoint("LEASE-BEFORE-TAP") }
             let frame = lease.frame
-            print("LEASE-TAP frame=\(frame), list=\(list.frame), title=\(market.frame)")
+            print("LEASE-TAP frame=\(frame), list=\(list.frame), title=\(market.exists ? "\(market.frame)" : "hidden")")
             app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
                 .withOffset(CGVector(dx: frame.midX, dy: frame.midY)).tap()
 
@@ -534,7 +559,7 @@ class AEUITestCase: XCTestCase {
                     XCTAssertGreaterThanOrEqual(cancel.frame.height, 44)
                     cancel.tap()
                     guard leaseDialogTitle.waitForNonExistence(timeout: 8),
-                          market.exists, lease.exists, lease.isEnabled else {
+                          marketOpen(), lease.exists, lease.isEnabled else {
                         checkpoint("LEASE-CANCEL-FAILED")
                         XCTFail("Cancelling must return to the open market with its lease action enabled")
                         return false
@@ -544,8 +569,8 @@ class AEUITestCase: XCTestCase {
                     continue
                 }
                 confirm.tap()
-                let closed = market.waitForNonExistence(timeout: 8)
-                if (closed || !market.exists), leaseLanded(proof, fleetRow: fleetRow) {
+                let closed = list.waitForNonExistence(timeout: 8)
+                if (closed || !marketOpen()), leaseLanded(proof, fleetRow: fleetRow) {
                     return true
                 }
                 // Never resubmit a purchase after confirmation. A slow or
@@ -555,13 +580,15 @@ class AEUITestCase: XCTestCase {
                 return false
             }
             checkpoint("LEASE-ATTEMPT-\(attempt)")
-            guard market.exists else {
+            guard marketOpen() else {
                 XCTFail("The market closed before a lease confirmation; no purchase was proven")
                 return false
             }
             // Only opening the confirmation is retried. Dismiss a wrong
             // popover without confirming any transaction.
-            market.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            if market.exists {
+                market.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            }
         }
         XCTFail("The lease confirmation did not open after four visible, stationary taps")
         return false
@@ -823,8 +850,8 @@ class AEUITestCase: XCTestCase {
                 bare += 1
                 // Leave whatever screen the misses landed on, so the next
                 // row starts from the board.
-                if !row.exists, app.navigationBars.buttons.firstMatch.exists {
-                    app.navigationBars.buttons.firstMatch.tap()
+                if !row.exists, backButton.exists {
+                    backButton.tap()
                     Thread.sleep(forTimeInterval: 0.5)
                 }
                 continue
@@ -844,7 +871,7 @@ class AEUITestCase: XCTestCase {
                 }
                 if !unassign.waitForExistence(timeout: 8) { bare += 1 }
             }
-            app.navigationBars.buttons.firstMatch.tap()
+            backButton.tap()
             Thread.sleep(forTimeInterval: 0.5)
         }
         return bare
@@ -930,7 +957,7 @@ class AEUITestCase: XCTestCase {
         }
         for _ in 0..<3 {
             if segment.exists, segment.isHittable { return selectSection() }
-            let back = app.navigationBars.buttons.firstMatch
+            let back = backButton
             guard back.exists, back.isHittable else { break }
             back.tap()
             Thread.sleep(forTimeInterval: 0.6)

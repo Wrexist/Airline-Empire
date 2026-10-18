@@ -141,7 +141,7 @@ final class MapHomeUITests: AEUITestCase {
         // Pop the route detail first. It was pushed inside the map's own
         // navigation stack, and tapping the Home tab that is already selected
         // does not pop it — the map would still be behind a detail screen.
-        let back = app.navigationBars.buttons.firstMatch
+        let back = backButton
         if back.exists, back.isHittable { back.tap() }
         Thread.sleep(forTimeInterval: 0.6)
         openTab("Home")

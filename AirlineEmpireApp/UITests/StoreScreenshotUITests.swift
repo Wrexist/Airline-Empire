@@ -63,11 +63,11 @@ class StoreScreenshotUITests: AEUITestCase {
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "ae-rival-card")
             .firstMatch.waitForExistence(timeout: 10))
         shot("05-rivals")
-        app.navigationBars.buttons.firstMatch.tap()
+        backButton.tap()
 
         guard openProgression() else { return }
         shot("06-progression")
-        app.navigationBars.buttons.firstMatch.tap()
+        backButton.tap()
         guard openBriefing() else { return }
         shot("06b-briefing")
         closeBriefing()
