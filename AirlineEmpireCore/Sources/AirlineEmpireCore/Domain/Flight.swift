@@ -20,6 +20,10 @@ public struct Flight: Equatable, Codable, Sendable {
     public var wasDelayed: Bool
     /// Seats sold (Phase 7 fills this; ferries stay 0).
     public var passengers: Int
+    /// Of `passengers`, travellers connecting at a hub, and the leg's share
+    /// of each one's through fare. Nil on a flight that carries none.
+    public var connectingPassengers: Int?
+    public var connectingFare: Money?
 
     public init(id: FlightID, route: RouteID, aircraft: AircraftID, kind: FlightKind,
                 from: AirportCode, to: AirportCode, distanceKm: Int,

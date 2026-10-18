@@ -30,6 +30,34 @@ public struct AirportFacilityTuning: Equatable, Codable, Sendable {
     public let crewBaseExtraMinutes: Int64
     public let crewBaseCrewCostFactor: Double
 
+    /// Transfer centre (National era, one level): designates the airport a
+    /// hub, and unserved demand between two of the airline's spokes connects
+    /// through it (`ConnectingDemandSystem`). The connection rules:
+    /// - a connection works when the onward flight leaves between
+    ///   `transferMinimumConnectMinutes` and `transferMaximumLayoverMinutes`
+    ///   after the inbound one lands;
+    /// - the through fare is the two legs' fares less
+    ///   `transferThroughFareDiscount`, split between the legs by distance;
+    /// - a change of planes is worth `transferConnectionQuality` of a nonstop,
+    ///   and a wait at the far end of the window costs up to
+    ///   `transferLayoverPenalty` more of it;
+    /// - nobody connects the long way round: the two legs together fly at
+    ///   most `transferMaximumDetour` times the direct distance;
+    /// - per hub, at most `transferSpokesPerHub` spokes and the
+    ///   `transferMarketsPerHub` largest city pairs are considered, which
+    ///   bounds the daily cost on any network.
+    public let transferCentreInstallation: Money
+    public let transferCentreMonthly: Money
+    public let transferCentreBuildDays: Int
+    public let transferMinimumConnectMinutes: Int64
+    public let transferMaximumLayoverMinutes: Int64
+    public let transferThroughFareDiscount: Double
+    public let transferConnectionQuality: Double
+    public let transferLayoverPenalty: Double
+    public let transferMaximumDetour: Double
+    public let transferSpokesPerHub: Int
+    public let transferMarketsPerHub: Int
+
     // Priced for an 18–36 month payback at a typical hub (tasks/DECISIONS.md
     // D-017): the lounge at about eight routes, the hangar at about ten
     // aircraft flying through, the crew base on crew savings alone.
@@ -43,7 +71,14 @@ public struct AirportFacilityTuning: Equatable, Codable, Sendable {
                 hangarCheckCostFactor: [Double] = [0.8, 0.65],
                 crewBaseInstallation: Money = .dollars(2_500_000), crewBaseMonthly: Money = .dollars(60_000),
                 crewBaseBuildDays: Int = 21, crewBaseEarlierStartMinutes: Int64 = 60,
-                crewBaseExtraMinutes: Int64 = 120, crewBaseCrewCostFactor: Double = 0.9) {
+                crewBaseExtraMinutes: Int64 = 120, crewBaseCrewCostFactor: Double = 0.9,
+                // The plan's figures (docs/HUB_PROGRESSION_PLAN.md §4 #6).
+                transferCentreInstallation: Money = .dollars(25_000_000),
+                transferCentreMonthly: Money = .dollars(200_000), transferCentreBuildDays: Int = 60,
+                transferMinimumConnectMinutes: Int64 = 30, transferMaximumLayoverMinutes: Int64 = 300,
+                transferThroughFareDiscount: Double = 0.2, transferConnectionQuality: Double = 0.6,
+                transferLayoverPenalty: Double = 0.4, transferMaximumDetour: Double = 1.5,
+                transferSpokesPerHub: Int = 48, transferMarketsPerHub: Int = 40) {
         self.loungeInstallation = loungeInstallation; self.groundInstallation = groundInstallation
         self.loungeMonthly = loungeMonthly; self.groundMonthly = groundMonthly
         self.loungeComfortPerLevel = loungeComfortPerLevel
@@ -57,6 +92,17 @@ public struct AirportFacilityTuning: Equatable, Codable, Sendable {
         self.crewBaseEarlierStartMinutes = crewBaseEarlierStartMinutes
         self.crewBaseExtraMinutes = crewBaseExtraMinutes
         self.crewBaseCrewCostFactor = crewBaseCrewCostFactor
+        self.transferCentreInstallation = transferCentreInstallation
+        self.transferCentreMonthly = transferCentreMonthly
+        self.transferCentreBuildDays = transferCentreBuildDays
+        self.transferMinimumConnectMinutes = transferMinimumConnectMinutes
+        self.transferMaximumLayoverMinutes = transferMaximumLayoverMinutes
+        self.transferThroughFareDiscount = transferThroughFareDiscount
+        self.transferConnectionQuality = transferConnectionQuality
+        self.transferLayoverPenalty = transferLayoverPenalty
+        self.transferMaximumDetour = transferMaximumDetour
+        self.transferSpokesPerHub = transferSpokesPerHub
+        self.transferMarketsPerHub = transferMarketsPerHub
     }
     public static let standard = Self()
 
@@ -66,6 +112,10 @@ public struct AirportFacilityTuning: Equatable, Codable, Sendable {
         case hangarInstallation, hangarMonthly, hangarBuildDays, hangarCheckDays, hangarCheckCostFactor
         case crewBaseInstallation, crewBaseMonthly, crewBaseBuildDays, crewBaseEarlierStartMinutes
         case crewBaseExtraMinutes, crewBaseCrewCostFactor
+        case transferCentreInstallation, transferCentreMonthly, transferCentreBuildDays
+        case transferMinimumConnectMinutes, transferMaximumLayoverMinutes, transferThroughFareDiscount
+        case transferConnectionQuality, transferLayoverPenalty, transferMaximumDetour
+        case transferSpokesPerHub, transferMarketsPerHub
     }
 
     public init(from decoder: any Decoder) throws {
@@ -93,13 +143,25 @@ public struct AirportFacilityTuning: Equatable, Codable, Sendable {
             crewBaseBuildDays: try value(.crewBaseBuildDays, d.crewBaseBuildDays),
             crewBaseEarlierStartMinutes: try value(.crewBaseEarlierStartMinutes, d.crewBaseEarlierStartMinutes),
             crewBaseExtraMinutes: try value(.crewBaseExtraMinutes, d.crewBaseExtraMinutes),
-            crewBaseCrewCostFactor: try value(.crewBaseCrewCostFactor, d.crewBaseCrewCostFactor))
+            crewBaseCrewCostFactor: try value(.crewBaseCrewCostFactor, d.crewBaseCrewCostFactor),
+            transferCentreInstallation: try value(.transferCentreInstallation, d.transferCentreInstallation),
+            transferCentreMonthly: try value(.transferCentreMonthly, d.transferCentreMonthly),
+            transferCentreBuildDays: try value(.transferCentreBuildDays, d.transferCentreBuildDays),
+            transferMinimumConnectMinutes: try value(.transferMinimumConnectMinutes, d.transferMinimumConnectMinutes),
+            transferMaximumLayoverMinutes: try value(.transferMaximumLayoverMinutes, d.transferMaximumLayoverMinutes),
+            transferThroughFareDiscount: try value(.transferThroughFareDiscount, d.transferThroughFareDiscount),
+            transferConnectionQuality: try value(.transferConnectionQuality, d.transferConnectionQuality),
+            transferLayoverPenalty: try value(.transferLayoverPenalty, d.transferLayoverPenalty),
+            transferMaximumDetour: try value(.transferMaximumDetour, d.transferMaximumDetour),
+            transferSpokesPerHub: try value(.transferSpokesPerHub, d.transferSpokesPerHub),
+            transferMarketsPerHub: try value(.transferMarketsPerHub, d.transferMarketsPerHub))
     }
 
     public var isValid: Bool {
         let money = [loungeInstallation, groundInstallation, loungeMonthly, groundMonthly,
-                     crewBaseInstallation, crewBaseMonthly] + hangarInstallation + hangarMonthly
-        let days = loungeBuildDays + groundBuildDays + hangarBuildDays + [crewBaseBuildDays]
+                     crewBaseInstallation, crewBaseMonthly, transferCentreInstallation, transferCentreMonthly]
+            + hangarInstallation + hangarMonthly
+        let days = loungeBuildDays + groundBuildDays + hangarBuildDays + [crewBaseBuildDays, transferCentreBuildDays]
         return money.allSatisfy { $0.cents >= 0 && $0.cents <= 1_000_000_000_000 }
             && (0...0.25).contains(loungeComfortPerLevel) && (0...0.4).contains(groundRiskReductionPerLevel)
             && loungeBuildDays.count == 2 && groundBuildDays.count == 2
@@ -111,5 +173,20 @@ public struct AirportFacilityTuning: Equatable, Codable, Sendable {
             && (0...180).contains(crewBaseEarlierStartMinutes) && (0...360).contains(crewBaseExtraMinutes)
             && crewBaseExtraMinutes >= crewBaseEarlierStartMinutes
             && (0.1...1).contains(crewBaseCrewCostFactor)
+            && transfersAreValid
+    }
+
+    /// The connection rules, apart so neither check grows past what the
+    /// type checker handles quickly.
+    private var transfersAreValid: Bool {
+        let window = (0...240).contains(transferMinimumConnectMinutes)
+            && transferMaximumLayoverMinutes > transferMinimumConnectMinutes
+            && transferMaximumLayoverMinutes <= 1_440
+        let factors = (0...0.9).contains(transferThroughFareDiscount)
+            && (0.05...1).contains(transferConnectionQuality)
+            && (0...0.9).contains(transferLayoverPenalty)
+            && (1...3).contains(transferMaximumDetour)
+        let caps = (2...200).contains(transferSpokesPerHub) && (1...500).contains(transferMarketsPerHub)
+        return window && factors && caps
     }
 }

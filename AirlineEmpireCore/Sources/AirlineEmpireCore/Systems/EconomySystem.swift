@@ -291,5 +291,12 @@ public struct StatementRollupSystem: SimulationSystem {
             route.economicsThisMonth = RouteMonthEconomics()
             state.routes[routeID] = route
         }
+
+        // Each hub's connecting travellers, closed with the routes.
+        for airlineID in state.orderedAirlineIDs {
+            guard var tallies = state.airlines[airlineID]?.hubTransfers else { continue }
+            for hub in tallies.keys.sorted() { tallies[hub]?.closeMonth() }
+            state.airlines[airlineID]?.hubTransfers = tallies
+        }
     }
 }

@@ -45,6 +45,14 @@ public struct AirportServiceReadModel: Equatable, Sendable {
             let saving = Int(((1 - tuning.crewBaseCrewCostFactor) * 100).rounded())
             return ("Operating day \(clock(start))–\(clock(end)), crews \(saving)% cheaper",
                     "Routes from this airport: more rotations fit in a day.")
+        case .transferCentre:
+            let window = "\(tuning.transferMinimumConnectMinutes) min–\(tuning.transferMaximumLayoverMinutes / 60) h"
+            guard level > 0 else {
+                return ("Point to point: travellers fly only your nonstops", "Your routes from this airport.")
+            }
+            let discount = Int((tuning.transferThroughFareDiscount * 100).rounded())
+            return ("Hub: travellers connect between your routes here",
+                    "Unserved demand between two of your destinations flies through this hub when your flights connect within \(window). Through fares \(discount)% under the two legs; connections fill seats your locals leave empty.")
         }
     }
 

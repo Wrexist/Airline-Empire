@@ -12,6 +12,13 @@ import Foundation
 /// Results land on each route as today's bookable demand; the flight-ops
 /// boarding step consumes it. Demand is conserved: a passenger booked on
 /// one route is never double-counted elsewhere.
+///
+/// The pool split's spill term (reserved in D-010) is `connectingSpill`, in
+/// `ConnectingDemand.swift`: what the split leaves unserved between two of
+/// an airline's spokes connects through its hub. It runs as its own system
+/// after the scheduler, because connection quality is read from the day's
+/// timetable; this split clears yesterday's connections as it resets each
+/// route.
 public struct DemandSystem: SimulationSystem {
     public let id = "demand"
     public let cadence = Cadence.daily
@@ -89,6 +96,9 @@ public struct DemandSystem: SimulationSystem {
                 + pool.leisure * Self.share(offer: leisure[index],
                                             everyOffer: sumL, tuning: tuning)
             let pax = Int((served).rounded(.down))
+            // Today's connections are booked on top of this after the
+            // scheduler (`ConnectingDemandSystem`); yesterday's go now.
+            if route.connectionsToday != nil { route.connectionsToday = nil }
             if route.origin == from {
                 route.demandOutboundToday = pax
                 route.remainingOutboundToday = pax

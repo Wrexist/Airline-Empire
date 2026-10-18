@@ -11,6 +11,7 @@ import Foundation
 /// A building the player can put up at a hub, with a place in the diorama.
 public enum HubFacilityKind: String, CaseIterable, Codable, Sendable {
     case lounge, groundServices, hangar, crewBase
+    case transferCentre
 
     public var service: AirportService {
         switch self {
@@ -18,6 +19,7 @@ public enum HubFacilityKind: String, CaseIterable, Codable, Sendable {
         case .groundServices: .ground
         case .hangar: .hangar
         case .crewBase: .crewBase
+        case .transferCentre: .transferCentre
         }
     }
 
@@ -27,6 +29,7 @@ public enum HubFacilityKind: String, CaseIterable, Codable, Sendable {
         case .ground: self = .groundServices
         case .hangar: self = .hangar
         case .crewBase: self = .crewBase
+        case .transferCentre: self = .transferCentre
         }
     }
 
@@ -44,6 +47,8 @@ public enum HubFacilityKind: String, CaseIterable, Codable, Sendable {
         case (.hangar, _): "Heavy maintenance hangar"
         case (.crewBase, 0): "Crew base site"
         case (.crewBase, _): "Crew base and hotel"
+        case (.transferCentre, 0): "Transfer centre site"
+        case (.transferCentre, _): "Transfer centre"
         }
     }
 }
@@ -181,6 +186,31 @@ extension HubLayout {
     public func site(_ kind: HubFacilityKind) -> HubFacilitySite? {
         facilitySites.first { $0.kind == kind }
     }
+
+    /// Where connecting travellers walk in the terminal cutaway once the
+    /// transfer centre is open: along the mezzanine — the hall's airside
+    /// upper level, clear of every counter on the floor — from the westmost
+    /// pier's root to the eastmost, or across the first bay, where the
+    /// cutaway looks, at a hub with fewer than two piers. It stops short of
+    /// the lounge. Nil when there is no room for a walk.
+    public var transferWalk: HubPath? {
+        guard let deck = interior.pieces.first(where: { $0.kind == .mezzanine }) else { return nil }
+        let floor = interior.bounds
+        let y = deck.center.y + deck.size.y
+        var west = floor.minX + 6, east = floor.maxX - 6
+        if let lounge = interior.pieces.first(where: { $0.kind == .loungeBlock }) {
+            east = min(east, lounge.center.x - lounge.size.x / 2 - 4)
+        }
+        let roots = pieces(.pier).map(\.center.x).sorted()
+        if let first = roots.first, let last = roots.last, roots.count >= 2 {
+            west = max(west, first)
+            east = min(east, last)
+        } else {
+            east = min(east, floor.minX + floor.width / Double(max(1, interior.bays)) - 6)
+        }
+        guard east - west > 12 else { return nil }
+        return HubPath([HubVec(west, y, deck.center.z), HubVec(east, y, deck.center.z)])
+    }
 }
 
 extension GameState {
@@ -297,9 +327,28 @@ extension GameState {
                 return "Crews \(Int(((1 - tuning.crewBaseCrewCostFactor) * 100).rounded()))% cheaper on your \(count) route\(count == 1 ? "" : "s") here; no extra rotation fits yet."
             }
             return "Room for +\(room) rotation\(room == 1 ? "" : "s") a day on your \(count) route\(count == 1 ? "" : "s") here."
+        case .transferCentre:
+            let flying = routes.filter(\.isOperating).count
+            guard flying >= 2 else { return "Connections need at least two of your routes flying from here." }
+            // The spill term itself, run on today's timetable as if this
+            // airport were a hub already.
+            let flows = connectingFlowsIfHub(at: airport, airline: airline, catalog: catalog)
+            let passengers = flows.reduce(0) { $0 + $1.passengers }
+            guard passengers > 0 else {
+                return "No connection works on today's schedule yet: onward flights must leave \(tuning.transferMinimumConnectMinutes) min to \(tuning.transferMaximumLayoverMinutes / 60) h after an arrival, with seats to spare."
+            }
+            let fares = flows.reduce(0.0) { $0 + $1.fare.asDouble * Double($1.passengers) }
+            return "About \(passengers) connecting passenger\(passengers == 1 ? "" : "s") a day across \(flows.count) city pair\(flows.count == 1 ? "" : "s") on today's schedule — \(Self.dollars(fares * 30)) a month in through fares."
         case .lounge, .ground:
             return nil
         }
+    }
+
+    /// The payoff line a building's hub card quotes, for the screens outside
+    /// the hub (Airport Services).
+    public func facilityPayoff(_ service: AirportService, level: Int, at airport: AirportCode,
+                               airline: AirlineID, catalog: ContentCatalog) -> String? {
+        payoff(of: service, level: level, at: airport, airline: airline, catalog: catalog)
     }
 
     /// "$1.2M", "$450k": a figure for a sentence.

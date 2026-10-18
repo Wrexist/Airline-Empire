@@ -240,6 +240,17 @@
   "crewBaseBuildDays": 21,
   "crewBaseEarlierStartMinutes": 60,
   "crewBaseExtraMinutes": 120,
-  "crewBaseCrewCostFactor": 0.9
+  "crewBaseCrewCostFactor": 0.9,
+  "transferCentreInstallation": {"cents": 2500000000},
+  "transferCentreMonthly": {"cents": 20000000},
+  "transferCentreBuildDays": 60,
+  "transferMinimumConnectMinutes": 30,
+  "transferMaximumLayoverMinutes": 300,
+  "transferThroughFareDiscount": 0.2,
+  "transferConnectionQuality": 0.6,
+  "transferLayoverPenalty": 0.4,
+  "transferMaximumDetour": 1.5,
+  "transferSpokesPerHub": 48,
+  "transferMarketsPerHub": 40
  }
 }

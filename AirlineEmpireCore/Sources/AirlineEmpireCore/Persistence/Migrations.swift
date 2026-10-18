@@ -40,6 +40,7 @@ public struct MigrationChain: Sendable {
         MigrationV13AddProgressionRecord(),
         MigrationV14AddHubBuildings(),
         MigrationV15AddPlayerWindows(),
+        MigrationV16AddHubConnections(),
     ])
 
     public func migrate(payload: [String: Any], from version: Int) throws -> [String: Any] {
@@ -57,6 +58,17 @@ public struct MigrationChain: Sendable {
         }
         return current
     }
+}
+
+/// v16 → v17: hub connections (docs/HUB_PROGRESSION_PLAN.md Phase E). Every
+/// new field decodes as absent — no transfer centre, no connections today,
+/// nothing transferred yet — so the step only moves the version. The bump
+/// makes an older build refuse a save that may hold a transfer centre or the
+/// Hub status, which it could not decode.
+public struct MigrationV16AddHubConnections: SaveMigration {
+    public let fromVersion = 16
+    public init() {}
+    public func migrate(_ payload: inout [String: Any]) throws {}
 }
 
 /// v15 → v16: the event log gained the player's feed ring, the ledger each

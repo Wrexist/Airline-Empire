@@ -49,6 +49,22 @@ public struct FlightOpsSystem: SimulationSystem {
                         } else {
                             route.remainingInboundToday = remaining - sold
                         }
+                        // Connecting travellers board in their share of what
+                        // is left; the last flight of the day takes the rest.
+                        if var load = route.connectionsToday, sold > 0 {
+                            var leg = load.direction(outbound: outbound)
+                            if leg.remaining > 0, remaining > 0 {
+                                let connecting = min(leg.remaining,
+                                                     Int(Int64(sold) * Int64(leg.remaining) / Int64(remaining)))
+                                if connecting > 0 {
+                                    leg.remaining -= connecting
+                                    load.set(leg, outbound: outbound)
+                                    route.connectionsToday = load
+                                    flight.connectingPassengers = connecting
+                                    flight.connectingFare = leg.fare
+                                }
+                            }
+                        }
                         state.routes[flight.route] = route
                     }
                 }
@@ -97,12 +113,28 @@ public struct FlightOpsSystem: SimulationSystem {
                         if flight.kind == .revenue, flight.passengers > 0,
                            var route = state.routes[flight.route] {
                             let spec = context.catalog.aircraftType(aircraft.typeCode)!
-                            let revenue = Money(rounding: route.ticketPrice.asDouble * Double(flight.passengers)
-                                * aircraft.cabin(for: spec).yieldMultiplier(tuning: context.catalog.tuning.cabin))
+                            let revenue: Money
+                            var memo = "\(flight.passengers) pax \(flight.from)-\(flight.to)"
+                            if let connecting = flight.connectingPassengers, connecting > 0,
+                               let fare = flight.connectingFare {
+                                // Locals pay the route's fare; connecting
+                                // travellers this leg's share of theirs.
+                                let cabinYield = aircraft.cabin(for: spec).yieldMultiplier(tuning: context.catalog.tuning.cabin)
+                                let through = Money(rounding: fare.asDouble * Double(connecting) * cabinYield)
+                                revenue = Money(rounding: route.ticketPrice.asDouble
+                                    * Double(flight.passengers - connecting) * cabinYield) + through
+                                memo += " (\(connecting) connecting)"
+                                route.economicsThisMonth.connectingPassengers =
+                                    (route.economicsThisMonth.connectingPassengers ?? 0) + Int64(connecting)
+                                route.economicsThisMonth.connectingRevenueCents =
+                                    (route.economicsThisMonth.connectingRevenueCents ?? 0) + through.cents
+                            } else {
+                                revenue = Money(rounding: route.ticketPrice.asDouble * Double(flight.passengers)
+                                    * aircraft.cabin(for: spec).yieldMultiplier(tuning: context.catalog.tuning.cabin))
+                            }
                             state.ledger.post(
                                 airline: aircraft.owner, category: .ticketRevenue,
-                                amount: revenue, at: now,
-                                memo: "\(flight.passengers) pax \(flight.from)-\(flight.to)")
+                                amount: revenue, at: now, memo: memo)
                             route.economicsThisMonth.revenueCents += revenue.cents
                             route.economicsThisMonth.passengers += Int64(flight.passengers)
                             state.routes[flight.route] = route
@@ -186,6 +218,14 @@ public struct FlightOpsSystem: SimulationSystem {
                     route.remainingInboundToday = min(
                         route.demandInboundToday,
                         route.remainingInboundToday + flight.passengers)
+                }
+                // Its connecting travellers go back to the day's connections.
+                if let connecting = flight.connectingPassengers, connecting > 0, var load = route.connectionsToday {
+                    let outbound = flight.from == route.origin
+                    var leg = load.direction(outbound: outbound)
+                    leg.remaining = min(leg.booked, leg.remaining + connecting)
+                    load.set(leg, outbound: outbound)
+                    route.connectionsToday = load
                 }
             }
             state.routes[flight.route] = route

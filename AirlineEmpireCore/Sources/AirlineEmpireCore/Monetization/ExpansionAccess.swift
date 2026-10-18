@@ -18,6 +18,15 @@ public enum ExpansionAccess {
             if !airports.contains(c.origin) || !airports.contains(c.destination) {
                 return locked("This airport requires Pro. Your existing routes keep flying.")
             }
+        case let c as ConfigureAirportFacilitiesCommand where c.airline == player.id:
+            // A building above the era ceiling (the transfer centre) is
+            // Pro's; one already standing keeps working.
+            let planned = player.plannedFacilities(at: c.airport)
+            if let service = AirportService.allCases.first(where: {
+                $0.level(in: c.facilities) > $0.level(in: planned) && $0.unlockEra > ceiling
+            }) {
+                return locked("The \(service.title.lowercased()) requires Pro. Your existing buildings keep working.")
+            }
         default: break
         }
         if let (owner, type) = acquisition, owner == player.id,
