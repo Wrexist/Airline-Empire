@@ -12,7 +12,7 @@ A model script defines `build(kit)` and ends with `kit.run("<slot>", build)`;
 run it with
 
     blender --background --python scripts/hub-models/procedural/<slot>.py -- \
-        [--out file.usdz] [--save-blend file.blend] [--preview dir]
+        [--out file.usdz] [--save-blend file.blend] [--preview dir] [--only slot,slot]
 """
 import argparse
 import json
@@ -354,7 +354,10 @@ def run(slot, build, views=()):
     p.add_argument("--out", help="default AirlineEmpireApp/Resources/HubModels/Hub_<slot>.usdz")
     p.add_argument("--save-blend")
     p.add_argument("--preview", help="folder for workbench preview renders")
+    p.add_argument("--only", help="comma-separated slots: build just these from a group script")
     a = p.parse_args(argv)
+    if a.only and slot not in a.only.split(","):
+        return
 
     bpy.ops.wm.read_factory_settings(use_empty=True)
     kit = Kit()

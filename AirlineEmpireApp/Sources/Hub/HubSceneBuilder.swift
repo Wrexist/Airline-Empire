@@ -20,6 +20,8 @@ struct HubSceneBuilder {
 
     private var batches: [HubLayer: [HubMaterialKey: HubMeshBatch]] = [:]
     private var extras: [(HubLayer, Entity)] = []
+    /// Each authored model's bounds in its own frame (`modelBounds`).
+    private var boundsCache: [String: (lo: SIMD3<Float>, hi: SIMD3<Float>)] = [:]
 
     let library: HubAssetLibrary?
 
@@ -66,6 +68,13 @@ struct HubSceneBuilder {
         case .securityLane: return (["eGate"], 0, .none, .interior)
         case .shopShelf: return (["shop_shelving"], faceSouth, .none, .interior)
         case .seatRow: return (["seatRow"], 0, .none, .interior)
+        // Walked through along z; its +X walk direction turned to the front.
+        case .metalDetector: return (["metalDetector"], faceSouth, .none, .interior)
+        case .gondola: return (["shop_gondola"], 0, .none, .interior)
+        // Customers' side (+X) to the hall's front; fitted to the counter's footprint.
+        case .cafeCounter: return (["cafe_counter"], faceSouth, .footprint, .interior)
+        case .luggageTrolley: return (["luggageTrolley"], 0, .none, .interior)
+        case .electricCart: return (["electricCart"], 0, .none, .interior)
         default: return nil
         }
     }
@@ -76,12 +85,15 @@ struct HubSceneBuilder {
         guard let library, let spec = authored(p) else { return false }
         let colour = p.kind == .parkedCar ? HubMaterialKey.cloth([0, 1, 5, 6, 7, 5][p.variant % 6]) : nil
         let kiosk = p.kind == .kiosk
+        // Trolleys carry blue suitcases, as the procedural ones do.
+        let trolley = p.kind == .luggageTrolley
         // The tree's model comes from its variant (0–2), so its shade comes
         // from where it stands: every shape in every green, not each shape
         // always in the same one.
         let treeShade = p.kind == .tree ? Int(abs(p.center.x * 0.37 + p.center.z * 0.61)) % 3 : nil
         let remap: (HubMaterialKey) -> HubMaterialKey = { key in
             if let colour, case .cloth = key { return colour }
+            if trolley, case .cloth = key { return .cloth(6) }
             // Trees vary their green per piece, as the procedural ones do.
             if let treeShade, case .tree = key { return .tree(treeShade) }
             // Kiosk screens glow like the procedural kiosks' (gap C4).
@@ -149,14 +161,21 @@ struct HubSceneBuilder {
         return true
     }
 
-    /// The shop name a procedural shelf paints over itself, kept when an
-    /// authored shelf stands in for it.
+    /// The shop name a procedural shelf or counter paints over itself, kept
+    /// when an authored model stands in for it.
     private mutating func labelAuthored(_ p: HubPiece, floor: Float) {
-        guard p.kind == .shopShelf, let label = p.label else { return }
+        guard let label = p.label else { return }
         let c = Self.f(p.center)
-        let yaw = Float(p.yaw)
-        let face = SIMD3<Float>(sin(yaw), 0, cos(yaw)) * (Float(p.size.z) / 2 + 0.1)
-        sign(label, at: [c.x, floor + Float(p.size.y) + 0.5, c.z] + face, width: Float(p.size.x))
+        switch p.kind {
+        case .shopShelf:
+            let yaw = Float(p.yaw)
+            let face = SIMD3<Float>(sin(yaw), 0, cos(yaw)) * (Float(p.size.z) / 2 + 0.1)
+            sign(label, at: [c.x, floor + Float(p.size.y) + 0.5, c.z] + face, width: Float(p.size.x))
+        case .cafeCounter:
+            sign(label, at: [c.x, floor + Float(p.size.y) + 2.4, c.z - Float(p.size.z) / 2], width: Float(p.size.x) * 0.5)
+        default:
+            break
+        }
     }
 
     /// Pieces whose authored model stays an entity: the app extends the
@@ -263,10 +282,14 @@ struct HubSceneBuilder {
         streetCorners()
         for piece in layout.interior.pieces { placeInterior(piece) }
         placeAuthoredInterior()
+        hallExtras()
         runwayMarkings()
         standMarkings()
         airfieldLights()
         apronMasts()
+        standEquipment()
+        districtExtras()
+        kerbTrucks()
         windsocks()
         perimeterFence()
         standNumbers()
@@ -294,7 +317,11 @@ struct HubSceneBuilder {
     private mutating func placeConcourse(_ p: HubPiece) -> Bool {
         guard let library, library.has("concourse_glass") else { return false }
         let c = Self.f(p.center)
-        let length = Float(p.size.z), width = Float(p.size.x)
+        var length = Float(p.size.z)
+        let width = Float(p.size.x)
+        // The glass runs from the tip to the pier head, where there is one.
+        let tip = c.z - length / 2
+        if let head = pierHead(p) { length -= head }
         let count = max(1, Int((length / 30).rounded()))
         let module = length / Float(count)
         for i in 0..<count {
@@ -306,12 +333,31 @@ struct HubSceneBuilder {
             e.scale = [ext.x > 0.1 ? module / ext.x : 1, sz, sz]
             // +X along the pier towards the apron (north).
             e.orientation = simd_quatf(angle: .pi / 2, axis: [0, 1, 0])
-            let z = c.z - length / 2 + module * (Float(i) + 0.5)
+            let z = tip + module * (Float(i) + 0.5)
             e.position = [c.x, 0, z]
             extras.append((.airside, e))
         }
-        blob(c, w: width * 2.2, d: length * 1.1, y: 0.12)
+        blob([c.x, 0, tip + length / 2], w: width * 2.2, d: length * 1.1, y: 0.12)
         return true
+    }
+
+    /// The pier head where a pier meets the terminal (docs/HUB_MODEL_LIST.md
+    /// §4.2): the authored pavilion across the pier root, its front (+X)
+    /// along the pier towards the tip, a little wider than the pier and
+    /// taller than the glass vault that butts into it. Returns the length
+    /// of pier it takes; nil without one.
+    private mutating func pierHead(_ p: HubPiece) -> Float? {
+        guard let box = modelBounds("terminal_pavilion") else { return nil }
+        let ext = box.hi - box.lo
+        let r = p.groundBounds
+        guard ext.z > 0.1, abs(r.maxZ - layout.terminal.minZ) < 2 else { return nil }
+        let k = (Float(p.size.x) + 2.4) / ext.z
+        guard Double(ext.x * k) < r.depth * 0.5 else { return nil }
+        let at = SIMD3<Float>(Float(r.center.x), 0, Float(r.maxZ) - ext.x * k / 2)
+        batchModel("terminal_pavilion", layer: .airside,
+                   matrix: HubMeshBatch.translation(at) * HubMeshBatch.yaw(.pi / 2) * HubMeshBatch.scale([k, k, k]))
+        blob(at, w: ext.z * k * 1.25, d: ext.x * k * 1.25, y: 0.12)
+        return ext.x * k
     }
 
     private mutating func placeAuthoredInterior() {
@@ -489,11 +535,13 @@ struct HubSceneBuilder {
             with(.landside, .water) { $0.box(center: c, size: [w, 0.44, d]) }
         case .tree: tree(p)
         case .lampPost:
-            with(.landside, .darkMetal) {
-                $0.cylinder(base: c, radius: 0.16, height: h, segments: 6, caps: false)
-                $0.box(center: c + [0, h - 0.2, 0.9], size: [0.2, 0.2, 2])
+            if !streetLamp(at: c, arm: [0, 0, 1], height: h) {
+                with(.landside, .darkMetal) {
+                    $0.cylinder(base: c, radius: 0.16, height: h, segments: 6, caps: false)
+                    $0.box(center: c + [0, h - 0.2, 0.9], size: [0.2, 0.2, 2])
+                }
+                with(.lamps, .lamp) { $0.box(center: c + [0, h - 0.45, 1.7], size: [0.7, 0.3, 1.0]) }
             }
-            with(.lamps, .lamp) { $0.box(center: c + [0, h - 0.45, 1.7], size: [0.7, 0.3, 1.0]) }
             with(.lamps, .lampPool) { $0.plane(center: c + [0, 0.3, 1.7], width: 14, depth: 14) }
         case .parkedCar:
             let color = HubMaterialKey.cloth([0, 1, 5, 6, 7, 5][p.variant % 6])
@@ -539,8 +587,10 @@ struct HubSceneBuilder {
             let off = side * (width / 2 + 1.5)
             let base: SIMD3<Float> = alongX ? [c.x + t, 0, c.z + off] : [c.x + off, 0, c.z + t]
             let arm: SIMD3<Float> = alongX ? [0, 0, -side * 1.6] : [-side * 1.6, 0, 0]
-            with(.landside, .darkMetal) { $0.cylinder(base: base, radius: 0.14, height: 7.5, segments: 5, caps: false) }
-            with(.lamps, .lamp) { $0.box(center: base + arm + [0, 7.3, 0], size: [0.9, 0.3, 0.9]) }
+            if !streetLamp(at: base, arm: arm, height: 7.5) {
+                with(.landside, .darkMetal) { $0.cylinder(base: base, radius: 0.14, height: 7.5, segments: 5, caps: false) }
+                with(.lamps, .lamp) { $0.box(center: base + arm + [0, 7.3, 0], size: [0.9, 0.3, 0.9]) }
+            }
             with(.lamps, .lampPool) { $0.plane(center: base + arm * 2 + [0, 0.36, 0], width: 12, depth: 12) }
             t += 42
             k += 1
@@ -1167,11 +1217,19 @@ struct HubSceneBuilder {
             for i in 0..<count {
                 let x = Float(r.minX) + 20 + (Float(r.width) - 40) * Float(i) / Float(max(1, count - 1))
                 let base = SIMD3<Float>(x, 0, farZ + inward * 6)
-                with(.airside, .darkMetal) {
-                    $0.cylinder(base: base, radius: 0.55, topRadius: 0.35, height: 32, segments: 8)
-                    $0.box(center: base + [0, 31.4, 0], size: [5.4, 0.4, 0.6])
+                if let mast = modelBounds("apronMast") {
+                    // The authored mast at the same 32 m, its lamps (+X) turned to the apron.
+                    let k = 32 / max(1, mast.hi.y - mast.lo.y)
+                    batchModel("apronMast", layer: .airside,
+                               matrix: HubMeshBatch.translation(base) * HubMeshBatch.yaw(-inward * .pi / 2)
+                                   * HubMeshBatch.scale([k, k, k]))
+                } else {
+                    with(.airside, .darkMetal) {
+                        $0.cylinder(base: base, radius: 0.55, topRadius: 0.35, height: 32, segments: 8)
+                        $0.box(center: base + [0, 31.4, 0], size: [5.4, 0.4, 0.6])
+                    }
+                    with(.lamps, .lamp) { $0.box(center: base + [0, 31.8, inward * 0.5], size: [5.0, 1.0, 1.0]) }
                 }
-                with(.lamps, .lamp) { $0.box(center: base + [0, 31.8, inward * 0.5], size: [5.0, 1.0, 1.0]) }
                 with(.lamps, .lampPool) {
                     $0.plane(center: base + [0, 0.26, inward * 26], width: 64, depth: 56)
                 }
@@ -1265,6 +1323,14 @@ struct HubSceneBuilder {
     // MARK: Interior (cutaway)
 
     private mutating func placeInterior(_ p: HubPiece) {
+        if hasPharmacy {
+            // The authored pharmacy brings its own shelves and counter: the
+            // bay's first three shelves and its unnamed counter stand behind
+            // its front.
+            if (p.kind == .shopShelf && p.variant < 3) || (p.kind == .cafeCounter && p.label == nil) { return }
+            if p.kind == .shopFront, placePharmacy(p) { return }
+        }
+        if p.kind == .queueBarrier, placeStanchions(p) { return }
         if placeAuthored(p, floor: 1.7) { return }
         if hasAuthoredInterior, [.floorSlab, .mezzanine, .escalator, .flightBoard].contains(p.kind) { return }
         let c = Self.f(p.center)
@@ -1288,10 +1354,19 @@ struct HubSceneBuilder {
             }
             with(.interior, .glass) { $0.box(center: c + [0, 0.6, d / 2 - 0.1], size: [w, 1.1, 0.12]) }
             with(.interior, .darkMetal) { $0.box(center: c + [0, 1.7, d / 2 - 0.1], size: [w, 0.08, 0.16]) }
+            // Along an authored pharmacy's frontage its shop units carry the
+            // deck; a column there would stand inside a shop.
+            let shops: [ClosedRange<Float>] = hasPharmacy
+                ? layout.interior.pieces.filter { $0.kind == .shopFront }.map { shop in
+                    Float(shop.center.x - shop.size.x / 2 - 0.5)...Float(shop.center.x + shop.size.x / 2 + 0.5)
+                }
+                : []
             with(.interior, .white) {
                 var x = c.x - w / 2 + 6
                 while x < c.x + w / 2 {
-                    $0.box(center: [x, fl, c.z + d / 2 - 1], size: [0.7, c.y - fl, 0.7])
+                    if !shops.contains(where: { span in span.contains(x) }) {
+                        $0.box(center: [x, fl, c.z + d / 2 - 1], size: [0.7, c.y - fl, 0.7])
+                    }
                     x += 12
                 }
             }
@@ -1484,5 +1559,291 @@ struct HubSceneBuilder {
         let bounds = label.visualBounds(relativeTo: nil)
         label.position = position + [-bounds.extents.x / 2, -bounds.extents.y / 2, 0]
         extras.append((.interior, label))
+    }
+
+    // MARK: Authored props without a procedural piece (docs/HUB_MODEL_LIST.md §2.8, §3, §5–§7)
+
+    /// An authored model's bounds in its own frame; nil when it doesn't ship
+    /// or can't be batched (the caller then keeps its procedural stand-in,
+    /// or draws nothing where there never was one).
+    private mutating func modelBounds(_ slot: String) -> (lo: SIMD3<Float>, hi: SIMD3<Float>)? {
+        if let hit = boundsCache[slot] { return hit }
+        guard let raw = library?.raw(slot) else { return nil }
+        var lo = SIMD3<Float>(repeating: .greatestFiniteMagnitude), hi = -lo
+        for (_, batch) in raw {
+            for v in batch.positions {
+                lo = simd_min(lo, v)
+                hi = simd_max(hi, v)
+            }
+        }
+        guard lo.x <= hi.x else { return nil }
+        boundsCache[slot] = (lo, hi)
+        return (lo, hi)
+    }
+
+    /// Merges an authored model into the static batches at `matrix`, as the
+    /// procedural pieces are: one draw per material however many copies.
+    /// Outside the hall its lamp parts join the lamp layer, as the
+    /// procedural lamp heads do. False when no file ships.
+    @discardableResult
+    private mutating func batchModel(_ slot: String, layer: HubLayer, matrix: float4x4,
+                                     remap: (HubMaterialKey) -> HubMaterialKey = { $0 }) -> Bool {
+        guard let raw = library?.raw(slot) else { return false }
+        for (key, batch) in raw {
+            let mapped = remap(key)
+            let target: HubLayer = mapped == .lamp && layer != .interior ? .lamps : layer
+            with(target, mapped) { $0.append(batch, matrix: matrix) }
+        }
+        return true
+    }
+
+    /// Fin barriers and the boom's stripes are red (the clothes palette's).
+    nonisolated private static func red(_ key: HubMaterialKey) -> HubMaterialKey {
+        if case .cloth = key { return .cloth(1) }
+        return key
+    }
+
+    /// A street lamp: pole at `base`, its head reaching along `arm`, scaled
+    /// to `height`. False when no authored lamp ships.
+    private mutating func streetLamp(at base: SIMD3<Float>, arm: SIMD3<Float>, height: Float) -> Bool {
+        guard let box = modelBounds("streetLamp") else { return false }
+        let k = height / max(0.1, box.hi.y - box.lo.y)
+        let dir = simd_normalize(SIMD3<Float>(arm.x, 0, arm.z))
+        // The pole stands at the model's -X end; its base is 0.2 m in radius.
+        let pole = (box.lo.x + 0.2) * k
+        return batchModel("streetLamp", layer: .landside,
+                          matrix: HubMeshBatch.translation(base - dir * pole) * HubMeshBatch.yaw(atan2(-dir.z, dir.x))
+                              * HubMeshBatch.scale([k, k, k]))
+    }
+
+    private var hasPharmacy: Bool { library?.has("shop_pharmacy") ?? false }
+
+    /// The pharmacy under the mezzanine: authored shop units side by side
+    /// across its frontage, each stretched a little to fill its share,
+    /// their fronts on the shop front's line and the name on the fascia.
+    private mutating func placePharmacy(_ p: HubPiece) -> Bool {
+        guard let box = modelBounds("shop_pharmacy") else { return false }
+        let ext = box.hi - box.lo
+        guard ext.z > 0.1 else { return false }
+        let c = Self.f(p.center), fl: Float = 1.7
+        let width = Float(p.size.x)
+        let count = max(1, Int((width / ext.z).rounded()))
+        let unit = width / Float(count)
+        // On the shop front's line, just under the mezzanine's edge, where
+        // the fascia shows; the units carry the deck there (`mezzanine`
+        // leaves out its columns along the frontage).
+        let front = c.z + Float(p.size.z) / 2
+        for i in 0..<count {
+            let x = c.x - width / 2 + unit * (Float(i) + 0.5)
+            // Open front (+X) to the hall (+z); the unit's width runs along x.
+            let m = HubMeshBatch.translation([x, fl, front - box.hi.x]) * HubMeshBatch.yaw(-.pi / 2)
+                * HubMeshBatch.scale([1, 1, unit / ext.z])
+            batchModel("shop_pharmacy", layer: .interior, matrix: m)
+            if i == 0 {
+                // The pharmacist behind the first unit's counter.
+                let at = m * SIMD4<Float>(-0.1, 0, -2.6, 1)
+                staff(at: [at.x, at.y, at.z], yaw: -.pi / 2)
+            }
+        }
+        if let label = p.label {
+            // On the middle unit's fascia, clear of the pilasters between units.
+            let x = c.x - width / 2 + unit * (Float((count - 1) / 2) + 0.5)
+            sign(label, at: [x, fl + box.hi.y - 0.5, front + 0.06], width: unit * 0.5)
+        }
+        return true
+    }
+
+    /// The kiosks' queue maze from authored belt segments: rows across the
+    /// maze, open at alternate ends, each row tiled with segments stretched
+    /// a little so their posts (2 m apart in the model) meet.
+    private mutating func placeStanchions(_ p: HubPiece) -> Bool {
+        guard modelBounds("stanchion_belt") != nil else { return false }
+        let c = Self.f(p.center), fl: Float = 1.7
+        let w = Float(p.size.x), d = Float(p.size.z)
+        let rows = max(2, Int(d / 2.4))
+        let run = w - 1.6
+        let n = max(1, Int((run / 2).rounded()))
+        let stretch = run / Float(n) / 2
+        for r in 0...rows {
+            let z = c.z - d / 2 + Float(r) * d / Float(rows)
+            let shift: Float = r % 2 == 0 ? 0.8 : -0.8
+            for i in 0..<n {
+                let x = c.x + shift - run / 2 + (Float(i) + 0.5) * run / Float(n)
+                batchModel("stanchion_belt", layer: .interior,
+                           matrix: HubMeshBatch.translation([x, fl, z]) * HubMeshBatch.scale([stretch, 1, 1]))
+            }
+        }
+        return true
+    }
+
+    /// Terminal staff, drawn twice life size as the hall's travellers are,
+    /// their front (+X) turned to `yaw`.
+    private mutating func staff(at p: SIMD3<Float>, yaw: Float) {
+        batchModel("person_staff", layer: .interior,
+                   matrix: HubMeshBatch.translation(p) * HubMeshBatch.yaw(yaw) * HubMeshBatch.scale([2, 2, 2]))
+    }
+
+    /// Staff behind the counters, beside the security arches and at the end
+    /// of each e-gate row; potted plants at the seat rows and either side of
+    /// the café.
+    private mutating func hallExtras() {
+        let fl: Float = 1.7
+        let seatHalf = modelBounds("seatRow").map { ($0.hi.x - $0.lo.x) / 2 }
+        for p in layout.interior.pieces {
+            let c = Self.f(p.center)
+            let w = Float(p.size.x), d = Float(p.size.z)
+            switch p.kind {
+            case .cafeCounter:
+                // The pharmacy's own counter brought its pharmacist (`placePharmacy`).
+                if hasPharmacy && p.label == nil { continue }
+                // Behind the counter (airside), facing the customers.
+                let spots: [Float] = p.label == nil ? [0.15] : [-0.22, 0.22]
+                for dx in spots {
+                    staff(at: [c.x + dx * w, fl, c.z - d / 2 - 0.9], yaw: -.pi / 2)
+                }
+                guard p.label != nil else { continue }
+                for side: Float in [-1, 1] {
+                    batchModel("plant_pot", layer: .interior,
+                               matrix: HubMeshBatch.translation([c.x + side * (w / 2 + 0.9), fl, c.z]))
+                }
+            case .metalDetector:
+                // An officer beside each arch, turned towards it.
+                staff(at: [c.x + w / 2 + 0.9, fl, c.z + 0.6], yaw: .pi)
+            case .securityLane where p.variant == 5:
+                staff(at: [c.x + 2.2, fl, c.z], yaw: .pi)
+            case .seatRow:
+                let half = seatHalf ?? w / 2
+                for side: Float in [-1, 1] {
+                    batchModel("plant_pot", layer: .interior,
+                               matrix: HubMeshBatch.translation([c.x + side * (half + 0.6), fl, c.z]))
+                }
+            default:
+                break
+            }
+        }
+    }
+
+    /// At every stand, on the starboard side clear of the turnaround: a
+    /// ground power unit beside the nose with its chocks, and red fin
+    /// barriers along the boarding walkway. Nothing on a service lane or
+    /// inside the terminal and piers.
+    private mutating func standEquipment() {
+        let lanes = layout.serviceLanes.map { $0.points.map(Self.f) }
+        func nearLane(_ p: SIMD3<Float>, _ clearance: Float) -> Bool {
+            for points in lanes {
+                for (a, b) in zip(points, points.dropFirst()) {
+                    let ab = SIMD2<Float>(b.x - a.x, b.z - a.z), ap = SIMD2<Float>(p.x - a.x, p.z - a.z)
+                    let t = max(0, min(1, simd_dot(ap, ab) / max(simd_length_squared(ab), 0.001)))
+                    if simd_length(ap - ab * t) < clearance { return true }
+                }
+            }
+            return false
+        }
+        let buildings = [layout.terminal] + layout.pieces.filter { $0.kind == .pier }.map(\.groundBounds)
+        func indoors(_ p: SIMD3<Float>) -> Bool {
+            buildings.contains { r in
+                Double(p.x) > r.minX - 1 && Double(p.x) < r.maxX + 1 && Double(p.z) > r.minZ - 1 && Double(p.z) < r.maxZ + 1
+            }
+        }
+        // A 3 GB device (`HubDevice.isLowMemory`) keeps the power units but
+        // leaves out the fins and chocks: hundreds of copies few would miss.
+        let decor = !HubDevice.isLowMemory
+        let fins = decor && modelBounds("barrier_fin") != nil
+        for stand in layout.stands {
+            let h = Float(stand.heading)
+            let fwd = SIMD3<Float>(cos(h), 0, -sin(h))
+            let right = SIMD3<Float>(cos(h - .pi / 2), 0, -sin(h - .pi / 2))
+            let nose = Self.f(stand.nose)
+            let gpu = nose - fwd * 2 + right * 7
+            if !nearLane(gpu, 4.5) {
+                batchModel("gpu", layer: .airside, matrix: HubMeshBatch.translation(gpu) * HubMeshBatch.yaw(h))
+                if decor {
+                    // Small and flat: no shadow worth a draw.
+                    batchModel("wheelChock", layer: .markings,
+                               matrix: HubMeshBatch.translation(nose + fwd * 0.4 + right * 7) * HubMeshBatch.yaw(h + .pi / 2))
+                }
+            }
+            guard fins else { continue }
+            let points = stand.queue.points.map { SIMD3<Float>(Float($0.x), 0, Float($0.z)) }
+            var s: Float = 5 // clear of the bridge's rotunda
+            for (a, b) in zip(points, points.dropFirst()) {
+                let seg = b - a, len = simd_length(seg)
+                guard len > 0.1 else { continue }
+                let dir = seg / len
+                // On the walkway's apron side, away from the building the jet faces.
+                var side = SIMD3<Float>(dir.z, 0, -dir.x)
+                if simd_dot(side, fwd) > 0 { side = -side }
+                while s < len {
+                    let at = a + dir * s + side * 2.4
+                    if !indoors(at) && !nearLane(at, 4) {
+                        // In line along the walkway; flat enough to skip the shadow pass.
+                        batchModel("barrier_fin", layer: .markings,
+                                   matrix: HubMeshBatch.translation(at) * HubMeshBatch.yaw(atan2(-dir.z, dir.x)),
+                                   remap: Self.red)
+                    }
+                    s += 3.2
+                }
+                s -= len
+            }
+        }
+    }
+
+    /// The district's entrance guardhouse and its kerbs lined with path
+    /// lights, the night shot's rows of points of light. Its streets are
+    /// the narrow ones: 12 m, where avenues and connectors are 20 m and more.
+    private mutating func districtExtras() {
+        let roads = layout.pieces.filter { $0.kind == .road && $0.yaw == 0 }
+        let streets = roads.filter { min($0.size.x, $0.size.z) < 13 }
+        var keepClear: [HubRect] = roads.map(\.groundBounds)
+        // The guardhouse on the south kerb at the west end of the district's
+        // first street: booth facing the road (north), the boom across its
+        // inbound half, the sliding gate to the west.
+        if let box = modelBounds("guardhouse"),
+           let entrance = streets.filter({ $0.size.x > $0.size.z && $0.center.x > 0 })
+               .min(by: { $0.center.z < $1.center.z }) {
+            let r = entrance.groundBounds
+            let ext = box.hi - box.lo
+            let centre = SIMD3<Float>(Float(r.minX) + 9, 0, Float(r.maxZ) + 3.5 - ext.x / 2)
+            batchModel("guardhouse", layer: .landside,
+                       matrix: HubMeshBatch.translation(centre) * HubMeshBatch.yaw(.pi / 2), remap: Self.red)
+            keepClear.append(HubRect(minX: Double(centre.x - ext.z / 2), minZ: Double(r.maxZ),
+                                     maxX: Double(centre.x + ext.z / 2), maxZ: Double(r.maxZ) + 3.6))
+        }
+        // A 3 GB device skips the path lights' few hundred copies.
+        guard !HubDevice.isLowMemory, modelBounds("pathLight") != nil else { return }
+        func clear(_ x: Float, _ z: Float) -> Bool {
+            !keepClear.contains { Double(x) > $0.minX - 0.3 && Double(x) < $0.maxX + 0.3 && Double(z) > $0.minZ - 0.3 && Double(z) < $0.maxZ + 0.3 }
+        }
+        for street in streets {
+            let r = street.groundBounds
+            let alongX = r.width >= r.depth
+            let length = Float(alongX ? r.width : r.depth)
+            var t: Float = 6
+            while t < length - 6 {
+                for edge in 0..<2 {
+                    let out: Float = edge == 0 ? -0.8 : 0.8
+                    let x = alongX ? Float(r.minX) + t : Float(edge == 0 ? r.minX : r.maxX) + out
+                    let z = alongX ? Float(edge == 0 ? r.minZ : r.maxZ) + out : Float(r.minZ) + t
+                    if clear(x, z) {
+                        batchModel("pathLight", layer: .lamps, matrix: HubMeshBatch.translation([x, 0, z]))
+                    }
+                }
+                t += 9
+            }
+        }
+    }
+
+    /// Two lorries in the drop-off bay along the terminal kerb, between the
+    /// pavement and the canopy's columns, facing the way the near lane runs.
+    private mutating func kerbTrucks() {
+        guard modelBounds("vehicle_boxTruck") != nil else { return }
+        let t = layout.terminal
+        let kerbZ = Float(t.maxZ) + 16
+        for f: Float in [0.17, -0.42] {
+            let at = SIMD3<Float>(Float(t.center.x) + Float(t.width) * f, 0.12, kerbZ - 7.6)
+            batchModel("vehicle_boxTruck", layer: .landside,
+                       matrix: HubMeshBatch.translation(at) * HubMeshBatch.yaw(.pi))
+            blob(at, w: 9.5, d: 3.4, y: 0.16)
+        }
     }
 }

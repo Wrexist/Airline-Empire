@@ -10,8 +10,10 @@ uniformly (see the manifest notes); the main face is +X.
   controlTower       tapered white shaft, glazed cab, roof, antenna
   office_low         two storeys, long dark window bands, plant on the roof
   midrise_apartment  five storeys, recessed balconies with glass rails
+  terminal_pavilion  pier head: white block, glazed entrances, ribbon window
+  guardhouse         security booth, boom barrier, sliding gate section
 
-    blender --background --python scripts/hub-models/procedural/buildings.py -- --preview <dir>
+    blender --background --python scripts/hub-models/procedural/buildings.py -- --preview <dir> [--only slot,...]
 """
 import math
 import os
@@ -174,6 +176,76 @@ def midrise(kit):
         box(kit, "building", D - 1.6, D + 0.35, y - 0.15, y + 0.15, 0.6, H)
 
 
+def pavilion(kit):
+    """Pier head where a pier meets the terminal: a white flat-roofed block
+    22 m along the pier (+X runs along it) and 28 m across, so it caps the
+    26 m pier, and taller than the fitted glass vault (16 m) whose open end
+    butts into it. Glazed entrances on the long sides (the stands), a dark
+    ribbon window wrapping round, parapet and rooftop plant boxes."""
+    X, Y = 11.0, 14.0
+    box(kit, "buildingShade", -X - 0.2, X + 0.2, -Y - 0.2, Y + 0.2, 0, 0.9, 0.12, 1)
+    box(kit, "building", -X, X, -Y, Y, 0.9, 8.2, 0.25, 1)
+    for side in (1, -1):
+        # Glazed entrance band on each long side, white mullions and transom.
+        box(kit, "glass", -7.6, 7.6, side * (Y - 0.1), side * (Y + 0.06), 1.2, 6.8)
+        for k in range(9):
+            x = -7.6 + k * 1.9
+            box(kit, "white", x - 0.12, x + 0.12, side * (Y - 0.1), side * (Y + 0.14), 1.2, 6.8)
+        box(kit, "white", -7.8, 7.8, side * (Y - 0.1), side * (Y + 0.18), 6.8, 7.2)
+    # Ribbon window, recessed, with white fins every 2.4 m.
+    box(kit, "windowDark", -X + 0.25, X - 0.25, -Y + 0.25, Y - 0.25, 8.2, 11.0)
+    for side in (1, -1):
+        for k in range(11):
+            y = -Y + 1.6 + k * (2 * Y - 3.2) / 10
+            box(kit, "white", side * (X - 0.3), side * X, y - 0.09, y + 0.09, 8.2, 11.0)
+        for k in range(8):
+            x = -X + 1.6 + k * (2 * X - 3.2) / 7
+            box(kit, "white", x - 0.09, x + 0.09, side * (Y - 0.3), side * Y, 8.2, 11.0)
+    box(kit, "building", -X, X, -Y, Y, 11.0, 16.2, 0.25, 1)
+    # Roof, parapet coping, plant boxes with louvres.
+    box(kit, "roof", -X + 0.35, X - 0.35, -Y + 0.35, Y - 0.35, 16.2, 16.3)
+    for side in (1, -1):
+        box(kit, "white", -X - 0.05, X + 0.05, side * (Y - 0.35), side * (Y + 0.05), 16.2, 16.7, 0.05, 1)
+        box(kit, "white", side * (X - 0.35), side * (X + 0.05), -Y + 0.3, Y - 0.3, 16.2, 16.7, 0.05, 1)
+    for (x0, x1, y0, y1, h) in ((-6.5, -1.0, -9.5, -4.0, 1.3), (1.5, 7.0, 3.0, 9.5, 1.1)):
+        box(kit, "buildingShade", x0, x1, y0, y1, 16.3, 16.3 + h, 0.1, 1)
+        for k in range(3):
+            z = 16.55 + k * 0.3
+            box(kit, "darkMetal", x0 - 0.04, x1 + 0.04, y0 + 0.4, y1 - 0.4, z, z + 0.08)
+
+
+def guardhouse(kit):
+    """Security booth (window to +X), a boom barrier whose white arm with red
+    stripes (ae_cloth, painted red by the app) reaches 6 m along +X, and a
+    sliding gate section along +Y beside it."""
+    kit.recentre = True
+    box(kit, "buildingShade", -1.45, 1.45, -1.35, 1.35, 0, 0.25, 0.04, 1)
+    box(kit, "building", -1.25, 1.25, -1.15, 1.15, 0.25, 3.0, 0.08, 1)
+    box(kit, "windowDark", -1.28, 1.28, -1.18, 1.18, 1.2, 2.35)
+    for x, y in ((1.25, 1.15), (1.25, -1.15), (-1.25, 1.15), (-1.25, -1.15)):
+        box(kit, "building", x - 0.12, x + 0.12, y - 0.12, y + 0.12, 0.25, 3.0)
+    box(kit, "darkMetal", -1.3, -1.26, -0.42, 0.42, 0.25, 2.2)  # door at the back
+    box(kit, "roof", -1.6, 1.6, -1.5, 1.5, 3.0, 3.3, 0.05, 1)
+    box(kit, "white", -1.62, 1.62, -1.52, 1.52, 3.0, 3.1)
+    box(kit, "lamp", 1.6, 1.64, -0.3, 0.3, 2.86, 2.98)
+    # Boom barrier: housing, counterweight, arm with stripes.
+    box(kit, "white", 1.55, 1.95, -1.85, -1.45, 0, 1.05, 0.05, 1)
+    box(kit, "darkMetal", 1.5, 2.0, -1.9, -1.4, 1.05, 1.12)
+    box(kit, "darkMetal", 1.15, 1.55, -1.72, -1.58, 0.88, 1.08)
+    box(kit, "white", 1.95, 7.75, -1.7, -1.6, 0.9, 1.02)
+    for k in range(4):
+        x = 2.6 + k * 1.4
+        box(kit, "cloth", x, x + 0.6, -1.705, -1.595, 0.895, 1.025)
+    # Sliding gate section on its track.
+    box(kit, "darkMetal", 0.9, 1.1, 1.6, 5.6, 0, 0.08)
+    for z in (0.15, 1.5):
+        box(kit, "darkMetal", 0.95, 1.05, 1.6, 5.6, z, z + 0.08)
+    for k in range(14):
+        y = 1.65 + k * 0.3
+        box(kit, "darkMetal", 0.97, 1.03, y - 0.025, y + 0.025, 0.15, 1.55)
+    box(kit, "darkMetal", 0.9, 1.1, 5.5, 5.7, 0, 1.7)
+
+
 VIEW = lambda s: [("front", (60 * s, 46 * s, 36 * s), (0, 0, 6 * s))]  # noqa: E731
 K.run("hangar", hangar, VIEW(2.6))
 K.run("cargoShed", cargo_shed, VIEW(2.6))
@@ -181,3 +253,5 @@ K.run("fuelTank", fuel_tank, VIEW(0.9))
 K.run("controlTower", control_tower, [("front", (95, 70, 60), (0, 0, 30))])
 K.run("office_low", office_low, VIEW(2.0))
 K.run("midrise_apartment", midrise, VIEW(1.9))
+K.run("terminal_pavilion", pavilion, [("front", (40, -46, 30), (0, 0, 7)), ("side", (-30, 40, 22), (0, 0, 7))])
+K.run("guardhouse", guardhouse, [("front", (13, -11, 8), (0, 0, 1.5)), ("back", (-10, 12, 7), (0, 0, 1.5))])

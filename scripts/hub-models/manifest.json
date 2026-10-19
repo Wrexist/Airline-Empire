@@ -456,41 +456,50 @@
         800
       ],
       "size_m": {
-        "x": null,
+        "x": 0.9,
         "y": 2.4,
-        "z": null
+        "z": 1.3
       },
       "slots": [
         "white",
-        "darkMetal"
+        "darkMetal",
+        "screen"
       ],
       "required_slots": [
         "white"
       ],
-      "priority": 5
+      "priority": 5,
+      "notes": "Walk-through arch walked along +X, posts at the sides (z); turned to the hall's front."
     },
     "shop_pharmacy": {
       "file": "Hub_shop_pharmacy.usdz",
-      "class": "building",
+      "class": "prop",
       "triangles": [
-        1500,
-        6000
+        400,
+        3000
       ],
       "size_m": {
-        "x": 10,
-        "y": null,
-        "z": null
+        "x": 5.0,
+        "y": 4.3,
+        "z": 10.0
       },
       "slots": [
+        "white",
         "darkMetal",
         "houseWood",
-        "white",
-        "cloth"
+        "grassBright",
+        "screen",
+        "cloth",
+        "hiVis",
+        "cone",
+        "water"
       ],
       "required_slots": [
-        "houseWood"
+        "houseWood",
+        "darkMetal"
       ],
-      "priority": 5
+      "priority": 5,
+      "notes": "Shop unit with an open front (+X) under a dark fascia; the app tiles units across the pharmacy frontage and writes the name on the fascia."
     },
     "shop_shelving": {
       "file": "Hub_shop_shelving.usdz",
@@ -523,24 +532,28 @@
       "file": "Hub_cafe_counter.usdz",
       "class": "prop",
       "triangles": [
-        80,
-        800
+        150,
+        1000
       ],
       "size_m": {
-        "x": 5,
-        "y": null,
-        "z": null
+        "x": 1.14,
+        "y": 1.95,
+        "z": 5.1
       },
       "slots": [
         "houseWood",
         "glass",
         "darkMetal",
-        "white"
+        "white",
+        "screen",
+        "cone",
+        "hiVis"
       ],
       "required_slots": [
         "houseWood"
       ],
-      "priority": 5
+      "priority": 5,
+      "notes": "Counter along z, customers' side +X (turned to the hall's front): glass case, coffee machine, menu board on the back edge."
     },
     "house_villa": {
       "file": "Hub_house_villa.usdz",
@@ -1278,6 +1291,383 @@
       ],
       "priority": 5,
       "notes": "Seats along x facing +Z (backrest at -Z); placed unturned."
+    },
+    "terminal_pavilion": {
+      "file": "Hub_terminal_pavilion.usdz",
+      "class": "building",
+      "triangles": [
+        1500,
+        6000
+      ],
+      "size_m": {
+        "x": 22,
+        "y": 17.6,
+        "z": 28
+      },
+      "slots": [
+        "building",
+        "buildingShade",
+        "roof",
+        "windowDark",
+        "glass",
+        "white",
+        "darkMetal"
+      ],
+      "required_slots": [
+        "building",
+        "windowDark"
+      ],
+      "priority": 3,
+      "notes": "Pier head where a pier meets the terminal: front (+X) runs along the pier, the long sides face the stands. Sized to the 26 m pier and taller than the concourse vault (16 m once fitted) so the vault's open end butts into it."
+    },
+    "vehicle_boxTruck": {
+      "file": "Hub_vehicle_boxTruck.usdz",
+      "class": "vehicle",
+      "triangles": [
+        1200,
+        3000
+      ],
+      "size_m": {
+        "x": 8.5,
+        "y": 3.6,
+        "z": 2.5
+      },
+      "slots": [
+        "white",
+        "windowDark",
+        "tyre",
+        "darkMetal",
+        "lamp"
+      ],
+      "required_slots": [
+        "white",
+        "tyre"
+      ],
+      "priority": 7,
+      "notes": "Large white rigid lorry, cab-over; parked at the terminal kerb."
+    },
+    "person_staff": {
+      "file": "Hub_person_staff.usdz",
+      "class": "person",
+      "triangles": [
+        600,
+        1200
+      ],
+      "size_m": {
+        "x": null,
+        "y": 1.75,
+        "z": null
+      },
+      "slots": [
+        "cloth",
+        "skin",
+        "darkMetal",
+        "white"
+      ],
+      "required_slots": [
+        "cloth",
+        "skin"
+      ],
+      "priority": 5,
+      "notes": "Terminal staff in a navy uniform (ae_cloth), white collar and badge, hands together; stands behind counters and at security."
+    },
+    "stanchion_belt": {
+      "file": "Hub_stanchion_belt.usdz",
+      "class": "prop",
+      "triangles": [
+        60,
+        400
+      ],
+      "size_m": {
+        "x": 2.32,
+        "y": 0.98,
+        "z": 0.32
+      },
+      "slots": [
+        "white",
+        "darkMetal"
+      ],
+      "required_slots": [
+        "darkMetal"
+      ],
+      "priority": 5,
+      "notes": "One queue segment along x with its posts exactly 2 m apart (x = ±1), so tiled segments share posts; the app stretches each row's segments a little to fit."
+    },
+    "shop_gondola": {
+      "file": "Hub_shop_gondola.usdz",
+      "class": "prop",
+      "triangles": [
+        150,
+        1000
+      ],
+      "size_m": {
+        "x": 1.0,
+        "y": 1.4,
+        "z": 3.4
+      },
+      "slots": [
+        "white",
+        "darkMetal",
+        "cloth",
+        "hiVis",
+        "cone",
+        "water",
+        "grassBright"
+      ],
+      "required_slots": [
+        "white"
+      ],
+      "priority": 5,
+      "notes": "Island shelf along z stocked on both faces (±X); placed unturned."
+    },
+    "luggageTrolley": {
+      "file": "Hub_luggageTrolley.usdz",
+      "class": "prop",
+      "triangles": [
+        150,
+        800
+      ],
+      "size_m": {
+        "x": 1.3,
+        "y": 1.1,
+        "z": 0.65
+      },
+      "slots": [
+        "white",
+        "cloth",
+        "darkMetal",
+        "tyre"
+      ],
+      "required_slots": [
+        "white",
+        "cloth"
+      ],
+      "priority": 5,
+      "notes": "Pushed towards +X, handle at the back; suitcases in ae_cloth, painted blue by the app."
+    },
+    "electricCart": {
+      "file": "Hub_electricCart.usdz",
+      "class": "vehicle",
+      "triangles": [
+        400,
+        1500
+      ],
+      "size_m": {
+        "x": 2.8,
+        "y": 1.5,
+        "z": 1.3
+      },
+      "slots": [
+        "white",
+        "darkMetal",
+        "tyre",
+        "cloth",
+        "hiVis",
+        "lamp",
+        "screen"
+      ],
+      "required_slots": [
+        "white",
+        "tyre"
+      ],
+      "priority": 5,
+      "notes": "Indoor passenger cart, front +X, two benches in ae_cloth."
+    },
+    "plant_pot": {
+      "file": "Hub_plant_pot.usdz",
+      "class": "prop",
+      "triangles": [
+        150,
+        800
+      ],
+      "size_m": {
+        "x": null,
+        "y": 1.5,
+        "z": null
+      },
+      "slots": [
+        "white",
+        "darkMetal",
+        "tree",
+        "trunk"
+      ],
+      "required_slots": [
+        "white",
+        "tree"
+      ],
+      "priority": 5,
+      "notes": "Round planter with a leafy plant; beside the hall's seat rows and café."
+    },
+    "barrier_fin": {
+      "file": "Hub_barrier_fin.usdz",
+      "class": "prop",
+      "triangles": [
+        40,
+        300
+      ],
+      "size_m": {
+        "x": null,
+        "y": 1.2,
+        "z": null
+      },
+      "slots": [
+        "white",
+        "cloth",
+        "darkMetal"
+      ],
+      "required_slots": [
+        "white",
+        "cloth"
+      ],
+      "priority": 6,
+      "notes": "Fin barrier: slanted panel in ae_cloth (the app paints it red) on a white post, in line along +X; rows along each stand's queue walkway."
+    },
+    "wheelChock": {
+      "file": "Hub_wheelChock.usdz",
+      "class": "prop",
+      "triangles": [
+        30,
+        300
+      ],
+      "size_m": {
+        "x": 0.9,
+        "y": 0.16,
+        "z": 0.34
+      },
+      "slots": [
+        "hiVis",
+        "darkMetal"
+      ],
+      "required_slots": [
+        "hiVis"
+      ],
+      "priority": 8,
+      "notes": "Pair of yellow chocks on a rope, stowed beside the stand's ground power unit."
+    },
+    "gpu": {
+      "file": "Hub_gpu.usdz",
+      "class": "vehicle",
+      "triangles": [
+        300,
+        1500
+      ],
+      "size_m": {
+        "x": 3.0,
+        "y": 1.5,
+        "z": 1.45
+      },
+      "slots": [
+        "white",
+        "darkMetal",
+        "tyre",
+        "hiVis",
+        "screen"
+      ],
+      "required_slots": [
+        "white",
+        "tyre"
+      ],
+      "priority": 8,
+      "notes": "Ground power unit: small white cart with a cable coil, tow bar at +X; parked beside each stand's nose."
+    },
+    "apronMast": {
+      "file": "Hub_apronMast.usdz",
+      "class": "prop",
+      "triangles": [
+        100,
+        800
+      ],
+      "size_m": {
+        "x": 2.0,
+        "y": 32.0,
+        "z": null
+      },
+      "slots": [
+        "darkMetal",
+        "lamp",
+        "concrete",
+        "white"
+      ],
+      "required_slots": [
+        "darkMetal",
+        "lamp"
+      ],
+      "priority": 6,
+      "notes": "Floodlight mast at the layout's 32 m, four lamps facing +X (turned to the apron)."
+    },
+    "guardhouse": {
+      "file": "Hub_guardhouse.usdz",
+      "class": "building",
+      "triangles": [
+        400,
+        3000
+      ],
+      "size_m": {
+        "x": null,
+        "y": 3.5,
+        "z": null
+      },
+      "slots": [
+        "building",
+        "buildingShade",
+        "white",
+        "windowDark",
+        "roof",
+        "darkMetal",
+        "cloth",
+        "lamp"
+      ],
+      "required_slots": [
+        "building",
+        "windowDark"
+      ],
+      "priority": 7,
+      "notes": "Security booth with its window to +X, a boom barrier reaching +X (white arm, ae_cloth stripes the app paints red) and a sliding gate section; at the district's entrance."
+    },
+    "streetLamp": {
+      "file": "Hub_streetLamp.usdz",
+      "class": "prop",
+      "triangles": [
+        40,
+        300
+      ],
+      "size_m": {
+        "x": 2.2,
+        "y": 7.6,
+        "z": null
+      },
+      "slots": [
+        "darkMetal",
+        "lamp"
+      ],
+      "required_slots": [
+        "darkMetal",
+        "lamp"
+      ],
+      "priority": 6,
+      "notes": "7.5 m pole at the -X end (base 0.2 m in radius), arm and flat head reaching +X over the road; footprint-centred, so the app finds the pole from the bounds."
+    },
+    "pathLight": {
+      "file": "Hub_pathLight.usdz",
+      "class": "prop",
+      "triangles": [
+        20,
+        200
+      ],
+      "size_m": {
+        "x": null,
+        "y": 0.6,
+        "z": null
+      },
+      "slots": [
+        "darkMetal",
+        "lamp"
+      ],
+      "required_slots": [
+        "lamp"
+      ],
+      "priority": 6,
+      "notes": "0.6 m bollard with a lamp band; rows along the district's kerbs, the night's points of light."
     }
   }
 }
