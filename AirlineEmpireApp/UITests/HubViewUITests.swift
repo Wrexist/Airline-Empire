@@ -246,6 +246,81 @@ final class HubViewUITests: AEUITestCase {
         XCUIDevice.shared.orientation = .portrait
     }
 
+    /// Hub Phase E (docs/HUB_PROGRESSION_PLAN.md): the transfer centre on
+    /// the terminal roof's west end and its opening, the Hub banners on the
+    /// landside face, connecting travellers walking the hall's mezzanine in
+    /// the cutaway, and the transfer flows in Insights.
+    func testTransferCentreMakesAHub() throws {
+        let bundle = Bundle(for: HubViewUITests.self)
+        let url = try XCTUnwrap(bundle.url(forResource: "store-campaign", withExtension: "json"))
+        let codec = JSONSaveCodec()
+        var state = try codec.decode(Data(contentsOf: url))
+        var player = try XCTUnwrap(state.playerAirline)
+        let home = player.homeAirport
+        state.progression.era = max(state.progression.era, .national)
+        var built = player.facilities(at: home)
+        built.hangar = max(1, built.hangar)
+        built.crewBase = 1
+        built.transferCentre = 1
+        var stations = player.airportFacilities ?? [:]
+        stations[home] = built
+        player.airportFacilities = stations
+        player.facilityConstructions = nil
+        var statuses = player.hubStatuses ?? [:]
+        statuses[home] = .hub
+        player.hubStatuses = statuses
+        // Today's connections between the player's own routes at home, as
+        // the simulation books them each morning.
+        let spokes = Array(state.routes(of: player.id).filter { $0.servesAirport(home) && $0.isOperating }.prefix(4))
+        var flows: [ConnectingFlow] = []
+        for (i, first) in spokes.enumerated() {
+            for second in spokes.dropFirst(i + 1) {
+                let from = first.origin == home ? first.destination : first.origin
+                let to = second.origin == home ? second.destination : second.origin
+                flows.append(ConnectingFlow(origin: from, hub: home, destination: to, inbound: first.id,
+                                            outbound: second.id, passengers: 40 + 9 * flows.count,
+                                            fare: first.ticketPrice + second.ticketPrice,
+                                            connections: 2, averageWaitMinutes: 55))
+            }
+        }
+        player.connectingFlowsToday = flows.isEmpty ? nil : flows
+        player.hubTransfers = [home: HubTransferTally(thisMonth: 4_200, lastMonth: 3_900)]
+        state.airlines[player.id] = player
+        let fixture = FileManager.default.temporaryDirectory.appendingPathComponent("hub-transfer.aesave")
+        try codec.encode(state).write(to: fixture)
+        defer { try? FileManager.default.removeItem(at: fixture) }
+
+        app.launchArguments.append(contentsOf: ["-AEUITestLoadSave", fixture.path, "-AEUITestProbes",
+                                                "-AEUITestOpenHub", "-AEUITestHubCeremony", "transferCentre"])
+        XCUIDevice.shared.orientation = .landscapeLeft
+        app.launch()
+        app.activate()
+        require(app.descendants(matching: .any)["ae-hub-scene"], "hub scene", timeout: 90)
+        // The opening, replayed: the camera at the roof's west end.
+        require(app.descendants(matching: .any)["ae-hub-toast"], "opening toast", timeout: 40)
+        Thread.sleep(forTimeInterval: 1.4)
+        frame("HUB-17-transfer-centre")
+        Thread.sleep(forTimeInterval: 5)
+        frame("HUB-18-transfer-opened")
+        let close = app.buttons["Close upgrade"]
+        if close.exists { close.tap() }
+        Thread.sleep(forTimeInterval: 1)
+        // The hub from the overview (banners on the landside face, the fan
+        // leaving in banks), then the hall with travellers changing piers.
+        shot("HUB-19-hub-overview", "overview")
+        shot("HUB-20-transfer-hall", "terminal")
+        shot("HUB-21-overview", "overview")
+        let insights = app.buttons["ae-hub-insights"]
+        require(insights, "insights button")
+        insights.tap()
+        Thread.sleep(forTimeInterval: 2)
+        let panel = app.descendants(matching: .any).matching(identifier: "ae-hub-insights-panel").firstMatch
+        if panel.exists { panel.swipeUp() }
+        Thread.sleep(forTimeInterval: 1)
+        frame("HUB-22-transfers")
+        XCUIDevice.shared.orientation = .portrait
+    }
+
     func testCloseReturnsToTheMap() throws {
         try open()
         let close = app.buttons["ae-hub-close"]

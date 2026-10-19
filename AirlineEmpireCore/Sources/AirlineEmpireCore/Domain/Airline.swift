@@ -33,6 +33,11 @@ public struct Airline: Equatable, Codable, Sendable {
     /// The status earned at each station above `.station`, the home airport
     /// included. Nil until first assessed; earned statuses are never lost.
     public var hubStatuses: [AirportCode: HubStatus]?
+    /// Today's connecting traffic through the airline's hubs, largest first
+    /// (`ConnectingDemandSystem`); nil without any.
+    public var connectingFlowsToday: [ConnectingFlow]?
+    /// Connecting travellers booked through each hub, by month.
+    public var hubTransfers: [AirportCode: HubTransferTally]?
 
     public init(id: AirlineID, name: String, kind: AirlineKind,
                 homeAirport: AirportCode, foundedAt: SimTime) {

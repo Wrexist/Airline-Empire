@@ -110,7 +110,7 @@ struct AirportFacilityEditor: View {
     private var introduction: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Invest in a better airport experience").font(.headline).accessibilityAddTraits(.isHeader)
-            Text("Build lounges, ground crews, hangars and crew bases for your airline at \(airport.raw). Each takes game days to build and costs upkeep once open.")
+            Text("Build lounges, ground crews, hangars, crew bases and a transfer centre for your airline at \(airport.raw). Each takes game days to build and costs upkeep once open.")
                 .font(.subheadline).foregroundStyle(AETheme.mutedText)
             if let spec = catalog.airport(airport) {
                 ViewThatFits(in: .horizontal) {
@@ -178,6 +178,17 @@ struct AirportFacilityEditor: View {
                             .fixedSize(horizontal: false, vertical: true)
                         Text(model.scope).font(.caption).foregroundStyle(AETheme.mutedText)
                             .fixedSize(horizontal: false, vertical: true)
+                        // The investment preview prices point-to-point demand
+                        // only; the hub's connections come from the spill
+                        // term itself, on today's schedule.
+                        if service == .transferCentre, open == 0, building == nil,
+                           let payoff = snapshot.facilityPayoff(.transferCentre, level: 1, at: airport,
+                                                                airline: player.id, catalog: catalog) {
+                            Label(payoff, systemImage: "arrow.triangle.branch")
+                                .font(.caption).foregroundStyle(AETheme.positive)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier("ae-airport-transfer-estimate")
+                        }
                     }.frame(maxWidth: .infinity, alignment: .leading)
                 }
                 Divider()
@@ -210,6 +221,7 @@ struct AirportFacilityEditor: View {
         case .hangar: "wrench.and.screwdriver.fill"
         case .crewBase: "person.2.badge.gearshape.fill"
         case .pier: "airplane.departure"
+        case .transferCentre: "arrow.triangle.branch"
         }
     }
 
@@ -220,6 +232,7 @@ struct AirportFacilityEditor: View {
         case .hangar: "Your own maintenance: shorter, cheaper checks for aircraft flying here."
         case .crewBase: "Crews based here: a longer operating day and lower crew costs."
         case .pier: "Your own gates: slots held for you at a busy airport, and quicker turnarounds."
+        case .transferCentre: "Make this your hub: travellers connect between your routes here."
         }
     }
 
@@ -263,7 +276,10 @@ struct AirportFacilityEditor: View {
                     }
                     Text("Benefits \(preview.servedRoutes) \(preview.servedRoutes == 1 ? "route" : "routes") with operational aircraft at \(airport.raw).")
                         .font(.caption).foregroundStyle(AETheme.mutedText)
-                    if proposed != installed && preview.monthlyNetChange < .zero {
+                    // Not for a transfer centre: its connections are not in
+                    // this point-to-point estimate (its card quotes them).
+                    if proposed != installed && preview.monthlyNetChange < .zero
+                        && proposed.transferCentre == installed.transferCentre {
                         Label("Current demand gains do not cover the added monthly cost.", systemImage: "info.circle")
                             .font(.caption).foregroundStyle(AETheme.caution)
                             .accessibilityIdentifier("ae-airport-negative-investment")
@@ -274,6 +290,7 @@ struct AirportFacilityEditor: View {
                             Text("Ground-service benefits appear in actual operations over time. Future disruption savings and reputation changes are not priced into this estimate.")
                             Text("Installation is non-refundable and paid when you order. Each building opens after its build time; monthly charges start with the first month boundary after it opens, without proration, even if routes close. Removing a building stops future charges. Rebuilding pays installation again.")
                             Text("A lounge changes demand from the daily update after it opens. Ground services, hangars, crew bases and piers apply to flights and checks from opening day.")
+                            Text("A transfer centre's connecting travellers are not in this estimate: they fill seats your local passengers leave empty, from the first day it is open, and its card quotes them from today's schedule.")
                         }.font(.caption).foregroundStyle(AETheme.mutedText).padding(.top, 8)
                     }.font(.subheadline)
                 } else {

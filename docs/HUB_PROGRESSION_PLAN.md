@@ -242,8 +242,8 @@ These are worth fixing whatever is decided:
 
 Branch `claude/feat-longhaul-pier`. `AirportService.pier`, two levels at the
 §4 prices ($30M · $250k/mo · 90 d → $45M · $350k/mo · 120 d, in
-`tuning.json`). National era, and Main base status at the airport until
-Phase E adds Hub status (`AirportService.requiredStatus`). The pier holds 4,
+`tuning.json`). National era, and Hub status at the airport since Phase E merged with it
+(`AirportService.requiredStatus`). The pier holds 4,
 then 8, movements a day for its airline beyond the shared pool
 (`GameState.slotsAvailable`, used by the route commands and the rivals'
 scan) and turns its aircraft ×0.8 / ×0.7 there
@@ -253,3 +253,21 @@ base and eaves, your sign over the vault, branded bridge rotundas and gate
 signs; the flagship level rings the vault in your accent colour. Works go up
 round the pier that keeps flying. Saves stay at format 16 (`pier` decodes
 as 0 when absent).
+
+## Implemented: Phase E — hub designation and the transfer centre (2026-10-19)
+
+Branch `claude/feat-transfer-centre`. What changed from §4–§7:
+
+- **Building and status.** The transfer centre (National era, so Pro through the era ceiling; $25M, $200k a month, 60 days) stands on the west end of the terminal roof, the lounge's twin. Open, it designates the airport a hub, and hub status gains **Hub** above Main base. Each status's requirements open with the one below it, met once on record, so Gateway and Flagship slot in the same way. The moments: the opening ceremony, Hub banners that roll down from the landside eaves (replayed once if earned while away), a toast, the record entry, the hub's story and the session report line ("Stockholm is now a Hub").
+- **Connecting passengers** are the D-010 spill term (`ConnectingDemand.swift`). They run after the scheduler, because connection quality is read from the day's own timetable. For every pair of the player's spokes at a hub, a share of the A→C demand no nonstop served (the pool less every airline's allocation) is booked onto both legs. The rules:
+  - A connection works from 30 minutes to 5 hours after landing; the connections that work price the schedule as frequency does for a nonstop.
+  - A change of planes weighs 0.25 of a nonstop, and a long wait costs up to 40% more.
+  - The through fare is the two legs less 20%, split between them by distance.
+  - Connections fill only the seats the locals leave empty.
+  - Pairs beyond 1.5× the direct distance, or flown by the player itself, are skipped.
+  - At most 48 spokes and 40 city pairs a hub are considered (7 ms a day at 30 spokes, debug).
+  - Pools are conserved by construction (tested with a rival nonstop on the connected pair).
+  - Rivals do not connect yet.
+- **Measured** (CI run 39169981403): three spokes at three round trips a day pay the building back in about 29 months (load 52% → 71%). An uncontested eight-spoke Stockholm hub at reference fares takes about 15 months, an upper bound since rivals' nonstops shrink the residual. A change of planes first weighed 0.6 of a nonstop, which paid back in 8–13 months, and was re-tuned.
+- **Shown:** the transfer hall in the cutaway (travellers walking the mezzanine pier to pier on a glowing lane), departure banks in the route fan's lights and the movements chart, a Transfers section in Insights, and connecting counts on routes, the briefing, Finance and Airport Services (where the card quotes what the centre would connect on today's schedule).
+- **Saves:** format 18 (a no-op migration from 17, after TD-027's route opening dates took 17); every new field decodes as absent, and a network without a transfer centre saves byte for byte as before.

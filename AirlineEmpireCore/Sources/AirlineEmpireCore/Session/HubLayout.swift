@@ -726,7 +726,8 @@ struct HubPlanner {
     }
 
     /// Where the player's facilities stand: the lounge as a pavilion on the
-    /// east end of the terminal roof; the ground-services depot, the
+    /// east end of the terminal roof, the transfer centre its twin on the
+    /// west end; the ground-services depot, the
     /// maintenance hangar and the crew base each on the first of their
     /// candidate lots clear of everything but lawns and trees, which are
     /// cleared from it. The depot sits beside the apron, the hangar beyond
@@ -739,6 +740,14 @@ struct HubPlanner {
             kind: .lounge,
             footprint: HubRect(minX: terminal.maxX - loungeW - 4, minZ: terminal.minZ + terminalDepth * 0.18,
                                maxX: terminal.maxX - 4, maxZ: terminal.minZ + terminalDepth * 0.82),
+            elevation: HubLayout.terminalRoofTop)
+        // The transfer centre: the lounge's twin on the roof's west end, over
+        // the hall where connecting travellers walk between the piers. The
+        // skylight vaults run between the two.
+        let transfer = HubFacilitySite(
+            kind: .transferCentre,
+            footprint: HubRect(minX: terminal.minX + 4, minZ: terminal.minZ + terminalDepth * 0.18,
+                               maxX: terminal.minX + loungeW + 4, maxZ: terminal.minZ + terminalDepth * 0.82),
             elevation: HubLayout.terminalRoofTop)
         let soft: Set<HubPieceKind> = [.lawn, .tree]
         var taken: [HubRect] = []
@@ -792,7 +801,8 @@ struct HubPlanner {
                 HubFacilitySite(kind: .groundServices, footprint: depot, elevation: 0),
                 HubFacilitySite(kind: .hangar, footprint: hangar, elevation: 0),
                 HubFacilitySite(kind: .crewBase, footprint: crew, elevation: 0),
-                HubFacilitySite(kind: .pier, footprint: pier, elevation: 0)]
+                HubFacilitySite(kind: .pier, footprint: pier, elevation: 0),
+                transfer]
     }
 
     /// Apron service roads: one along the terminal face in each gap between

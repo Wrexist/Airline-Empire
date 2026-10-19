@@ -13,6 +13,7 @@ extension HubFacilityKind {
         case .hangar: "wrench.and.screwdriver.fill"
         case .crewBase: "person.2.fill"
         case .pier: "airplane.departure"
+        case .transferCentre: "arrow.triangle.branch"
         }
     }
 }

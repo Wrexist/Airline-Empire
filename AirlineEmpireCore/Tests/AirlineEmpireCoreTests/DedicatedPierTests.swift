@@ -5,7 +5,7 @@ import Testing
 /// Hub Phase D, the dedicated pier (docs/HUB_PROGRESSION_PLAN.md §4,
 /// building #5): slots held for the player beyond the shared pool, a quicker
 /// turnaround the scheduler plans, built over game days once the National
-/// era and Main base status are reached.
+/// era and Hub status are reached.
 @Suite("Dedicated pier")
 struct DedicatedPierTests {
     private func context(_ state: GameState, _ catalog: ContentCatalog) -> SimContext {
@@ -20,18 +20,18 @@ struct DedicatedPierTests {
         return SimulationEngine(state: state, systems: engine.systems, catalog: engine.catalog)
     }
 
-    /// The player in the National era with a hangar and a crew base open at
-    /// home, so ARN is its Main base.
-    private func mainBase(_ engine: SimulationEngine, airline: AirlineID) -> SimulationEngine {
+    /// The player in the National era with a hangar, a crew base and a
+    /// transfer centre open at home, so ARN is its Hub (Phase E).
+    private func hub(_ engine: SimulationEngine, airline: AirlineID) -> SimulationEngine {
         var state = engine.state
         state.progression.era = .national
-        state.airlines[airline]?.airportFacilities = ["ARN": AirportFacilities(hangar: 1, crewBase: 1)]
+        state.airlines[airline]?.airportFacilities = ["ARN": AirportFacilities(hangar: 1, crewBase: 1, transferCentre: 1)]
         return SimulationEngine(state: state, systems: engine.systems, catalog: engine.catalog)
     }
 
     // MARK: Ordering it
 
-    @Test("A pier waits for the National era and Main base, then costs $30M and 90 days")
+    @Test("A pier waits for the National era and Hub status, then costs $30M and 90 days")
     func orderingAPier() throws {
         let (catalog, startup, airline) = try FleetFixtures.catalogAndEngine(systems: [FacilityConstructionSystem()])
         let tuning = catalog.tuning.airportServices
@@ -41,7 +41,7 @@ struct DedicatedPierTests {
         let national = inEra(.national, startup)
         let status = first.validate(state: national.state, catalog: catalog)
         #expect(status?.code == "airport.statusLocked")
-        #expect(status?.message.contains("Main base") == true)
+        #expect(status?.message.contains("Hub status") == true)
         // Rivals are established carriers, exempt as with the era.
         #expect(national.applyNow(FoundAirlineCommand(airlineName: "Rival", kind: .ai, homeAirport: "CDG",
                                                       startingCash: .dollars(100_000_000))) == .applied)
@@ -49,11 +49,11 @@ struct DedicatedPierTests {
         #expect(ConfigureAirportFacilitiesCommand(airline: rival, airport: "CDG", facilities: .init(pier: 1))
             .validate(state: national.state, catalog: catalog) == nil)
 
-        let based = mainBase(national, airline: airline)
+        let based = hub(national, airline: airline)
         let cash = based.state.ledger.balance(of: airline)
         let ordered = based.state.clock.now
         #expect(based.applyNow(ConfigureAirportFacilitiesCommand(
-            airline: airline, airport: "ARN", facilities: .init(hangar: 1, crewBase: 1, pier: 1))) == .applied)
+            airline: airline, airport: "ARN", facilities: .init(hangar: 1, crewBase: 1, pier: 1, transferCentre: 1))) == .applied)
         let build = try #require(based.state.airlines[airline]?.construction(at: "ARN", of: .pier))
         #expect(build.cost == .dollars(30_000_000))
         #expect(build.cost == tuning.pierInstallation[0])
@@ -74,7 +74,7 @@ struct DedicatedPierTests {
 
         // The flagship level on top: $45M and 120 days.
         #expect(based.applyNow(ConfigureAirportFacilitiesCommand(
-            airline: airline, airport: "ARN", facilities: .init(hangar: 1, crewBase: 1, pier: 2))) == .applied)
+            airline: airline, airport: "ARN", facilities: .init(hangar: 1, crewBase: 1, pier: 2, transferCentre: 1))) == .applied)
         let flagship = try #require(based.state.airlines[airline]?.construction(at: "ARN", of: .pier))
         #expect(flagship.cost == .dollars(45_000_000))
         #expect(flagship.completesAt.dayIndex - based.state.clock.now.dayIndex == 120)
@@ -91,9 +91,9 @@ struct DedicatedPierTests {
         let waiting = try #require(inEra(.national, startup).state.hubUpgradeOffers(airport: "ARN", catalog: catalog)
             .first { $0.kind == .pier })
         #expect(waiting.lockedUntil == nil)
-        #expect(waiting.blocked?.contains("Main base") == true)
+        #expect(waiting.blocked?.contains("Hub status") == true)
 
-        let offer = try #require(mainBase(startup, airline: airline).state
+        let offer = try #require(hub(startup, airline: airline).state
             .hubUpgradeOffers(airport: "ARN", catalog: catalog).first { $0.kind == .pier })
         #expect(offer.canUpgrade)
         #expect(offer.buildingName == "Shared pier")
@@ -225,9 +225,9 @@ struct DedicatedPierTests {
 
         let systems: [any SimulationSystem] = [FacilityConstructionSystem()]
         let (catalog, startup, airline) = try FleetFixtures.catalogAndEngine(systems: systems)
-        let source = mainBase(startup, airline: airline)
+        let source = hub(startup, airline: airline)
         #expect(source.applyNow(ConfigureAirportFacilitiesCommand(
-            airline: airline, airport: "ARN", facilities: .init(hangar: 1, crewBase: 1, pier: 1))) == .applied)
+            airline: airline, airport: "ARN", facilities: .init(hangar: 1, crewBase: 1, pier: 1, transferCentre: 1))) == .applied)
         source.advance(ticks: Fixtures.ticksPerDay * 40)
         let restored = SimulationEngine(state: try JSONSaveCodec().decode(JSONSaveCodec().encode(source.state)),
                                         systems: systems, catalog: catalog)

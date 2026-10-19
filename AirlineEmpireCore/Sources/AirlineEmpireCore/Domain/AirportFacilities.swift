@@ -8,21 +8,27 @@ public struct AirportFacilities: Equatable, Codable, Sendable {
     /// Crew base, 0–1 (Regional era): a longer operating day and cheaper crews
     /// on routes from here.
     public var crewBase: Int
-    /// Dedicated pier, 0–2 (National era, Main base status): slots reserved
-    /// for the airline beyond the shared pool, and quicker turnarounds here.
+    /// Dedicated pier, 0–2 (National era, Hub status): slots reserved for
+    /// the airline beyond the shared pool, and quicker turnarounds here.
     public var pier: Int
+    /// Transfer centre, 0–1 (National era): the airport is the airline's
+    /// designated hub, and travellers connect through it.
+    public var transferCentre: Int
 
     public init(lounge: Int = 0, groundServices: Int = 0, hangar: Int = 0, crewBase: Int = 0,
-                pier: Int = 0) {
+                pier: Int = 0, transferCentre: Int = 0) {
         self.lounge = lounge; self.groundServices = groundServices
         self.hangar = hangar; self.crewBase = crewBase
         self.pier = pier
+        self.transferCentre = transferCentre
     }
 
-    private enum CodingKeys: String, CodingKey { case lounge, groundServices, hangar, crewBase, pier }
+    private enum CodingKeys: String, CodingKey {
+        case lounge, groundServices, hangar, crewBase, pier, transferCentre
+    }
 
     // Saves from before the hangar and crew base have neither, and saves
-    // from before the pier have none.
+    // from before the pier or the transfer centre have none.
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         lounge = try c.decode(Int.self, forKey: .lounge)
@@ -30,6 +36,20 @@ public struct AirportFacilities: Equatable, Codable, Sendable {
         hangar = try c.decodeIfPresent(Int.self, forKey: .hangar) ?? 0
         crewBase = try c.decodeIfPresent(Int.self, forKey: .crewBase) ?? 0
         pier = try c.decodeIfPresent(Int.self, forKey: .pier) ?? 0
+        transferCentre = try c.decodeIfPresent(Int.self, forKey: .transferCentre) ?? 0
+    }
+
+    // Written without the pier or the transfer centre while there is none,
+    // so a save with no hub buildings encodes byte for byte as it did before
+    // they existed.
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(lounge, forKey: .lounge)
+        try c.encode(groundServices, forKey: .groundServices)
+        try c.encode(hangar, forKey: .hangar)
+        try c.encode(crewBase, forKey: .crewBase)
+        if pier != 0 { try c.encode(pier, forKey: .pier) }
+        if transferCentre != 0 { try c.encode(transferCentre, forKey: .transferCentre) }
     }
 
     public var isValid: Bool {
@@ -58,6 +78,7 @@ public struct AirportFacilities: Equatable, Codable, Sendable {
 public enum AirportService: String, CaseIterable, Codable, Sendable {
     case lounge, ground, hangar, crewBase
     case pier
+    case transferCentre
 
     public func level(in configuration: AirportFacilities) -> Int {
         switch self {
@@ -66,6 +87,7 @@ public enum AirportService: String, CaseIterable, Codable, Sendable {
         case .hangar: configuration.hangar
         case .crewBase: configuration.crewBase
         case .pier: configuration.pier
+        case .transferCentre: configuration.transferCentre
         }
     }
     public func setting(_ level: Int, in configuration: AirportFacilities) -> AirportFacilities {
@@ -76,6 +98,7 @@ public enum AirportService: String, CaseIterable, Codable, Sendable {
         case .hangar: result.hangar = level
         case .crewBase: result.crewBase = level
         case .pier: result.pier = level
+        case .transferCentre: result.transferCentre = level
         }
         return result
     }
@@ -86,31 +109,38 @@ public enum AirportService: String, CaseIterable, Codable, Sendable {
         case .hangar: "Maintenance hangar"
         case .crewBase: "Crew base"
         case .pier: "Dedicated pier"
+        case .transferCentre: "Transfer centre"
         }
     }
     public var maxLevel: Int {
         switch self {
         case .lounge, .ground, .hangar, .pier: 2
         case .crewBase: 1
+        case .transferCentre: 1
         }
     }
     /// The era a player needs before ordering the first level. Rivals are
-    /// established carriers and exempt, as with aircraft classes.
+    /// established carriers and exempt, as with aircraft classes. Free play
+    /// stops at the Regional era, so the National-era transfer centre is
+    /// Pro's through the era ceiling (`ExpansionAccess`) — never a paid
+    /// speed-up.
     public var unlockEra: Era {
         switch self {
         case .lounge, .ground: .startup
         case .hangar, .crewBase: .regional
-        case .pier: .national
+        case .pier, .transferCentre: .national
         }
     }
     /// The hub status the player needs here before ordering the first
     /// level, on top of the era (docs/HUB_PROGRESSION_PLAN.md §3). The pier
-    /// is a Hub-status building; until that status exists it asks for Main
-    /// base. Rivals are exempt, as with the era.
+    /// is a Hub-status building: its own gates come once the airport is a
+    /// designated hub. The transfer centre is what designates it, so it asks
+    /// for none (Hub status itself also needs Main base). Rivals are exempt,
+    /// as with the era.
     public var requiredStatus: HubStatus? {
         switch self {
-        case .pier: .mainBase
-        case .lounge, .ground, .hangar, .crewBase: nil
+        case .pier: .hub
+        case .lounge, .ground, .hangar, .crewBase, .transferCentre: nil
         }
     }
     public static func levelName(_ level: Int) -> String {
@@ -121,6 +151,7 @@ public enum AirportService: String, CaseIterable, Codable, Sendable {
         switch (self, level) {
         case (_, 0): "None"
         case (.crewBase, _): "Open"
+        case (.transferCentre, _): "Hub"
         case (.hangar, 1): "Line maintenance"
         case (.hangar, _): "Heavy maintenance"
         case (.pier, 1): "Own gates"
@@ -143,6 +174,7 @@ public enum AirportService: String, CaseIterable, Codable, Sendable {
         case .hangar: return tuning.hangarInstallation[safe: level - 1] ?? .zero
         case .crewBase: return level == 1 ? tuning.crewBaseInstallation : .zero
         case .pier: return tuning.pierInstallation[safe: level - 1] ?? .zero
+        case .transferCentre: return level == 1 ? tuning.transferCentreInstallation : .zero
         }
     }
     /// Upkeep a month with the building at `level`.
@@ -154,6 +186,7 @@ public enum AirportService: String, CaseIterable, Codable, Sendable {
         case .hangar: return tuning.hangarMonthly[safe: level - 1] ?? .zero
         case .crewBase: return tuning.crewBaseMonthly
         case .pier: return tuning.pierMonthly[safe: level - 1] ?? .zero
+        case .transferCentre: return tuning.transferCentreMonthly
         }
     }
     /// Game days to build `to` from `from`.
@@ -166,6 +199,7 @@ public enum AirportService: String, CaseIterable, Codable, Sendable {
         case .hangar: table = tuning.hangarBuildDays
         case .crewBase: table = [tuning.crewBaseBuildDays]
         case .pier: table = tuning.pierBuildDays
+        case .transferCentre: table = [tuning.transferCentreBuildDays]
         }
         return (from + 1...to).reduce(0) { $0 + (table[safe: $1 - 1] ?? 0) }
     }
@@ -339,11 +373,18 @@ public struct ConfigureAirportFacilitiesCommand: Command, Equatable {
 
 /// What a station means to an airline, earned from what it built and flies
 /// there — never bought, never lost (docs/HUB_PROGRESSION_PLAN.md §3).
-/// Later eras add Hub, Gateway and Flagship above these.
+///
+/// A ladder: each status's requirements open with the one below it, met
+/// once it is on record, so a status stays earned when the aircraft that
+/// earned the one below move on. Gateway and Flagship (International and
+/// Empire eras) slot in above Hub the same way: a case, a title, and a
+/// requirement list that opens with "Hub status".
 public enum HubStatus: Int, Codable, Sendable, CaseIterable, Comparable {
     case station = 0
     case base
     case mainBase
+    /// Hub designated: a transfer centre open (National era).
+    case hub
 
     public static func < (lhs: Self, rhs: Self) -> Bool { lhs.rawValue < rhs.rawValue }
 
@@ -352,6 +393,7 @@ public enum HubStatus: Int, Codable, Sendable, CaseIterable, Comparable {
         case .station: "Station"
         case .base: "Base"
         case .mainBase: "Main base"
+        case .hub: "Hub"
         }
     }
     public var next: HubStatus? { HubStatus(rawValue: rawValue + 1) }
@@ -390,12 +432,19 @@ extension GameState {
                           || hubStatusRequirements(.base, at: airport, airline: airline).allSatisfy(\.isMet)),
                     .init(title: "Maintenance hangar open", isMet: built.hangar >= 1),
                     .init(title: "Crew base open", isMet: built.crewBase >= 1)]
+        case .hub:
+            return [.init(title: "Main base status", isMet: owner.hubStatus(at: airport) >= .mainBase
+                          || hubStatusRequirements(.mainBase, at: airport, airline: airline).allSatisfy(\.isMet)),
+                    .init(title: "Transfer centre open", isMet: built.transferCentre >= 1)]
         }
     }
 
-    /// The highest status the airline meets at this airport today.
+    /// The highest status the airline meets at this airport today. The walk
+    /// starts from what is on record: a step it has already earned is never
+    /// tested again (a base whose three aircraft moved on still becomes a
+    /// main base when it builds a hangar and a crew base).
     public func earnedHubStatus(at airport: AirportCode, airline: AirlineID) -> HubStatus {
-        var earned = HubStatus.station
+        var earned = airlines[airline]?.hubStatus(at: airport) ?? .station
         while let next = earned.next,
               hubStatusRequirements(next, at: airport, airline: airline).allSatisfy(\.isMet) {
             earned = next

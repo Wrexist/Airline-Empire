@@ -336,7 +336,6 @@ final class HubScreenModel {
             next = next.holding(held, progress: 0.45, atStand: stand)
         }
         let first = snapshot == nil
-        let previousStatus = snapshot?.status.status
         groundServices = state.playerAirline?.facilities(at: airport).groundServices ?? groundServices
         var opened: [HubUpgradeOffer] = []
         if let previous = snapshot {
@@ -361,25 +360,38 @@ final class HubScreenModel {
         if first {
             focus = next.focusStand
         }
+        // A status earned while the hub is open: the banners unveil as the
+        // world shows it (before the push, so they roll down rather than
+        // appear), the camera pulls back to see it, the toast names it.
+        var raised: HubStatus?
+        if let previous = snapshot, next.status.status > previous.status.status {
+            raised = next.status.status
+            scene.unveilHubStatus(next.status.status, livery: next.livery)
+        }
         snapshot = next
         push(next)
         applyLighting()
         if first { scene.show(shot, focus: focus, animated: false) }
         for offer in opened { celebrate(offer, replay: false) }
-        // A status earned with the hub open gets its banner here — the game's
-        // own celebration sits under this full-screen cover (§6.5). Last, so
-        // it outranks a building's toast landing on the same day.
-        if let previousStatus, next.status.status > previousStatus {
-            withAnimation(HubMotion.panel) {
-                show(HubToast(systemImage: "flag.fill",
-                              title: "\(airport.raw) is now a \(next.status.status.title.lowercased())",
-                              detail: Vocab.hubStatusDetail(next.status.status)))
+        if let raised {
+            // The building that earned it (the transfer centre) opens the
+            // same morning: its ceremony first, the status after it.
+            let city = next.city
+            if opened.isEmpty {
+                celebrate(raised, city: city)
+            } else {
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(for: .seconds(5.5))
+                    self?.celebrate(raised, city: city)
+                }
             }
         }
         // Buildings that opened while the player was elsewhere get their
         // ceremony once, the next time this hub is opened.
         let missed = HubSeenBuildings.missed(at: airport, offers: next.upgrades, first: first)
         HubSeenBuildings.remember(next.upgrades, at: airport)
+        let missedStatus = HubSeenBuildings.missedStatus(at: airport, status: next.status.status, first: first)
+        HubSeenBuildings.remember(next.status.status, at: airport)
         if first {
             let forced = Self.forcedCeremony.flatMap { kind in next.upgrades.first { $0.kind == kind } }
             if let offer = forced ?? missed.first {
@@ -390,8 +402,27 @@ final class HubScreenModel {
                     self?.celebrate(offer, replay: true)
                 }
             }
+            // A status earned while away gets its moment after the building's.
+            if let status = missedStatus {
+                let livery = next.livery, city = next.city
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(for: .seconds(forced == nil && missed.isEmpty ? 1.2 : 6.5))
+                    self?.scene.unveilHubStatus(status, livery: livery)
+                    self?.celebrate(status, city: city)
+                }
+            }
         }
         updateBlueprint()
+    }
+
+    /// A station's new status: back to the overview if nothing else is open,
+    /// so the banners show, and a toast with what it means.
+    private func celebrate(_ status: HubStatus, city: String) {
+        if panel == nil && shot != .overview { select(.overview) }
+        withAnimation(HubMotion.panel) {
+            show(HubToast(systemImage: "flag.fill", title: "\(city) is now a \(status.title)",
+                          detail: Vocab.hubStatusDetail(status)))
+        }
     }
 
     private func push(_ snapshot: HubSnapshot) {
@@ -470,6 +501,22 @@ enum HubSeenBuildings {
         let levels = Dictionary(offers.map { ($0.kind.rawValue, $0.level) }, uniquingKeysWith: { a, _ in a })
         if UserDefaults.standard.dictionary(forKey: key(airport)) as? [String: Int] != levels {
             UserDefaults.standard.set(levels, forKey: key(airport))
+        }
+    }
+
+    private static func statusKey(_ airport: AirportCode) -> String { "ae.hub.seenStatus.\(airport.raw)" }
+
+    /// The status, when it stands higher than when this hub was last open.
+    /// Nothing on a first visit with no memory, as for the buildings.
+    static func missedStatus(at airport: AirportCode, status: HubStatus, first: Bool) -> HubStatus? {
+        guard first, let seen = UserDefaults.standard.object(forKey: statusKey(airport)) as? Int,
+              status.rawValue > seen else { return nil }
+        return status
+    }
+
+    static func remember(_ status: HubStatus, at airport: AirportCode) {
+        if UserDefaults.standard.object(forKey: statusKey(airport)) as? Int != status.rawValue {
+            UserDefaults.standard.set(status.rawValue, forKey: statusKey(airport))
         }
     }
 }

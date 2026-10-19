@@ -24,6 +24,11 @@ public struct Route: Equatable, Codable, Sendable {
     public var demandInboundToday: Int
     public var remainingOutboundToday: Int
     public var remainingInboundToday: Int
+    /// The travellers connecting at a hub inside today's demand above (set by
+    /// `ConnectingDemandSystem`, sold at boarding with everyone else). Nil on
+    /// every route that carries none, so a network without a transfer centre
+    /// saves exactly as it did before connections existed.
+    public var connectionsToday: ConnectingLoad?
     /// Direct operating P&L attribution (docs/ECONOMY.md): current month
     /// accumulates live; previous month is the closed, comparable figure.
     public var economicsThisMonth: RouteMonthEconomics
@@ -131,18 +136,65 @@ public struct RouteMonthEconomics: Equatable, Codable, Sendable {
     public var feesCents: Int64
     public var crewCents: Int64
     public var passengers: Int64
+    /// Of `passengers` and `revenueCents`: the travellers connecting at a hub
+    /// and this leg's share of their through fares. Nil until the route has
+    /// carried one, which keeps older saves and point-to-point networks as
+    /// they were.
+    public var connectingPassengers: Int64?
+    public var connectingRevenueCents: Int64?
 
     public init(revenueCents: Int64 = 0, fuelCents: Int64 = 0, feesCents: Int64 = 0,
-                crewCents: Int64 = 0, passengers: Int64 = 0) {
+                crewCents: Int64 = 0, passengers: Int64 = 0,
+                connectingPassengers: Int64? = nil, connectingRevenueCents: Int64? = nil) {
         self.revenueCents = revenueCents
         self.fuelCents = fuelCents
         self.feesCents = feesCents
         self.crewCents = crewCents
         self.passengers = passengers
+        self.connectingPassengers = connectingPassengers
+        self.connectingRevenueCents = connectingRevenueCents
     }
 
     /// Direct operating profit (costs are stored positive).
     public var directOperatingProfit: Money {
         Money(cents: revenueCents - fuelCents - feesCents - crewCents)
+    }
+}
+
+/// The connecting travellers inside a route's bookable demand for the day,
+/// by direction (docs/HUB_PROGRESSION_PLAN.md §4 #6). They are part of
+/// `demandOutboundToday` / `demandInboundToday`, not extra to them; this only
+/// says how many of those seats are connections and what each one pays.
+public struct ConnectingLoad: Equatable, Codable, Sendable {
+    public struct Direction: Equatable, Codable, Sendable {
+        /// Connecting travellers in the day's demand this way.
+        public var booked: Int
+        /// Of those, still to board.
+        public var remaining: Int
+        /// This leg's share of their through fares, per traveller, before
+        /// the cabin's yield.
+        public var fare: Money
+
+        public init(booked: Int = 0, remaining: Int = 0, fare: Money = .zero) {
+            self.booked = booked
+            self.remaining = remaining
+            self.fare = fare
+        }
+    }
+
+    public var outbound: Direction
+    public var inbound: Direction
+
+    public init(outbound: Direction = Direction(), inbound: Direction = Direction()) {
+        self.outbound = outbound
+        self.inbound = inbound
+    }
+
+    public var booked: Int { outbound.booked + inbound.booked }
+
+    public func direction(outbound isOutbound: Bool) -> Direction { isOutbound ? outbound : inbound }
+
+    public mutating func set(_ direction: Direction, outbound isOutbound: Bool) {
+        if isOutbound { outbound = direction } else { inbound = direction }
     }
 }

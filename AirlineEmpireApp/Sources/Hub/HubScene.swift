@@ -494,6 +494,12 @@ final class HubSceneController: NSObject, UIGestureRecognizerDelegate {
         dynamics?.yard.replay(kind)
     }
 
+    /// Unveils the status's banners: a status earned while the hub is open,
+    /// or one earned while away.
+    func unveilHubStatus(_ status: HubStatus, livery: Livery) {
+        dynamics?.yard.setHubStatus(status, livery: livery, unveil: true)
+    }
+
     // MARK: Overlays
 
     private(set) var overlays: Set<HubOverlay> = Set(HubOverlay.allCases)

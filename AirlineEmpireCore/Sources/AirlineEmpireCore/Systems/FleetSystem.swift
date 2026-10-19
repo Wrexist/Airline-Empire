@@ -140,6 +140,7 @@ public enum GamePipeline {
             CompetitorAISystem(rankingBasis: aiRankingBasis), // #3
             FacilityConstructionSystem(), // buildings open before today's plan
             FlightSchedulingSystem(),   // #4
+            ConnectingDemandSystem(),   // #2's spill term: hub connections, on today's timetable
             FlightOpsSystem(),          // #5 (+ passenger allocation at boarding, #6)
             FleetSystem(),              // #7 (maintenance/aging/deliveries)
             FleetBillingSystem(),       // #8 (fleet money)

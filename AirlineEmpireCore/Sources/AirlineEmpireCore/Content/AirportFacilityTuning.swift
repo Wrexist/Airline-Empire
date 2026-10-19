@@ -38,6 +38,33 @@ public struct AirportFacilityTuning: Equatable, Codable, Sendable {
     public let pierBuildDays: [Int]
     public let pierReservedSlots: [Int]
     public let pierTurnaroundFactor: [Double]
+    /// Transfer centre (National era, one level): designates the airport a
+    /// hub, and unserved demand between two of the airline's spokes connects
+    /// through it (`ConnectingDemandSystem`). The connection rules:
+    /// - a connection works when the onward flight leaves between
+    ///   `transferMinimumConnectMinutes` and `transferMaximumLayoverMinutes`
+    ///   after the inbound one lands;
+    /// - the through fare is the two legs' fares less
+    ///   `transferThroughFareDiscount`, split between the legs by distance;
+    /// - a change of planes is worth `transferConnectionQuality` of a nonstop,
+    ///   and a wait at the far end of the window costs up to
+    ///   `transferLayoverPenalty` more of it;
+    /// - nobody connects the long way round: the two legs together fly at
+    ///   most `transferMaximumDetour` times the direct distance;
+    /// - per hub, at most `transferSpokesPerHub` spokes and the
+    ///   `transferMarketsPerHub` largest city pairs are considered, which
+    ///   bounds the daily cost on any network.
+    public let transferCentreInstallation: Money
+    public let transferCentreMonthly: Money
+    public let transferCentreBuildDays: Int
+    public let transferMinimumConnectMinutes: Int64
+    public let transferMaximumLayoverMinutes: Int64
+    public let transferThroughFareDiscount: Double
+    public let transferConnectionQuality: Double
+    public let transferLayoverPenalty: Double
+    public let transferMaximumDetour: Double
+    public let transferSpokesPerHub: Int
+    public let transferMarketsPerHub: Int
 
     // Priced for an 18–36 month payback at a typical hub (tasks/DECISIONS.md
     // D-017): the lounge at about eight routes, the hangar at about ten
@@ -57,7 +84,19 @@ public struct AirportFacilityTuning: Equatable, Codable, Sendable {
                 pierInstallation: [Money] = [.dollars(30_000_000), .dollars(45_000_000)],
                 pierMonthly: [Money] = [.dollars(250_000), .dollars(350_000)],
                 pierBuildDays: [Int] = [90, 120], pierReservedSlots: [Int] = [4, 8],
-                pierTurnaroundFactor: [Double] = [0.8, 0.7]) {
+                pierTurnaroundFactor: [Double] = [0.8, 0.7],
+                // The plan's figures (docs/HUB_PROGRESSION_PLAN.md §4 #6).
+                transferCentreInstallation: Money = .dollars(25_000_000),
+                transferCentreMonthly: Money = .dollars(200_000), transferCentreBuildDays: Int = 60,
+                transferMinimumConnectMinutes: Int64 = 30, transferMaximumLayoverMinutes: Int64 = 300,
+                // Measured (TransferCentreTests' balance runs): at 0.6 a
+                // three-spoke hub paid back in 12.5 months and an uncontested
+                // eight-spoke one in 8; at 0.25 they sit inside the plan's
+                // 18–36 month bar, and a change of planes weighs about a
+                // quarter of a nonstop, near classic QSI weights.
+                transferThroughFareDiscount: Double = 0.2, transferConnectionQuality: Double = 0.25,
+                transferLayoverPenalty: Double = 0.4, transferMaximumDetour: Double = 1.5,
+                transferSpokesPerHub: Int = 48, transferMarketsPerHub: Int = 40) {
         self.loungeInstallation = loungeInstallation; self.groundInstallation = groundInstallation
         self.loungeMonthly = loungeMonthly; self.groundMonthly = groundMonthly
         self.loungeComfortPerLevel = loungeComfortPerLevel
@@ -74,6 +113,17 @@ public struct AirportFacilityTuning: Equatable, Codable, Sendable {
         self.pierInstallation = pierInstallation; self.pierMonthly = pierMonthly
         self.pierBuildDays = pierBuildDays; self.pierReservedSlots = pierReservedSlots
         self.pierTurnaroundFactor = pierTurnaroundFactor
+        self.transferCentreInstallation = transferCentreInstallation
+        self.transferCentreMonthly = transferCentreMonthly
+        self.transferCentreBuildDays = transferCentreBuildDays
+        self.transferMinimumConnectMinutes = transferMinimumConnectMinutes
+        self.transferMaximumLayoverMinutes = transferMaximumLayoverMinutes
+        self.transferThroughFareDiscount = transferThroughFareDiscount
+        self.transferConnectionQuality = transferConnectionQuality
+        self.transferLayoverPenalty = transferLayoverPenalty
+        self.transferMaximumDetour = transferMaximumDetour
+        self.transferSpokesPerHub = transferSpokesPerHub
+        self.transferMarketsPerHub = transferMarketsPerHub
     }
     public static let standard = Self()
 
@@ -84,6 +134,10 @@ public struct AirportFacilityTuning: Equatable, Codable, Sendable {
         case crewBaseInstallation, crewBaseMonthly, crewBaseBuildDays, crewBaseEarlierStartMinutes
         case crewBaseExtraMinutes, crewBaseCrewCostFactor
         case pierInstallation, pierMonthly, pierBuildDays, pierReservedSlots, pierTurnaroundFactor
+        case transferCentreInstallation, transferCentreMonthly, transferCentreBuildDays
+        case transferMinimumConnectMinutes, transferMaximumLayoverMinutes, transferThroughFareDiscount
+        case transferConnectionQuality, transferLayoverPenalty, transferMaximumDetour
+        case transferSpokesPerHub, transferMarketsPerHub
     }
 
     public init(from decoder: any Decoder) throws {
@@ -116,14 +170,26 @@ public struct AirportFacilityTuning: Equatable, Codable, Sendable {
             pierMonthly: try value(.pierMonthly, d.pierMonthly),
             pierBuildDays: try value(.pierBuildDays, d.pierBuildDays),
             pierReservedSlots: try value(.pierReservedSlots, d.pierReservedSlots),
-            pierTurnaroundFactor: try value(.pierTurnaroundFactor, d.pierTurnaroundFactor))
+            pierTurnaroundFactor: try value(.pierTurnaroundFactor, d.pierTurnaroundFactor),
+            transferCentreInstallation: try value(.transferCentreInstallation, d.transferCentreInstallation),
+            transferCentreMonthly: try value(.transferCentreMonthly, d.transferCentreMonthly),
+            transferCentreBuildDays: try value(.transferCentreBuildDays, d.transferCentreBuildDays),
+            transferMinimumConnectMinutes: try value(.transferMinimumConnectMinutes, d.transferMinimumConnectMinutes),
+            transferMaximumLayoverMinutes: try value(.transferMaximumLayoverMinutes, d.transferMaximumLayoverMinutes),
+            transferThroughFareDiscount: try value(.transferThroughFareDiscount, d.transferThroughFareDiscount),
+            transferConnectionQuality: try value(.transferConnectionQuality, d.transferConnectionQuality),
+            transferLayoverPenalty: try value(.transferLayoverPenalty, d.transferLayoverPenalty),
+            transferMaximumDetour: try value(.transferMaximumDetour, d.transferMaximumDetour),
+            transferSpokesPerHub: try value(.transferSpokesPerHub, d.transferSpokesPerHub),
+            transferMarketsPerHub: try value(.transferMarketsPerHub, d.transferMarketsPerHub))
     }
 
     public var isValid: Bool {
         let money = [loungeInstallation, groundInstallation, loungeMonthly, groundMonthly,
-                     crewBaseInstallation, crewBaseMonthly] + hangarInstallation + hangarMonthly
-            + pierInstallation + pierMonthly
-        let days = loungeBuildDays + groundBuildDays + hangarBuildDays + [crewBaseBuildDays] + pierBuildDays
+                     crewBaseInstallation, crewBaseMonthly, transferCentreInstallation, transferCentreMonthly]
+            + hangarInstallation + hangarMonthly + pierInstallation + pierMonthly
+        let days = loungeBuildDays + groundBuildDays + hangarBuildDays + [crewBaseBuildDays, transferCentreBuildDays]
+            + pierBuildDays
         return money.allSatisfy { $0.cents >= 0 && $0.cents <= 1_000_000_000_000 }
             && (0...0.25).contains(loungeComfortPerLevel) && (0...0.4).contains(groundRiskReductionPerLevel)
             && loungeBuildDays.count == 2 && groundBuildDays.count == 2
@@ -135,9 +201,30 @@ public struct AirportFacilityTuning: Equatable, Codable, Sendable {
             && (0...180).contains(crewBaseEarlierStartMinutes) && (0...360).contains(crewBaseExtraMinutes)
             && crewBaseExtraMinutes >= crewBaseEarlierStartMinutes
             && (0.1...1).contains(crewBaseCrewCostFactor)
-            && [pierInstallation.count, pierMonthly.count, pierBuildDays.count,
-                pierReservedSlots.count, pierTurnaroundFactor.count].allSatisfy { $0 == 2 }
-            && pierReservedSlots.allSatisfy { (0...200).contains($0) }
-            && pierTurnaroundFactor.allSatisfy { (0.3...1).contains($0) }
+            && piersAreValid
+            && transfersAreValid
+    }
+
+    /// The pier's levels, apart for the same reason as the connection rules.
+    private var piersAreValid: Bool {
+        let counts = [pierInstallation.count, pierMonthly.count, pierBuildDays.count,
+                      pierReservedSlots.count, pierTurnaroundFactor.count].allSatisfy { $0 == 2 }
+        let slots = pierReservedSlots.allSatisfy { (0...200).contains($0) }
+        let turnaround = pierTurnaroundFactor.allSatisfy { (0.3...1).contains($0) }
+        return counts && slots && turnaround
+    }
+
+    /// The connection rules, apart so neither check grows past what the
+    /// type checker handles quickly.
+    private var transfersAreValid: Bool {
+        let window = (0...240).contains(transferMinimumConnectMinutes)
+            && transferMaximumLayoverMinutes > transferMinimumConnectMinutes
+            && transferMaximumLayoverMinutes <= 1_440
+        let factors = (0...0.9).contains(transferThroughFareDiscount)
+            && (0.05...1).contains(transferConnectionQuality)
+            && (0...0.9).contains(transferLayoverPenalty)
+            && (1...3).contains(transferMaximumDetour)
+        let caps = (2...200).contains(transferSpokesPerHub) && (1...500).contains(transferMarketsPerHub)
+        return window && factors && caps
     }
 }

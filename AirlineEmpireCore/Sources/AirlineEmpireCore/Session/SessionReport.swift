@@ -8,6 +8,8 @@ public struct SessionCheckpoint: Equatable, Sendable {
     public let passengers: Int64
     public let routes: Int
     public let aircraft: Int
+    /// The status earned at each station, as the save holds it.
+    public let hubStatuses: [AirportCode: HubStatus]
 
     public init?(_ state: GameState) {
         guard let player = state.playerAirline else { return nil }
@@ -19,7 +21,14 @@ public struct SessionCheckpoint: Equatable, Sendable {
         passengers = state.progression.counters.passengersCarried
         routes = state.routes(of: player.id).count
         aircraft = state.fleet(of: player.id).count
+        hubStatuses = player.hubStatuses ?? [:]
     }
+}
+
+/// A station that rose a status during the session: "Stockholm is now a Hub".
+public struct HubStatusRise: Equatable, Sendable {
+    public let airport: AirportCode
+    public let status: HubStatus
 }
 
 /// Changes since opening this campaign. Cash movement includes financing
@@ -32,6 +41,8 @@ public struct SessionReport: Equatable, Sendable {
     public let passengers: Int64
     public let routeChange: Int
     public let aircraftChange: Int
+    /// Statuses earned since opening, by airport; the highest each reached.
+    public let statusRises: [HubStatusRise]
 
     public init?(from start: SessionCheckpoint, to end: SessionCheckpoint) {
         guard start.airline == end.airline, end.day >= start.day,
@@ -43,5 +54,16 @@ public struct SessionReport: Equatable, Sendable {
         passengers = end.passengers - start.passengers
         routeChange = end.routes - start.routes
         aircraftChange = end.aircraft - start.aircraft
+        // A save from before statuses records them all on its first day:
+        // those are not this session's news.
+        var rises: [HubStatusRise] = []
+        if !start.hubStatuses.isEmpty {
+            for airport in end.hubStatuses.keys.sorted() {
+                guard let status = end.hubStatuses[airport],
+                      status > (start.hubStatuses[airport] ?? .station) else { continue }
+                rises.append(HubStatusRise(airport: airport, status: status))
+            }
+        }
+        statusRises = rises
     }
 }

@@ -300,11 +300,17 @@ struct HubLayoutTests {
         for spec in Self.allAirports {
             let layout = HubLayout.make(airport: spec)
             #expect(Set(layout.facilitySites.map(\.kind)) == Set(HubFacilityKind.allCases), "\(spec.code)")
-            // The lounge sits on the terminal roof, inside its footprint.
+            // The lounge and the transfer centre sit on the terminal roof,
+            // inside its footprint, one at each end.
             let lounge = try #require(layout.site(.lounge))
-            #expect(lounge.elevation == HubLayout.terminalRoofTop)
-            #expect(layout.terminal.contains(HubVec(lounge.footprint.minX, 0, lounge.footprint.minZ))
-                    && layout.terminal.contains(HubVec(lounge.footprint.maxX, 0, lounge.footprint.maxZ)), "\(spec.code)")
+            let transfer = try #require(layout.site(.transferCentre))
+            for roof in [lounge, transfer] {
+                #expect(roof.elevation == HubLayout.terminalRoofTop)
+                #expect(layout.terminal.contains(HubVec(roof.footprint.minX, 0, roof.footprint.minZ))
+                        && layout.terminal.contains(HubVec(roof.footprint.maxX, 0, roof.footprint.maxZ)),
+                        "\(roof.kind) at \(spec.code)")
+            }
+            #expect(transfer.footprint.maxX < lounge.footprint.minX - 20, "\(spec.code)")
             // The depot's, hangar's and crew base's lots are on the ground
             // and clear of every piece, the stands' parked jets, the service
             // lanes and each other.
@@ -610,7 +616,7 @@ struct HubSnapshotTests {
 
         // Bought, the offer moves up a level; at the top there is no next.
         var state = engine.state
-        let top = AirportFacilities(lounge: 2, groundServices: 2, hangar: 2, crewBase: 1, pier: 2)
+        let top = AirportFacilities(lounge: 2, groundServices: 2, hangar: 2, crewBase: 1, pier: 2, transferCentre: 1)
         var owner = state.airlines[airline]!
         owner.airportFacilities = ["MET": top]
         state.airlines[airline] = owner

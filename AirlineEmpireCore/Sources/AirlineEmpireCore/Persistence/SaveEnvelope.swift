@@ -35,7 +35,12 @@ public enum SaveFormat {
     /// save decodes as is and the windows start recording on its first tick.
     /// v17 adds `Route.openedAt` (TD-027), optional: an older route takes
     /// its opening from the market-move record where that still holds it.
-    public static let currentVersion = 17
+    /// v18 adds hub connections (docs/HUB_PROGRESSION_PLAN.md Phase E): the
+    /// transfer centre, the Hub status, the day's connecting flows and loads,
+    /// each hub's monthly transfers, and the connecting share of a route's
+    /// month. All optional, so a v17 save decodes as is; an older build must
+    /// refuse a save that may hold the new building and status.
+    public static let currentVersion = 18
 }
 
 public struct SaveEnvelope: Codable, Sendable {
@@ -192,6 +197,10 @@ extension GameState {
             for code in (airline.airportFacilities ?? [:]).keys { check(code) }
             for code in (airline.hubStatuses ?? [:]).keys { check(code) }
             for build in airline.facilityConstructions ?? [] { check(build.airport) }
+            for code in (airline.hubTransfers ?? [:]).keys { check(code) }
+            for flow in airline.connectingFlowsToday ?? [] {
+                check(flow.origin); check(flow.hub); check(flow.destination)
+            }
         }
         for route in self.routes.values {
             check(route.origin)

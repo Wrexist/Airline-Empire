@@ -141,6 +141,14 @@ struct FinanceContent: View {
                 periodLabel("This month (to date)")
                 if let flow = breakdown.monthToDate, flow.hasOperatingActivity {
                     figureRow("Revenue", flow.operatingRevenue)
+                    // Part of the revenue above, never extra to it: what the
+                    // hubs' connecting travellers paid on each leg.
+                    if let connecting = breakdown.connecting, connecting.revenueThisMonth > .zero {
+                        Text("of which \(Format.money(connecting.revenueThisMonth)) from \(Format.count(connecting.travellersThisMonth)) travellers connecting via \(connecting.hubs.map(\.raw).joined(separator: ", "))")
+                            .font(.caption).foregroundStyle(AETheme.mutedText)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("ae-finance-connecting")
+                    }
                     figureRow("Operating costs", flow.operatingExpenses)
                     Divider()
                     figureTotal("Operating profit", flow.operatingProfit)
