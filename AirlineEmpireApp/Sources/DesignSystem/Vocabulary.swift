@@ -604,11 +604,12 @@ extension Vocab {
             return "\(Format.grouped(Int64(distanceKm - rangeKm))) km beyond its range"
         case .runwayTooSmall(let airport, _, _):
             return "\(airport.raw) cannot take this aircraft"
-        case .roundTripExceedsDay(let roundTripMinutes, let operatingMinutes):
-            // It reaches, so "beyond range" would be false: it just cannot
-            // get back in time to fly the route at all. The two durations
-            // are the fact a player can weigh against a faster aeroplane.
-            return "\(Format.duration(minutes: roundTripMinutes)) round trip — longer than its \(Format.duration(minutes: operatingMinutes)) flying day"
+        case .rotationTooLong(let roundTripMinutes, let maxDays):
+            // It reaches, so "beyond range" would be false: it just could
+            // not come home inside the longest rotation the schedule plans.
+            // The duration is the fact a player can weigh against a faster
+            // aeroplane.
+            return "\(Format.duration(minutes: roundTripMinutes)) round trip — too slow for a \(maxDays)-day rotation"
         }
     }
 
@@ -624,6 +625,10 @@ extension Vocab {
             return "In a maintenance check — it can be assigned now and will fly when the check finishes"
         case .tightRange(let marginKm):
             return "Only \(Format.grouped(Int64(marginKm))) km of range to spare"
+        case .longHaul(let days):
+            return days <= 1
+                ? "Long haul — one round trip a day, home overnight"
+                : "Long haul — one round trip every \(Format.days(days)), home overnight"
         case .seatsShortOfDemand(let seats, let demand):
             return "\(Format.grouped(Int64(seats))) seats a day against \(Format.grouped(Int64(demand))) passengers wanting to fly"
         case .seatsAboveDemand(let seats, let demand):
@@ -640,7 +645,7 @@ extension Vocab {
         case nil: AETheme.mutedText
         case .strongMatch: AETheme.positive
         case .inMaintenance, .tightRange, .seatsAboveDemand: AETheme.caution
-        case .seatsShortOfDemand: AETheme.mutedText
+        case .seatsShortOfDemand, .longHaul: AETheme.mutedText
         }
     }
 }

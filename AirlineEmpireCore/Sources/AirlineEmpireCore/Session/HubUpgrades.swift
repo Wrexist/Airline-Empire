@@ -11,6 +11,7 @@ import Foundation
 /// A building the player can put up at a hub, with a place in the diorama.
 public enum HubFacilityKind: String, CaseIterable, Codable, Sendable {
     case lounge, groundServices, hangar, crewBase
+    case pier
 
     public var service: AirportService {
         switch self {
@@ -18,6 +19,7 @@ public enum HubFacilityKind: String, CaseIterable, Codable, Sendable {
         case .groundServices: .ground
         case .hangar: .hangar
         case .crewBase: .crewBase
+        case .pier: .pier
         }
     }
 
@@ -27,6 +29,7 @@ public enum HubFacilityKind: String, CaseIterable, Codable, Sendable {
         case .ground: self = .groundServices
         case .hangar: self = .hangar
         case .crewBase: self = .crewBase
+        case .pier: self = .pier
         }
     }
 
@@ -44,6 +47,9 @@ public enum HubFacilityKind: String, CaseIterable, Codable, Sendable {
         case (.hangar, _): "Heavy maintenance hangar"
         case (.crewBase, 0): "Crew base site"
         case (.crewBase, _): "Crew base and hotel"
+        case (.pier, 0): "Shared pier"
+        case (.pier, 1): "Your own pier"
+        case (.pier, _): "Your flagship pier"
         }
     }
 }
@@ -284,12 +290,13 @@ extension GameState {
             for route in routes {
                 guard let first = route.assignedAircraft.sorted().first,
                       let type = aircraft[first].flatMap({ catalog.aircraftType($0.typeCode) }) else { continue }
-                let turnaround = turnaroundMinutes(spec: type, airline: airline)
+                let turns = turnarounds(spec: type, on: route, tuning: tuning)
                 let now = FlightSchedulingSystem.roundTripsPerAircraftPerDay(
-                    distanceKm: route.distanceKm, spec: type, ops: ops, turnaroundMinutes: turnaround)
-                let then = FlightSchedulingSystem.roundTripsPerAircraftPerDay(
                     distanceKm: route.distanceKm, spec: type, ops: ops,
-                    operatingMinutes: longer, turnaroundMinutes: turnaround)
+                    turnaroundMinutes: turns.atDestination, returnTurnaroundMinutes: turns.atOrigin)
+                let then = FlightSchedulingSystem.roundTripsPerAircraftPerDay(
+                    distanceKm: route.distanceKm, spec: type, ops: ops, operatingMinutes: longer,
+                    turnaroundMinutes: turns.atDestination, returnTurnaroundMinutes: turns.atOrigin)
                 room += (then - now) * route.assignedAircraft.count
             }
             let count = routes.count
@@ -297,6 +304,39 @@ extension GameState {
                 return "Crews \(Int(((1 - tuning.crewBaseCrewCostFactor) * 100).rounded()))% cheaper on your \(count) route\(count == 1 ? "" : "s") here; no extra rotation fits yet."
             }
             return "Room for +\(room) rotation\(room == 1 ? "" : "s") a day on your \(count) route\(count == 1 ? "" : "s") here."
+        case .pier:
+            // Rotations its quicker turn here adds, in each route's own
+            // window, and the movements it holds beyond the shared pool.
+            let reserved = tuning.pierReservedSlots[safe: level - 1] ?? 0
+            let current = airlines[airline].map { $0.facilities(at: airport).pier } ?? 0
+            var room = 0
+            for route in routes {
+                guard let first = route.assignedAircraft.sorted().first,
+                      let type = aircraft[first].flatMap({ catalog.aircraftType($0.typeCode) }) else { continue }
+                let turns = turnarounds(spec: type, on: route, tuning: tuning)
+                let window = operatingWindow(for: route, catalog: catalog).minutes
+                // The turn here at the next level, from the turn without a pier.
+                let plain = turnaroundMinutes(spec: type, airline: airline)
+                let faster = GameState.pierTurnaround(plain, level: level, tuning: tuning)
+                let atOrigin = route.origin == airport ? faster : turns.atOrigin
+                let atDestination = route.destination == airport ? faster : turns.atDestination
+                let now = FlightSchedulingSystem.roundTripsPerAircraftPerDay(
+                    distanceKm: route.distanceKm, spec: type, ops: ops, operatingMinutes: window,
+                    turnaroundMinutes: turns.atDestination, returnTurnaroundMinutes: turns.atOrigin)
+                let then = FlightSchedulingSystem.roundTripsPerAircraftPerDay(
+                    distanceKm: route.distanceKm, spec: type, ops: ops, operatingMinutes: window,
+                    turnaroundMinutes: atDestination, returnTurnaroundMinutes: atOrigin)
+                room += max(0, then - now) * route.assignedAircraft.count
+            }
+            let held = (current > 0 ? tuning.pierReservedSlots[safe: current - 1] : nil) ?? 0
+            let slots = current > 0 && reserved > held
+                ? "\(reserved - held) more movement\(reserved - held == 1 ? "" : "s") a day held for you beyond the shared pool"
+                : "\(reserved) movements a day held for you beyond the shared pool"
+            guard !routes.isEmpty else { return slots + "." }
+            guard room > 0 else {
+                return slots + "; no extra rotation fits yet on your routes here."
+            }
+            return "Room for +\(room) rotation\(room == 1 ? "" : "s") a day on your routes here, and \(slots)."
         case .lounge, .ground:
             return nil
         }

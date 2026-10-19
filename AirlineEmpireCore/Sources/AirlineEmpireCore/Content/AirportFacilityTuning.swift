@@ -30,6 +30,15 @@ public struct AirportFacilityTuning: Equatable, Codable, Sendable {
     public let crewBaseExtraMinutes: Int64
     public let crewBaseCrewCostFactor: Double
 
+    /// Dedicated pier, by level: price of the level, upkeep at it, days to
+    /// build it, movements a day reserved for the airline beyond the shared
+    /// slot pool, and the factor on its turnaround here.
+    public let pierInstallation: [Money]
+    public let pierMonthly: [Money]
+    public let pierBuildDays: [Int]
+    public let pierReservedSlots: [Int]
+    public let pierTurnaroundFactor: [Double]
+
     // Priced for an 18–36 month payback at a typical hub (tasks/DECISIONS.md
     // D-017): the lounge at about eight routes, the hangar at about ten
     // aircraft flying through, the crew base on crew savings alone.
@@ -43,7 +52,12 @@ public struct AirportFacilityTuning: Equatable, Codable, Sendable {
                 hangarCheckCostFactor: [Double] = [0.8, 0.65],
                 crewBaseInstallation: Money = .dollars(2_500_000), crewBaseMonthly: Money = .dollars(60_000),
                 crewBaseBuildDays: Int = 21, crewBaseEarlierStartMinutes: Int64 = 60,
-                crewBaseExtraMinutes: Int64 = 120, crewBaseCrewCostFactor: Double = 0.9) {
+                crewBaseExtraMinutes: Int64 = 120, crewBaseCrewCostFactor: Double = 0.9,
+                // The plan's §4 figures (docs/HUB_PROGRESSION_PLAN.md).
+                pierInstallation: [Money] = [.dollars(30_000_000), .dollars(45_000_000)],
+                pierMonthly: [Money] = [.dollars(250_000), .dollars(350_000)],
+                pierBuildDays: [Int] = [90, 120], pierReservedSlots: [Int] = [4, 8],
+                pierTurnaroundFactor: [Double] = [0.8, 0.7]) {
         self.loungeInstallation = loungeInstallation; self.groundInstallation = groundInstallation
         self.loungeMonthly = loungeMonthly; self.groundMonthly = groundMonthly
         self.loungeComfortPerLevel = loungeComfortPerLevel
@@ -57,6 +71,9 @@ public struct AirportFacilityTuning: Equatable, Codable, Sendable {
         self.crewBaseEarlierStartMinutes = crewBaseEarlierStartMinutes
         self.crewBaseExtraMinutes = crewBaseExtraMinutes
         self.crewBaseCrewCostFactor = crewBaseCrewCostFactor
+        self.pierInstallation = pierInstallation; self.pierMonthly = pierMonthly
+        self.pierBuildDays = pierBuildDays; self.pierReservedSlots = pierReservedSlots
+        self.pierTurnaroundFactor = pierTurnaroundFactor
     }
     public static let standard = Self()
 
@@ -66,6 +83,7 @@ public struct AirportFacilityTuning: Equatable, Codable, Sendable {
         case hangarInstallation, hangarMonthly, hangarBuildDays, hangarCheckDays, hangarCheckCostFactor
         case crewBaseInstallation, crewBaseMonthly, crewBaseBuildDays, crewBaseEarlierStartMinutes
         case crewBaseExtraMinutes, crewBaseCrewCostFactor
+        case pierInstallation, pierMonthly, pierBuildDays, pierReservedSlots, pierTurnaroundFactor
     }
 
     public init(from decoder: any Decoder) throws {
@@ -93,13 +111,19 @@ public struct AirportFacilityTuning: Equatable, Codable, Sendable {
             crewBaseBuildDays: try value(.crewBaseBuildDays, d.crewBaseBuildDays),
             crewBaseEarlierStartMinutes: try value(.crewBaseEarlierStartMinutes, d.crewBaseEarlierStartMinutes),
             crewBaseExtraMinutes: try value(.crewBaseExtraMinutes, d.crewBaseExtraMinutes),
-            crewBaseCrewCostFactor: try value(.crewBaseCrewCostFactor, d.crewBaseCrewCostFactor))
+            crewBaseCrewCostFactor: try value(.crewBaseCrewCostFactor, d.crewBaseCrewCostFactor),
+            pierInstallation: try value(.pierInstallation, d.pierInstallation),
+            pierMonthly: try value(.pierMonthly, d.pierMonthly),
+            pierBuildDays: try value(.pierBuildDays, d.pierBuildDays),
+            pierReservedSlots: try value(.pierReservedSlots, d.pierReservedSlots),
+            pierTurnaroundFactor: try value(.pierTurnaroundFactor, d.pierTurnaroundFactor))
     }
 
     public var isValid: Bool {
         let money = [loungeInstallation, groundInstallation, loungeMonthly, groundMonthly,
                      crewBaseInstallation, crewBaseMonthly] + hangarInstallation + hangarMonthly
-        let days = loungeBuildDays + groundBuildDays + hangarBuildDays + [crewBaseBuildDays]
+            + pierInstallation + pierMonthly
+        let days = loungeBuildDays + groundBuildDays + hangarBuildDays + [crewBaseBuildDays] + pierBuildDays
         return money.allSatisfy { $0.cents >= 0 && $0.cents <= 1_000_000_000_000 }
             && (0...0.25).contains(loungeComfortPerLevel) && (0...0.4).contains(groundRiskReductionPerLevel)
             && loungeBuildDays.count == 2 && groundBuildDays.count == 2
@@ -111,5 +135,9 @@ public struct AirportFacilityTuning: Equatable, Codable, Sendable {
             && (0...180).contains(crewBaseEarlierStartMinutes) && (0...360).contains(crewBaseExtraMinutes)
             && crewBaseExtraMinutes >= crewBaseEarlierStartMinutes
             && (0.1...1).contains(crewBaseCrewCostFactor)
+            && [pierInstallation.count, pierMonthly.count, pierBuildDays.count,
+                pierReservedSlots.count, pierTurnaroundFactor.count].allSatisfy { $0 == 2 }
+            && pierReservedSlots.allSatisfy { (0...200).contains($0) }
+            && pierTurnaroundFactor.allSatisfy { (0.3...1).contains($0) }
     }
 }

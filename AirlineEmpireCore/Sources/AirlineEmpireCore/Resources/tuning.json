@@ -246,6 +246,11 @@
   "crewBaseBuildDays": 21,
   "crewBaseEarlierStartMinutes": 60,
   "crewBaseExtraMinutes": 120,
-  "crewBaseCrewCostFactor": 0.9
+  "crewBaseCrewCostFactor": 0.9,
+  "pierInstallation": [{"cents": 3000000000}, {"cents": 4500000000}],
+  "pierMonthly": [{"cents": 25000000}, {"cents": 35000000}],
+  "pierBuildDays": [90, 120],
+  "pierReservedSlots": [4, 8],
+  "pierTurnaroundFactor": [0.8, 0.7]
  }
 }

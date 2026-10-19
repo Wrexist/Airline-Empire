@@ -341,8 +341,9 @@ struct AircraftConfigurationEditor: View {
     }
     private var forecastSubtitle: String {
         guard let id = aircraft.assignedRoute, let route = snapshot.routes[id] else { return "Estimates based on your assigned route" }
-        let rotations = preview?.rotationsPerDay ?? 0
-        return "\(route.origin.raw) – \(route.destination.raw) · \(route.distanceKm.formatted()) km · \(rotations) \(rotations == 1 ? "rotation" : "rotations")/day"
+        // A fraction on long haul: a two-day rotation is half a round trip a day.
+        let trips = preview?.tripsPerDay ?? 0
+        return "\(route.origin.raw) – \(route.destination.raw) · \(route.distanceKm.formatted()) km · \(Format.roundTrips(perDay: trips))"
     }
     private func metric(_ title: String, _ value: String, change: String?) -> some View {
         VStack(alignment: .leading, spacing: 6) {

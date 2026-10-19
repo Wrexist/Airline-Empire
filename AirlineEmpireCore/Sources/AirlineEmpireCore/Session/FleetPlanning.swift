@@ -32,11 +32,19 @@ extension GameState {
             // Match the scheduler's representative-airframe capacity calculation.
             guard let first = route.assignedAircraft.sorted().compactMap({ aircraft[$0] }).first,
                   let spec = catalog.aircraftType(first.typeCode) else { return nil }
-            let rotations = FlightSchedulingSystem.roundTripsPerAircraftPerDay(
-                distanceKm: route.distanceKm, spec: spec, ops: catalog.tuning.ops)
-            let trips = min(route.dailyRoundTrips, rotations * ready.count)
-            let shortfall = max(0, demand - trips * first.cabin(for: spec).totalSeats * 2)
-            if trips < route.dailyRoundTrips {
+            let cycle = FlightSchedulingSystem.rotation(distanceKm: route.distanceKm, spec: spec,
+                                                        ops: catalog.tuning.ops)
+            let seatsPerTrip = first.cabin(for: spec).totalSeats * 2
+            // Long haul in fractions: one aircraft on a two-day rotation
+            // flies half the round trip a frequency of one asks for.
+            let longHaulTrips = min(Double(route.dailyRoundTrips), cycle.tripsPerDay * Double(ready.count))
+            let trips = cycle.isLongHaul ? Int(longHaulTrips)
+                : min(route.dailyRoundTrips, cycle.roundTrips * ready.count)
+            let seatsFlown = cycle.isLongHaul ? Int(longHaulTrips * Double(seatsPerTrip)) : trips * seatsPerTrip
+            let shortfall = max(0, demand - seatsFlown)
+            let short = cycle.isLongHaul ? longHaulTrips < Double(route.dailyRoundTrips)
+                : trips < route.dailyRoundTrips
+            if short {
                 return RouteFleetNeed(routeID: route.id, reason: .frequency,
                                       dailySeatShortfall: shortfall)
             }
@@ -84,10 +92,14 @@ extension GameState {
                     aircraftRunwayRequirement: $0.runwayRequirement).isEmpty }
         func mismatch(_ spec: AircraftTypeSpec) -> Int {
             guard demand > 0 else { return 0 }
-            let trips = min(route.dailyRoundTrips,
-                FlightSchedulingSystem.roundTripsPerAircraftPerDay(
-                    distanceKm: route.distanceKm, spec: spec, ops: catalog.tuning.ops))
-            return abs(demand - trips * spec.seats * 2)
+            let cycle = FlightSchedulingSystem.rotation(distanceKm: route.distanceKm, spec: spec,
+                                                        ops: catalog.tuning.ops)
+            guard cycle.isLongHaul else {
+                return abs(demand - min(route.dailyRoundTrips, cycle.roundTrips) * spec.seats * 2)
+            }
+            // A long-haul type's seats a day at its fraction of a round trip.
+            let trips = min(Double(route.dailyRoundTrips), cycle.tripsPerDay)
+            return abs(demand - Int(trips * Double(spec.seats * 2)))
         }
         return specs.sorted {
             if mismatch($0) != mismatch($1) { return mismatch($0) < mismatch($1) }

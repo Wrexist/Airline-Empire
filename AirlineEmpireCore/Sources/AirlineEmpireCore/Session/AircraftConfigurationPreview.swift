@@ -9,6 +9,10 @@ public struct AircraftConfigurationPreview: Equatable, Sendable {
     /// cost is quoted on the same volume the airframe forecast carries.
     public let monthlyPassengers: Int
     public let rotationsPerDay: Int
+    /// Round trips a day the airframe is scheduled, a fraction on long haul
+    /// (half a round trip a day on a two-day rotation); `rotationsPerDay`
+    /// on a day route.
+    public var tripsPerDay: Double = 0
     public var monthlyProfit: Money { monthlyRevenue - monthlyCosts }
 
     public static func make(aircraftID: AircraftID, configuration: AircraftConfiguration,
@@ -40,8 +44,11 @@ public struct AircraftConfigurationPreview: Equatable, Sendable {
         // quote must not disagree about how often the airframe flies.
         guard let rotations = FlightSchedulingSystem.rotationsPerDay(
             route: route, aircraftID: aircraftID, state: state, spec: spec,
+            ops: catalog.tuning.ops, facilities: catalog.tuning.airportServices),
+              let trips = FlightSchedulingSystem.tripsPerDay(
+            route: route, aircraftID: aircraftID, state: state, spec: spec,
             ops: catalog.tuning.ops, facilities: catalog.tuning.airportServices) else { return nil }
-        let capacity = Double(rotations * 2 * configuration.totalSeats)
+        let capacity = trips * 2 * Double(configuration.totalSeats)
         let routeCapacity = active.reduce(0.0) { sum, item in
             guard let type = catalog.aircraftType(item.typeCode) else { return sum }
             return sum + Double(item.cabin(for: type).totalSeats)
@@ -54,10 +61,10 @@ public struct AircraftConfigurationPreview: Equatable, Sendable {
             CompetitorAISystem.airframeDayValue(distanceKm: route.distanceKm,
                 passengersPerDay: passengers, spec: spec, fareRatio: ratio,
                 serviceTier: airline.serviceTier, origin: origin, destination: destination,
-                state: state, catalog: catalog, rotationsPerDay: rotations, basis: basis)
+                state: state, catalog: catalog, tripsPerDay: trips, basis: basis)
         }
         let revenue = value(.revenue)
-        let flightHours = Double(rotations * 2) * Double(FlightSchedulingSystem.flightMinutes(
+        let flightHours = trips * 2 * Double(FlightSchedulingSystem.flightMinutes(
             distanceKm: route.distanceKm, cruiseSpeedKmh: spec.cruiseSpeedKmh,
             overheadMinutes: catalog.tuning.ops.flightOverheadMinutes)) / 60
         let ageReserve = FleetEconomics.expectedMaintenancePerDay(type: spec, ageYears: aircraft.ageYears,
@@ -70,6 +77,6 @@ public struct AircraftConfigurationPreview: Equatable, Sendable {
         return Self(monthlyRevenue: Money(rounding: revenue * 30), monthlyCosts: Money(rounding: costs),
                     loadFactor: capacity > 0 ? passengers / capacity : 0,
                     monthlyPassengers: Int((passengers * 30).rounded()),
-                    rotationsPerDay: rotations)
+                    rotationsPerDay: rotations, tripsPerDay: trips)
     }
 }

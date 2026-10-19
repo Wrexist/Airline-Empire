@@ -68,7 +68,11 @@ public enum MissionMath {
         guard !seats.isEmpty else { return 0 }
         let trips = FlightSchedulingSystem.flyableRoundTrips(route: route, state: state,
                                                              catalog: catalog)
-        return (0..<trips).reduce(0) { $0 + 2 * seats[$1 % seats.count] }
+        guard trips == 0 else { return (0..<trips).reduce(0) { $0 + 2 * seats[$1 % seats.count] } }
+        // Long haul: a fraction of a round trip a day, on the first cabin.
+        let longHaul = FlightSchedulingSystem.flyableTripsPerDay(route: route, state: state,
+                                                                 catalog: catalog)
+        return Int(longHaul * Double(2 * seats[0]))
     }
 
     /// Cancellations on the player's routes over the airline's life: the

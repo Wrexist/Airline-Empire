@@ -8,21 +8,28 @@ public struct AirportFacilities: Equatable, Codable, Sendable {
     /// Crew base, 0–1 (Regional era): a longer operating day and cheaper crews
     /// on routes from here.
     public var crewBase: Int
+    /// Dedicated pier, 0–2 (National era, Main base status): slots reserved
+    /// for the airline beyond the shared pool, and quicker turnarounds here.
+    public var pier: Int
 
-    public init(lounge: Int = 0, groundServices: Int = 0, hangar: Int = 0, crewBase: Int = 0) {
+    public init(lounge: Int = 0, groundServices: Int = 0, hangar: Int = 0, crewBase: Int = 0,
+                pier: Int = 0) {
         self.lounge = lounge; self.groundServices = groundServices
         self.hangar = hangar; self.crewBase = crewBase
+        self.pier = pier
     }
 
-    private enum CodingKeys: String, CodingKey { case lounge, groundServices, hangar, crewBase }
+    private enum CodingKeys: String, CodingKey { case lounge, groundServices, hangar, crewBase, pier }
 
-    // Saves from before the hangar and crew base have neither.
+    // Saves from before the hangar and crew base have neither, and saves
+    // from before the pier have none.
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         lounge = try c.decode(Int.self, forKey: .lounge)
         groundServices = try c.decode(Int.self, forKey: .groundServices)
         hangar = try c.decodeIfPresent(Int.self, forKey: .hangar) ?? 0
         crewBase = try c.decodeIfPresent(Int.self, forKey: .crewBase) ?? 0
+        pier = try c.decodeIfPresent(Int.self, forKey: .pier) ?? 0
     }
 
     public var isValid: Bool {
@@ -50,6 +57,7 @@ public struct AirportFacilities: Equatable, Codable, Sendable {
 /// costs, takes and needs.
 public enum AirportService: String, CaseIterable, Codable, Sendable {
     case lounge, ground, hangar, crewBase
+    case pier
 
     public func level(in configuration: AirportFacilities) -> Int {
         switch self {
@@ -57,6 +65,7 @@ public enum AirportService: String, CaseIterable, Codable, Sendable {
         case .ground: configuration.groundServices
         case .hangar: configuration.hangar
         case .crewBase: configuration.crewBase
+        case .pier: configuration.pier
         }
     }
     public func setting(_ level: Int, in configuration: AirportFacilities) -> AirportFacilities {
@@ -66,6 +75,7 @@ public enum AirportService: String, CaseIterable, Codable, Sendable {
         case .ground: result.groundServices = level
         case .hangar: result.hangar = level
         case .crewBase: result.crewBase = level
+        case .pier: result.pier = level
         }
         return result
     }
@@ -75,11 +85,12 @@ public enum AirportService: String, CaseIterable, Codable, Sendable {
         case .ground: "Ground services"
         case .hangar: "Maintenance hangar"
         case .crewBase: "Crew base"
+        case .pier: "Dedicated pier"
         }
     }
     public var maxLevel: Int {
         switch self {
-        case .lounge, .ground, .hangar: 2
+        case .lounge, .ground, .hangar, .pier: 2
         case .crewBase: 1
         }
     }
@@ -89,6 +100,17 @@ public enum AirportService: String, CaseIterable, Codable, Sendable {
         switch self {
         case .lounge, .ground: .startup
         case .hangar, .crewBase: .regional
+        case .pier: .national
+        }
+    }
+    /// The hub status the player needs here before ordering the first
+    /// level, on top of the era (docs/HUB_PROGRESSION_PLAN.md §3). The pier
+    /// is a Hub-status building; until that status exists it asks for Main
+    /// base. Rivals are exempt, as with the era.
+    public var requiredStatus: HubStatus? {
+        switch self {
+        case .pier: .mainBase
+        case .lounge, .ground, .hangar, .crewBase: nil
         }
     }
     public static func levelName(_ level: Int) -> String {
@@ -101,6 +123,8 @@ public enum AirportService: String, CaseIterable, Codable, Sendable {
         case (.crewBase, _): "Open"
         case (.hangar, 1): "Line maintenance"
         case (.hangar, _): "Heavy maintenance"
+        case (.pier, 1): "Own gates"
+        case (.pier, _): "Flagship pier"
         default: Self.levelName(level)
         }
     }
@@ -118,6 +142,7 @@ public enum AirportService: String, CaseIterable, Codable, Sendable {
         case .ground: return tuning.groundInstallation
         case .hangar: return tuning.hangarInstallation[safe: level - 1] ?? .zero
         case .crewBase: return level == 1 ? tuning.crewBaseInstallation : .zero
+        case .pier: return tuning.pierInstallation[safe: level - 1] ?? .zero
         }
     }
     /// Upkeep a month with the building at `level`.
@@ -128,6 +153,7 @@ public enum AirportService: String, CaseIterable, Codable, Sendable {
         case .ground: return tuning.groundMonthly * Int64(level)
         case .hangar: return tuning.hangarMonthly[safe: level - 1] ?? .zero
         case .crewBase: return tuning.crewBaseMonthly
+        case .pier: return tuning.pierMonthly[safe: level - 1] ?? .zero
         }
     }
     /// Game days to build `to` from `from`.
@@ -139,6 +165,7 @@ public enum AirportService: String, CaseIterable, Codable, Sendable {
         case .ground: table = tuning.groundBuildDays
         case .hangar: table = tuning.hangarBuildDays
         case .crewBase: table = [tuning.crewBaseBuildDays]
+        case .pier: table = tuning.pierBuildDays
         }
         return (from + 1...to).reduce(0) { $0 + (table[safe: $1 - 1] ?? 0) }
     }
@@ -243,6 +270,11 @@ public struct ConfigureAirportFacilitiesCommand: Command, Equatable {
                 if state.isPlayer(airline), state.progression.era < service.unlockEra {
                     return .init(code: "airport.eraLocked",
                                  message: "The \(service.title.lowercased()) unlocks in the \(service.unlockEra.title) era.")
+                }
+                if state.isPlayer(airline), plan == 0, let status = service.requiredStatus,
+                   max(owner.hubStatus(at: airport), state.earnedHubStatus(at: airport, airline: airline)) < status {
+                    return .init(code: "airport.statusLocked",
+                                 message: "A \(service.title.lowercased()) needs \(status.title) status here first.")
                 }
             }
         }

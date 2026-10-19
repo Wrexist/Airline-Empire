@@ -209,6 +209,7 @@ struct AirportFacilityEditor: View {
         case .ground: "wrench.fill"
         case .hangar: "wrench.and.screwdriver.fill"
         case .crewBase: "person.2.badge.gearshape.fill"
+        case .pier: "airplane.departure"
         }
     }
 
@@ -218,6 +219,7 @@ struct AirportFacilityEditor: View {
         case .ground: "Dedicated support for more reliable departures."
         case .hangar: "Your own maintenance: shorter, cheaper checks for aircraft flying here."
         case .crewBase: "Crews based here: a longer operating day and lower crew costs."
+        case .pier: "Your own gates: slots held for you at a busy airport, and quicker turnarounds."
         }
     }
 
@@ -271,7 +273,7 @@ struct AirportFacilityEditor: View {
                             Text("Demand means allocated bookings before seat limits, over a 30-day reference month. Fares, aircraft and market conditions are held constant. Revenue includes seat limits; net change includes route costs and the change in monthly services, excluding installation.")
                             Text("Ground-service benefits appear in actual operations over time. Future disruption savings and reputation changes are not priced into this estimate.")
                             Text("Installation is non-refundable and paid when you order. Each building opens after its build time; monthly charges start with the first month boundary after it opens, without proration, even if routes close. Removing a building stops future charges. Rebuilding pays installation again.")
-                            Text("A lounge changes demand from the daily update after it opens. Ground services, hangars and crew bases apply to flights and checks from opening day.")
+                            Text("A lounge changes demand from the daily update after it opens. Ground services, hangars, crew bases and piers apply to flights and checks from opening day.")
                         }.font(.caption).foregroundStyle(AETheme.mutedText).padding(.top, 8)
                     }.font(.subheadline)
                 } else {

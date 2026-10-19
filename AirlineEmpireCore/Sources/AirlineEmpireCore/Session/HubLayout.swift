@@ -780,10 +780,19 @@ struct HubPlanner {
             HubRect(minX: L / 2 + 160, minZ: 12, maxX: L / 2 + 160 + cw, maxZ: 12 + cd),
             HubRect(minX: -L / 2 - 160 - cw, minZ: 12, maxX: -L / 2 - 160, maxZ: 12 + cd),
         ])
+        // The dedicated pier is not a new lot: it is the westmost of the
+        // airport's own piers, taken over and rebuilt in the airline's
+        // colours with its own bridges (docs/HUB_PROGRESSION_PLAN.md §4). A
+        // field without piers gets a covered gate walkway along the west end
+        // of the terminal's airside face instead, short of its stands.
+        let pier = pieces.filter { $0.kind == .pier }.map(\.groundBounds).min { $0.minX < $1.minX }
+            ?? HubRect(minX: terminal.minX + 4, minZ: -5,
+                       maxX: terminal.minX + 4 + min(90, terminal.width * 0.35), maxZ: 0)
         return [lounge,
                 HubFacilitySite(kind: .groundServices, footprint: depot, elevation: 0),
                 HubFacilitySite(kind: .hangar, footprint: hangar, elevation: 0),
-                HubFacilitySite(kind: .crewBase, footprint: crew, elevation: 0)]
+                HubFacilitySite(kind: .crewBase, footprint: crew, elevation: 0),
+                HubFacilitySite(kind: .pier, footprint: pier, elevation: 0)]
     }
 
     /// Apron service roads: one along the terminal face in each gap between

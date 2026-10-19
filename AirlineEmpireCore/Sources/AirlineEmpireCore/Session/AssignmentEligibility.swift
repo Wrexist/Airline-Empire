@@ -50,11 +50,12 @@ public struct AssignmentCandidate: Equatable, Sendable {
         /// and the two ends are usually not equally replaceable.
         case runwayTooSmall(airport: AirportCode, needs: RunwayClass,
                             has: RunwayClass)
-        /// In range, but one round trip — two legs and two turnarounds —
-        /// takes longer than the operating day, so the scheduler would never
-        /// give the aeroplane a flight. Both figures, so a screen can say by
-        /// how much rather than only that it does not fit.
-        case roundTripExceedsDay(roundTripMinutes: Int64, operatingMinutes: Int64)
+        /// In range, but so slow a round trip of it — two legs and two
+        /// turns — would not come home within the longest long-haul rotation
+        /// the scheduler plans (`FlightSchedulingSystem.maxRotationDays`), so
+        /// it would never be given a flight. Both figures, so a screen can say
+        /// how far off it is rather than only that it does not fit.
+        case rotationTooLong(roundTripMinutes: Int64, maxDays: Int)
     }
 
     /// A fact about an allowed assignment, where the data supports one.
@@ -73,6 +74,11 @@ public struct AssignmentCandidate: Equatable, Sendable {
         /// Legal, but with little room. A diversion or a headwind is a real
         /// operational risk the player should get to weigh.
         case tightRange(marginKm: Int)
+        /// Long haul: one round trip outlasts the operating day, so the
+        /// aeroplane flies a rotation — out in the morning, home overnight —
+        /// and completes a round trip every `rotationDays` days. Worth
+        /// knowing before choosing how many to put on the route.
+        case longHaul(rotationDays: Int)
         /// Demand well beyond what this aircraft can lift at the route's
         /// current frequency: passengers will be turned away.
         case seatsShortOfDemand(seatsPerDay: Int, demandPerDay: Int)
@@ -178,26 +184,27 @@ extension GameState {
                                              has: airport.runwayClass))
             }
         }
-        // The scheduler's own arithmetic, as the validator asks it: zero
-        // round trips a day is the same condition as one round trip longer
-        // than the window.
-        if FlightSchedulingSystem.roundTripsPerDay(spec: spec, on: route, state: self,
-                                                    catalog: catalog) == 0 {
+        // The scheduler's own arithmetic, as the validator asks it: a round
+        // trip longer than the day flies as a long-haul rotation, and only
+        // one that would not come home within its longest is refused.
+        let rotation = FlightSchedulingSystem.rotation(spec: spec, on: route, state: self,
+                                                       catalog: catalog)
+        if !rotation.isFlyable {
             return AssignmentCandidate(
                 aircraftID: aircraft.id, routeID: route.id,
-                blocker: .roundTripExceedsDay(
+                blocker: .rotationTooLong(
                     roundTripMinutes: FlightSchedulingSystem.roundTripMinutes(
                         spec: spec, on: route, state: self, catalog: catalog),
-                    operatingMinutes: operatingWindow(for: route, catalog: catalog).minutes))
+                    maxDays: FlightSchedulingSystem.maxRotationDays))
         }
         return AssignmentCandidate(aircraftID: aircraft.id, routeID: route.id,
                                    note: note(aircraft: aircraft, route: route,
-                                              spec: spec))
+                                              spec: spec, rotation: rotation))
     }
 
     /// What is worth saying about a pairing Core would accept.
-    private func note(aircraft: Aircraft, route: Route,
-                      spec: AircraftTypeSpec) -> AssignmentCandidate.Note? {
+    private func note(aircraft: Aircraft, route: Route, spec: AircraftTypeSpec,
+                      rotation: FlightSchedulingSystem.Rotation) -> AssignmentCandidate.Note? {
         // Availability first: whether the aeroplane can fly at all this week
         // outranks how well it would suit the route if it could.
         if case .inMaintenance(let until) = aircraft.status {
@@ -208,6 +215,11 @@ extension GameState {
         let tight = Double(route.distanceKm)
             >= AssignmentThresholds.tightRangeFraction * Double(spec.rangeKm)
         if tight { return .tightRange(marginKm: margin) }
+
+        // Long haul says how it flies before anything about seats: the
+        // capacity bands below are sized for a round trip a day per
+        // frequency, which a rotation of days does not fly.
+        if rotation.isLongHaul { return .longHaul(rotationDays: rotation.days) }
 
         // Capacity, only where the demand engine has actually run. Both
         // directions, because a round trip carries both.

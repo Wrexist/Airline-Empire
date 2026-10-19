@@ -382,9 +382,11 @@ struct RouteForecastCard: View {
                         Text("Profit change: \(change.cents >= 0 ? "+" : "")\(Format.money(change)) / month")
                             .font(.subheadline.weight(.semibold)).foregroundStyle(change.cents >= 0 ? AETheme.positive : AETheme.caution)
                     }
-                    Text("\(roundTripsLabel(quote.rotations)) achievable · \(Format.count(Int64(quote.seatsPerDay))) seats/day")
+                    // A fraction on long haul: one aircraft on a two-day
+                    // rotation achieves half a round trip a day.
+                    Text("\(Format.roundTrips(perDay: quote.tripsPerDay)) achievable · \(Format.count(Int64(quote.seatsPerDay))) seats/day")
                         .font(.caption).foregroundStyle(AETheme.mutedText)
-                    if quote.rotations < target {
+                    if quote.tripsPerDay < Double(target) - 0.001 {
                         Label("The fleet cannot cover the full frequency target.", systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(AETheme.caution)
                     }
                     if quote.profit < .zero {

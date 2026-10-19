@@ -30,7 +30,7 @@ struct AirportDetailView: View {
                     switch section {
                     case .overview:
                         market(spec)
-                        capacity(spec, state: state, player: player)
+                        capacity(spec, state: state, player: player, catalog: catalog)
                         AircraftPanel {
                             VStack(alignment: .leading, spacing: 10) {
                                 AirportHeading(title: "Build your airport presence", icon: "building.2.crop.circle")
@@ -135,17 +135,27 @@ struct AirportDetailView: View {
             ProgressView(value: value).tint(color).accessibilityLabel("\(title) strength")
         }
     }
-    private func capacity(_ spec: AirportSpec, state: GameState, player: Airline) -> some View {
+    private func capacity(_ spec: AirportSpec, state: GameState, player: Airline,
+                          catalog: ContentCatalog) -> some View {
         let used = state.world.slotsUsed(at: code), held = state.world.slotsHeld(by: player.id, at: code)
+        // A dedicated pier holds movements for the player beyond the pool.
+        let reserved = state.reservedSlots(for: player.id, at: code, tuning: catalog.tuning.airportServices)
+        let capacity = spec.slotCapacityPerDay + reserved
         return AircraftPanel {
             VStack(alignment: .leading, spacing: 12) {
                 AirportHeading(title: "Slots & airport fees", icon: "clock.fill")
-                AirportFact(title: "Available daily slots", value: "\(max(0, spec.slotCapacityPerDay - used)) / \(spec.slotCapacityPerDay)")
-                ProgressView(value: min(1, Double(used) / Double(max(1, spec.slotCapacityPerDay))))
-                    .tint(used > spec.slotCapacityPerDay * 85 / 100 ? AETheme.caution : AETheme.accent)
+                AirportFact(title: "Available daily slots",
+                            value: "\(state.slotsAvailable(to: player.id, at: code, catalog: catalog)) / \(capacity)")
+                ProgressView(value: min(1, Double(used) / Double(max(1, capacity))))
+                    .tint(used > capacity * 85 / 100 ? AETheme.caution : AETheme.accent)
                     .accessibilityLabel("Daily slot utilization")
                 AirportFact(title: "Your slots / other airlines", value: "\(held) / \(max(0, used - held))")
-                Text("Each round trip reserves two movements here. Investments do not increase the airport's slot capacity.")
+                if reserved > 0 {
+                    AirportFact(title: "Held for you by your pier", value: "\(reserved)")
+                }
+                Text(reserved > 0
+                     ? "Each round trip reserves two movements here. Your dedicated pier holds \(reserved) a day for you beyond the shared pool."
+                     : "Each round trip reserves two movements here. A dedicated pier holds movements for you beyond the shared pool.")
                     .font(.caption).foregroundStyle(AETheme.mutedText)
                 Divider()
                 AirportFact(title: "Reference movement fee", value: Format.money(spec.movementFee))

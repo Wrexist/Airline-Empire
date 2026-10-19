@@ -237,3 +237,19 @@ These are worth fixing whatever is decided:
 - **Maintenance checks cancel that day's flights.** The check starts after the day's flights exist (`FleetSystem` runs after `FlightSchedulingSystem`). Those flights fail to board and expire as cancellations, which hurts reliability reputation. A general fix would start checks at the end of the operating day. The hangar would then make checks shorter, not merely tidier.
 - **Passenger fees** are documented as per departing passenger (`AirportSpec.swift:22`) but charged at the destination (`FlightOpsSystem.swift:215`).
 - A misplaced comment at `EconomySystem.swift:29` ("Loan service" above facility billing).
+
+## Implemented: Phase D, the dedicated pier (2026-10-18)
+
+Branch `claude/feat-longhaul-pier`. `AirportService.pier`, two levels at the
+§4 prices ($30M · $250k/mo · 90 d → $45M · $350k/mo · 120 d, in
+`tuning.json`). National era, and Main base status at the airport until
+Phase E adds Hub status (`AirportService.requiredStatus`). The pier holds 4,
+then 8, movements a day for its airline beyond the shared pool
+(`GameState.slotsAvailable`, used by the route commands and the rivals'
+scan) and turns its aircraft ×0.8 / ×0.7 there
+(`turnaroundMinutes(spec:airline:at:tuning:)`, planned per route end by the
+scheduler). In the hub it takes over the airport's westmost pier: livery
+base and eaves, your sign over the vault, branded bridge rotundas and gate
+signs; the flagship level rings the vault in your accent colour. Works go up
+round the pier that keeps flying. Saves stay at format 16 (`pier` decodes
+as 0 when absent).

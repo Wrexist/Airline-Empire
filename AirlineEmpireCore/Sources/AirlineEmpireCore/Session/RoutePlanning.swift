@@ -43,6 +43,9 @@ public struct RoutePlanPreview: Equatable, Sendable {
     public let seatsPerDay: Int
     public let passengersPerDay: Double
     public let rotations: Int
+    /// Round trips a day across the fleet, a fraction on long haul flown
+    /// less than daily; `rotations` on a day route.
+    public var tripsPerDay: Double = 0
     public var profit: Money { revenue - costs }
     public var loadFactor: Double { seatsPerDay > 0 ? passengersPerDay / Double(seatsPerDay) : 0 }
 
@@ -63,16 +66,20 @@ public struct RoutePlanPreview: Equatable, Sendable {
             catalog: catalog, events: EventCollector(), progressionCeiling: .empire)
         ApplyRoutePlanCommand(airline: route.airline, route: routeID, plan: plan).apply(state: &copy, context: context)
         DemandSystem().update(state: &copy, context: context)
-        var revenue = Money.zero, costs = Money.zero, seats = 0, rotations = 0
-        var passengers = 0.0
+        var revenue = Money.zero, costs = Money.zero, rotations = 0
+        var passengers = 0.0, seats = 0.0, trips = 0.0
         for id in copy.routes[routeID]?.assignedAircraft ?? [] {
             guard let aircraft = copy.aircraft[id], let spec = catalog.aircraftType(aircraft.typeCode),
                   let quote = AircraftConfigurationPreview.makeAllocated(aircraftID: id, state: copy, catalog: catalog) else { continue }
-            let capacity = quote.rotationsPerDay * 2 * aircraft.cabin(for: spec).totalSeats
+            // Seats a day at the airframe's round trips: half a cabin each
+            // way a day on a two-day long-haul rotation.
+            let capacity = quote.tripsPerDay * 2 * Double(aircraft.cabin(for: spec).totalSeats)
             revenue = revenue + quote.monthlyRevenue; costs = costs + quote.monthlyCosts
-            seats += capacity; passengers += Double(capacity) * quote.loadFactor; rotations += quote.rotationsPerDay
+            seats += capacity; passengers += capacity * quote.loadFactor
+            rotations += quote.rotationsPerDay; trips += quote.tripsPerDay
         }
         guard seats > 0 else { return nil }
-        return Self(revenue: revenue, costs: costs, seatsPerDay: seats, passengersPerDay: passengers, rotations: rotations)
+        return Self(revenue: revenue, costs: costs, seatsPerDay: Int(seats.rounded()), passengersPerDay: passengers,
+                    rotations: rotations, tripsPerDay: trips)
     }
 }

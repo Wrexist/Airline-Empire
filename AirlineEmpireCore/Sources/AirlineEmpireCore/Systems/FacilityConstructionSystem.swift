@@ -111,6 +111,25 @@ public struct OperatingWindow: Equatable, Sendable {
     }
 }
 
+/// The minutes an aircraft spends turning at each end of a route.
+public struct RouteTurnarounds: Equatable, Sendable {
+    public let atOrigin: Int64
+    public let atDestination: Int64
+
+    public init(atOrigin: Int64, atDestination: Int64) {
+        self.atOrigin = atOrigin
+        self.atDestination = atDestination
+    }
+
+    /// Both turns of one round trip.
+    public var roundTrip: Int64 { atOrigin + atDestination }
+
+    /// The turn at `airport`, one end of `route`.
+    public func at(_ airport: AirportCode, on route: Route) -> Int64 {
+        airport == route.origin ? atOrigin : atDestination
+    }
+}
+
 extension GameState {
     /// Whether the route's operator has a crew base open at either end.
     public func hasCrewBase(on route: Route) -> Bool {
@@ -140,6 +159,71 @@ extension GameState {
             minutes = Int64((Double(minutes) * 0.85).rounded())
         }
         return minutes
+    }
+
+    /// Minutes an aircraft of `spec` turns at `airport` for this airline —
+    /// what the scheduler plans at each end of a route and what flight
+    /// operations holds the aircraft for when it lands there. The airline's
+    /// own dedicated pier there turns it faster: its own gates, bridges and
+    /// crews waiting at the stand.
+    public func turnaroundMinutes(spec: AircraftTypeSpec, airline: AirlineID, at airport: AirportCode,
+                                  tuning: AirportFacilityTuning) -> Int64 {
+        let minutes = turnaroundMinutes(spec: spec, airline: airline)
+        guard let pier = airlines[airline]?.facilities(at: airport).pier, pier > 0 else { return minutes }
+        return Self.pierTurnaround(minutes, level: pier, tuning: tuning)
+    }
+
+    /// A turnaround of `minutes` at a dedicated pier of `level`.
+    public static func pierTurnaround(_ minutes: Int64, level: Int, tuning: AirportFacilityTuning) -> Int64 {
+        guard level > 0, let factor = tuning.pierTurnaroundFactor[safe: level - 1], factor < 1 else { return minutes }
+        return max(1, Int64((Double(minutes) * factor).rounded()))
+    }
+
+    /// Movements a day the airline's dedicated pier at `airport` holds for
+    /// it beyond the shared pool (docs/HUB_PROGRESSION_PLAN.md §4).
+    public func reservedSlots(for airline: AirlineID, at airport: AirportCode,
+                              tuning: AirportFacilityTuning) -> Int {
+        guard let pier = airlines[airline]?.facilities(at: airport).pier, pier > 0 else { return 0 }
+        return tuning.pierReservedSlots[safe: pier - 1] ?? 0
+    }
+
+    /// Movements of the airport's shared pool in use: every airline's slots,
+    /// less what each one's own pier holds for it.
+    public func sharedSlotsUsed(at airport: AirportCode, tuning: AirportFacilityTuning) -> Int {
+        guard let runtime = world.airportRuntimes[airport] else { return 0 }
+        return runtime.slotAllocations.reduce(0) { used, holding in
+            used + max(0, holding.value - reservedSlots(for: holding.key, at: airport, tuning: tuning))
+        }
+    }
+
+    /// Movements a day `airline` can still add at `airport`: what is left of
+    /// the shared pool, plus what is left of the slots its own pier holds
+    /// for it there. Without a pier anywhere this is the pool's free
+    /// capacity, exactly as the slot check always read it.
+    public func slotsAvailable(to airline: AirlineID, at airport: AirportCode,
+                               catalog: ContentCatalog) -> Int {
+        guard let spec = catalog.airport(airport) else { return 0 }
+        let tuning = catalog.tuning.airportServices
+        let pool = max(0, spec.slotCapacityPerDay - sharedSlotsUsed(at: airport, tuning: tuning))
+        let reserve = reservedSlots(for: airline, at: airport, tuning: tuning)
+        return pool + max(0, reserve - world.slotsHeld(by: airline, at: airport))
+    }
+
+    /// The daily capacity `WorldState.allocateSlots` checks this airline's
+    /// request against: what is allocated already plus what it may add.
+    /// The airport's own capacity for an airline without a pier there.
+    public func slotCapacity(for airline: AirlineID, at airport: AirportCode,
+                             catalog: ContentCatalog) -> Int {
+        world.slotsUsed(at: airport) + slotsAvailable(to: airline, at: airport, catalog: catalog)
+    }
+
+    /// The turnaround at each end of a route, for its operator.
+    public func turnarounds(spec: AircraftTypeSpec, on route: Route,
+                            tuning: AirportFacilityTuning) -> RouteTurnarounds {
+        RouteTurnarounds(
+            atOrigin: turnaroundMinutes(spec: spec, airline: route.airline, at: route.origin, tuning: tuning),
+            atDestination: turnaroundMinutes(spec: spec, airline: route.airline, at: route.destination,
+                                             tuning: tuning))
     }
 
     /// The best hangar the owner has where this aircraft flies: either end of

@@ -55,12 +55,14 @@ public struct OpenRouteCommand: Command, Equatable {
             return CommandRejection(code: "route.badPrice",
                                     message: "Ticket price must be positive")
         }
+        // The shared pool, and beyond it what the airline's own pier holds
+        // for it (`GameState.slotsAvailable`).
         let movements = Route.dailySlotMovements(roundTrips: dailyRoundTrips)
-        if state.world.slotsUsed(at: origin) + movements > originSpec.slotCapacityPerDay {
+        if movements > state.slotsAvailable(to: airline, at: origin, catalog: catalog) {
             return CommandRejection(code: "route.noSlots",
                                     message: "\(origin) has no free slots for this frequency")
         }
-        if state.world.slotsUsed(at: destination) + movements > destSpec.slotCapacityPerDay {
+        if movements > state.slotsAvailable(to: airline, at: destination, catalog: catalog) {
             return CommandRejection(code: "route.noSlots",
                                     message: "\(destination) has no free slots for this frequency")
         }
@@ -73,10 +75,10 @@ public struct OpenRouteCommand: Command, Equatable {
         let movements = Route.dailySlotMovements(roundTrips: dailyRoundTrips)
         let originError = state.world.allocateSlots(
             airline: airline, airport: origin, count: movements,
-            capacityPerDay: originSpec.slotCapacityPerDay)
+            capacityPerDay: state.slotCapacity(for: airline, at: origin, catalog: context.catalog))
         let destError = state.world.allocateSlots(
             airline: airline, airport: destination, count: movements,
-            capacityPerDay: destSpec.slotCapacityPerDay)
+            capacityPerDay: state.slotCapacity(for: airline, at: destination, catalog: context.catalog))
         precondition(originError == nil && destError == nil, "Validated slot availability")
 
         let id = state.meta.idAllocator.allocateRouteID()
@@ -219,10 +221,8 @@ public struct SetRouteFrequencyCommand: Command, Equatable {
         let delta = Route.dailySlotMovements(roundTrips: dailyRoundTrips)
             - Route.dailySlotMovements(roundTrips: r.dailyRoundTrips)
         if delta > 0 {
-            let originSpec = catalog.airport(r.origin)!
-            let destSpec = catalog.airport(r.destination)!
-            if state.world.slotsUsed(at: r.origin) + delta > originSpec.slotCapacityPerDay
-                || state.world.slotsUsed(at: r.destination) + delta > destSpec.slotCapacityPerDay {
+            if delta > state.slotsAvailable(to: airline, at: r.origin, catalog: catalog)
+                || delta > state.slotsAvailable(to: airline, at: r.destination, catalog: catalog) {
                 return CommandRejection(code: "route.noSlots",
                                         message: "No free slots for the added frequency")
             }
@@ -235,14 +235,14 @@ public struct SetRouteFrequencyCommand: Command, Equatable {
         let delta = Route.dailySlotMovements(roundTrips: dailyRoundTrips)
             - Route.dailySlotMovements(roundTrips: r.dailyRoundTrips)
         if delta > 0 {
-            let originSpec = context.catalog.airport(r.origin)!
-            let destSpec = context.catalog.airport(r.destination)!
             _ = state.world.allocateSlots(airline: airline, airport: r.origin,
                                           count: delta,
-                                          capacityPerDay: originSpec.slotCapacityPerDay)
+                                          capacityPerDay: state.slotCapacity(for: airline, at: r.origin,
+                                                                             catalog: context.catalog))
             _ = state.world.allocateSlots(airline: airline, airport: r.destination,
                                           count: delta,
-                                          capacityPerDay: destSpec.slotCapacityPerDay)
+                                          capacityPerDay: state.slotCapacity(for: airline, at: r.destination,
+                                                                             catalog: context.catalog))
         } else if delta < 0 {
             _ = state.world.releaseSlots(airline: airline, airport: r.origin, count: -delta)
             _ = state.world.releaseSlots(airline: airline, airport: r.destination, count: -delta)
@@ -292,16 +292,15 @@ public struct AssignAircraftToRouteCommand: Command, Equatable {
                                         message: "\(end) cannot handle a \(spec.model)")
             }
         }
-        // In range and still never flown: the scheduler plans whole round
-        // trips inside the operating day, so a route whose round trip is
-        // longer than the day materialises no flights at all — and the
-        // aeroplane's lease, payroll and checks bill regardless. Range was
-        // the only distance check, so long-haul types were accepted onto
-        // routes they could never fly.
-        if FlightSchedulingSystem.roundTripsPerDay(spec: spec, on: r, state: state,
-                                                    catalog: catalog) == 0 {
+        // A round trip longer than the operating day flies as a long-haul
+        // rotation over days. Only one that would not come home within the
+        // longest rotation the scheduler plans is never flown — and would
+        // bill its lease, payroll and checks regardless — so only that is
+        // refused.
+        if !FlightSchedulingSystem.rotation(spec: spec, on: r, state: state,
+                                            catalog: catalog).isFlyable {
             return CommandRejection(code: "route.tooLongForDay",
-                                    message: "A \(spec.model) round trip of \(r.distanceKm) km does not fit in one operating day")
+                                    message: "A \(spec.model) round trip of \(r.distanceKm) km would take more than \(FlightSchedulingSystem.maxRotationDays) days")
         }
         return nil
     }
