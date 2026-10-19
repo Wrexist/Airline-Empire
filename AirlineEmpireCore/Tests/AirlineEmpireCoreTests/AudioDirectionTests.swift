@@ -168,7 +168,30 @@ struct AudioDirectionTests {
         let names = AudioCue.allCases.map(\.assetName)
         #expect(names.allSatisfy { !$0.isEmpty })
         #expect(Set(names).count == names.count)
-        #expect(AudioCue.allCases.filter(\.isLoop).count == 2)
+        #expect(AudioCue.allCases.filter(\.isLoop).count == 3)
+    }
+
+    /// The hub's moments have their own voice (docs/HUB_PROGRESSION_PLAN.md
+    /// §6): a building opening is not a capability programme finishing, and
+    /// a station earning a status is not a campaign milestone.
+    @Test("Hub openings and statuses have their own sounds")
+    func hubMomentsHaveTheirOwnSounds() {
+        let opened = AudioCue.for(.facilityOpened(airline: AirlineID(raw: 1), airport: "ARN",
+                                                  service: .hangar, level: 1))
+        let raised = AudioCue.for(.hubStatusRaised(airline: AirlineID(raw: 1), airport: "ARN",
+                                                   status: .base))
+        #expect(opened == .facilityOpened)
+        #expect(raised == .hubStatusRaised)
+        #expect(opened != AudioCue.for(.capabilityCompleted(code: CapabilityCode.allCases[0])))
+        for cue in [AudioCue.facilityOpened, .hubStatusRaised] {
+            #expect(cue.category == .progression)
+            #expect(cue.priority == .important)
+            #expect(cue.haptic == .success)
+            #expect(!cue.isLoop)
+        }
+        #expect(AudioCue.ambienceConstruction.isLoop)
+        #expect(AudioCue.ambienceConstruction.priority == .ambient)
+        #expect(AudioCue.ambienceConstruction.haptic == nil)
     }
 
     // MARK: - Deduplication and rate limiting

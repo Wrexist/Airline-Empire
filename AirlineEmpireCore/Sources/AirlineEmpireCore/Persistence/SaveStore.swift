@@ -115,14 +115,23 @@ public struct SlotMeta: Equatable, Codable, Sendable {
     public let netWorthCents: Int64
     public let savedAtTick: Int64
     public let era: String
+    /// The wall-clock moment this generation was written: where offline
+    /// catch-up measures an absence from when a campaign is opened from the
+    /// menu. Persistence metadata, the one place Core may read the real clock
+    /// (docs/TECHNICAL_STANDARDS.md §3) — it never enters the simulation,
+    /// only the length of time handed to `GameSession.catchUp`. Nil in a
+    /// meta file written before it, which simply earns no catch-up.
+    public let savedAt: Date?
 
     public init(airlineName: String, gameDateDescription: String,
-                netWorthCents: Int64, savedAtTick: Int64, era: String) {
+                netWorthCents: Int64, savedAtTick: Int64, era: String,
+                savedAt: Date? = nil) {
         self.airlineName = airlineName
         self.gameDateDescription = gameDateDescription
         self.netWorthCents = netWorthCents
         self.savedAtTick = savedAtTick
         self.era = era
+        self.savedAt = savedAt
     }
 }
 
@@ -150,7 +159,7 @@ public final class SaveManager: Sendable {
         self.codec = codec
     }
 
-    public func save(_ state: GameState, slot: String) throws {
+    public func save(_ state: GameState, slot: String, at now: Date = Date()) throws {
         // Loading refuses a state with integrity violations, but saving never
         // asked — and the engine's own per-tick check is an `assert`, compiled
         // out of Release. One broken invariant would have been written as the
@@ -167,7 +176,7 @@ public final class SaveManager: Sendable {
             guard missing.isEmpty else { throw SaveError.missingContent(missing) }
         }
         let data = try codec.encode(state)
-        try store.save(data, slot: slot, meta: Self.meta(for: state))
+        try store.save(data, slot: slot, meta: Self.meta(for: state, savedAt: now))
     }
 
     /// Tries current, then backups; the first intact generation wins.
@@ -190,7 +199,7 @@ public final class SaveManager: Sendable {
         throw lastError
     }
 
-    static func meta(for state: GameState) -> SlotMeta {
+    static func meta(for state: GameState, savedAt: Date? = nil) -> SlotMeta {
         let date = state.currentDate
         let player = state.playerAirline
         let netWorth = player.map { airline in
@@ -202,6 +211,7 @@ public final class SaveManager: Sendable {
             gameDateDescription: String(format: "%04d-%02d-%02d", date.year, date.month, date.day),
             netWorthCents: netWorth.cents,
             savedAtTick: state.clock.tickCount,
-            era: "\(state.progression.era)")
+            era: "\(state.progression.era)",
+            savedAt: savedAt)
     }
 }

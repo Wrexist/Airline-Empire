@@ -33,7 +33,9 @@ public enum SaveFormat {
     /// the event log and each airline's ledger day totals — and the airline
     /// on `aircraftSold`/`leaseReturned` events. All optional again: a v15
     /// save decodes as is and the windows start recording on its first tick.
-    public static let currentVersion = 16
+    /// v17 adds `Route.openedAt` (TD-027), optional: an older route takes
+    /// its opening from the market-move record where that still holds it.
+    public static let currentVersion = 17
 }
 
 public struct SaveEnvelope: Codable, Sendable {

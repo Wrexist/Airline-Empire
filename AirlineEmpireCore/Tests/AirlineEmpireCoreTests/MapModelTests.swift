@@ -69,4 +69,20 @@ struct MapModelTests {
         // Arcs are drawable polylines.
         #expect(model.routes.allSatisfy { $0.arc.count == 25 })
     }
+
+    /// The hub status badge (docs/HUB_PROGRESSION_PLAN.md §3): the map marks
+    /// how built-up each of the player's hubs is, and nothing else.
+    @Test func mapModelCarriesTheHubStatusBadge() throws {
+        let (engine, airline, _) = try DemandFixtures.market(fare: Money.dollars(129))
+        var state = engine.state
+        let plain = state.mapModel(catalog: engine.catalog)
+        // Home is a base from the start; the far end is a plain station.
+        #expect(plain.airports.first { $0.code == "MET" }?.playerHubStatus == .base)
+        #expect(plain.airports.first { $0.code == "COS" }?.playerHubStatus == nil)
+
+        state.airlines[airline]?.hubStatuses = ["MET": .mainBase, "COS": .base]
+        let built = state.mapModel(catalog: engine.catalog)
+        #expect(built.airports.first { $0.code == "MET" }?.playerHubStatus == .mainBase)
+        #expect(built.airports.first { $0.code == "COS" }?.playerHubStatus == .base)
+    }
 }

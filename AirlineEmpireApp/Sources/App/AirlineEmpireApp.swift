@@ -103,6 +103,13 @@ struct AirlineEmpireApp: App {
                     } else if phase == .active {
                         controller.feedback.applicationWillEnterForeground()
                     }
+                    // Capped offline catch-up (AE-050): the same rule — only a
+                    // real background is time away.
+                    if phase == .background {
+                        controller.sceneDidEnterBackground()
+                    } else if phase == .active {
+                        controller.sceneDidBecomeActive()
+                    }
                     controller.setPumping(phase == .active)
                 }
                 .task(id: scenePhase) {

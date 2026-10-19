@@ -28,11 +28,17 @@ public struct Route: Equatable, Codable, Sendable {
     /// accumulates live; previous month is the closed, comparable figure.
     public var economicsThisMonth: RouteMonthEconomics
     public var economicsLastMonth: RouteMonthEconomics
+    /// When the route opened: the moment its `OpenRouteCommand` applied
+    /// (TD-027). The start of the route's story — "since you arrived" is a
+    /// sentence the game can only say if it knows when that was. Nil for a
+    /// route from a save written before format 17 whose opening the
+    /// market-move record no longer held (`MigrationV16AddRouteOpenedAt`).
+    public var openedAt: SimTime?
 
     public init(id: RouteID, airline: AirlineID, origin: AirportCode,
                 destination: AirportCode, distanceKm: Int, dailyRoundTrips: Int,
                 ticketPrice: Money, assignedAircraft: [AircraftID] = [],
-                stats: RouteStats = RouteStats()) {
+                stats: RouteStats = RouteStats(), openedAt: SimTime? = nil) {
         self.id = id
         self.airline = airline
         self.origin = origin
@@ -48,6 +54,7 @@ public struct Route: Equatable, Codable, Sendable {
         self.remainingInboundToday = 0
         self.economicsThisMonth = RouteMonthEconomics()
         self.economicsLastMonth = RouteMonthEconomics()
+        self.openedAt = openedAt
     }
 
     /// Daily airport movements this route consumes at EACH endpoint

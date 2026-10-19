@@ -181,6 +181,7 @@ jobs:
         shell: bash
         env:
           VALIDATION_SUITE: ${{ inputs.suite }}
+          DECADE_TEST: tenYearWorldRemainsStableAndContested
         run: |
           set -o pipefail
           # Focused UI follow-ups still verify the onboarding state model.
@@ -197,7 +198,10 @@ jobs:
           ISOLATED_TEST=regionalRivalKeepsMoneyInTheStandardCast
           swift test --filter "$ISOLATED_TEST" 2>&1 | tee isolated-debug-test.log
           grep -Eq 'Test run with 1 test passed' isolated-debug-test.log
-          swift test --skip "$ISOLATED_TEST"
+          # The ten-year world runs in its own job below (TD-034): it was half
+          # of this step's wall clock, and every time limit in the batch was
+          # measuring its contention rather than the test it guarded.
+          swift test --skip "$ISOLATED_TEST" --skip "$DECADE_TEST"
 
       # Release is what ships, and Swift 6 strict concurrency diagnostics
       # differ between configurations. `-warnings-as-errors` holds the
@@ -206,6 +210,78 @@ jobs:
       - name: Build (release, warnings are errors)
         if: steps.changes.outputs.test == 'true'
         run: swift build -c release -Xswiftc -warnings-as-errors
+
+  # ── 1b · The ten-year world, on its own runner (TD-034) ────────────────────
+  #
+  # `tenYearWorldRemainsStableAndContested` is 868 s of work (MEASURED, AE-044,
+  # run alone) — about half of the Core job's wall clock — and Swift Testing
+  # counts its time limit as wall clock while the other ~460 tests share the
+  # cooperative pool. Contention has been measured past 4x, so no guard could
+  # both survive it and fit in the Core job's 45 minutes. Here it runs alone,
+  # in parallel with the suite, so its limit times the test and nothing else.
+  #
+  # Still a gate: a job of this workflow, with no condition of its own and no
+  # `continue-on-error`, so a release's `full-validation` (ios-testflight.yml
+  # calls this workflow) cannot succeed without it. Focused UI follow-ups
+  # (onboarding, briefing) skip it exactly as the Core job skips the suite.
+  core-decade:
+    name: Core (ten-year world)
+    runs-on: ubuntu-24.04
+    container: swift:6.0.3-jammy
+    # Build plus 868 s of work, with the test's own 40-minute limit inside.
+    timeout-minutes: 55
+    defaults:
+      run:
+        working-directory: AirlineEmpireCore
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.candidate_sha || github.sha }}
+          fetch-depth: 0
+
+      # Restore only: the Core job saves the cache under the same key, and
+      # two jobs racing to save one key is a warning on every run.
+      - name: Restore the SwiftPM build cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            AirlineEmpireCore/.build
+            /root/.cache/org.swift.swiftpm
+          key: swiftpm-6.0.3-${{ hashFiles('AirlineEmpireCore/Package.swift') }}-${{ hashFiles('AirlineEmpireCore/Sources/**/*.swift', 'AirlineEmpireCore/Tests/**/*.swift') }}
+          restore-keys: |
+            swiftpm-6.0.3-${{ hashFiles('AirlineEmpireCore/Package.swift') }}-
+            swiftpm-6.0.3-
+
+      # The Core job's rule, word for word: a commit that cannot touch the
+      # simulation does not run it.
+      - name: What changed?
+        id: changes
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -n "${{ inputs.candidate_sha }}" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "test=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git diff --name-only "$BASE" "${{ github.sha }}" | grep -Eq '^(AirlineEmpireCore/|\.github/workflows/ci\.yml$)'; then
+            echo "test=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "test=false" >> "$GITHUB_OUTPUT"
+            echo "No changes under AirlineEmpireCore — skipping the decade."
+          fi
+
+      # Debug, like the suite: the per-tick integrity assertion is compiled
+      # out of release, and ten years of it is the point of this test.
+      - name: Ten-year world (debug)
+        if: steps.changes.outputs.test == 'true' && inputs.suite != 'onboarding' && inputs.suite != 'briefing'
+        shell: bash
+        env:
+          DECADE_TEST: tenYearWorldRemainsStableAndContested
+        run: |
+          set -o pipefail
+          swift test --filter "$DECADE_TEST" 2>&1 | tee decade-test.log
+          grep -Eq 'Test run with 1 test passed' decade-test.log
 
   # ── 2 · Release tooling and the store listing ──────────────────────────────
   release-tooling:

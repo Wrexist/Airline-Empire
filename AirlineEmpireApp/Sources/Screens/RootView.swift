@@ -295,12 +295,30 @@ struct GameShell: View {
             ZStack {
                 if let celebration = controller.celebration {
                     CelebrationOverlay(celebration: celebration)
+                } else if controller.isCatchingUp {
+                    // A long catch-up holds the session for a moment; say why
+                    // the world has not moved yet (AE-050).
+                    Label("Catching up on your time away…", systemImage: "clock.arrow.circlepath")
+                        .font(.footnote.weight(.medium))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(.regularMaterial, in: Capsule())
+                        .padding(.top, AETheme.spacingS)
+                        .accessibilityIdentifier("ae-catching-up")
                 }
             }
             .allowsHitTesting(false)
             // A banner transition must not put the entire game shell into
             // an animation transaction while the player uses its controls.
             .aeAnimation(AEMotion.content, value: controller.celebration)
+        }
+        // While you were away (AE-050). Held back while the hub is open — the
+        // cover owns the screen — and raised the moment it closes.
+        .sheet(isPresented: awayReportPresented) {
+            if let report = controller.awayReport {
+                AwayReportSheet(report: report)
+                    .environment(controller)
+            }
         }
         // The era wall. Docked to the bottom rather than raised as a sheet:
         // the airline is still there, still readable, still commandable — it
@@ -335,6 +353,11 @@ struct GameShell: View {
     }
 
     @MainActor static var didAutoOpenHub = false
+
+    private var awayReportPresented: Binding<Bool> {
+        Binding(get: { controller.awayReport != nil && controller.hubRequest == nil },
+                set: { if !$0 { controller.dismissAwayReport() } })
+    }
 
     private var hubRequest: Binding<GameController.HubRequest?> {
         Binding(get: { controller.hubRequest }, set: { controller.hubRequest = $0 })

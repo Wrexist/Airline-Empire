@@ -24,6 +24,7 @@ struct HubScreen: View {
     let airport: AirportCode
     @Environment(GameController.self) private var controller
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.feedback) private var feedback
     @State private var model: HubScreenModel?
     /// Another airport of the network, chosen in the hub switcher.
     @State private var switched: AirportCode?
@@ -77,6 +78,8 @@ struct HubScreen: View {
         .onDisappear {
             model?.scene.pause(true)
             AEOrientation.unlock()
+            // The map's bed comes back with the map.
+            feedback.setHubSoundscape(nil)
         }
     }
 
@@ -118,8 +121,10 @@ struct HubScreen: View {
             return game.submit(ConfigureAirportFacilitiesCommand(airline: player.id, airport: hub,
                                                                  facilities: facilities))
         }
+        made.onCue = { [feedback] cue in feedback.play(cue) }
         model = made
         made.refresh(state: state, catalog: catalog)
+        updateSoundscape(state)
         if let shot = Self.launchShot { made.select(shot) }
         if ProcessInfo.processInfo.arguments.contains("-AEUITestHubNight") { made.setLighting(.night) }
     }
@@ -148,6 +153,18 @@ struct HubScreen: View {
         }
         guard let state = controller.snapshot, let catalog = controller.catalog else { return }
         model.refresh(state: state, catalog: catalog)
+        updateSoundscape(state)
+    }
+
+    /// The hub's bed (docs/HUB_PROGRESSION_PLAN.md §6, "Audio"): the works
+    /// while a building goes up at this airport, the airport otherwise, and
+    /// as busy as the player's traffic through it.
+    private func updateSoundscape(_ state: GameState) {
+        let building = (state.playerAirline?.facilityConstructions ?? []).contains { $0.airport == code }
+        let kpis = model?.snapshot?.kpis
+        feedback.setHubSoundscape(Feedback.HubSoundscape(
+            constructionUnderWay: building,
+            activity: (kpis?.activeFlights ?? 0) + (kpis?.aircraftOnGround ?? 0)))
     }
 }
 

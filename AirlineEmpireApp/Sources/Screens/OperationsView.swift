@@ -903,6 +903,11 @@ struct SettingsView: View {
                 Text("Fast-forward stops itself when your airline drops below the overdraft floor, so a collapse never happens while you are looking away.")
                     .font(.caption)
                     .foregroundStyle(AETheme.mutedText)
+                Toggle("Keep flying while away", isOn: $preferences.catchUpWhileAway)
+                    .accessibilityIdentifier("ae-settings-catch-up")
+                Text("When you come back, the world catches up a little: a night away is about one game day, never more than a week. It stops early rather than let money trouble or a deadline happen without you.")
+                    .font(.caption)
+                    .foregroundStyle(AETheme.mutedText)
                 Toggle("Confirm destructive actions", isOn: $preferences.confirmDestructive)
                 // Every control that reads the setting, not just the three
                 // that are strictly destructive: `ConfirmableButton` and the

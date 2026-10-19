@@ -34,6 +34,7 @@ public final class ContentCatalog: Sendable {
         var problems: [String] = []
         if !tuning.cabin.isValid { problems.append("Invalid aircraft configuration tuning") }
         if !tuning.airportServices.isValid { problems.append("Invalid airport facility tuning") }
+        if !tuning.offline.isValid { problems.append("Invalid offline catch-up tuning") }
 
         for scenario in scenarios {
             if scenarioMap[scenario.code] != nil {
@@ -219,6 +220,10 @@ public struct Tuning: Equatable, Codable, Sendable {
     public var cabin: AircraftConfigurationTuning { aircraftConfiguration ?? .standard }
     public let airportFacilities: AirportFacilityTuning?
     public var airportServices: AirportFacilityTuning { airportFacilities ?? .standard }
+    /// Optional like the two above, so a bundle written before offline
+    /// catch-up decodes with the shipped numbers (`OfflineCatchUp.swift`).
+    public let offlineCatchUp: OfflineCatchUpTuning?
+    public var offline: OfflineCatchUpTuning { offlineCatchUp ?? .standard }
     public let ops: OpsTuning
     public let demand: DemandTuning
     public let finance: FinanceTuning
@@ -235,11 +240,13 @@ public struct Tuning: Equatable, Codable, Sendable {
                 events: EventTuning = .standard,
                 progression: ProgressionTuning = .standard,
                 aircraftConfiguration: AircraftConfigurationTuning = .standard,
-                airportFacilities: AirportFacilityTuning = .standard) {
+                airportFacilities: AirportFacilityTuning = .standard,
+                offlineCatchUp: OfflineCatchUpTuning = .standard) {
         self.minRouteDistanceKm = minRouteDistanceKm
         self.fleet = fleet
         self.aircraftConfiguration = aircraftConfiguration
         self.airportFacilities = airportFacilities
+        self.offlineCatchUp = offlineCatchUp
         self.ops = ops
         self.demand = demand
         self.finance = finance

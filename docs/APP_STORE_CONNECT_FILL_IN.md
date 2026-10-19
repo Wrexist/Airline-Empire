@@ -446,14 +446,14 @@ the decorative illustration is not used here. The shot list and captions are in
 - **Phone Number** — `+46723241663`
 - **Email** — `isacmolin@gmail.com`
 
-**Notes** — 3996/4000 characters
+**Notes** — 3995/4000 characters
 
 ```text
 Airline Empire is a single-player airline management simulation. No sign-in is required.
 
 WHAT THE APP DOES NOT DO
 • No account, no sign-in, no user-generated content, no social features, no chat.
-• Gameplay works offline. Prices, purchases and Restore purchases use Apple's StoreKit services and need a connection. Legal and support links open web pages. The simulation pauses while the app is closed; there is no offline catch-up.
+• Gameplay works offline. Prices, purchases and Restore purchases use Apple's StoreKit services and need a connection. Legal and support links open web pages. When reopened, the simulation catches up a little, capped at one game week.
 • No advertising or cross-app tracking. RevenueCat uses anonymous purchase history for functionality and analytics. Gameplay stays local. The privacy label declares purchase history, not linked to identity and not used for tracking; private UserDefaults use (CA92.1) covers preferences and Pro offer history.
 • No gambling, no loot boxes, no randomised paid rewards. The only randomness is the simulation's own seeded world generation, which the player sets and can repeat.
 

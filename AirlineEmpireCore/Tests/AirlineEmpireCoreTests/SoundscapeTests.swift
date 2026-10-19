@@ -122,6 +122,32 @@ struct SoundscapeTests {
         }
     }
 
+    // MARK: - The hub
+
+    /// The works are heard while they stand, and only then; the hub is never
+    /// louder than the map's closest focus, and the works sit under it.
+    @Test("A hub with a building going up sounds like a site")
+    func hubBedFollowsConstruction() {
+        for speed in SimSpeed.allCases {
+            for activity in [0, 6, 400] {
+                for stage in [SolvencyModel.Stage.healthy, .watch, .danger] {
+                    let quiet = AmbienceDirector.hubMix(constructionUnderWay: false,
+                                                        activity: activity, speed: speed, stage: stage)
+                    let works = AmbienceDirector.hubMix(constructionUnderWay: true,
+                                                        activity: activity, speed: speed, stage: stage)
+                    let local = AmbienceDirector.mix(focus: .local, airborne: activity,
+                                                     speed: speed, stage: stage)
+                    #expect(quiet == local)
+                    #expect(quiet.bed == .ambienceOperations)
+                    #expect(works.bed == .ambienceConstruction)
+                    #expect(works.level <= quiet.level)
+                    #expect(works.level >= 0 && works.level <= 1)
+                    #expect(works.movement == quiet.movement)
+                }
+            }
+        }
+    }
+
     // MARK: - Music
 
     @Test("No game means the menu, whatever else is true")

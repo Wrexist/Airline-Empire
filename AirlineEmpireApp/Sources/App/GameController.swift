@@ -78,6 +78,21 @@ final class GameController {
     /// feed; for a game whose stated payload is ownership of a growing
     /// network, nothing ever marked growth (UIUX_FORENSIC_AUDIT UI-014).
     private(set) var celebration: Celebration?
+    /// What happened while the player was away (AE-050): the account of the
+    /// last offline catch-up, shown once as the "While you were away" sheet.
+    private(set) var awayReport: OfflineCatchUpReport?
+    /// True while the session runs a catch-up, so the shell can say why the
+    /// world has not moved for a second.
+    private(set) var isCatchingUp = false
+    /// When the scene last went to the background with a game open, on the
+    /// continuous clock: monotonic and counting device sleep, so a warm return
+    /// measures the real absence whatever the device clock was set to.
+    @ObservationIgnored private var backgroundedAt: ContinuousClock.Instant?
+    /// The game-time window a catch-up's events fall in. They still reach the
+    /// feed, but not the celebration banner or the audio director: a week of
+    /// catch-up is one account, not a burst of banners and chimes.
+    @ObservationIgnored private var quietEventsAfter: SimTime?
+    @ObservationIgnored private var quietEventsUntil: SimTime?
 
     var preferences: Preferences
 
@@ -539,8 +554,14 @@ final class GameController {
             let catalog = try ContentCatalog.loadBundled()
             let manager = makeSaveManager()
             let result = try manager.load(slot: slot)
+            // The absence runs from when this generation was written. A
+            // recovered backup is older than its meta file, so it earns
+            // nothing rather than a gap the meta cannot vouch for.
+            let away = result.generation == 0
+                ? manager.store.meta(slot: slot)?.savedAt.map { Date().timeIntervalSince($0) }
+                : nil
             begin(state: result.state, catalog: catalog, manager: manager,
-                  slot: slot, generation: result.generation)
+                  slot: slot, generation: result.generation, awaySeconds: away)
         } catch {
             // Reported on the menu, which has no rejection alert of its own —
             // this used to be set and never shown to anyone (UI-004).
@@ -551,7 +572,7 @@ final class GameController {
     /// Makes a loaded world the running game: a slot load and an import end
     /// the same way, and two copies of this would drift.
     private func begin(state: GameState, catalog: ContentCatalog, manager: SaveManager,
-                       slot: String, generation: Int) {
+                       slot: String, generation: Int, awaySeconds: Double? = nil) {
         let session = GameSession(state: state,
                                   systems: GamePipeline.standard(), catalog: catalog)
         self.catalog = catalog
@@ -564,8 +585,20 @@ final class GameController {
             await session.setProgressionCeiling(self.eraCeiling)
             await session.attachSaveManager(manager, autosaveSlot: slot,
                                             autosaveEveryGameDays: 1)
+            // Before anything subscribes: the time away is history by the
+            // time the player sees the game, so its events go to the feed
+            // ring and the account, never to banners or the speakers, and
+            // the audio director is seeded from the world as it now stands.
+            var report: OfflineCatchUpReport?
+            if let awaySeconds, self.earnsCatchUp(awaySeconds, catalog: catalog) {
+                self.isCatchingUp = true
+                report = await session.catchUp(awaySeconds: awaySeconds)
+                self.isCatchingUp = false
+            }
+            guard self.session === session else { return }
             await self.subscribe()
             await self.refresh()
+            if let report, report.isWorthShowing { self.awayReport = report }
             // Same as founding: a loaded game needs its clock started
             // (BUG-040).
             self.setPumping(true)
@@ -878,6 +911,12 @@ final class GameController {
         lastSaveOutcome = nil
         autoPauseReason = nil
         celebration = nil
+        // The account and the absence belong to the airline being left.
+        awayReport = nil
+        isCatchingUp = false
+        backgroundedAt = nil
+        quietEventsAfter = nil
+        quietEventsUntil = nil
         isBeyondEraCeiling = false
         earnedLockedEra = nil
         eraQualificationObserved = false
@@ -1016,6 +1055,79 @@ final class GameController {
 
     func dismissAutoPause() {
         autoPauseReason = nil
+    }
+
+    // MARK: Time away (AE-050)
+
+    func dismissAwayReport() {
+        awayReport = nil
+    }
+
+    /// Whether this launch catches up at all: the player's setting, and never
+    /// under a UI journey. The journeys launch fresh, relaunch the same save
+    /// on purpose and count days by the sunrise control, and a world that
+    /// moved on between two launches would be a journey that photographs a
+    /// different day every run.
+    private var catchUpAllowed: Bool {
+        preferences.catchUpWhileAway && !Self.isUITestLaunch
+    }
+
+    private static let isUITestLaunch: Bool = {
+        let process = ProcessInfo.processInfo
+        return process.arguments.contains { $0.hasPrefix("-AEUITest") }
+            || process.environment["AE_UI_TEST_SAVE_ID"] != nil
+    }()
+
+    /// The scene went to the background with a game open: the absence starts.
+    /// Only a real background — `.inactive` is a banner or the app switcher,
+    /// and the player has not left.
+    func sceneDidEnterBackground() {
+        guard session != nil else { return }
+        backgroundedAt = .now
+    }
+
+    /// The scene is back. A return to a game that stayed in memory catches up
+    /// here; one the system closed in the meantime is reopened from the menu
+    /// and catches up from its save's own timestamp (`loadGame(slot:)`).
+    func sceneDidBecomeActive() {
+        guard let since = backgroundedAt else { return }
+        backgroundedAt = nil
+        let away = since.duration(to: .now)
+        let seconds = Double(away.components.seconds)
+            + Double(away.components.attoseconds) / 1e18
+        catchUp(awaySeconds: seconds)
+    }
+
+    /// Whether an absence earns any catch-up at all — asked before the
+    /// session is, so a short app switch does not flash "Catching up".
+    private func earnsCatchUp(_ awaySeconds: Double, catalog: ContentCatalog?) -> Bool {
+        guard catchUpAllowed, let catalog else { return false }
+        return OfflineCatchUp.creditedGameMinutes(awaySeconds: awaySeconds,
+                                                  tuning: catalog.tuning.offline) > 0
+    }
+
+    private func catchUp(awaySeconds: Double) {
+        guard let session, earnsCatchUp(awaySeconds, catalog: catalog) else { return }
+        // Everything the catch-up publishes is newer than the world on
+        // screen, and the window closes at the report's end.
+        quietEventsAfter = snapshot?.clock.now
+        quietEventsUntil = nil
+        isCatchingUp = true
+        Task {
+            let report = await session.catchUp(awaySeconds: awaySeconds)
+            guard self.session === session else { return }
+            self.isCatchingUp = false
+            self.quietEventsUntil = report?.end ?? self.quietEventsAfter
+            await self.refresh()
+            if let report, report.isWorthShowing { self.awayReport = report }
+        }
+    }
+
+    /// An event the catch-up produced: the feed keeps it, banners and audio
+    /// do not.
+    private func isQuiet(_ event: SimEvent) -> Bool {
+        guard let after = quietEventsAfter else { return false }
+        return event.at > after && (quietEventsUntil.map { event.at <= $0 } ?? true)
     }
 
     /// Runs while the scene is active: feeds elapsed real time to the
@@ -1219,6 +1331,8 @@ final class GameController {
                 if self.recentEvents.count > 200 {
                     self.recentEvents.removeFirst(self.recentEvents.count - 200)
                 }
+                // Time away is told once, by the account (AE-050).
+                if self.isQuiet(event) { continue }
                 self.noteCelebration(event)
                 // Queued rather than played. Audio is decided per *batch* so
                 // the director can see that eleven flights departed together
@@ -1426,6 +1540,7 @@ final class Preferences {
     private enum Key {
         static let autoPause = "ae.autoPauseOnDanger"
         static let confirmDestructive = "ae.confirmDestructive"
+        static let catchUpWhileAway = "ae.catchUpWhileAway"
     }
 
     private let defaults: UserDefaults
@@ -1440,9 +1555,11 @@ final class Preferences {
         defaults.register(defaults: [
             Key.autoPause: true,
             Key.confirmDestructive: true,
+            Key.catchUpWhileAway: true,
         ])
         storedAutoPause = defaults.bool(forKey: Key.autoPause)
         storedConfirmDestructive = defaults.bool(forKey: Key.confirmDestructive)
+        storedCatchUpWhileAway = defaults.bool(forKey: Key.catchUpWhileAway)
         // No `register(defaults:)` for audio: `AudioSettings(store:)` already
         // treats a missing key as its own default, which is that rule said
         // once rather than in two places that can disagree.
@@ -1451,6 +1568,15 @@ final class Preferences {
 
     private var storedAutoPause: Bool
     private var storedConfirmDestructive: Bool
+    private var storedCatchUpWhileAway: Bool
+
+    /// Whether the world moves on a little while the app is closed (AE-050).
+    /// On by default — it is how a cozy builder rewards coming back — and it
+    /// can never hurt the airline, but it is the player's world to stop.
+    var catchUpWhileAway: Bool {
+        get { storedCatchUpWhileAway }
+        set { storedCatchUpWhileAway = newValue; defaults.set(newValue, forKey: Key.catchUpWhileAway) }
+    }
 
     var autoPauseOnDanger: Bool {
         get { storedAutoPause }

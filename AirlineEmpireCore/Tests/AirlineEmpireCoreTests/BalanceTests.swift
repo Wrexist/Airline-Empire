@@ -301,6 +301,10 @@ struct BalanceTests {
     /// whole suite's CI time (1,681 s in run 137), and the real fix is to make
     /// it cheaper or give it its own job. Recorded as TD-034; not attempted
     /// here, where the change is limits only. No assertion changed.
+    ///
+    /// **It now has its own job** (TD-034): CI's `core-decade` runs it alone,
+    /// beside the suite, which skips it, so this limit times the test rather
+    /// than the runner. Still a release gate — see .github/workflows/ci.yml.
     @Test(.timeLimit(.minutes(40)))
     func tenYearWorldRemainsStableAndContested() throws {
         let (engine, _) = try AIFixtures.world(competitors: 5, seed: 4242)

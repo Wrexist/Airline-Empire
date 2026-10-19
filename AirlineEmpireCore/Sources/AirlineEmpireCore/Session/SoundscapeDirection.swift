@@ -135,6 +135,32 @@ public enum AmbienceDirector {
     }
 }
 
+extension AmbienceDirector {
+
+    /// The bed while the 3D Hub View is open (docs/HUB_PROGRESSION_PLAN.md
+    /// §6, "Audio"). The hub is the closest the player ever stands to their
+    /// airline, so it starts from the map's most present focus — the same
+    /// rules for scale, speed and strain, never louder than the map is
+    /// allowed to be. While a building goes up at this airport the works
+    /// take the bed: diggers, a crane, the ring of a site, which is how the
+    /// construction you can follow is also construction you can hear.
+    ///
+    /// - Parameters:
+    ///   - constructionUnderWay: a building is being built at this hub.
+    ///   - activity: the player's aircraft working the hub — on stands and
+    ///     in the air to or from it — the hub's version of "airborne".
+    public static func hubMix(constructionUnderWay: Bool, activity: Int,
+                              speed: SimSpeed,
+                              stage: SolvencyModel.Stage = .healthy) -> AmbienceMix {
+        let airport = mix(focus: .local, airborne: activity, speed: speed, stage: stage)
+        guard constructionUnderWay else { return airport }
+        // A shade under the airport's own level: the works are a texture
+        // laid over the hub, not a louder hub.
+        return AmbienceMix(bed: .ambienceConstruction, level: airport.level * 0.9,
+                           movement: airport.movement)
+    }
+}
+
 // MARK: - Music
 
 /// What the score should be doing. Deliberately few: a state machine with
